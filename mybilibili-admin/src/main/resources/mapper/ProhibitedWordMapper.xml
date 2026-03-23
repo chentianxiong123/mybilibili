@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.admin.mapper.ProhibitedWordMapper">
+
+    <select id="selectByKeyword" resultType="com.mybilibili.common.entity.ProhibitedWord">
+        SELECT * FROM prohibited_word
+        WHERE 1=1
+        <if test="keyword != null and keyword != ''">
+            AND word LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        ORDER BY created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countByKeyword" resultType="int">
+        SELECT COUNT(*) FROM prohibited_word
+        WHERE 1=1
+        <if test="keyword != null and keyword != ''">
+            AND word LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+    </select>
+
+    <select id="selectById" resultType="com.mybilibili.common.entity.ProhibitedWord">
+        SELECT * FROM prohibited_word WHERE id = #{id}
+    </select>
+
+    <select id="selectByWord" resultType="com.mybilibili.common.entity.ProhibitedWord">
+        SELECT * FROM prohibited_word WHERE word = #{word}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO prohibited_word (word, match_type, category, is_enabled, created_at, updated_at)
+        VALUES (#{word}, #{matchType}, #{category}, #{isEnabled}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE prohibited_word
+        SET word = #{word},
+            match_type = #{matchType},
+            category = #{category},
+            is_enabled = #{isEnabled},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM prohibited_word WHERE id = #{id}
+    </delete>
+
+    <select id="selectAllEnabled" resultType="com.mybilibili.common.entity.ProhibitedWord">
+        SELECT * FROM prohibited_word WHERE is_enabled = 1
+    </select>
+
+</mapper>

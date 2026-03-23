@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.web.mapper.NotificationMapper">
+    <!-- 插入通知 -->
+    <insert id="insert" parameterType="com.mybilibili.common.entity.Notification">
+        INSERT INTO notifications (user_id, type, title, content, related_id, is_read, created_at)
+        VALUES (#{userId}, #{type}, #{title}, #{content}, #{relatedId}, #{isRead}, NOW())
+    </insert>
+
+    <!-- 根据用户ID查询通知列表 -->
+    <select id="selectByUserId" resultType="com.mybilibili.common.entity.Notification">
+        SELECT * FROM notifications
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 根据用户ID查询未读通知数量 -->
+    <select id="countUnreadByUserId" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM notifications
+        WHERE user_id = #{userId} AND is_read = 0
+    </select>
+
+    <!-- 标记通知为已读 -->
+    <update id="updateReadStatus">
+        UPDATE notifications
+        SET is_read = 1, read_at = NOW()
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <!-- 批量标记通知为已读 -->
+    <update id="batchUpdateReadStatus">
+        UPDATE notifications
+        SET is_read = 1, read_at = NOW()
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND user_id = #{userId}
+    </update>
+
+    <!-- 删除通知 -->
+    <delete id="delete">
+        DELETE FROM notifications
+        WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+
+    <!-- 插入或更新通知设置 -->
+    <insert id="insertOrUpdateSetting" parameterType="com.mybilibili.common.entity.NotificationSetting">
+        INSERT INTO notification_settings (user_id, like_notification, comment_notification, follow_notification, system_notification, video_notification)
+        VALUES (#{userId}, #{likeNotification}, #{commentNotification}, #{followNotification}, #{systemNotification}, #{videoNotification})
+        ON DUPLICATE KEY UPDATE
+        like_notification = #{likeNotification},
+        comment_notification = #{commentNotification},
+        follow_notification = #{followNotification},
+        system_notification = #{systemNotification},
+        video_notification = #{videoNotification}
+    </insert>
+
+    <!-- 根据用户ID查询通知设置 -->
+    <select id="selectSettingByUserId" resultType="com.mybilibili.common.entity.NotificationSetting">
+        SELECT * FROM notification_settings
+        WHERE user_id = #{userId}
+    </select>
+</mapper>

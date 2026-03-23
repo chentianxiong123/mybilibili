@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.admin.mapper.CommentReviewMapper">
+
+    <!-- 查询待审核的评论 -->
+    <select id="selectPendingComments" resultType="java.util.HashMap">
+        SELECT
+            c.id,
+            c.content,
+            c.status,
+            c.created_at as createdAt,
+            c.target_type as targetType,
+            c.target_id as targetId,
+            u.id as userId,
+            u.nickname as userName,
+            u.avatar as userAvatar
+        FROM comments c
+        LEFT JOIN users u ON c.user_id = u.id
+        WHERE c.status = 1
+        ORDER BY c.created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <!-- 统计待审核评论数 -->
+    <select id="countPendingComments" resultType="int">
+        SELECT COUNT(*) FROM comments WHERE status = 1
+    </select>
+
+    <!-- 查询待审核的回复 -->
+    <select id="selectPendingReplies" resultType="java.util.HashMap">
+        SELECT
+            r.id,
+            r.content,
+            r.status,
+            r.created_at as createdAt,
+            r.comment_id as commentId,
+            u.id as userId,
+            u.nickname as userName,
+            u.avatar as userAvatar
+        FROM replies r
+        LEFT JOIN users u ON r.user_id = u.id
+        WHERE r.status = 'REMOVED'
+        ORDER BY r.created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <!-- 统计待审核回复数 -->
+    <select id="countPendingReplies" resultType="int">
+        SELECT COUNT(*) FROM replies WHERE status = 'REMOVED'
+    </select>
+
+    <!-- 查询所有评论 -->
+    <select id="selectComments" resultType="java.util.HashMap">
+        SELECT
+            c.id,
+            c.content,
+            c.status,
+            c.created_at as createdAt,
+            c.target_type as targetType,
+            c.target_id as targetId,
+            u.id as userId,
+            u.nickname as userName,
+            u.avatar as userAvatar
+        FROM comments c
+        LEFT JOIN users u ON c.user_id = u.id
+        WHERE 1=1
+        <if test="status != null">
+            AND c.status = #{status}
+        </if>
+        ORDER BY c.created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <!-- 统计评论数 -->
+    <select id="countComments" resultType="int">
+        SELECT COUNT(*) FROM comments WHERE 1=1
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+    </select>
+
+    <!-- 查询所有回复 -->
+    <select id="selectReplies" resultType="java.util.HashMap">
+        SELECT
+            r.id,
+            r.content,
+            r.status,
+            r.created_at as createdAt,
+            r.comment_id as commentId,
+            u.id as userId,
+            u.nickname as userName,
+            u.avatar as userAvatar
+        FROM replies r
+        LEFT JOIN users u ON r.user_id = u.id
+        WHERE 1=1
+        <if test="status != null and status != ''">
+            AND r.status = #{status}
+        </if>
+        ORDER BY r.created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <!-- 统计回复数 -->
+    <select id="countReplies" resultType="int">
+        SELECT COUNT(*) FROM replies WHERE 1=1
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+    </select>
+
+</mapper>
