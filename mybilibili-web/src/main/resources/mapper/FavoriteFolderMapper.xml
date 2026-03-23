@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.web.mapper.FavoriteFolderMapper">
+    <!-- 根据用户ID获取收藏夹列表 -->
+    <select id="findByUserId" parameterType="java.lang.Integer" resultType="com.mybilibili.common.entity.FavoriteFolder">
+        SELECT * FROM favorite_folders WHERE user_id = #{userId} ORDER BY created_at DESC
+    </select>
+    
+    <!-- 根据用户ID和名称查找收藏夹 -->
+    <select id="findByUserIdAndName" resultType="com.mybilibili.common.entity.FavoriteFolder">
+        SELECT * FROM favorite_folders WHERE user_id = #{userId} AND name = #{name}
+    </select>
+    
+    <!-- 更新收藏夹视频数量 -->
+    <update id="updateVideoCount" parameterType="java.util.Map">
+        UPDATE favorite_folders SET video_count = video_count + #{increment} WHERE id = #{folderId}
+    </update>
+    
+    <!-- 插入收藏夹 -->
+    <insert id="insert" parameterType="com.mybilibili.common.entity.FavoriteFolder">
+        INSERT INTO favorite_folders (user_id, name, video_count, created_at, updated_at)
+        VALUES (#{userId}, #{name}, #{videoCount}, NOW(), NOW())
+    </insert>
+    
+    <!-- 根据ID查询收藏夹 -->
+    <select id="selectById" parameterType="java.lang.Integer" resultType="com.mybilibili.common.entity.FavoriteFolder">
+        SELECT * FROM favorite_folders WHERE id = #{id}
+    </select>
+
+    <!-- 更新收藏夹 -->
+    <update id="update" parameterType="com.mybilibili.common.entity.FavoriteFolder">
+        UPDATE favorite_folders
+        SET name = #{name}, updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID删除收藏夹 -->
+    <delete id="deleteById" parameterType="java.lang.Integer">
+        DELETE FROM favorite_folders WHERE id = #{id}
+    </delete>
+</mapper>

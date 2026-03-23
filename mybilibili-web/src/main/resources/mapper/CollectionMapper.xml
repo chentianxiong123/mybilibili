@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.web.mapper.CollectionMapper">
+
+    <insert id="insert" parameterType="com.mybilibili.common.entity.Collection">
+        INSERT INTO collections (user_id, manuscript_id, created_at)
+        VALUES (#{userId}, #{manuscriptId}, NOW())
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM collections WHERE user_id = #{userId} AND manuscript_id = #{manuscriptId}
+    </delete>
+
+    <select id="findByUserAndManuscript" resultType="com.mybilibili.common.entity.Collection">
+        SELECT * FROM collections WHERE user_id = #{userId} AND manuscript_id = #{manuscriptId}
+    </select>
+
+</mapper>

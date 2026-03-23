@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.web.mapper.CoinMapper">
+
+    <insert id="insert" parameterType="com.mybilibili.common.entity.Coin">
+        INSERT INTO coins (user_id, manuscript_id, coin_count, created_at)
+        VALUES (#{userId}, #{manuscriptId}, #{coinCount}, NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE coins SET coin_count = #{coinCount} WHERE user_id = #{userId} AND manuscript_id = #{manuscriptId}
+    </update>
+
+    <select id="findByUserAndManuscript" resultType="com.mybilibili.common.entity.Coin">
+        SELECT * FROM coins WHERE user_id = #{userId} AND manuscript_id = #{manuscriptId}
+    </select>
+
+</mapper>
