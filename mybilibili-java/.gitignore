@@ -1,0 +1,52 @@
+# Compiled class files
+*.class
+
+# Maven target directory
+**/target/
+
+# Maven local repository (if accidentally included)
+.m2/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.vscode/
+
+# Logs
+*.log
+log.path_IS_UNDEFINED/
+logs/
+
+# Package Files
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# JVM crash logs
+hs_err_pid*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~
+
+# Environment files (contain sensitive data)
+.env
+.env.local
+.env.*.local
+
+# Upload files (user generated content)
+uploads/

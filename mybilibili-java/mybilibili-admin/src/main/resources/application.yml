@@ -1,0 +1,90 @@
+server:
+  port: 7070
+  servlet:
+    context-path: /admin
+spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 15MB
+  application:
+    name: mybilibili-admin
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/mybilibili?serverTimezone=GMT%2B8&useUnicode=true&characterEncoding=utf8&autoReconnect=true&allowMultiQueries=true&useSSL=false
+    username: root
+    password: ${DB_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: HikariCPDatasource
+      minimum-idle: 5
+      idle-timeout: 180000
+      maximum-pool-size: 10
+      auto-commit: true
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      connection-test-query: SELECT 1
+  redis:
+    database: 1
+    host: 127.0.0.1
+    port: 6379
+    jedis:
+      pool:
+        max-active: 20
+        max-wait: -1
+        max-idle: 10
+        min-idle: 0
+    timeout: 2000
+  data:
+    mongodb:
+      # 无认证方式（本地开发使用）
+      uri: mongodb://localhost:27017/mybilibili
+      
+      # 有认证方式（如果MongoDB启用了认证）
+      # uri: mongodb://用户名:密码@localhost:27017/mybilibili
+      
+      # 使用数据库和集合级别的配置
+      host: localhost
+      port: 27017
+      database: mybilibili
+      # 如果启用了认证，取消下面两行的注释并填写
+      # username: your_username
+      # password: your_password
+    elasticsearch:
+      repositories:
+        enabled: true
+  elasticsearch:
+    uris: http://localhost:9200
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+project:
+  folder: c:/webser/mybilibili/
+
+# 文件上传路径配置
+upload:
+  base-path: d:/files/mybilibili/uploads
+
+# AI 配置
+ai:
+  whisper:
+    cli-path: "D:\\Program Files\\whisper-bin-x64\\Release\\whisper-cli.exe"
+    model-path: "D:\\Program Files\\whisper-bin-x64\\Release\\models\\ggml-small.bin"
+    language: zh
+    threads: 4
+  deepseek:
+    api-key: ${DEEPSEEK_API_KEY:sk-your-api-key-here}
+    api-url: ${DEEPSEEK_API_URL:https://api.qnaigc.com/v1/chat/completions}
+    model: "deepseek-r1"
+    max-tokens: 2000
+    temperature: 0.7
+
+log:
+  root:
+    level: debug
+admin:
+  account: ${ADMIN_ACCOUNT:admin}
+  password: ${ADMIN_PASSWORD:admin123}

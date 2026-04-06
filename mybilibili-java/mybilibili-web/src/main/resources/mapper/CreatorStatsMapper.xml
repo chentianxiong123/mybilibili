@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.web.mapper.CreatorStatsMapper">
+
+    <!-- 获取用户粉丝总数 -->
+    <select id="countFollowers" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM follows WHERE followed_id = #{userId}
+    </select>
+
+    <!-- 获取用户稿件总播放量 -->
+    <select id="sumViewCount" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(view_count), 0) FROM manuscripts WHERE user_id = #{userId}
+    </select>
+
+    <!-- 获取用户稿件总评论数 -->
+    <select id="sumCommentCount" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(comment_count), 0) FROM manuscripts WHERE user_id = #{userId}
+    </select>
+
+    <!-- 获取用户稿件总点赞数 -->
+    <select id="sumLikeCount" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(like_count), 0) FROM manuscripts WHERE user_id = #{userId}
+    </select>
+
+    <!-- 获取用户稿件总分享数 -->
+    <select id="sumShareCount" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(share_count), 0) FROM manuscripts WHERE user_id = #{userId}
+    </select>
+
+    <!-- 获取用户稿件总收藏数 -->
+    <select id="sumCollectCount" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(collect_count), 0) FROM manuscripts WHERE user_id = #{userId}
+    </select>
+
+    <!-- 获取用户稿件总投币数 -->
+    <select id="sumCoinCount" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(coin_count), 0) FROM manuscripts WHERE user_id = #{userId}
+    </select>
+
+    <!-- 获取用户稿件总弹幕数 -->
+    <select id="sumDanmakuCount" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(danmaku_count), 0) FROM manuscripts WHERE user_id = #{userId}
+    </select>
+
+    <!-- 获取用户稿件总数 -->
+    <select id="countManuscripts" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM manuscripts WHERE user_id = #{userId}
+    </select>
+
+    <!-- 获取某一天的统计数据 -->
+    <select id="selectDayStats" resultType="java.util.Map">
+        SELECT
+            COALESCE(SUM(m.view_count), 0) AS views,
+            COALESCE(SUM(m.like_count), 0) AS likes,
+            COALESCE(SUM(m.comment_count), 0) AS comments,
+            COALESCE(SUM(m.danmaku_count), 0) AS danmaku,
+            COALESCE(SUM(m.share_count), 0) AS shares,
+            COALESCE(SUM(m.coin_count), 0) AS coins,
+            COALESCE(SUM(m.collect_count), 0) AS collections,
+            (SELECT COUNT(*) FROM follows f WHERE f.followed_id = #{userId} AND DATE(f.created_at) = #{date}) AS followers
+        FROM manuscripts m
+        WHERE m.user_id = #{userId}
+        AND DATE(m.upload_time) = #{date}
+    </select>
+
+    <!-- 获取用户稿件的最新评论 -->
+    <select id="selectLatestComments" resultType="com.mybilibili.common.vo.LatestCommentVO">
+        SELECT
+            c.id,
+            c.content,
+            c.created_at AS createTime,
+            c.like_count AS likeCount,
+            c.reply_count AS replyCount,
+            c.user_id AS userId,
+            u.nickname AS userName,
+            u.avatar AS userAvatar,
+            c.manuscript_id AS manuscriptId,
+            m.title AS manuscriptTitle,
+            m.cover_url AS manuscriptCover
+        FROM comments c
+        INNER JOIN manuscripts m ON c.manuscript_id = m.id
+        INNER JOIN users u ON c.user_id = u.id
+        WHERE m.user_id = #{userId}
+        ORDER BY c.created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 获取用户稿件观看排行榜 -->
+    <select id="selectViewRankings" resultType="com.mybilibili.common.vo.RankingVO">
+        SELECT
+            id AS manuscriptId,
+            title,
+            cover_url AS coverUrl,
+            view_count AS viewCount,
+            like_count AS likeCount,
+            comment_count AS commentCount,
+            coin_count AS coinCount,
+            collect_count AS collectCount,
+            share_count AS shareCount,
+            upload_time AS uploadTime
+        FROM manuscripts
+        WHERE user_id = #{userId}
+        ORDER BY view_count DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 获取用户稿件互动排行榜 -->
+    <select id="selectInteractionRankings" resultType="com.mybilibili.common.vo.RankingVO">
+        SELECT
+            id AS manuscriptId,
+            title,
+            cover_url AS coverUrl,
+            view_count AS viewCount,
+            like_count AS likeCount,
+            comment_count AS commentCount,
+            coin_count AS coinCount,
+            collect_count AS collectCount,
+            share_count AS shareCount,
+            upload_time AS uploadTime,
+            CASE
+                WHEN view_count > 0 THEN (like_count + comment_count + coin_count + collect_count + share_count) * 1.0 / view_count
+                ELSE 0
+            END AS interactionRate
+        FROM manuscripts
+        WHERE user_id = #{userId}
+        ORDER BY (like_count + comment_count + coin_count + collect_count + share_count) DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 按点赞数获取稿件排行 -->
+    <select id="selectRankingByLikes" resultType="com.mybilibili.common.vo.RankingVO">
+        SELECT
+            id AS manuscriptId,
+            title,
+            cover_url AS coverUrl,
+            view_count AS viewCount,
+            like_count AS likeCount,
+            comment_count AS commentCount,
+            coin_count AS coinCount,
+            collect_count AS collectCount,
+            share_count AS shareCount,
+            upload_time AS uploadTime
+        FROM manuscripts
+        WHERE user_id = #{userId}
+        ORDER BY like_count DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 按评论数获取稿件排行 -->
+    <select id="selectRankingByComments" resultType="com.mybilibili.common.vo.RankingVO">
+        SELECT
+            id AS manuscriptId,
+            title,
+            cover_url AS coverUrl,
+            view_count AS viewCount,
+            like_count AS likeCount,
+            comment_count AS commentCount,
+            coin_count AS coinCount,
+            collect_count AS collectCount,
+            share_count AS shareCount,
+            upload_time AS uploadTime
+        FROM manuscripts
+        WHERE user_id = #{userId}
+        ORDER BY comment_count DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.web.mapper.UserDynamicMapper">
+    <resultMap id="DynamicVOMap" type="com.mybilibili.common.vo.DynamicVO">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="content" column="content"/>
+        <result property="dynamicType" column="dynamic_type"/>
+        <result property="imageUrl" column="image_url"/>
+        <result property="refVideoId" column="ref_video_id"/>
+        <result property="refManuscriptId" column="ref_manuscript_id"/>
+        <result property="likeCount" column="like_count"/>
+        <result property="commentCount" column="comment_count"/>
+        <result property="shareCount" column="share_count"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="status" column="status"/>
+        <association property="user" javaType="com.mybilibili.common.vo.UserVO">
+            <id property="id" column="u_id"/>
+            <result property="username" column="u_username"/>
+            <result property="avatar" column="u_avatar"/>
+        </association>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.mybilibili.common.entity.UserDynamic" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_dynamics (user_id, content, dynamic_type, image_url, ref_video_id, ref_manuscript_id, like_count, comment_count, share_count, created_at, status)
+        VALUES (#{userId}, #{content}, #{dynamicType}, #{imageUrl}, #{refVideoId}, #{refManuscriptId}, #{likeCount}, #{commentCount}, #{shareCount}, #{createdAt}, #{status})
+    </insert>
+    
+    <select id="getByUserId" resultType="com.mybilibili.common.entity.UserDynamic">
+        SELECT * FROM user_dynamics
+        WHERE user_id = #{userId} AND status = 0
+        ORDER BY created_at DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+    
+    <select id="getByUserIds" resultType="com.mybilibili.common.entity.UserDynamic">
+        SELECT * FROM user_dynamics
+        WHERE user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        AND status = 0
+        ORDER BY created_at DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="getAllDynamics" resultType="com.mybilibili.common.entity.UserDynamic">
+        SELECT * FROM user_dynamics
+        WHERE status = 0
+        ORDER BY created_at DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countAllDynamics" resultType="int">
+        SELECT COUNT(*) FROM user_dynamics WHERE status = 0
+    </select>
+
+    <select id="countByUserIds" resultType="int">
+        SELECT COUNT(*) FROM user_dynamics
+        WHERE user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        AND status = 0
+    </select>
+
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(*) FROM user_dynamics WHERE user_id = #{userId} AND status = 0
+    </select>
+    
+    <select id="getById" resultType="com.mybilibili.common.entity.UserDynamic">
+        SELECT * FROM user_dynamics
+        WHERE id = #{id}
+    </select>
+    
+    <update id="updateLikeCount">
+        UPDATE user_dynamics
+        SET like_count = #{count}
+        WHERE id = #{id}
+    </update>
+    
+    <update id="updateCommentCount">
+        UPDATE user_dynamics
+        SET comment_count = #{count}
+        WHERE id = #{id}
+    </update>
+    
+    <update id="updateShareCount">
+        UPDATE user_dynamics
+        SET share_count = #{count}
+        WHERE id = #{id}
+    </update>
+    
+    <update id="updateStatus">
+        UPDATE user_dynamics
+        SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        UPDATE user_dynamics SET status = 2 WHERE id = #{id}
+    </delete>
+</mapper>

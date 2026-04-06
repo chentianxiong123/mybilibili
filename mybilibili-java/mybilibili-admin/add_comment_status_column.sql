@@ -1,0 +1,1 @@
+ALTER TABLE comments ADD COLUMN status INT DEFAULT 0;

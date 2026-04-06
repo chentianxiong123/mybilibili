@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.web.mapper.ReplyMapper">
+    <insert id="insert" parameterType="com.mybilibili.common.entity.Reply" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO replies (comment_id, user_id, reply_to_user_id, content, like_count, created_at, updated_at)
+        VALUES (#{commentId}, #{userId}, #{replyToUserId}, #{content}, 0, NOW(), NOW())
+    </insert>
+
+    <select id="selectById" parameterType="java.lang.Integer" resultType="com.mybilibili.common.entity.Reply">
+        SELECT * FROM replies WHERE id = #{id}
+    </select>
+
+    <select id="selectByCommentId" resultType="com.mybilibili.common.entity.Reply">
+        SELECT * FROM replies 
+        WHERE comment_id = #{commentId}
+        ORDER BY created_at ASC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <update id="updateLikeCount">
+        UPDATE replies SET like_count = like_count + #{count}, updated_at = NOW() WHERE id = #{id}
+    </update>
+
+    <update id="updateLikeCountDirect">
+        UPDATE replies SET like_count = #{count}, updated_at = NOW() WHERE id = #{id}
+    </update>
+
+    <delete id="delete" parameterType="java.lang.Integer">
+        DELETE FROM replies WHERE id = #{id}
+    </delete>
+
+    <select id="countByCommentId" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM replies WHERE comment_id = #{commentId}
+    </select>
+
+    <select id="countByManuscriptId" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM replies r
+        INNER JOIN comments c ON r.comment_id = c.id
+        WHERE c.manuscript_id = #{manuscriptId}
+    </select>
+</mapper>

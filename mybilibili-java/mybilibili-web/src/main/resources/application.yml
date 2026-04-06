@@ -1,0 +1,91 @@
+server:
+  port: 7071
+  servlet:
+    context-path: /web
+spring:
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+  web:
+    resources:
+      static-locations: classpath:/static/,file:${project.folder}
+  application:
+    name: mybilibili-web
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/mybilibili?serverTimezone=GMT%2B8&useUnicode=true&characterEncoding=utf8&autoReconnect=true&allowMultiQueries=true&useSSL=false
+    username: root
+    password: ${DB_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: HikariCPDatasource
+      minimum-idle: 5
+      idle-timeout: 180000
+      maximum-pool-size: 10
+      auto-commit: true
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      connection-test-query: SELECT 1
+  redis:
+    host: 127.0.0.1
+    port: 6379
+    database: 1
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/mybilibili
+    elasticsearch:
+      repositories:
+        enabled: true
+  elasticsearch:
+    uris: http://localhost:9200
+#mybatis 大小写转驼峰
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+  mapper-locations: classpath:mapper/*.xml
+
+project:
+  folder: d:/files/mybilibili/uploads/
+
+# 文件上传路径配置 - 新结构：稿件-视频层级目录
+upload:
+  base-path: d:/files/mybilibili/uploads
+  # 旧路径配置（兼容现有数据，逐步废弃）
+  covers-path: ${upload.base-path}/covers
+  videos-path: ${upload.base-path}/videos
+  # 新结构：manuscripts/{manuscript_id}/videos/{video_id}/
+  video-dir: ${upload.base-path}
+  # 子目录名称
+  source-dir: source
+  transcoded-dir: transcoded
+  audio-dir: audio
+  subtitle-dir: subtitles
+  summary-dir: summary
+  temp-path: ${upload.base-path}/temp
+
+# AI配置
+ai:
+  whisper:
+    cli-path: "D:\\Program Files\\whisper-bin-x64\\Release\\whisper-cli.exe"
+    model-path: "D:\\Program Files\\whisper-bin-x64\\Release\\models\\ggml-small.bin"
+    language: zh
+    threads: 4
+  deepseek:
+    api-key: ${DEEPSEEK_API_KEY:}
+    api-url: https://api.deepseek.com/v1/chat/completions
+    model: deepseek-chat
+    max-tokens: 500
+    temperature: 0.7
+
+log:
+  root:
+    level: info
+
+# SpringDoc OpenAPI 配置
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  packages-to-scan: com.mybilibili.web.controller
