@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.comment.mapper.CommentMapper">
+
+    <select id="selectByManuscriptId" resultType="com.mybilibili.common.entity.Comment">
+        SELECT * FROM comments
+        WHERE manuscript_id = #{manuscriptId}
+        AND status = 0
+        <choose>
+            <when test="sort == 'hot'">
+                ORDER BY like_count DESC, created_at DESC
+            </when>
+            <otherwise>
+                ORDER BY created_at DESC
+            </otherwise>
+        </choose>
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="selectByCreatorId" resultType="com.mybilibili.common.entity.Comment">
+        SELECT c.* FROM comments c
+        INNER JOIN manuscripts m ON c.manuscript_id = m.id
+        WHERE m.user_id = #{userId}
+        <if test="manuscriptId != null">
+            AND c.manuscript_id = #{manuscriptId}
+        </if>
+        AND c.status = 0
+        ORDER BY c.created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countByCreatorId" resultType="int">
+        SELECT COUNT(*) FROM comments c
+        INNER JOIN manuscripts m ON c.manuscript_id = m.id
+        WHERE m.user_id = #{userId}
+        <if test="manuscriptId != null">
+            AND c.manuscript_id = #{manuscriptId}
+        </if>
+        AND c.status = 0
+    </select>
+
+    <select id="countByManuscriptId" resultType="int">
+        SELECT COUNT(*) FROM comments
+        WHERE manuscript_id = #{manuscriptId}
+        AND status = 0
+    </select>
+
+    <update id="updateLikeCountDirect">
+        UPDATE comments SET like_count = #{count} WHERE id = #{id}
+    </update>
+
+    <update id="updateReplyCount">
+        UPDATE comments SET reply_count = reply_count + #{count} WHERE id = #{id}
+    </update>
+
+</mapper>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.comment.mapper.ReplyMapper">
+
+    <select id="selectByCommentId" resultType="com.mybilibili.common.entity.Reply">
+        SELECT * FROM replies
+        WHERE comment_id = #{commentId}
+        AND status = 0
+        ORDER BY created_at ASC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countByCommentId" resultType="int">
+        SELECT COUNT(*) FROM replies
+        WHERE comment_id = #{commentId}
+        AND status = 0
+    </select>
+
+    <update id="updateLikeCountDirect">
+        UPDATE replies SET like_count = #{count} WHERE id = #{id}
+    </update>
+
+</mapper>

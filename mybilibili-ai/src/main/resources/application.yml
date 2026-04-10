@@ -1,0 +1,53 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: mybilibili-ai
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+      config:
+        import-check:
+          enabled: false
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/mybilibili
+      database: mybilibili
+  datasource:
+    url: jdbc:mysql://localhost:3306/mybilibili?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: ${MYSQL_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.mybilibili.common.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+upload:
+  base-path: d:/files/mybilibili/uploads
+
+rocketmq:
+  name-server: 127.0.0.1:9876
+  consumer:
+    group: video-process-group
+
+ai:
+  deepseek:
+    api-key: "sk-7ab7abb58465a9e7032ed942f77468477424896392dd3af06b39ab9c49503a09"
+    api-url: "https://api.qnaigc.com/v1/chat/completions"
+    model: "deepseek-r1"
+    max-tokens: 2000
+    temperature: 0.7
+  whisper:
+    cli-path: "D:\\Program Files\\whisper-bin-x64\\Release\\whisper-cli.exe"
+    model-path: "D:\\Program Files\\whisper-bin-x64\\Release\\models\\ggml-small.bin"
+    language: zh
+    threads: 4
+
+logging:
+  level:
+    com.mybilibili: debug

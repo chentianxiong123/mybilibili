@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.comment.mapper.DynamicCommentMapper">
+
+    <select id="selectByDynamicId" resultType="com.mybilibili.common.entity.DynamicComment">
+        SELECT * FROM dynamic_comments
+        WHERE dynamic_id = #{dynamicId}
+        AND parent_id IS NULL
+        AND status = 1
+        ORDER BY created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="selectRepliesByParentId" resultType="com.mybilibili.common.entity.DynamicComment">
+        SELECT * FROM dynamic_comments
+        WHERE parent_id = #{parentId}
+        AND status = 1
+        ORDER BY created_at ASC
+    </select>
+
+    <select id="countByDynamicId" resultType="int">
+        SELECT COUNT(*) FROM dynamic_comments
+        WHERE dynamic_id = #{dynamicId}
+        AND parent_id IS NULL
+        AND status = 1
+    </select>
+
+    <select id="selectAllDynamicComments" resultType="com.mybilibili.common.entity.DynamicComment">
+        SELECT * FROM dynamic_comments
+        WHERE parent_id IS NULL
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        ORDER BY created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countAllDynamicComments" resultType="int">
+        SELECT COUNT(*) FROM dynamic_comments
+        WHERE parent_id IS NULL
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+    </select>
+
+</mapper>

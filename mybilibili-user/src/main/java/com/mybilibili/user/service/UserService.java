@@ -1,0 +1,365 @@
+package com.mybilibili.user.service;
+
+import com.mybilibili.common.dto.LoginDTO;
+import com.mybilibili.common.dto.UserDTO;
+import com.mybilibili.common.dto.UserUpdateDTO;
+import com.mybilibili.common.entity.User;
+import com.mybilibili.common.exception.BusinessException;
+import com.mybilibili.common.utils.JwtUtils;
+import com.mybilibili.common.utils.UploadFilePathUtils;
+import com.mybilibili.common.vo.ManuscriptVO;
+import com.mybilibili.common.vo.Result;
+import com.mybilibili.common.vo.UserVO;
+import com.mybilibili.user.feign.ManuscriptClient;
+import com.mybilibili.user.mapper.UserMapper;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.text.SimpleDateFormat;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+@Service
+public class UserService {
+
+    @Autowired
+    private UserMapper userMapper;
+
+    @Autowired
+    private UploadFilePathUtils uploadFilePathUtils;
+
+    @Autowired(required = false)
+    private ManuscriptClient manuscriptClient;
+
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    public Result<Map<String, Object>> register(UserDTO userDTO) {
+        User existUser = userMapper.selectByUsername(userDTO.getUsername());
+        if (existUser != null) {
+            throw new BusinessException("用户名已存在");
+        }
+
+        User user = new User();
+        user.setUsername(userDTO.getUsername());
+        user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
+        user.setNickname(userDTO.getNickname() != null ? userDTO.getNickname() : userDTO.getUsername());
+        user.setEmail(userDTO.getEmail());
+        user.setAvatar("https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png");
+        user.setLevel(1);
+        user.setFollowingCount(0);
+        user.setFollowerCount(0);
+        user.setManuscriptCount(0);
+        user.setLikedCount(0);
+        user.setCoinCount(0);
+        user.setExperience(0);
+        user.setBio("");
+        user.setSignature("");
+        user.setStatus(0);
+
+        userMapper.insert(user);
+
+        UserVO userVO = new UserVO();
+        BeanUtils.copyProperties(user, userVO);
+        Map<String, Object> data = new HashMap<>();
+        data.put("user", userVO);
+        return Result.success("注册成功", data);
+    }
+
+    public Result<Map<String, Object>> login(LoginDTO loginDTO) {
+        User user = userMapper.selectByUsername(loginDTO.getUsername());
+        if (user == null) {
+            throw new BusinessException("用户名或密码错误");
+        }
+
+        if (!passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
+            throw new BusinessException("用户名或密码错误");
+        }
+
+        String token = JwtUtils.generateToken(user.getId(), user.getUsername());
+
+        UserVO userVO = getUserVO(user);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("user", userVO);
+        data.put("token", token);
+        data.put("refreshToken", token);
+        return Result.success("登录成功", data);
+    }
+
+    public Result<UserVO> getUserById(Integer id) {
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+
+        UserVO userVO = getUserVO(user);
+        return Result.success(userVO);
+    }
+
+    private UserVO getUserVO(User user) {
+        UserVO userVO = new UserVO();
+        BeanUtils.copyProperties(user, userVO);
+
+        if (user.getBirthdate() != null) {
+            userVO.setBirthdate(new SimpleDateFormat("yyyy-MM-dd").format(user.getBirthdate()));
+        }
+
+        Integer followingCount = userMapper.countFollowing(user.getId());
+        Integer followerCount = userMapper.countFollowers(user.getId());
+        Integer dynamicCount = userMapper.countDynamics(user.getId());
+        Integer totalViewCount = userMapper.sumViewCountByUserId(user.getId());
+        Integer totalLikeCount = userMapper.sumLikeCountByUserId(user.getId());
+
+        userVO.setFollowingCount(followingCount != null ? followingCount : 0);
+        userVO.setFollowerCount(followerCount != null ? followerCount : 0);
+        userVO.setDynamicCount(dynamicCount != null ? dynamicCount : 0);
+        userVO.setTotalViewCount(totalViewCount != null ? totalViewCount : 0);
+        userVO.setTotalLikeCount(totalLikeCount != null ? totalLikeCount : 0);
+
+        return userVO;
+    }
+
+    public Result<UserVO> updateUser(Integer id, UserUpdateDTO userUpdateDTO) {
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+
+        if (userUpdateDTO.getNickname() != null) {
+            user.setNickname(userUpdateDTO.getNickname());
+        }
+        if (userUpdateDTO.getAvatar() != null) {
+            user.setAvatar(userUpdateDTO.getAvatar());
+        }
+        if (userUpdateDTO.getEmail() != null) {
+            user.setEmail(userUpdateDTO.getEmail());
+        }
+        if (userUpdateDTO.getPhone() != null) {
+            user.setPhone(userUpdateDTO.getPhone());
+        }
+        if (userUpdateDTO.getGender() != null) {
+            user.setGender(userUpdateDTO.getGender());
+        }
+        if (userUpdateDTO.getBirthdate() != null) {
+            try {
+                user.setBirthdate(new SimpleDateFormat("yyyy-MM-dd").parse(userUpdateDTO.getBirthdate()));
+            } catch (Exception e) {
+                throw new BusinessException("出生日期格式错误，应为yyyy-MM-dd");
+            }
+        }
+        if (userUpdateDTO.getSignature() != null) {
+            user.setSignature(userUpdateDTO.getSignature());
+        }
+        if (userUpdateDTO.getBio() != null) {
+            user.setBio(userUpdateDTO.getBio());
+        }
+        if (userUpdateDTO.getAnnouncement() != null) {
+            user.setAnnouncement(userUpdateDTO.getAnnouncement());
+        }
+
+        userMapper.updateById(user);
+
+        UserVO userVO = getUserVO(user);
+        return Result.success("更新成功", userVO);
+    }
+
+    public Result<UserVO> uploadAvatar(Integer userId, MultipartFile avatarFile) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+
+        if (avatarFile == null || avatarFile.isEmpty()) {
+            throw new BusinessException("请选择要上传的图片");
+        }
+
+        if (avatarFile.getSize() > 2 * 1024 * 1024) {
+            throw new BusinessException("图片大小不能超过2M");
+        }
+
+        String contentType = avatarFile.getContentType();
+        if (contentType == null || !(contentType.equals("image/jpeg") || contentType.equals("image/jpg") || contentType.equals("image/png"))) {
+            throw new BusinessException("只支持JPG、PNG格式的图片");
+        }
+
+        try {
+            uploadFilePathUtils.createUserAvatarDirectory(userId);
+
+            String avatarPath = uploadFilePathUtils.getAvatarPath(userId);
+
+            File destFile = new File(avatarPath);
+            byte[] bytes = avatarFile.getBytes();
+            FileOutputStream fos = new FileOutputStream(destFile);
+            fos.write(bytes);
+            fos.close();
+
+            String avatarUrl = uploadFilePathUtils.getAvatarUrl(userId);
+
+            user.setAvatar(avatarUrl);
+            userMapper.updateById(user);
+
+            UserVO userVO = getUserVO(user);
+            return Result.success("头像上传成功", userVO);
+
+        } catch (Exception e) {
+            throw new BusinessException("头像上传失败: " + e.getMessage());
+        }
+    }
+
+    public Result<Map<String, Object>> getUserList(Integer page, Integer size, String keyword) {
+        if (page == null || page < 1) {
+            page = 1;
+        }
+        if (size == null || size < 1) {
+            size = 10;
+        }
+
+        Integer offset = (page - 1) * size;
+        List<User> users = userMapper.selectUserList(keyword, offset, size);
+        Integer total = userMapper.countUserList(keyword);
+
+        List<UserVO> userVOList = new java.util.ArrayList<>();
+        for (User user : users) {
+            UserVO userVO = new UserVO();
+            BeanUtils.copyProperties(user, userVO);
+            if (user.getBirthdate() != null) {
+                userVO.setBirthdate(new SimpleDateFormat("yyyy-MM-dd").format(user.getBirthdate()));
+            }
+            Integer followingCount = userMapper.countFollowing(user.getId());
+            Integer followerCount = userMapper.countFollowers(user.getId());
+            userVO.setFollowingCount(followingCount != null ? followingCount : 0);
+            userVO.setFollowerCount(followerCount != null ? followerCount : 0);
+            userVOList.add(userVO);
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("list", userVOList);
+        data.put("total", total);
+        data.put("page", page);
+        data.put("size", size);
+
+        return Result.success(data);
+    }
+
+    public Result<UserVO> getAdminUserById(Integer id) {
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+
+        UserVO userVO = new UserVO();
+        BeanUtils.copyProperties(user, userVO);
+        if (user.getBirthdate() != null) {
+            userVO.setBirthdate(new SimpleDateFormat("yyyy-MM-dd").format(user.getBirthdate()));
+        }
+        Integer followingCount = userMapper.countFollowing(user.getId());
+        Integer followerCount = userMapper.countFollowers(user.getId());
+        userVO.setFollowingCount(followingCount != null ? followingCount : 0);
+        userVO.setFollowerCount(followerCount != null ? followerCount : 0);
+
+        return Result.success(userVO);
+    }
+
+    public Result<Void> updateUserStatus(Integer id, Integer status) {
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+
+        userMapper.updateStatus(id, status);
+        return Result.success("状态更新成功", null);
+    }
+
+    public Result<Void> resetPassword(Integer id, String newPassword) {
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        userMapper.updatePassword(id, encodedPassword);
+        return Result.success("密码重置成功", null);
+    }
+
+    public Result<ManuscriptVO> getPinnedVideo(Integer userId) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+
+        Integer pinnedVideoId = user.getPinnedVideoId();
+        if (pinnedVideoId == null) {
+            return Result.success("该用户暂无置顶视频", null);
+        }
+
+        if (manuscriptClient == null) {
+            throw new BusinessException("稿件服务暂不可用");
+        }
+
+        Result<ManuscriptVO> result = manuscriptClient.getManuscriptById(pinnedVideoId);
+        if (result == null || result.getCode() != 200 || result.getData() == null) {
+            return Result.success("该用户暂无置顶视频", null);
+        }
+        return Result.success(result.getData());
+    }
+
+    public Result<Void> setPinnedVideo(Integer videoId, Integer currentUserId) {
+        if (currentUserId == null) {
+            throw new BusinessException("请先登录");
+        }
+
+        User user = userMapper.selectById(currentUserId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+
+        if (manuscriptClient == null) {
+            throw new BusinessException("稿件服务暂不可用");
+        }
+
+        try {
+            Result<ManuscriptVO> result = manuscriptClient.getManuscriptById(videoId);
+            if (result == null || result.getCode() != 200) {
+                throw new BusinessException("稿件服务调用失败: " + (result != null ? result.getMessage() : "null"));
+            }
+            ManuscriptVO manuscript = result.getData();
+            if (manuscript == null) {
+                throw new BusinessException("稿件不存在, id=" + videoId);
+            }
+
+            if (manuscript.getUserId() == null || !manuscript.getUserId().equals(currentUserId)) {
+                throw new BusinessException("只能置顶自己的稿件");
+            }
+
+            user.setPinnedVideoId(videoId);
+            userMapper.updateById(user);
+            return Result.success("置顶视频设置成功", null);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException("稿件服务调用异常: " + e.getMessage());
+        }
+    }
+
+    public Result<Void> removePinnedVideo(Integer currentUserId) {
+        if (currentUserId == null) {
+            throw new BusinessException("请先登录");
+        }
+
+        User user = userMapper.selectById(currentUserId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+
+        user.setPinnedVideoId(null);
+        userMapper.updateById(user);
+        return Result.success("已取消置顶视频", null);
+    }
+}

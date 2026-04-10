@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.interaction.mapper.FavoriteVideoMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO favorite_manuscripts (folder_id, manuscript_id, created_at)
+        VALUES (#{folderId}, #{manuscriptId}, NOW())
+    </insert>
+
+    <delete id="deleteById">
+        DELETE FROM favorite_manuscripts WHERE id = #{id}
+    </delete>
+
+    <select id="findByFolderId" resultType="com.mybilibili.common.entity.ManuscriptFavorite">
+        SELECT * FROM favorite_manuscripts WHERE folder_id = #{folderId}
+    </select>
+
+    <select id="findByFolderIdAndManuscriptId" resultType="com.mybilibili.common.entity.ManuscriptFavorite">
+        SELECT * FROM favorite_manuscripts WHERE folder_id = #{folderId} AND manuscript_id = #{manuscriptId} LIMIT 1
+    </select>
+
+    <select id="findByUserIdAndManuscriptId" resultType="com.mybilibili.common.entity.ManuscriptFavorite">
+        SELECT fm.* FROM favorite_manuscripts fm
+        JOIN favorite_folders ff ON fm.folder_id = ff.id
+        WHERE ff.user_id = #{userId} AND fm.manuscript_id = #{manuscriptId}
+    </select>
+
+    <select id="findManuscriptsByFolderId" resultType="com.mybilibili.common.entity.Manuscript">
+        SELECT m.* FROM favorite_manuscripts fm
+        JOIN manuscripts m ON fm.manuscript_id = m.id
+        WHERE fm.folder_id = #{folderId}
+        ORDER BY fm.created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+</mapper>

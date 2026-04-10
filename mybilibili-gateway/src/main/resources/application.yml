@@ -1,0 +1,559 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: mybilibili-gateway
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+    gateway:
+      weightCalculator:
+        enabled: false
+      discovery:
+        locator:
+          enabled: false
+      routes:
+        # ========== 用户服务 ==========
+
+        # 关注列表接口（需要放在 user-service 之前）
+        - id: user-following-list
+          uri: lb://mybilibili-user
+          predicates:
+            - Path=/api/user/{userId}/following
+          filters:
+            - SetPath=/follow/user/{userId}/following
+
+        - id: user-follower-list
+          uri: lb://mybilibili-user
+          predicates:
+            - Path=/api/user/{userId}/followers
+          filters:
+            - SetPath=/follow/user/{userId}/followers
+
+        # 用户端接口
+        - id: user-service
+          uri: lb://mybilibili-user
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=1
+
+        # 内容审核接口 - 转发到 comment 服务（必须放在 /api/admin/** 之前）
+        - id: content-review
+          uri: lb://mybilibili-comment
+          predicates:
+            - Path=/api/admin/content-review/**
+          filters:
+            - StripPrefix=1
+
+        # 管理端接口（复用user-service）
+        - id: user-service-admin
+          uri: lb://mybilibili-user
+          predicates:
+            - Path=/api/admin/**
+          filters:
+            - StripPrefix=1
+
+        # 统计接口 - 转发到 video 服务
+        - id: statistics-service
+          uri: lb://mybilibili-video
+          predicates:
+            - Path=/api/statistics/**
+          filters:
+            - StripPrefix=1
+
+        # 稿件管理接口 - 转发到 video 服务（带 api 前缀）
+        - id: manuscript-admin
+          uri: lb://mybilibili-video
+          predicates:
+            - Path=/api/manuscript/admin/**
+          filters:
+            - StripPrefix=1
+
+        # 稿件管理接口 - 转发到 video 服务（不带 api 前缀）
+        - id: manuscript-admin-no-api
+          uri: lb://mybilibili-video
+          predicates:
+            - Path=/manuscript/admin/**
+          filters:
+            - StripPrefix=1
+
+        # 视频管理接口 - 转发到 video 服务
+        - id: video-admin
+          uri: lb://mybilibili-video
+          predicates:
+            - Path=/api/video/admin/**
+          filters:
+            - StripPrefix=1
+
+        # 评论管理接口 - 转发到 comment 服务
+        - id: comment-admin
+          uri: lb://mybilibili-comment
+          predicates:
+            - Path=/api/comment/admin/**
+          filters:
+            - StripPrefix=1
+
+        # 用户管理接口 - 转发到 user 服务
+        - id: user-admin
+          uri: lb://mybilibili-user
+          predicates:
+            - Path=/api/user/admin/**
+          filters:
+            - StripPrefix=1
+
+        # 关注相关接口（转发到user-service）
+        - id: user-follow
+          uri: lb://mybilibili-user
+          predicates:
+            - Path=/api/follow/{userId}
+          filters:
+            - StripPrefix=1
+
+        - id: user-follow-check
+          uri: lb://mybilibili-user
+          predicates:
+            - Path=/api/follow/check/{userId}
+          filters:
+            - StripPrefix=1
+
+        # 关注列表简单版接口
+        - id: user-following-simple
+          uri: lb://mybilibili-user
+          predicates:
+            - Path=/api/follow/following/simple
+          filters:
+            - StripPrefix=1
+
+        # 关注列表接口（带用户ID）
+        - id: user-following-with-id
+          uri: lb://mybilibili-user
+          predicates:
+            - Path=/api/follow/user/{id}/following
+          filters:
+            - StripPrefix=1
+
+        # 当前用户粉丝列表接口
+        - id: user-me-followers
+          uri: lb://mybilibili-user
+          predicates:
+            - Path=/api/follow/me/followers
+          filters:
+            - StripPrefix=1
+
+        # 当前用户关注列表接口
+        - id: user-me-following
+          uri: lb://mybilibili-user
+          predicates:
+            - Path=/api/follow/me/following
+          filters:
+            - StripPrefix=1
+
+        # ========== 视频服务 ==========
+        # 稿件详情接口 - 转发到 ManuscriptController
+        - id: video-manuscript-detail
+          uri: lb://mybilibili-video
+          predicates:
+            - Path=/api/video/manuscript/**
+          filters:
+            - RewritePath=/api/video/manuscript/(?<segment>.*), /manuscript/$\{segment}
+
+        # 用户视频列表接口 - 转发到 ManuscriptController
+        - id: video-user-manuscripts
+          uri: lb://mybilibili-video
+          predicates:
+            - Path=/api/video/user/**
+          filters:
+            - RewritePath=/api/video/user/(?<segment>.*), /manuscript/user/$\{segment}
+
+        # 收藏夹列表接口 - 转发到 interaction 服务
+        - id: video-favorite-folders
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/video/favorite/folders
+          filters:
+            - SetPath=/manuscript/favorite/folders
+
+        - id: video-favorite-folders-with-id
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/video/favorite/folders/{segment}
+          filters:
+            - SetPath=/manuscript/favorite/folders/{segment}
+
+        # ========== 稿件互动相关接口（需要放在 manuscript-service 之前）==========
+
+        - id: manuscript-interaction-like
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/like
+          filters:
+            - SetPath=/manuscript/{id}/like
+
+        - id: manuscript-interaction-coin
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/coin
+          filters:
+            - SetPath=/manuscript/{id}/coin
+
+        - id: manuscript-interaction-collect
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/collect
+          filters:
+            - SetPath=/manuscript/{id}/collect
+
+        - id: manuscript-interaction-share
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/share
+          filters:
+            - SetPath=/manuscript/{id}/share
+
+        - id: manuscript-interaction-status
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/status
+          filters:
+            - SetPath=/manuscript/{id}/status
+
+        - id: manuscript-interaction-danmaku
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/danmaku
+          filters:
+            - SetPath=/manuscript/{id}/danmaku
+
+        - id: manuscript-interaction-danmakus
+          uri: lb://mybilibili-danmaku
+          predicates:
+            - Path=/api/manuscript/{id}/danmakus
+          filters:
+            - StripPrefix=1
+            - RewritePath=/api/manuscript/(?<segment>.*), /manuscript/$\{segment}
+
+        - id: manuscript-favorite-folders
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/manuscript/favorite/folders
+          filters:
+            - SetPath=/manuscript/favorite/folders
+
+        - id: manuscript-favorite-folders-with-id
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/favorite/folders
+          filters:
+            - SetPath=/manuscript/{id}/favorite/folders
+
+        - id: manuscript-interaction-favorite
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/favorite/**
+          filters:
+            - StripPrefix=1
+            - SetPath=/manuscript/{id}/favorite/{remaining}
+
+        - id: manuscript-user-likes
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/manuscript/user/likes
+          filters:
+            - SetPath=/manuscript/user/likes
+
+        - id: manuscript-user-collections
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/manuscript/user/collections
+          filters:
+            - SetPath=/manuscript/user/collections
+
+        - id: manuscript-favorite-folders-videos
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/manuscript/favorite/folders/{folderId}/videos
+          filters:
+            - StripPrefix=1
+            - SetPath=/manuscript/favorite/folders/{folderId}/videos
+
+        # ========== 视频互动相关接口（遗留，保持兼容）==========
+
+        - id: video-interaction-like
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/video/{id}/like
+          filters:
+            - SetPath=/manuscript/{id}/like
+
+        - id: video-interaction-coin
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/video/{id}/coin
+          filters:
+            - SetPath=/manuscript/{id}/coin
+
+        - id: video-interaction-collect
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/video/{id}/collect
+          filters:
+            - SetPath=/manuscript/{id}/collect
+
+        - id: video-interaction-share
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/video/{id}/share
+          filters:
+            - SetPath=/manuscript/{id}/share
+
+        - id: video-interaction-status
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/video/{id}/status
+          filters:
+            - SetPath=/manuscript/{id}/status
+
+        - id: video-interaction-favorite
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/video/{id}/favorite/**
+          filters:
+            - StripPrefix=1
+            - SetPath=/manuscript/{id}/favorite/{remaining}
+
+        - id: video-user-likes
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/video/user/likes
+          filters:
+            - SetPath=/manuscript/user/likes
+
+        - id: video-user-collections
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/video/user/collections
+          filters:
+            - SetPath=/manuscript/user/collections
+
+        # 当前用户稿件列表接口
+        - id: video-me-list
+          uri: lb://mybilibili-video
+          predicates:
+            - Path=/api/video/me/list
+          filters:
+            - RewritePath=/api/video/me/list, /manuscript/me/list
+
+        # 当前用户稿件统计接口
+        - id: video-me-stats
+          uri: lb://mybilibili-video
+          predicates:
+            - Path=/api/video/me/stats
+          filters:
+            - RewritePath=/api/video/me/stats, /manuscript/me/stats
+
+        # ========== 创作者数据统计 ==========
+        - id: creator-stats
+          uri: lb://mybilibili-video
+          predicates:
+            - Path=/api/creator/stats/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 默认视频服务路由（放最后）==========
+        - id: video-service
+          uri: lb://mybilibili-video
+          predicates:
+            - Path=/api/video/**
+          filters:
+            - StripPrefix=1
+
+        - id: manuscript-service
+          uri: lb://mybilibili-video
+          predicates:
+            - Path=/api/manuscript/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 合集服务 ==========
+        - id: collection-service
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/collection/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 评论服务 ==========
+        # 稿件评论接口 - 转发到 Comment 服务
+        - id: comment-manuscript
+          uri: lb://mybilibili-comment
+          predicates:
+            - Path=/api/comment/manuscript/{id}
+          filters:
+            - SetPath=/comment/list
+            - AddRequestParameter=manuscriptId, {id}
+
+        - id: comment-service
+          uri: lb://mybilibili-comment
+          predicates:
+            - Path=/api/comment/**
+          filters:
+            - StripPrefix=1
+
+        - id: creator-comment
+          uri: lb://mybilibili-comment
+          predicates:
+            - Path=/api/creator/comments/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 弹幕服务 ==========
+        - id: danmaku-service
+          uri: lb://mybilibili-danmaku
+          predicates:
+            - Path=/api/danmaku/**
+          filters:
+            - StripPrefix=1
+
+        - id: creator-danmaku
+          uri: lb://mybilibili-danmaku
+          predicates:
+            - Path=/api/creator/danmaku/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 搜索服务 ==========
+        - id: search-service
+          uri: lb://mybilibili-search
+          predicates:
+            - Path=/api/search/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 消息服务 ==========
+        - id: message-service
+          uri: lb://mybilibili-message
+          predicates:
+            - Path=/api/message/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 互动服务 ==========
+        - id: interaction-watch-history
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/watch-history/**
+          filters:
+            - StripPrefix=1
+
+        # 动态评论接口
+        - id: dynamic-comment
+          uri: lb://mybilibili-comment
+          predicates:
+            - Path=/api/dynamic/comment/**
+          filters:
+            - StripPrefix=1
+
+        - id: interaction-dynamic
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/dynamic/**
+          filters:
+            - StripPrefix=1
+
+        # 放行 /dynamic 路径（无 /api 前缀）
+        - id: interaction-dynamic-root
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/dynamic/**
+          filters:
+            - StripPrefix=0
+
+        - id: interaction-favorite
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/favorite/**
+          filters:
+            - StripPrefix=1
+
+        - id: interaction-collection
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/collection/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 内容服务（分区、轮播图）- 集成到视频服务 ==========
+        - id: content-service
+          uri: lb://mybilibili-video
+          predicates:
+            - Path=/api/category/**
+          filters:
+            - StripPrefix=1
+
+        - id: content-service-banner
+          uri: lb://mybilibili-video
+          predicates:
+            - Path=/api/banner-images/**
+          filters:
+            - StripPrefix=1
+
+        # ========== AI服务 ==========
+        - id: ai-admin-process
+          uri: lb://mybilibili-ai
+          predicates:
+            - Path=/api/ai/admin/**
+          filters:
+            - StripPrefix=1
+
+        - id: ai-process-service
+          uri: lb://mybilibili-ai
+          predicates:
+            - Path=/api/ai/process/**
+          filters:
+            - StripPrefix=1
+
+        - id: ai-summary-service
+          uri: lb://mybilibili-ai
+          predicates:
+            - Path=/api/ai-summary/**
+          filters:
+            - RewritePath=/api/ai-summary/(?<segment>.*), /ai/summary/${segment}
+
+        - id: ai-service
+          uri: lb://mybilibili-ai
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 字幕服务 ==========
+        - id: subtitle-service
+          uri: lb://mybilibili-video
+          predicates:
+            - Path=/api/subtitle/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 推荐服务 ==========
+        - id: recommend-service
+          uri: lb://mybilibili-search
+          predicates:
+            - Path=/api/recommend/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 静态资源（上传文件） ==========
+        - id: static-resource
+          uri: lb://mybilibili-video
+          predicates:
+            - Path=/uploads/**
+          filters:
+            - StripPrefix=0
+
+logging:
+  level:
+    com.mybilibili: debug
+    reactor.netty: info

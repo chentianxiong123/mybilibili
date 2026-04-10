@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.mybilibili.message.mapper.MessageMapper">
+
+    <resultMap id="MessageMap" type="com.mybilibili.common.entity.Message">
+        <id column="id" property="id"/>
+        <result column="sender_id" property="senderId"/>
+        <result column="receiver_id" property="receiverId"/>
+        <result column="content" property="content"/>
+        <result column="message_type" property="messageType"/>
+        <result column="target_id" property="targetId"/>
+        <result column="media_url" property="mediaUrl"/>
+        <result column="conversation_id" property="conversationId"/>
+        <result column="is_read" property="isRead"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <resultMap id="MessageVOMap" type="com.mybilibili.common.vo.MessageVO">
+        <id column="id" property="id"/>
+        <result column="sender_id" property="senderId"/>
+        <result column="sender_name" property="senderName"/>
+        <result column="sender_avatar" property="senderAvatar"/>
+        <result column="receiver_id" property="receiverId"/>
+        <result column="content" property="content"/>
+        <result column="message_type" property="messageType"/>
+        <result column="target_id" property="targetId"/>
+        <result column="media_url" property="mediaUrl"/>
+        <result column="is_read" property="isRead"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.mybilibili.common.entity.Message" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO messages (sender_id, receiver_id, content, message_type, target_id, media_url, conversation_id, is_read, created_at, updated_at)
+        VALUES (#{senderId}, #{receiverId}, #{content}, #{messageType}, #{targetId}, #{mediaUrl}, #{conversationId}, #{isRead}, NOW(), NOW())
+    </insert>
+
+    <select id="selectById" parameterType="java.lang.Long" resultMap="MessageMap">
+        SELECT * FROM messages WHERE id = #{id}
+    </select>
+
+    <select id="selectVOById" parameterType="java.lang.Long" resultMap="MessageVOMap">
+        SELECT m.id, m.sender_id, m.receiver_id, m.content, m.message_type, m.target_id, m.media_url, m.is_read, m.created_at,
+               u.username AS sender_name, u.avatar AS sender_avatar
+        FROM messages m
+        LEFT JOIN users u ON m.sender_id = u.id
+        WHERE m.id = #{id}
+    </select>
+
+    <select id="selectByReceiverId" resultMap="MessageVOMap">
+        SELECT m.id, m.sender_id, m.receiver_id, m.content, m.message_type, m.target_id, m.media_url, m.is_read, m.created_at,
+               u.username AS sender_name, u.avatar AS sender_avatar
+        FROM messages m
+        LEFT JOIN users u ON m.sender_id = u.id
+        WHERE m.receiver_id = #{receiverId}
+        ORDER BY m.created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="selectByConversationId" resultMap="MessageVOMap">
+        SELECT m.id, m.sender_id, m.receiver_id, m.content, m.message_type, m.target_id, m.media_url, m.is_read, m.created_at,
+               u.username AS sender_name, u.avatar AS sender_avatar
+        FROM messages m
+        LEFT JOIN users u ON m.sender_id = u.id
+        WHERE m.conversation_id = #{conversationId}
+        ORDER BY m.created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="selectBetweenUsers" resultMap="MessageVOMap">
+        SELECT m.id, m.sender_id, m.receiver_id, m.content, m.message_type, m.target_id, m.media_url, m.is_read, m.created_at,
+               u.username AS sender_name, u.avatar AS sender_avatar
+        FROM messages m
+        LEFT JOIN users u ON m.sender_id = u.id
+        WHERE ((m.sender_id = #{userId} AND m.receiver_id = #{targetUserId})
+           OR (m.sender_id = #{targetUserId} AND m.receiver_id = #{userId}))
+        ORDER BY m.created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <update id="updateReadStatus">
+        UPDATE messages SET is_read = #{isRead}, updated_at = NOW() WHERE id = #{id}
+    </update>
+
+    <update id="batchUpdateReadStatus">
+        UPDATE messages SET is_read = #{isRead}, updated_at = NOW() WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM messages WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteByReceiverId" parameterType="java.lang.Integer">
+        DELETE FROM messages WHERE receiver_id = #{receiverId}
+    </delete>
+
+    <select id="countUnreadByReceiverId" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM messages WHERE receiver_id = #{receiverId} AND is_read = 0
+    </select>
+
+    <resultMap id="ReplyMessageVOMap" type="com.mybilibili.common.vo.ReplyMessageVO">
+        <id column="id" property="id"/>
+        <result column="sender_id" property="userId"/>
+        <result column="sender_name" property="username"/>
+        <result column="sender_avatar" property="userAvatar"/>
+        <result column="content" property="content"/>
+        <result column="target_id" property="videoId"/>
+        <result column="video_title" property="videoTitle"/>
+        <result column="video_cover" property="videoCover"/>
+        <result column="is_read" property="isRead"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <select id="selectReplies" resultMap="ReplyMessageVOMap">
+        SELECT m.id, m.sender_id, u.username AS sender_name, u.avatar AS sender_avatar,
+               m.content, m.target_id, v.title AS video_title, ms.cover_url AS video_cover,
+               m.is_read, m.created_at
+        FROM messages m
+        LEFT JOIN users u ON m.sender_id = u.id
+        LEFT JOIN videos v ON m.target_id = v.id
+        LEFT JOIN manuscripts ms ON v.manuscript_id = ms.id
+        WHERE m.receiver_id = #{receiverId} AND m.message_type = 2
+        ORDER BY m.created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countUnreadReplies" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM messages WHERE receiver_id = #{receiverId} AND message_type = 2 AND is_read = 0
+    </select>
+
+    <resultMap id="AtMessageVOMap" type="com.mybilibili.common.vo.AtMessageVO">
+        <id column="id" property="id"/>
+        <result column="sender_id" property="userId"/>
+        <result column="sender_name" property="username"/>
+        <result column="sender_avatar" property="userAvatar"/>
+        <result column="content" property="content"/>
+        <result column="target_id" property="videoId"/>
+        <result column="video_title" property="videoTitle"/>
+        <result column="video_cover" property="videoCover"/>
+        <result column="is_read" property="isRead"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <select id="selectAtList" resultMap="AtMessageVOMap">
+        SELECT m.id, m.sender_id, u.username AS sender_name, u.avatar AS sender_avatar,
+               m.content, m.target_id, v.title AS video_title, ms.cover_url AS video_cover,
+               m.is_read, m.created_at
+        FROM messages m
+        LEFT JOIN users u ON m.sender_id = u.id
+        LEFT JOIN videos v ON m.target_id = v.id
+        LEFT JOIN manuscripts ms ON v.manuscript_id = ms.id
+        WHERE m.receiver_id = #{receiverId} AND m.message_type = 3
+        ORDER BY m.created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countUnreadAt" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM messages WHERE receiver_id = #{receiverId} AND message_type = 3 AND is_read = 0
+    </select>
+
+    <resultMap id="LikeMessageVOMap" type="com.mybilibili.common.vo.LikeMessageVO">
+        <id column="id" property="id"/>
+        <result column="sender_id" property="userId"/>
+        <result column="sender_name" property="username"/>
+        <result column="sender_avatar" property="userAvatar"/>
+        <result column="content" property="content"/>
+        <result column="target_id" property="videoId"/>
+        <result column="video_title" property="videoTitle"/>
+        <result column="video_cover" property="videoCover"/>
+        <result column="is_read" property="isRead"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <select id="selectLikes" resultMap="LikeMessageVOMap">
+        SELECT m.id, m.sender_id, u.username AS sender_name, u.avatar AS sender_avatar,
+               m.content, m.target_id, v.title AS video_title, ms.cover_url AS video_cover,
+               m.is_read, m.created_at
+        FROM messages m
+        LEFT JOIN users u ON m.sender_id = u.id
+        LEFT JOIN videos v ON m.target_id = v.id
+        LEFT JOIN manuscripts ms ON v.manuscript_id = ms.id
+        WHERE m.receiver_id = #{receiverId} AND m.message_type = 4
+        ORDER BY m.created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countUnreadLikes" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM messages WHERE receiver_id = #{receiverId} AND message_type = 4 AND is_read = 0
+    </select>
+
+    <resultMap id="SystemNotificationMessageVOMap" type="com.mybilibili.common.vo.SystemNotificationMessageVO">
+        <id column="id" property="id"/>
+        <result column="content" property="content"/>
+        <result column="sender_name" property="title"/>
+        <result column="media_url" property="actionUrl"/>
+        <result column="is_read" property="isRead"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <select id="selectSystemNotifications" resultMap="SystemNotificationMessageVOMap">
+        SELECT m.id, m.content, u.username AS sender_name, m.media_url, m.is_read, m.created_at
+        FROM messages m
+        LEFT JOIN users u ON m.sender_id = u.id
+        WHERE m.receiver_id = #{receiverId} AND m.message_type = 5
+        ORDER BY m.created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countUnreadSystem" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM messages WHERE receiver_id = #{receiverId} AND message_type = 5 AND is_read = 0
+    </select>
+
+</mapper>
