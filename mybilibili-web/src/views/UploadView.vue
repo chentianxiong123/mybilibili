@@ -352,7 +352,7 @@ const handleSubmit = () => {
       })
         .then(response => {
           if (response && response.code === 200 && response.data) {
-            ElMessage.success('稿件上传成功！')
+            ElMessage.success('稿件上传成功！经验值+100')
             // 上传成功后跳转到首页
             router.push('/')
           } else {

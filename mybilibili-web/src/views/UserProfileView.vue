@@ -1756,6 +1756,7 @@ watch(() => route.params.id, (newId) => {
   if (userId.value) {
     loadUserInfo()
     loadUserVideos()
+    loadUserDynamics()
     loadUserCollections()
     // 注意：loadFavoriteFolders 内部会调用 loadFavoriteFolderVideos 加载当前选中收藏夹的视频
     loadFavoriteFolders()

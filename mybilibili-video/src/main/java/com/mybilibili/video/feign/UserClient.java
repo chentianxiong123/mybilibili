@@ -5,6 +5,8 @@ import com.mybilibili.common.vo.UserVO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.Map;
@@ -19,4 +21,7 @@ public interface UserClient {
     Result<Map<String, Object>> checkFollowStatus(
             @PathVariable("targetUserId") Integer targetUserId,
             @RequestHeader("X-User-Id") Integer currentUserId);
+
+    @PostMapping("/user/add-experience")
+    Result<?> addExperience(@RequestParam("userId") Integer userId, @RequestParam("experienceAmount") int experienceAmount);
 }

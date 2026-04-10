@@ -32,6 +32,8 @@ public interface ManuscriptService {
     boolean rejectManuscript(Integer manuscriptId, Integer reviewerId, String reason);
     boolean publishManuscript(Integer manuscriptId);
     boolean unpublishManuscript(Integer manuscriptId);
+    boolean publishManuscriptByOwner(Integer manuscriptId, Integer userId);
+    boolean unpublishManuscriptByOwner(Integer manuscriptId, Integer userId);
     List<ManuscriptVO.VideoItemVO> getManuscriptVideos(Integer manuscriptId);
     Map<String, Object> getManuscriptStatistics();
     boolean retryManuscript(Integer manuscriptId);

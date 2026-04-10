@@ -29,9 +29,6 @@ export const messageApi = {
   // 回复我的
   getReplies: (params) => api.get('/message/replies', { params }),
 
-  // @我的
-  getAtList: (params) => api.get('/message/at', { params }),
-
   // 收到的赞
   getLikes: (params) => api.get('/message/likes', { params }),
 

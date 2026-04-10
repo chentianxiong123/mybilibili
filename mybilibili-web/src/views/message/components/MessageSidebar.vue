@@ -11,7 +11,6 @@ const props = defineProps({
     default: () => ({
       private: 0,
       reply: 0,
-      at: 0,
       like: 0,
       system: 0
     })
@@ -23,7 +22,6 @@ const emit = defineEmits(['change-type'])
 const menuItems = [
   { key: 'private', label: '我的消息', icon: ChatDotRound },
   { key: 'reply', label: '回复我的', icon: ChatLineRound },
-  { key: 'at', label: '@ 我的', icon: 'At' },
   { key: 'like', label: '收到的赞', icon: Star },
   { key: 'system', label: '系统通知', icon: Bell },
   { key: 'settings', label: '消息设置', icon: Setting }

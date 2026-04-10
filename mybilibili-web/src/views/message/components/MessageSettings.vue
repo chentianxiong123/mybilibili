@@ -11,9 +11,6 @@ const settings = ref({
   // 回复我的消息提醒
   replyReminder: 'following', // all, following, none
   
-  // @我的消息提醒
-  atReminder: 'all', // all, following, none
-  
   // 收到的赞消息提醒
   likeReminder: false
 })
@@ -68,8 +65,8 @@ onMounted(() => {
         </div>
         <div class="section-content">
           <el-radio-group v-model="settings.messageReminder">
-            <el-radio :label="true">开启</el-radio>
-            <el-radio :label="false">关闭</el-radio>
+            <el-radio :value="true">开启</el-radio>
+            <el-radio :value="false">关闭</el-radio>
           </el-radio-group>
         </div>
       </div>
@@ -82,24 +79,9 @@ onMounted(() => {
         </div>
         <div class="section-content">
           <el-radio-group v-model="settings.replyReminder">
-            <el-radio label="all">所有人</el-radio>
-            <el-radio label="following">关注的人</el-radio>
-            <el-radio label="none">不接收任何消息提醒</el-radio>
-          </el-radio-group>
-        </div>
-      </div>
-      
-      <!-- @我的消息提醒 -->
-      <div class="setting-section">
-        <div class="section-title">
-          @我的消息提醒
-          <span class="section-desc">（接收谁的@消息提醒）</span>
-        </div>
-        <div class="section-content">
-          <el-radio-group v-model="settings.atReminder">
-            <el-radio label="all">所有人</el-radio>
-            <el-radio label="following">关注的人</el-radio>
-            <el-radio label="none">不接收任何消息提醒</el-radio>
+            <el-radio value="all">所有人</el-radio>
+            <el-radio value="following">关注的人</el-radio>
+            <el-radio value="none">不接收任何消息提醒</el-radio>
           </el-radio-group>
         </div>
       </div>
@@ -109,8 +91,8 @@ onMounted(() => {
         <div class="section-title">收到的赞消息提醒</div>
         <div class="section-content">
           <el-radio-group v-model="settings.likeReminder">
-            <el-radio :label="true">开启</el-radio>
-            <el-radio :label="false">关闭</el-radio>
+            <el-radio :value="true">开启</el-radio>
+            <el-radio :value="false">关闭</el-radio>
           </el-radio-group>
         </div>
       </div>

@@ -122,6 +122,7 @@ public class UserService {
         userVO.setDynamicCount(dynamicCount != null ? dynamicCount : 0);
         userVO.setTotalViewCount(totalViewCount != null ? totalViewCount : 0);
         userVO.setTotalLikeCount(totalLikeCount != null ? totalLikeCount : 0);
+        userVO.setCoinCount(user.getCoinCount() != null ? user.getCoinCount() : 0);
 
         return userVO;
     }
@@ -361,5 +362,13 @@ public class UserService {
         user.setPinnedVideoId(null);
         userMapper.updateById(user);
         return Result.success("已取消置顶视频", null);
+    }
+
+    public Result<Void> addExperience(Integer userId, int experienceAmount) {
+        if (userId == null) {
+            throw new BusinessException("用户ID不能为空");
+        }
+        userMapper.addExperience(userId, experienceAmount);
+        return Result.success("经验值添加成功", null);
     }
 }

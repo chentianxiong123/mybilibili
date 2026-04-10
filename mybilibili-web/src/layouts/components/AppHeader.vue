@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { 
   Star, House, Search, Bell, Clock, Edit, Upload, 
-  Message, User, Lock, Delete, ChatDotRound 
+  Message, User, Lock, Delete, ChatDotRound, Coin
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { userApi } from '../../api/index.js'
@@ -516,6 +516,10 @@ onUnmounted(() => {
           <div class="user-profile-popup" v-if="isLogged && userInfo">
             <div class="popup-content">
               <div class="popup-username">{{ userInfo.nickname || userInfo.username || '用户名' }}</div>
+              <div class="popup-level-coins">
+                <span class="level">Lv.{{ userInfo.level || 1 }}</span>
+                <span class="coins"><el-icon><Coin /></el-icon> {{ userInfo.coinCount || 0 }}</span>
+              </div>
               
               <div class="stats-buttons">
                 <div class="stat-button" @click="router.push(`/profile/${userInfo.id}/following`)">
@@ -1062,7 +1066,28 @@ onUnmounted(() => {
   font-size: 16px;
   font-weight: 500;
   color: #333;
-  margin: 0 0 20px;
+  margin: 0 0 8px;
+}
+
+/* 等级和硬币 */
+.popup-level-coins {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.popup-level-coins .level {
+  color: #ff6699;
+  font-weight: 500;
+}
+
+.popup-level-coins .coins {
+  color: #ff9d00;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* 统计按钮容器 */

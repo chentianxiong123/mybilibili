@@ -277,6 +277,44 @@ public class ManuscriptController {
         }
     }
 
+    @PostMapping("/{id}/unpublish")
+    @Operation(summary = "下架稿件", description = "下架自己的稿件")
+    public Result<?> unpublishManuscript(@PathVariable Integer id, HttpServletRequest request) {
+        try {
+            Integer userId = JwtUtils.getUserIdFromRequest(request);
+            if (userId == null) {
+                return Result.error("用户未登录");
+            }
+            boolean success = manuscriptService.unpublishManuscriptByOwner(id, userId);
+            if (success) {
+                return Result.success("下架成功", null);
+            } else {
+                return Result.error("稿件不存在或无权操作");
+            }
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/publish")
+    @Operation(summary = "上架稿件", description = "上架自己的稿件")
+    public Result<?> publishManuscript(@PathVariable Integer id, HttpServletRequest request) {
+        try {
+            Integer userId = JwtUtils.getUserIdFromRequest(request);
+            if (userId == null) {
+                return Result.error("用户未登录");
+            }
+            boolean success = manuscriptService.publishManuscriptByOwner(id, userId);
+            if (success) {
+                return Result.success("上架成功", null);
+            } else {
+                return Result.error("稿件不存在或无权操作");
+            }
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
     @GetMapping("/recommended")
     @Operation(summary = "获取推荐稿件列表", description = "获取已上架的推荐稿件列表")
     public Result<List<ManuscriptVO>> getRecommendedManuscripts(HttpServletRequest request) {
@@ -341,6 +379,7 @@ public class ManuscriptController {
             case "published": return Manuscript.STATUS_PUBLISHED;  // 已通过 -> 已发布(3)
             case "rejected": return Manuscript.STATUS_REJECTED;  // 未通过 -> 已拒绝(4)
             case "ready": return Manuscript.STATUS_READY_TO_PUBLISH;  // 待发布 -> 待发布(2)
+            case "unpublished": return Manuscript.STATUS_UNPUBLISHED;  // 已下架 -> -1
             default: return null;
         }
     }

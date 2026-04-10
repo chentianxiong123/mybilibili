@@ -237,7 +237,7 @@ export const interactionApi = {
   // 点赞稿件
   likeManuscript: (manuscriptId, liked) => liked ? api.post(`/manuscript/${manuscriptId}/like`) : api.delete(`/manuscript/${manuscriptId}/like`),
   // 投币支持
-  coinManuscript: (manuscriptId, coinCount) => api.post(`/manuscript/${manuscriptId}/coin`, { coinCount }),
+  coinManuscript: (manuscriptId, coinCount) => api.post(`/manuscript/${manuscriptId}/coin?coinCount=${coinCount}`),
   // 收藏稿件
   collectManuscript: (manuscriptId, collected) => collected ? api.post(`/manuscript/${manuscriptId}/collect`) : api.delete(`/manuscript/${manuscriptId}/collect`),
   // 分享稿件

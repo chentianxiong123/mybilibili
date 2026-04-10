@@ -31,6 +31,8 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
     private DynamicClient dynamicClient;
 
     private static final String TARGET_TYPE_DYNAMIC_COMMENT = "DYNAMIC_COMMENT";
+    private static final int COMMENT_EXPERIENCE = 5;
+    private static final int REPLY_EXPERIENCE = 2;
 
     private UserVO getUserById(Integer userId) {
         if (userId == null) {
@@ -83,6 +85,12 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
         comment.setStatus(0);  // 0-正常 1-已删除
 
         dynamicCommentMapper.insert(comment);
+
+        try {
+            userClient.addExperience(userId, COMMENT_EXPERIENCE);
+        } catch (Exception e) {
+            // 忽略经验值添加失败
+        }
 
         if (parentId == null) {
             try {

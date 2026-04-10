@@ -32,11 +32,6 @@ const handleLogout = () => {
     <div class="layout-content">
       <slot />
     </div>
-    
-    <!-- 底部 -->
-    <footer class="app-footer">
-      <p>© 2025 哔哩哔哩 (゜-゜)つロ 干杯~</p>
-    </footer>
   </div>
 </template>
 
@@ -54,18 +49,5 @@ const handleLogout = () => {
   flex: 1;
   min-height: calc(100vh - 80px);
   padding-top: 0;
-}
-
-/* 底部 */
-.app-footer {
-  height: 80px;
-  background-color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-top: 1px solid #e5e5e5;
-  margin-top: 40px;
-  font-size: 14px;
-  color: #999;
 }
 </style>

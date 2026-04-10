@@ -77,4 +77,10 @@ public interface ManuscriptMapper extends BaseMapper<Manuscript> {
 
     @Select("SELECT COALESCE(SUM(view_count), 0) FROM manuscripts")
     Integer selectSumViewCount();
+
+    @Update("UPDATE manuscripts SET share_count = share_count + #{count} WHERE id = #{manuscriptId}")
+    int updateShareCount(@Param("manuscriptId") Integer manuscriptId, @Param("count") Integer count);
+
+    @Update("UPDATE manuscripts SET status = #{status}, updated_at = NOW() WHERE id = #{id}")
+    int updateStatusById(@Param("id") Integer id, @Param("status") Integer status);
 }

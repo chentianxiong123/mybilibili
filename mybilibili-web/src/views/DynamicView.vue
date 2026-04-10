@@ -111,7 +111,7 @@ const handlePublish = async () => {
 
     const res = await dynamicApi.publishDynamic(formData)
     if (res.code === 200) {
-      ElMessage.success('发布成功')
+      ElMessage.success('发布成功，经验值+5')
       dynamicContent.value = ''
       selectedImages.value = []
       imagePreviewUrls.value = []

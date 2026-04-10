@@ -13,6 +13,7 @@ import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.UserVO;
 import com.mybilibili.mq.VideoMQProducer;
 import com.mybilibili.mq.VideoProcessMessage;
+import com.mybilibili.video.feign.MessageClient;
 import com.mybilibili.video.feign.UserClient;
 import com.mybilibili.video.mapper.CategoryMapper;
 import com.mybilibili.video.mapper.ManuscriptMapper;
@@ -38,6 +39,8 @@ import java.util.stream.Collectors;
 @Service
 public class ManuscriptServiceImpl implements ManuscriptService {
 
+    private static final int MANUSCRIPT_EXPERIENCE = 100;
+
     @Autowired
     private ManuscriptMapper manuscriptMapper;
 
@@ -59,6 +62,9 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     @Autowired
     private VideoMQProducer videoMQProducer;
 
+    @Autowired
+    private MessageClient messageClient;
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ManuscriptVO uploadManuscript(ManuscriptUploadDTO dto, Integer userId) throws Exception {
@@ -76,6 +82,12 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         manuscriptMapper.insert(manuscript);
         Integer manuscriptId = manuscript.getId();
         log.info("稿件记录创建成功，manuscriptId: {}", manuscriptId);
+
+        try {
+            userClient.addExperience(userId, MANUSCRIPT_EXPERIENCE);
+        } catch (Exception e) {
+            log.warn("添加经验值失败: {}", e.getMessage());
+        }
 
         uploadFilePathUtils.createManuscriptDirectory(manuscriptId);
         if (dto.getCover() != null && !dto.getCover().isEmpty()) {
@@ -575,7 +587,18 @@ public class ManuscriptServiceImpl implements ManuscriptService {
             return false;
         }
         manuscript.setStatus(Manuscript.STATUS_PUBLISHED);
-        return manuscriptMapper.updateById(manuscript) > 0;
+        boolean updated = manuscriptMapper.updateById(manuscript) > 0;
+
+        if (updated) {
+            try {
+                String content = "您的稿件《" + manuscript.getTitle() + "》已通过审核并成功上架啦！";
+                messageClient.sendSystemNotification(manuscript.getUserId(), "稿件上架通知", content);
+            } catch (Exception e) {
+                log.error("发送稿件上架通知失败", e);
+            }
+        }
+
+        return updated;
     }
 
     @Override
@@ -586,6 +609,36 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         }
         manuscript.setStatus(Manuscript.STATUS_UNPUBLISHED);
         return manuscriptMapper.updateById(manuscript) > 0;
+    }
+
+    @Override
+    public boolean publishManuscriptByOwner(Integer manuscriptId, Integer userId) {
+        Manuscript manuscript = manuscriptMapper.selectById(manuscriptId);
+        if (manuscript == null || !manuscript.getUserId().equals(userId)) {
+            return false;
+        }
+        return manuscriptMapper.updateStatusById(manuscriptId, Manuscript.STATUS_PUBLISHED) > 0;
+    }
+
+    @Override
+    public boolean unpublishManuscriptByOwner(Integer manuscriptId, Integer userId) {
+        Manuscript manuscript = manuscriptMapper.selectById(manuscriptId);
+        System.out.println("=== 下架稿件调试 ===");
+        System.out.println("manuscriptId: " + manuscriptId);
+        System.out.println("userId: " + userId);
+        System.out.println("manuscript: " + manuscript);
+        if (manuscript != null) {
+            System.out.println("manuscript.userId: " + manuscript.getUserId());
+            System.out.println("当前status: " + manuscript.getStatus());
+        }
+        if (manuscript == null || !manuscript.getUserId().equals(userId)) {
+            System.out.println("稿件不存在或无权操作");
+            return false;
+        }
+        int result = manuscriptMapper.updateStatusById(manuscriptId, Manuscript.STATUS_UNPUBLISHED);
+        System.out.println("更新结果: " + result);
+        System.out.println("=====================");
+        return result > 0;
     }
 
     @Override

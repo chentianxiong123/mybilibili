@@ -40,4 +40,10 @@ public interface MessageService {
     List<SystemNotificationMessageVO> getSystemNotifications(Integer userId, Integer page, Integer size);
 
     Map<String, Integer> getUnreadCounts(Integer userId);
+
+    void sendLikeNotification(Integer senderId, Integer receiverId, Integer videoId, String videoTitle);
+
+    void sendSystemNotification(Integer userId, String title, String content);
+
+    void sendReplyNotification(Integer senderId, Integer receiverId, String content, Integer messageType, Integer targetId, Integer commentId);
 }

@@ -300,7 +300,7 @@ const submitComment = async () => {
       newComment.value = ''
       isInputCollapsed.value = true
       showEmojiPicker.value = false
-      ElMessage.success('评论发表成功')
+      ElMessage.success('评论发表成功，经验值+5')
     } else {
       ElMessage.error(res.message || '评论发表失败')
     }
@@ -359,7 +359,7 @@ const submitReply = async (comment) => {
       comment.replies.push(res.data)
       comment.replyCount = (comment.replyCount || 0) + 1
       cancelReply()
-      ElMessage.success('回复成功')
+      ElMessage.success('回复成功，经验值+2')
     } else {
       ElMessage.error(res.message || '回复失败')
     }
@@ -388,7 +388,7 @@ const submitReplyToReply = async (comment, reply) => {
       comment.replies.push(res.data)
       comment.replyCount = (comment.replyCount || 0) + 1
       cancelReply()
-      ElMessage.success('回复成功')
+      ElMessage.success('回复成功，经验值+2')
     } else {
       ElMessage.error(res.message || '回复失败')
     }

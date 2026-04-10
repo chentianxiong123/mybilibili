@@ -16,6 +16,17 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr)
+        if (user && user.id) {
+          config.headers['X-User-Id'] = user.id
+        }
+      } catch (e) {
+        console.error('解析用户信息失败:', e)
+      }
+    }
     return config
   },
   error => {
@@ -86,7 +97,11 @@ export const manuscriptApi = {
   
   updateManuscript: (id, data) => api.put(`/video/manuscript/${id}`, data),
   
-  deleteManuscript: (id) => api.delete(`/video/manuscript/${id}`)
+  deleteManuscript: (id) => api.delete(`/video/manuscript/${id}`),
+  
+  unpublishManuscript: (id) => api.post(`/video/manuscript/${id}/unpublish`),
+  
+  publishManuscript: (id) => api.post(`/video/manuscript/${id}/publish`)
 }
 
 export const collectionApi = {

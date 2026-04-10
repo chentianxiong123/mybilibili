@@ -289,6 +289,7 @@
                   <el-radio-button value="processing">进行中</el-radio-button>
                   <el-radio-button value="published">已通过 ({{ approvedCount }})</el-radio-button>
                   <el-radio-button value="rejected">未通过 ({{ rejectedCount }})</el-radio-button>
+                  <el-radio-button value="unpublished">已下架</el-radio-button>
                 </el-radio-group>
               </div>
             </div>
@@ -317,7 +318,8 @@
                 </el-table-column>
                 <el-table-column label="操作" width="200" fixed="right">
                   <template #default="scope">
-                    <el-button type="primary" size="small" @click="editArticle(scope.row.id)">编辑</el-button>
+                    <el-button v-if="scope.row.status === 3" type="warning" size="small" @click="unpublishArticle(scope.row.id)">下架</el-button>
+                    <el-button v-if="scope.row.status === -1" type="success" size="small" @click="publishArticle(scope.row.id)">上架</el-button>
                     <el-button type="danger" size="small" @click="deleteArticle(scope.row.id)">删除</el-button>
                   </template>
                 </el-table-column>
@@ -2014,11 +2016,14 @@ const fetchArticles = async () => {
       params.status = statusFilter.value
     }
     
+    console.log('获取稿件参数:', params)
     const response = await manuscriptApi.getMyManuscripts(params)
+    console.log('获取稿件响应:', response)
     
     if (response.code === 200) {
       articles.value = response.data.list || []
       totalArticles.value = response.data.total || 0
+      console.log('稿件列表:', articles.value)
     }
   } catch (error) {
     console.error('获取稿件列表失败:', error)
@@ -2083,7 +2088,8 @@ const getArticleStatusType = (status) => {
     0: 'info',      // 待审核
     1: 'warning',   // 进行中
     3: 'success',   // 已发布
-    4: 'danger'     // 已拒绝
+    4: 'danger',    // 已拒绝
+    '-1': 'warning' // 已下架
   }
   return statusTypeMap[status] || 'info'
 }
@@ -2095,7 +2101,8 @@ const getArticleStatusText = (status) => {
     1: '处理中',
     2: '待发布',
     3: '已通过',   // 已发布
-    4: '未通过'    // 已拒绝
+    4: '未通过',   // 已拒绝
+    '-1': '已下架' // 已下架
   }
   return statusTextMap[status] || '未知'
 }
@@ -2126,6 +2133,50 @@ const deleteArticle = async (id) => {
       console.error('删除稿件失败:', error)
       ElMessage.error('删除失败')
     }
+  }
+}
+
+// 下架稿件
+const unpublishArticle = async (id) => {
+  try {
+    await ElMessageBox.confirm('确定要下架这个稿件吗？下架后观众将无法观看。', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    console.log('下架稿件ID:', id)
+    const response = await manuscriptApi.unpublishManuscript(id)
+    console.log('下架响应:', response)
+    
+    if (response.code === 200) {
+      ElMessage.success('下架成功')
+      fetchArticles()
+      fetchManuscriptStats()
+    } else {
+      ElMessage.error(response.message || '下架失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('下架稿件失败:', error)
+      ElMessage.error('下架失败')
+    }
+  }
+}
+
+// 上架稿件
+const publishArticle = async (id) => {
+  try {
+    const response = await manuscriptApi.publishManuscript(id)
+    
+    if (response.code === 200) {
+      ElMessage.success('上架成功')
+      fetchArticles()
+      fetchManuscriptStats()
+    }
+  } catch (error) {
+    console.error('上架稿件失败:', error)
+    ElMessage.error('上架失败')
   }
 }
 

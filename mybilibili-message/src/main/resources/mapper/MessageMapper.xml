@@ -15,6 +15,7 @@
         <result column="media_url" property="mediaUrl"/>
         <result column="conversation_id" property="conversationId"/>
         <result column="is_read" property="isRead"/>
+        <result column="comment_id" property="commentId"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
@@ -34,8 +35,8 @@
     </resultMap>
 
     <insert id="insert" parameterType="com.mybilibili.common.entity.Message" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO messages (sender_id, receiver_id, content, message_type, target_id, media_url, conversation_id, is_read, created_at, updated_at)
-        VALUES (#{senderId}, #{receiverId}, #{content}, #{messageType}, #{targetId}, #{mediaUrl}, #{conversationId}, #{isRead}, NOW(), NOW())
+        INSERT INTO messages (sender_id, receiver_id, content, message_type, target_id, media_url, conversation_id, is_read, comment_id, created_at, updated_at)
+        VALUES (#{senderId}, #{receiverId}, #{content}, #{messageType}, #{targetId}, #{mediaUrl}, #{conversationId}, #{isRead}, #{commentId}, NOW(), NOW())
     </insert>
 
     <select id="selectById" parameterType="java.lang.Long" resultMap="MessageMap">
@@ -44,7 +45,7 @@
 
     <select id="selectVOById" parameterType="java.lang.Long" resultMap="MessageVOMap">
         SELECT m.id, m.sender_id, m.receiver_id, m.content, m.message_type, m.target_id, m.media_url, m.is_read, m.created_at,
-               u.username AS sender_name, u.avatar AS sender_avatar
+               u.nickname AS sender_name, u.avatar AS sender_avatar
         FROM messages m
         LEFT JOIN users u ON m.sender_id = u.id
         WHERE m.id = #{id}
@@ -52,7 +53,7 @@
 
     <select id="selectByReceiverId" resultMap="MessageVOMap">
         SELECT m.id, m.sender_id, m.receiver_id, m.content, m.message_type, m.target_id, m.media_url, m.is_read, m.created_at,
-               u.username AS sender_name, u.avatar AS sender_avatar
+               u.nickname AS sender_name, u.avatar AS sender_avatar
         FROM messages m
         LEFT JOIN users u ON m.sender_id = u.id
         WHERE m.receiver_id = #{receiverId}
@@ -62,7 +63,7 @@
 
     <select id="selectByConversationId" resultMap="MessageVOMap">
         SELECT m.id, m.sender_id, m.receiver_id, m.content, m.message_type, m.target_id, m.media_url, m.is_read, m.created_at,
-               u.username AS sender_name, u.avatar AS sender_avatar
+               u.nickname AS sender_name, u.avatar AS sender_avatar
         FROM messages m
         LEFT JOIN users u ON m.sender_id = u.id
         WHERE m.conversation_id = #{conversationId}
@@ -72,11 +73,12 @@
 
     <select id="selectBetweenUsers" resultMap="MessageVOMap">
         SELECT m.id, m.sender_id, m.receiver_id, m.content, m.message_type, m.target_id, m.media_url, m.is_read, m.created_at,
-               u.username AS sender_name, u.avatar AS sender_avatar
+               u.nickname AS sender_name, u.avatar AS sender_avatar
         FROM messages m
         LEFT JOIN users u ON m.sender_id = u.id
         WHERE ((m.sender_id = #{userId} AND m.receiver_id = #{targetUserId})
            OR (m.sender_id = #{targetUserId} AND m.receiver_id = #{userId}))
+           AND m.message_type = 1
         ORDER BY m.created_at DESC
         LIMIT #{size} OFFSET #{offset}
     </select>
@@ -113,18 +115,29 @@
         <result column="target_id" property="videoId"/>
         <result column="video_title" property="videoTitle"/>
         <result column="video_cover" property="videoCover"/>
+        <result column="manuscript_id" property="manuscriptId"/>
+        <result column="video_order" property="videoOrder"/>
         <result column="is_read" property="isRead"/>
         <result column="created_at" property="createdAt"/>
+        <result column="comment_id" property="commentId"/>
+        <result column="comment_content" property="commentContent"/>
+        <result column="like_count" property="likeCount"/>
+        <result column="is_liked" property="isLiked"/>
     </resultMap>
 
     <select id="selectReplies" resultMap="ReplyMessageVOMap">
-        SELECT m.id, m.sender_id, u.username AS sender_name, u.avatar AS sender_avatar,
+        SELECT m.id, m.sender_id, u.nickname AS sender_name, u.avatar AS sender_avatar,
                m.content, m.target_id, v.title AS video_title, ms.cover_url AS video_cover,
-               m.is_read, m.created_at
+               v.manuscript_id, v.video_order,
+               m.is_read, m.created_at, m.comment_id,
+               c.content AS comment_content, c.like_count,
+               CASE WHEN ui.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_liked
         FROM messages m
         LEFT JOIN users u ON m.sender_id = u.id
         LEFT JOIN videos v ON m.target_id = v.id
         LEFT JOIN manuscripts ms ON v.manuscript_id = ms.id
+        LEFT JOIN comments c ON m.comment_id = c.id
+        LEFT JOIN user_interactions ui ON ui.target_id = c.id AND ui.target_type = 'COMMENT' AND ui.interaction_type = 'LIKE' AND ui.user_id = m.receiver_id
         WHERE m.receiver_id = #{receiverId} AND m.message_type = 2
         ORDER BY m.created_at DESC
         LIMIT #{size} OFFSET #{offset}
@@ -148,7 +161,7 @@
     </resultMap>
 
     <select id="selectAtList" resultMap="AtMessageVOMap">
-        SELECT m.id, m.sender_id, u.username AS sender_name, u.avatar AS sender_avatar,
+        SELECT m.id, m.sender_id, u.nickname AS sender_name, u.avatar AS sender_avatar,
                m.content, m.target_id, v.title AS video_title, ms.cover_url AS video_cover,
                m.is_read, m.created_at
         FROM messages m
@@ -173,13 +186,16 @@
         <result column="target_id" property="videoId"/>
         <result column="video_title" property="videoTitle"/>
         <result column="video_cover" property="videoCover"/>
+        <result column="manuscript_id" property="manuscriptId"/>
+        <result column="video_order" property="videoOrder"/>
         <result column="is_read" property="isRead"/>
         <result column="created_at" property="createdAt"/>
     </resultMap>
 
     <select id="selectLikes" resultMap="LikeMessageVOMap">
-        SELECT m.id, m.sender_id, u.username AS sender_name, u.avatar AS sender_avatar,
+        SELECT m.id, m.sender_id, u.nickname AS sender_name, u.avatar AS sender_avatar,
                m.content, m.target_id, v.title AS video_title, ms.cover_url AS video_cover,
+               v.manuscript_id, v.video_order,
                m.is_read, m.created_at
         FROM messages m
         LEFT JOIN users u ON m.sender_id = u.id
@@ -204,7 +220,7 @@
     </resultMap>
 
     <select id="selectSystemNotifications" resultMap="SystemNotificationMessageVOMap">
-        SELECT m.id, m.content, u.username AS sender_name, m.media_url, m.is_read, m.created_at
+        SELECT m.id, m.content, u.nickname AS sender_name, m.media_url, m.is_read, m.created_at
         FROM messages m
         LEFT JOIN users u ON m.sender_id = u.id
         WHERE m.receiver_id = #{receiverId} AND m.message_type = 5

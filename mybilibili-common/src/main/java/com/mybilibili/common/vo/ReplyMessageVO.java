@@ -14,8 +14,12 @@ public class ReplyMessageVO {
     private Integer videoId;
     private String videoTitle;
     private String videoCover;
+    private Integer manuscriptId;
+    private Integer videoOrder;
     private Integer commentId;
     private String commentContent;
+    private Integer likeCount;
+    private Boolean isLiked;
     private Boolean isRead;
     private Date createdAt;
 }

@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.mybilibili.common.entity.UserInteraction;
 import com.mybilibili.common.exception.BusinessException;
 import com.mybilibili.common.vo.Result;
+import com.mybilibili.common.vo.VideoVO;
+import com.mybilibili.interaction.feign.MessageClient;
+import com.mybilibili.interaction.feign.VideoClient;
 import com.mybilibili.interaction.mapper.UserInteractionMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -17,6 +20,12 @@ public class InteractionService {
 
     @Autowired
     private StringRedisTemplate redisTemplate;
+
+    @Autowired
+    private MessageClient messageClient;
+
+    @Autowired
+    private VideoClient videoClient;
 
     public Result<Void> like(Integer userId, String targetType, Integer targetId) {
         if (userId == null) {
@@ -38,6 +47,23 @@ public class InteractionService {
         interaction.setInteractionType("LIKE");
         interactionMapper.insert(interaction);
         redisTemplate.opsForValue().increment("like:" + targetType + ":" + targetId);
+
+        if ("VIDEO".equals(targetType)) {
+            try {
+                Result<VideoVO> videoResult = videoClient.getVideoById(targetId);
+                if (videoResult != null && videoResult.getCode() == 200 && videoResult.getData() != null) {
+                    VideoVO video = videoResult.getData();
+                    if (video.getUploader() != null) {
+                        Integer ownerId = video.getUploader().getId();
+                        if (ownerId != null && !ownerId.equals(userId)) {
+                            messageClient.sendLikeNotification(userId, ownerId, targetId, video.getTitle());
+                        }
+                    }
+                }
+            } catch (Exception e) {
+            }
+        }
+
         return Result.success();
     }
 

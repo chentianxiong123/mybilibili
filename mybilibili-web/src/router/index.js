@@ -230,11 +230,6 @@ const router = createRouter({
           meta: { title: '回复我的 - 哔哩哔哩', layout: 'simple' } 
         },
         { 
-          path: 'at', 
-          name: 'message-at',
-          meta: { title: '@我的 - 哔哩哔哩', layout: 'simple' } 
-        },
-        { 
           path: 'like', 
           name: 'message-like',
           meta: { title: '收到的赞 - 哔哩哔哩', layout: 'simple' } 

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, Edit } from '@element-plus/icons-vue'
+import { userApi } from '../../api/index.js'
 
 const router = useRouter()
 
@@ -30,12 +31,28 @@ const calculateMaxExperience = (level) => {
 }
 
 // 加载用户信息
-onMounted(() => {
+onMounted(async () => {
+  const token = localStorage.getItem('token')
   const userData = localStorage.getItem('user')
-  if (userData) {
+  
+  if (token && userData) {
     try {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      const userId = payload.sub
+      
+      const response = await userApi.getUserById(userId)
+      if (response.code === 200) {
+        currentUser.value = response.data
+        localStorage.setItem('user', JSON.stringify(response.data))
+      } else {
+        currentUser.value = JSON.parse(userData)
+      }
+    } catch (error) {
+      console.error('获取用户信息失败:', error)
       currentUser.value = JSON.parse(userData)
-      // 填充用户信息
+    }
+    
+    if (currentUser.value) {
       userInfo.value.nickname = currentUser.value.nickname || currentUser.value.username || '未设置昵称'
       userInfo.value.avatar = currentUser.value.avatar || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
       userInfo.value.level = currentUser.value.level || 1
@@ -43,12 +60,9 @@ onMounted(() => {
       userInfo.value.memberType = currentUser.value.level >= 4 ? '正式会员' : '注册会员'
       userInfo.value.coins = currentUser.value.coinCount || currentUser.value.coins || 0
       
-      // 计算升级所需经验值（每级需要更多经验）
       userInfo.value.maxExperience = calculateMaxExperience(userInfo.value.level)
       
       console.log('当前用户:', currentUser.value)
-    } catch (error) {
-      console.error('解析用户信息失败:', error)
     }
   }
 })

@@ -8,7 +8,6 @@ import ConversationList from './components/ConversationList.vue'
 import ChatWindow from './components/ChatWindow.vue'
 import EmptyState from './components/EmptyState.vue'
 import ReplyList from './components/ReplyList.vue'
-import AtList from './components/AtList.vue'
 import LikeList from './components/LikeList.vue'
 import SystemList from './components/SystemList.vue'
 import MessageSettings from './components/MessageSettings.vue'
@@ -259,12 +258,6 @@ watch(() => route.path, () => {
       <ReplyList
         v-else-if="activeType === 'reply'"
         :unread-count="unreadCounts.reply"
-        @refresh-counts="fetchUnreadCounts"
-      />
-
-      <AtList
-        v-else-if="activeType === 'at'"
-        :unread-count="unreadCounts.at"
         @refresh-counts="fetchUnreadCounts"
       />
 

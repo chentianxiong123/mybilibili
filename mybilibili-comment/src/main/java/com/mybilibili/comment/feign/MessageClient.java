@@ -7,10 +7,11 @@ import org.springframework.web.bind.annotation.*;
 @FeignClient(name = "mybilibili-message", path = "/message")
 public interface MessageClient {
 
-    @PostMapping("/send")
-    Result<?> sendMessage(@RequestParam Integer senderId,
+    @PostMapping("/internal/reply-notify")
+    Result<?> sendReplyNotification(@RequestParam Integer senderId,
                           @RequestParam Integer receiverId,
                           @RequestParam String content,
                           @RequestParam Integer messageType,
-                          @RequestParam(required = false) Integer targetId);
+                          @RequestParam(required = false) Integer targetId,
+                          @RequestParam(required = false) Integer commentId);
 }

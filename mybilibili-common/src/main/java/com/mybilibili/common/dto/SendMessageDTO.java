@@ -9,4 +9,5 @@ public class SendMessageDTO {
     private Integer messageType;
     private Integer targetId;
     private String mediaUrl;
+    private Integer commentId;
 }

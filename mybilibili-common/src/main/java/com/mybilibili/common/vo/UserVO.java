@@ -22,6 +22,7 @@ public class UserVO {
     private Integer gender;
     private String birthdate;
     private Integer status;
+    private Integer coinCount;
 
     /**
      * 用户所有稿件的总播放数

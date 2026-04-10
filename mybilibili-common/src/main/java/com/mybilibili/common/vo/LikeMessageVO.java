@@ -14,6 +14,8 @@ public class LikeMessageVO {
     private Integer videoId;
     private String videoTitle;
     private String videoCover;
+    private Integer manuscriptId;
+    private Integer videoOrder;
     private Integer commentId;
     private String commentContent;
     private Boolean isRead;

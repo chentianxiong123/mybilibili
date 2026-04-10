@@ -113,4 +113,12 @@ public class UserController {
             @RequestHeader(value = "X-User-Id", required = false) Integer currentUserId) {
         return userService.removePinnedVideo(currentUserId);
     }
+
+    @PostMapping("/add-experience")
+    @Operation(summary = "添加经验值", description = "为用户添加经验值")
+    public Result<Void> addExperience(
+            @RequestParam Integer userId,
+            @RequestParam int experienceAmount) {
+        return userService.addExperience(userId, experienceAmount);
+    }
 }

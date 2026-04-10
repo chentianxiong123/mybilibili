@@ -48,6 +48,7 @@ public class MessageServiceImpl implements MessageService {
         message.setMessageType(dto.getMessageType());
         message.setTargetId(dto.getTargetId());
         message.setMediaUrl(dto.getMediaUrl());
+        message.setCommentId(dto.getCommentId());
         message.setConversationId(senderConversation.getId());
         message.setIsRead(false);
         messageMapper.insert(message);
@@ -164,5 +165,41 @@ public class MessageServiceImpl implements MessageService {
         counts.put("private", messageMapper.countUnreadByReceiverId(userId));
         counts.put("total", counts.values().stream().mapToInt(Integer::intValue).sum());
         return counts;
+    }
+
+    @Override
+    public void sendLikeNotification(Integer senderId, Integer receiverId, Integer videoId, String videoTitle) {
+        Message message = new Message();
+        message.setSenderId(senderId);
+        message.setReceiverId(receiverId);
+        message.setContent("赞了你的视频《" + videoTitle + "》");
+        message.setMessageType(4);
+        message.setTargetId(videoId);
+        message.setIsRead(false);
+        messageMapper.insert(message);
+    }
+
+    @Override
+    public void sendSystemNotification(Integer userId, String title, String content) {
+        Message message = new Message();
+        message.setSenderId(1);
+        message.setReceiverId(userId);
+        message.setContent(content);
+        message.setMessageType(5);
+        message.setIsRead(false);
+        messageMapper.insert(message);
+    }
+
+    @Override
+    public void sendReplyNotification(Integer senderId, Integer receiverId, String content, Integer messageType, Integer targetId, Integer commentId) {
+        Message message = new Message();
+        message.setSenderId(senderId);
+        message.setReceiverId(receiverId);
+        message.setContent(content);
+        message.setMessageType(messageType);
+        message.setTargetId(targetId);
+        message.setCommentId(commentId);
+        message.setIsRead(false);
+        messageMapper.insert(message);
     }
 }

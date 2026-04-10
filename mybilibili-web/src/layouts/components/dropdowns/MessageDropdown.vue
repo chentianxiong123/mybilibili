@@ -6,7 +6,6 @@ const router = useRouter()
 
 const messageMenuItems = [
   { key: 'reply', label: '回复我的', icon: ChatLineRound, route: '/message/reply' },
-  { key: 'at', label: '@我的', icon: 'At', route: '/message/at' },
   { key: 'like', label: '收到的赞', icon: Star, route: '/message/like' },
   { key: 'system', label: '系统消息', icon: Bell, route: '/message/system' },
   { key: 'private', label: '我的消息', icon: Message, route: '/message/private' }

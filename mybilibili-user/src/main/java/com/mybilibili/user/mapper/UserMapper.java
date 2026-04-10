@@ -69,4 +69,10 @@ public interface UserMapper extends BaseMapper<User> {
 
     @Update("UPDATE users SET follower_count = GREATEST(follower_count - 1, 0) WHERE id = #{id}")
     void decrementFollowerCount(@Param("id") Integer id);
+
+    @Update("UPDATE users SET coin_count = coin_count + #{coinAmount}")
+    int addDailyCoins(@Param("coinAmount") int coinAmount);
+
+    @Update("UPDATE users SET experience = experience + #{experienceAmount} WHERE id = #{userId}")
+    int addExperience(@Param("userId") Integer userId, @Param("experienceAmount") int experienceAmount);
 }

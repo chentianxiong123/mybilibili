@@ -48,6 +48,8 @@ public class CommentServiceImpl implements CommentService {
     private static final String TARGET_TYPE_COMMENT = "COMMENT";
     private static final String TARGET_TYPE_REPLY = "REPLY";
     private static final int MESSAGE_TYPE_REPLY = 2;
+    private static final int COMMENT_EXPERIENCE = 5;
+    private static final int REPLY_EXPERIENCE = 2;
 
     @Override
     public CommentVO addComment(Integer manuscriptId, Integer userId, String content) {
@@ -63,6 +65,12 @@ public class CommentServiceImpl implements CommentService {
         comment.setStatus(hasProhibitedWords ? 1 : 0);  // 0-正常 1-已删除
 
         commentMapper.insert(comment);
+
+        try {
+            userClient.addExperience(userId, COMMENT_EXPERIENCE);
+        } catch (Exception e) {
+            // 忽略经验值添加失败
+        }
 
         CommentVO commentVO = buildCommentVO(comment, userId);
         commentVO.setHasProhibitedWords(hasProhibitedWords);
@@ -208,6 +216,12 @@ public class CommentServiceImpl implements CommentService {
 
         replyMapper.insert(reply);
         commentMapper.updateReplyCount(commentId, 1);
+
+        try {
+            userClient.addExperience(userId, REPLY_EXPERIENCE);
+        } catch (Exception e) {
+            // 忽略经验值添加失败
+        }
 
         if (replyToUserId != null && !replyToUserId.equals(userId)) {
             sendReplyMessage(userId, replyToUserId, content, commentId);
@@ -465,7 +479,7 @@ public class CommentServiceImpl implements CommentService {
             if (comment != null) {
                 manuscriptId = comment.getManuscriptId();
             }
-            messageClient.sendMessage(senderId, receiverId, "回复了你：" + content, MESSAGE_TYPE_REPLY, manuscriptId);
+            messageClient.sendReplyNotification(senderId, receiverId, "回复了你：" + content, MESSAGE_TYPE_REPLY, manuscriptId, commentId);
         } catch (Exception e) {
         }
     }

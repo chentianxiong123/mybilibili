@@ -1,8 +1,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ChatDotRound, Star, Delete } from '@element-plus/icons-vue'
 import { messageApi } from '../../../api/message.js'
+
+const router = useRouter()
 
 const props = defineProps({
   unreadCount: {
@@ -76,16 +79,22 @@ const markUnreadAsRead = async (data) => {
   }
 }
 
-// 点击单个消息标记已读
+// 点击单个消息跳转到稿件页面
 const handleItemClick = async (item) => {
-  if (item.isRead) return
+  if (!item.isRead) {
+    try {
+      await messageApi.markAsRead(item.id)
+      item.isRead = true
+      emit('refresh-counts')
+    } catch (error) {
+      console.error('标记已读失败:', error)
+    }
+  }
   
-  try {
-    await messageApi.markAsRead(item.id)
-    item.isRead = true
-    emit('refresh-counts')
-  } catch (error) {
-    console.error('标记已读失败:', error)
+  // 跳转到稿件页面
+  if (item.manuscriptId) {
+    const pParam = item.videoOrder ? `&p=${item.videoOrder}` : ''
+    window.open(`/manuscript/${item.manuscriptId}?${pParam}`, '_blank')
   }
 }
 
@@ -95,16 +104,41 @@ const loadMore = () => {
 }
 
 const handleReply = (item) => {
-  // 打开回复对话框
-  console.log('回复:', item)
+  if (item.manuscriptId) {
+    const pParam = item.videoOrder ? `&p=${item.videoOrder}` : ''
+    window.open(`/manuscript/${item.manuscriptId}${pParam}`, '_blank')
+  }
 }
 
 const handleLike = async (item) => {
   try {
-    // 点赞评论
-    ElMessage.success('点赞成功')
+    // item.commentId 是评论ID
+    if (!item.commentId) {
+      ElMessage.warning('无法点赞')
+      return
+    }
+
+    // 调用点赞API
+    const response = await fetch(`/api/comment/comment/${item.commentId}/like`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-Id': localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).id : null
+      }
+    })
+    const res = await response.json()
+
+    if (res.code === 200) {
+      // 更新本地状态
+      item.isLiked = !item.isLiked
+      item.likeCount = (item.likeCount || 0) + (item.isLiked ? 1 : -1)
+      ElMessage.success(item.isLiked ? '点赞成功' : '取消点赞成功')
+    } else {
+      ElMessage.error(res.message || '操作失败')
+    }
   } catch (error) {
     console.error('点赞失败:', error)
+    ElMessage.error('操作失败，请稍后重试')
   }
 }
 
@@ -177,15 +211,15 @@ onMounted(() => {
             </div>
             <div class="item-actions">
               <span class="time">{{ formatTime(item.createTime || item.createdAt) }}</span>
-              <span class="action-btn" @click="handleReply(item)">
+              <span class="action-btn" @click.stop="handleReply(item)">
                 <el-icon><ChatDotRound /></el-icon>
                 回复
               </span>
-              <span class="action-btn" @click="handleLike(item)">
+              <span class="action-btn" :class="{ 'is-liked': item.isLiked }" @click.stop="handleLike(item)">
                 <el-icon><Star /></el-icon>
-                点赞
+                {{ item.isLiked ? '已赞' : '点赞' }}{{ item.likeCount ? `(${item.likeCount})` : '' }}
               </span>
-              <span class="action-btn delete" @click="handleDelete(item)">
+              <span class="action-btn delete" @click.stop="handleDelete(item)">
                 <el-icon><Delete /></el-icon>
                 删除该通知
               </span>
@@ -352,6 +386,10 @@ onMounted(() => {
 
 .action-btn:hover {
   color: #00a1d6;
+}
+
+.action-btn.is-liked {
+  color: #fb7299;
 }
 
 .action-btn.delete:hover {

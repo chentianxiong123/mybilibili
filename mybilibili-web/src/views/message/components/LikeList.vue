@@ -1,8 +1,11 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Star } from '@element-plus/icons-vue'
 import { messageApi } from '../../../api/message.js'
+
+const router = useRouter()
 
 const props = defineProps({
   unreadCount: {
@@ -76,16 +79,22 @@ const markUnreadAsRead = async (data) => {
   }
 }
 
-// 点击单个消息标记已读
+// 点击单个消息跳转到稿件页面
 const handleItemClick = async (item) => {
-  if (item.isRead) return
+  if (!item.isRead) {
+    try {
+      await messageApi.markAsRead(item.id)
+      item.isRead = true
+      emit('refresh-counts')
+    } catch (error) {
+      console.error('标记已读失败:', error)
+    }
+  }
   
-  try {
-    await messageApi.markAsRead(item.id)
-    item.isRead = true
-    emit('refresh-counts')
-  } catch (error) {
-    console.error('标记已读失败:', error)
+  // 跳转到稿件页面
+  if (item.manuscriptId) {
+    const pParam = item.videoOrder ? `&p=${item.videoOrder}` : ''
+    window.open(`/manuscript/${item.manuscriptId}?${pParam}`, '_blank')
   }
 }
 

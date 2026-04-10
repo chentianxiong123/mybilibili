@@ -15,6 +15,7 @@ public class Message {
     private String mediaUrl;
     private Long conversationId;
     private Boolean isRead;
+    private Integer commentId;
     private Date createdAt;
     private Date updatedAt;
 }

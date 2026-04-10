@@ -413,6 +413,7 @@ const submitComment = async () => {
   }
   
   try {
+    console.log('【调试】提交评论，manuscriptId:', currentManuscriptId.value, '内容:', newComment.value)
     const response = await commentApi.postComment('manuscript', currentManuscriptId.value, newComment.value)
     console.log('评论API响应:', response)
     if (response.code === 200) {
@@ -431,7 +432,7 @@ const submitComment = async () => {
       newComment.value = ''
       isCommentInputCollapsed.value = true
       showEmojiPicker.value = false
-      ElMessage.success('评论发表成功')
+      ElMessage.success('评论发表成功，经验值+5')
     } else {
       ElMessage.error(response.message || '评论发表失败')
     }
@@ -643,15 +644,19 @@ const submitReply = async (commentId) => {
     
     console.log('回复目标作者:', targetAuthor)
     console.log('回复目标用户ID:', replyToUserId)
+    console.log('【调试】提交回复，commentId:', commentId, '内容:', replyContent)
     
     const response = await commentApi.replyComment(commentId, replyContent, replyToUserId)
-    if (response.code === 200) {
+    console.log('【调试】回复API响应:', response)
+    if (response.code === 200 && response.data) {
       // 清空输入框并隐藏
       replyInputs.value[commentId] = ''
       replyTargets.value[commentId] = null
       const comment = comments.value.find(c => c.id === commentId)
       if (comment) {
         comment.showReplyInput = false
+        // 展开回复列表
+        replyExpanded.value[commentId] = true
         // 如果评论没有回复列表，初始化一个
         if (!comment.replies) {
           comment.replies = []
@@ -669,8 +674,11 @@ const submitReply = async (commentId) => {
           isLiked: response.data.liked || false,
           targetAuthor: response.data.replyToUserName || targetAuthor
         }
+        console.log('【调试】创建的newReply:', newReply)
+        console.log('【调试】comment.userId:', comment.userId)
         // 检查是否是作者的回复
         const isAuthorReply = newReply.userId === comment.userId
+        console.log('【调试】是否UP主回复:', isAuthorReply, 'newReply.userId:', newReply.userId)
         if (isAuthorReply) {
           // 作者回复放在最前面
           comment.replies.unshift(newReply)
@@ -680,9 +688,9 @@ const submitReply = async (commentId) => {
         }
         console.log('回复添加成功:', newReply)
       }
-      ElMessage.success('回复成功')
+      ElMessage.success('回复成功，经验值+2')
     } else {
-      ElMessage.error(response.message || '回复失败')
+      ElMessage.error(response.message || (response.data ? '回复失败' : '回复失败：未获取到数据'))
     }
   } catch (error) {
     console.error('回复失败:', error)
@@ -859,7 +867,9 @@ const loadInteractionStatus = async () => {
         
         interactionStatus.value = {
           liked: statusResponse.data.isLiked || statusResponse.data.liked || false,
-          favorited: statusResponse.data.isCollected || statusResponse.data.collected || false
+          favorited: statusResponse.data.isCollected || statusResponse.data.collected || false,
+          coined: statusResponse.data.coined || statusResponse.data.coinCount > 0 || false,
+          shared: statusResponse.data.shared || false
         }
         console.log('设置后的 interactionStatus:', interactionStatus.value)
       } else {
@@ -887,9 +897,12 @@ const loadComments = async (sort = 'new') => {
   
   try {
     loadingComments.value = true
+    console.log('【调试】开始加载评论，manuscriptId:', currentManuscriptId.value)
     const commentResponse = await commentApi.getCommentsByVideoId(currentManuscriptId.value, 1, 20, sort)
+    console.log('【调试】评论API响应:', commentResponse)
     if (commentResponse.code === 200) {
       const commentData = commentResponse.data
+      console.log('【调试】评论数据:', commentData)
       // 更新评论列表
       comments.value = commentData.map(comment => ({
         id: comment.id,
@@ -1064,6 +1077,14 @@ const handleLike = async () => {
       if (response.code === 200) {
         videoInfo.value.likeCount++
         interactionStatus.value.liked = true
+
+        // 点赞动画效果
+        const likeBtn = document.querySelector('.like-btn')
+        if (likeBtn) {
+          likeBtn.classList.add('is-animating')
+          setTimeout(() => likeBtn.classList.remove('is-animating'), 300)
+        }
+
         ElMessage.success('点赞成功')
       }
     } catch (error) {
@@ -1084,11 +1105,21 @@ const handleCoin = async () => {
       inputPlaceholder: '请输入投币数量（1或2）',
       inputValue: '1'
     })
-    
+
     if (coinCount) {
       const response = await interactionApi.coinManuscript(currentManuscriptId.value, parseInt(coinCount))
       if (response.code === 200) {
         videoInfo.value.coinCount += parseInt(coinCount)
+        interactionStatus.value.coined = true
+        interactionStatus.value.coinCount = (interactionStatus.value.coinCount || 0) + parseInt(coinCount)
+
+        // 投币动画效果
+        const coinBtn = document.querySelector('.coin-btn')
+        if (coinBtn) {
+          coinBtn.classList.add('is-animating')
+          setTimeout(() => coinBtn.classList.remove('is-animating'), 300)
+        }
+
         ElMessage.success(`投币成功，投了${coinCount}个币`)
       }
     }
@@ -1248,19 +1279,26 @@ const confirmFavorite = async () => {
 
 // 处理分享
 const handleShare = async () => {
+  const shareUrl = `${window.location.origin}/manuscript/${currentManuscriptId.value}`
+  navigator.clipboard.writeText(shareUrl)
+
   try {
     const response = await interactionApi.shareManuscript(currentManuscriptId.value)
     if (response.code === 200) {
       videoInfo.value.shareCount++
-      navigator.clipboard.writeText(window.location.href)
-      ElMessage.success('分享链接已复制到剪贴板')
     }
   } catch (error) {
     console.error('分享失败:', error)
-    // 即使分享失败，也复制链接
-    navigator.clipboard.writeText(window.location.href)
-    ElMessage.success('分享链接已复制到剪贴板')
   }
+
+  // 动画效果
+  const shareBtn = document.querySelector('.share-btn')
+  if (shareBtn) {
+    shareBtn.classList.add('is-animating')
+    setTimeout(() => shareBtn.classList.remove('is-animating'), 300)
+  }
+
+  ElMessage.success('分享链接已复制到剪贴板')
 }
 
 // AI助手弹窗状态
@@ -1771,6 +1809,14 @@ watch(commentSort, (newSort) => {
   }
 })
 
+// 监听稿件ID变化，重新加载评论
+watch(() => route.params.id, (newId) => {
+  if (newId) {
+    currentManuscriptId.value = parseInt(newId)
+    loadComments()
+  }
+})
+
 // 监听路由参数变化，处理浏览器前进/后退
 watch(() => route.query.p, (newP) => {
   const p = parseInt(newP) || 1
@@ -1984,15 +2030,15 @@ watch(() => route.query.p, (newP) => {
           <!-- 互动按钮栏 -->
           <div class="interaction-bar">
             <div class="left-actions">
-              <el-button 
-                class="action-btn" 
+              <el-button
+                class="action-btn like-btn"
                 :class="{ 'is-active': interactionStatus.liked }"
                 @click="handleLike"
               >
                 <el-icon><CircleCheck /></el-icon>
                 <span>{{ (videoInfo.likeCount || 0).toLocaleString() }}</span>
               </el-button>
-              <el-button class="action-btn" @click="handleCoin">
+              <el-button class="action-btn coin-btn" :class="{ 'is-active': interactionStatus.coined }" @click="handleCoin">
                 <el-icon><CirclePlus /></el-icon>
                 <span>{{ (videoInfo.coinCount || 0).toLocaleString() }}</span>
               </el-button>
@@ -2004,7 +2050,7 @@ watch(() => route.query.p, (newP) => {
                 <el-icon><Star /></el-icon>
                 <span>{{ (videoInfo.collectCount || 0).toLocaleString() }}</span>
               </el-button>
-              <el-button class="action-btn" @click="handleShare">
+              <el-button class="action-btn share-btn" @click="handleShare">
                 <el-icon><Share /></el-icon>
                 <span>{{ (videoInfo.shareCount || 0).toLocaleString() }}</span>
               </el-button>
@@ -2970,6 +3016,16 @@ watch(() => route.query.p, (newP) => {
 
 .interaction-bar .action-btn.is-active:hover {
   background-color: #e6f7ff;
+}
+
+.interaction-bar .action-btn.is-animating {
+  animation: likeAnimation 0.3s ease;
+}
+
+@keyframes likeAnimation {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
 }
 
 .interaction-bar .action-btn .el-icon {
