@@ -562,8 +562,7 @@ const collectionDetail = ref({
 // 投稿数据
 const submissions = ref({
   categories: [
-    { name: '视频', count: 0 },
-    { name: '动态', count: 0 }
+    { name: '视频', count: 0 }
   ],
   videos: [],
   activeCategory: '视频',
