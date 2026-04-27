@@ -11,6 +11,9 @@ spring:
     gateway:
       weightCalculator:
         enabled: false
+      httpclient:
+        connect-timeout: 5000
+        response-timeout: 600s
       discovery:
         locator:
           enabled: false
@@ -45,6 +48,14 @@ spring:
           uri: lb://mybilibili-comment
           predicates:
             - Path=/api/admin/content-review/**
+          filters:
+            - StripPrefix=1
+
+        # 违禁词管理接口 - 转发到 comment 服务（必须放在 /api/admin/** 之前）
+        - id: prohibited-words
+          uri: lb://mybilibili-comment
+          predicates:
+            - Path=/api/admin/prohibited-words/**
           filters:
             - StripPrefix=1
 
@@ -159,6 +170,14 @@ spring:
             - Path=/api/video/manuscript/**
           filters:
             - RewritePath=/api/video/manuscript/(?<segment>.*), /manuscript/$\{segment}
+
+        # 视频处理SSE - 转发到 ai 服务
+        - id: video-process-sse
+          uri: lb://mybilibili-ai
+          predicates:
+            - Path=/api/video/process/sse/**
+          filters:
+            - StripPrefix=0
 
         # 用户视频列表接口 - 转发到 ManuscriptController
         - id: video-user-manuscripts

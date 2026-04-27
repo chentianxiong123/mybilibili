@@ -48,6 +48,14 @@ project:
 rocketmq:
   name-server: 127.0.0.1:9876
 
+# Feign 连接 AI 服务的超时设置（视频处理是同步长任务）
+feign:
+  client:
+    config:
+      default:
+        connect-timeout: 5000
+        read-timeout: 600000
+
 logging:
   level:
     com.mybilibili: debug

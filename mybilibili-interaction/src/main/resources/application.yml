@@ -26,6 +26,12 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
 
+upload:
+  base-path: d:/files/mybilibili/uploads
+
+project:
+  folder: d:/files/mybilibili/uploads
+
 logging:
   level:
     com.mybilibili: debug

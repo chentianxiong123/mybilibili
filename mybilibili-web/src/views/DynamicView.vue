@@ -1066,7 +1066,7 @@ onMounted(() => {
 }
 
 .dynamic-footer .action-btn.liked {
-  color: #ff2442;
+  color: #00a1d6;
 }
 
 .dynamic-footer .action-btn.active {

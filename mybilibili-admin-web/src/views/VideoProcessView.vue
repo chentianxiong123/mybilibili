@@ -77,25 +77,25 @@
       <el-col :span="4">
         <el-card class="stat-card" :class="{ highlight: statistics.transcoding > 0 }">
           <div class="stat-value processing">{{ statistics.transcoding || 0 }}</div>
-          <div class="stat-label">转码成功</div>
+          <div class="stat-label">转码阶段</div>
         </el-card>
       </el-col>
       <el-col :span="4">
         <el-card class="stat-card" :class="{ highlight: statistics.audioExtracting > 0 }">
           <div class="stat-value processing">{{ statistics.audioExtracting || 0 }}</div>
-          <div class="stat-label">音频提取成功</div>
+          <div class="stat-label">音频阶段</div>
         </el-card>
       </el-col>
       <el-col :span="4">
         <el-card class="stat-card" :class="{ highlight: statistics.subtitleGenerating > 0 }">
           <div class="stat-value processing">{{ statistics.subtitleGenerating || 0 }}</div>
-          <div class="stat-label">字幕生成成功</div>
+          <div class="stat-label">字幕阶段</div>
         </el-card>
       </el-col>
       <el-col :span="4">
         <el-card class="stat-card" :class="{ highlight: statistics.aiSummarizing > 0 }">
           <div class="stat-value processing">{{ statistics.aiSummarizing || 0 }}</div>
-          <div class="stat-label">AI总结成功</div>
+          <div class="stat-label">AI阶段</div>
         </el-card>
       </el-col>
       <el-col :span="4">
@@ -158,7 +158,7 @@
                   <el-icon><VideoCamera /></el-icon>
                 </div>
               </span>
-              <div class="pipeline-line" :class="{ active: row.processStatus >= 2 || row.processStatus >= 11 }"></div>
+              <div class="pipeline-line" :class="{ active: isLineActive(row.processStatus, 1) }"></div>
               <span title="音频" style="cursor: pointer;">
                 <div
                   class="pipeline-step"
@@ -168,7 +168,7 @@
                   <el-icon><Microphone /></el-icon>
                 </div>
               </span>
-              <div class="pipeline-line" :class="{ active: row.processStatus >= 3 || row.processStatus >= 21 }"></div>
+              <div class="pipeline-line" :class="{ active: isLineActive(row.processStatus, 2) }"></div>
               <span title="字幕" style="cursor: pointer;">
                 <div
                   class="pipeline-step"
@@ -178,7 +178,7 @@
                   <el-icon><ChatDotRound /></el-icon>
                 </div>
               </span>
-              <div class="pipeline-line" :class="{ active: row.processStatus >= 4 || row.processStatus >= 31 }"></div>
+              <div class="pipeline-line" :class="{ active: isLineActive(row.processStatus, 3) }"></div>
               <span title="AI" style="cursor: pointer;">
                 <div
                   class="pipeline-step"
@@ -232,7 +232,7 @@ import {
   manualAiSummary,
   resetVideoStatus
 } from '../api/manuscript'
-import { getCurrentTask, getQueueInfo, getStatistics, triggerTranscode, triggerAudioExtract, triggerSubtitleGenerate, triggerAiSummary, resetVideoProcess } from '../api/videoProcess'
+import { getCurrentTask, getQueueInfo, getStatistics } from '../api/videoProcess'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -242,7 +242,7 @@ const queueInfo = ref({ queueSize: 0 })
 const autoRefresh = ref(true)
 const refreshInterval = ref(null)
 
-const ws = ref(null)
+const sseSource = ref(null)
 const wsConnected = ref(false)
 
 const filterForm = reactive({
@@ -262,91 +262,103 @@ const paginatedData = computed(() => {
   return tableData.value.slice(start, end)
 })
 
-const connectWebSocket = () => {
-  const wsUrl = 'ws://localhost:8088/ws/video-process'
-  console.log('[WebSocket] 尝试连接到:', wsUrl)
-  ws.value = new WebSocket(wsUrl)
-  
-  ws.value.onopen = () => {
+const connectSSE = () => {
+  const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:'
+  const eventSource = new EventSource(`${protocol}//${window.location.host}/api/ai/admin/process/stream`)
+
+  eventSource.onopen = () => {
     wsConnected.value = true
-    console.log('[WebSocket] 已连接')
+    loadAllData()
   }
-  
-  ws.value.onmessage = (event) => {
-    console.log('[WebSocket] 收到原始消息:', event.data)
+
+  eventSource.addEventListener('snapshot', (event) => {
     const data = JSON.parse(event.data)
-    handleWsMessage(data)
-  }
-  
-  ws.value.onclose = (event) => {
+    if (data.current) {
+      currentTask.value = data.current
+    }
+    if (data.statistics) {
+      statistics.value = data.statistics
+    }
+    loadVideos()
+    loadQueueInfo()
+  })
+
+  eventSource.addEventListener('progress', (event) => {
+    handleSseMessage(JSON.parse(event.data))
+  })
+
+  eventSource.addEventListener('complete', (event) => {
+    handleSseMessage(JSON.parse(event.data))
+    ElMessage.success('视频处理完成')
+    loadVideos()
+    loadStatistics()
+    loadQueueInfo()
+  })
+
+  eventSource.addEventListener('error', (event) => {
+    if (event.data) {
+      handleSseMessage(JSON.parse(event.data))
+    }
+  })
+
+  eventSource.onerror = () => {
     wsConnected.value = false
-    console.log('[WebSocket] 已断开, code:', event.code, 'reason:', event.reason)
-    console.log('[WebSocket] 3秒后重连...')
-    setTimeout(connectWebSocket, 3000)
   }
-  
-  ws.value.onerror = (error) => {
-    console.error('[WebSocket] 错误:', error)
-  }
+
+  sseSource.value = eventSource
 }
 
-const handleWsMessage = (data) => {
-  console.log('WebSocket 消息:', data)
-  
-  switch (data.type) {
-    case 'progress':
-      currentTask.value = {
-        processing: true,
-        videoId: data.videoId,
-        manuscriptId: data.manuscriptId,
-        videoTitle: data.videoTitle,
-        stage: data.stage,
-        stageText: data.stageText,
-        progress: data.progress,
-        status: data.status,
-        statusText: getStatusText(data.status)
-      }
-      loadVideos()
-      break
-      
-    case 'complete':
-      currentTask.value = { processing: false }
-      ElMessage.success(`视频 "${data.videoTitle}" 处理完成`)
-      loadVideos()
-      loadStatistics()
-      loadQueueInfo()
-      break
-      
-    case 'error':
-      currentTask.value = { processing: false }
-      ElMessage.error(`视频 "${data.videoTitle}" 处理失败: ${data.error}`)
-      loadVideos()
-      loadStatistics()
-      loadQueueInfo()
-      break
-  }
-}
+const handleSseMessage = (data) => {
+  if (!data) return
 
-const getStatusText = (status) => {
-  const statusMap = {
-    1: '视频转码中',
-    2: '音频提取中',
-    3: '字幕生成中',
-    4: 'AI总结中'
+  if (data.videoId) {
+    const index = tableData.value.findIndex(v => v.id === data.videoId)
+    if (index !== -1) {
+      const oldData = tableData.value[index]
+      tableData.value.splice(index, 1, {
+        ...oldData,
+        processStatus: data.status ?? oldData.processStatus,
+        processProgress: data.progress ?? oldData.processProgress,
+        processStage: data.stage ?? oldData.processStage,
+        processError: data.error ?? oldData.processError
+      })
+    }
   }
-  return statusMap[status] || '处理中'
+
+  if (data.type === 'complete') {
+    currentTask.value = { processing: false }
+  } else if (data.type === 'error') {
+    currentTask.value = { processing: false, error: data.error }
+    ElMessage.error(`视频处理失败: ${data.error || '未知错误'}`)
+  } else {
+    currentTask.value = {
+      processing: true,
+      videoId: data.videoId,
+      manuscriptId: data.manuscriptId,
+      videoTitle: data.videoTitle || data.title,
+      stage: data.stage,
+      stageText: data.stageText || data.statusText,
+      progress: data.progress || 0,
+      status: data.status,
+      statusText: data.statusText || getProcessStatusText(data.status)
+    }
+  }
+
+  loadStatistics()
+  loadQueueInfo()
 }
 
 onMounted(() => {
-  connectWebSocket()
+  connectSSE()
   loadAllData()
   startAutoRefresh()
 })
 
 onUnmounted(() => {
   stopAutoRefresh()
-  if (ws.value) {
-    ws.value.close()
+  if (sseSource.value) {
+    sseSource.value.close()
+    sseSource.value = null
   }
 })
 
@@ -487,12 +499,19 @@ const handlePageChange = () => {}
 
 const isStepDone = (status, stepType) => {
   switch (stepType) {
-    case 'transcode': return status >= 11
-    case 'audio': return status >= 21
-    case 'subtitle': return status >= 31
-    case 'ai': return status >= 41 || status === 5
+    case 'transcode': return [11, 2, 20, 21, 3, 30, 31, 4, 40, 41, 5].includes(status)
+    case 'audio': return [21, 3, 30, 31, 4, 40, 41, 5].includes(status)
+    case 'subtitle': return [31, 4, 40, 41, 5].includes(status)
+    case 'ai': return [41, 5].includes(status)
     default: return false
   }
+}
+
+const isLineActive = (status, step) => {
+  if (step === 1) return [2, 20, 21, 3, 30, 31, 4, 40, 41, 5].includes(status)
+  if (step === 2) return [3, 30, 31, 4, 40, 41, 5].includes(status)
+  if (step === 3) return [4, 40, 41, 5].includes(status)
+  return false
 }
 
 const canTranscode = (status) => {
@@ -518,17 +537,18 @@ const isStepError = (status, step) => {
 
 const getStepClass = (processStatus, step) => {
   const stepRanges = {
-    1: { success: 11, fail: 10, processing: 1 },
-    2: { success: 21, fail: 20, processing: 2 },
-    3: { success: 31, fail: 30, processing: 3 },
-    4: { success: 41, fail: 40, processing: 4 }
+    1: { success: [11, 2, 20, 21, 3, 30, 31, 4, 40, 41, 5], fail: 10, processing: 1 },
+    2: { success: [21, 3, 30, 31, 4, 40, 41, 5], fail: 20, processing: 2 },
+    3: { success: [31, 4, 40, 41, 5], fail: 30, processing: 3 },
+    4: { success: [41, 5], fail: 40, processing: 4 }
   }
 
   const range = stepRanges[step]
 
   if (processStatus === range.processing) return 'current'
   if (processStatus === range.fail) return 'error'
-  if (processStatus >= range.success || processStatus === 5) return 'completed'
+  if (range.success.includes(processStatus)) return 'completed'
+
   return 'pending'
 }
 
@@ -593,62 +613,115 @@ const updateVideoStatus = (videoId, newStatus) => {
 }
 
 const handleTranscode = async (video) => {
+  updateVideoStatus(video.id, 1)
+  currentTask.value = {
+    processing: true,
+    videoId: video.id,
+    videoTitle: video.title,
+    stage: 'TRANSCODING',
+    stageText: '视频转码中',
+    progress: 0,
+    status: 1,
+    statusText: getProcessStatusText(1)
+  }
   try {
     const res = await manualTranscode(video.id)
     if (res.code === 200 || res.success) {
-      ElMessage.success('已加入转码队列')
-      updateVideoStatus(video.id, 1)
+      ElMessage.success('转码完成')
     } else {
       ElMessage.error(res.message || '转码失败')
     }
   } catch (error) {
-    ElMessage.error('转码异常: ' + (error.message || '未知错误'))
+    // timeout or network error — backend may still succeed, refresh to check
   }
+  currentTask.value = { processing: false }
+  loadVideos()
+  loadStatistics()
+  loadQueueInfo()
 }
 
 const handleExtractAudio = async (video) => {
+  updateVideoStatus(video.id, 2)
+  currentTask.value = {
+    processing: true,
+    videoId: video.id,
+    videoTitle: video.title,
+    stage: 'AUDIO_EXTRACTING',
+    stageText: '音频提取中',
+    progress: 0,
+    status: 2,
+    statusText: getProcessStatusText(2)
+  }
   try {
     const res = await manualExtractAudio(video.id)
     if (res.code === 200 || res.success) {
-      ElMessage.success('已加入音频提取队列')
-      updateVideoStatus(video.id, 2)
+      ElMessage.success('音频提取完成')
     } else {
       ElMessage.error(res.message || '提取音频失败')
     }
   } catch (error) {
-    ElMessage.error('提取音频异常: ' + (error.message || '未知错误'))
+    // timeout or network error — backend may still succeed, refresh to check
   }
+  currentTask.value = { processing: false }
+  loadVideos()
+  loadStatistics()
+  loadQueueInfo()
 }
 
 const handleGenerateSubtitle = async (video) => {
+  updateVideoStatus(video.id, 3)
+  currentTask.value = {
+    processing: true,
+    videoId: video.id,
+    videoTitle: video.title,
+    stage: 'SUBTITLE_GENERATING',
+    stageText: '字幕生成中',
+    progress: 0,
+    status: 3,
+    statusText: getProcessStatusText(3)
+  }
   try {
     const res = await manualGenerateSubtitle(video.id)
     if (res.code === 200 || res.success) {
-      ElMessage.success('已加入字幕生成队列')
-      updateVideoStatus(video.id, 3)
+      ElMessage.success('字幕生成完成')
     } else {
       ElMessage.error(res.message || '生成字幕失败')
     }
   } catch (error) {
-    ElMessage.error('生成字幕异常: ' + (error.message || '未知错误'))
+    // timeout or network error — backend may still succeed, refresh to check
   }
+  currentTask.value = { processing: false }
+  loadVideos()
+  loadStatistics()
+  loadQueueInfo()
 }
 
 const handleAiSummary = async (video) => {
-  console.log('[AI摘要] 开始处理, videoId:', video.id)
+  updateVideoStatus(video.id, 4)
+  currentTask.value = {
+    processing: true,
+    videoId: video.id,
+    videoTitle: video.title,
+    stage: 'AI_SUMMARIZING',
+    stageText: 'AI总结中',
+    progress: 0,
+    status: 4,
+    statusText: getProcessStatusText(4)
+  }
   try {
     const res = await manualAiSummary(video.id)
-    console.log('[AI摘要] 响应:', res)
     if (res.code === 200 || res.success) {
-      ElMessage.success('已加入AI总结队列')
-      updateVideoStatus(video.id, 4)
+      ElMessage.success('AI总结完成')
     } else {
       ElMessage.error(res.message || 'AI总结失败')
     }
   } catch (error) {
-    console.error('[AI摘要] 异常:', error)
-    ElMessage.error('AI总结异常: ' + (error.message || '未知错误'))
+    // timeout or network error — backend may still succeed, refresh to check
   }
+  currentTask.value = { processing: false }
+  loadVideos()
+  loadStatistics()
+  loadQueueInfo()
 }
 
 const handleReset = async (video) => {

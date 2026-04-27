@@ -27,8 +27,6 @@ const saving = ref(false)
 const collectionForm = ref({
   name: '',
   description: '',
-  cover: null,
-  coverUrl: '',
   isPublic: true
 })
 
@@ -55,11 +53,6 @@ const formRules = {
 
 const formRef = ref(null)
 
-// 获取默认封面
-const getDefaultCover = () => {
-  return 'https://picsum.photos/id/1025/400/225'
-}
-
 // 格式化日期
 const formatDate = (dateString) => {
   if (!dateString) return ''
@@ -73,7 +66,7 @@ const formatDate = (dateString) => {
 // 加载合集详情
 const loadCollectionDetail = async () => {
   if (!isEditMode.value) return
-  
+
   loading.value = true
   try {
     const response = await collectionApi.getCollectionById(collectionId.value)
@@ -82,8 +75,6 @@ const loadCollectionDetail = async () => {
       collectionForm.value = {
         name: data.name,
         description: data.description || '',
-        cover: null,
-        coverUrl: data.coverUrl || '',
         isPublic: data.isPublic !== false
       }
     }
@@ -110,26 +101,6 @@ const loadManuscripts = async () => {
   }
 }
 
-// 处理封面上传
-const handleCoverChange = (file) => {
-  const isJPG = file.raw.type === 'image/jpeg'
-  const isPNG = file.raw.type === 'image/png'
-  const isLt2M = file.raw.size / 1024 / 1024 < 2
-
-  if (!isJPG && !isPNG) {
-    ElMessage.error('封面图片只能是 JPG 或 PNG 格式!')
-    return false
-  }
-  if (!isLt2M) {
-    ElMessage.error('封面图片大小不能超过 2MB!')
-    return false
-  }
-
-  collectionForm.value.cover = file.raw
-  collectionForm.value.coverUrl = URL.createObjectURL(file.raw)
-  return false
-}
-
 // 保存合集
 const handleSave = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
@@ -139,19 +110,15 @@ const handleSave = async () => {
   try {
     let response
     if (isEditMode.value) {
-      // 更新合集
       response = await collectionApi.updateCollection(collectionId.value, {
         name: collectionForm.value.name,
         description: collectionForm.value.description,
-        cover: collectionForm.value.cover,
         isPublic: collectionForm.value.isPublic
       })
     } else {
-      // 创建合集
       response = await collectionApi.createCollection({
         name: collectionForm.value.name,
         description: collectionForm.value.description,
-        cover: collectionForm.value.cover,
         isPublic: collectionForm.value.isPublic
       })
       if (response.code === 200 && response.data?.id) {
@@ -162,7 +129,6 @@ const handleSave = async () => {
     if (response.code === 200) {
       ElMessage.success(isEditMode.value ? '保存成功' : '创建成功')
       if (!isEditMode.value) {
-        // 创建成功后跳转到编辑页面
         router.replace(`/collection/${collectionId.value}/edit`)
       }
     } else {
@@ -409,31 +375,6 @@ onMounted(() => {
           :rules="formRules"
           label-position="top"
         >
-          <!-- 封面上传 -->
-          <el-form-item label="合集封面">
-            <el-upload
-              class="cover-uploader"
-              action="#"
-              :auto-upload="false"
-              :show-file-list="false"
-              :on-change="handleCoverChange"
-              accept="image/jpeg,image/png"
-            >
-              <div v-if="collectionForm.coverUrl" class="cover-preview">
-                <img :src="collectionForm.coverUrl" />
-                <div class="cover-overlay">
-                  <el-icon :size="24"><Plus /></el-icon>
-                  <span>更换封面</span>
-                </div>
-              </div>
-              <div v-else class="cover-placeholder">
-                <el-icon :size="32"><Plus /></el-icon>
-                <span>点击上传封面</span>
-                <span class="cover-hint">支持 JPG、PNG 格式，最大 2MB</span>
-              </div>
-            </el-upload>
-          </el-form-item>
-
           <!-- 合集名称 -->
           <el-form-item label="合集名称" prop="name">
             <el-input
@@ -690,71 +631,6 @@ onMounted(() => {
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   height: fit-content;
-}
-
-/* 封面上传 */
-.cover-uploader {
-  width: 100%;
-}
-
-.cover-preview {
-  position: relative;
-  width: 100%;
-  height: 180px;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.cover-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.cover-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.5);
-  color: #fff;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  cursor: pointer;
-}
-
-.cover-preview:hover .cover-overlay {
-  opacity: 1;
-}
-
-.cover-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 180px;
-  border: 2px dashed #dcdfe6;
-  border-radius: 8px;
-  color: #909399;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.cover-placeholder:hover {
-  border-color: #00aeec;
-  color: #00aeec;
-}
-
-.cover-hint {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 8px;
 }
 
 /* 隐私提示 */

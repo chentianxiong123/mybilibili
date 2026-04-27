@@ -1,10 +1,12 @@
 package com.mybilibili.ai.controller;
 
 import com.mybilibili.ai.mapper.VideoMapper;
+import com.mybilibili.ai.service.VideoProgressSseService;
 import com.mybilibili.common.entity.Video;
 import com.mybilibili.common.vo.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.HashMap;
 import java.util.List;
@@ -17,29 +19,120 @@ public class VideoProcessAdminController {
     @Autowired
     private VideoMapper videoMapper;
 
+    @Autowired
+    private VideoProgressSseService videoProgressSseService;
+
+    @GetMapping("/stream")
+    public SseEmitter stream() {
+        Map<String, Object> snapshot = new HashMap<>();
+        snapshot.put("current", buildCurrentTask(videoMapper.selectProcessing()));
+        snapshot.put("statistics", buildStatistics(videoMapper.selectAll()));
+        snapshot.put("type", "snapshot");
+        return videoProgressSseService.createAdminEmitter(snapshot);
+    }
+
     @GetMapping("/current")
     public Result<Map<String, Object>> getCurrentTask() {
         try {
             Video currentVideo = videoMapper.selectProcessing();
-            
-            if (currentVideo == null) {
-                Map<String, Object> emptyResult = new HashMap<>();
-                emptyResult.put("processing", false);
-                return Result.success("当前无处理任务", emptyResult);
-            }
-            
-            Map<String, Object> taskInfo = new HashMap<>();
-            taskInfo.put("processing", true);
-            taskInfo.put("videoId", currentVideo.getId());
-            taskInfo.put("manuscriptId", currentVideo.getManuscriptId());
-            taskInfo.put("videoTitle", currentVideo.getTitle());
-            taskInfo.put("status", currentVideo.getProcessStatus());
-            taskInfo.put("statusText", getStatusText(currentVideo.getProcessStatus()));
-            
-            return Result.success("获取成功", taskInfo);
+            return Result.success("获取成功", buildCurrentTask(currentVideo));
         } catch (Exception e) {
             return Result.error("获取当前任务失败：" + e.getMessage());
         }
+    }
+
+    private Map<String, Object> buildCurrentTask(Video currentVideo) {
+        if (currentVideo == null) {
+            Map<String, Object> emptyResult = new HashMap<>();
+            emptyResult.put("processing", false);
+            emptyResult.put("progress", 0);
+            return emptyResult;
+        }
+
+        Map<String, Object> taskInfo = new HashMap<>();
+        taskInfo.put("processing", true);
+        taskInfo.put("videoId", currentVideo.getId());
+        taskInfo.put("manuscriptId", currentVideo.getManuscriptId());
+        taskInfo.put("videoTitle", currentVideo.getTitle());
+        taskInfo.put("status", currentVideo.getProcessStatus());
+        taskInfo.put("statusText", getStatusText(currentVideo.getProcessStatus()));
+        taskInfo.put("progress", currentVideo.getProcessProgress() == null ? 0 : currentVideo.getProcessProgress());
+        taskInfo.put("stage", currentVideo.getProcessStage());
+        taskInfo.put("stageText", getStageText(currentVideo));
+        taskInfo.put("error", currentVideo.getProcessError());
+        return taskInfo;
+    }
+
+    private Map<String, Object> buildStatistics(List<Video> allVideos) {
+        Map<String, Object> stats = new HashMap<>();
+        int pending = 0;
+        int transcoding = 0;
+        int audioExtracting = 0;
+        int subtitleGenerating = 0;
+        int aiSummarizing = 0;
+        int completed = 0;
+        int failed = 0;
+
+        for (Video video : allVideos) {
+            Integer status = video.getProcessStatus();
+            if (status == null) status = 0;
+
+            switch (status) {
+                case Video.PROCESS_STATUS_PENDING:
+                    pending++;
+                    break;
+                case Video.PROCESS_STATUS_TRANSCODING:
+                case Video.PROCESS_STATUS_TRANSCODE_SUCCESS:
+                    transcoding++;
+                    break;
+                case Video.PROCESS_STATUS_AUDIO_EXTRACTING:
+                case Video.PROCESS_STATUS_AUDIO_SUCCESS:
+                    audioExtracting++;
+                    break;
+                case Video.PROCESS_STATUS_SUBTITLE_GENERATING:
+                case Video.PROCESS_STATUS_SUBTITLE_SUCCESS:
+                    subtitleGenerating++;
+                    break;
+                case Video.PROCESS_STATUS_AI_SUMMARIZING:
+                case Video.PROCESS_STATUS_AI_SUCCESS:
+                    aiSummarizing++;
+                    break;
+                case Video.PROCESS_STATUS_COMPLETED:
+                    completed++;
+                    break;
+                case Video.PROCESS_STATUS_TRANSCODE_FAILED:
+                case Video.PROCESS_STATUS_AUDIO_FAILED:
+                case Video.PROCESS_STATUS_SUBTITLE_FAILED:
+                case Video.PROCESS_STATUS_AI_FAILED:
+                    failed++;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        stats.put("pending", pending);
+        stats.put("transcoding", transcoding);
+        stats.put("audioExtracting", audioExtracting);
+        stats.put("subtitleGenerating", subtitleGenerating);
+        stats.put("aiSummarizing", aiSummarizing);
+        stats.put("completed", completed);
+        stats.put("failed", failed);
+        stats.put("total", allVideos.size());
+        return stats;
+    }
+
+    private String getStageText(Video video) {
+        if (video == null) {
+            return "";
+        }
+        if (video.getProcessError() != null && !video.getProcessError().isEmpty()) {
+            return video.getProcessError();
+        }
+        if (video.getProcessStage() == null || video.getProcessStage().isEmpty()) {
+            return getStatusText(video.getProcessStatus());
+        }
+        return video.getProcessStage();
     }
 
     private String getStatusText(Integer status) {
@@ -93,69 +186,7 @@ public class VideoProcessAdminController {
     @GetMapping("/statistics")
     public Result<Map<String, Object>> getStatistics() {
         try {
-            Map<String, Object> stats = new HashMap<>();
-            
-            List<Video> allVideos = videoMapper.selectAll();
-            
-            int pending = 0;
-            int transcoding = 0;
-            int audioExtracting = 0;
-            int subtitleGenerating = 0;
-            int aiSummarizing = 0;
-            int completed = 0;
-            int failed = 0;
-
-            for (Video video : allVideos) {
-                Integer status = video.getProcessStatus();
-                if (status == null) status = 0;
-
-                switch (status) {
-                    case Video.PROCESS_STATUS_PENDING:
-                        pending++;
-                        break;
-                    case Video.PROCESS_STATUS_TRANSCODING:
-                        transcoding++;
-                        break;
-                    case Video.PROCESS_STATUS_TRANSCODE_SUCCESS:
-                        transcoding++;
-                        break;
-                    case Video.PROCESS_STATUS_AUDIO_EXTRACTING:
-                        audioExtracting++;
-                        break;
-                    case Video.PROCESS_STATUS_AUDIO_SUCCESS:
-                        audioExtracting++;
-                        break;
-                    case Video.PROCESS_STATUS_SUBTITLE_GENERATING:
-                        subtitleGenerating++;
-                        break;
-                    case Video.PROCESS_STATUS_SUBTITLE_SUCCESS:
-                        subtitleGenerating++;
-                        break;
-                    case Video.PROCESS_STATUS_AI_SUMMARIZING:
-                        aiSummarizing++;
-                        break;
-                    case Video.PROCESS_STATUS_COMPLETED:
-                        completed++;
-                        break;
-                    case Video.PROCESS_STATUS_TRANSCODE_FAILED:
-                    case Video.PROCESS_STATUS_AUDIO_FAILED:
-                    case Video.PROCESS_STATUS_SUBTITLE_FAILED:
-                    case Video.PROCESS_STATUS_AI_FAILED:
-                        failed++;
-                        break;
-                }
-            }
-
-            stats.put("pending", pending);
-            stats.put("transcoding", transcoding);
-            stats.put("audioExtracting", audioExtracting);
-            stats.put("subtitleGenerating", subtitleGenerating);
-            stats.put("aiSummarizing", aiSummarizing);
-            stats.put("completed", completed);
-            stats.put("failed", failed);
-            stats.put("total", allVideos.size());
-
-            return Result.success("获取成功", stats);
+            return Result.success("获取成功", buildStatistics(videoMapper.selectAll()));
         } catch (Exception e) {
             return Result.error("获取统计数据失败：" + e.getMessage());
         }

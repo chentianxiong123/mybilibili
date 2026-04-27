@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__mcpServers__execute_sql",
+      "Bash(mvn *)"
+    ]
+  }
+}

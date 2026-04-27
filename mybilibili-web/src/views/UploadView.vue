@@ -1,8 +1,9 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { manuscriptApi } from '../api/manuscript.js'
 import { categoryApi } from '../api/index.js'
+import { videoProcessApi } from '../api/videoProcess.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled, Delete, ArrowUp, ArrowDown, VideoPlay, Document, Plus, Loading, CircleCheck } from '@element-plus/icons-vue'
 
@@ -17,6 +18,13 @@ const uploadForm = reactive({
   coverFile: null,
   type: 'original' // original: 自制, repost: 转载
 })
+
+// 处理进度相关状态
+const isProcessing = ref(false)
+const processingProgress = ref(0)
+const processingStatus = ref('')
+const uploadedManuscriptId = ref(null)
+const isProcessingCompleted = ref(false)
 
 // 视频分P列表
 const videoParts = ref([])
@@ -352,12 +360,21 @@ const handleSubmit = () => {
       })
         .then(response => {
           if (response && response.code === 200 && response.data) {
-            ElMessage.success('稿件上传成功！经验值+100')
-            // 上传成功后跳转到首页
-            router.push('/')
+            ElMessage.success('稿件上传成功！正在处理视频...')
+            
+            // 保存稿件ID并启动进度模拟
+            uploadedManuscriptId.value = response.data.id || response.data
+            isUploading.value = false
+            isProcessing.value = true
+            processingProgress.value = 0
+            processingStatus.value = '处理中'
+            
+            // 启动进度模拟
+            startProcessingSimulation(uploadedManuscriptId.value)
           } else {
             const errorMessage = response?.message || '稿件上传失败，请检查服务器状态'
             ElMessage.error(errorMessage)
+            isUploading.value = false
           }
         })
         .catch(error => {
@@ -370,8 +387,6 @@ const handleSubmit = () => {
           } else {
             ElMessage.error(`上传失败: ${error.message}`)
           }
-        })
-        .finally(() => {
           isUploading.value = false
           currentUploadingPart.value = ''
         })
@@ -379,6 +394,34 @@ const handleSubmit = () => {
       return false
     }
   })
+}
+
+// 启动处理进度模拟
+const startProcessingSimulation = (manuscriptId) => {
+  videoProcessApi.startProcess(manuscriptId, 'transcode', {
+    onProgress: (progress, info) => {
+      processingProgress.value = progress
+      processingStatus.value = info.status || (progress >= 90 ? '即将完成' : '处理中')
+    },
+    onComplete: () => {
+      processingProgress.value = 100
+      processingStatus.value = '已完成'
+      isProcessingCompleted.value = true
+      ElMessage.success('视频处理完成！')
+    }
+  })
+}
+
+// 查看已上传的稿件
+const viewManuscript = () => {
+  if (uploadedManuscriptId.value) {
+    router.push(`/manuscript/${uploadedManuscriptId.value}`)
+  }
+}
+
+// 返回创作中心
+const goToCreateCenter = () => {
+  router.push('/create-center')
 }
 
 // 存草稿
@@ -415,6 +458,13 @@ const triggerVideoUpload = () => {
 // 页面加载时获取分类列表
 onMounted(() => {
   loadCategories()
+})
+
+// 组件卸载时清理进度模拟器
+onUnmounted(() => {
+  if (uploadedManuscriptId.value) {
+    videoProcessApi.removeProcess(uploadedManuscriptId.value)
+  }
 })
 </script>
 
@@ -709,6 +759,47 @@ onMounted(() => {
           正在处理视频，请稍候...
         </div>
       </div>
+    </el-dialog>
+
+    <!-- 处理进度对话框 -->
+    <el-dialog
+      v-model="isProcessing"
+      title="视频处理进度"
+      width="500px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :show-close="false"
+      class="processing-progress-dialog"
+    >
+      <div class="progress-content">
+        <el-progress
+          :percentage="processingProgress"
+          :stroke-width="20"
+          :status="isProcessingCompleted ? 'success' : ''"
+          class="upload-progress-bar"
+        ></el-progress>
+        <div class="upload-status">
+          <el-icon v-if="!isProcessingCompleted" class="status-icon loading"><Loading /></el-icon>
+          <el-icon v-else class="status-icon success"><CircleCheck /></el-icon>
+          <span class="status-text">
+            {{ isProcessingCompleted ? '处理完成！' : processingStatus }}
+          </span>
+        </div>
+        <div v-if="processingProgress >= 90 && !isProcessingCompleted" class="upload-hint">
+          即将完成，请稍候...
+        </div>
+      </div>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button v-if="isProcessingCompleted" type="success" @click="viewManuscript">
+            查看稿件
+          </el-button>
+          <el-button v-if="isProcessingCompleted" @click="goToCreateCenter">
+            返回创作中心
+          </el-button>
+          <span v-else class="processing-hint">视频正在处理中，请耐心等待...</span>
+        </div>
+      </template>
     </el-dialog>
   </div>
 </template>
@@ -1146,6 +1237,19 @@ onMounted(() => {
 
 .upload-hint {
   text-align: center;
+  font-size: 13px;
+  color: #909399;
+}
+
+/* 处理进度对话框样式 */
+.processing-progress-dialog .dialog-footer {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  align-items: center;
+}
+
+.processing-hint {
   font-size: 13px;
   color: #909399;
 }

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import Hls from 'hls.js'
 import { useRoute, useRouter } from 'vue-router'
 import Artplayer from 'artplayer'
 import ArtplayerPluginDanmuku from 'artplayer-plugin-danmuku'
@@ -1574,7 +1575,7 @@ onMounted(async () => {
     muted: false,
     autoplay: false,
     pip: true,
-    autoSize: true,
+    autoSize: false,
     autoMini: true,
     screenshot: false,
     setting: true,
@@ -1588,6 +1589,18 @@ onMounted(async () => {
     quality: qualityOptions,
     theme: '#23ade5',
     lang: 'zh-cn',
+    type: defaultUrl.endsWith('.m3u8') ? 'm3u8' : 'mp4',
+    customType: {
+      m3u8: function(video, url, art) {
+        if (video.canPlayType('application/x-mpegURL')) {
+          video.src = url
+        } else {
+          const hls = new Hls()
+          hls.loadSource(url)
+          hls.attachMedia(video)
+        }
+      }
+    },
     plugins: [
       ArtplayerPluginDanmuku({
         danmuku: danmuList.value,

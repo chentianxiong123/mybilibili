@@ -24,6 +24,7 @@ public class JwtFilter extends OncePerRequestFilter {
         System.out.println("Request path: " + path);
         // 静态资源和公开接口不需要认证
         if (path.contains("/user/register") || path.contains("/user/login") ||
+            path.contains("/user/add-experience") ||
             path.contains("/admin/register") || path.contains("/admin/login") ||
             path.contains("/user/") && path.matches(".*/user/\\d+(/following|/followers)?$") ||
             path.contains("/swagger") || path.contains("/v3/api-docs") ||

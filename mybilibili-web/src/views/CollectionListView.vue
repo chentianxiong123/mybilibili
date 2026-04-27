@@ -36,8 +36,6 @@ const creating = ref(false)
 const newCollection = ref({
   name: '',
   description: '',
-  cover: null,
-  coverUrl: '',
   isPublic: true,
   manuscriptIds: []
 })
@@ -104,8 +102,6 @@ const openCreateDialog = async () => {
   newCollection.value = {
     name: '',
     description: '',
-    cover: null,
-    coverUrl: '',
     isPublic: true,
     manuscriptIds: []
   }
@@ -142,26 +138,6 @@ const handleSearchManuscripts = () => {
   )
 }
 
-// 处理封面上传
-const handleCoverChange = (file) => {
-  const isJPG = file.raw.type === 'image/jpeg'
-  const isPNG = file.raw.type === 'image/png'
-  const isLt2M = file.raw.size / 1024 / 1024 < 2
-
-  if (!isJPG && !isPNG) {
-    ElMessage.error('封面图片只能是 JPG 或 PNG 格式!')
-    return false
-  }
-  if (!isLt2M) {
-    ElMessage.error('封面图片大小不能超过 2MB!')
-    return false
-  }
-
-  newCollection.value.cover = file.raw
-  newCollection.value.coverUrl = URL.createObjectURL(file.raw)
-  return false
-}
-
 // 创建合集
 const handleCreateCollection = async () => {
   console.log('【创建合集】newCollection:', newCollection.value)
@@ -176,7 +152,6 @@ const handleCreateCollection = async () => {
     const response = await collectionApi.createCollection({
       name: newCollection.value.name,
       description: newCollection.value.description,
-      cover: newCollection.value.cover,
       isPublic: newCollection.value.isPublic,
       manuscriptIds: newCollection.value.manuscriptIds
     })
@@ -447,27 +422,6 @@ onMounted(() => {
       destroy-on-close
     >
       <el-form label-position="top">
-        <!-- 封面上传 -->
-        <el-form-item label="合集封面">
-          <el-upload
-            class="cover-uploader"
-            action="#"
-            :auto-upload="false"
-            :show-file-list="false"
-            :on-change="handleCoverChange"
-            accept="image/jpeg,image/png"
-          >
-            <div v-if="newCollection.coverUrl" class="cover-preview">
-              <img :src="newCollection.coverUrl" />
-            </div>
-            <div v-else class="cover-placeholder">
-              <el-icon :size="32"><Plus /></el-icon>
-              <span>点击上传封面</span>
-              <span class="cover-hint">支持 JPG、PNG 格式，最大 2MB</span>
-            </div>
-          </el-upload>
-        </el-form-item>
-
         <!-- 合集名称 -->
         <el-form-item label="合集名称" required>
           <el-input
@@ -910,49 +864,6 @@ onMounted(() => {
   padding: 20px;
   background-color: #fff;
   border-radius: 8px;
-}
-
-/* 封面上传 */
-.cover-uploader {
-  width: 100%;
-}
-
-.cover-preview {
-  width: 100%;
-  height: 160px;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.cover-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.cover-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 160px;
-  border: 2px dashed #dcdfe6;
-  border-radius: 8px;
-  color: #909399;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.cover-placeholder:hover {
-  border-color: #00aeec;
-  color: #00aeec;
-}
-
-.cover-hint {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 8px;
 }
 
 /* 稿件选择器 */

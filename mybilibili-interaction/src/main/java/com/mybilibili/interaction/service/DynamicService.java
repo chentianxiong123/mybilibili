@@ -10,6 +10,7 @@ public interface DynamicService {
     Result<List<DynamicVO>> getFollowingDynamicList(Integer userId, Integer page, Integer limit, Integer filterUserId);
     Result<List<DynamicVO>> getUserDynamicList(Integer userId, Integer page, Integer limit, Integer currentUserId);
     Result<DynamicVO> getDynamicById(Integer dynamicId, Integer currentUserId);
+    Result<DynamicVO> publishDynamic(Integer userId, String content, Integer refVideoId, List<String> imageUrls);
     Result<?> deleteDynamic(Integer userId, Integer dynamicId);
     Result<?> likeDynamic(Integer userId, Integer dynamicId);
     Result<?> unlikeDynamic(Integer userId, Integer dynamicId);

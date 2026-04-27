@@ -193,3 +193,16 @@ CREATE TABLE IF NOT EXISTS favorite_videos (
     INDEX idx_manuscript_id (manuscript_id),
     UNIQUE KEY uk_folder_manuscript (folder_id, manuscript_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS prohibited_words (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    word VARCHAR(255) NOT NULL,
+    match_type VARCHAR(20) DEFAULT 'CONTAINS',
+    category VARCHAR(50),
+    is_enabled INT DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_word (word),
+    INDEX idx_category (category),
+    INDEX idx_is_enabled (is_enabled)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

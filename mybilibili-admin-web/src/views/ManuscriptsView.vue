@@ -7,6 +7,7 @@ import {
   getReadyManuscripts,
   getAllManuscripts,
   approveManuscript,
+  approveWithProcess,
   rejectManuscript,
   publishManuscript,
   unpublishManuscript,
@@ -99,18 +100,26 @@ const handleReset = () => {
 
 const handleApprove = async (row) => {
   try {
-    await ElMessageBox.confirm('确定审核通过该稿件吗？', '审核通过', { type: 'warning' })
-    const res = await approveManuscript(row.id, 1, '')
+    await ElMessageBox.confirm(
+      '确定审核通过该稿件吗？审核通过后将自动处理视频。',
+      '审核通过',
+      {
+        type: 'warning',
+        confirmButtonText: '确定',
+        cancelButtonText: '取消'
+      }
+    )
+    const res = await approveWithProcess(row.id, true)
     if (res.code === 200 || res.success) {
-      ElMessage.success('审核通过')
+      ElMessage.success('审核通过，已开始处理视频')
       loadManuscripts()
       loadStatistics()
     } else {
       ElMessage.error(res.message || '审核通过失败')
     }
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('审核通过异常:', error)
+  } catch (action) {
+    if (action !== 'cancel') {
+      console.error('审核通过异常:', action)
     }
   }
 }
@@ -529,7 +538,7 @@ onMounted(() => {
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="转码状态" width="120">
+      <el-table-column label="处理状态" width="120">
         <template #default="{ row }">
           <el-tag :type="getTranscodeStatus(row).type" size="small">
             {{ getTranscodeStatus(row).text }}

@@ -186,13 +186,25 @@ onMounted(() => {
           <el-icon :size="24" color="#67c23a"><VideoCamera /></el-icon>
           <span>视频处理</span>
         </div>
-        <div class="action-item" @click="$router.push('/comments')">
-          <el-icon :size="24" color="#e6a23c"><ChatDotRound /></el-icon>
-          <span>评论管理</span>
-        </div>
         <div class="action-item" @click="$router.push('/categories')">
           <el-icon :size="24" color="#f56c6c"><Folder /></el-icon>
           <span>分类管理</span>
+        </div>
+        <div class="action-item" @click="$router.push('/users')">
+          <el-icon :size="24" color="#909399"><User /></el-icon>
+          <span>用户管理</span>
+        </div>
+        <div class="action-item" @click="$router.push('/prohibited-words')">
+          <el-icon :size="24" color="#e6a23c"><Warning /></el-icon>
+          <span>违禁词管理</span>
+        </div>
+        <div class="action-item" @click="$router.push('/content-review')">
+          <el-icon :size="24" color="#f56c6c"><DocumentChecked /></el-icon>
+          <span>内容审核</span>
+        </div>
+        <div class="action-item" @click="$router.push('/banner-images')">
+          <el-icon :size="24" color="#67c23a"><Picture /></el-icon>
+          <span>图片管理</span>
         </div>
       </div>
     </div>

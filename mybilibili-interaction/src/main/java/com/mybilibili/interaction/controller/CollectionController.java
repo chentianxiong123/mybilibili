@@ -10,14 +10,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -27,12 +22,9 @@ public class CollectionController {
 
     @Autowired
     private CollectionService collectionService;
-    
+
     @Autowired
     private ObjectMapper objectMapper;
-    
-    @Value("${project.folder:./uploads}")
-    private String projectFolder;
 
     @GetMapping("/user/{userId}")
     @Operation(summary = "获取用户的合集列表", description = "获取指定用户创建的所有合集")
@@ -79,7 +71,6 @@ public class CollectionController {
     public Result<ManuscriptCollectionVO> createCollection(
             @Parameter(description = "合集名称") @RequestParam String name,
             @Parameter(description = "合集描述") @RequestParam(required = false) String description,
-            @Parameter(description = "封面文件") @RequestParam(required = false) MultipartFile cover,
             @Parameter(description = "是否公开") @RequestParam(required = false) String isPublic,
             @Parameter(description = "稿件ID列表(JSON字符串)") @RequestParam(required = false) String manuscriptIds,
             @Parameter(description = "用户ID") @RequestHeader(value = "X-User-Id", required = false) Integer userId) {
@@ -90,10 +81,10 @@ public class CollectionController {
             if (name == null || name.trim().isEmpty()) {
                 return Result.error("请输入合集名称");
             }
-            
+
             boolean publicStatus = !"false".equals(isPublic);
             log.info("接收到的参数 - name: {}, isPublic: {}, manuscriptIds: {}", name, isPublic, manuscriptIds);
-            
+
             List<Integer> manuscriptIdList = null;
             if (manuscriptIds != null && !manuscriptIds.isEmpty()) {
                 try {
@@ -103,47 +94,9 @@ public class CollectionController {
                     log.error("解析稿件ID列表失败: {}", manuscriptIds, e);
                 }
             }
-            
-            // 处理封面文件上传
-            String coverUrl = null;
-            if (cover != null && !cover.isEmpty()) {
-                try {
-                    // 校验图片类型
-                    String contentType = cover.getContentType();
-                    if (contentType == null || (!contentType.equals("image/jpeg") && !contentType.equals("image/jpg") &&
-                        !contentType.equals("image/png") && !contentType.equals("image/gif") && !contentType.equals("image/webp"))) {
-                        return Result.error("封面图片格式不支持，仅支持 jpg、jpeg、png、gif、webp 格式");
-                    }
-                    
-                    // 生成文件名
-                    String originalFilename = cover.getOriginalFilename();
-                    String extension = originalFilename != null && originalFilename.contains(".") ? 
-                        originalFilename.substring(originalFilename.lastIndexOf(".")) : ".jpg";
-                    String fileName = UUID.randomUUID().toString() + extension;
-                    
-                    // 确保目录存在
-                    String basePath = projectFolder.endsWith("/") ? projectFolder : projectFolder + "/";
-                    String fullPath = basePath + "covers/";
-                    File directory = new File(fullPath);
-                    if (!directory.exists()) {
-                        directory.mkdirs();
-                    }
-                    
-                    // 保存文件
-                    File destFile = new File(fullPath + fileName);
-                    cover.transferTo(destFile);
-                    
-                    // 设置封面URL
-                    coverUrl = "/covers/" + fileName;
-                    log.info("封面文件上传成功: {}, 访问URL: {}", destFile.getAbsolutePath(), coverUrl);
-                } catch (Exception e) {
-                    log.error("封面文件上传失败", e);
-                    return Result.error("封面文件上传失败");
-                }
-            }
-            
+
             Integer status = publicStatus ? 1 : 0;
-            ManuscriptCollectionVO collection = collectionService.createCollection(name, description, userId, status, manuscriptIdList, coverUrl);
+            ManuscriptCollectionVO collection = collectionService.createCollection(name, description, userId, status, manuscriptIdList);
             return Result.success("创建成功", collection);
         } catch (Exception e) {
             log.error("创建合集失败", e);
@@ -157,7 +110,6 @@ public class CollectionController {
             @Parameter(description = "合集ID") @PathVariable Integer collectionId,
             @Parameter(description = "合集名称") @RequestParam(required = false) String name,
             @Parameter(description = "合集描述") @RequestParam(required = false) String description,
-            @Parameter(description = "封面文件") @RequestParam(required = false) MultipartFile cover,
             @Parameter(description = "是否公开") @RequestParam(required = false) Boolean isPublic,
             @Parameter(description = "用户ID") @RequestHeader(value = "X-User-Id", required = false) Integer userId) {
         try {

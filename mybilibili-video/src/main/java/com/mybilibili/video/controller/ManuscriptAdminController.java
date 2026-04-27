@@ -95,6 +95,27 @@ public class ManuscriptAdminController {
         }
     }
 
+    @PostMapping("/{id}/approve-with-process")
+    @Operation(summary = "审核通过（可选自动处理）", description = "审核通过稿件，可选择是否自动处理视频")
+    public Result<Map<String, Object>> approveManuscriptWithProcess(
+            @PathVariable Integer id,
+            @Parameter(description = "是否自动处理视频") @RequestParam(defaultValue = "false") boolean autoProcess,
+            @Parameter(description = "审核员ID") @RequestParam(required = false) Integer reviewerId,
+            @Parameter(description = "审核理由") @RequestParam(required = false) String reason) {
+        
+        boolean success = manuscriptService.approveManuscriptWithProcess(id, reviewerId, reason, autoProcess);
+        
+        if (success) {
+            Map<String, Object> result = new java.util.HashMap<>();
+            result.put("manuscriptId", id);
+            result.put("autoProcess", autoProcess);
+            result.put("message", autoProcess ? "审核通过，已提交全流程处理任务" : "审核通过");
+            return Result.success("审核成功", result);
+        } else {
+            return Result.error("稿件不存在或审核失败");
+        }
+    }
+
     @PostMapping("/reject/{id}")
     @Operation(summary = "审核拒绝", description = "审核拒绝稿件")
     public Result<Void> rejectManuscript(
@@ -207,6 +228,16 @@ public class ManuscriptAdminController {
         } else {
             return Result.error("视频不存在或处理失败");
         }
+    }
+
+    @GetMapping("/video-source/{videoId}")
+    @Operation(summary = "获取视频播放地址", description = "根据视频ID获取视频源地址用于播放")
+    public Result<Map<String, Object>> getVideoSourceUrl(@PathVariable Integer videoId) {
+        Map<String, Object> result = manuscriptService.getVideoSourceUrl(videoId);
+        if (result == null) {
+            return Result.error(404, "视频不存在");
+        }
+        return Result.success("获取成功", result);
     }
 
     @PostMapping("/reset/{videoId}")

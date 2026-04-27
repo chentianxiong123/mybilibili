@@ -118,3 +118,15 @@ redis/data/
 # 临时脚本
 start-nacos.bat
 启动*.bat
+
+# Claude Agent worktrees (massive duplicate directories)
+.claude/worktrees/
+
+# 图片二进制文件 (项目资源除外)
+# favicon.ico 和 vite.svg 等项目资源保留跟踪
+# *.png
+# *.jpg
+# *.jpeg
+# *.gif
+# *.ico
+# *.svg

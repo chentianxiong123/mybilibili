@@ -14,7 +14,6 @@ const menuItems = [
   { path: '/dashboard', icon: 'DataBoard', title: '数据概览' },
   { path: '/users', icon: 'User', title: '用户管理' },
   { path: '/manuscripts', icon: 'Document', title: '稿件管理' },
-  { path: '/comments', icon: 'ChatDotRound', title: '评论管理' },
   { path: '/video-process', icon: 'VideoPlay', title: '视频处理' },
   { path: '/prohibited-words', icon: 'Warning', title: '违禁词管理' },
   { path: '/content-review', icon: 'DocumentChecked', title: '内容审核中心' },

@@ -1,6 +1,7 @@
 package com.mybilibili.interaction.controller;
 
 import com.mybilibili.common.utils.JwtUtils;
+import com.mybilibili.common.utils.FileUploadUtils;
 import com.mybilibili.common.vo.DynamicVO;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.interaction.service.DynamicService;
@@ -9,11 +10,10 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @RestController
 @RequestMapping("/dynamic")
@@ -22,6 +22,9 @@ public class DynamicController {
 
     @Autowired
     private DynamicService dynamicService;
+
+    @Autowired
+    private FileUploadUtils fileUploadUtils;
 
     @GetMapping("/list")
     @Operation(summary = "获取全部动态列表", description = "获取全部动态列表（分页）")
@@ -86,6 +89,33 @@ public class DynamicController {
         try {
             Integer currentUserId = JwtUtils.getUserIdFromRequest(request);
             return dynamicService.getDynamicById(id, currentUserId);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @PostMapping("/publish")
+    @Operation(summary = "发布动态", description = "发布新的动态")
+    @SecurityRequirement(name = "JWT")
+    public Result<DynamicVO> publishDynamic(
+            @RequestParam(required = false) String content,
+            @RequestParam(required = false) Integer refVideoId,
+            @RequestParam(required = false) List<MultipartFile> images,
+            HttpServletRequest request) {
+        try {
+            Integer userId = JwtUtils.getUserIdFromRequest(request);
+
+            List<String> imageUrls = new ArrayList<>();
+            if (images != null && !images.isEmpty()) {
+                for (MultipartFile image : images) {
+                    if (image != null && !image.isEmpty()) {
+                        String url = fileUploadUtils.uploadCover(image);
+                        imageUrls.add(url);
+                    }
+                }
+            }
+
+            return dynamicService.publishDynamic(userId, content, refVideoId, imageUrls);
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }

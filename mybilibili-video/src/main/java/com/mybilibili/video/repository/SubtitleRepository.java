@@ -12,7 +12,9 @@ public interface SubtitleRepository extends MongoRepository<Subtitle, String> {
 
     List<Subtitle> findByVideoId(Integer videoId);
 
-    Optional<Subtitle> findByVideoIdAndLanguage(Integer videoId, String language);
+    Optional<Subtitle> findFirstByVideoIdAndLanguage(Integer videoId, String language);
+
+    List<Subtitle> findAllByVideoIdAndLanguage(Integer videoId, String language);
 
     List<Subtitle> findByVideoIdAndStatus(Integer videoId, Integer status);
 

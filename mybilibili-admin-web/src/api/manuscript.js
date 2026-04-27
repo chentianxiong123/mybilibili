@@ -43,6 +43,14 @@ export const approveManuscript = (manuscriptId, reviewerId, reason) => {
   })
 }
 
+export const approveWithProcess = (manuscriptId, autoProcess = false) => {
+  return request({
+    url: `/manuscript/admin/${manuscriptId}/approve-with-process`,
+    method: 'post',
+    params: { autoProcess }
+  })
+}
+
 export const rejectManuscript = (manuscriptId, reviewerId, reason) => {
   return request({
     url: `/manuscript/admin/reject/${manuscriptId}`,
@@ -89,21 +97,24 @@ export const retryManuscript = (manuscriptId) => {
 export const manualTranscode = (videoId) => {
   return request({
     url: `/manuscript/admin/transcode/${videoId}`,
-    method: 'post'
+    method: 'post',
+    timeout: 300000
   })
 }
 
 export const manualExtractAudio = (videoId) => {
   return request({
     url: `/manuscript/admin/extract-audio/${videoId}`,
-    method: 'post'
+    method: 'post',
+    timeout: 120000
   })
 }
 
 export const manualGenerateSubtitle = (videoId) => {
   return request({
     url: `/manuscript/admin/generate-subtitle/${videoId}`,
-    method: 'post'
+    method: 'post',
+    timeout: 300000
   })
 }
 
@@ -111,7 +122,7 @@ export const manualAiSummary = (videoId) => {
   return request({
     url: `/manuscript/admin/ai-summary/${videoId}`,
     method: 'post',
-    timeout: 120000
+    timeout: 300000
   })
 }
 

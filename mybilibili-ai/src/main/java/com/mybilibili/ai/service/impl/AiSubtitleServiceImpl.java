@@ -2,10 +2,13 @@ package com.mybilibili.ai.service.impl;
 
 import com.mybilibili.ai.config.UploadFilePathConfig;
 import com.mybilibili.ai.config.WhisperConfig;
+import com.mybilibili.ai.mapper.VideoMapper;
 import com.mybilibili.ai.repository.SubtitleRepository;
 import com.mybilibili.ai.service.AiSubtitleService;
 import com.mybilibili.ai.utils.SubtitleTextUtils;
 import com.mybilibili.common.entity.Subtitle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +26,8 @@ import java.util.regex.Pattern;
 @Service
 public class AiSubtitleServiceImpl implements AiSubtitleService {
 
+    private static final Logger log = LoggerFactory.getLogger(AiSubtitleServiceImpl.class);
+
     @Autowired
     private UploadFilePathConfig uploadFilePathConfig;
 
@@ -32,12 +37,20 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
     @Autowired
     private SubtitleRepository subtitleRepository;
 
+    @Autowired
+    private VideoMapper videoMapper;
+
     private static final Pattern TIME_PATTERN = Pattern.compile(
             "(\\d{2}):\\s*(\\d{2}):\\s*(\\d{2})[,.](\\d{3})\\s*-->\\s*(\\d{2}):\\s*(\\d{2}):\\s*(\\d{2})[,.](\\d{3})"
     );
 
     @Override
     public boolean generateSubtitle(Integer manuscriptId, Integer videoId) {
+        return generateSubtitle(manuscriptId, videoId, null);
+    }
+
+    @Override
+    public boolean generateSubtitle(Integer manuscriptId, Integer videoId, ProgressListener progressListener) {
         try {
             String sourceVideoPath = uploadFilePathConfig.getVideoSourcePath(manuscriptId, videoId);
             String audioPath = uploadFilePathConfig.getAudioPath(manuscriptId, videoId);
@@ -46,50 +59,65 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
             uploadFilePathConfig.ensureDirectoryExists(uploadFilePathConfig.getVideoAudioDir(manuscriptId, videoId));
             uploadFilePathConfig.ensureDirectoryExists(subtitleDir);
 
-            if (!extractAudio(sourceVideoPath, audioPath)) {
-                System.err.println("[字幕生成] 音频提取失败");
-                return false;
-            }
+            pushProgress(progressListener, 5, "提取音频中");
 
-            if (!generateSubtitleWithWhisper(audioPath, subtitleDir)) {
-                System.err.println("[字幕生成] Whisper生成字幕失败");
+            if (!extractAudio(sourceVideoPath, audioPath)) {
+                pushProgress(progressListener, 0, "音频提取失败");
                 return false;
             }
+            pushProgress(progressListener, 30, "音频提取完成，开始Whisper识别");
+
+            if (!generateSubtitleWithWhisper(manuscriptId, videoId, audioPath, subtitleDir, progressListener)) {
+                pushProgress(progressListener, 0, "Whisper识别失败");
+                return false;
+            }
+            pushProgress(progressListener, 90, "Whisper识别完成，导入字幕");
 
             String subtitlePath = uploadFilePathConfig.getChineseSubtitlePath(manuscriptId, videoId);
             if (importSystemSubtitle(videoId, subtitlePath)) {
-                System.out.println("[字幕生成] 字幕已存入MongoDB");
+                pushProgress(progressListener, 100, "字幕生成完成");
                 return true;
             } else {
-                System.err.println("[字幕生成] 字幕存入MongoDB失败");
+                pushProgress(progressListener, 0, "字幕导入失败");
                 return false;
             }
 
         } catch (Exception e) {
-            System.err.println("[字幕生成] 生成字幕异常: " + e.getMessage());
-            e.printStackTrace();
+            pushProgress(progressListener, 0, "字幕生成异常");
             return false;
+        }
+    }
+
+    private void pushProgress(ProgressListener listener, int percent, String stageText) {
+        if (listener != null) {
+            listener.onProgress(percent, stageText);
         }
     }
 
     private boolean importSystemSubtitle(Integer videoId, String subtitlePath) {
         try {
+            log.info("[字幕导入] 开始导入, videoId={}, subtitlePath={}", videoId, subtitlePath);
             java.io.File subtitleFile = new java.io.File(subtitlePath);
             if (!subtitleFile.exists()) {
-                System.err.println("[MongoDB] 字幕文件不存在: " + subtitlePath);
+                log.error("[字幕导入] 字幕文件不存在: {}", subtitlePath);
                 return false;
             }
 
             String srtContent = new String(Files.readAllBytes(Paths.get(subtitlePath)), StandardCharsets.UTF_8);
-            System.out.println("[MongoDB] SRT文件内容长度: " + srtContent.length());
-            System.out.println("[MongoDB] SRT文件前500字符: " + srtContent.substring(0, Math.min(500, srtContent.length())));
-            
+            log.info("[字幕导入] 读取字幕文件成功, 长度={}", srtContent.length());
+
             List<Subtitle.SubtitleItem> items = parseSrtContent(srtContent);
-            System.out.println("[MongoDB] 解析后字幕条数: " + items.size());
-            
+            log.info("[字幕导入] 解析字幕条目, count={}", items.size());
+
             if (items.isEmpty()) {
-                System.err.println("[MongoDB] 警告: 解析出的字幕条数为0!");
+                log.error("[字幕导入] 字幕内容为空");
                 return false;
+            }
+
+            List<Subtitle> existing = subtitleRepository.findAllByVideoIdAndLanguage(videoId, "zh-CN");
+            if (existing != null && !existing.isEmpty()) {
+                log.info("[字幕导入] 删除旧字幕记录, count={}", existing.size());
+                subtitleRepository.deleteAll(existing);
             }
 
             Subtitle subtitle = new Subtitle();
@@ -103,13 +131,13 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
             subtitle.setStatus(3);
             subtitle.setUploadTime(new Date());
 
+            log.info("[字幕导入] 保存字幕到MongoDB, videoId={}", videoId);
             subtitleRepository.save(subtitle);
-            System.out.println("[MongoDB] 字幕保存成功，videoId: " + videoId);
+            log.info("[字幕导入] 保存成功");
             return true;
 
         } catch (Exception e) {
-            System.err.println("[MongoDB] 保存字幕失败: " + e.getMessage());
-            e.printStackTrace();
+            log.error("[字幕导入] 异常: {}", e.getMessage(), e);
             return false;
         }
     }
@@ -117,20 +145,16 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
     private List<Subtitle.SubtitleItem> parseSrtContent(String srtContent) {
         List<Subtitle.SubtitleItem> items = new ArrayList<>();
         if (srtContent == null || srtContent.isEmpty()) {
-            System.err.println("[解析SRT] SRT内容为空");
             return items;
         }
 
         srtContent = srtContent.replace("\r\n", "\n").replace("\r", "\n");
         String[] blocks = srtContent.split("\n\n+");
-        System.out.println("[解析SRT] 分割后的块数: " + blocks.length);
-        
+
         for (int blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
             String block = blocks[blockIndex];
             String[] lines = block.split("\n");
-            System.out.println("[解析SRT] 块" + blockIndex + " 行数: " + lines.length);
             if (lines.length < 3) {
-                System.out.println("[解析SRT] 块" + blockIndex + " 行数不足3，跳过");
                 continue;
             }
 
@@ -138,11 +162,9 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
                 Subtitle.SubtitleItem item = new Subtitle.SubtitleItem();
 
                 String indexLine = lines[0].trim();
-                System.out.println("[解析SRT] 块" + blockIndex + " index: " + indexLine);
                 item.setIndex(Integer.parseInt(indexLine));
 
                 String timeLine = lines[1].trim();
-                System.out.println("[解析SRT] 块" + blockIndex + " 时间行: " + timeLine);
                 Matcher matcher = TIME_PATTERN.matcher(timeLine);
                 if (matcher.find()) {
                     double startTime = parseTimeToSeconds(
@@ -153,11 +175,8 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
                         matcher.group(5), matcher.group(6),
                         matcher.group(7), matcher.group(8)
                     );
-                    System.out.println("[解析SRT] 块" + blockIndex + " 时间: " + startTime + " -> " + endTime);
                     item.setStartTime(startTime);
                     item.setEndTime(endTime);
-                } else {
-                    System.out.println("[解析SRT] 块" + blockIndex + " 时间行匹配失败");
                 }
 
                 StringBuilder textBuilder = new StringBuilder();
@@ -171,30 +190,25 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
                     }
                 }
                 item.setText(textBuilder.toString());
-                System.out.println("[解析SRT] 块" + blockIndex + " 文本: " + textBuilder.toString().substring(0, Math.min(50, textBuilder.length())));
-
                 items.add(item);
             } catch (Exception e) {
-                System.err.println("[解析SRT] 块" + blockIndex + " 解析失败: " + e.getMessage());
+                // skip
             }
         }
-
         return items;
     }
 
-    private double parseTimeToSeconds(String hours, String minutes, String seconds, String millis) {
-        int h = Integer.parseInt(hours);
-        int m = Integer.parseInt(minutes);
-        int s = Integer.parseInt(seconds);
-        int ms = Integer.parseInt(millis);
-        return h * 3600 + m * 60 + s + ms / 1000.0;
+    private double parseTimeToSeconds(String hour, String minute, String second, String millis) {
+        return Double.parseDouble(hour) * 3600 +
+               Double.parseDouble(minute) * 60 +
+               Double.parseDouble(second) +
+               Double.parseDouble(millis) / 1000.0;
     }
 
     private boolean extractAudio(String videoPath, String audioPath) {
         try {
             java.io.File videoFile = new java.io.File(videoPath);
             if (!videoFile.exists()) {
-                System.err.println("[音频提取] 源视频文件不存在: " + videoPath);
                 return false;
             }
 
@@ -221,28 +235,20 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    System.out.println("[ffmpeg] " + line);
+                    // silent
                 }
             }
 
             int exitCode = process.waitFor();
-            System.out.println("[音频提取] 退出码: " + exitCode);
-
             return exitCode == 0;
 
         } catch (Exception e) {
-            System.err.println("[音频提取] 异常: " + e.getMessage());
-            e.printStackTrace();
             return false;
         }
     }
 
-    private boolean generateSubtitleWithWhisper(String audioPath, String outputDir) {
+    private boolean generateSubtitleWithWhisper(Integer manuscriptId, Integer videoId, String audioPath, String outputDir, ProgressListener progressListener) {
         try {
-            System.out.println("[Whisper] 开始生成字幕...");
-            System.out.println("[Whisper] 音频: " + audioPath);
-            System.out.println("[Whisper] 输出目录: " + outputDir);
-
             String[] cmd = {
                     whisperConfig.getCliPath(),
                     "-m", whisperConfig.getModelPath(),
@@ -254,27 +260,37 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
                     "-pp"
             };
 
+            log.info("[Whisper] 开始识别, audioPath={}, outputDir={}", audioPath, outputDir);
+            log.info("[Whisper] 命令: {}", String.join(" ", cmd));
+
             ProcessBuilder pb = new ProcessBuilder(cmd);
             pb.directory(new java.io.File(outputDir));
             pb.redirectErrorStream(true);
 
             Process process = pb.start();
 
+            long startTime = System.currentTimeMillis();
+            int lastPushedPercent = 30;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    System.out.println("[Whisper] " + line);
+                    log.info("[Whisper] {}", line);
+                    long elapsed = System.currentTimeMillis() - startTime;
+                    // Map elapsed time to 30-90 range (the Whisper portion of overall progress)
+                    int percent = 30 + (int) Math.min(59, elapsed / 3000);
+                    if (percent > lastPushedPercent) {
+                        pushProgress(progressListener, percent, "Whisper识别中 " + (percent - 30) * 100 / 60 + "%");
+                        lastPushedPercent = percent;
+                    }
                 }
             }
 
             int exitCode = process.waitFor();
-            System.out.println("[Whisper] 退出码: " + exitCode);
-
+            log.info("[Whisper] 完成, exitCode={}", exitCode);
             return exitCode == 0;
 
         } catch (Exception e) {
-            System.err.println("[Whisper] 生成字幕异常: " + e.getMessage());
-            e.printStackTrace();
+            log.error("[Whisper] 异常: {}", e.getMessage(), e);
             return false;
         }
     }

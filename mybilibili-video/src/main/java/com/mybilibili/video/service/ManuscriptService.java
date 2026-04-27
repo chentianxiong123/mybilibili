@@ -29,6 +29,7 @@ public interface ManuscriptService {
     List<ManuscriptVO> getAllManuscripts();
     Map<String, Object> getManuscriptDetail(Integer manuscriptId);
     boolean approveManuscript(Integer manuscriptId, Integer reviewerId, String reason);
+    boolean approveManuscriptWithProcess(Integer manuscriptId, Integer reviewerId, String reason, boolean autoProcess);
     boolean rejectManuscript(Integer manuscriptId, Integer reviewerId, String reason);
     boolean publishManuscript(Integer manuscriptId);
     boolean unpublishManuscript(Integer manuscriptId);

@@ -299,9 +299,23 @@
               <el-table :data="articles" stripe style="width: 100%">
                 <el-table-column prop="id" label="稿件ID" width="120"></el-table-column>
                 <el-table-column prop="title" label="标题" min-width="300"></el-table-column>
-                <el-table-column prop="status" label="状态" width="120">
+                <el-table-column prop="status" label="状态" width="180">
                   <template #default="scope">
+                    <!-- 进行中状态显示进度条 -->
+                    <div v-if="scope.row.status === 0 || scope.row.status === 1" class="progress-cell">
+                      <el-progress 
+                        :percentage="articleProgress[scope.row.id] || 0" 
+                        :status="articleProgressStatus[scope.row.id] === 'completed' ? 'success' : ''"
+                        :stroke-width="6"
+                        :show-text="true"
+                      />
+                      <span class="progress-text">
+                        {{ articleProgressStatus[scope.row.id] === 'completed' ? '已完成' : (articleProgress[scope.row.id] >= 90 ? '即将完成' : '处理中') }}
+                      </span>
+                    </div>
+                    <!-- 其他状态显示标签 -->
                     <el-tag 
+                      v-else
                       :type="getArticleStatusType(scope.row.status)" 
                       size="small"
                     >
@@ -318,8 +332,30 @@
                 </el-table-column>
                 <el-table-column label="操作" width="200" fixed="right">
                   <template #default="scope">
+                    <!-- 进行中状态 - 显示进度完成后的查看按钮 -->
+                    <template v-if="scope.row.status === 0 || scope.row.status === 1">
+                      <el-button 
+                        v-if="articleProgressStatus[scope.row.id] === 'completed'" 
+                        type="success" 
+                        size="small"
+                        @click="router.push(`/manuscript/${scope.row.id}`)"
+                      >
+                        查看
+                      </el-button>
+                      <el-button 
+                        v-else 
+                        type="info" 
+                        size="small"
+                        disabled
+                      >
+                        处理中...
+                      </el-button>
+                    </template>
+                    <!-- 已发布状态 -->
                     <el-button v-if="scope.row.status === 3" type="warning" size="small" @click="unpublishArticle(scope.row.id)">下架</el-button>
+                    <!-- 已下架状态 -->
                     <el-button v-if="scope.row.status === -1" type="success" size="small" @click="publishArticle(scope.row.id)">上架</el-button>
+                    <!-- 删除按钮 -->
                     <el-button type="danger" size="small" @click="deleteArticle(scope.row.id)">删除</el-button>
                   </template>
                 </el-table-column>
@@ -1085,14 +1121,9 @@
             <div class="comment-management">
               <!-- 主标签页和搜索框 -->
               <div class="main-tabs-with-search">
-                <!-- 主标签页：用户可见评论、待精选评论 -->
-                <div class="main-tabs">
-                  <el-radio-group v-model="activeCommentMainTab" size="large">
-                    <el-radio-button value="visible">用户可见评论</el-radio-button>
-                    <el-radio-button value="pending">待精选评论</el-radio-button>
-                  </el-radio-group>
-                </div>
-                
+                <!-- 视频评论蓝色字样 -->
+                <div class="video-comment-label">视频评论</div>
+
                 <!-- 搜索框 -->
                 <div class="main-search">
                   <el-input
@@ -1111,9 +1142,6 @@
               
               <!-- 搜索和过滤区域 -->
               <div class="comment-filter-bar">
-                <!-- 视频评论蓝色字样 -->
-                <div class="video-comment-label">视频评论</div>
-                
                 <div class="left-section">
                   <!-- 子标签页：视频评论、专栏评论、音频评论 -->
                   <div class="sub-tabs">
@@ -1151,7 +1179,6 @@
               <div class="comment-actions">
                 <div class="action-buttons">
                   <el-button size="small" plain @click="handleSelectAll(true)">全选</el-button>
-                  <el-button size="small" plain>举报</el-button>
                   <el-button size="small" plain @click="handleBatchDelete">删除</el-button>
                 </div>
                 
@@ -1193,18 +1220,12 @@
                     <!-- 评论时间和操作 -->
                     <div class="comment-meta">
                       <span class="comment-time">{{ comment.time }}</span>
-                      <el-button size="small" plain>
-                        <el-icon><StarFilled /></el-icon>
-                      </el-button>
                       <el-button size="small" plain @click="openReplyDialog(comment)">
                         <el-icon><ChatDotRound /></el-icon>回复
                       </el-button>
                       
-                      <!-- 举报和删除按钮（鼠标悬停显示） -->
+                      <!-- 删除按钮（鼠标悬停显示） -->
                       <div class="comment-actions-hover">
-                        <el-button size="small" plain type="warning">
-                          <el-icon><WarningFilled /></el-icon>举报
-                        </el-button>
                         <el-button size="small" plain type="danger">
                           <el-icon><Delete /></el-icon>删除
                         </el-button>
@@ -1224,9 +1245,6 @@
               
               <!-- 分页 -->
               <div class="comment-pagination">
-                <div class="comment-total">
-                  仅展示最近的50000条评论
-                </div>
                 <div class="custom-pagination">
                   <el-button 
                     v-for="(page, index) in visiblePages" 
@@ -1663,9 +1681,10 @@
 
 <script setup>
 import { useRouter, useRoute } from 'vue-router'
-import { ref, reactive, watch, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { creatorApi, manuscriptApi, collectionApi, followApi, statsApi } from '@/api/creator'
+import { videoProcessApi } from '@/api/videoProcess'
 import { useUserStore } from '@/stores/user'
 import * as echarts from 'echarts'
 import {
@@ -2000,6 +2019,10 @@ const approvedCount = ref(0)
 const rejectedCount = ref(0)
 const processingCount = ref(0)
 
+// 进度模拟相关状态
+const articleProgress = ref({})  // 存储每个稿件的进度 { [id]: progress }
+const articleProgressStatus = ref({})  // 存储每个稿件的进度状态 { [id]: 'running' | 'completed' }
+
 // 分页相关状态
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -2024,6 +2047,9 @@ const fetchArticles = async () => {
       articles.value = response.data.list || []
       totalArticles.value = response.data.total || 0
       console.log('稿件列表:', articles.value)
+      
+      // 为进行中的稿件启动进度模拟
+      startProgressSimulation()
     }
   } catch (error) {
     console.error('获取稿件列表失败:', error)
@@ -2031,6 +2057,38 @@ const fetchArticles = async () => {
   } finally {
     articlesLoading.value = false
   }
+}
+
+// 启动进度模拟
+const startProgressSimulation = () => {
+  articles.value.forEach(article => {
+    // 只为进行中状态的稿件启动进度模拟 (status: 0 或 1)
+    if ((article.status === 0 || article.status === 1) && !videoProcessApi.getStatus(article.id)) {
+      // 根据稿件类型选择任务类型
+      const taskType = article.hasSubtitle ? 'transcode' : 'transcode'
+      
+      videoProcessApi.startProcess(article.id, taskType, {
+        onProgress: (progress, info) => {
+          articleProgress.value[article.id] = progress
+          articleProgressStatus.value[article.id] = info.status
+        },
+        onComplete: () => {
+          articleProgressStatus.value[article.id] = 'completed'
+          // 刷新稿件列表
+          fetchManuscriptStats()
+        }
+      })
+    }
+  })
+}
+
+// 停止所有进度模拟
+const stopAllProgressSimulation = () => {
+  articles.value.forEach(article => {
+    if (videoProcessApi.getStatus(article.id)) {
+      videoProcessApi.removeProcess(article.id)
+    }
+  })
 }
 
 // 获取稿件统计
@@ -3586,6 +3644,12 @@ onMounted(() => {
   }
 })
 
+// 组件卸载时清理进度模拟器
+onUnmounted(() => {
+  stopAllProgressSimulation()
+  videoProcessApi.clear()
+})
+
 watch(currentActive, (newVal) => {
   if (newVal === 'home') {
     loadHomeData()
@@ -4738,6 +4802,23 @@ const searchDanmu = () => {
 /* 视频稿件列表 */
 .article-list {
   margin-bottom: 20px;
+}
+
+/* 进度条单元格样式 */
+.progress-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+
+.progress-cell .el-progress {
+  width: 100%;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #909399;
 }
 
 /* 表格样式调整 */

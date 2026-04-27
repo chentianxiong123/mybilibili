@@ -1,6 +1,7 @@
 package com.mybilibili.search.controller;
 
-import com.mybilibili.common.document.ManuscriptDocument;
+import com.mybilibili.search.document.ManuscriptDocument;
+import com.mybilibili.search.service.ManuscriptIndexService;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.search.service.VideoSearchService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -8,14 +9,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
 import org.springframework.data.elasticsearch.core.IndexOperations;
-import org.springframework.data.elasticsearch.core.document.Document;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.data.elasticsearch.core.query.Query;
-import org.springframework.data.elasticsearch.core.query.UpdateQuery;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -28,6 +26,9 @@ public class IndexAdminController {
 
     @Autowired
     private ElasticsearchRestTemplate elasticsearchTemplate;
+
+    @Autowired
+    private ManuscriptIndexService manuscriptIndexService;
 
     @GetMapping("/status")
     @Operation(summary = "获取索引状态", description = "获取当前索引的文档数量、索引名称、健康状态")
@@ -64,14 +65,14 @@ public class IndexAdminController {
     @Operation(summary = "批量索引稿件", description = "将所有已上架稿件批量索引到 Elasticsearch")
     public Result<Map<String, Object>> bulkIndex() {
         Map<String, Object> result = new HashMap<>();
-        
+
         try {
-            // 这里应该调用视频服务获取所有已上架稿件，然后索引到 ES
-            // 由于跨服务调用，这里简化处理，实际应该通过 Feign 调用 video 服务
+            int count = manuscriptIndexService.bulkIndex();
+
             result.put("status", "success");
-            result.put("message", "批量索引已启动，将在后台执行");
-            result.put("indexedCount", 0); // 实际应该返回索引的文档数量
-            
+            result.put("message", "批量索引完成");
+            result.put("indexedCount", count);
+
             return Result.success("批量索引成功", result);
         } catch (Exception e) {
             return Result.error("批量索引失败：" + e.getMessage());
@@ -84,18 +85,11 @@ public class IndexAdminController {
         Map<String, Object> result = new HashMap<>();
 
         try {
-            IndexOperations indexOps = elasticsearchTemplate.indexOps(ManuscriptDocument.class);
-
-            if (indexOps.exists()) {
-                indexOps.delete();
-            }
-
-            indexOps.create();
-            indexOps.putMapping();
+            int count = manuscriptIndexService.rebuildIndex();
 
             result.put("status", "success");
-            result.put("message", "索引重建成功");
-            result.put("indexedCount", 0);
+            result.put("message", "索引重建完成");
+            result.put("indexedCount", count);
 
             return Result.success("重建索引成功", result);
         } catch (Exception e) {
@@ -122,16 +116,19 @@ public class IndexAdminController {
     }
 
     @PostMapping("/incremental")
-    @Operation(summary = "增量索引", description = "索引最近指定分钟数内上架的稿件")
-    public Result<Map<String, Object>> incrementalIndex(
-            @RequestParam(defaultValue = "60") Integer minutes) {
+    @Operation(summary = "增量索引", description = "索引所有已上架但尚未被索引的稿件")
+    public Result<Map<String, Object>> incrementalIndex() {
         Map<String, Object> result = new HashMap<>();
-        
+
         try {
+            int count = manuscriptIndexService.incrementalIndex();
+
             result.put("status", "success");
-            result.put("message", "增量索引已启动，将索引最近 " + minutes + " 分钟内上架的稿件");
-            result.put("indexedCount", 0);
-            
+            result.put("message", count > 0
+                    ? "增量索引完成，新增 " + count + " 条稿件"
+                    : "增量索引完成，没有缺失的稿件");
+            result.put("indexedCount", count);
+
             return Result.success("增量索引成功", result);
         } catch (Exception e) {
             return Result.error("增量索引失败：" + e.getMessage());

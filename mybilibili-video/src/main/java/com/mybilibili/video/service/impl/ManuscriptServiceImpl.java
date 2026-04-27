@@ -15,6 +15,7 @@ import com.mybilibili.mq.VideoMQProducer;
 import com.mybilibili.mq.VideoProcessMessage;
 import com.mybilibili.video.feign.MessageClient;
 import com.mybilibili.video.feign.UserClient;
+import com.mybilibili.video.feign.VideoPipelineClient;
 import com.mybilibili.video.mapper.CategoryMapper;
 import com.mybilibili.video.mapper.ManuscriptMapper;
 import com.mybilibili.video.mapper.TagMapper;
@@ -64,6 +65,9 @@ public class ManuscriptServiceImpl implements ManuscriptService {
 
     @Autowired
     private MessageClient messageClient;
+
+    @Autowired
+    private VideoPipelineClient videoPipelineClient;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -564,6 +568,36 @@ public class ManuscriptServiceImpl implements ManuscriptService {
             return true;
         }
         return false;
+    }
+
+    @Override
+    public boolean approveManuscriptWithProcess(Integer manuscriptId, Integer reviewerId, String reason, boolean autoProcess) {
+        Manuscript manuscript = manuscriptMapper.selectById(manuscriptId);
+        if (manuscript == null) {
+            return false;
+        }
+        
+        manuscript.setStatus(Manuscript.STATUS_PROCESSING);
+        manuscript.setReviewStatus(Manuscript.REVIEW_STATUS_APPROVED);
+        manuscript.setReviewTime(new Date());
+        manuscript.setReviewerId(reviewerId);
+        manuscript.setReviewReason(reason);
+
+        if (manuscriptMapper.updateById(manuscript) <= 0) {
+            return false;
+        }
+        
+        List<Video> videos = videoMapper.selectByManuscriptId(manuscriptId);
+        
+        for (Video video : videos) {
+            try {
+                videoPipelineClient.submitPipelineTask(manuscriptId, video.getId(), manuscript.getUserId());
+                log.info("审核通过并提交全流程任务，manuscriptId: {}, videoId: {}", manuscriptId, video.getId());
+            } catch (Exception e) {
+                log.error("提交全流程任务失败，manuscriptId: {}, videoId: {}", manuscriptId, video.getId(), e);
+            }
+        }
+        return true;
     }
 
     @Override

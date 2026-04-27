@@ -86,7 +86,7 @@ public class CollectionServiceImpl implements CollectionService {
         collection.setCoverUrl(coverUrl);
         collectionMapper.insert(collection);
         log.info("合集插入成功 - id: {}", collection.getId());
-        
+
         if (manuscriptIds != null && !manuscriptIds.isEmpty()) {
             log.info("开始插入 {} 个稿件关联", manuscriptIds.size());
             for (int i = 0; i < manuscriptIds.size(); i++) {
@@ -98,12 +98,21 @@ public class CollectionServiceImpl implements CollectionService {
                 log.info("插入关联结果: {}", result);
             }
             collection.setManuscriptCount(manuscriptIds.size());
+
+            if (coverUrl == null || coverUrl.isEmpty()) {
+                Manuscript firstManuscript = manuscriptMapper.selectBasicFieldsById(manuscriptIds.get(0));
+                if (firstManuscript != null && firstManuscript.getCoverUrl() != null) {
+                    collection.setCoverUrl(firstManuscript.getCoverUrl());
+                    log.info("自动设置合集封面为第一个稿件封面: {}", firstManuscript.getCoverUrl());
+                }
+            }
+
             collectionMapper.update(collection);
             log.info("更新合集稿件数量完成");
         } else {
             log.info("manuscriptIds 为空或null，不插入关联记录");
         }
-        
+
         return convertToVO(collection);
     }
 
@@ -150,6 +159,15 @@ public class CollectionServiceImpl implements CollectionService {
         relation.setCollectionOrder(order != null ? order : 0);
         relationMapper.insert(relation);
         collection.setManuscriptCount(collection.getManuscriptCount() + 1);
+
+        if (collection.getCoverUrl() == null || collection.getCoverUrl().isEmpty()) {
+            Manuscript manuscript = manuscriptMapper.selectBasicFieldsById(manuscriptId);
+            if (manuscript != null && manuscript.getCoverUrl() != null) {
+                collection.setCoverUrl(manuscript.getCoverUrl());
+                log.info("合集 {} 自动设置封面为新添加稿件 {} 的封面", collectionId, manuscriptId);
+            }
+        }
+
         collectionMapper.update(collection);
     }
 

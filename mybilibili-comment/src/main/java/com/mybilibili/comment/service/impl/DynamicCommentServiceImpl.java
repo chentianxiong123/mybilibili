@@ -66,6 +66,17 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
             vo.setUserAvatar(user.getAvatar());
         }
 
+        if (currentUserId != null) {
+            try {
+                Result<Boolean> likeResult = likeClient.isLiked(currentUserId, TARGET_TYPE_DYNAMIC_COMMENT, comment.getId());
+                vo.setLiked(likeResult != null && Boolean.TRUE.equals(likeResult.getData()));
+            } catch (Exception e) {
+                vo.setLiked(false);
+            }
+        } else {
+            vo.setLiked(false);
+        }
+
         return vo;
     }
 
@@ -86,10 +97,18 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
 
         dynamicCommentMapper.insert(comment);
 
+        System.out.println("========== 准备添加动态评论经验值，userId=" + userId + ", experience=" + COMMENT_EXPERIENCE + " ==========");
         try {
-            userClient.addExperience(userId, COMMENT_EXPERIENCE);
+            Result<?> result = userClient.addExperience(userId, COMMENT_EXPERIENCE);
+            System.out.println("========== 动态评论经验值调用返回: " + result + " ==========");
+            if (result != null && result.getCode() == 200) {
+                org.slf4j.LoggerFactory.getLogger(getClass()).info("用户 {} 动态评论成功，经验值 +{}", userId, COMMENT_EXPERIENCE);
+            } else {
+                org.slf4j.LoggerFactory.getLogger(getClass()).error("用户 {} 添加动态评论经验值失败，响应: {}", userId, result);
+            }
         } catch (Exception e) {
-            // 忽略经验值添加失败
+            System.out.println("========== 动态评论经验值调用异常: " + e.getMessage() + " ==========");
+            org.slf4j.LoggerFactory.getLogger(getClass()).error("用户 {} 添加动态评论经验值失败，原因: {}", userId, e.getMessage());
         }
 
         if (parentId == null) {

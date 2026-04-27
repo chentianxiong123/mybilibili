@@ -15,6 +15,7 @@ public class DynamicCommentVO {
     private Integer likeCount;
     private Date createdAt;
     private Integer status;
+    private Boolean liked;
 
     private String userName;
     private String userAvatar;

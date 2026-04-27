@@ -6,10 +6,12 @@ import com.mybilibili.comment.feign.MessageClient;
 import com.mybilibili.comment.feign.UserClient;
 import com.mybilibili.comment.mapper.CommentMapper;
 import com.mybilibili.comment.mapper.DynamicCommentMapper;
+import com.mybilibili.comment.mapper.ProhibitedWordMapper;
 import com.mybilibili.comment.mapper.ReplyMapper;
 import com.mybilibili.comment.service.CommentService;
 import com.mybilibili.common.entity.Comment;
 import com.mybilibili.common.entity.DynamicComment;
+import com.mybilibili.common.entity.ProhibitedWord;
 import com.mybilibili.common.entity.Reply;
 import com.mybilibili.common.vo.CommentVO;
 import com.mybilibili.common.vo.ReplyVO;
@@ -45,6 +47,9 @@ public class CommentServiceImpl implements CommentService {
     @Autowired
     private MessageClient messageClient;
 
+    @Autowired
+    private ProhibitedWordMapper prohibitedWordMapper;
+
     private static final String TARGET_TYPE_COMMENT = "COMMENT";
     private static final String TARGET_TYPE_REPLY = "REPLY";
     private static final int MESSAGE_TYPE_REPLY = 2;
@@ -66,10 +71,18 @@ public class CommentServiceImpl implements CommentService {
 
         commentMapper.insert(comment);
 
+        System.out.println("========== 准备添加经验值，userId=" + userId + ", experience=" + COMMENT_EXPERIENCE + " ==========");
         try {
-            userClient.addExperience(userId, COMMENT_EXPERIENCE);
+            Result<?> result = userClient.addExperience(userId, COMMENT_EXPERIENCE);
+            System.out.println("========== 经验值调用返回: " + result + " ==========");
+            if (result != null && result.getCode() == 200) {
+                org.slf4j.LoggerFactory.getLogger(getClass()).info("用户 {} 评论成功，经验值 +{}", userId, COMMENT_EXPERIENCE);
+            } else {
+                org.slf4j.LoggerFactory.getLogger(getClass()).error("用户 {} 添加经验值失败，响应: {}", userId, result);
+            }
         } catch (Exception e) {
-            // 忽略经验值添加失败
+            System.out.println("========== 经验值调用异常: " + e.getMessage() + " ==========");
+            org.slf4j.LoggerFactory.getLogger(getClass()).error("用户 {} 添加经验值失败，原因: {}", userId, e.getMessage());
         }
 
         CommentVO commentVO = buildCommentVO(comment, userId);
@@ -131,6 +144,19 @@ public class CommentServiceImpl implements CommentService {
         comment.setStatus(hasProhibitedWords ? 1 : 0);  // 0-正常 1-已删除
 
         commentMapper.insert(comment);
+
+        System.out.println("========== 准备添加经验值，userId=" + userId + ", experience=" + COMMENT_EXPERIENCE + " ==========");
+        try {
+            Result<?> result = userClient.addExperience(userId, COMMENT_EXPERIENCE);
+            System.out.println("========== 经验值调用返回: " + result + " ==========");
+            if (result != null && result.getCode() == 200) {
+                System.out.println("========== 经验值添加成功 ==========");
+            } else {
+                System.out.println("========== 经验值添加失败，响应: " + result + " ==========");
+            }
+        } catch (Exception e) {
+            System.out.println("========== 经验值调用异常: " + e.getMessage() + " ==========");
+        }
 
         CommentVO commentVO = buildCommentVO(comment, userId);
         commentVO.setHasProhibitedWords(hasProhibitedWords);
@@ -217,10 +243,18 @@ public class CommentServiceImpl implements CommentService {
         replyMapper.insert(reply);
         commentMapper.updateReplyCount(commentId, 1);
 
+        System.out.println("========== 准备添加回复经验值，userId=" + userId + ", experience=" + REPLY_EXPERIENCE + " ==========");
         try {
-            userClient.addExperience(userId, REPLY_EXPERIENCE);
+            Result<?> result = userClient.addExperience(userId, REPLY_EXPERIENCE);
+            System.out.println("========== 回复经验值调用返回: " + result + " ==========");
+            if (result != null && result.getCode() == 200) {
+                org.slf4j.LoggerFactory.getLogger(getClass()).info("用户 {} 回复成功，经验值 +{}", userId, REPLY_EXPERIENCE);
+            } else {
+                org.slf4j.LoggerFactory.getLogger(getClass()).error("用户 {} 添加回复经验值失败，响应: {}", userId, result);
+            }
         } catch (Exception e) {
-            // 忽略经验值添加失败
+            System.out.println("========== 回复经验值调用异常: " + e.getMessage() + " ==========");
+            org.slf4j.LoggerFactory.getLogger(getClass()).error("用户 {} 添加回复经验值失败，原因: {}", userId, e.getMessage());
         }
 
         if (replyToUserId != null && !replyToUserId.equals(userId)) {
@@ -448,14 +482,24 @@ public class CommentServiceImpl implements CommentService {
     }
 
     private List<String> detectProhibitedWords(String content) {
-        try {
-            Result<List<String>> result = contentReviewClient.detectProhibitedWords(content);
-            if (result != null && result.getData() != null) {
-                return result.getData();
-            }
-        } catch (Exception e) {
+        List<ProhibitedWord> prohibitedWords = prohibitedWordMapper.selectAllEnabled();
+        if (prohibitedWords == null || prohibitedWords.isEmpty()) {
+            return new ArrayList<>();
         }
-        return new ArrayList<>();
+
+        List<String> found = new ArrayList<>();
+        for (ProhibitedWord pw : prohibitedWords) {
+            if (pw.getMatchType() == null || "CONTAINS".equals(pw.getMatchType())) {
+                if (content.contains(pw.getWord())) {
+                    found.add(pw.getWord());
+                }
+            } else if ("EXACT".equals(pw.getMatchType())) {
+                if (content.equals(pw.getWord())) {
+                    found.add(pw.getWord());
+                }
+            }
+        }
+        return found;
     }
 
     private UserVO getUserById(Integer userId) {

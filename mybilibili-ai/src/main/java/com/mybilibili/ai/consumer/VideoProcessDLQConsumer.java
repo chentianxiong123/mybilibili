@@ -1,8 +1,8 @@
 package com.mybilibili.ai.consumer;
 
-import com.mybilibili.common.entity.Video;
-import com.mybilibili.mq.VideoProcessMessage;
 import com.mybilibili.ai.mapper.VideoMapper;
+import com.mybilibili.ai.process.VideoProcessStepType;
+import com.mybilibili.mq.VideoProcessMessage;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,38 +20,12 @@ public class VideoProcessDLQConsumer implements RocketMQListener<VideoProcessMes
 
     @Override
     public void onMessage(VideoProcessMessage message) {
-        System.err.println("[死信队列] 收到最终失败的消息: " + message);
-        
         Integer videoId = message.getVideoId();
-        String processType = message.getProcessType();
-        
         try {
-            Integer processStatus;
-            switch (processType) {
-                case VideoProcessMessage.PROCESS_TYPE_TRANSCODE:
-                    processStatus = Video.PROCESS_STATUS_TRANSCODE_FAILED;
-                    break;
-                case VideoProcessMessage.PROCESS_TYPE_EXTRACT_AUDIO:
-                    processStatus = Video.PROCESS_STATUS_AUDIO_FAILED;
-                    break;
-                case VideoProcessMessage.PROCESS_TYPE_GENERATE_SUBTITLE:
-                    processStatus = Video.PROCESS_STATUS_SUBTITLE_FAILED;
-                    break;
-                case VideoProcessMessage.PROCESS_TYPE_AI_SUMMARY:
-                    processStatus = Video.PROCESS_STATUS_AI_FAILED;
-                    break;
-                case VideoProcessMessage.PROCESS_TYPE_ALL:
-                    processStatus = Video.PROCESS_STATUS_TRANSCODE_FAILED;
-                    break;
-                default:
-                    processStatus = Video.PROCESS_STATUS_TRANSCODE_FAILED;
-            }
-            
-            videoMapper.updateProcessError(videoId, processStatus, "处理失败，已达到最大重试次数");
-            System.err.println("[死信队列] 已更新视频 " + videoId + " 状态为失败");
-            
+            VideoProcessStepType stepType = VideoProcessStepType.fromMqProcessType(message.getProcessType());
+            videoMapper.updateProcessError(videoId, stepType.getFailedStatus(), "处理失败，已达到最大重试次数");
         } catch (Exception e) {
-            System.err.println("[死信队列] 处理死信消息异常: " + e.getMessage());
+            videoMapper.updateProcessError(videoId, VideoProcessStepType.TRANSCODE.getFailedStatus(), "处理失败，已达到最大重试次数");
         }
     }
 }

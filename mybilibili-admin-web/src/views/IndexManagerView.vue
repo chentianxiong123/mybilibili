@@ -99,7 +99,7 @@ const handleRebuildIndex = async () => {
 const handleIncrementalIndex = async () => {
   try {
     await ElMessageBox.confirm(
-      '确定要执行增量索引吗？这将索引最近 60 分钟内上架的稿件。',
+      '确定要执行增量索引吗？这将索引所有已上架但尚未被索引的稿件。',
       '增量索引',
       {
         confirmButtonText: '确定',
@@ -109,7 +109,7 @@ const handleIncrementalIndex = async () => {
     )
 
     actionLoading.value = true
-    const response = await request.post('/search/admin/index/incremental?minutes=60')
+    const response = await request.post('/search/admin/index/incremental')
     if (response.code === 200) {
       ElMessage.success(response.message)
       setTimeout(fetchIndexStatus, 3000)
@@ -205,7 +205,7 @@ onMounted(() => {
         <div class="action-item">
           <div class="action-info">
             <h3>增量索引</h3>
-            <p>只索引最近60分钟内上架的稿件</p>
+            <p>索引所有已上架但尚未被索引的稿件</p>
           </div>
           <el-button
             type="info"

@@ -114,6 +114,35 @@ public class DynamicServiceImpl implements DynamicService {
 
     @Override
     @Transactional
+    public Result<DynamicVO> publishDynamic(Integer userId, String content, Integer refVideoId, List<String> imageUrls) {
+        try {
+            UserDynamic dynamic = new UserDynamic();
+            dynamic.setUserId(userId);
+            dynamic.setContent(content);
+            dynamic.setDynamicType(refVideoId != null ? 2 : 1);
+            dynamic.setRefVideoId(refVideoId);
+            dynamic.setLikeCount(0);
+            dynamic.setCommentCount(0);
+            dynamic.setShareCount(0);
+            dynamic.setStatus(0);
+            dynamic.setCreatedAt(new Date());
+
+            if (imageUrls != null && !imageUrls.isEmpty()) {
+                dynamic.setImageUrl(String.join(",", imageUrls));
+            }
+
+            userDynamicMapper.insert(dynamic);
+
+            DynamicVO vo = convertToVO(dynamic, userId);
+            return Result.success("发布成功", vo);
+        } catch (Exception e) {
+            log.error("发布动态失败", e);
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
     public Result<?> deleteDynamic(Integer userId, Integer dynamicId) {
         try {
             UserDynamic dynamic = userDynamicMapper.getById(dynamicId);

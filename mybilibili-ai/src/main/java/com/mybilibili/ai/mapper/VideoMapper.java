@@ -26,9 +26,18 @@ public interface VideoMapper {
     @Update("UPDATE videos SET process_status = #{processStatus} WHERE id = #{id}")
     int updateProcessStatus(@Param("id") Integer id, @Param("processStatus") Integer processStatus);
 
-    @Update("UPDATE videos SET process_status = #{processStatus}, play_url_hd = #{playUrlHd}, play_url_sd = #{playUrlSd}, play_url_ld = #{playUrlLd} WHERE id = #{id}")
+    @Update("UPDATE videos SET process_status = #{processStatus}, process_progress = #{processProgress}, process_stage = #{processStage}, process_error = #{processError} WHERE id = #{id}")
+    int updateProcessState(@Param("id") Integer id,
+                           @Param("processStatus") Integer processStatus,
+                           @Param("processProgress") Integer processProgress,
+                           @Param("processStage") String processStage,
+                           @Param("processError") String processError);
+
+    @Update("UPDATE videos SET process_status = #{processStatus}, process_progress = #{processProgress}, process_stage = #{processStage}, process_error = NULL, play_url_hd = #{playUrlHd}, play_url_sd = #{playUrlSd}, play_url_ld = #{playUrlLd} WHERE id = #{id}")
     int updateTranscodeResult(@Param("id") Integer id,
                               @Param("processStatus") Integer processStatus,
+                              @Param("processProgress") Integer processProgress,
+                              @Param("processStage") String processStage,
                               @Param("playUrlHd") String playUrlHd,
                               @Param("playUrlSd") String playUrlSd,
                               @Param("playUrlLd") String playUrlLd);
