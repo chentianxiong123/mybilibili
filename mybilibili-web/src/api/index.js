@@ -245,10 +245,11 @@ export const interactionApi = {
   // 获取分享统计
   getShareStatistics: (manuscriptId) => api.get(`/manuscript/${manuscriptId}/share/statistics`),
   // 发送弹幕
-  sendDanmaku: (manuscriptId, content, time, color, mode) => api.post(`/manuscript/${manuscriptId}/danmaku`, `content=${encodeURIComponent(content)}&time=${time}&color=${encodeURIComponent(color || '#ffffff')}&mode=${mode || 0}`, {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
-    }
+  sendDanmaku: (manuscriptId, content, time, color, mode) => api.post(`/manuscript/${manuscriptId}/danmaku`, {
+    content,
+    time,
+    color: color || '#ffffff',
+    mode: mode || 0
   }),
   // 获取视频弹幕
   getDanmakus: (videoId) => api.get(`/danmaku/video/${videoId}`),

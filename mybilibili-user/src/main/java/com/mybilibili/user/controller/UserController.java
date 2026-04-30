@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.Map;
 
 @RestController
@@ -120,5 +122,19 @@ public class UserController {
             @RequestParam Integer userId,
             @RequestParam int experienceAmount) {
         return userService.addExperience(userId, experienceAmount);
+    }
+
+    @GetMapping("/default-avatar")
+    @Operation(summary = "获取默认头像", description = "返回默认头像图片")
+    public void getDefaultAvatar(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        response.setContentType("image/svg+xml");
+        response.setCharacterEncoding("UTF-8");
+        response.setStatus(200);
+        String name = request.getParameter("name");
+        if (name == null || name.isEmpty()) {
+            name = "User";
+        }
+        String svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"128\" height=\"128\" viewBox=\"0 0 128 128\"><rect width=\"128\" height=\"128\" fill=\"#0D8ABC\" rx=\"64\"/><text x=\"64\" y=\"72\" font-family=\"Arial, sans-serif\" font-size=\"48\" fill=\"white\" text-anchor=\"middle\" dominant-baseline=\"middle\">" + name.substring(0, Math.min(name.length(), 2)).toUpperCase() + "</text></svg>";
+        response.getWriter().write(svg);
     }
 }

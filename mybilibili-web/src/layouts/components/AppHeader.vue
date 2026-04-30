@@ -71,7 +71,9 @@ const fetchUnreadCounts = async () => {
       unreadCounts.value = { ...unreadCounts.value, ...res.data }
     }
   } catch (error) {
-    console.error('获取未读消息数失败:', error)
+    if (error.code !== 'ERR_ABORTED') {
+      console.error('获取未读消息数失败:', error)
+    }
   }
 }
 
@@ -507,7 +509,7 @@ onUnmounted(() => {
           <el-button link @click="handleAvatarClick" class="action-btn avatar-btn">
             <el-avatar 
               :size="60" 
-              :src="userInfo?.avatar || 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff'" 
+              :src="userInfo?.avatar || '/api/user/default-avatar?name=User'" 
               class="header-avatar" 
             />
           </el-button>

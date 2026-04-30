@@ -39,7 +39,7 @@ public interface ManuscriptMapper extends BaseMapper<Manuscript> {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Manuscript manuscript);
 
-    @Update("UPDATE manuscripts SET title = #{title}, description = #{description}, cover_url = #{coverUrl}, category_id = #{categoryId}, duration = #{duration}, duration_seconds = #{durationSeconds}, updated_at = NOW() WHERE id = #{id}")
+    @Update("UPDATE manuscripts SET title = #{title}, description = #{description}, cover_url = #{coverUrl}, category_id = #{categoryId}, duration = #{duration}, duration_seconds = #{durationSeconds}, status = #{status}, updated_at = NOW() WHERE id = #{id}")
     int updateById(Manuscript manuscript);
 
     @Delete("DELETE FROM manuscripts WHERE id = #{id}")
@@ -80,6 +80,9 @@ public interface ManuscriptMapper extends BaseMapper<Manuscript> {
 
     @Update("UPDATE manuscripts SET share_count = share_count + #{count} WHERE id = #{manuscriptId}")
     int updateShareCount(@Param("manuscriptId") Integer manuscriptId, @Param("count") Integer count);
+
+    @Update("UPDATE manuscripts SET view_count = view_count + 1 WHERE id = #{id}")
+    int incrementViewCount(@Param("id") Integer id);
 
     @Update("UPDATE manuscripts SET status = #{status}, updated_at = NOW() WHERE id = #{id}")
     int updateStatusById(@Param("id") Integer id, @Param("status") Integer status);

@@ -48,4 +48,5 @@ public interface ManuscriptService {
     Map<String, Object> getVideoProcessStatus(Integer videoId);
     Map<String, Object> getVideoSourceUrl(Integer videoId);
     Video getVideoById(Integer videoId);
+    void incrementViewCount(Integer manuscriptId);
 }

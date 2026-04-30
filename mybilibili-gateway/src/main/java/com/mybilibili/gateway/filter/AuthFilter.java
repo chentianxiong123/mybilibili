@@ -82,6 +82,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/api/manuscript/danmaku",
             "/api/manuscript/user/likes",
             "/api/manuscript/user/collections",
+            "/api/watch-history",
             "/api/message/conversations",
             "/api/message/send",
             "/api/message/unread",

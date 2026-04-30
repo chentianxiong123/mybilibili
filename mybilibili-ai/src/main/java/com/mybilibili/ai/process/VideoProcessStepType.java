@@ -15,7 +15,7 @@ public enum VideoProcessStepType {
             "TRANSCODE_SUCCESS",
             "转码完成",
             0,
-            30,
+            100,
             VideoProcessMessage.PROCESS_TYPE_TRANSCODE
     ),
     EXTRACT_AUDIO(
@@ -26,8 +26,8 @@ public enum VideoProcessStepType {
             "音频提取中",
             "AUDIO_SUCCESS",
             "音频提取完成",
-            30,
-            55,
+            0,
+            100,
             VideoProcessMessage.PROCESS_TYPE_EXTRACT_AUDIO
     ),
     GENERATE_SUBTITLE(
@@ -38,8 +38,8 @@ public enum VideoProcessStepType {
             "字幕生成中",
             "SUBTITLE_SUCCESS",
             "字幕生成完成",
-            55,
-            80,
+            0,
+            100,
             VideoProcessMessage.PROCESS_TYPE_GENERATE_SUBTITLE
     ),
     AI_SUMMARY(
@@ -50,7 +50,7 @@ public enum VideoProcessStepType {
             "AI总结中",
             "AI_SUCCESS",
             "AI总结完成",
-            80,
+            0,
             100,
             VideoProcessMessage.PROCESS_TYPE_AI_SUMMARY
     );

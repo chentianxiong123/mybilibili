@@ -15,9 +15,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class SubtitleProcessStep implements VideoProcessStep {
 
-    private static final int PROGRESS_START = 55;
-    private static final int PROGRESS_END = 80;
-
     @Autowired
     private AiSubtitleService aiSubtitleService;
 
@@ -41,8 +38,7 @@ public class SubtitleProcessStep implements VideoProcessStep {
                 context.getManuscriptId(),
                 context.getVideoId(),
                 (percent, stageText) -> {
-                    int mapped = PROGRESS_START + (PROGRESS_END - PROGRESS_START) * percent / 100;
-                    stateService.markStepProgress(context, mapped, stageText);
+                    stateService.markStepProgress(context, percent, stageText);
                 }
         );
         if (!success) {

@@ -1,4 +1,4 @@
-package com.mybilibili.user.feign;
+package com.mybilibili.common.feign;
 
 import feign.RequestInterceptor;
 import feign.RequestTemplate;

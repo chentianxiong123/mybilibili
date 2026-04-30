@@ -132,6 +132,7 @@ public class ManuscriptController {
             if (manuscriptVO == null) {
                 return Result.error("稿件不存在");
             }
+            manuscriptService.incrementViewCount(id);
             return Result.success("获取成功", manuscriptVO);
         } catch (Exception e) {
             return Result.error(e.getMessage());

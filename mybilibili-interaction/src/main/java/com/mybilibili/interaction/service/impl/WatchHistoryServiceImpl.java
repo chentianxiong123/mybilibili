@@ -24,7 +24,6 @@ public class WatchHistoryServiceImpl implements WatchHistoryService {
     @Autowired
     private VideoClient videoClient;
 
-    private static final double RECORD_THRESHOLD = 0.1;
     private static final String KEY_WATCH_HISTORY_LIST = "watch_history:user:%s";
     private static final String KEY_WATCH_HISTORY_DETAIL = "watch_history:detail:%s:%s";
     private static final long EXPIRE_DAYS = 30;
@@ -94,11 +93,7 @@ public class WatchHistoryServiceImpl implements WatchHistoryService {
 
     @Override
     public void recordWatchHistory(Integer userId, Integer videoId, Integer progressSeconds, Integer videoDuration) {
-        if (userId == null || videoId == null || progressSeconds == null || videoDuration == null) {
-            return;
-        }
-
-        if (progressSeconds < videoDuration * RECORD_THRESHOLD) {
+        if (userId == null || videoId == null) {
             return;
         }
 

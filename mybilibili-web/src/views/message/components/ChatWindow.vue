@@ -38,11 +38,11 @@ const currentUserId = computed(() => {
 const currentUserAvatar = computed(() => {
   try {
     const userStr = localStorage.getItem('user')
-    if (!userStr) return 'https://ui-avatars.com/api/?name=Me&background=0D8ABC&color=fff'
+    if (!userStr) return '/api/user/default-avatar?name=Me'
     const user = JSON.parse(userStr)
-    return user.avatar || 'https://ui-avatars.com/api/?name=Me&background=0D8ABC&color=fff'
+    return user.avatar || '/api/user/default-avatar?name=Me'
   } catch (e) {
-    return 'https://ui-avatars.com/api/?name=Me&background=0D8ABC&color=fff'
+    return '/api/user/default-avatar?name=Me'
   }
 })
 
@@ -88,7 +88,7 @@ watch(() => props.messages, () => {
     <div class="chat-header">
       <el-avatar
         :size="36"
-        :src="conversation.targetUserAvatar || 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff'"
+        :src="conversation.targetUserAvatar || '/api/user/default-avatar?name=User'"
       />
       <span class="chat-title">{{ conversation.targetUserName || '用户' }}</span>
     </div>
@@ -106,7 +106,7 @@ watch(() => props.messages, () => {
           :size="36"
           :src="message.senderId === currentUserId
             ? currentUserAvatar
-            : (conversation.targetUserAvatar || 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff')"
+            : (conversation.targetUserAvatar || '/api/user/default-avatar?name=User')"
           class="message-avatar"
         />
         <div class="message-content">

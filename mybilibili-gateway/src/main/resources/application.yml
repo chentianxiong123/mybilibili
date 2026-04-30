@@ -240,11 +240,11 @@ spring:
             - SetPath=/manuscript/{id}/status
 
         - id: manuscript-interaction-danmaku
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-danmaku
           predicates:
             - Path=/api/manuscript/{id}/danmaku
           filters:
-            - SetPath=/manuscript/{id}/danmaku
+            - SetPath=/danmaku
 
         - id: manuscript-interaction-danmakus
           uri: lb://mybilibili-danmaku

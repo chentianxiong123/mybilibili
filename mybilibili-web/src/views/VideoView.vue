@@ -373,7 +373,7 @@ const showEmojiPicker = ref(false)
 // 当前用户头像
 const currentUserAvatar = ref(() => {
   const user = JSON.parse(localStorage.getItem('user') || 'null')
-  return user?.avatar || 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff'
+  return user?.avatar || '/api/user/default-avatar?name=User'
 })
 
 // 切换评论输入框折叠状态
@@ -559,7 +559,7 @@ const loadReplies = async (commentId, page = 1) => {
           id: reply.id,
           userId: reply.userId || reply.user?.id,
           author: reply.userName || reply.author || '未知用户',
-          avatar: reply.userAvatar || reply.avatar || 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff',
+          avatar: reply.userAvatar || reply.avatar || '/api/user/default-avatar?name=User',
           content: reply.content,
           time: reply.time || formatDate(reply.createTime),
           likeCount: reply.likeCount || 0,
@@ -909,7 +909,7 @@ const loadComments = async (sort = 'new') => {
         id: comment.id,
         userId: comment.userId || comment.user?.id,
         author: comment.userName || comment.author || comment.user?.name || '未知用户',
-        avatar: comment.userAvatar || comment.avatar || comment.user?.avatar || 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff',
+        avatar: comment.userAvatar || comment.avatar || comment.user?.avatar || '/api/user/default-avatar?name=User',
         content: comment.content,
         time: comment.time || formatDate(comment.createTime),
         likeCount: comment.likeCount || 0,
@@ -920,7 +920,7 @@ const loadComments = async (sort = 'new') => {
           id: reply.id,
           userId: reply.userId || reply.user?.id,
           author: reply.userName || reply.author || '未知用户',
-          avatar: reply.userAvatar || reply.avatar || 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff',
+          avatar: reply.userAvatar || reply.avatar || '/api/user/default-avatar?name=User',
           content: reply.content,
           time: reply.time || formatDate(reply.createTime),
           likeCount: reply.likeCount || 0,
@@ -1794,21 +1794,18 @@ onMounted(async () => {
   // 添加点击外部区域的事件监听
   document.addEventListener('click', handleClickOutside)
   
-  // 添加页面关闭/刷新事件监听，记录浏览历史
-  window.addEventListener('beforeunload', () => {
+  // 视频加载完成后立即记录浏览历史
+  if (!hasRecordedHistory.value && videoId.value) {
     recordWatchHistory()
-  })
+  }
 
   console.log('视频播放器初始化完成')
 })
 
 onUnmounted(() => {
-  // 记录浏览历史（离开页面时）
-  recordWatchHistory()
-  
   // 移除点击外部区域的事件监听
   document.removeEventListener('click', handleClickOutside)
-  
+
   // 销毁视频播放器
   if (art) {
     art.destroy()
@@ -1937,7 +1934,7 @@ watch(() => route.query.p, (newP) => {
         >
           <img 
             ref="authorAvatarRef"
-            :src="videoInfo.uploader.avatar || 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff'" 
+            :src="videoInfo.uploader.avatar || '/api/user/default-avatar?name=User'" 
             alt="作者头像" 
             class="author-avatar" 
             @click="goToAuthor(videoInfo.uploader.id)"
@@ -2207,7 +2204,7 @@ watch(() => route.query.p, (newP) => {
               <div v-else>
                 <div v-for="comment in comments" :key="comment.id" class="comment-item">
                   <img 
-                    :src="comment.avatar || 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff'" 
+                    :src="comment.avatar || '/api/user/default-avatar?name=User'" 
                     alt="用户头像" 
                     class="comment-avatar" 
                     @click="goToAuthor(comment.userId)"
@@ -2236,7 +2233,7 @@ watch(() => route.query.p, (newP) => {
                     <div class="replies-list" v-if="comment.replies && comment.replies.length > 0">
                       <!-- 显示视频作者的回复 -->
                       <div v-for="reply in comment.replies.filter(r => videoInfo.uploader.id && r.userId === videoInfo.uploader.id)" :key="reply.id" class="reply-item">
-                        <img :src="reply.avatar || 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff'" alt="用户头像" class="reply-avatar" @click="goToAuthor(reply.userId)">
+                        <img :src="reply.avatar || '/api/user/default-avatar?name=User'" alt="用户头像" class="reply-avatar" @click="goToAuthor(reply.userId)">
                         <div class="reply-content">
                           <div class="reply-text" v-html="formatContentWithAtLinks(reply.author + ': ' + reply.content)"></div>
                           <div class="reply-actions">
@@ -2266,7 +2263,7 @@ watch(() => route.query.p, (newP) => {
                         <!-- 展开状态 -->
                         <div v-if="replyExpanded[comment.id]">
                           <div v-for="reply in comment.replies.filter(r => !videoInfo.uploader.id || r.userId !== videoInfo.uploader.id)" :key="reply.id" class="reply-item">
-                            <img :src="reply.avatar || 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff'" alt="用户头像" class="reply-avatar" @click="goToAuthor(reply.userId)">
+                            <img :src="reply.avatar || '/api/user/default-avatar?name=User'" alt="用户头像" class="reply-avatar" @click="goToAuthor(reply.userId)">
                             <div class="reply-content">
                               <div class="reply-text" v-html="formatContentWithAtLinks(reply.author + ': ' + reply.content)"></div>
                               <div class="reply-actions">

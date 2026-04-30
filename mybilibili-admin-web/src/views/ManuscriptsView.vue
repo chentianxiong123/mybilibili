@@ -351,7 +351,7 @@ const getStatusText = (status) => {
     3: '已上架',
     4: '审核拒绝',
     5: '处理失败',
-    '-1': '已下架'
+    [-1]: '已下架'
   }
   return statusMap[status] || '未知'
 }
@@ -364,7 +364,7 @@ const getStatusType = (status) => {
     3: 'success',
     4: 'danger',
     5: 'danger',
-    '-1': 'info'
+    [-1]: 'info'
   }
   return typeMap[status] || ''
 }

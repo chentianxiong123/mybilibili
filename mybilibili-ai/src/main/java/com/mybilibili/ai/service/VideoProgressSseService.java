@@ -86,6 +86,13 @@ public class VideoProgressSseService {
         broadcast(eventName, data);
     }
 
+    public void pushProcessEventWithStatus(Integer videoId, Integer manuscriptId, String title, 
+                                           String stage, String stageText, Integer progress, 
+                                           Integer status, String error, String eventName) {
+        Map<String, Object> data = buildEvent(videoId, manuscriptId, title, stage, stageText, progress, status, error);
+        broadcast(eventName, data);
+    }
+
     public void complete(Integer videoId) {
         Map<String, Object> data = new HashMap<>();
         data.put("videoId", videoId);

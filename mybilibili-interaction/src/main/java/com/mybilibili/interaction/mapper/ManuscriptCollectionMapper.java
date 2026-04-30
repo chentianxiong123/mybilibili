@@ -21,7 +21,7 @@ public interface ManuscriptCollectionMapper extends BaseMapper<ManuscriptCollect
     @Select("SELECT * FROM manuscript_collections WHERE id = #{id}")
     ManuscriptCollection selectById(@Param("id") Integer id);
 
-    @Update("UPDATE manuscript_collections SET title=#{title}, description=#{description}, cover_url=#{coverUrl}, status=#{status}, updated_at=NOW() WHERE id=#{id}")
+    @Update("UPDATE manuscript_collections SET title=#{title}, description=#{description}, cover_url=#{coverUrl}, status=#{status}, manuscript_count=#{manuscriptCount}, view_count=#{viewCount}, updated_at=NOW() WHERE id=#{id}")
     int update(ManuscriptCollection collection);
 
     @Insert("INSERT INTO manuscript_collections (title, description, cover_url, user_id, manuscript_count, view_count, status, created_at, updated_at) VALUES (#{title}, #{description}, #{coverUrl}, #{userId}, #{manuscriptCount}, #{viewCount}, #{status}, NOW(), NOW())")

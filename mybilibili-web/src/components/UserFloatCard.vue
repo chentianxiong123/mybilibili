@@ -122,7 +122,7 @@ const userBanner = ref('')
 
 // 默认背景图和头像
 const defaultBanner = 'https://picsum.photos/400/120?random=1'
-const defaultAvatar = 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff'
+const defaultAvatar = '/api/user/default-avatar?name=User'
 
 // 获取用户背景图
 const loadUserBanner = async () => {

@@ -224,13 +224,13 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
      */
     private boolean executeTranscode(Integer manuscriptId, Integer videoId, String videoTitle) {
         log.info("[全流程服务] 开始转码: videoId={}", videoId);
-        broadcastProgress(videoId, manuscriptId, videoTitle, "TRANSCODING", 10, Video.PROCESS_STATUS_TRANSCODING);
+        broadcastProgress(videoId, manuscriptId, videoTitle, "TRANSCODING", 0, Video.PROCESS_STATUS_TRANSCODING);
         updateVideoStatus(videoId, Video.PROCESS_STATUS_TRANSCODING);
 
         boolean success = videoTranscodeService.transcode(manuscriptId, videoId);
 
         if (success) {
-            broadcastProgress(videoId, manuscriptId, videoTitle, "TRANSCODE_SUCCESS", 25, Video.PROCESS_STATUS_TRANSCODE_SUCCESS);
+            broadcastProgress(videoId, manuscriptId, videoTitle, "TRANSCODE_SUCCESS", 100, Video.PROCESS_STATUS_TRANSCODE_SUCCESS);
             updateVideoStatus(videoId, Video.PROCESS_STATUS_TRANSCODE_SUCCESS);
             log.info("[全流程服务] 转码完成: videoId={}", videoId);
         } else {
@@ -247,13 +247,13 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
      */
     private boolean executeAudioExtract(Integer manuscriptId, Integer videoId, String videoTitle) {
         log.info("[全流程服务] 开始音频提取: videoId={}", videoId);
-        broadcastProgress(videoId, manuscriptId, videoTitle, "AUDIO_EXTRACTING", 30, Video.PROCESS_STATUS_AUDIO_EXTRACTING);
+        broadcastProgress(videoId, manuscriptId, videoTitle, "AUDIO_EXTRACTING", 0, Video.PROCESS_STATUS_AUDIO_EXTRACTING);
         updateVideoStatus(videoId, Video.PROCESS_STATUS_AUDIO_EXTRACTING);
 
         boolean success = audioExtractService.extractAudio(manuscriptId, videoId);
 
         if (success) {
-            broadcastProgress(videoId, manuscriptId, videoTitle, "AUDIO_SUCCESS", 40, Video.PROCESS_STATUS_AUDIO_SUCCESS);
+            broadcastProgress(videoId, manuscriptId, videoTitle, "AUDIO_SUCCESS", 100, Video.PROCESS_STATUS_AUDIO_SUCCESS);
             updateVideoStatus(videoId, Video.PROCESS_STATUS_AUDIO_SUCCESS);
             log.info("[全流程服务] 音频提取完成: videoId={}", videoId);
         } else {
@@ -270,13 +270,12 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
      */
     private boolean executeSubtitleGenerate(Integer manuscriptId, Integer videoId, String videoTitle) {
         log.info("[全流程服务] 开始字幕生成: videoId={}", videoId);
-        broadcastProgress(videoId, manuscriptId, videoTitle, "SUBTITLE_GENERATING", 45, Video.PROCESS_STATUS_SUBTITLE_GENERATING);
+        broadcastProgress(videoId, manuscriptId, videoTitle, "SUBTITLE_GENERATING", 0, Video.PROCESS_STATUS_SUBTITLE_GENERATING);
         updateVideoStatus(videoId, Video.PROCESS_STATUS_SUBTITLE_GENERATING);
 
         boolean success = aiSubtitleService.generateSubtitle(manuscriptId, videoId);
 
         if (success) {
-            // 缓存字幕文本
             try {
                 String subtitlePath = aiSubtitleService.getSubtitlePath(manuscriptId, videoId);
                 String subtitleContent = SubtitleTextUtils.extractPlainText(subtitlePath);
@@ -285,7 +284,7 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
                 log.warn("[全流程服务] 缓存字幕失败: videoId={}", videoId, e);
             }
 
-            broadcastProgress(videoId, manuscriptId, videoTitle, "SUBTITLE_SUCCESS", 70, Video.PROCESS_STATUS_SUBTITLE_SUCCESS);
+            broadcastProgress(videoId, manuscriptId, videoTitle, "SUBTITLE_SUCCESS", 100, Video.PROCESS_STATUS_SUBTITLE_SUCCESS);
             updateVideoStatus(videoId, Video.PROCESS_STATUS_SUBTITLE_SUCCESS);
             updateVideoHasSubtitle(videoId, 1);
             log.info("[全流程服务] 字幕生成完成: videoId={}", videoId);
@@ -303,7 +302,7 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
      */
     private boolean executeAiSummary(Integer manuscriptId, Integer videoId, String videoTitle) {
         log.info("[全流程服务] 开始AI总结: videoId={}", videoId);
-        broadcastProgress(videoId, manuscriptId, videoTitle, "AI_SUMMARIZING", 75, Video.PROCESS_STATUS_AI_SUMMARIZING);
+        broadcastProgress(videoId, manuscriptId, videoTitle, "AI_SUMMARIZING", 0, Video.PROCESS_STATUS_AI_SUMMARIZING);
         updateVideoStatus(videoId, Video.PROCESS_STATUS_AI_SUMMARIZING);
 
         try {
@@ -318,13 +317,12 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
 
             String title = video != null ? video.getTitle() : "未知视频";
 
-            progressSseService.pushProgress(videoId, 80, "AI分析中", "ai");
+            progressSseService.pushProgress(videoId, 50, "AI分析中", "ai");
             String summary = aiSummaryService.generateSummary(subtitlePlainText, title, "");
 
-            // 缓存摘要
             redisTemplate.opsForValue().set("summary:" + videoId, summary);
 
-            broadcastProgress(videoId, manuscriptId, videoTitle, "AI_SUCCESS", 95, Video.PROCESS_STATUS_AI_SUCCESS);
+            broadcastProgress(videoId, manuscriptId, videoTitle, "AI_SUCCESS", 100, Video.PROCESS_STATUS_AI_SUCCESS);
             updateVideoStatus(videoId, Video.PROCESS_STATUS_AI_SUCCESS);
             updateVideoHasSummary(videoId, 1);
             log.info("[全流程服务] AI总结完成: videoId={}", videoId);

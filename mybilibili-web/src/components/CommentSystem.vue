@@ -202,10 +202,10 @@ const currentUser = computed(() => {
 })
 
 const currentUserAvatar = computed(() => {
-  return currentUser.value?.avatar || 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff'
+  return currentUser.value?.avatar || '/api/user/default-avatar?name=User'
 })
 
-const defaultAvatar = 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff'
+const defaultAvatar = '/api/user/default-avatar?name=User'
 
 // 判断是否为动态类型
 const isDynamic = computed(() => props.targetType === 'DYNAMIC')

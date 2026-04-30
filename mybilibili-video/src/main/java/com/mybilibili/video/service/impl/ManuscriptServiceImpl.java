@@ -814,4 +814,11 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     public Video getVideoById(Integer videoId) {
         return videoMapper.selectById(videoId);
     }
+
+    @Override
+    public void incrementViewCount(Integer manuscriptId) {
+        if (manuscriptId != null) {
+            manuscriptMapper.incrementViewCount(manuscriptId);
+        }
+    }
 }

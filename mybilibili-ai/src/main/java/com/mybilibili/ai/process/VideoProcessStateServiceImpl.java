@@ -69,7 +69,17 @@ public class VideoProcessStateServiceImpl implements VideoProcessStateService {
                 progress,
                 status
         );
-        progressSseService.pushProcessEvent(videoMapper.selectById(context.getVideoId()), "progress", stageText);
+        progressSseService.pushProcessEventWithStatus(
+                context.getVideoId(),
+                context.getManuscriptId(),
+                context.getVideoTitle(),
+                stage,
+                stageText,
+                progress,
+                status,
+                null,
+                "progress"
+        );
     }
 
     private void updateVideoState(Integer videoId, Integer status, Integer progress, String stage, String error) {

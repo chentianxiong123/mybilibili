@@ -131,7 +131,7 @@ const loading = ref(false)
 const isFollowing = ref(false)
 const isCommentExpanded = ref(false)
 
-const defaultAvatar = 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff'
+const defaultAvatar = '/api/user/default-avatar?name=User'
 const commentSystemRef = ref(null)
 
 // 当前用户
