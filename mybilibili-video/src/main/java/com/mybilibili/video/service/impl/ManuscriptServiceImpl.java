@@ -365,12 +365,12 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         if ("play_count".equals(sort)) {
             manuscripts.sort((a, b) -> (b.getViewCount() != null ? b.getViewCount() : 0) - (a.getViewCount() != null ? a.getViewCount() : 0));
         } else if ("favorite_count".equals(sort)) {
-            manuscripts.sort((a, b) -> (b.getFavoriteCount() != null ? b.getFavoriteCount() : 0) - (a.getFavoriteCount() != null ? a.getFavoriteCount() : 0));
+            manuscripts.sort((a, b) -> (b.getCollectCount() != null ? b.getCollectCount() : 0) - (a.getCollectCount() != null ? a.getCollectCount() : 0));
         } else {
             manuscripts.sort((a, b) -> {
-                if (a.getCreatedAt() == null) return 1;
-                if (b.getCreatedAt() == null) return -1;
-                return b.getCreatedAt().compareTo(a.getCreatedAt());
+                if (a.getUploadTime() == null) return 1;
+                if (b.getUploadTime() == null) return -1;
+                return b.getUploadTime().compareTo(a.getUploadTime());
             });
         }
         
