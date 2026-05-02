@@ -370,6 +370,10 @@ const isCommentInputCollapsed = ref(true)
 // 显示表情选择器
 const showEmojiPicker = ref(false)
 
+// 回复区表情选择器状态
+const showReplyEmojiPicker = ref({})
+const activeReplyEmojiCommentId = ref(null)
+
 // 当前用户头像
 const currentUserAvatar = ref(() => {
   const user = JSON.parse(localStorage.getItem('user') || 'null')
@@ -404,6 +408,28 @@ const emojiList = [
 // 选择表情
 const selectEmoji = (emoji) => {
   newComment.value += emoji
+}
+
+// 切换回复区表情选择器
+const toggleReplyEmojiPicker = (commentId) => {
+  showEmojiPicker.value = false
+  if (activeReplyEmojiCommentId.value === commentId && showReplyEmojiPicker.value[commentId]) {
+    showReplyEmojiPicker.value[commentId] = false
+    activeReplyEmojiCommentId.value = null
+  } else {
+    showReplyEmojiPicker.value = {}
+    showReplyEmojiPicker.value[commentId] = true
+    activeReplyEmojiCommentId.value = commentId
+  }
+}
+
+// 选择回复表情
+const selectReplyEmoji = (emoji, commentId) => {
+  if (replyInputs.value[commentId] !== undefined) {
+    replyInputs.value[commentId] += emoji
+  }
+  showReplyEmojiPicker.value[commentId] = false
+  activeReplyEmojiCommentId.value = null
 }
 
 // 提交评论
@@ -1521,7 +1547,7 @@ onMounted(async () => {
       await loadInteractionStatus()
 
       // 获取视频评论
-      await loadComments()
+      await loadComments(commentSort.value)
 
       // 获取视频弹幕
       await loadDanmakus()
@@ -1832,7 +1858,7 @@ onUnmounted(() => {
 // 监听评论排序变化，重新加载评论
 watch(commentSort, (newSort) => {
   if (currentManuscriptId.value) {
-    loadComments()
+    loadComments(newSort)
   }
 })
 
@@ -1840,7 +1866,7 @@ watch(commentSort, (newSort) => {
 watch(() => route.params.id, (newId) => {
   if (newId) {
     currentManuscriptId.value = parseInt(newId)
-    loadComments()
+    loadComments(commentSort.value)
   }
 })
 
@@ -1922,7 +1948,7 @@ watch(() => route.query.p, (newP) => {
       // 重新加载弹幕、字幕和互动状态
       loadDanmakus()
       loadInteractionStatus()
-      loadComments()
+      loadComments(commentSort.value)
       loadSubtitles()
     }
   }
@@ -2198,7 +2224,7 @@ watch(() => route.query.p, (newP) => {
                     text 
                     size="small" 
                     class="emoji-btn"
-                    @click="showEmojiPicker = !showEmojiPicker"
+                    @click="showEmojiPicker = !showEmojiPicker; showReplyEmojiPicker = {}; activeReplyEmojiCommentId = null"
                   >
                     😊 表情
                   </el-button>
@@ -2337,11 +2363,22 @@ watch(() => route.query.p, (newP) => {
                           resize="none"
                         />
                         <div class="reply-input-actions">
+                          <!-- 表情选择器 -->
+                          <div class="emoji-picker reply-emoji-picker" v-if="showReplyEmojiPicker[comment.id]" @click.stop>
+                            <div 
+                              v-for="emoji in emojiList" 
+                              :key="emoji" 
+                              class="emoji-item"
+                              @click="selectReplyEmoji(emoji, comment.id)"
+                            >
+                              {{ emoji }}
+                            </div>
+                          </div>
                           <el-button 
                             text 
                             size="small" 
                             class="emoji-btn"
-                            @click="showEmojiPicker = !showEmojiPicker"
+                            @click="toggleReplyEmojiPicker(comment.id)"
                           >
                             😊 表情
                           </el-button>
@@ -3552,6 +3589,20 @@ watch(() => route.query.p, (newP) => {
 
 .comment-section .reply-input-actions .emoji-btn:hover {
   color: #00a1d6;
+}
+
+/* 回复区表情选择器 */
+.comment-section .reply-input-actions .reply-emoji-picker {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+.comment-section .reply-input-actions {
+  position: relative;
 }
 
 /* 加载状态 */

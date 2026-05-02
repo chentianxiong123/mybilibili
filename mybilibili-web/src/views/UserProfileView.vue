@@ -1991,11 +1991,11 @@ onMounted(() => {
               <div class="dynamic-actions-new">
                 <button class="action-btn-new" @click="ElMessage.info('转发功能开发中')">
                   <el-icon><Share /></el-icon>
-                  <span>{{ dynamic.stats?.shareCount || '转发' }}</span>
+                  <span>{{ dynamic.stats?.shareCount > 0 ? dynamic.stats.shareCount : '转发' }}</span>
                 </button>
                 <button class="action-btn-new" :class="{ 'is-active': expandedComments.has(dynamic.id) }" @click="toggleComments(dynamic)">
                   <el-icon><ChatDotRound /></el-icon>
-                  <span>{{ dynamic.stats?.commentCount > 0 ? dynamic.stats.commentCount : '评论' }}</span>
+                  <span>{{ dynamic.stats?.commentCount > 0 ? `${dynamic.stats.commentCount} 条评论` : '评论' }}</span>
                 </button>
                 <button class="action-btn-new" :class="{ 'is-liked': dynamic.stats?.isLiked }" @click="handleLikeDynamic(dynamic)">
                   <el-icon><Star /></el-icon>
