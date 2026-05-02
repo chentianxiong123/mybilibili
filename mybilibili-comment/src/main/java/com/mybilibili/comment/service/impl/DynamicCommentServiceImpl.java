@@ -10,12 +10,14 @@ import com.mybilibili.common.entity.DynamicComment;
 import com.mybilibili.common.vo.DynamicCommentVO;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.UserVO;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 public class DynamicCommentServiceImpl implements DynamicCommentService {
 
@@ -44,10 +46,12 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
         }
         try {
             Result<UserVO> result = userClient.getUserById(userId);
+            log.info("获取用户信息, userId={}, result={}", userId, result);
             if (result != null && result.getData() != null) {
                 return result.getData();
             }
         } catch (Exception e) {
+            log.error("获取用户信息失败, userId={}, error={}", userId, e.getMessage());
         }
         return null;
     }
