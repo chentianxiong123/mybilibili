@@ -157,7 +157,7 @@ const loadHistory = async () => {
           totalDuration: item.videoDuration || 0,
           watchPercentage: item.watchPercentage || 0,
           isFinished: (item.watchPercentage || 0) >= 90, // 90%以上算看完
-          authorAvatar: uploader.avatar || `/api/user/default-avatar?name=${encodeURIComponent(uploader.name || '未知')}`,
+          authorAvatar: uploader.avatar || '/default-avatar.svg',
           manuscriptId: video.manuscriptId
         }
       })

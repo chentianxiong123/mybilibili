@@ -5,14 +5,11 @@ import { Setting } from '@element-plus/icons-vue'
 import { messageApi } from '../../../api/message.js'
 
 const settings = ref({
-  // 消息提醒总开关
-  messageReminder: true,
-  
-  // 回复我的消息提醒
-  replyReminder: 'following', // all, following, none
-  
-  // 收到的赞消息提醒
-  likeReminder: false
+  privateMessageNotify: true,
+  replyNotify: true,
+  atNotify: true,
+  likeNotify: true,
+  systemNotify: true
 })
 
 const loading = ref(false)
@@ -21,7 +18,13 @@ const fetchSettings = async () => {
   try {
     const res = await messageApi.getMessageSettings()
     if (res.code === 200 && res.data) {
-      settings.value = { ...settings.value, ...res.data }
+      settings.value = {
+        privateMessageNotify: res.data.privateMessageNotify ?? true,
+        replyNotify: res.data.replyNotify ?? true,
+        atNotify: res.data.atNotify ?? true,
+        likeNotify: res.data.likeNotify ?? true,
+        systemNotify: res.data.systemNotify ?? true
+      }
     }
   } catch (error) {
     console.error('获取消息设置失败:', error)
@@ -55,52 +58,72 @@ onMounted(() => {
     <div class="settings-header">
       <span class="header-title">消息设置</span>
     </div>
-    
+
     <div class="settings-content">
-      <!-- 消息提醒总开关 -->
+      <!-- 私信消息通知 -->
       <div class="setting-section">
-        <div class="section-title">
-          消息提醒
-          <span class="section-desc">（关闭后，消息将不再进行提醒）</span>
-        </div>
+        <div class="section-title">私信消息通知</div>
         <div class="section-content">
-          <el-radio-group v-model="settings.messageReminder">
-            <el-radio :value="true">开启</el-radio>
-            <el-radio :value="false">关闭</el-radio>
-          </el-radio-group>
+          <el-switch
+            v-model="settings.privateMessageNotify"
+            active-text="开启"
+            inactive-text="关闭"
+          />
         </div>
       </div>
-      
-      <!-- 回复我的消息提醒 -->
+
+      <!-- 回复我的通知 -->
       <div class="setting-section">
-        <div class="section-title">
-          回复我的消息提醒
-          <span class="section-desc">（接收谁的评论消息提醒）</span>
-        </div>
+        <div class="section-title">回复我的通知</div>
         <div class="section-content">
-          <el-radio-group v-model="settings.replyReminder">
-            <el-radio value="all">所有人</el-radio>
-            <el-radio value="following">关注的人</el-radio>
-            <el-radio value="none">不接收任何消息提醒</el-radio>
-          </el-radio-group>
+          <el-switch
+            v-model="settings.replyNotify"
+            active-text="开启"
+            inactive-text="关闭"
+          />
         </div>
       </div>
-      
-      <!-- 收到的赞消息提醒 -->
+
+      <!-- @我的通知 -->
       <div class="setting-section">
-        <div class="section-title">收到的赞消息提醒</div>
+        <div class="section-title">@我的通知</div>
         <div class="section-content">
-          <el-radio-group v-model="settings.likeReminder">
-            <el-radio :value="true">开启</el-radio>
-            <el-radio :value="false">关闭</el-radio>
-          </el-radio-group>
+          <el-switch
+            v-model="settings.atNotify"
+            active-text="开启"
+            inactive-text="关闭"
+          />
         </div>
       </div>
-      
+
+      <!-- 收到的赞通知 -->
+      <div class="setting-section">
+        <div class="section-title">收到的赞通知</div>
+        <div class="section-content">
+          <el-switch
+            v-model="settings.likeNotify"
+            active-text="开启"
+            inactive-text="关闭"
+          />
+        </div>
+      </div>
+
+      <!-- 系统通知 -->
+      <div class="setting-section">
+        <div class="section-title">系统通知</div>
+        <div class="section-content">
+          <el-switch
+            v-model="settings.systemNotify"
+            active-text="开启"
+            inactive-text="关闭"
+          />
+        </div>
+      </div>
+
       <!-- 保存按钮 -->
       <div class="settings-footer">
-        <el-button 
-          type="primary" 
+        <el-button
+          type="primary"
           :loading="loading"
           @click="saveSettings"
         >
@@ -140,8 +163,11 @@ onMounted(() => {
 }
 
 .setting-section {
-  padding: 20px 0;
+  padding: 16px 0;
   border-bottom: 1px solid #f1f2f3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .setting-section:last-of-type {
@@ -152,7 +178,6 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 500;
   color: #18191c;
-  margin-bottom: 16px;
 }
 
 .section-desc {
@@ -165,34 +190,8 @@ onMounted(() => {
   padding-left: 8px;
 }
 
-.section-content :deep(.el-radio-group) {
-  display: flex;
-  gap: 32px;
-}
-
-.section-content :deep(.el-radio) {
-  margin-right: 0;
-  height: auto;
-  line-height: 1.5;
-}
-
-.section-content :deep(.el-radio__label) {
-  font-size: 14px;
-  color: #18191c;
-  padding-left: 8px;
-}
-
-.section-content :deep(.el-radio__input.is-checked + .el-radio__label) {
-  color: #00a1d6;
-}
-
-.section-content :deep(.el-radio__input.is-checked .el-radio__inner) {
-  border-color: #00a1d6;
-  background-color: #00a1d6;
-}
-
-.section-content :deep(.el-radio__inner:hover) {
-  border-color: #00a1d6;
+.section-content :deep(.el-switch) {
+  --el-switch-on-color: #00a1d6;
 }
 
 .settings-footer {

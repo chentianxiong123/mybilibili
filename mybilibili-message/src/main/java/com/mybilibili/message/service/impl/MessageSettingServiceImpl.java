@@ -38,11 +38,21 @@ public class MessageSettingServiceImpl implements MessageSettingService {
         if (setting == null) {
             setting = createDefaultSettings(userId);
         }
-        setting.setPrivateMessageNotify(dto.getPrivateMessageNotify());
-        setting.setReplyNotify(dto.getReplyNotify());
-        setting.setAtNotify(dto.getAtNotify());
-        setting.setLikeNotify(dto.getLikeNotify());
-        setting.setSystemNotify(dto.getSystemNotify());
+        if (dto.getPrivateMessageNotify() != null) {
+            setting.setPrivateMessageNotify(dto.getPrivateMessageNotify());
+        }
+        if (dto.getReplyNotify() != null) {
+            setting.setReplyNotify(dto.getReplyNotify());
+        }
+        if (dto.getAtNotify() != null) {
+            setting.setAtNotify(dto.getAtNotify());
+        }
+        if (dto.getLikeNotify() != null) {
+            setting.setLikeNotify(dto.getLikeNotify());
+        }
+        if (dto.getSystemNotify() != null) {
+            setting.setSystemNotify(dto.getSystemNotify());
+        }
         messageSettingMapper.update(setting);
     }
 

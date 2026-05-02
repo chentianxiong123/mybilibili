@@ -373,7 +373,7 @@ const showEmojiPicker = ref(false)
 // 当前用户头像
 const currentUserAvatar = ref(() => {
   const user = JSON.parse(localStorage.getItem('user') || 'null')
-  return user?.avatar || '/api/user/default-avatar?name=User'
+  return user?.avatar || '/default-avatar.svg'
 })
 
 // 切换评论输入框折叠状态
@@ -477,10 +477,19 @@ const likeComment = async (commentId) => {
   }
 }
 
-// 点踩评论 - 暂时不实现，后端没有点踩接口
+// 点踩评论 - 纯前端虚假状态
 const dislikeComment = (commentId) => {
-  console.log('点踩功能暂未实现')
-  ElMessage.info('点踩功能暂未实现')
+  if (!currentUser.value) { ElMessage.warning('请先登录'); return }
+  const comment = comments.value.find(c => c.id === commentId)
+  if (!comment) return
+  if (comment.isDisliked) {
+    comment.dislikeCount = Math.max(0, (comment.dislikeCount || 0) - 1)
+    comment.isDisliked = false
+  } else {
+    comment.dislikeCount = (comment.dislikeCount || 0) + 1
+    comment.isDisliked = true
+    if (comment.isLiked) { comment.isLiked = false; comment.likeCount = Math.max(0, (comment.likeCount || 0) - 1) }
+  }
 }
 
 // 点赞回复
@@ -527,23 +536,24 @@ const likeReply = async (replyId) => {
   }
 }
 
-// 点踩回复
+// 点踩回复 - 纯前端虚假状态
 const dislikeReply = (replyId) => {
-  try {
-    // 找到对应的回复并更新点踩数
-    for (const comment of comments.value) {
-      if (comment.replies) {
-        const reply = comment.replies.find(r => r.id === replyId)
-        if (reply) {
+  if (!currentUser.value) { ElMessage.warning('请先登录'); return }
+  for (const comment of comments.value) {
+    if (comment.replies) {
+      const reply = comment.replies.find(r => r.id === replyId)
+      if (reply) {
+        if (reply.isDisliked) {
+          reply.dislikeCount = Math.max(0, (reply.dislikeCount || 0) - 1)
+          reply.isDisliked = false
+        } else {
           reply.dislikeCount = (reply.dislikeCount || 0) + 1
-          ElMessage.success('点踩成功')
-          return
+          reply.isDisliked = true
+          if (reply.isLiked) { reply.isLiked = false; reply.likeCount = Math.max(0, (reply.likeCount || 0) - 1) }
         }
+        return
       }
     }
-  } catch (error) {
-    console.error('点踩回复失败:', error)
-    ElMessage.error('操作失败，请稍后重试')
   }
 }
 
@@ -559,7 +569,7 @@ const loadReplies = async (commentId, page = 1) => {
           id: reply.id,
           userId: reply.userId || reply.user?.id,
           author: reply.userName || reply.author || '未知用户',
-          avatar: reply.userAvatar || reply.avatar || '/api/user/default-avatar?name=User',
+          avatar: reply.userAvatar || reply.avatar || '/default-avatar.svg',
           content: reply.content,
           time: reply.time || formatDate(reply.createTime),
           likeCount: reply.likeCount || 0,
@@ -909,7 +919,7 @@ const loadComments = async (sort = 'new') => {
         id: comment.id,
         userId: comment.userId || comment.user?.id,
         author: comment.userName || comment.author || comment.user?.name || '未知用户',
-        avatar: comment.userAvatar || comment.avatar || comment.user?.avatar || '/api/user/default-avatar?name=User',
+        avatar: comment.userAvatar || comment.avatar || comment.user?.avatar || '/default-avatar.svg',
         content: comment.content,
         time: comment.time || formatDate(comment.createTime),
         likeCount: comment.likeCount || 0,
@@ -920,7 +930,7 @@ const loadComments = async (sort = 'new') => {
           id: reply.id,
           userId: reply.userId || reply.user?.id,
           author: reply.userName || reply.author || '未知用户',
-          avatar: reply.userAvatar || reply.avatar || '/api/user/default-avatar?name=User',
+          avatar: reply.userAvatar || reply.avatar || '/default-avatar.svg',
           content: reply.content,
           time: reply.time || formatDate(reply.createTime),
           likeCount: reply.likeCount || 0,
@@ -1053,7 +1063,8 @@ const goToAuthor = (authorId) => {
 // 互动状态
 const interactionStatus = ref({
   liked: false,
-  favorited: false
+  favorited: false,
+  shared: false
 })
 
 // 处理点赞
@@ -1280,19 +1291,25 @@ const confirmFavorite = async () => {
 
 // 处理分享
 const handleShare = async () => {
+  console.log('[SHARE] handleShare called, manuscriptId=', currentManuscriptId.value)
   const shareUrl = `${window.location.origin}/manuscript/${currentManuscriptId.value}`
   navigator.clipboard.writeText(shareUrl)
 
   try {
+    console.log('[SHARE] calling shareManuscript API...')
     const response = await interactionApi.shareManuscript(currentManuscriptId.value)
+    console.log('[SHARE] response:', response)
     if (response.code === 200) {
       videoInfo.value.shareCount++
+      interactionStatus.value.shared = true
+      console.log('[SHARE] state updated, new shareCount=', videoInfo.value.shareCount, 'shared=', interactionStatus.value.shared)
+    } else {
+      console.warn('[SHARE] response.code != 200:', response)
     }
   } catch (error) {
-    console.error('分享失败:', error)
+    console.error('[SHARE] 分享失败:', error)
   }
 
-  // 动画效果
   const shareBtn = document.querySelector('.share-btn')
   if (shareBtn) {
     shareBtn.classList.add('is-animating')
@@ -1934,7 +1951,7 @@ watch(() => route.query.p, (newP) => {
         >
           <img 
             ref="authorAvatarRef"
-            :src="videoInfo.uploader.avatar || '/api/user/default-avatar?name=User'" 
+            :src="videoInfo.uploader.avatar || '/default-avatar.svg'" 
             alt="作者头像" 
             class="author-avatar" 
             @click="goToAuthor(videoInfo.uploader.id)"
@@ -2060,7 +2077,7 @@ watch(() => route.query.p, (newP) => {
                 <el-icon><Star /></el-icon>
                 <span>{{ (videoInfo.collectCount || 0).toLocaleString() }}</span>
               </el-button>
-              <el-button class="action-btn share-btn" @click="handleShare">
+              <el-button class="action-btn share-btn" :class="{ 'is-active': interactionStatus.shared }" @click="handleShare">
                 <el-icon><Share /></el-icon>
                 <span>{{ (videoInfo.shareCount || 0).toLocaleString() }}</span>
               </el-button>
@@ -2204,7 +2221,7 @@ watch(() => route.query.p, (newP) => {
               <div v-else>
                 <div v-for="comment in comments" :key="comment.id" class="comment-item">
                   <img 
-                    :src="comment.avatar || '/api/user/default-avatar?name=User'" 
+                    :src="comment.avatar || '/default-avatar.svg'" 
                     alt="用户头像" 
                     class="comment-avatar" 
                     @click="goToAuthor(comment.userId)"
@@ -2222,9 +2239,8 @@ watch(() => route.query.p, (newP) => {
                         <el-icon><CircleCheck /></el-icon>
                         {{ comment.likeCount }}
                       </el-button>
-                      <el-button text size="small" @click="dislikeComment(comment.id)">
+                      <el-button text size="small" :class="{ 'disliked': comment.isDisliked }" @click="dislikeComment(comment.id)">
                         <el-icon><CircleClose /></el-icon>
-                        {{ comment.dislikeCount }}
                       </el-button>
                       <el-button text size="small" @click.stop="replyComment(comment.id)">回复</el-button>
                     </div>
@@ -2233,7 +2249,7 @@ watch(() => route.query.p, (newP) => {
                     <div class="replies-list" v-if="comment.replies && comment.replies.length > 0">
                       <!-- 显示视频作者的回复 -->
                       <div v-for="reply in comment.replies.filter(r => videoInfo.uploader.id && r.userId === videoInfo.uploader.id)" :key="reply.id" class="reply-item">
-                        <img :src="reply.avatar || '/api/user/default-avatar?name=User'" alt="用户头像" class="reply-avatar" @click="goToAuthor(reply.userId)">
+                        <img :src="reply.avatar || '/default-avatar.svg'" alt="用户头像" class="reply-avatar" @click="goToAuthor(reply.userId)">
                         <div class="reply-content">
                           <div class="reply-text" v-html="formatContentWithAtLinks(reply.author + ': ' + reply.content)"></div>
                           <div class="reply-actions">
@@ -2242,9 +2258,8 @@ watch(() => route.query.p, (newP) => {
                               <el-icon><CircleCheck /></el-icon>
                               {{ reply.likeCount }}
                             </el-button>
-                            <el-button text size="small" @click="dislikeReply(reply.id)">
+                            <el-button text size="small" :class="{ 'disliked': reply.isDisliked }" @click="dislikeReply(reply.id)">
                               <el-icon><CircleClose /></el-icon>
-                              {{ reply.dislikeCount || 0 }}
                             </el-button>
                             <el-button text size="small" @click.stop="replyToReply(comment.id, reply.id, reply.author)">回复</el-button>
                           </div>
@@ -2263,7 +2278,7 @@ watch(() => route.query.p, (newP) => {
                         <!-- 展开状态 -->
                         <div v-if="replyExpanded[comment.id]">
                           <div v-for="reply in comment.replies.filter(r => !videoInfo.uploader.id || r.userId !== videoInfo.uploader.id)" :key="reply.id" class="reply-item">
-                            <img :src="reply.avatar || '/api/user/default-avatar?name=User'" alt="用户头像" class="reply-avatar" @click="goToAuthor(reply.userId)">
+                            <img :src="reply.avatar || '/default-avatar.svg'" alt="用户头像" class="reply-avatar" @click="goToAuthor(reply.userId)">
                             <div class="reply-content">
                               <div class="reply-text" v-html="formatContentWithAtLinks(reply.author + ': ' + reply.content)"></div>
                               <div class="reply-actions">
@@ -2272,9 +2287,8 @@ watch(() => route.query.p, (newP) => {
                                   <el-icon><CircleCheck /></el-icon>
                                   {{ reply.likeCount }}
                                 </el-button>
-                                <el-button text size="small" @click="dislikeReply(reply.id)">
+                                <el-button text size="small" :class="{ 'disliked': reply.isDisliked }" @click="dislikeReply(reply.id)">
                                   <el-icon><CircleClose /></el-icon>
-                                  {{ reply.dislikeCount || 0 }}
                                 </el-button>
                                 <el-button text size="small" @click.stop="replyToReply(comment.id, reply.id, reply.author)">回复</el-button>
                               </div>
@@ -3357,6 +3371,10 @@ watch(() => route.query.p, (newP) => {
   color: #00a1d6;
 }
 
+.comment-section .comment-actions .el-button.disliked {
+  color: #f56c6c;
+}
+
 .comment-section .comment-actions .el-icon {
   margin-right: 4px;
 }
@@ -3479,6 +3497,10 @@ watch(() => route.query.p, (newP) => {
 
 .comment-section .reply-actions .el-button.liked {
   color: #00a1d6;
+}
+
+.comment-section .reply-actions .el-button.disliked {
+  color: #f56c6c;
 }
 
 /* 回复输入框 */

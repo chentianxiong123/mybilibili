@@ -2,6 +2,7 @@ package com.mybilibili.comment.service.impl;
 
 import com.mybilibili.comment.feign.DynamicClient;
 import com.mybilibili.comment.feign.LikeClient;
+import com.mybilibili.comment.feign.MessageClient;
 import com.mybilibili.comment.feign.UserClient;
 import com.mybilibili.comment.mapper.DynamicCommentMapper;
 import com.mybilibili.comment.service.DynamicCommentService;
@@ -30,6 +31,9 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
     @Autowired
     private DynamicClient dynamicClient;
 
+    @Autowired
+    private MessageClient messageClient;
+
     private static final String TARGET_TYPE_DYNAMIC_COMMENT = "DYNAMIC_COMMENT";
     private static final int COMMENT_EXPERIENCE = 5;
     private static final int REPLY_EXPERIENCE = 2;
@@ -56,14 +60,22 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
         vo.setContent(comment.getContent());
         vo.setParentId(comment.getParentId());
         vo.setReplyUserId(comment.getReplyUserId());
-        vo.setLikeCount(comment.getLikeCount());
+        vo.setReplyToUserId(comment.getReplyUserId());
+        vo.setLikeCount(comment.getLikeCount() != null ? comment.getLikeCount() : 0);
         vo.setCreatedAt(comment.getCreatedAt());
         vo.setStatus(comment.getStatus());
 
         UserVO user = getUserById(comment.getUserId());
+        String nickname = user != null ? user.getNickname() : null;
+        vo.setUserName(isValidNickname(nickname) ? nickname : "用户" + comment.getUserId());
         if (user != null) {
-            vo.setUserName(user.getNickname());
             vo.setUserAvatar(user.getAvatar());
+        }
+
+        if (comment.getReplyUserId() != null) {
+            UserVO replyUser = getUserById(comment.getReplyUserId());
+            String replyNickname = replyUser != null ? replyUser.getNickname() : null;
+            vo.setReplyToUserName(isValidNickname(replyNickname) ? replyNickname : "用户" + comment.getReplyUserId());
         }
 
         if (currentUserId != null) {
@@ -78,6 +90,10 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
         }
 
         return vo;
+    }
+
+    private boolean isValidNickname(String nickname) {
+        return nickname != null && !nickname.trim().isEmpty() && !"string".equals(nickname.trim());
     }
 
     @Override
@@ -150,7 +166,15 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
         List<DynamicComment> comments = dynamicCommentMapper.selectByDynamicId(dynamicId, offset, size);
         List<DynamicCommentVO> voList = new ArrayList<>();
         for (DynamicComment comment : comments) {
-            voList.add(buildDynamicCommentVO(comment, currentUserId));
+            DynamicCommentVO vo = buildDynamicCommentVO(comment, currentUserId);
+            List<DynamicComment> replies = dynamicCommentMapper.selectRepliesByParentId(comment.getId());
+            List<DynamicCommentVO> replyVOs = new ArrayList<>();
+            for (DynamicComment reply : replies) {
+                replyVOs.add(buildDynamicCommentVO(reply, currentUserId));
+            }
+            vo.setReplies(replyVOs);
+            vo.setReplyCount(replyVOs.size());
+            voList.add(vo);
         }
         return Result.success("获取成功", voList);
     }
@@ -171,7 +195,17 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
         if (comment == null) {
             return Result.error("评论不存在");
         }
-        likeClient.like(userId, TARGET_TYPE_DYNAMIC_COMMENT, commentId);
+        Result<?> result = likeClient.like(userId, TARGET_TYPE_DYNAMIC_COMMENT, commentId);
+        if (result == null || result.getCode() != 200) {
+            return Result.error(result != null ? result.getMessage() : "点赞失败");
+        }
+        int newLikeCount = getLikeCount(TARGET_TYPE_DYNAMIC_COMMENT, commentId);
+        dynamicCommentMapper.updateLikeCountDirect(commentId, newLikeCount);
+        try {
+            messageClient.sendCommentLikeNotification(userId, comment.getUserId(), commentId, comment.getContent());
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(getClass()).warn("发送动态评论点赞通知失败: {}", e.getMessage());
+        }
         return Result.success("点赞成功", null);
     }
 
@@ -181,7 +215,24 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
         if (comment == null) {
             return Result.error("评论不存在");
         }
-        likeClient.unlike(userId, TARGET_TYPE_DYNAMIC_COMMENT, commentId);
+        Result<?> result = likeClient.unlike(userId, TARGET_TYPE_DYNAMIC_COMMENT, commentId);
+        if (result == null || result.getCode() != 200) {
+            return Result.error(result != null ? result.getMessage() : "取消点赞失败");
+        }
+        int newLikeCount = getLikeCount(TARGET_TYPE_DYNAMIC_COMMENT, commentId);
+        dynamicCommentMapper.updateLikeCountDirect(commentId, newLikeCount);
         return Result.success("取消点赞成功", null);
+    }
+
+    private int getLikeCount(String targetType, Integer targetId) {
+        try {
+            Result<Integer> result = likeClient.getLikeCount(targetType, targetId);
+            if (result != null && result.getData() != null) {
+                return result.getData();
+            }
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(getClass()).error("获取点赞数失败: {}", e.getMessage());
+        }
+        throw new RuntimeException("获取点赞数失败");
     }
 }

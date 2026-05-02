@@ -38,11 +38,11 @@ const currentUserId = computed(() => {
 const currentUserAvatar = computed(() => {
   try {
     const userStr = localStorage.getItem('user')
-    if (!userStr) return '/api/user/default-avatar?name=Me'
+    if (!userStr) return '/default-avatar.svg'
     const user = JSON.parse(userStr)
-    return user.avatar || '/api/user/default-avatar?name=Me'
+    return user.avatar || '/default-avatar.svg'
   } catch (e) {
-    return '/api/user/default-avatar?name=Me'
+    return '/default-avatar.svg'
   }
 })
 
@@ -88,7 +88,7 @@ watch(() => props.messages, () => {
     <div class="chat-header">
       <el-avatar
         :size="36"
-        :src="conversation.targetUserAvatar || '/api/user/default-avatar?name=User'"
+        :src="conversation.targetUserAvatar || '/default-avatar.svg'"
       />
       <span class="chat-title">{{ conversation.targetUserName || '用户' }}</span>
     </div>
@@ -106,7 +106,7 @@ watch(() => props.messages, () => {
           :size="36"
           :src="message.senderId === currentUserId
             ? currentUserAvatar
-            : (conversation.targetUserAvatar || '/api/user/default-avatar?name=User')"
+            : (conversation.targetUserAvatar || '/default-avatar.svg')"
           class="message-avatar"
         />
         <div class="message-content">

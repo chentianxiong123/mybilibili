@@ -131,7 +131,7 @@ const loading = ref(false)
 const isFollowing = ref(false)
 const isCommentExpanded = ref(false)
 
-const defaultAvatar = '/api/user/default-avatar?name=User'
+const defaultAvatar = '/default-avatar.svg'
 const commentSystemRef = ref(null)
 
 // 当前用户

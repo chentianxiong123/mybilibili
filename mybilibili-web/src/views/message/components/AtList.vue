@@ -139,7 +139,7 @@ onMounted(() => {
         @click="handleItemClick(item)"
       >
         <div class="item-left">
-          <img :src="item.userAvatar || '/default-avatar.png'" class="user-avatar" />
+          <img :src="item.userAvatar || '/default-avatar.svg'" class="user-avatar" />
           <div class="item-content">
             <div class="user-info">
               <span class="username">{{ item.username }}</span>

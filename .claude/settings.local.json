@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "mcp__mcpServers__execute_sql",
-      "Bash(mvn *)"
+      "Bash(mvn *)",
+      "Bash(./mvnw -pl mybilibili-common,mybilibili-comment,mybilibili-message -am -DskipTests compile)",
+      "Bash(npm --prefix mybilibili-web run build)",
+      "Bash(python *)"
     ]
   }
 }

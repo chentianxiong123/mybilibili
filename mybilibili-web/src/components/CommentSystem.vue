@@ -59,6 +59,7 @@
                 <span class="comment-actions">
                   <span class="action-btn" :class="{ liked: comment.liked }" @click="likeComment(comment)">
                     <el-icon><Star /></el-icon>
+                    {{ comment.likeCount || 0 }}
                   </span>
                   <span class="action-btn" :class="{ disliked: comment.disliked }" @click="dislikeComment(comment)">
                     <el-icon><ArrowDown /></el-icon>
@@ -79,6 +80,16 @@
                   @keydown="handleReplyKeydown"
                 ></textarea>
                 <div class="reply-actions">
+                  <div :ref="el => setReplyEmojiBtnRef(el, `c-${comment.id}`)" class="emoji-btn" @click="toggleReplyEmojiPicker(`c-${comment.id}`)">
+                    <el-icon><ChatDotRound /></el-icon>
+                    <span>表情</span>
+                  </div>
+                  <EmojiPopover
+                    v-if="replyEmojiTarget === `c-${comment.id}`"
+                    v-model:visible="showReplyEmojiPicker"
+                    :trigger-ref="replyEmojiBtnRefs[`c-${comment.id}`]"
+                    @select="selectReplyEmoji"
+                  />
                   <span class="cancel-btn" @click="cancelReply">取消</span>
                   <span class="submit-btn" :class="{ 'active': replyContent.trim() }" @click="submitReply(comment)">
                     发表回复
@@ -98,7 +109,7 @@
                     <div class="reply-user">
                       <span @click="goToUser(reply.userId)">{{ reply.userName }}</span>
                       <span v-if="reply.replyToUserName" class="reply-to">
-                        回复 <span @click="goToUser(reply.replyToUserId)">{{ reply.replyToUserName }}</span>
+                        回复 <span @click="goToUser(reply.replyToUserId || reply.replyUserId)">{{ reply.replyToUserName }}</span>
                       </span>
                     </div>
                     <div class="reply-text">{{ reply.content }}</div>
@@ -107,6 +118,7 @@
                       <span class="reply-actions">
                         <span class="action-btn" :class="{ liked: reply.liked }" @click="likeReply(reply)">
                           <el-icon><Star /></el-icon>
+                          {{ reply.likeCount || 0 }}
                         </span>
                         <span class="action-btn" :class="{ disliked: reply.disliked }" @click="dislikeReply(reply)">
                           <el-icon><ArrowDown /></el-icon>
@@ -126,6 +138,16 @@
                         @keydown="handleReplyKeydown"
                       ></textarea>
                       <div class="reply-actions">
+                        <div :ref="el => setReplyEmojiBtnRef(el, `r-${reply.id}`)" class="emoji-btn" @click="toggleReplyEmojiPicker(`r-${reply.id}`)">
+                          <el-icon><ChatDotRound /></el-icon>
+                          <span>表情</span>
+                        </div>
+                        <EmojiPopover
+                          v-if="replyEmojiTarget === `r-${reply.id}`"
+                          v-model:visible="showReplyEmojiPicker"
+                          :trigger-ref="replyEmojiBtnRefs[`r-${reply.id}`]"
+                          @select="selectReplyEmoji"
+                        />
                         <span class="cancel-btn" @click="cancelReply">取消</span>
                         <span class="submit-btn" :class="{ 'active': replyContent.trim() }" @click="submitReplyToReply(comment, reply)">
                           发表回复
@@ -202,10 +224,10 @@ const currentUser = computed(() => {
 })
 
 const currentUserAvatar = computed(() => {
-  return currentUser.value?.avatar || '/api/user/default-avatar?name=User'
+  return currentUser.value?.avatar || '/default-avatar.svg'
 })
 
-const defaultAvatar = '/api/user/default-avatar?name=User'
+const defaultAvatar = '/default-avatar.svg'
 
 // 判断是否为动态类型
 const isDynamic = computed(() => props.targetType === 'DYNAMIC')
@@ -350,7 +372,7 @@ const submitReply = async (comment) => {
 
   try {
     const res = isDynamic.value
-      ? await commentApi.replyDynamicComment(comment.id, replyContent.value, null)
+      ? await commentApi.replyDynamicComment(props.targetId, comment.id, replyContent.value, null)
       : await commentApi.replyComment(comment.id, replyContent.value, null)
     if (res.code === 200) {
       if (!comment.replies) {
@@ -378,7 +400,7 @@ const submitReplyToReply = async (comment, reply) => {
 
   try {
     const res = isDynamic.value
-      ? await commentApi.replyDynamicComment(comment.id, replyContent.value, replyTarget.value.replyToUserId)
+      ? await commentApi.replyDynamicComment(props.targetId, comment.id, replyContent.value, replyTarget.value.replyToUserId)
       : await commentApi.replyComment(comment.id, replyContent.value, replyTarget.value.replyToUserId)
     if (res.code === 200) {
       // 添加回复到列表
@@ -433,38 +455,22 @@ const likeComment = async (comment) => {
   }
 }
 
-// 倒赞评论
-const dislikeComment = async (comment) => {
+// 点踩评论（纯前端状态，不入库）
+const dislikeComment = (comment) => {
   if (!currentUser.value) {
     ElMessage.warning('请先登录')
     return
   }
-
-  try {
-    if (comment.disliked) {
-      const res = isDynamic.value
-        ? await commentApi.unlikeDynamicComment(comment.id)
-        : await commentApi.unlikeComment(comment.id)
-      if (res.code === 200) {
-        comment.dislikeCount = Math.max(0, (comment.dislikeCount || 0) - 1)
-        comment.disliked = false
-      }
-    } else {
-      const res = isDynamic.value
-        ? await commentApi.likeDynamicComment(comment.id)
-        : await commentApi.likeComment(comment.id)
-      if (res.code === 200) {
-        comment.dislikeCount = (comment.dislikeCount || 0) + 1
-        comment.disliked = true
-        if (comment.liked) {
-          comment.liked = false
-          comment.likeCount = Math.max(0, comment.likeCount - 1)
-        }
-      }
+  if (comment.disliked) {
+    comment.dislikeCount = Math.max(0, (comment.dislikeCount || 0) - 1)
+    comment.disliked = false
+  } else {
+    comment.dislikeCount = (comment.dislikeCount || 0) + 1
+    comment.disliked = true
+    if (comment.liked) {
+      comment.liked = false
+      comment.likeCount = Math.max(0, (comment.likeCount || 0) - 1)
     }
-  } catch (error) {
-    console.error('倒赞失败:', error)
-    ElMessage.error('操作失败')
   }
 }
 
@@ -503,38 +509,22 @@ const likeReply = async (reply) => {
   }
 }
 
-// 倒赞回复
-const dislikeReply = async (reply) => {
+// 点踩回复（纯前端状态，不入库）
+const dislikeReply = (reply) => {
   if (!currentUser.value) {
     ElMessage.warning('请先登录')
     return
   }
-
-  try {
-    if (reply.disliked) {
-      const res = isDynamic.value
-        ? await commentApi.unlikeDynamicReply(reply.id)
-        : await commentApi.unlikeReply(reply.id)
-      if (res.code === 200) {
-        reply.dislikeCount = Math.max(0, (reply.dislikeCount || 0) - 1)
-        reply.disliked = false
-      }
-    } else {
-      const res = isDynamic.value
-        ? await commentApi.likeDynamicReply(reply.id)
-        : await commentApi.likeReply(reply.id)
-      if (res.code === 200) {
-        reply.dislikeCount = (reply.dislikeCount || 0) + 1
-        reply.disliked = true
-        if (reply.liked) {
-          reply.liked = false
-          reply.likeCount = Math.max(0, reply.likeCount - 1)
-        }
-      }
+  if (reply.disliked) {
+    reply.dislikeCount = Math.max(0, (reply.dislikeCount || 0) - 1)
+    reply.disliked = false
+  } else {
+    reply.dislikeCount = (reply.dislikeCount || 0) + 1
+    reply.disliked = true
+    if (reply.liked) {
+      reply.liked = false
+      reply.likeCount = Math.max(0, (reply.likeCount || 0) - 1)
     }
-  } catch (error) {
-    console.error('倒赞失败:', error)
-    ElMessage.error('操作失败')
   }
 }
 
@@ -566,6 +556,33 @@ const selectEmoji = (emoji) => {
 
 const toggleEmojiPicker = () => {
   showEmojiPicker.value = !showEmojiPicker.value
+}
+
+// 回复表情选择
+const showReplyEmojiPicker = ref(false)
+const replyEmojiTarget = ref(null)
+const replyEmojiBtnRefs = ref({})
+
+const setReplyEmojiBtnRef = (el, key) => {
+  if (el) {
+    replyEmojiBtnRefs.value[key] = el
+  } else {
+    delete replyEmojiBtnRefs.value[key]
+  }
+}
+
+const toggleReplyEmojiPicker = (key) => {
+  if (replyEmojiTarget.value === key && showReplyEmojiPicker.value) {
+    showReplyEmojiPicker.value = false
+    replyEmojiTarget.value = null
+  } else {
+    replyEmojiTarget.value = key
+    showReplyEmojiPicker.value = true
+  }
+}
+
+const selectReplyEmoji = (emoji) => {
+  replyContent.value += emoji
 }
 
 // 键盘事件

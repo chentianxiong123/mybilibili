@@ -61,7 +61,7 @@ const router = createRouter({
         layout: 'simple'
       },
       children: [
-        { path: '', redirect: '/profile/home' },
+        { path: '', name: 'profile-redirect', redirect: '/profile/home' },
         { path: 'home', name: 'profile-home', component: () => import('../views/UserProfileView.vue'), meta: { title: '个人主页 - 哔哩哔哩', layout: 'simple' } },
         { path: 'dynamic', name: 'profile-dynamic', component: () => import('../views/UserProfileView.vue'), meta: { title: '动态 - 哔哩哔哩', layout: 'simple' } },
         { path: 'submissions', name: 'profile-submissions', component: () => import('../views/UserProfileView.vue'), meta: { title: '投稿 - 哔哩哔哩', layout: 'simple' } },
@@ -82,7 +82,7 @@ const router = createRouter({
         layout: 'simple'
       },
       children: [
-        { path: '', redirect: '/profile/:id/home' },
+        { path: '', name: 'user-profile-redirect', redirect: '/profile/:id/home' },
         { path: 'home', name: 'user-profile-home', component: () => import('../views/UserProfileView.vue'), meta: { title: '用户主页 - 哔哩哔哩', layout: 'simple' } },
         { path: 'dynamic', name: 'user-profile-dynamic', component: () => import('../views/UserProfileView.vue'), meta: { title: '动态 - 哔哩哔哩', layout: 'simple' } },
         { path: 'submissions', name: 'user-profile-submissions', component: () => import('../views/UserProfileView.vue'), meta: { title: '投稿 - 哔哩哔哩', layout: 'simple' } },
@@ -104,7 +104,7 @@ const router = createRouter({
         layout: 'none'
       },
       children: [
-        { path: '', redirect: '/create-center/home' },
+        { path: '', name: 'create-center-redirect', redirect: '/create-center/home' },
         { path: 'home', name: 'create-center-home', meta: { title: '创作中心首页 - 哔哩哔哩', layout: 'none' } },
         { path: 'upload', name: 'create-center-upload', meta: { title: '投稿 - 哔哩哔哩', layout: 'none' } },
         { path: 'content', name: 'create-center-content', meta: { title: '内容管理 - 哔哩哔哩', layout: 'none' } },
@@ -193,7 +193,7 @@ const router = createRouter({
         layout: 'simple'
       },
       children: [
-        { path: '', redirect: '/personal-center/home' },
+        { path: '', name: 'personal-center-redirect', redirect: '/personal-center/home' },
         { path: 'home', name: 'personal-center-home', component: () => import('../views/personal/HomeView.vue'), meta: { title: '个人中心首页 - 哔哩哔哩', layout: 'simple' } },
         { path: 'info', name: 'personal-center-info', component: () => import('../views/personal/InfoView.vue'), meta: { title: '我的信息 - 哔哩哔哩', layout: 'simple' } },
         { path: 'avatar', name: 'personal-center-avatar', component: () => import('../views/AvatarView.vue'), meta: { title: '我的头像 - 哔哩哔哩', layout: 'simple' } },
@@ -212,38 +212,30 @@ const router = createRouter({
       path: '/message',
       name: 'message',
       component: () => import('../views/message/MessageView.vue'),
-      meta: { 
+      meta: {
         title: '消息中心 - 哔哩哔哩',
         layout: 'simple',
         requiresAuth: true
-      },
+      }
+    },
+    {
+      path: '/message/:type',
+      name: 'message-type',
+      component: () => import('../views/message/MessageView.vue'),
+      meta: {
+        title: '消息中心 - 哔哩哔哩',
+        layout: 'simple',
+        requiresAuth: true
+      }
+    },
+    {
+      path: '/admin',
+      name: 'admin',
+      meta: { title: '管理后台 - 哔哩哔哩', layout: 'none' },
       children: [
-        { path: '', redirect: '/message/private' },
-        { 
-          path: 'private', 
-          name: 'message-private',
-          meta: { title: '我的消息 - 哔哩哔哩', layout: 'simple' } 
-        },
-        { 
-          path: 'reply', 
-          name: 'message-reply',
-          meta: { title: '回复我的 - 哔哩哔哩', layout: 'simple' } 
-        },
-        { 
-          path: 'like', 
-          name: 'message-like',
-          meta: { title: '收到的赞 - 哔哩哔哩', layout: 'simple' } 
-        },
-        { 
-          path: 'system', 
-          name: 'message-system',
-          meta: { title: '系统通知 - 哔哩哔哩', layout: 'simple' } 
-        },
-        { 
-          path: 'settings', 
-          name: 'message-settings',
-          meta: { title: '消息设置 - 哔哩哔哩', layout: 'simple' } 
-        }
+        { path: '', name: 'admin-redirect', redirect: '/admin/index' },
+        { path: 'index', name: 'admin-index', component: () => import('../views/admin/IndexManagerView.vue'), meta: { title: '索引管理 - 哔哩哔哩', layout: 'none' } },
+        { path: 'system-notification', name: 'admin-system-notification', component: () => import('../views/admin/SystemNotificationManagerView.vue'), meta: { title: '全站系统通知 - 哔哩哔哩', layout: 'none' } }
       ]
     }
   ],

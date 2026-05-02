@@ -19,6 +19,10 @@ public class DynamicCommentVO {
 
     private String userName;
     private String userAvatar;
+    private Integer replyToUserId;
+    private String replyToUserName;
+    private Integer replyCount;
+    private java.util.List<DynamicCommentVO> replies;
     private Integer followersCount;
     private Boolean isFollowing;
     private Boolean isMutual;

@@ -147,7 +147,7 @@ onMounted(() => {
             <img 
               v-for="(avatar, index) in item.userAvatars?.slice(0, 3)" 
               :key="index"
-              :src="avatar || '/default-avatar.png'" 
+              :src="avatar || '/default-avatar.svg'" 
               class="user-avatar"
               :style="{ zIndex: 3 - index }"
             />

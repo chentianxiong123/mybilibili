@@ -195,7 +195,7 @@ export const commentApi = {
   }),
 
   // 回复评论（动态）
-  replyDynamicComment: (commentId, content, replyToUserId) => api.post('/dynamic/comment/reply', `commentId=${commentId}&content=${encodeURIComponent(content)}${replyToUserId ? `&replyUserId=${replyToUserId}` : ''}`, {
+  replyDynamicComment: (dynamicId, commentId, content, replyToUserId) => api.post('/dynamic/comment/add', `dynamicId=${dynamicId}&content=${encodeURIComponent(content)}&parentId=${commentId}${replyToUserId ? `&replyUserId=${replyToUserId}` : ''}`, {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     }

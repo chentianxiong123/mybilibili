@@ -106,6 +106,12 @@ const handleClickOutside = (event) => {
   }
 }
 
+watch(() => props.triggerRef, () => {
+  if (props.visible) {
+    nextTick(() => calculatePosition())
+  }
+})
+
 // 监听 visible 变化，显示时计算位置
 watch(() => props.visible, (newVal) => {
   if (newVal) {
@@ -133,6 +139,9 @@ onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   window.addEventListener('resize', handleResize)
   window.addEventListener('scroll', handleScroll, true)
+  if (props.visible) {
+    nextTick(() => calculatePosition())
+  }
 })
 
 onUnmounted(() => {

@@ -16,8 +16,6 @@ export const messageApi = {
 
   batchMarkAsRead: (ids) => api.put('/message/batch/read', { ids }),
 
-  getUnreadCount: () => api.get('/message/unread/count'),
-
   getUnreadCounts: () => api.get('/message/unread/counts'),
 
   getMessageSettings: () => api.get('/message/settings'),
@@ -33,5 +31,8 @@ export const messageApi = {
   getLikes: (params) => api.get('/message/likes', { params }),
 
   // 系统通知
-  getSystemNotifications: (params) => api.get('/message/system', { params })
+  getSystemNotifications: (params) => api.get('/message/system', { params }),
+
+  // 管理员：全站系统通知广播
+  broadcastSystemNotification: (data) => api.post('/message/admin/system/broadcast', data)
 }

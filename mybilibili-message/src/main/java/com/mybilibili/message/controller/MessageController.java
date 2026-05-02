@@ -226,4 +226,24 @@ public class MessageController {
         messageService.sendReplyNotification(senderId, receiverId, content, messageType, targetId, commentId);
         return Result.success("发送成功", null);
     }
+
+    @PostMapping("/internal/comment-like-notify")
+    public Result<?> sendCommentLikeNotification(
+            @RequestParam Integer senderId,
+            @RequestParam Integer receiverId,
+            @RequestParam Integer commentId,
+            @RequestParam String commentContent) {
+        messageService.sendCommentLikeNotification(senderId, receiverId, commentId, commentContent);
+        return Result.success("发送成功", null);
+    }
+
+    @PostMapping("/admin/system/broadcast")
+    public Result<?> broadcastSystemNotification(@RequestBody Map<String, String> body) {
+        String content = body.get("content");
+        if (content == null || content.trim().isEmpty()) {
+            return Result.error("通知内容不能为空");
+        }
+        messageService.sendSystemNotificationToAll(content.trim());
+        return Result.success("全站系统通知发送成功", null);
+    }
 }

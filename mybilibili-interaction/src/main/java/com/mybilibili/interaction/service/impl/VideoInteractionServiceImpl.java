@@ -208,6 +208,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
 
     @Override
     public void shareVideo(Integer userId, Integer manuscriptId, String channel, String ipAddress) {
+        System.out.println("[SHARE-SVC] shareVideo entry, userId=" + userId + ", manuscriptId=" + manuscriptId);
         if (manuscriptId == null) {
             throw new BusinessException("稿件不存在");
         }
@@ -218,8 +219,34 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
         share.setChannel(channel != null ? channel : "unknown");
         share.setIpAddress(ipAddress);
         shareMapper.insert(share);
+        System.out.println("[SHARE-SVC] inserted into shares table");
 
-        manuscriptMapper.updateShareCount(manuscriptId, 1);
+        boolean alreadyShared = false;
+        if (userId != null) {
+            LambdaQueryWrapper<UserInteraction> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(UserInteraction::getUserId, userId)
+                   .eq(UserInteraction::getTargetType, TARGET_TYPE_MANUSCRIPT)
+                   .eq(UserInteraction::getTargetId, manuscriptId)
+                   .eq(UserInteraction::getInteractionType, InteractionType.SHARE.getCode());
+            UserInteraction existing = userInteractionMapper.selectOne(wrapper);
+            if (existing != null) {
+                alreadyShared = true;
+                System.out.println("[SHARE-SVC] user already shared this manuscript");
+            } else {
+                UserInteraction interaction = new UserInteraction();
+                interaction.setUserId(userId);
+                interaction.setTargetType(TARGET_TYPE_MANUSCRIPT);
+                interaction.setTargetId(manuscriptId);
+                interaction.setInteractionType(InteractionType.SHARE.getCode());
+                userInteractionMapper.insert(interaction);
+                System.out.println("[SHARE-SVC] inserted SHARE into user_interactions");
+            }
+        }
+
+        if (!alreadyShared) {
+            int rows = manuscriptMapper.updateShareCount(manuscriptId, 1);
+            System.out.println("[SHARE-SVC] updateShareCount rows affected=" + rows);
+        }
     }
 
     @Override
@@ -250,6 +277,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
         if (userId == null) {
             status.setLiked(false);
             status.setCollected(false);
+            status.setShared(false);
             status.setCoinCount(0);
             return status;
         }
@@ -277,6 +305,14 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
                   .eq(UserInteraction::getInteractionType, InteractionType.COIN.getCode());
         UserInteraction coinInteraction = userInteractionMapper.selectOne(coinWrapper);
         status.setCoinCount(coinInteraction != null ? 1 : 0);
+
+        LambdaQueryWrapper<UserInteraction> shareWrapper = new LambdaQueryWrapper<>();
+        shareWrapper.eq(UserInteraction::getUserId, userId)
+                  .eq(UserInteraction::getTargetType, TARGET_TYPE_MANUSCRIPT)
+                  .eq(UserInteraction::getTargetId, manuscriptId)
+                  .eq(UserInteraction::getInteractionType, InteractionType.SHARE.getCode());
+        UserInteraction shareInteraction = userInteractionMapper.selectOne(shareWrapper);
+        status.setShared(shareInteraction != null);
 
         return status;
     }

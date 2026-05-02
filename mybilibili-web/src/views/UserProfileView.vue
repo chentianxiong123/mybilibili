@@ -608,8 +608,6 @@ const followList = ref({
 const privacySettings = ref({
   publicCollection: true,
   publicBirthdayTags: false,
-  publicCoinVideos: false,
-  publicLikeVideos: false,
   publicFollowingList: false,
   publicFollowersList: false
 })
@@ -627,8 +625,6 @@ const loadPrivacySettings = async () => {
       privacySettings.value = {
         publicCollection: res.data.publicCollection ?? true,
         publicBirthdayTags: res.data.publicBirthdayTags ?? false,
-        publicCoinVideos: res.data.publicCoinVideos ?? false,
-        publicLikeVideos: res.data.publicLikeVideos ?? false,
         publicFollowingList: res.data.publicFollowingList ?? false,
         publicFollowersList: res.data.publicFollowersList ?? false
       }
@@ -1871,12 +1867,12 @@ onMounted(() => {
         
         <!-- 右侧统计数据 -->
         <div class="stats-container">
-          <div class="stat-item" @click="router.push(`/profile/${userId.value}/following`)" v-if="userId.value">
-            <div class="stat-label">关注数</div>
+          <div class="stat-item stat-entry-button" @click="router.push(`/profile/${userId.value}/following`)" v-if="userId.value">
+            <div class="stat-label">关注</div>
             <div class="stat-value">{{ userInfo.stats.following }}</div>
           </div>
-          <div class="stat-item" @click="router.push(`/profile/${userId.value}/followers`)" v-if="userId.value">
-            <div class="stat-label">粉丝数</div>
+          <div class="stat-item stat-entry-button" @click="router.push(`/profile/${userId.value}/followers`)" v-if="userId.value">
+            <div class="stat-label">粉丝</div>
             <div class="stat-value">{{ userInfo.stats.followers }}</div>
           </div>
           <div class="stat-item non-interactive">
@@ -3076,32 +3072,6 @@ onMounted(() => {
                   </div>
                 </div>
                 <div class="setting-item">
-                  <span class="setting-label">公开最近投币的视频</span>
-                  <div class="setting-control">
-                    <el-switch
-                      v-model="privacySettings.publicCoinVideos"
-                      :active-value="true"
-                      :inactive-value="false"
-                      active-text="公开"
-                      inactive-text="隐藏"
-                      @change="handlePrivacyChange('publicCoinVideos', $event)"
-                    />
-                  </div>
-                </div>
-                <div class="setting-item">
-                  <span class="setting-label">公开最近点赞的视频</span>
-                  <div class="setting-control">
-                    <el-switch
-                      v-model="privacySettings.publicLikeVideos"
-                      :active-value="true"
-                      :inactive-value="false"
-                      active-text="公开"
-                      inactive-text="隐藏"
-                      @change="handlePrivacyChange('publicLikeVideos', $event)"
-                    />
-                  </div>
-                </div>
-                <div class="setting-item">
                   <span class="setting-label">公开我的关注列表</span>
                   <div class="setting-control">
                     <el-switch
@@ -4025,6 +3995,16 @@ onMounted(() => {
 
 .stat-item:hover .stat-value {
   color: #00aeec;
+}
+
+.stat-entry-button {
+  min-width: 56px;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+.stat-entry-button:hover {
+  background-color: #f1f9ff;
 }
 
 /* 非交互式统计项样式 */

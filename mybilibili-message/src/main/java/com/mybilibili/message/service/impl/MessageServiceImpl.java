@@ -3,11 +3,13 @@ package com.mybilibili.message.service.impl;
 import com.mybilibili.common.dto.SendMessageDTO;
 import com.mybilibili.common.entity.Conversation;
 import com.mybilibili.common.entity.Message;
+import com.mybilibili.common.entity.MessageSetting;
 import com.mybilibili.common.vo.*;
 import com.mybilibili.message.mapper.ConversationMapper;
 import com.mybilibili.message.mapper.MessageMapper;
 import com.mybilibili.message.service.ConversationService;
 import com.mybilibili.message.service.MessageService;
+import com.mybilibili.message.service.MessageSettingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,23 @@ public class MessageServiceImpl implements MessageService {
 
     @Autowired
     private ConversationService conversationService;
+
+    @Autowired
+    private MessageSettingService messageSettingService;
+
+    private boolean isNotificationEnabled(Integer receiverId, Integer messageType) {
+        try {
+            MessageSetting setting = messageSettingService.getOrCreateSettings(receiverId);
+            if (setting == null) return true;
+            if (messageType == 2) return Boolean.TRUE.equals(setting.getReplyNotify());
+            if (messageType == 3) return Boolean.TRUE.equals(setting.getAtNotify());
+            if (messageType == 4 || messageType == 6) return Boolean.TRUE.equals(setting.getLikeNotify());
+            if (messageType == 5) return Boolean.TRUE.equals(setting.getSystemNotify());
+            return true;
+        } catch (Exception e) {
+            return true;
+        }
+    }
 
     @Override
     public void sendMessage(Message message) {
@@ -169,6 +188,7 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public void sendLikeNotification(Integer senderId, Integer receiverId, Integer videoId, String videoTitle) {
+        if (!isNotificationEnabled(receiverId, 4)) return;
         Message message = new Message();
         message.setSenderId(senderId);
         message.setReceiverId(receiverId);
@@ -181,6 +201,7 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public void sendSystemNotification(Integer userId, String title, String content) {
+        if (!isNotificationEnabled(userId, 5)) return;
         Message message = new Message();
         message.setSenderId(1);
         message.setReceiverId(userId);
@@ -192,6 +213,7 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public void sendReplyNotification(Integer senderId, Integer receiverId, String content, Integer messageType, Integer targetId, Integer commentId) {
+        if (!isNotificationEnabled(receiverId, messageType)) return;
         Message message = new Message();
         message.setSenderId(senderId);
         message.setReceiverId(receiverId);
@@ -201,5 +223,43 @@ public class MessageServiceImpl implements MessageService {
         message.setCommentId(commentId);
         message.setIsRead(false);
         messageMapper.insert(message);
+    }
+
+    @Override
+    public void sendCommentLikeNotification(Integer senderId, Integer receiverId, Integer commentId, String commentContent) {
+        if (senderId.equals(receiverId)) {
+            return;
+        }
+        if (!isNotificationEnabled(receiverId, 6)) return;
+        Message message = new Message();
+        message.setSenderId(senderId);
+        message.setReceiverId(receiverId);
+        String preview = commentContent != null && commentContent.length() > 30
+                ? commentContent.substring(0, 30) + "..."
+                : commentContent;
+        message.setContent("赞了你的评论\"" + preview + "\"");
+        message.setMessageType(6);
+        message.setCommentId(commentId);
+        message.setIsRead(false);
+        messageMapper.insert(message);
+    }
+
+    @Override
+    public void sendSystemNotificationToAll(String content) {
+        List<Integer> userIds = messageMapper.selectUserIdsWithSystemNotifyEnabled();
+        if (userIds == null || userIds.isEmpty()) return;
+        for (Integer userId : userIds) {
+            try {
+                Message message = new Message();
+                message.setSenderId(1);
+                message.setReceiverId(userId);
+                message.setContent(content);
+                message.setMessageType(5);
+                message.setIsRead(false);
+                messageMapper.insert(message);
+            } catch (Exception e) {
+                org.slf4j.LoggerFactory.getLogger(getClass()).warn("向用户 {} 发送系统通知失败: {}", userId, e.getMessage());
+            }
+        }
     }
 }

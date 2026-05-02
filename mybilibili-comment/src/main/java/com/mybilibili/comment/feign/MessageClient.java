@@ -14,4 +14,10 @@ public interface MessageClient {
                           @RequestParam Integer messageType,
                           @RequestParam(required = false) Integer targetId,
                           @RequestParam(required = false) Integer commentId);
+
+    @PostMapping("/internal/comment-like-notify")
+    Result<?> sendCommentLikeNotification(@RequestParam Integer senderId,
+                          @RequestParam Integer receiverId,
+                          @RequestParam Integer commentId,
+                          @RequestParam String commentContent);
 }

@@ -16,6 +16,7 @@ public class Message implements Serializable {
     private String content;
     private String messageType;
     private Integer targetId;
+    private Integer commentId;
     private String mediaUrl;
     private Long conversationId;
     private Integer isRead;

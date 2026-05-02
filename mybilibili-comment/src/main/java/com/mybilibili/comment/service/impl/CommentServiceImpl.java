@@ -313,9 +313,17 @@ public class CommentServiceImpl implements CommentService {
         if (comment == null) {
             throw new RuntimeException("评论不存在");
         }
-        likeClient.like(userId, TARGET_TYPE_COMMENT, commentId);
+        Result<?> result = likeClient.like(userId, TARGET_TYPE_COMMENT, commentId);
+        if (result == null || result.getCode() != 200) {
+            throw new RuntimeException(result != null ? result.getMessage() : "点赞失败");
+        }
         int newLikeCount = getLikeCount(TARGET_TYPE_COMMENT, commentId);
         commentMapper.updateLikeCountDirect(commentId, newLikeCount);
+        try {
+            messageClient.sendCommentLikeNotification(userId, comment.getUserId(), commentId, comment.getContent());
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(getClass()).warn("发送评论点赞通知失败: {}", e.getMessage());
+        }
     }
 
     @Override
@@ -324,7 +332,10 @@ public class CommentServiceImpl implements CommentService {
         if (comment == null) {
             throw new RuntimeException("评论不存在");
         }
-        likeClient.unlike(userId, TARGET_TYPE_COMMENT, commentId);
+        Result<?> result = likeClient.unlike(userId, TARGET_TYPE_COMMENT, commentId);
+        if (result == null || result.getCode() != 200) {
+            throw new RuntimeException(result != null ? result.getMessage() : "取消点赞失败");
+        }
         int newLikeCount = getLikeCount(TARGET_TYPE_COMMENT, commentId);
         commentMapper.updateLikeCountDirect(commentId, newLikeCount);
     }
@@ -335,9 +346,17 @@ public class CommentServiceImpl implements CommentService {
         if (reply == null) {
             throw new RuntimeException("回复不存在");
         }
-        likeClient.like(userId, TARGET_TYPE_REPLY, replyId);
+        Result<?> result = likeClient.like(userId, TARGET_TYPE_REPLY, replyId);
+        if (result == null || result.getCode() != 200) {
+            throw new RuntimeException(result != null ? result.getMessage() : "点赞失败");
+        }
         int newLikeCount = getLikeCount(TARGET_TYPE_REPLY, replyId);
         replyMapper.updateLikeCountDirect(replyId, newLikeCount);
+        try {
+            messageClient.sendCommentLikeNotification(userId, reply.getUserId(), reply.getCommentId(), reply.getContent());
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(getClass()).warn("发送回复点赞通知失败: {}", e.getMessage());
+        }
     }
 
     @Override
@@ -346,7 +365,10 @@ public class CommentServiceImpl implements CommentService {
         if (reply == null) {
             throw new RuntimeException("回复不存在");
         }
-        likeClient.unlike(userId, TARGET_TYPE_REPLY, replyId);
+        Result<?> result = likeClient.unlike(userId, TARGET_TYPE_REPLY, replyId);
+        if (result == null || result.getCode() != 200) {
+            throw new RuntimeException(result != null ? result.getMessage() : "取消点赞失败");
+        }
         int newLikeCount = getLikeCount(TARGET_TYPE_REPLY, replyId);
         replyMapper.updateLikeCountDirect(replyId, newLikeCount);
     }
@@ -389,8 +411,9 @@ public class CommentServiceImpl implements CommentService {
                 return result.getData();
             }
         } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(getClass()).error("获取点赞数失败: {}", e.getMessage());
         }
-        return 0;
+        throw new RuntimeException("获取点赞数失败");
     }
 
     @Override
@@ -426,7 +449,7 @@ public class CommentServiceImpl implements CommentService {
         commentVO.setVideoId(comment.getManuscriptId());
         commentVO.setUserId(comment.getUserId());
         commentVO.setContent(comment.getContent());
-        commentVO.setLikeCount(likeCountMap.getOrDefault(comment.getId(), 0));
+        commentVO.setLikeCount(comment.getLikeCount() != null ? comment.getLikeCount() : 0);
         commentVO.setReplyCount(comment.getReplyCount());
         commentVO.setCreateTime(comment.getCreatedAt());
         commentVO.setManuscriptId(comment.getManuscriptId());
@@ -460,7 +483,7 @@ public class CommentServiceImpl implements CommentService {
         replyVO.setCommentId(reply.getCommentId());
         replyVO.setUserId(reply.getUserId());
         replyVO.setContent(reply.getContent());
-        replyVO.setLikeCount(likeCountMap.getOrDefault(reply.getId(), 0));
+        replyVO.setLikeCount(reply.getLikeCount() != null ? reply.getLikeCount() : 0);
         replyVO.setCreateTime(reply.getCreatedAt());
 
         UserVO user = getUserById(reply.getUserId());

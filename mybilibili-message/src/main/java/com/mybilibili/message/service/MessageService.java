@@ -46,4 +46,8 @@ public interface MessageService {
     void sendSystemNotification(Integer userId, String title, String content);
 
     void sendReplyNotification(Integer senderId, Integer receiverId, String content, Integer messageType, Integer targetId, Integer commentId);
+
+    void sendCommentLikeNotification(Integer senderId, Integer receiverId, Integer commentId, String commentContent);
+
+    void sendSystemNotificationToAll(String content);
 }

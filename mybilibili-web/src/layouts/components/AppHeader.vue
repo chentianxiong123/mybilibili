@@ -509,7 +509,7 @@ onUnmounted(() => {
           <el-button link @click="handleAvatarClick" class="action-btn avatar-btn">
             <el-avatar 
               :size="60" 
-              :src="userInfo?.avatar || '/api/user/default-avatar?name=User'" 
+              :src="userInfo?.avatar || '/default-avatar.svg'" 
               class="header-avatar" 
             />
           </el-button>

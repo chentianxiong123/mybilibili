@@ -46,7 +46,7 @@ const handleSelect = (conversation) => {
         <div class="avatar-wrapper">
           <el-avatar
             :size="40"
-            :src="conversation.targetUserAvatar || '/api/user/default-avatar?name=User'"
+            :src="conversation.targetUserAvatar || '/default-avatar.svg'"
           />
           <span v-if="conversation.unreadCount > 0" class="unread-dot"></span>
         </div>

@@ -49,4 +49,6 @@ public interface MessageMapper extends BaseMapper<Message> {
 
     int countUnreadSystem(@Param("receiverId") Integer receiverId);
 
+    List<Integer> selectUserIdsWithSystemNotifyEnabled();
+
 }

@@ -51,6 +51,7 @@ public interface VideoInteractionService {
     class VideoInteractionStatus {
         private boolean isLiked;
         private boolean isCollected;
+        private boolean isShared;
         private Integer coinCount;
 
         public boolean isLiked() {
@@ -67,6 +68,14 @@ public interface VideoInteractionService {
 
         public void setCollected(boolean collected) {
             isCollected = collected;
+        }
+
+        public boolean isShared() {
+            return isShared;
+        }
+
+        public void setShared(boolean shared) {
+            isShared = shared;
         }
 
         public Integer getCoinCount() {
