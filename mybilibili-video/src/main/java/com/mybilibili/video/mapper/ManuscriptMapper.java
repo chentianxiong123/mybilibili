@@ -86,4 +86,7 @@ public interface ManuscriptMapper extends BaseMapper<Manuscript> {
 
     @Update("UPDATE manuscripts SET status = #{status}, updated_at = NOW() WHERE id = #{id}")
     int updateStatusById(@Param("id") Integer id, @Param("status") Integer status);
+
+    @Select("SELECT * FROM manuscripts WHERE user_id = #{userId} AND title LIKE #{keyword} AND status = 3")
+    List<Manuscript> searchByUserIdAndKeyword(@Param("userId") Integer userId, @Param("keyword") String keyword);
 }

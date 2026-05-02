@@ -189,6 +189,20 @@ public class ManuscriptController {
         }
     }
 
+    @GetMapping("/user/{userId}/search")
+    @Operation(summary = "搜索用户稿件", description = "根据关键词搜索用户的稿件标题")
+    public Result<List<ManuscriptVO>> searchUserManuscripts(
+            @PathVariable Integer userId,
+            @Parameter(description = "搜索关键词") @RequestParam String keyword,
+            @Parameter(description = "排序方式") @RequestParam(required = false) String sort) {
+        try {
+            List<ManuscriptVO> results = manuscriptService.searchUserManuscripts(userId, keyword, sort);
+            return Result.success("搜索成功", results);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
     @GetMapping("/me/list")
     @Operation(summary = "获取当前用户稿件列表（分页）", description = "获取当前登录用户的稿件列表，支持分页和状态筛选")
     public Result<Map<String, Object>> getMyManuscriptsWithPaging(

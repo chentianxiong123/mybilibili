@@ -354,6 +354,30 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     }
 
     @Override
+    public List<ManuscriptVO> searchUserManuscripts(Integer userId, String keyword, String sort) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        String searchKeyword = "%" + keyword.trim() + "%";
+        List<Manuscript> manuscripts = manuscriptMapper.searchByUserIdAndKeyword(userId, searchKeyword);
+        
+        if ("play_count".equals(sort)) {
+            manuscripts.sort((a, b) -> (b.getViewCount() != null ? b.getViewCount() : 0) - (a.getViewCount() != null ? a.getViewCount() : 0));
+        } else if ("favorite_count".equals(sort)) {
+            manuscripts.sort((a, b) -> (b.getFavoriteCount() != null ? b.getFavoriteCount() : 0) - (a.getFavoriteCount() != null ? a.getFavoriteCount() : 0));
+        } else {
+            manuscripts.sort((a, b) -> {
+                if (a.getCreatedAt() == null) return 1;
+                if (b.getCreatedAt() == null) return -1;
+                return b.getCreatedAt().compareTo(a.getCreatedAt());
+            });
+        }
+        
+        return manuscripts.stream().map(this::convertToVOWithUploader).collect(Collectors.toList());
+    }
+
+    @Override
     public List<ManuscriptVO> getRecommendedManuscripts(Integer userId) {
         List<Manuscript> manuscripts = manuscriptMapper.selectRecommended(0, 20);
         return manuscripts.stream().map(this::convertToVOWithUploader).collect(Collectors.toList());

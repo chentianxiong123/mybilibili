@@ -16,6 +16,7 @@ public interface ManuscriptService {
     List<ManuscriptVO> getManuscriptsByUserIdWithPaging(Integer userId, Integer status, Integer page, Integer size);
     Integer countManuscriptsByUserIdAndStatus(Integer userId, Integer status);
     Map<String, Integer> getManuscriptStatsByUserId(Integer userId);
+    List<ManuscriptVO> searchUserManuscripts(Integer userId, String keyword, String sort);
     List<ManuscriptVO> getRecommendedManuscripts(Integer userId);
     Map<String, Object> getManuscriptsByCategoryId(Integer categoryId, Integer page, Integer size);
     List<ManuscriptVO> getHotManuscripts(Integer userId);
