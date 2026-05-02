@@ -63,6 +63,7 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
         vo.setReplyToUserId(comment.getReplyUserId());
         vo.setLikeCount(comment.getLikeCount() != null ? comment.getLikeCount() : 0);
         vo.setCreatedAt(comment.getCreatedAt());
+        vo.setCreateTime(comment.getCreatedAt());
         vo.setStatus(comment.getStatus());
 
         UserVO user = getUserById(comment.getUserId());
