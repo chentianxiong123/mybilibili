@@ -2,6 +2,7 @@ package com.mybilibili.comment.service.impl;
 
 import com.mybilibili.comment.feign.ContentReviewClient;
 import com.mybilibili.comment.feign.LikeClient;
+import com.mybilibili.comment.feign.ManuscriptClient;
 import com.mybilibili.comment.feign.MessageClient;
 import com.mybilibili.comment.feign.UserClient;
 import com.mybilibili.comment.mapper.CommentMapper;
@@ -48,6 +49,9 @@ public class CommentServiceImpl implements CommentService {
     private MessageClient messageClient;
 
     @Autowired
+    private ManuscriptClient manuscriptClient;
+
+    @Autowired
     private ProhibitedWordMapper prohibitedWordMapper;
 
     private static final String TARGET_TYPE_COMMENT = "COMMENT";
@@ -70,6 +74,14 @@ public class CommentServiceImpl implements CommentService {
         comment.setStatus(hasProhibitedWords ? 1 : 0);  // 0-正常 1-已删除
 
         commentMapper.insert(comment);
+
+        if (!hasProhibitedWords && manuscriptId != null) {
+            try {
+                manuscriptClient.incrementCommentCount(manuscriptId);
+            } catch (Exception e) {
+                org.slf4j.LoggerFactory.getLogger(getClass()).error("更新稿件评论数失败, manuscriptId={}, error={}", manuscriptId, e.getMessage());
+            }
+        }
 
         System.out.println("========== 准备添加经验值，userId=" + userId + ", experience=" + COMMENT_EXPERIENCE + " ==========");
         try {
@@ -144,6 +156,14 @@ public class CommentServiceImpl implements CommentService {
         comment.setStatus(hasProhibitedWords ? 1 : 0);  // 0-正常 1-已删除
 
         commentMapper.insert(comment);
+
+        if (!hasProhibitedWords && manuscriptId != null) {
+            try {
+                manuscriptClient.incrementCommentCount(manuscriptId);
+            } catch (Exception e) {
+                org.slf4j.LoggerFactory.getLogger(getClass()).error("更新稿件评论数失败, manuscriptId={}, error={}", manuscriptId, e.getMessage());
+            }
+        }
 
         System.out.println("========== 准备添加经验值，userId=" + userId + ", experience=" + COMMENT_EXPERIENCE + " ==========");
         try {

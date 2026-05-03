@@ -379,6 +379,41 @@ public class ManuscriptController {
         }
     }
 
+    @PutMapping("/{id}/comment-count")
+    @Operation(summary = "更新稿件评论数", description = "内部接口：更新稿件的评论数量")
+    public Result<?> updateCommentCount(
+            @PathVariable Integer id,
+            @RequestParam Integer count) {
+        try {
+            manuscriptService.updateCommentCount(id, count);
+            return Result.success("更新成功");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/increment-comment")
+    @Operation(summary = "增加评论数", description = "内部接口：增加稿件的评论数")
+    public Result<?> incrementCommentCount(@PathVariable Integer id) {
+        try {
+            manuscriptService.incrementCommentCount(id);
+            return Result.success("更新成功");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/decrement-comment")
+    @Operation(summary = "减少评论数", description = "内部接口：减少稿件的评论数")
+    public Result<?> decrementCommentCount(@PathVariable Integer id) {
+        try {
+            manuscriptService.decrementCommentCount(id);
+            return Result.success("更新成功");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
     private Integer convertStatusParam(String status) {
         if (status == null || status.isEmpty()) {
             return null;

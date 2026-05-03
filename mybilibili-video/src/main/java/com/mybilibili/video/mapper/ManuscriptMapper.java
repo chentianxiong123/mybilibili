@@ -89,4 +89,13 @@ public interface ManuscriptMapper extends BaseMapper<Manuscript> {
 
     @Select("SELECT * FROM manuscripts WHERE user_id = #{userId} AND title LIKE #{keyword} AND status = 3")
     List<Manuscript> searchByUserIdAndKeyword(@Param("userId") Integer userId, @Param("keyword") String keyword);
+
+    @Update("UPDATE manuscripts SET comment_count = #{count}, updated_at = NOW() WHERE id = #{id}")
+    int updateCommentCount(@Param("id") Integer id, @Param("count") Integer count);
+
+    @Update("UPDATE manuscripts SET comment_count = comment_count + 1, updated_at = NOW() WHERE id = #{id}")
+    int incrementCommentCount(@Param("id") Integer id);
+
+    @Update("UPDATE manuscripts SET comment_count = GREATEST(0, comment_count - 1), updated_at = NOW() WHERE id = #{id}")
+    int decrementCommentCount(@Param("id") Integer id);
 }

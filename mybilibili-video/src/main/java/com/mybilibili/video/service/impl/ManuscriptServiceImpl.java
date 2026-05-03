@@ -845,4 +845,25 @@ public class ManuscriptServiceImpl implements ManuscriptService {
             manuscriptMapper.incrementViewCount(manuscriptId);
         }
     }
+
+    @Override
+    public void updateCommentCount(Integer manuscriptId, Integer count) {
+        if (manuscriptId != null && count != null) {
+            manuscriptMapper.updateCommentCount(manuscriptId, count);
+        }
+    }
+
+    @Override
+    public void incrementCommentCount(Integer manuscriptId) {
+        if (manuscriptId != null) {
+            manuscriptMapper.incrementCommentCount(manuscriptId);
+        }
+    }
+
+    @Override
+    public void decrementCommentCount(Integer manuscriptId) {
+        if (manuscriptId != null) {
+            manuscriptMapper.decrementCommentCount(manuscriptId);
+        }
+    }
 }
