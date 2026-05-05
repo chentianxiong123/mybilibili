@@ -26,10 +26,11 @@ public class DynamicCommentController {
             @RequestParam Integer dynamicId,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(defaultValue = "time") String sort,
             HttpServletRequest request) {
         try {
             Integer currentUserId = getUserIdFromRequest(request);
-            return dynamicCommentService.getCommentsByDynamicId(dynamicId, page, size, currentUserId);
+            return dynamicCommentService.getCommentsByDynamicId(dynamicId, page, size, sort, currentUserId);
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }

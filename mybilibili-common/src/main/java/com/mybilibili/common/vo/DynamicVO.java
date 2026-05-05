@@ -13,6 +13,7 @@ public class DynamicVO {
     private Integer dynamicType;
     private List<String> imageUrls;
     private Integer refManuscriptId;
+    private RefVideo refVideo;
     private Integer likeCount;
     private Integer commentCount;
     private Integer shareCount;
@@ -20,4 +21,13 @@ public class DynamicVO {
     private Integer status;
     private Boolean isLiked;
     private UserVO user;
+
+    @Data
+    public static class RefVideo {
+        private Integer id;
+        private String title;
+        private String cover;
+        private String duration;
+        private Integer viewCount;
+    }
 }

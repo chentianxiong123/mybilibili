@@ -5,6 +5,7 @@ import com.mybilibili.common.entity.Manuscript;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface ManuscriptMapper extends BaseMapper<Manuscript> {
@@ -98,4 +99,8 @@ public interface ManuscriptMapper extends BaseMapper<Manuscript> {
 
     @Update("UPDATE manuscripts SET comment_count = GREATEST(0, comment_count - 1), updated_at = NOW() WHERE id = #{id}")
     int decrementCommentCount(@Param("id") Integer id);
+
+    @Select("SELECT DISTINCT user_id FROM manuscripts WHERE status = 3 " +
+            "UNION SELECT DISTINCT target_id as user_id FROM user_interactions WHERE target_type = 'USER'")
+    List<Map<String, Object>> selectDistinctUserIds();
 }

@@ -2,6 +2,7 @@ package com.mybilibili.video.service;
 
 import com.mybilibili.common.vo.CreatorOverviewVO;
 import com.mybilibili.common.vo.FansRankingVO;
+import com.mybilibili.common.vo.FansTrendVO;
 import com.mybilibili.common.vo.LatestCommentVO;
 import com.mybilibili.common.vo.ManuscriptRankVO;
 import com.mybilibili.common.vo.TrendDataVO;
@@ -19,4 +20,6 @@ public interface CreatorStatsService {
     List<LatestCommentVO> getLatestComments(Integer userId, Integer limit);
     
     List<FansRankingVO> getFansRanking(Integer userId, String type, Integer limit);
+
+    FansTrendVO getFansTrend(Integer userId, Integer days);
 }

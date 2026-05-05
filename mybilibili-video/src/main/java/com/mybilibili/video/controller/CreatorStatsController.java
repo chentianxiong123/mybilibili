@@ -3,6 +3,7 @@ package com.mybilibili.video.controller;
 import com.mybilibili.common.utils.JwtUtils;
 import com.mybilibili.common.vo.CreatorOverviewVO;
 import com.mybilibili.common.vo.FansRankingVO;
+import com.mybilibili.common.vo.FansTrendVO;
 import com.mybilibili.common.vo.LatestCommentVO;
 import com.mybilibili.common.vo.ManuscriptRankVO;
 import com.mybilibili.common.vo.Result;
@@ -116,6 +117,24 @@ public class CreatorStatsController {
             }
             List<FansRankingVO> ranking = creatorStatsService.getFansRanking(userId, type, limit);
             return Result.success("获取成功", ranking);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @GetMapping("/fans-trend")
+    @Operation(summary = "获取粉丝增长趋势", description = "获取指定天数内的粉丝增长趋势数据")
+    public Result<FansTrendVO> getFansTrend(
+            @Parameter(description = "天数") @RequestParam(defaultValue = "30") Integer days,
+            HttpServletRequest request) {
+        try {
+            Integer userId = JwtUtils.getUserIdFromRequest(request);
+            if (userId == null) {
+                return Result.error("用户未登录");
+            }
+            FansTrendVO trend = creatorStatsService.getFansTrend(userId, days);
+            return Result.success("获取成功", trend);
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error(e.getMessage());

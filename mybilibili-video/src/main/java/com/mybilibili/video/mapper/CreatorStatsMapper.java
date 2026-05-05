@@ -44,11 +44,10 @@ public interface CreatorStatsMapper extends BaseMapper<Manuscript> {
             "SUM(comment_count) as comments " +
             "FROM manuscripts " +
             "WHERE user_id = #{userId} AND status = 3 " +
-            "AND DATE(upload_time) BETWEEN #{startDate} AND #{endDate} " +
-            "GROUP BY DATE(upload_time)")
-    List<Map<String, Object>> selectTrendData(@Param("userId") Integer userId, 
-                                               @Param("startDate") String startDate, 
-                                               @Param("endDate") String endDate);
+            "GROUP BY DATE(upload_time) " +
+            "ORDER BY date DESC " +
+            "LIMIT #{days}")
+    List<Map<String, Object>> selectTrendData(@Param("userId") Integer userId, @Param("days") Integer days);
 
     @Select("SELECT * FROM manuscripts WHERE user_id = #{userId} AND status = 3 ORDER BY view_count DESC LIMIT #{limit}")
     List<Manuscript> selectTopByViews(@Param("userId") Integer userId, @Param("limit") Integer limit);
@@ -87,4 +86,51 @@ public interface CreatorStatsMapper extends BaseMapper<Manuscript> {
             "ORDER BY commentCount DESC " +
             "LIMIT #{limit}")
     List<Map<String, Object>> selectViewRanking(@Param("userId") Integer userId, @Param("limit") Integer limit);
+
+    @Select("SELECT " +
+            "COALESCE(SUM(view_count), 0) as viewCount, " +
+            "COALESCE(SUM(like_count), 0) as likeCount, " +
+            "COALESCE(SUM(comment_count), 0) as commentCount, " +
+            "COALESCE(SUM(danmaku_count), 0) as danmakuCount, " +
+            "COALESCE(SUM(coin_count), 0) as coinCount, " +
+            "COALESCE(SUM(collect_count), 0) as collectCount, " +
+            "COALESCE(SUM(share_count), 0) as shareCount, " +
+            "COUNT(*) as manuscriptCount " +
+            "FROM manuscripts WHERE user_id = #{userId} AND status = 3 AND DATE(upload_time) = #{date}")
+    Map<String, Object> selectDailyManuscriptStats(@Param("userId") Integer userId, @Param("date") String date);
+
+    @Select("SELECT " +
+            "COALESCE(SUM(CASE WHEN interaction_type = 'FOLLOW' THEN 1 ELSE 0 END), 0) as newFollowers, " +
+            "COALESCE(SUM(CASE WHEN interaction_type = 'UNFOLLOW' THEN 1 ELSE 0 END), 0) as unfollows " +
+            "FROM user_interactions " +
+            "WHERE target_id = #{userId} AND target_type = 'USER' AND DATE(created_at) = #{date}")
+    Map<String, Object> selectDailyFanStats(@Param("userId") Integer userId, @Param("date") String date);
+
+    @Select("SELECT COUNT(*) FROM user_interactions " +
+            "WHERE target_id = #{userId} AND target_type = 'USER' AND interaction_type = 'FOLLOW' " +
+            "AND DATE(created_at) <= #{date}")
+    Integer selectFollowerCountAtDate(@Param("userId") Integer userId, @Param("date") String date);
+
+    @Select("SELECT " +
+            "COALESCE(SUM(view_count), 0) as totalViews, " +
+            "COALESCE(SUM(like_count), 0) as totalLikes, " +
+            "COALESCE(SUM(comment_count), 0) as totalComments, " +
+            "COALESCE(SUM(danmaku_count), 0) as totalDanmaku, " +
+            "COALESCE(SUM(coin_count), 0) as totalCoins, " +
+            "COALESCE(SUM(collect_count), 0) as totalCollections, " +
+            "COALESCE(SUM(share_count), 0) as totalShares, " +
+            "COUNT(*) as totalManuscripts " +
+            "FROM manuscripts WHERE user_id = #{userId} AND status = 3 AND DATE(upload_time) BETWEEN #{startDate} AND #{endDate}")
+    Map<String, Object> selectOverviewByDateRange(@Param("userId") Integer userId, @Param("startDate") String startDate, @Param("endDate") String endDate);
+
+    @Select("SELECT " +
+            "DATE(created_at) as date, " +
+            "SUM(CASE WHEN interaction_type = 'FOLLOW' THEN 1 ELSE 0 END) as newFollowers, " +
+            "SUM(CASE WHEN interaction_type = 'UNFOLLOW' THEN 1 ELSE 0 END) as unfollows " +
+            "FROM user_interactions " +
+            "WHERE target_id = #{userId} AND target_type = 'USER' " +
+            "GROUP BY DATE(created_at) " +
+            "ORDER BY date DESC " +
+            "LIMIT #{days}")
+    List<Map<String, Object>> selectFansTrendData(@Param("userId") Integer userId, @Param("days") Integer days);
 }

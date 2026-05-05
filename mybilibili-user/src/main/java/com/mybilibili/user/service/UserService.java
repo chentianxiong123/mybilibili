@@ -12,6 +12,8 @@ import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.UserVO;
 import com.mybilibili.user.feign.ManuscriptClient;
 import com.mybilibili.user.mapper.UserMapper;
+import com.mybilibili.user.mapper.UserTagMapper;
+import com.mybilibili.common.entity.UserTag;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -31,6 +33,9 @@ public class UserService {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private UserTagMapper userTagMapper;
 
     @Autowired
     private UploadFilePathUtils uploadFilePathUtils;
@@ -123,6 +128,12 @@ public class UserService {
         userVO.setTotalViewCount(totalViewCount != null ? totalViewCount : 0);
         userVO.setTotalLikeCount(totalLikeCount != null ? totalLikeCount : 0);
         userVO.setCoinCount(user.getCoinCount() != null ? user.getCoinCount() : 0);
+
+        List<UserTag> userTags = userTagMapper.selectByUserId(user.getId());
+        List<String> tags = userTags.stream()
+                .map(UserTag::getTagName)
+                .collect(java.util.stream.Collectors.toList());
+        userVO.setTags(tags);
 
         return userVO;
     }

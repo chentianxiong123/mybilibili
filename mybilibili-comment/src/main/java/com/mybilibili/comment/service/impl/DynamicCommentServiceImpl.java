@@ -166,9 +166,9 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
     }
 
     @Override
-    public Result<List<DynamicCommentVO>> getCommentsByDynamicId(Integer dynamicId, Integer page, Integer size, Integer currentUserId) {
+    public Result<List<DynamicCommentVO>> getCommentsByDynamicId(Integer dynamicId, Integer page, Integer size, String sort, Integer currentUserId) {
         int offset = (page - 1) * size;
-        List<DynamicComment> comments = dynamicCommentMapper.selectByDynamicId(dynamicId, offset, size);
+        List<DynamicComment> comments = dynamicCommentMapper.selectByDynamicIdWithSort(dynamicId, offset, size, sort);
         List<DynamicCommentVO> voList = new ArrayList<>();
         for (DynamicComment comment : comments) {
             DynamicCommentVO vo = buildDynamicCommentVO(comment, currentUserId);

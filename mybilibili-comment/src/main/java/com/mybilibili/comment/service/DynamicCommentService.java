@@ -11,7 +11,7 @@ public interface DynamicCommentService {
 
     Result<?> deleteComment(Integer userId, Integer commentId);
 
-    Result<List<DynamicCommentVO>> getCommentsByDynamicId(Integer dynamicId, Integer page, Integer size, Integer currentUserId);
+    Result<List<DynamicCommentVO>> getCommentsByDynamicId(Integer dynamicId, Integer page, Integer size, String sort, Integer currentUserId);
 
     Result<List<DynamicCommentVO>> getRepliesByCommentId(Integer commentId, Integer currentUserId);
 

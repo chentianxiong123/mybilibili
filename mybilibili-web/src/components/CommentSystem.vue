@@ -268,6 +268,12 @@ watch(totalCommentAndReplyCount, (newVal) => {
   emit('update:totalCount', newVal)
 })
 
+// 监听排序方式变化，重新加载评论
+watch(sortType, () => {
+  currentPage.value = 1
+  fetchComments(1)
+})
+
 // 获取评论列表
 const fetchComments = async (page = 1) => {
   loading.value = true
@@ -276,7 +282,8 @@ const fetchComments = async (page = 1) => {
       props.targetType,
       props.targetId,
       page,
-      pageSize.value
+      pageSize.value,
+      sortType.value
     )
     if (res.code === 200) {
       if (page === 1) {

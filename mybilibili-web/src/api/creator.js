@@ -159,7 +159,9 @@ export const statsApi = {
   
   getLatestComments: (limit = 5) => api.get(`/creator/stats/latest-comments?limit=${limit}`),
   
-  getFansRanking: (type = 'view', limit = 10) => api.get(`/creator/stats/fans-ranking?type=${type}&limit=${limit}`)
+  getFansRanking: (type = 'view', limit = 10) => api.get(`/creator/stats/fans-ranking?type=${type}&limit=${limit}`),
+
+  getFansTrend: (days = 30) => api.get(`/creator/stats/fans-trend?days=${days}`)
 }
 
 export default api

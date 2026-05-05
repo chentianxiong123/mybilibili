@@ -13,6 +13,8 @@ public interface DynamicCommentMapper extends BaseMapper<DynamicComment> {
 
     List<DynamicComment> selectByDynamicId(Integer dynamicId, int offset, int size);
 
+    List<DynamicComment> selectByDynamicIdWithSort(Integer dynamicId, int offset, int size, String sort);
+
     List<DynamicComment> selectRepliesByParentId(Integer parentId);
 
     int countByDynamicId(Integer dynamicId);

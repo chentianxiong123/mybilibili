@@ -2,6 +2,8 @@ package com.mybilibili.common.vo;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class UserVO {
     private Integer id;
@@ -24,23 +26,13 @@ public class UserVO {
     private Integer status;
     private Integer coinCount;
 
-    /**
-     * 用户所有稿件的总播放数
-     */
     private Integer totalViewCount;
 
-    /**
-     * 用户所有稿件的总获赞数
-     */
     private Integer totalLikeCount;
 
-    /**
-     * 置顶视频ID
-     */
     private Integer pinnedVideoId;
 
-    /**
-     * 置顶视频详情
-     */
     private ManuscriptVO pinnedVideo;
+
+    private List<String> tags;
 }

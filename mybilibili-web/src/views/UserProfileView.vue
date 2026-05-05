@@ -29,7 +29,8 @@ const userInfo = ref({
     followers: 0,
     likes: 0,
     views: 0
-  }
+  },
+  tags: []
 })
 
 // 当前用户ID，从路由参数或本地存储获取
@@ -85,7 +86,8 @@ const loadUserInfo = async () => {
           followers: data.followerCount || 0,
           likes: data.totalLikeCount || 0,
           views: data.totalViewCount || 0
-        }
+        },
+        tags: data.tags || []
       }
       // 加载背景图
       await loadUserProfileBackground()
@@ -186,7 +188,7 @@ const checkFollowStatus = async () => {
   try {
     const response = await userApi.checkFollow(userId.value)
     if (response.code === 200) {
-      isFollowing.value = response.data === true
+      isFollowing.value = response.data.following === true
     }
   } catch (error) {
     console.error('检查关注状态失败:', error)
@@ -1867,11 +1869,11 @@ onMounted(() => {
         
         <!-- 右侧统计数据 -->
         <div class="stats-container">
-          <div class="stat-item stat-entry-button" @click="router.push(`/profile/${userId.value}/following`)" v-if="userId.value">
+          <div class="stat-item stat-entry-button" @click="router.push(`/profile/${userId}/following`)" v-if="userId">
             <div class="stat-label">关注</div>
             <div class="stat-value">{{ userInfo.stats.following }}</div>
           </div>
-          <div class="stat-item stat-entry-button" @click="router.push(`/profile/${userId.value}/followers`)" v-if="userId.value">
+          <div class="stat-item stat-entry-button" @click="router.push(`/profile/${userId}/followers`)" v-if="userId">
             <div class="stat-label">粉丝</div>
             <div class="stat-value">{{ userInfo.stats.followers }}</div>
           </div>
@@ -3170,8 +3172,8 @@ onMounted(() => {
             </div>
           </div>
           <!-- 标签区域 -->
-          <div class="profile-tags">
-            <span class="profile-tag">意义一</span>
+          <div class="profile-tags" v-if="userInfo.tags && userInfo.tags.length > 0">
+            <span class="profile-tag" v-for="tag in userInfo.tags" :key="tag">{{ tag }}</span>
           </div>
         </div>
       </div>
@@ -3976,7 +3978,7 @@ onMounted(() => {
 /* 统计数据容器 */
 .stats-container {
   display: flex;
-  gap: 30px;
+  gap: 0;
 }
 
 /* 统计项 */
@@ -3987,6 +3989,9 @@ onMounted(() => {
   gap: 4px;
   cursor: pointer;
   transition: all 0.3s ease;
+  min-width: 56px;
+  padding: 6px 10px;
+  border-radius: 8px;
 }
 
 .stat-item:hover .stat-label {
@@ -3995,12 +4000,6 @@ onMounted(() => {
 
 .stat-item:hover .stat-value {
   color: #00aeec;
-}
-
-.stat-entry-button {
-  min-width: 56px;
-  padding: 6px 10px;
-  border-radius: 8px;
 }
 
 .stat-entry-button:hover {

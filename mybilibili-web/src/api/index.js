@@ -154,10 +154,10 @@ export const videoApi = {
 // 评论相关API
 export const commentApi = {
   // 新接口：获取评论列表（支持视频和动态）
-  getComments: (targetType, targetId, page = 1, size = 20) =>
+  getComments: (targetType, targetId, page = 1, size = 20, sort = 'time') =>
     targetType === 'DYNAMIC'
-      ? api.get(`/dynamic/comment/list?dynamicId=${targetId}&page=${page}&size=${size}`)
-      : api.get(`/comment/list?manuscriptId=${targetId}&page=${page}&size=${size}`),
+      ? api.get(`/dynamic/comment/list?dynamicId=${targetId}&page=${page}&size=${size}&sort=${sort}`)
+      : api.get(`/comment/list?manuscriptId=${targetId}&page=${page}&size=${size}&sort=${sort}`),
 
   // 发表评论（支持视频和动态）
   postComment: (targetType, targetId, content) => {

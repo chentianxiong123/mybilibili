@@ -309,9 +309,16 @@ const recordWatchHistory = async () => {
   if (!videoId.value || hasRecordedHistory.value) return
   
   try {
-    // 计算观看比例
     const progress = Math.floor(watchProgress.value || 0)
-    const duration = Math.floor(videoDuration.value || 0)
+    let duration = Math.floor(videoDuration.value || 0)
+    
+    if (duration <= 0 && manuscriptInfo.value.videos && manuscriptInfo.value.videos.length > 0) {
+      const currentVideo = manuscriptInfo.value.videos[currentVideoIndex.value]
+      if (currentVideo && currentVideo.durationSeconds) {
+        duration = currentVideo.durationSeconds
+      }
+    }
+    
     const watchRatio = duration > 0 ? (progress / duration) : 0
     
     await watchHistoryApi.recordWatchHistory(

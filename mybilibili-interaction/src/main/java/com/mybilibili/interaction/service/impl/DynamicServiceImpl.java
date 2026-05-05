@@ -2,11 +2,13 @@ package com.mybilibili.interaction.service.impl;
 
 import com.mybilibili.common.entity.User;
 import com.mybilibili.common.entity.UserDynamic;
+import com.mybilibili.common.entity.Manuscript;
 import com.mybilibili.common.vo.DynamicVO;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.UserVO;
 import com.mybilibili.interaction.mapper.UserDynamicMapper;
 import com.mybilibili.interaction.mapper.UserMapper;
+import com.mybilibili.interaction.mapper.ManuscriptMapper;
 import com.mybilibili.interaction.service.DynamicService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,9 @@ public class DynamicServiceImpl implements DynamicService {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private ManuscriptMapper manuscriptMapper;
 
     @Autowired
     private StringRedisTemplate redisTemplate;
@@ -302,6 +307,19 @@ public class DynamicServiceImpl implements DynamicService {
         vo.setContent(dynamic.getContent());
         vo.setDynamicType(dynamic.getDynamicType());
         vo.setRefManuscriptId(dynamic.getRefManuscriptId());
+
+        if (dynamic.getRefManuscriptId() != null) {
+            Manuscript manuscript = manuscriptMapper.selectBasicFieldsById(dynamic.getRefManuscriptId());
+            if (manuscript != null) {
+                DynamicVO.RefVideo refVideo = new DynamicVO.RefVideo();
+                refVideo.setId(manuscript.getId());
+                refVideo.setTitle(manuscript.getTitle());
+                refVideo.setCover(manuscript.getCoverUrl());
+                refVideo.setDuration(manuscript.getDuration());
+                refVideo.setViewCount(manuscript.getViewCount());
+                vo.setRefVideo(refVideo);
+            }
+        }
 
         String countKey = String.format(KEY_LIKE_COUNT, TARGET_TYPE_DYNAMIC, dynamic.getId());
         String countStr = redisTemplate.opsForValue().get(countKey);

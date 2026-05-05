@@ -11,6 +11,22 @@
         LIMIT #{offset}, #{size}
     </select>
 
+    <select id="selectByDynamicIdWithSort" resultType="com.mybilibili.common.entity.DynamicComment">
+        SELECT * FROM dynamic_comments
+        WHERE dynamic_id = #{dynamicId}
+        AND parent_id IS NULL
+        AND status = 0
+        <choose>
+            <when test="sort == 'hot'">
+                ORDER BY like_count DESC, created_at DESC
+            </when>
+            <otherwise>
+                ORDER BY created_at DESC
+            </otherwise>
+        </choose>
+        LIMIT #{offset}, #{size}
+    </select>
+
     <select id="selectRepliesByParentId" resultType="com.mybilibili.common.entity.DynamicComment">
         SELECT * FROM dynamic_comments
         WHERE parent_id = #{parentId}

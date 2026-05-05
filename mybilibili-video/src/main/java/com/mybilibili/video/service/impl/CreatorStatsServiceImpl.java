@@ -3,8 +3,10 @@ package com.mybilibili.video.service.impl;
 import com.mybilibili.common.entity.Manuscript;
 import com.mybilibili.common.vo.CreatorOverviewVO;
 import com.mybilibili.common.vo.FansRankingVO;
+import com.mybilibili.common.vo.FansTrendVO;
 import com.mybilibili.common.vo.LatestCommentVO;
 import com.mybilibili.common.vo.ManuscriptRankVO;
+import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.TrendDataVO;
 import com.mybilibili.video.mapper.CreatorStatsMapper;
 import com.mybilibili.video.mapper.ManuscriptMapper;
@@ -20,6 +22,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 @Service
 public class CreatorStatsServiceImpl implements CreatorStatsService {
@@ -61,6 +65,13 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
             overview.setCoinsIncrease(getIntValue(increaseStats, "coinsIncrease"));
         }
         
+        List<Map<String, Object>> fansTrend = creatorStatsMapper.selectFansTrendData(userId, 7);
+        int followersIncrease = 0;
+        for (Map<String, Object> row : fansTrend) {
+            followersIncrease += getIntValue(row, "newFollowers");
+        }
+        overview.setFollowersIncrease(followersIncrease);
+        
         overview.setUpdateTime(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         
         return overview;
@@ -73,28 +84,37 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
         List<Integer> views = new ArrayList<>();
         List<Integer> likes = new ArrayList<>();
         List<Integer> comments = new ArrayList<>();
+        List<Integer> followers = new ArrayList<>();
         
-        LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(days - 1);
+        List<Map<String, Object>> manuscriptTrend = creatorStatsMapper.selectTrendData(userId, days);
+        List<Map<String, Object>> fansTrend = creatorStatsMapper.selectFansTrendData(userId, days);
         
-        List<Map<String, Object>> trendData = creatorStatsMapper.selectTrendData(userId, startDate.toString(), endDate.toString());
-        
-        Map<String, Map<String, Integer>> dataMap = new HashMap<>();
-        for (Map<String, Object> row : trendData) {
-            String date = (String) row.get("date");
+        Map<String, Map<String, Integer>> manuscriptMap = new HashMap<>();
+        for (Map<String, Object> row : manuscriptTrend) {
+            Object dateObj = row.get("date");
+            String date = dateObj instanceof java.sql.Date ? ((java.sql.Date) dateObj).toString() : String.valueOf(dateObj);
             Map<String, Integer> dayData = new HashMap<>();
             dayData.put("views", getIntValue(row, "views"));
             dayData.put("likes", getIntValue(row, "likes"));
             dayData.put("comments", getIntValue(row, "comments"));
-            dataMap.put(date, dayData);
+            manuscriptMap.put(date, dayData);
         }
         
-        for (int i = 0; i < days; i++) {
-            LocalDate date = startDate.plusDays(i);
-            String dateStr = date.toString();
-            dates.add(dateStr);
+        Map<String, Integer> fansMap = new HashMap<>();
+        for (Map<String, Object> row : fansTrend) {
+            Object dateObj = row.get("date");
+            String date = dateObj instanceof java.sql.Date ? ((java.sql.Date) dateObj).toString() : String.valueOf(dateObj);
+            fansMap.put(date, getIntValue(row, "newFollowers"));
+        }
+        
+        Set<String> allDates = new TreeSet<>();
+        allDates.addAll(manuscriptMap.keySet());
+        allDates.addAll(fansMap.keySet());
+        
+        for (String date : allDates) {
+            dates.add(date);
             
-            Map<String, Integer> dayData = dataMap.get(dateStr);
+            Map<String, Integer> dayData = manuscriptMap.get(date);
             if (dayData != null) {
                 views.add(dayData.get("views"));
                 likes.add(dayData.get("likes"));
@@ -104,12 +124,16 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
                 likes.add(0);
                 comments.add(0);
             }
+            
+            Integer dayFollowers = fansMap.get(date);
+            followers.add(dayFollowers != null ? dayFollowers : 0);
         }
         
         trend.setDates(dates);
         trend.setViews(views);
         trend.setLikes(likes);
         trend.setComments(comments);
+        trend.setFollowers(followers);
         
         return trend;
     }
@@ -244,5 +268,65 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
         if (value instanceof Long) return ((Long) value).intValue();
         if (value instanceof java.math.BigDecimal) return ((java.math.BigDecimal) value).intValue();
         return 0;
+    }
+
+    @Override
+    public FansTrendVO getFansTrend(Integer userId, Integer days) {
+        FansTrendVO vo = new FansTrendVO();
+        List<String> dates = new ArrayList<>();
+        List<Integer> newFollowers = new ArrayList<>();
+        List<Integer> unfollows = new ArrayList<>();
+        List<Integer> totalFollowers = new ArrayList<>();
+
+        List<Map<String, Object>> trendData = creatorStatsMapper.selectFansTrendData(userId, days);
+
+        Map<String, Map<String, Integer>> dataMap = new HashMap<>();
+        for (Map<String, Object> row : trendData) {
+            Object dateObj = row.get("date");
+            String date = dateObj instanceof java.sql.Date ? ((java.sql.Date) dateObj).toString() : String.valueOf(dateObj);
+            Map<String, Integer> dayData = new HashMap<>();
+            dayData.put("newFollowers", getIntValue(row, "newFollowers"));
+            dayData.put("unfollows", getIntValue(row, "unfollows"));
+            dataMap.put(date, dayData);
+        }
+
+        Set<String> sortedDates = new TreeSet<>(dataMap.keySet());
+        
+        int runningTotal = 0;
+        for (String date : sortedDates) {
+            dates.add(date);
+            Map<String, Integer> dayData = dataMap.get(date);
+            if (dayData != null) {
+                newFollowers.add(dayData.get("newFollowers"));
+                unfollows.add(dayData.get("unfollows"));
+                runningTotal += dayData.get("newFollowers") - dayData.get("unfollows");
+            } else {
+                newFollowers.add(0);
+                unfollows.add(0);
+            }
+            totalFollowers.add(Math.max(0, runningTotal));
+        }
+
+        vo.setDates(dates);
+        vo.setNewFollowers(newFollowers);
+        vo.setUnfollows(unfollows);
+        vo.setTotalFollowers(totalFollowers);
+
+        Integer currentFollowers = creatorStatsMapper.selectFollowerCount(userId);
+        vo.setCurrentFollowers(currentFollowers != null ? currentFollowers : 0);
+
+        if (!newFollowers.isEmpty()) {
+            vo.setNewFollowersToday(newFollowers.get(newFollowers.size() - 1));
+            vo.setUnfollowsToday(unfollows.get(unfollows.size() - 1));
+        }
+
+        if (currentFollowers != null && currentFollowers > 0 && totalFollowers.size() >= 7) {
+            int weekAgoFollowers = totalFollowers.get(totalFollowers.size() - 7);
+            if (weekAgoFollowers > 0) {
+                vo.setGrowthRate((double) (currentFollowers - weekAgoFollowers) / weekAgoFollowers * 100);
+            }
+        }
+
+        return vo;
     }
 }

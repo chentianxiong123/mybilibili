@@ -54,6 +54,8 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/api/dynamic/hot",
             "/api/follow/check",
             "/uploads/",
+            "/covers/",
+            "/videos/",
             "/api/ai/process/",
             "/api/ai/summary/"
     );
