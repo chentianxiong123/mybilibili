@@ -77,6 +77,7 @@ public class FollowServiceImpl implements FollowService {
                 userVO.setNickname(user.getNickname());
                 userVO.setAvatar(user.getAvatar());
                 userVO.setLevel(user.getLevel());
+                userVO.setSignature(user.getSignature());
                 userVOs.add(userVO);
             }
         }
@@ -96,6 +97,7 @@ public class FollowServiceImpl implements FollowService {
                 userVO.setNickname(user.getNickname());
                 userVO.setAvatar(user.getAvatar());
                 userVO.setLevel(user.getLevel());
+                userVO.setSignature(user.getSignature());
                 userVOs.add(userVO);
             }
         }
