@@ -608,6 +608,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
             videoVO.setTitle(manuscript.getTitle());
             videoVO.setDescription(manuscript.getDescription());
             videoVO.setCoverUrl(manuscript.getCoverUrl());
+            videoVO.setDuration(manuscript.getDuration());
             videoVO.setViewCount(manuscript.getViewCount());
             videoVO.setLikeCount(manuscript.getLikeCount());
             videoVO.setCoinCount(manuscript.getCoinCount());

@@ -10,7 +10,7 @@ import org.apache.ibatis.annotations.Update;
 @Mapper
 public interface ManuscriptMapper extends BaseMapper<Manuscript> {
 
-    @Select("SELECT id, title, description, cover_url, user_id, category_id, view_count, like_count, coin_count, collect_count, share_count, comment_count, danmaku_count, status, review_status, review_reason, review_time, reviewer_id, upload_time, updated_at FROM manuscripts WHERE id = #{id}")
+    @Select("SELECT id, title, description, cover_url, user_id, category_id, duration, view_count, like_count, coin_count, collect_count, share_count, comment_count, danmaku_count, status, review_status, review_reason, review_time, reviewer_id, upload_time, updated_at FROM manuscripts WHERE id = #{id}")
     Manuscript selectBasicFieldsById(@Param("id") Integer id);
 
     @Update("UPDATE manuscripts SET like_count = like_count + #{count} WHERE id = #{id}")
