@@ -128,8 +128,8 @@ public class FileUploadUtils {
             throw new IOException("文件保存失败: " + e.getMessage());
         }
 
-        // 返回相对路径
-        return folder + "/" + fileName;
+        // 返回以 / 开头的绝对路径
+        return "/" + folder + "/" + fileName;
     }
     
     /**

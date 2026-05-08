@@ -2600,7 +2600,7 @@ watch(() => route.query.p, (newP) => {
   flex-direction: column;
   gap: 20px;
   padding: 20px;
-  padding-top: 60px;
+  padding-top: 0;
   background-color: #fff;
   min-height: 100vh;
 }
@@ -2823,7 +2823,7 @@ watch(() => route.query.p, (newP) => {
 .side-danmu-list .danmu-items {
   flex: 1;
   overflow-y: auto;
-  padding: 0 16px;
+  padding: 0;
 }
 
 .side-danmu-list .danmu-items.is-hidden {
@@ -3781,6 +3781,7 @@ watch(() => route.query.p, (newP) => {
   max-height: 400px;
   overflow-y: auto;
   transition: all 0.3s ease;
+  margin: 0;
 }
 
 /* 弹幕发送区域 */
@@ -3905,7 +3906,7 @@ watch(() => route.query.p, (newP) => {
   display: flex;
   gap: 10px;
   font-size: 14px;
-  padding: 8px 0;
+  padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;

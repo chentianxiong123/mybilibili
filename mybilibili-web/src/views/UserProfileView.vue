@@ -495,6 +495,80 @@ const favorites = ref({
   searchKeyword: ''
 })
 
+// 批量操作状态
+const batchMode = ref(false)
+const selectedFavorites = ref(new Set())
+const batchDeleting = ref(false)
+
+const toggleBatchMode = () => {
+  batchMode.value = !batchMode.value
+  if (!batchMode.value) {
+    selectedFavorites.value.clear()
+  }
+}
+
+const toggleSelectFavorite = (videoId) => {
+  const newSet = new Set(selectedFavorites.value)
+  if (newSet.has(videoId)) {
+    newSet.delete(videoId)
+  } else {
+    newSet.add(videoId)
+  }
+  selectedFavorites.value = newSet
+}
+
+const selectAllFavorites = () => {
+  if (selectedFavorites.value.size === favorites.value.videos.length) {
+    selectedFavorites.value = new Set()
+  } else {
+    selectedFavorites.value = new Set(favorites.value.videos.map(v => v.id))
+  }
+}
+
+const batchDeleteFavorites = async () => {
+  if (selectedFavorites.value.size === 0) {
+    ElMessage.warning('请选择要删除的视频')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedFavorites.value.size} 个视频吗？`,
+      '批量删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    batchDeleting.value = true
+    const activeFolder = favorites.value.myCollections.find(c => c.name === favorites.value.activeCategory)
+    if (!activeFolder) return
+
+    const deletePromises = []
+    for (const videoId of selectedFavorites.value) {
+      deletePromises.push(
+        interactionApi.removeVideoFromFavoriteFolder(activeFolder.id, videoId)
+          .catch(err => console.error(`删除视频 ${videoId} 失败:`, err))
+      )
+    }
+
+    await Promise.all(deletePromises)
+    ElMessage.success(`成功删除 ${selectedFavorites.value.size} 个视频`)
+    selectedFavorites.value.clear()
+    await loadFavoriteFolderVideos(activeFolder.id)
+    await loadFavoriteFolders()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('批量删除失败:', error)
+      ElMessage.error('批量删除失败')
+    }
+  } finally {
+    batchDeleting.value = false
+  }
+}
+
 // 新建收藏夹对话框
 const createFavoriteDialogVisible = ref(false)
 const newFavoriteName = ref('')
@@ -1677,9 +1751,9 @@ const handleVideoCommand = (command, manuscript) => {
 // 从合集中移除视频
 const removeVideoFromCollection = async (manuscriptId) => {
   try {
-    const response = await collectionApi.removeManuscripts(
+    const response = await collectionApi.removeManuscriptFromCollection(
       collectionDetail.value.collectionId,
-      [manuscriptId]
+      manuscriptId
     )
     if (response.code === 200) {
       ElMessage.success('移除成功')
@@ -2600,6 +2674,7 @@ onMounted(() => {
                     :key="collection.name"
                     :class="['collection-item', { active: favorites.activeCategory === collection.name }]"
                     @click="() => {
+                      if (batchMode) toggleBatchMode();
                       favorites.activeCategory = collection.name;
                       loadFavoriteFolderVideos(collection.id);
                     }"
@@ -2689,7 +2764,29 @@ onMounted(() => {
               
               <!-- 排序和筛选选项 -->
               <div class="sort-filter">
-                <div class="batch-operations">批量操作</div>
+                <div class="batch-operations" v-if="!batchMode">
+                  <el-button size="small" @click="toggleBatchMode">批量操作</el-button>
+                </div>
+                <div class="batch-operations active" v-else>
+                  <el-checkbox
+                    :indeterminate="selectedFavorites.size > 0 && selectedFavorites.size < favorites.videos.length"
+                    :model-value="selectedFavorites.size === favorites.videos.length"
+                    @change="selectAllFavorites"
+                  >
+                    全选
+                  </el-checkbox>
+                  <span class="batch-selected-count">已选 {{ selectedFavorites.size }} 项</span>
+                  <el-button
+                    size="small"
+                    type="danger"
+                    :disabled="selectedFavorites.size === 0"
+                    :loading="batchDeleting"
+                    @click="batchDeleteFavorites"
+                  >
+                    批量删除
+                  </el-button>
+                  <el-button size="small" @click="toggleBatchMode">取消</el-button>
+                </div>
                 <div class="sort-options">
                   <span>最近收藏</span>
                   <select v-model="favorites.activeSort" class="sort-select">
@@ -2717,7 +2814,13 @@ onMounted(() => {
                 <p>暂无收藏</p>
               </div>
               <div v-else class="videos-grid">
-                <div v-for="video in favorites.videos" :key="video.id" class="video-item" @click="router.push(`/manuscript/${video.id}`)">
+                <div v-for="video in favorites.videos" :key="video.id" :class="['video-item', { 'video-item-selected': selectedFavorites.has(video.id), 'batch-mode': batchMode }]" @click="batchMode ? toggleSelectFavorite(video.id) : router.push(`/manuscript/${video.id}`)">
+                  <div v-if="batchMode" class="video-checkbox" @click.stop>
+                    <el-checkbox
+                      :model-value="selectedFavorites.has(video.id)"
+                      @change="toggleSelectFavorite(video.id)"
+                    />
+                  </div>
                   <div class="video-cover">
                     <img :src="video.coverUrl || video.cover" :alt="video.title" class="video-cover-img">
                     <div class="video-duration">{{ video.duration }}</div>
@@ -5267,6 +5370,40 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  cursor: pointer;
+  position: relative;
+  transition: opacity 0.2s;
+}
+
+.video-item.batch-mode {
+  cursor: pointer;
+}
+
+.video-item.batch-mode .video-cover {
+  opacity: 0.9;
+}
+
+.video-item-selected {
+  border-radius: 8px;
+  outline: 2px solid #00aeec;
+  outline-offset: 2px;
+}
+
+.video-checkbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+}
+
+.video-checkbox :deep(.el-checkbox__inner) {
+  background-color: #fff;
+  border-color: #00aeec;
+}
+
+.video-checkbox :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+  background-color: #00aeec;
+  border-color: #00aeec;
 }
 
 .video-cover {
@@ -5625,10 +5762,23 @@ onMounted(() => {
 
 .batch-operations {
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.batch-operations.active {
+  cursor: default;
 }
 
 .batch-operations:hover {
   color: #00aeec;
+}
+
+.batch-selected-count {
+  font-size: 13px;
+  color: #666;
+  margin-left: 4px;
 }
 
 .sort-options {

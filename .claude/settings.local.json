@@ -5,7 +5,9 @@
       "Bash(mvn *)",
       "Bash(./mvnw -pl mybilibili-common,mybilibili-comment,mybilibili-message -am -DskipTests compile)",
       "Bash(npm --prefix mybilibili-web run build)",
-      "Bash(python *)"
+      "Bash(python *)",
+      "Bash(Get-ChildItem -Path \"D:\\\\files\\\\mybilibili-next\\\\mybilibili-cloud\" -Directory -Depth 0)",
+      "Bash(Select-Object -ExpandProperty Name)"
     ]
   }
 }
