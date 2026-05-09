@@ -29,7 +29,7 @@
         SELECT m.* FROM favorite_manuscripts fm
         JOIN manuscripts m ON fm.manuscript_id = m.id
         WHERE fm.folder_id = #{folderId}
-        ORDER BY fm.created_at DESC
+        ORDER BY fm.created_at ${sortOrder}
         LIMIT #{offset}, #{size}
     </select>
 

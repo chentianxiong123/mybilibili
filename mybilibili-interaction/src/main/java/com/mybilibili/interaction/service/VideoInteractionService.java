@@ -42,7 +42,7 @@ public interface VideoInteractionService {
 
     boolean removeManuscriptFromFavoriteFolder(Integer userId, Integer manuscriptId, Integer folderId);
 
-    List<VideoVO> getFavoriteFolderVideos(Integer userId, Integer folderId, Integer page, Integer size);
+    List<VideoVO> getFavoriteFolderVideos(Integer userId, Integer folderId, Integer page, Integer size, String sortOrder);
 
     List<FavoriteFolder> getVideoFavoriteFolders(Integer userId, Integer manuscriptId);
 

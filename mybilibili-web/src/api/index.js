@@ -245,7 +245,8 @@ export const interactionApi = {
   // 获取分享统计
   getShareStatistics: (manuscriptId) => api.get(`/manuscript/${manuscriptId}/share/statistics`),
   // 发送弹幕
-  sendDanmaku: (manuscriptId, content, time, color, mode) => api.post(`/manuscript/${manuscriptId}/danmaku`, {
+  sendDanmaku: (videoId, content, time, color, mode) => api.post(`/manuscript/${videoId}/danmaku`, {
+    videoId,
     content,
     time,
     color: color || '#ffffff',
@@ -268,8 +269,8 @@ export const interactionApi = {
   // 删除收藏夹
   deleteFavoriteFolder: (folderId) => api.delete(`/manuscript/favorite/folders/${folderId}`),
   // 获取收藏夹内的视频列表
-  getFavoriteFolderVideos: (folderId, page = 1, size = 12) =>
-    api.get(`/manuscript/favorite/folders/${folderId}/videos`, { params: { page, size } }),
+  getFavoriteFolderVideos: (folderId, page = 1, size = 12, sortOrder = 'desc') =>
+    api.get(`/manuscript/favorite/folders/${folderId}/videos`, { params: { page, size, sortOrder } }),
   // 添加视频到收藏夹
   addToFavoriteFolders: (manuscriptId, folderIds) => api.post(`/manuscript/${manuscriptId}/favorite`, { folderIds }),
   // 从收藏夹移除视频

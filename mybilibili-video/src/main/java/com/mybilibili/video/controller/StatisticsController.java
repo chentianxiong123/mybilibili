@@ -34,11 +34,8 @@ public class StatisticsController {
         Long videoCount = videoMapper.selectCount(null);
         data.put("videoCount", videoCount);
 
-        // 用户总数 (这里用稿件作者数代替，实际应该从user服务获取)
-        Long userCount = manuscriptMapper.selectCount(
-            new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Manuscript>()
-                .select("DISTINCT user_id")
-        );
+        // 用户总数（包含被禁用户）
+        Integer userCount = manuscriptMapper.countAllUsers();
         data.put("userCount", userCount);
 
         // 播放总数 (这里用稿件浏览量总和代替)

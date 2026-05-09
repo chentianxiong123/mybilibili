@@ -274,9 +274,10 @@ public class InteractionController {
     public Result<List<VideoVO>> getFavoriteFolderVideos(@Parameter(description = "收藏夹ID") @PathVariable Integer folderId,
                                                          @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
                                                          @Parameter(description = "每页数量") @RequestParam(defaultValue = "12") Integer size,
+                                                         @Parameter(description = "排序: desc-最新收藏, asc-最早收藏") @RequestParam(defaultValue = "desc") String sortOrder,
                                                          @Parameter(description = "用户ID") @RequestHeader(value = "X-User-Id", required = false) Integer userId) {
         try {
-            List<VideoVO> videos = videoInteractionService.getFavoriteFolderVideos(userId, folderId, page, size);
+            List<VideoVO> videos = videoInteractionService.getFavoriteFolderVideos(userId, folderId, page, size, sortOrder);
             return Result.success("获取成功", videos);
         } catch (Exception e) {
             return Result.error(e.getMessage());

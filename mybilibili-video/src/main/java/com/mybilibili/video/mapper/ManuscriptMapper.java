@@ -103,4 +103,7 @@ public interface ManuscriptMapper extends BaseMapper<Manuscript> {
     @Select("SELECT DISTINCT user_id FROM manuscripts WHERE status = 3 " +
             "UNION SELECT DISTINCT target_id as user_id FROM user_interactions WHERE target_type = 'USER'")
     List<Map<String, Object>> selectDistinctUserIds();
+
+    @Select("SELECT COUNT(*) FROM users")
+    Integer countAllUsers();
 }

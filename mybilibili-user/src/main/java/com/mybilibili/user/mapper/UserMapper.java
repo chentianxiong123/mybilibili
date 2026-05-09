@@ -75,4 +75,7 @@ public interface UserMapper extends BaseMapper<User> {
 
     @Update("UPDATE users SET experience = experience + #{experienceAmount} WHERE id = #{userId}")
     int addExperience(@Param("userId") Integer userId, @Param("experienceAmount") int experienceAmount);
+
+    @Select("SELECT COUNT(*) FROM users")
+    Integer countAllUsers();
 }

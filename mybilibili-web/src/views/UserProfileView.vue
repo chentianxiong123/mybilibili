@@ -495,6 +495,21 @@ const favorites = ref({
   searchKeyword: ''
 })
 
+// 收藏列表根据关键词过滤
+const filteredFavorites = computed(() => {
+  const keyword = (favorites.value.searchKeyword || '').trim().toLowerCase()
+  if (!keyword) return favorites.value.videos
+  return favorites.value.videos.filter(v => (v.title || '').toLowerCase().includes(keyword))
+})
+
+// 监听收藏排序变化
+watch(() => favorites.value.activeSort, () => {
+  const activeFolder = favorites.value.myCollections.find(f => f.name === favorites.value.activeCategory)
+  if (activeFolder) {
+    loadFavoriteFolderVideos(activeFolder.id)
+  }
+})
+
 // 批量操作状态
 const batchMode = ref(false)
 const selectedFavorites = ref(new Set())
@@ -1057,7 +1072,8 @@ const loadUserFavorites = async () => {
 const loadFavoriteFolderVideos = async (folderId) => {
   loading.value.favorites = true
   try {
-    const response = await interactionApi.getFavoriteFolderVideos(folderId)
+    const sortOrder = favorites.value.activeSort === '最早收藏' ? 'asc' : 'desc'
+    const response = await interactionApi.getFavoriteFolderVideos(folderId, 1, 1000, sortOrder)
     if (response.code === 200) {
       // 处理视频数据，添加date字段
       const videos = response.data.map(video => {
@@ -2788,7 +2804,6 @@ onMounted(() => {
                   <el-button size="small" @click="toggleBatchMode">取消</el-button>
                 </div>
                 <div class="sort-options">
-                  <span>最近收藏</span>
                   <select v-model="favorites.activeSort" class="sort-select">
                     <option v-for="option in favorites.sortOptions" :key="option" :value="option">{{ option }}</option>
                   </select>
@@ -2810,11 +2825,11 @@ onMounted(() => {
               <div v-if="loading.favorites" class="loading-state">
                 <p>加载中...</p>
               </div>
-              <div v-else-if="favorites.videos.length === 0" class="empty-state">
-                <p>暂无收藏</p>
+              <div v-else-if="filteredFavorites.length === 0" class="empty-state">
+                <p>{{ favorites.searchKeyword ? '没有匹配的视频' : '暂无收藏' }}</p>
               </div>
               <div v-else class="videos-grid">
-                <div v-for="video in favorites.videos" :key="video.id" :class="['video-item', { 'video-item-selected': selectedFavorites.has(video.id), 'batch-mode': batchMode }]" @click="batchMode ? toggleSelectFavorite(video.id) : router.push(`/manuscript/${video.id}`)">
+                <div v-for="video in filteredFavorites" :key="video.id" :class="['video-item', { 'video-item-selected': selectedFavorites.has(video.id), 'batch-mode': batchMode }]" @click="batchMode ? toggleSelectFavorite(video.id) : router.push(`/manuscript/${video.id}`)">
                   <div v-if="batchMode" class="video-checkbox" @click.stop>
                     <el-checkbox
                       :model-value="selectedFavorites.has(video.id)"

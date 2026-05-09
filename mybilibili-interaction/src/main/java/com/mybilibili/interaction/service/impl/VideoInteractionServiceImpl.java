@@ -588,7 +588,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
     }
 
     @Override
-    public List<VideoVO> getFavoriteFolderVideos(Integer userId, Integer folderId, Integer page, Integer size) {
+    public List<VideoVO> getFavoriteFolderVideos(Integer userId, Integer folderId, Integer page, Integer size, String sortOrder) {
         if (userId == null) {
             return new ArrayList<>();
         }
@@ -599,7 +599,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
         }
 
         int offset = (page - 1) * size;
-        List<Manuscript> manuscripts = favoriteVideoMapper.findManuscriptsByFolderId(folderId, offset, size);
+        List<Manuscript> manuscripts = favoriteVideoMapper.findManuscriptsByFolderId(folderId, offset, size, sortOrder);
 
         List<VideoVO> videoVOs = new ArrayList<>();
         for (Manuscript manuscript : manuscripts) {

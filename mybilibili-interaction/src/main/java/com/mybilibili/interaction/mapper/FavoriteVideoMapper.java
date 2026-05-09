@@ -15,5 +15,5 @@ public interface FavoriteVideoMapper extends BaseMapper<ManuscriptFavorite> {
     List<ManuscriptFavorite> findByFolderId(Integer folderId);
     ManuscriptFavorite findByFolderIdAndManuscriptId(@Param("folderId") Integer folderId, @Param("manuscriptId") Integer manuscriptId);
     List<ManuscriptFavorite> findByUserIdAndManuscriptId(@Param("userId") Integer userId, @Param("manuscriptId") Integer manuscriptId);
-    List<Manuscript> findManuscriptsByFolderId(@Param("folderId") Integer folderId, @Param("offset") Integer offset, @Param("size") Integer size);
+    List<Manuscript> findManuscriptsByFolderId(@Param("folderId") Integer folderId, @Param("offset") Integer offset, @Param("size") Integer size, @Param("sortOrder") String sortOrder);
 }

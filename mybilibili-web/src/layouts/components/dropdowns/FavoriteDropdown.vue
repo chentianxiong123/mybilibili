@@ -96,6 +96,13 @@ const handleVideoClick = (video) => {
   window.location.href = `/manuscript/${video.id}`
 }
 
+// 全部播放 - 跳转到第一个稿件
+const handlePlayAll = () => {
+  if (favoriteVideos.value.length > 0) {
+    router.push(`/manuscript/${favoriteVideos.value[0].id}`)
+  }
+}
+
 // 监听activeFolderId变化，自动加载对应视频
 watch(activeFolderId, (newId) => {
   if (newId) {
@@ -174,7 +181,7 @@ onMounted(() => {
       <el-button link class="view-all-btn" @click="handleViewAll">
         查看全部
       </el-button>
-      <el-button type="primary" class="play-all-btn" :disabled="favoriteVideos.length === 0">
+      <el-button type="primary" class="play-all-btn" :disabled="favoriteVideos.length === 0" @click="handlePlayAll">
         <el-icon><VideoPlay /></el-icon>
         播放全部
       </el-button>

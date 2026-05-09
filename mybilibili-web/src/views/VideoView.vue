@@ -1969,7 +1969,7 @@ watch(() => route.query.p, (newP) => {
       <div class="top-section">
         <!-- 左侧：视频标题和统计信息 -->
         <div class="video-header">
-          <h1 class="video-title">{{ videoInfo.title }}</h1>
+          <h1 class="video-title">{{ manuscriptInfo.title || videoInfo.title }}</h1>
           <div class="video-stats">
             <span>{{ (videoInfo.viewCount || 0).toLocaleString() }}次播放</span>
             <span>{{ (videoInfo.commentCount || 0) }}条评论</span>
