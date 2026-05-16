@@ -3,7 +3,7 @@
     <div v-if="loading" class="chart-loading">
       <el-skeleton :rows="3" animated />
     </div>
-    <div v-else-if="isEmpty" class="chart-empty">
+    <div v-show="!loading && isEmpty" class="chart-empty">
       <svg viewBox="0 0 120 100" width="80" height="66">
         <rect x="10" y="60" width="15" height="30" rx="2" fill="#e8e8e8" />
         <rect x="30" y="40" width="15" height="50" rx="2" fill="#e8e8e8" />
@@ -13,7 +13,7 @@
       </svg>
       <span class="empty-text">暂无数据</span>
     </div>
-    <div v-else ref="chartRef" class="trend-chart" :style="{ height: height + 'px' }"></div>
+    <div ref="chartRef" class="trend-chart" :style="{ height: height + 'px', display: loading || isEmpty ? 'none' : '' }"></div>
   </div>
 </template>
 
@@ -160,7 +160,11 @@ function handleResize() {
 }
 
 watch(() => [props.xData, props.series, props.darkMode], () => {
-  nextTick(() => initChart())
+  const hasData = props.xData.length > 0 && props.series.some(s => s.data && s.data.length > 0)
+  isEmpty.value = !hasData
+  if (hasData) {
+    nextTick(() => initChart())
+  }
 }, { deep: true })
 
 onMounted(() => {

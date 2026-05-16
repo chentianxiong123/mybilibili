@@ -17,7 +17,6 @@ public interface CreatorStatsMapper extends BaseMapper<Manuscript> {
             "COALESCE(SUM(collect_count), 0) as totalCollections, " +
             "COALESCE(SUM(share_count), 0) as totalShares, " +
             "COALESCE(SUM(comment_count), 0) as totalComments, " +
-            "COALESCE(SUM(danmaku_count), 0) as totalDanmaku, " +
             "COUNT(*) as totalManuscripts " +
             "FROM manuscripts WHERE user_id = #{userId} AND status = 3")
     Map<String, Object> selectTotalStatsByUserId(@Param("userId") Integer userId);
@@ -27,26 +26,10 @@ public interface CreatorStatsMapper extends BaseMapper<Manuscript> {
 
     @Select("SELECT " +
             "COALESCE(SUM(m.view_count), 0) as viewsIncrease, " +
-            "COALESCE(SUM(m.like_count), 0) as likesIncrease, " +
-            "COALESCE(SUM(m.comment_count), 0) as commentsIncrease, " +
-            "COALESCE(SUM(m.danmaku_count), 0) as danmakuIncrease, " +
-            "COALESCE(SUM(m.share_count), 0) as sharesIncrease, " +
-            "COALESCE(SUM(m.collect_count), 0) as collectionsIncrease, " +
-            "COALESCE(SUM(m.coin_count), 0) as coinsIncrease " +
+            "COUNT(DISTINCT m.id) as manuscriptCount " +
             "FROM manuscripts m " +
             "WHERE m.user_id = #{userId} AND m.status = 3 AND DATE(m.upload_time) >= #{startDate}")
     Map<String, Object> selectIncreaseStats(@Param("userId") Integer userId, @Param("startDate") String startDate);
-
-    @Select("SELECT " +
-            "DATE(upload_time) as date, " +
-            "SUM(view_count) as views, " +
-            "SUM(like_count) as likes, " +
-            "SUM(comment_count) as comments " +
-            "FROM manuscripts " +
-            "WHERE user_id = #{userId} AND status = 3 AND DATE(upload_time) >= #{startDate} " +
-            "GROUP BY DATE(upload_time) " +
-            "ORDER BY date ASC")
-    List<Map<String, Object>> selectTrendData(@Param("userId") Integer userId, @Param("startDate") String startDate);
 
     @Select("SELECT * FROM manuscripts WHERE user_id = #{userId} AND status = 3 ORDER BY view_count DESC LIMIT #{limit}")
     List<Manuscript> selectTopByViews(@Param("userId") Integer userId, @Param("limit") Integer limit);
@@ -131,4 +114,53 @@ public interface CreatorStatsMapper extends BaseMapper<Manuscript> {
             "GROUP BY DATE(created_at) " +
             "ORDER BY date ASC")
     List<Map<String, Object>> selectFansTrendData(@Param("userId") Integer userId, @Param("startDate") String startDate);
+
+    @Select("SELECT " +
+            "DATE(i.created_at) as date, " +
+            "SUM(CASE WHEN i.interaction_type = 'LIKE' THEN 1 ELSE 0 END) as likes, " +
+            "SUM(CASE WHEN i.interaction_type = 'COIN' THEN 1 ELSE 0 END) as coins, " +
+            "SUM(CASE WHEN i.interaction_type = 'COLLECT' THEN 1 ELSE 0 END) as collects, " +
+            "SUM(CASE WHEN i.interaction_type = 'SHARE' THEN 1 ELSE 0 END) as shares " +
+            "FROM user_interactions i " +
+            "JOIN manuscripts m ON i.target_id = m.id " +
+            "WHERE m.user_id = #{userId} AND m.status = 3 " +
+            "AND i.target_type = 'MANUSCRIPT' " +
+            "AND DATE(i.created_at) >= #{startDate} " +
+            "GROUP BY DATE(i.created_at) " +
+            "ORDER BY date ASC")
+    List<Map<String, Object>> selectInteractionTrendData(@Param("userId") Integer userId, @Param("startDate") String startDate);
+
+    @Select("SELECT " +
+            "DATE(c.created_at) as date, " +
+            "COUNT(*) as comments " +
+            "FROM comments c " +
+            "JOIN manuscripts m ON c.manuscript_id = m.id " +
+            "WHERE m.user_id = #{userId} AND m.status = 3 " +
+            "AND DATE(c.created_at) >= #{startDate} " +
+            "GROUP BY DATE(c.created_at) " +
+            "ORDER BY date ASC")
+    List<Map<String, Object>> selectCommentTrendData(@Param("userId") Integer userId, @Param("startDate") String startDate);
+
+    @Select("SELECT id, title, view_count as views, upload_time " +
+            "FROM manuscripts " +
+            "WHERE user_id = #{userId} AND status = 3 " +
+            "ORDER BY upload_time ASC")
+    List<Map<String, Object>> selectManuscriptListForTrend(@Param("userId") Integer userId);
+
+    @Select("SELECT " +
+            "SUM(CASE WHEN i.interaction_type = 'LIKE' THEN 1 ELSE 0 END) as likesIncrease, " +
+            "SUM(CASE WHEN i.interaction_type = 'COIN' THEN 1 ELSE 0 END) as coinsIncrease, " +
+            "SUM(CASE WHEN i.interaction_type = 'COLLECT' THEN 1 ELSE 0 END) as collectionsIncrease, " +
+            "SUM(CASE WHEN i.interaction_type = 'SHARE' THEN 1 ELSE 0 END) as sharesIncrease " +
+            "FROM user_interactions i " +
+            "JOIN manuscripts m ON i.target_id = m.id " +
+            "WHERE m.user_id = #{userId} AND m.status = 3 " +
+            "AND i.target_type = 'MANUSCRIPT' " +
+            "AND DATE(i.created_at) >= #{startDate}")
+    Map<String, Object> selectInteractionIncrease(@Param("userId") Integer userId, @Param("startDate") String startDate);
+
+    @Select("SELECT COUNT(*) as commentsIncrease " +
+            "FROM comments c JOIN manuscripts m ON c.manuscript_id = m.id " +
+            "WHERE m.user_id = #{userId} AND m.status = 3 AND DATE(c.created_at) >= #{startDate}")
+    Map<String, Object> selectCommentIncrease(@Param("userId") Integer userId, @Param("startDate") String startDate);
 }

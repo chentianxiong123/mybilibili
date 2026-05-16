@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/danmaku")
@@ -54,5 +55,22 @@ public class DanmakuController {
     @Operation(summary = "获取弹幕数量", description = "获取指定视频的弹幕数量")
     public Result<Long> getDanmakuCount(@PathVariable Integer videoId) {
         return danmakuService.getDanmakuCount(videoId);
+    }
+
+    @PostMapping("/batch-count")
+    @Operation(summary = "批量获取弹幕数量", description = "根据稿件ID列表批量获取弹幕数量")
+    public Result<Map<Integer, Long>> getDanmakuCountByManuscriptIds(@RequestBody List<Integer> manuscriptIds) {
+        Map<Integer, Long> counts = danmakuService.getDanmakuCountByManuscriptIds(manuscriptIds);
+        return Result.success("获取成功", counts);
+    }
+
+    @PostMapping("/trend")
+    @Operation(summary = "获取弹幕趋势", description = "获取指定稿件列表在日期范围内的弹幕趋势")
+    public Result<Map<String, Integer>> getDanmakuTrend(
+            @RequestBody List<Integer> manuscriptIds,
+            @RequestParam String startDate,
+            @RequestParam String endDate) {
+        Map<String, Integer> trend = danmakuService.getDanmakuTrend(manuscriptIds, startDate, endDate);
+        return Result.success("获取成功", trend);
     }
 }

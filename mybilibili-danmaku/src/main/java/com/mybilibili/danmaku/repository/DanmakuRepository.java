@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface DanmakuRepository extends MongoRepository<Danmaku, String> {
@@ -15,6 +16,10 @@ public interface DanmakuRepository extends MongoRepository<Danmaku, String> {
     List<Danmaku> findByManuscriptId(Integer manuscriptId);
 
     long countByVideoId(Integer videoId);
+
+    long countByManuscriptIdIn(List<Integer> manuscriptIds);
+
+    List<Danmaku> findByManuscriptIdInAndCreateTimeBetween(List<Integer> manuscriptIds, LocalDateTime start, LocalDateTime end);
 
     Page<Danmaku> findByManuscriptIdIn(List<Integer> manuscriptIds, Pageable pageable);
 

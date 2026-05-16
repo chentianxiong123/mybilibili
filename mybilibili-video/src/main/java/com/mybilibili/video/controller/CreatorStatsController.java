@@ -1,13 +1,7 @@
 package com.mybilibili.video.controller;
 
 import com.mybilibili.common.utils.JwtUtils;
-import com.mybilibili.common.vo.CreatorOverviewVO;
-import com.mybilibili.common.vo.FansRankingVO;
-import com.mybilibili.common.vo.FansTrendVO;
-import com.mybilibili.common.vo.LatestCommentVO;
-import com.mybilibili.common.vo.ManuscriptRankVO;
-import com.mybilibili.common.vo.Result;
-import com.mybilibili.common.vo.TrendDataVO;
+import com.mybilibili.common.vo.*;
 import com.mybilibili.video.service.CreatorStatsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -134,6 +128,22 @@ public class CreatorStatsController {
                 return Result.error("用户未登录");
             }
             FansTrendVO trend = creatorStatsService.getFansTrend(userId, days);
+            return Result.success("获取成功", trend);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @GetMapping("/manuscript-trend")
+    @Operation(summary = "获取稿件播放趋势", description = "获取所有稿件按上传时间排列的播放量/弹幕趋势")
+    public Result<ManuscriptTrendVO> getManuscriptTrend(HttpServletRequest request) {
+        try {
+            Integer userId = JwtUtils.getUserIdFromRequest(request);
+            if (userId == null) {
+                return Result.error("用户未登录");
+            }
+            ManuscriptTrendVO trend = creatorStatsService.getManuscriptTrend(userId);
             return Result.success("获取成功", trend);
         } catch (Exception e) {
             e.printStackTrace();

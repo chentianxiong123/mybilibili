@@ -11,4 +11,7 @@ public class TrendDataVO {
     private List<Integer> followers;
     private List<Integer> comments;
     private List<Integer> danmaku;
+    private List<Integer> coins;
+    private List<Integer> collects;
+    private List<Integer> shares;
 }

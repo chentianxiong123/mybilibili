@@ -22,4 +22,8 @@ public interface DanmakuService {
     Map<String, Object> getCreatorDanmakuList(Integer userId, Integer videoId, Integer page, Integer size);
 
     void deleteDanmakuByCreator(String danmakuId, Integer userId);
+
+    Map<Integer, Long> getDanmakuCountByManuscriptIds(List<Integer> manuscriptIds);
+
+    Map<String, Integer> getDanmakuTrend(List<Integer> manuscriptIds, String startDate, String endDate);
 }

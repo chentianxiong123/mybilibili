@@ -18,8 +18,9 @@ export function useCreatorStats() {
     updateTime: ''
   })
 
-  const trendData = ref({ dates: [], views: [], likes: [], comments: [], followers: [] })
+  const trendData = ref({ dates: [], views: [], likes: [], comments: [], followers: [], danmaku: [], coins: [], collects: [], shares: [] })
   const rankingList = ref([])
+  const manuscriptTrend = ref({ dates: [], views: [], danmaku: [], titles: [] })
   const fansTrend = ref({
     dates: [], newFollowers: [], unfollows: [], totalFollowers: [],
     currentFollowers: 0, newFollowersToday: 0, unfollowsToday: 0, growthRate: 0
@@ -95,6 +96,19 @@ export function useCreatorStats() {
     }
   }
 
+  async function loadManuscriptTrend(force = true) {
+    if (loading.trend) return
+    loading.trend = true
+    try {
+      const res = await statsApi.getManuscriptTrend()
+      if (res.code === 200 && res.data) {
+        manuscriptTrend.value = res.data
+      }
+    } finally {
+      loading.trend = false
+    }
+  }
+
   function clearCache() {
     cache.clear()
   }
@@ -104,11 +118,13 @@ export function useCreatorStats() {
     overview,
     trendData,
     rankingList,
+    manuscriptTrend,
     fansTrend,
     loadOverview,
     loadTrend,
     loadRanking,
     loadFansTrend,
+    loadManuscriptTrend,
     clearCache
   }
 }

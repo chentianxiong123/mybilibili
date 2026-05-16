@@ -15,8 +15,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.Objects;
@@ -31,6 +36,9 @@ public class DanmakuServiceImpl implements DanmakuService {
 
     @Autowired
     private VideoClient videoClient;
+
+    @Autowired
+    private MongoTemplate mongoTemplate;
 
     @Override
     public Result<List<DanmakuVO>> getDanmakus(Integer videoId) {
@@ -105,6 +113,62 @@ public class DanmakuServiceImpl implements DanmakuService {
     public Result<Long> getDanmakuCount(Integer videoId) {
         long count = danmakuRepository.countByVideoId(videoId);
         return Result.success(count);
+    }
+
+    @Override
+    public Map<Integer, Long> getDanmakuCountByManuscriptIds(List<Integer> manuscriptIds) {
+        if (manuscriptIds == null || manuscriptIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Aggregation aggregation = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("manuscriptId").in(manuscriptIds)),
+                Aggregation.group("manuscriptId").count().as("count")
+        );
+
+        AggregationResults<Map> results = mongoTemplate.aggregate(aggregation, "danmakus", Map.class);
+        Map<Integer, Long> countMap = new HashMap<>();
+        for (Map result : results.getMappedResults()) {
+            Object id = result.get("_id");
+            Number count = (Number) result.get("count");
+            if (id != null) {
+                countMap.put(((Number) id).intValue(), count.longValue());
+            }
+        }
+        // Fill 0 for manuscripts without danmaku
+        for (Integer mid : manuscriptIds) {
+            countMap.putIfAbsent(mid, 0L);
+        }
+        return countMap;
+    }
+
+    @Override
+    public Map<String, Integer> getDanmakuTrend(List<Integer> manuscriptIds, String startDate, String endDate) {
+        if (manuscriptIds == null || manuscriptIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        LocalDateTime start = LocalDate.parse(startDate).atStartOfDay();
+        LocalDateTime end = LocalDate.parse(endDate).plusDays(1).atStartOfDay();
+
+        Aggregation aggregation = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("manuscriptId").in(manuscriptIds)
+                        .and("createTime").gte(start).lt(end)),
+                Aggregation.project()
+                        .andExpression("dateToString('%Y-%m-%d', createTime)").as("dateStr"),
+                Aggregation.group("dateStr").count().as("count")
+        );
+
+        AggregationResults<Map> results = mongoTemplate.aggregate(aggregation, "danmakus", Map.class);
+        Map<String, Integer> trendMap = new HashMap<>();
+        for (Map result : results.getMappedResults()) {
+            String date = (String) result.get("_id");
+            Number count = (Number) result.get("count");
+            if (date != null) {
+                trendMap.put(date, count.intValue());
+            }
+        }
+        return trendMap;
     }
 
     private Double parseTime(String time) {

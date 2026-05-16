@@ -8,7 +8,7 @@
       <div class="chart-header">
         <h4>数据趋势</h4>
         <div class="chart-actions">
-          <el-radio-group v-model="trendDays" size="small" @change="switchTrendDays">
+          <el-radio-group v-model="trendDays" size="small" @change="switchTrendDays" v-if="trendMetric !== 'views'">
             <el-radio-button :value="7">7天</el-radio-button>
             <el-radio-button :value="30">30天</el-radio-button>
             <el-radio-button :value="90">90天</el-radio-button>
@@ -17,7 +17,11 @@
             <el-radio-button value="views">播放量</el-radio-button>
             <el-radio-button value="likes">点赞</el-radio-button>
             <el-radio-button value="comments">评论</el-radio-button>
+            <el-radio-button value="danmaku">弹幕</el-radio-button>
             <el-radio-button value="followers">粉丝</el-radio-button>
+            <el-radio-button value="coins">硬币</el-radio-button>
+            <el-radio-button value="collects">收藏</el-radio-button>
+            <el-radio-button value="shares">分享</el-radio-button>
           </el-radio-group>
         </div>
       </div>
@@ -57,10 +61,12 @@ const {
   overview,
   trendData,
   rankingList,
+  manuscriptTrend,
   loadOverview,
   loadTrend,
   loadRanking,
-  loadFansTrend
+  loadFansTrend,
+  loadManuscriptTrend
 } = useCreatorStats()
 
 const trendMetric = ref('views')
@@ -77,42 +83,81 @@ const statCards = computed(() => [
   { key: 'shares', label: '分享', value: overview.value.totalShares, increase: overview.value.sharesIncrease, bgColor: '#e8faf8', icon: Share }
 ])
 
+const isManuscriptTrendMode = computed(() => trendMetric.value === 'views')
+
 const visibleTrendData = computed(() => {
+  if (isManuscriptTrendMode.value) {
+    return {
+      dates: manuscriptTrend.value.dates || [],
+      views: manuscriptTrend.value.views || [],
+      danmaku: manuscriptTrend.value.danmaku || []
+    }
+  }
+
   const dates = trendData.value.dates || []
-  const views = trendData.value.views || []
   const likes = trendData.value.likes || []
   const comments = trendData.value.comments || []
   const followers = trendData.value.followers || []
+  const danmaku = trendData.value.danmaku || []
+  const coins = trendData.value.coins || []
+  const collects = trendData.value.collects || []
+  const shares = trendData.value.shares || []
 
   const filtered = dates.map((date, index) => ({
     date,
-    views: views[index] || 0,
     likes: likes[index] || 0,
     comments: comments[index] || 0,
-    followers: followers[index] || 0
-  })).filter(item => item.views > 0 || item.likes > 0 || item.comments > 0 || item.followers > 0)
+    followers: followers[index] || 0,
+    danmaku: danmaku[index] || 0,
+    coins: coins[index] || 0,
+    collects: collects[index] || 0,
+    shares: shares[index] || 0
+  })).filter(item => item.likes > 0 || item.comments > 0 || item.followers > 0 || item.danmaku > 0 || item.coins > 0 || item.collects > 0 || item.shares > 0)
 
   return {
     dates: filtered.map(item => item.date),
-    views: filtered.map(item => item.views),
     likes: filtered.map(item => item.likes),
     comments: filtered.map(item => item.comments),
-    followers: filtered.map(item => item.followers)
+    followers: filtered.map(item => item.followers),
+    danmaku: filtered.map(item => item.danmaku),
+    coins: filtered.map(item => item.coins),
+    collects: filtered.map(item => item.collects),
+    shares: filtered.map(item => item.shares)
   }
 })
 
-const trendSeries = computed(() => [{
-  name: trendMetric.value === 'views' ? '播放量'
-    : trendMetric.value === 'likes' ? '点赞'
-    : trendMetric.value === 'comments' ? '评论'
-    : '粉丝',
-  type: 'line',
-  color: trendMetric.value === 'views' ? '#00aeec'
-    : trendMetric.value === 'likes' ? '#ff6b81'
-    : trendMetric.value === 'comments' ? '#f3a832'
-    : '#52c41a',
-  data: visibleTrendData.value[trendMetric.value] || []
-}])
+const trendSeries = computed(() => {
+  if (isManuscriptTrendMode.value) {
+    return [{
+      name: '播放量',
+      type: 'line',
+      color: '#00aeec',
+      data: visibleTrendData.value.views || []
+    }, {
+      name: '弹幕',
+      type: 'line',
+      color: '#52c41a',
+      data: visibleTrendData.value.danmaku || []
+    }]
+  }
+
+  const metricConfig = {
+    likes: { name: '点赞', color: '#ff6b81' },
+    comments: { name: '评论', color: '#f3a832' },
+    followers: { name: '粉丝', color: '#52c41a' },
+    danmaku: { name: '弹幕', color: '#00aeec' },
+    coins: { name: '硬币', color: '#ff6b81' },
+    collects: { name: '收藏', color: '#a855f7' },
+    shares: { name: '分享', color: '#06b6d4' }
+  }
+  const cfg = metricConfig[trendMetric.value] || { name: '播放量', color: '#00aeec' }
+  return [{
+    name: cfg.name,
+    type: 'line',
+    color: cfg.color,
+    data: visibleTrendData.value[trendMetric.value] || []
+  }]
+})
 
 const rankingXData = computed(() => (rankingList.value || []).map(item => {
   const title = item.title || ''
@@ -128,7 +173,11 @@ const rankingSeries = computed(() => [{
 }])
 
 function switchTrendMetric() {
-  loadTrend(trendDays.value, true)
+  if (isManuscriptTrendMode.value) {
+    loadManuscriptTrend()
+  } else {
+    loadTrend(trendDays.value, true)
+  }
 }
 
 function switchTrendDays() {
@@ -138,7 +187,8 @@ function switchTrendDays() {
 onMounted(async () => {
   await Promise.all([
     loadOverview(),
-    loadTrend(trendDays.value),
+    loadManuscriptTrend(),
+    loadTrend(7),
     loadRanking('views', 5),
     loadFansTrend(30)
   ])

@@ -1,13 +1,8 @@
 package com.mybilibili.video.service.impl;
 
 import com.mybilibili.common.entity.Manuscript;
-import com.mybilibili.common.vo.CreatorOverviewVO;
-import com.mybilibili.common.vo.FansRankingVO;
-import com.mybilibili.common.vo.FansTrendVO;
-import com.mybilibili.common.vo.LatestCommentVO;
-import com.mybilibili.common.vo.ManuscriptRankVO;
-import com.mybilibili.common.vo.Result;
-import com.mybilibili.common.vo.TrendDataVO;
+import com.mybilibili.common.vo.*;
+import com.mybilibili.video.feign.DanmakuClient;
 import com.mybilibili.video.mapper.CreatorStatsMapper;
 import com.mybilibili.video.mapper.ManuscriptMapper;
 import com.mybilibili.video.service.CreatorStatsService;
@@ -22,20 +17,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class CreatorStatsServiceImpl implements CreatorStatsService {
 
     @Autowired
     private ManuscriptMapper manuscriptMapper;
-    
+
     @Autowired
     private CreatorStatsMapper creatorStatsMapper;
+
+    @Autowired
+    private DanmakuClient danmakuClient;
 
     @Override
     public CreatorOverviewVO getCreatorOverview(Integer userId) {
         CreatorOverviewVO overview = new CreatorOverviewVO();
-        
+
         Map<String, Object> totalStats = creatorStatsMapper.selectTotalStatsByUserId(userId);
         if (totalStats != null) {
             overview.setTotalViews(getIntValue(totalStats, "totalViews"));
@@ -44,34 +43,79 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
             overview.setTotalCollections(getIntValue(totalStats, "totalCollections"));
             overview.setTotalShares(getIntValue(totalStats, "totalShares"));
             overview.setTotalComments(getIntValue(totalStats, "totalComments"));
-            overview.setTotalDanmaku(getIntValue(totalStats, "totalDanmaku"));
             overview.setTotalManuscripts(getIntValue(totalStats, "totalManuscripts"));
         }
-        
+
+        // Get real danmaku count from MongoDB via Feign
+        List<Manuscript> userManuscripts = creatorStatsMapper.selectTopByViews(userId, 1000);
+        if (!userManuscripts.isEmpty()) {
+            List<Integer> manuscriptIds = userManuscripts.stream()
+                    .map(Manuscript::getId).collect(Collectors.toList());
+            try {
+                Result<Map<Integer, Long>> result = danmakuClient.getDanmakuCountByManuscriptIds(manuscriptIds);
+                if (result != null && result.getCode() == 200 && result.getData() != null) {
+                    long totalDanmaku = result.getData().values().stream().mapToLong(Long::longValue).sum();
+                    overview.setTotalDanmaku((int) totalDanmaku);
+                }
+            } catch (Exception e) {
+                overview.setTotalDanmaku(0);
+            }
+        } else {
+            overview.setTotalDanmaku(0);
+        }
+
         Integer followerCount = creatorStatsMapper.selectFollowerCount(userId);
         overview.setTotalFollowers(followerCount != null ? followerCount : 0);
-        
+
+        // 7-day increases from real time data
         LocalDate sevenDaysAgo = LocalDate.now().minusDays(7);
-        Map<String, Object> increaseStats = creatorStatsMapper.selectIncreaseStats(userId, sevenDaysAgo.toString());
+        String startDate = sevenDaysAgo.toString();
+
+        Map<String, Object> increaseStats = creatorStatsMapper.selectIncreaseStats(userId, startDate);
         if (increaseStats != null) {
             overview.setViewsIncrease(getIntValue(increaseStats, "viewsIncrease"));
-            overview.setLikesIncrease(getIntValue(increaseStats, "likesIncrease"));
-            overview.setCommentsIncrease(getIntValue(increaseStats, "commentsIncrease"));
-            overview.setDanmakuIncrease(getIntValue(increaseStats, "danmakuIncrease"));
-            overview.setSharesIncrease(getIntValue(increaseStats, "sharesIncrease"));
-            overview.setCollectionsIncrease(getIntValue(increaseStats, "collectionsIncrease"));
-            overview.setCoinsIncrease(getIntValue(increaseStats, "coinsIncrease"));
         }
-        
-        List<Map<String, Object>> fansTrend = creatorStatsMapper.selectFansTrendData(userId, LocalDate.now().minusDays(6).toString());
+
+        Map<String, Object> interactionIncrease = creatorStatsMapper.selectInteractionIncrease(userId, startDate);
+        if (interactionIncrease != null) {
+            overview.setLikesIncrease(getIntValue(interactionIncrease, "likesIncrease"));
+            overview.setCoinsIncrease(getIntValue(interactionIncrease, "coinsIncrease"));
+            overview.setCollectionsIncrease(getIntValue(interactionIncrease, "collectionsIncrease"));
+            overview.setSharesIncrease(getIntValue(interactionIncrease, "sharesIncrease"));
+        }
+
+        Map<String, Object> commentIncrease = creatorStatsMapper.selectCommentIncrease(userId, startDate);
+        if (commentIncrease != null) {
+            overview.setCommentsIncrease(getIntValue(commentIncrease, "commentsIncrease"));
+        }
+
+        // Danmaku 7-day increase via Feign
+        if (!userManuscripts.isEmpty()) {
+            List<Integer> manuscriptIds = userManuscripts.stream()
+                    .map(Manuscript::getId).collect(Collectors.toList());
+            try {
+                Result<Map<String, Integer>> trendResult = danmakuClient.getDanmakuTrend(
+                        manuscriptIds, startDate, LocalDate.now().toString());
+                if (trendResult != null && trendResult.getCode() == 200 && trendResult.getData() != null) {
+                    int danmakuIncrease = trendResult.getData().values().stream().mapToInt(Integer::intValue).sum();
+                    overview.setDanmakuIncrease(danmakuIncrease);
+                }
+            } catch (Exception e) {
+                overview.setDanmakuIncrease(0);
+            }
+        } else {
+            overview.setDanmakuIncrease(0);
+        }
+
+        List<Map<String, Object>> fansTrend = creatorStatsMapper.selectFansTrendData(userId, sevenDaysAgo.toString());
         int followersIncrease = 0;
         for (Map<String, Object> row : fansTrend) {
             followersIncrease += getIntValue(row, "newFollowers");
         }
         overview.setFollowersIncrease(followersIncrease);
-        
+
         overview.setUpdateTime(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-        
+
         return overview;
     }
 
@@ -80,33 +124,62 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
         TrendDataVO trend = new TrendDataVO();
 
         String startDate = LocalDate.now().minusDays(days - 1).toString();
-        List<Map<String, Object>> manuscriptTrend = creatorStatsMapper.selectTrendData(userId, startDate);
+
+        // Interaction trends (likes, coins, collects, shares) from user_interactions
+        List<Map<String, Object>> interactionTrend = creatorStatsMapper.selectInteractionTrendData(userId, startDate);
+        // Comment trend from comments table
+        List<Map<String, Object>> commentTrend = creatorStatsMapper.selectCommentTrendData(userId, startDate);
+        // Fans trend (existing, unchanged)
         List<Map<String, Object>> fansTrend = creatorStatsMapper.selectFansTrendData(userId, startDate);
 
-        Map<String, Map<String, Integer>> manuscriptMap = new HashMap<>();
-        for (Map<String, Object> row : manuscriptTrend) {
-            Object dateObj = row.get("date");
-            String date = dateObj instanceof java.sql.Date ? ((java.sql.Date) dateObj).toString() : String.valueOf(dateObj);
+        // Danmaku trend from MongoDB
+        List<Manuscript> userManuscripts = creatorStatsMapper.selectTopByViews(userId, 1000);
+        Map<String, Integer> danmakuTrendMap = new HashMap<>();
+        if (!userManuscripts.isEmpty()) {
+            List<Integer> manuscriptIds = userManuscripts.stream()
+                    .map(Manuscript::getId).collect(Collectors.toList());
+            try {
+                Result<Map<String, Integer>> result = danmakuClient.getDanmakuTrend(
+                        manuscriptIds, startDate, LocalDate.now().toString());
+                if (result != null && result.getCode() == 200 && result.getData() != null) {
+                    danmakuTrendMap = result.getData();
+                }
+            } catch (Exception e) {
+                // danmaku trend unavailable
+            }
+        }
+
+        // Index by date
+        Map<String, Map<String, Integer>> interactionMap = new HashMap<>();
+        for (Map<String, Object> row : interactionTrend) {
+            String date = row.get("date").toString();
             Map<String, Integer> dayData = new HashMap<>();
-            dayData.put("views", getIntValue(row, "views"));
             dayData.put("likes", getIntValue(row, "likes"));
-            dayData.put("comments", getIntValue(row, "comments"));
-            manuscriptMap.put(date, dayData);
+            dayData.put("coins", getIntValue(row, "coins"));
+            dayData.put("collects", getIntValue(row, "collects"));
+            dayData.put("shares", getIntValue(row, "shares"));
+            interactionMap.put(date, dayData);
+        }
+
+        Map<String, Integer> commentMap = new HashMap<>();
+        for (Map<String, Object> row : commentTrend) {
+            commentMap.put(row.get("date").toString(), getIntValue(row, "comments"));
         }
 
         Map<String, Integer> fansMap = new HashMap<>();
         for (Map<String, Object> row : fansTrend) {
-            Object dateObj = row.get("date");
-            String date = dateObj instanceof java.sql.Date ? ((java.sql.Date) dateObj).toString() : String.valueOf(dateObj);
-            fansMap.put(date, getIntValue(row, "newFollowers"));
+            fansMap.put(row.get("date").toString(), getIntValue(row, "newFollowers"));
         }
 
-        // 生成完整日期范围，填充缺失日期为0
+        // Build full date range
         List<String> dates = new ArrayList<>();
-        List<Integer> views = new ArrayList<>();
         List<Integer> likes = new ArrayList<>();
         List<Integer> comments = new ArrayList<>();
         List<Integer> followers = new ArrayList<>();
+        List<Integer> danmaku = new ArrayList<>();
+        List<Integer> coins = new ArrayList<>();
+        List<Integer> collects = new ArrayList<>();
+        List<Integer> shares = new ArrayList<>();
 
         LocalDate end = LocalDate.now();
         LocalDate start = LocalDate.now().minusDays(days - 1);
@@ -114,34 +187,106 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
             String dateStr = d.toString();
             dates.add(dateStr);
 
-            Map<String, Integer> dayData = manuscriptMap.get(dateStr);
-            if (dayData != null) {
-                views.add(dayData.get("views"));
-                likes.add(dayData.get("likes"));
-                comments.add(dayData.get("comments"));
+            Map<String, Integer> dayInteraction = interactionMap.get(dateStr);
+            if (dayInteraction != null) {
+                likes.add(dayInteraction.get("likes"));
+                coins.add(dayInteraction.get("coins"));
+                collects.add(dayInteraction.get("collects"));
+                shares.add(dayInteraction.get("shares"));
             } else {
-                views.add(0);
                 likes.add(0);
-                comments.add(0);
+                coins.add(0);
+                collects.add(0);
+                shares.add(0);
             }
 
-            Integer dayFollowers = fansMap.get(dateStr);
-            followers.add(dayFollowers != null ? dayFollowers : 0);
+            comments.add(commentMap.getOrDefault(dateStr, 0));
+            danmaku.add(danmakuTrendMap.getOrDefault(dateStr, 0));
+            followers.add(fansMap.getOrDefault(dateStr, 0));
         }
 
         trend.setDates(dates);
-        trend.setViews(views);
         trend.setLikes(likes);
         trend.setComments(comments);
+        trend.setDanmaku(danmaku);
         trend.setFollowers(followers);
+        trend.setCoins(coins);
+        trend.setCollects(collects);
+        trend.setShares(shares);
 
         return trend;
     }
 
     @Override
+    public ManuscriptTrendVO getManuscriptTrend(Integer userId) {
+        ManuscriptTrendVO vo = new ManuscriptTrendVO();
+
+        List<Map<String, Object>> manuscripts = creatorStatsMapper.selectManuscriptListForTrend(userId);
+
+        if (manuscripts.isEmpty()) {
+            vo.setDates(new ArrayList<>());
+            vo.setViews(new ArrayList<>());
+            vo.setDanmaku(new ArrayList<>());
+            vo.setTitles(new ArrayList<>());
+            return vo;
+        }
+
+        List<String> dates = new ArrayList<>();
+        List<Integer> views = new ArrayList<>();
+        List<Integer> danmaku = new ArrayList<>();
+        List<String> titles = new ArrayList<>();
+        List<Integer> manuscriptIds = new ArrayList<>();
+
+        // Sort by upload_time ASC and calculate cumulative views
+        int cumulativeViews = 0;
+        for (Map<String, Object> row : manuscripts) {
+            Object timeObj = row.get("upload_time");
+            if (timeObj != null) {
+                if (timeObj instanceof java.sql.Date) {
+                    dates.add(((java.sql.Date) timeObj).toLocalDate().toString());
+                } else if (timeObj instanceof java.sql.Timestamp) {
+                    dates.add(((java.sql.Timestamp) timeObj).toLocalDateTime().toLocalDate().toString());
+                } else {
+                    dates.add(timeObj.toString().substring(0, 10));
+                }
+            } else {
+                dates.add("");
+            }
+            cumulativeViews += getIntValue(row, "views");
+            views.add(cumulativeViews);
+            titles.add((String) row.get("title"));
+            manuscriptIds.add(getIntValue(row, "id"));
+        }
+
+        // Get danmaku counts from MongoDB
+        if (!manuscriptIds.isEmpty()) {
+            try {
+                Result<Map<Integer, Long>> result = danmakuClient.getDanmakuCountByManuscriptIds(manuscriptIds);
+                if (result != null && result.getCode() == 200 && result.getData() != null) {
+                    for (Integer mid : manuscriptIds) {
+                        Long count = result.getData().get(mid);
+                        danmaku.add(count != null ? count.intValue() : 0);
+                    }
+                } else {
+                    manuscriptIds.forEach(mid -> danmaku.add(0));
+                }
+            } catch (Exception e) {
+                manuscriptIds.forEach(mid -> danmaku.add(0));
+            }
+        }
+
+        vo.setDates(dates);
+        vo.setViews(views);
+        vo.setDanmaku(danmaku);
+        vo.setTitles(titles);
+
+        return vo;
+    }
+
+    @Override
     public List<ManuscriptRankVO> getManuscriptRanking(Integer userId, String sortBy, Integer limit) {
         List<Manuscript> manuscripts;
-        
+
         switch (sortBy) {
             case "views":
                 manuscripts = creatorStatsMapper.selectTopByViews(userId, limit);
@@ -155,7 +300,7 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
             default:
                 manuscripts = creatorStatsMapper.selectTopByViews(userId, limit);
         }
-        
+
         List<ManuscriptRankVO> rankList = new ArrayList<>();
         for (Manuscript m : manuscripts) {
             ManuscriptRankVO vo = new ManuscriptRankVO();
@@ -170,23 +315,23 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
             vo.setCollectCount(m.getCollectCount());
             vo.setShareCount(m.getShareCount());
             vo.setUploadTime(m.getUploadTime() != null ? m.getUploadTime().toString() : null);
-            
-            int totalInteractions = m.getLikeCount() + m.getCommentCount() + m.getDanmakuCount() 
+
+            int totalInteractions = m.getLikeCount() + m.getCommentCount() + m.getDanmakuCount()
                 + m.getCoinCount() + m.getCollectCount() + m.getShareCount();
             double rate = m.getViewCount() > 0 ? (double) totalInteractions / m.getViewCount() * 100 : 0;
             vo.setInteractionRate(Math.round(rate * 100.0) / 100.0);
-            
+
             rankList.add(vo);
         }
-        
+
         return rankList;
     }
-    
+
     @Override
     public List<LatestCommentVO> getLatestComments(Integer userId, Integer limit) {
         List<Map<String, Object>> comments = creatorStatsMapper.selectLatestComments(userId, limit);
         List<LatestCommentVO> result = new ArrayList<>();
-        
+
         for (Map<String, Object> row : comments) {
             LatestCommentVO vo = new LatestCommentVO();
             vo.setId(getIntValue(row, "id"));
@@ -195,7 +340,7 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
             vo.setContent((String) row.get("content"));
             vo.setManuscriptId(getIntValue(row, "manuscriptId"));
             vo.setManuscriptTitle((String) row.get("manuscriptTitle"));
-            
+
             Object timeObj = row.get("time");
             if (timeObj != null) {
                 if (timeObj instanceof LocalDateTime) {
@@ -207,50 +352,50 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
                     vo.setCreateTime(timeObj.toString());
                 }
             }
-            
+
             result.add(vo);
         }
-        
+
         return result;
     }
-    
+
     @Override
     public List<FansRankingVO> getFansRanking(Integer userId, String type, Integer limit) {
         List<Map<String, Object>> ranking;
-        
+
         if ("interaction".equals(type)) {
             ranking = creatorStatsMapper.selectInteractionRanking(userId, limit);
         } else {
             ranking = creatorStatsMapper.selectViewRanking(userId, limit);
         }
-        
+
         List<FansRankingVO> result = new ArrayList<>();
         for (Map<String, Object> row : ranking) {
             FansRankingVO vo = new FansRankingVO();
             vo.setId(getIntValue(row, "id"));
             vo.setUsername((String) row.get("username"));
             vo.setAvatar((String) row.get("avatar"));
-            
+
             if ("interaction".equals(type)) {
                 vo.setInteractionCount(getIntValue(row, "interactionCount"));
             } else {
                 vo.setInteractionCount(getIntValue(row, "commentCount"));
             }
-            
+
             result.add(vo);
         }
-        
+
         return result;
     }
-    
+
     private String formatTimeAgo(LocalDateTime time) {
         if (time == null) return "";
-        
+
         Duration duration = Duration.between(time, LocalDateTime.now());
         long minutes = duration.toMinutes();
         long hours = duration.toHours();
         long days = duration.toDays();
-        
+
         if (minutes < 1) {
             return "刚刚";
         } else if (minutes < 60) {
@@ -263,7 +408,7 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
             return time.format(DateTimeFormatter.ofPattern("MM-dd HH:mm"));
         }
     }
-    
+
     private Integer getIntValue(Map<String, Object> map, String key) {
         Object value = map.get(key);
         if (value == null) return 0;
@@ -297,13 +442,10 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
         Integer currentFollowers = creatorStatsMapper.selectFollowerCount(userId);
         int runningFollowers = currentFollowers != null ? currentFollowers : 0;
 
-        // 先算出到今天的净增，然后从最后一天往前推算
-        // 计算区间内总净增
         int totalNetInPeriod = 0;
         for (Map<String, Integer> dayData : dataMap.values()) {
             totalNetInPeriod += dayData.get("newFollowers") - dayData.get("unfollows");
         }
-        // 区间起始粉丝数 = 当前粉丝 - 区间净增
         int startFollowers = runningFollowers - totalNetInPeriod;
 
         LocalDate end = LocalDate.now();

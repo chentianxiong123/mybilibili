@@ -154,16 +154,18 @@ export const followApi = {
 
 export const statsApi = {
   getOverview: () => api.get('/creator/stats/overview'),
-  
+
   getTrend: (days = 7) => api.get(`/creator/stats/trend?days=${days}`),
-  
+
   getRanking: (sortBy = 'views', limit = 10) => api.get(`/creator/stats/ranking?sortBy=${sortBy}&limit=${limit}`),
-  
+
   getLatestComments: (limit = 5) => api.get(`/creator/stats/latest-comments?limit=${limit}`),
-  
+
   getFansRanking: (type = 'view', limit = 10) => api.get(`/creator/stats/fans-ranking?type=${type}&limit=${limit}`),
 
-  getFansTrend: (days = 30) => api.get(`/creator/stats/fans-trend?days=${days}`)
+  getFansTrend: (days = 30) => api.get(`/creator/stats/fans-trend?days=${days}`),
+
+  getManuscriptTrend: () => api.get('/creator/stats/manuscript-trend')
 }
 
 export default api
