@@ -25,7 +25,17 @@
             AND c.manuscript_id = #{manuscriptId}
         </if>
         AND c.status = 0
-        ORDER BY c.created_at DESC
+        <choose>
+            <when test="sort == 'likes'">
+                ORDER BY c.like_count DESC, c.created_at DESC
+            </when>
+            <when test="sort == 'replies'">
+                ORDER BY c.reply_count DESC, c.created_at DESC
+            </when>
+            <otherwise>
+                ORDER BY c.created_at DESC
+            </otherwise>
+        </choose>
         LIMIT #{offset}, #{size}
     </select>
 

@@ -128,4 +128,41 @@ public class AdminUserServiceImpl implements AdminUserService {
     public List<Role> getAdminUserRoles(Integer adminUserId) {
         return adminUserRoleMapper.selectRolesByAdminUserId(adminUserId);
     }
+
+    @Override
+    public Result<?> updateAdminUser(Integer id, String username, Integer adminLevel, String newPassword) {
+        try {
+            AdminUser adminUser = adminUserMapper.selectById(id);
+            if (adminUser == null) {
+                return Result.error("管理员不存在");
+            }
+
+            if (id == 1) {
+                return Result.error("不能修改超级管理员的信息");
+            }
+
+            if (username != null && !username.isEmpty()) {
+                AdminUser existing = adminUserMapper.selectByUsername(username);
+                if (existing != null && !existing.getId().equals(id)) {
+                    return Result.error("用户名已存在");
+                }
+                adminUser.setUsername(username);
+            }
+
+            if (adminLevel != null) {
+                adminUser.setAdminLevel(adminLevel);
+            }
+
+            adminUserMapper.updateById(adminUser);
+
+            if (newPassword != null && !newPassword.isEmpty()) {
+                String encryptedPassword = passwordEncoder.encode(newPassword);
+                adminUserMapper.updatePassword(id, encryptedPassword);
+            }
+
+            return Result.success("修改成功", null);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
 }

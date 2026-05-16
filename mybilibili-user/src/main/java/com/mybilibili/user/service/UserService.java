@@ -246,8 +246,10 @@ public class UserService {
             }
             Integer followingCount = userMapper.countFollowing(user.getId());
             Integer followerCount = userMapper.countFollowers(user.getId());
+            Integer manuscriptCount = userMapper.countManuscriptsByUserId(user.getId());
             userVO.setFollowingCount(followingCount != null ? followingCount : 0);
             userVO.setFollowerCount(followerCount != null ? followerCount : 0);
+            userVO.setManuscriptCount(manuscriptCount != null ? manuscriptCount : 0);
             userVOList.add(userVO);
         }
 

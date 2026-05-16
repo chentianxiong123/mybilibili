@@ -258,10 +258,12 @@ public class CommentServiceImpl implements CommentService {
         reply.setReplyToUserId(replyToUserId);
         reply.setContent(content);
         reply.setLikeCount(0);
-        reply.setStatus("NORMAL");
+        reply.setStatus(hasProhibitedWords ? "REMOVED" : "NORMAL");
 
         replyMapper.insert(reply);
-        commentMapper.updateReplyCount(commentId, 1);
+        if (!hasProhibitedWords) {
+            commentMapper.updateReplyCount(commentId, 1);
+        }
 
         System.out.println("========== 准备添加回复经验值，userId=" + userId + ", experience=" + REPLY_EXPERIENCE + " ==========");
         try {
@@ -478,6 +480,7 @@ public class CommentServiceImpl implements CommentService {
         if (user != null) {
             commentVO.setUserName(user.getNickname());
             commentVO.setUserAvatar(user.getAvatar());
+            commentVO.setUserLevel(user.getLevel());
         }
 
         commentVO.setLiked(likeStatusMap.getOrDefault(comment.getId(), false));
@@ -510,6 +513,7 @@ public class CommentServiceImpl implements CommentService {
         if (user != null) {
             replyVO.setUserName(user.getNickname());
             replyVO.setUserAvatar(user.getAvatar());
+            replyVO.setUserLevel(user.getLevel());
         }
 
         if (reply.getReplyToUserId() != null) {

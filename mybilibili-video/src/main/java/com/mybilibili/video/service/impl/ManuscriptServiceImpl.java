@@ -30,10 +30,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -253,6 +256,8 @@ public class ManuscriptServiceImpl implements ManuscriptService {
                     uploader.setBio(user.getSignature());
                     uploader.setSignature(user.getSignature());
                     uploader.setFollowerCount(user.getFollowerCount());
+                    uploader.setFollowingCount(user.getFollowingCount());
+                    uploader.setLikedCount(user.getTotalLikeCount());
                     uploader.setFollowing(user.getFollowingCount() != null && user.getFollowingCount() > 0);
                     vo.setUploader(uploader);
                 }
@@ -295,7 +300,9 @@ public class ManuscriptServiceImpl implements ManuscriptService {
                     uploader.setBio(user.getSignature());
                     uploader.setSignature(user.getSignature());
                     uploader.setFollowerCount(user.getFollowerCount());
-                    
+                    uploader.setFollowingCount(user.getFollowingCount());
+                    uploader.setLikedCount(user.getTotalLikeCount());
+
                     // 正确查询关注状态: 如果当前用户已登录且不是自己关注自己
                     if (currentUserId != null && !currentUserId.equals(vo.getUserId())) {
                         Result<Map<String, Object>> followResult = userClient.checkFollowStatus(vo.getUserId(), currentUserId);
@@ -314,6 +321,29 @@ public class ManuscriptServiceImpl implements ManuscriptService {
             } catch (Exception e) {
                 log.error("获取作者信息失败", e);
             }
+        }
+
+        try {
+            if (vo.getVideos() != null && !vo.getVideos().isEmpty()) {
+                Set<String> tags = new TreeSet<>();
+                for (ManuscriptVO.VideoItemVO v : vo.getVideos()) {
+                    List<Map<String, Object>> tagRows = videoMapper.selectTagsByVideoId(v.getId());
+                    if (tagRows != null) {
+                        for (Map<String, Object> row : tagRows) {
+                            Object nameObj = row.get("name");
+                            if (nameObj != null) {
+                                tags.add(String.valueOf(nameObj));
+                            }
+                        }
+                    }
+                }
+                vo.setTags(new ArrayList<>(tags));
+            } else {
+                vo.setTags(Collections.emptyList());
+            }
+        } catch (Exception e) {
+            log.warn("获取稿件标签失败: {}", e.getMessage());
+            vo.setTags(Collections.emptyList());
         }
 
         return vo;
@@ -350,6 +380,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         stats.put("ready", manuscriptMapper.countReadyByUserId(userId));
         stats.put("published", manuscriptMapper.countPublishedByUserId(userId));
         stats.put("rejected", manuscriptMapper.countRejectedByUserId(userId));
+        stats.put("unpublished", manuscriptMapper.countUnpublishedByUserId(userId));
         return stats;
     }
 
@@ -379,7 +410,11 @@ public class ManuscriptServiceImpl implements ManuscriptService {
 
     @Override
     public List<ManuscriptVO> getRecommendedManuscripts(Integer userId) {
-        List<Manuscript> manuscripts = manuscriptMapper.selectRecommended(0, 20);
+        List<Manuscript> manuscripts = manuscriptMapper.selectRecommended(0, 60);
+        Collections.shuffle(manuscripts);
+        if (manuscripts.size() > 20) {
+            manuscripts = manuscripts.subList(0, 20);
+        }
         return manuscripts.stream().map(this::convertToVOWithUploader).collect(Collectors.toList());
     }
 
@@ -432,6 +467,8 @@ public class ManuscriptServiceImpl implements ManuscriptService {
                     uploader.setBio(user.getSignature());
                     uploader.setSignature(user.getSignature());
                     uploader.setFollowerCount(user.getFollowerCount());
+                    uploader.setFollowingCount(user.getFollowingCount());
+                    uploader.setLikedCount(user.getTotalLikeCount());
                     uploader.setFollowing(user.getFollowingCount() != null && user.getFollowingCount() > 0);
                     vo.setUploader(uploader);
                 }

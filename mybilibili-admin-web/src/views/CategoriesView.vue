@@ -197,7 +197,6 @@ onMounted(() => {
     >
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="name" label="分区名称" width="200" />
-      <el-table-column prop="sort" label="排序" width="100" />
       <el-table-column label="创建时间" width="180">
         <template #default="{ row }">
           {{ formatDateTime(row.createdAt) }}

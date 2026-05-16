@@ -128,8 +128,10 @@ const performSearch = async (isLoadMore = false) => {
       totalElements.value = total
       hasMore.value = !last
 
-      // 保存搜索历史
-      saveSearchHistory(searchKeyword.value.trim())
+      // 保存搜索历史（仅在有关键词时保存，标签搜索不保存到历史）
+      if (searchKeyword.value.trim()) {
+        saveSearchHistory(searchKeyword.value.trim())
+      }
     } else {
       ElMessage.error(response.message || '搜索失败')
     }

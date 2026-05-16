@@ -28,6 +28,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   darkMode: { type: Boolean, default: false },
   showLegend: { type: Boolean, default: true },
+  horizontal: { type: Boolean, default: false },
   tooltipFormatter: { type: Function, default: null }
 })
 
@@ -78,20 +79,30 @@ function initChart() {
     } : undefined,
     grid: {
       left: '3%',
-      right: '4%',
+      right: '8%',
       top: '10%',
       bottom: props.showLegend ? '12%' : '3%',
       containLabel: true
     },
-    xAxis: {
+    xAxis: props.horizontal ? {
+      type: 'value',
+      splitLine: { lineStyle: { color: getSplitLineColor(), type: 'dashed' } },
+      axisLabel: { color: getTextColor(), fontSize: 11, formatter: formatAxisValue }
+    } : {
       type: 'category',
       boundaryGap: false,
       data: props.xData,
       axisLine: { lineStyle: { color: getAxisLineColor() } },
       axisTick: { show: false },
-      axisLabel: { color: getTextColor(), fontSize: 11 }
+      axisLabel: { color: getTextColor(), fontSize: 11, formatter: formatCategoryLabel }
     },
-    yAxis: {
+    yAxis: props.horizontal ? {
+      type: 'category',
+      data: props.xData,
+      axisLine: { lineStyle: { color: getAxisLineColor() } },
+      axisTick: { show: false },
+      axisLabel: { color: getTextColor(), fontSize: 11 }
+    } : {
       type: 'value',
       splitLine: { lineStyle: { color: getSplitLineColor(), type: 'dashed' } },
       axisLabel: { color: getTextColor(), fontSize: 11, formatter: formatAxisValue }
@@ -99,27 +110,36 @@ function initChart() {
     series: validSeries.map((s, i) => ({
       name: s.name || '',
       type: s.type || 'line',
-      smooth: true,
-      symbol: 'circle',
+      smooth: !props.horizontal && (s.type || 'line') === 'line',
+      symbol: !props.horizontal ? 'circle' : 'none',
       symbolSize: 6,
       lineStyle: {
         width: 2.5,
         color: s.color || defaultColorPalette[i % defaultColorPalette.length]
       },
-      areaStyle: s.showArea !== false ? {
+      areaStyle: !props.horizontal && s.showArea !== false ? {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
           { offset: 0, color: hexToRgba(s.color || defaultColorPalette[i % defaultColorPalette.length], 0.2) },
           { offset: 1, color: hexToRgba(s.color || defaultColorPalette[i % defaultColorPalette.length], 0.02) }
         ])
       } : undefined,
+      barWidth: props.horizontal ? '50%' : undefined,
       itemStyle: {
-        color: s.color || defaultColorPalette[i % defaultColorPalette.length]
+        color: s.color || defaultColorPalette[i % defaultColorPalette.length],
+        borderRadius: props.horizontal ? [0, 4, 4, 0] : 0
       },
       data: s.data
     }))
   }
 
   chartInstance.setOption(option)
+}
+
+function formatCategoryLabel(value) {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value.slice(5)
+  }
+  return value
 }
 
 function formatAxisValue(value) {

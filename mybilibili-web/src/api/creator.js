@@ -78,7 +78,9 @@ export const creatorApi = {
   getComments: (params) => api.get('/creator/comments', { params }),
   
   deleteComment: (commentId) => api.delete(`/creator/comments/${commentId}`),
-  
+
+  deleteReply: (replyId) => api.delete(`/creator/comments/reply/${replyId}`),
+
   replyComment: (commentId, content, replyToUserId) => api.post(`/creator/comments/${commentId}/reply`, null, { params: { content, replyToUserId } }),
 
   getDanmakuList: (params) => api.get('/creator/danmaku/list', { params }),

@@ -30,6 +30,8 @@ public class CreatorCommentController {
             @RequestParam(value = "page", defaultValue = "1") Integer page,
             @RequestParam(value = "size", defaultValue = "20") Integer size,
             @RequestParam(value = "manuscriptId", required = false) Integer manuscriptId,
+            @RequestParam(value = "sort", defaultValue = "latest") String sort,
+            @RequestParam(value = "commentType", defaultValue = "all") String commentType,
             HttpServletRequest request) {
         try {
             Integer userId = getUserIdFromRequest(request);
@@ -37,8 +39,8 @@ public class CreatorCommentController {
                 return Result.error("用户未登录");
             }
 
-            List<CreatorCommentVO> comments = creatorCommentService.getCreatorComments(userId, manuscriptId, page, size);
-            int total = creatorCommentService.countCreatorComments(userId, manuscriptId);
+            List<CreatorCommentVO> comments = creatorCommentService.getCreatorComments(userId, manuscriptId, page, size, sort, commentType);
+            int total = creatorCommentService.countCreatorComments(userId, manuscriptId, commentType);
 
             Map<String, Object> result = new HashMap<>();
             result.put("list", comments);
@@ -64,6 +66,24 @@ public class CreatorCommentController {
                 return Result.error("用户未登录");
             }
             creatorCommentService.deleteCommentByCreator(commentId, userId);
+            return Result.success("删除成功", null);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/reply/{replyId}")
+    @Operation(summary = "删除回复", description = "创作者删除自己稿件下的回复")
+    @SecurityRequirement(name = "JWT")
+    public Result<?> deleteReply(
+            @PathVariable Integer replyId,
+            HttpServletRequest request) {
+        try {
+            Integer userId = getUserIdFromRequest(request);
+            if (userId == null) {
+                return Result.error("用户未登录");
+            }
+            creatorCommentService.deleteReplyByCreator(replyId, userId);
             return Result.success("删除成功", null);
         } catch (Exception e) {
             return Result.error(e.getMessage());

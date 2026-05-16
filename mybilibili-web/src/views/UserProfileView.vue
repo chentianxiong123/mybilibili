@@ -10,6 +10,7 @@ import { getUserProfileBackground } from '../api/banner.js'
 import { userPrivacyApi } from '../api/userPrivacy.js'
 import api from '../api/index.js'
 import CommentSystem from '../components/CommentSystem.vue'
+import FansList from '../components/FansList.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -290,6 +291,7 @@ const sortOptionMap = {
 const handleSortChange = (option) => {
   console.log('【调试】handleSortChange 被调用，选项:', option)
   videoSortOption.value = option
+  videoSearch.value.activeSort = option
   console.log('【调试】videoSortOption 已更新为:', videoSortOption.value)
   // 重新加载视频列表
   loadUserVideos()
@@ -299,8 +301,9 @@ const handleSortChange = (option) => {
 const handleSubmissionsSortChange = (option) => {
   console.log('【调试】handleSubmissionsSortChange 被调用，选项:', option)
   submissions.value.activeSort = option
-  // 同步更新主页的排序选项
+  // 同步更新主页和搜索页的排序选项
   videoSortOption.value = option
+  videoSearch.value.activeSort = option
   console.log('【调试】投稿页和主页排序已更新为:', option)
   // 重新加载视频列表
   loadUserVideos()
@@ -679,6 +682,38 @@ const videoSearch = ref({
   viewType: 'grid'
 })
 
+const normalizeVideoSearchText = (value) => (value || '').toString().trim().toLowerCase()
+
+const filteredSearchVideos = computed(() => {
+  const keyword = normalizeVideoSearchText(videoSearch.value.keyword)
+  let videos = [...allVideos.value]
+
+  if (videoSearch.value.activeSort === '最多播放') {
+    videos.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
+  } else if (videoSearch.value.activeSort === '最多收藏') {
+    videos.sort((a, b) => (b.collectCount || 0) - (a.collectCount || 0))
+  } else {
+    videos.sort((a, b) => new Date(b.uploadTime) - new Date(a.uploadTime))
+  }
+
+  if (!keyword) {
+    return videos
+  }
+
+  return videos.filter(video => {
+    const fields = [
+      video.title,
+      video.description,
+      video.introduction,
+      video.tname,
+      video.id
+    ]
+    return fields.some(field => normalizeVideoSearchText(field).includes(keyword))
+  })
+})
+
+const filteredSearchTotalCount = computed(() => filteredSearchVideos.value.length)
+
 // 搜索分类
 const searchCategories = ref([
   { name: '视频', count: 0 },
@@ -804,11 +839,14 @@ const handleFollowFilterChange = (filterType) => {
   // TODO: 根据筛选类型重新加载数据
 }
 
-// 处理关注/粉丝搜索
 const handleFollowSearch = () => {
-  // TODO: 实现搜索功能
   console.log('搜索关键词:', followList.value.searchKeyword)
 }
+
+watch(filteredSearchVideos, (videos) => {
+  videoSearch.value.searchResults = videos
+  videoSearch.value.totalCount = videos.length
+})
 
 // 关注/取消关注用户
 const handleFollowUser = async (targetUserId, isFollowing) => {
@@ -904,25 +942,19 @@ const loadFollowersList = async () => {
 
 // 处理视频搜索
 const handleVideoSearch = async () => {
-  if (!videoSearch.value.keyword.trim()) {
+  const keyword = videoSearch.value.keyword.trim()
+  if (!keyword) {
     ElMessage.warning('请输入搜索关键词')
     return
   }
-  
+
   videoSearch.value.loading = true
   try {
-    // 调用搜索API
-    const response = await videoApi.searchUserVideos(userId.value, videoSearch.value.keyword, sortOptionMap[videoSearch.value.activeSort])
-    if (response.code === 200) {
-      videoSearch.value.searchResults = response.data.map(video => ({
-        ...video,
-        date: formatDate(video.uploadTime)
-      }))
-      videoSearch.value.totalCount = response.data.length
+    videoSearch.value.searchResults = filteredSearchVideos.value
+    videoSearch.value.totalCount = filteredSearchVideos.value.length
+    if (activeTab.value !== '搜索') {
+      router.push(`/profile/${userId.value}/search`)
     }
-  } catch (error) {
-    console.error('搜索视频失败:', error)
-    ElMessage.error('搜索失败，请稍后重试')
   } finally {
     videoSearch.value.loading = false
   }
@@ -931,11 +963,10 @@ const handleVideoSearch = async () => {
 // 处理搜索排序变化
 const handleSearchSortChange = (option) => {
   videoSearch.value.activeSort = option
-  // 重新搜索
-  if (videoSearch.value.keyword.trim()) {
-    handleVideoSearch()
-  }
+  videoSearch.value.searchResults = filteredSearchVideos.value
+  videoSearch.value.totalCount = filteredSearchVideos.value.length
 }
+
 
 // 格式化日期
 const formatDate = (dateString) => {
@@ -1304,6 +1335,10 @@ const loadUserCollections = async () => {
               ...video,
               date: formatDate(video.uploadTime)
             }))
+            // 始终用第一个视频的封面作为合集封面
+            if (collection.videos.length > 0 && collection.videos[0].coverUrl) {
+              collection.coverUrl = collection.videos[0].coverUrl
+            }
             console.log('合集', collection.id, '的视频列表:', collection.videos)
           }
         } catch (e) {
@@ -1699,8 +1734,8 @@ const goToSubmissions = () => {
 
 // 播放搜索视频
 const playAllSearchVideos = () => {
-  if (videoSearch.value.searchResults.length > 0) {
-    router.push(`/manuscript/${videoSearch.value.searchResults[0].id}`)
+  if (filteredSearchVideos.value.length > 0) {
+    router.push(`/manuscript/${filteredSearchVideos.value[0].id}`)
   } else {
     ElMessage.info('暂无视频')
   }
@@ -1794,7 +1829,7 @@ const formatNumber = (num) => {
 
 // 获取默认封面
 const getDefaultCover = () => {
-  return 'https://picsum.photos/id/1025/400/225'
+  return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225" viewBox="0 0 400 225"><rect fill="#e5e9ef" width="400" height="225"/><text fill="#9499a0" font-family="sans-serif" font-size="16" x="50%" y="50%" text-anchor="middle" dy=".3em">暂无封面</text></svg>')
 }
 
 // 格式化时长
@@ -2246,14 +2281,9 @@ onMounted(() => {
                   <!-- 统计信息 -->
                   <div class="stats-info">
                     <span class="stat-item">
-                      <el-icon><View /></el-icon>
-                      {{ collectionDetail.collection.viewCount || 0 }} 次观看
-                    </span>
-                    <span class="stat-item">
                       <el-icon><Clock /></el-icon>
                       更新于 {{ formatDate(collectionDetail.collection.updatedAt) }}
                     </span>
-                    <span v-if="!collectionDetail.collection.isPublic" class="private-tag">私密合集</span>
                   </div>
                 </div>
               </div>
@@ -2910,21 +2940,21 @@ onMounted(() => {
               
               <!-- 搜索结果统计 -->
               <div class="search-result-info" v-if="videoSearch.keyword && videoSearch.activeCategory === '视频'">
-                共找到关于"<span class="keyword">{{ videoSearch.keyword }}</span>"的 {{ videoSearch.totalCount }} 个视频
+                共找到关于"<span class="keyword">{{ videoSearch.keyword }}</span>"的 {{ filteredSearchTotalCount }} 个视频
               </div>
-              
+
               <!-- 视频列表 -->
               <div v-if="videoSearch.activeCategory === '视频'">
                 <div v-if="videoSearch.loading" class="loading-state">
                   <p>搜索中...</p>
                 </div>
-                <div v-else-if="videoSearch.searchResults.length === 0 && videoSearch.keyword" class="empty-state">
+                <div v-else-if="filteredSearchVideos.length === 0 && videoSearch.keyword" class="empty-state">
                   <p>未找到相关视频</p>
                 </div>
-                <div v-else-if="videoSearch.searchResults.length > 0">
+                <div v-else-if="filteredSearchVideos.length > 0">
                   <!-- 宫格视图 -->
                   <div v-if="videoSearch.viewType === 'grid'" class="videos-grid">
-                    <div v-for="video in videoSearch.searchResults" :key="video.id" class="video-item" @click="router.push(`/manuscript/${video.id}`)">
+                    <div v-for="video in filteredSearchVideos" :key="video.id" class="video-item" @click="router.push(`/manuscript/${video.id}`)">
                       <div class="video-cover">
                         <img :src="video.coverUrl" :alt="video.title" class="video-cover-img">
                         <div class="video-duration">{{ video.duration }}</div>
@@ -2941,10 +2971,10 @@ onMounted(() => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <!-- 列表视图 -->
                   <div v-else-if="videoSearch.viewType === 'list'" class="videos-list">
-                    <div v-for="video in videoSearch.searchResults" :key="video.id" class="video-list-item" @click="router.push(`/manuscript/${video.id}`)">
+                    <div v-for="video in filteredSearchVideos" :key="video.id" class="video-list-item" @click="router.push(`/manuscript/${video.id}`)">
                       <div class="video-list-cover">
                         <img :src="video.coverUrl" :alt="video.title" class="video-cover-img">
                         <div class="video-duration">{{ video.duration }}</div>
@@ -3104,56 +3134,14 @@ onMounted(() => {
             
             <!-- 右侧内容区 -->
             <div class="follow-content">
-              <!-- 顶部标题和筛选 -->
-              <div class="follow-header">
-                <div class="follow-title">
-                  <h3>全部粉丝</h3>
-                  <span class="follow-count">{{ followList.followersList.length }}</span>
-                </div>
-                <div class="follow-filters">
-                  <div class="follow-search">
-                    <el-icon class="search-icon"><Search /></el-icon>
-                    <input 
-                      type="text" 
-                      placeholder="搜索" 
-                      class="search-input"
-                      v-model="followList.searchKeyword"
-                      @keyup.enter="handleFollowSearch"
-                    >
-                  </div>
-                </div>
-              </div>
-              
-              <!-- 用户列表 -->
-              <div v-if="followList.loading" class="loading-state">
-                <p>加载中...</p>
-              </div>
-              <div v-else-if="followList.followersList.length === 0" class="empty-state">
-                <p>暂无粉丝</p>
-              </div>
-              <div v-else class="user-list">
-                <div v-for="user in followList.followersList" :key="user.id" class="user-list-item">
-                  <div class="user-avatar-wrapper">
-                    <img :src="user.avatar" :alt="user.nickname" class="user-list-avatar">
-                  </div>
-                  <div class="user-info">
-                    <div class="user-nickname">{{ user.nickname }}</div>
-                    <div class="user-signature">{{ user.signature }}</div>
-                  </div>
-                  <div class="user-actions">
-                    <button 
-                      :class="['follow-btn', user.isFollowing ? 'following' : 'not-following']"
-                      @click="handleFollowUser(user.id, user.isFollowing)"
-                    >
-                      <el-icon v-if="user.isFollowing"><Check /></el-icon>
-                      <span>{{ user.isFollowing ? '已关注' : '关注' }}</span>
-                    </button>
-                    <button class="more-btn">
-                      <el-icon><More /></el-icon>
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <FansList
+                :users="followList.followersList"
+                :loading="followList.loading"
+                title="全部粉丝"
+                :show-search="true"
+                @follow="(id) => handleFollowUser(id, false)"
+                @unfollow="(id) => handleFollowUser(id, true)"
+              />
             </div>
           </div>
         </div>
@@ -3461,27 +3449,6 @@ onMounted(() => {
       destroy-on-close
     >
       <el-form label-position="top">
-        <!-- 封面上传 -->
-        <el-form-item label="合集封面">
-          <el-upload
-            class="collection-cover-uploader"
-            action="#"
-            :auto-upload="false"
-            :show-file-list="false"
-            :on-change="handleCollectionCoverChange"
-            accept="image/jpeg,image/png"
-          >
-            <div v-if="createCollectionForm.coverUrl" class="cover-preview">
-              <img :src="createCollectionForm.coverUrl" />
-            </div>
-            <div v-else class="cover-placeholder">
-              <el-icon :size="32"><Plus /></el-icon>
-              <span>点击上传封面</span>
-              <span class="cover-hint">支持 JPG、PNG 格式，最大 2MB</span>
-            </div>
-          </el-upload>
-        </el-form-item>
-
         <!-- 合集名称 -->
         <el-form-item label="合集名称" required>
           <el-input

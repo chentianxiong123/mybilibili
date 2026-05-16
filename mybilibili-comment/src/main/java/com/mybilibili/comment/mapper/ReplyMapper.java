@@ -35,4 +35,15 @@ public interface ReplyMapper extends BaseMapper<Reply> {
             "<if test='status != null'> AND status = #{status} </if>" +
             "</script>")
     int countAllReplies(@Param("status") String status);
+
+    List<Reply> selectByCreatorId(
+            @Param("userId") Integer userId,
+            @Param("manuscriptId") Integer manuscriptId,
+            @Param("offset") int offset,
+            @Param("size") int size,
+            @Param("sort") String sort);
+
+    int countByCreatorId(
+            @Param("userId") Integer userId,
+            @Param("manuscriptId") Integer manuscriptId);
 }

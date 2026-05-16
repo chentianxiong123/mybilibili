@@ -27,12 +27,13 @@
       <div class="chart-header">
         <h4>粉丝增长趋势</h4>
         <el-radio-group v-model="fanTrendDays" size="small" @change="switchFanDays">
-          <el-radio-button :value="7">7条</el-radio-button>
-          <el-radio-button :value="30">30条</el-radio-button>
+          <el-radio-button :value="7">7天</el-radio-button>
+          <el-radio-button :value="30">30天</el-radio-button>
+          <el-radio-button :value="90">90天</el-radio-button>
         </el-radio-group>
       </div>
       <TrendChart
-        :xData="fansTrend.dates"
+        :xData="visibleFansTrend.dates"
         :series="fanSeries"
         :height="320"
         :loading="loading.fansTrend"
@@ -54,24 +55,45 @@ const {
 
 const fanTrendDays = ref(30)
 
+const visibleFansTrend = computed(() => {
+  const dates = fansTrend.value.dates || []
+  const newFollowers = fansTrend.value.newFollowers || []
+  const unfollows = fansTrend.value.unfollows || []
+  const totalFollowers = fansTrend.value.totalFollowers || []
+
+  const filtered = dates.map((date, index) => ({
+    date,
+    newFollowers: newFollowers[index] || 0,
+    unfollows: unfollows[index] || 0,
+    totalFollowers: totalFollowers[index] || 0
+  })).filter(item => item.newFollowers > 0 || item.unfollows > 0)
+
+  return {
+    dates: filtered.map(item => item.date),
+    newFollowers: filtered.map(item => item.newFollowers),
+    unfollows: filtered.map(item => item.unfollows),
+    totalFollowers: filtered.map(item => item.totalFollowers)
+  }
+})
+
 const fanSeries = computed(() => [
   {
     name: '新增粉丝',
     type: 'line',
     color: '#52c41a',
-    data: fansTrend.value.newFollowers || []
+    data: visibleFansTrend.value.newFollowers || []
   },
   {
     name: '取关',
     type: 'line',
     color: '#ff6b81',
-    data: fansTrend.value.unfollows || []
+    data: visibleFansTrend.value.unfollows || []
   },
   {
     name: '累计粉丝',
     type: 'line',
     color: '#00aeec',
-    data: fansTrend.value.totalFollowers || []
+    data: visibleFansTrend.value.totalFollowers || []
   }
 ])
 
@@ -86,7 +108,7 @@ function formatNum(num) {
 }
 
 onMounted(() => {
-  loadFansTrend(30)
+  loadFansTrend(fanTrendDays.value)
 })
 </script>
 

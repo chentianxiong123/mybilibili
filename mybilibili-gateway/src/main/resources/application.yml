@@ -51,6 +51,14 @@ spring:
           filters:
             - StripPrefix=1
 
+        # 举报管理接口 - 转发到 comment 服务（必须放在 /api/admin/** 之前）
+        - id: report-admin
+          uri: lb://mybilibili-comment
+          predicates:
+            - Path=/api/admin/report/**
+          filters:
+            - StripPrefix=1
+
         # 违禁词管理接口 - 转发到 comment 服务（必须放在 /api/admin/** 之前）
         - id: prohibited-words
           uri: lb://mybilibili-comment
@@ -427,6 +435,14 @@ spring:
           uri: lb://mybilibili-comment
           predicates:
             - Path=/api/comment/**
+          filters:
+            - StripPrefix=1
+
+        # 举报接口
+        - id: report-service
+          uri: lb://mybilibili-comment
+          predicates:
+            - Path=/api/report/**
           filters:
             - StripPrefix=1
 

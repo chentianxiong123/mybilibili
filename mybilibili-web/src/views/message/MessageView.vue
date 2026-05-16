@@ -236,9 +236,6 @@ watch(() => route.path, () => {
         <span class="header-title">消息中心</span>
       </div>
       <div class="header-center">我的消息</div>
-      <div class="header-right">
-        <span class="helper-text">应援团助手</span>
-      </div>
     </div>
 
     <div class="message-container">
@@ -340,20 +337,6 @@ watch(() => route.path, () => {
   text-align: center;
 }
 
-.header-right {
-  width: 200px;
-  text-align: right;
-}
-
-.helper-text {
-  font-size: 14px;
-  color: #9499a0;
-  cursor: pointer;
-}
-
-.helper-text:hover {
-  color: #00a1d6;
-}
 
 .message-container {
   flex: 1;

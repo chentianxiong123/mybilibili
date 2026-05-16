@@ -55,7 +55,7 @@ const handleLogin = async () => {
       <div class="login-header">
         <el-icon :size="48" color="#00aeec"><Monitor /></el-icon>
         <h1 class="login-title">管理后台</h1>
-        <p class="login-subtitle">MyBilibili Admin System</p>
+        <p class="login-subtitle">Admin System</p>
       </div>
 
       <el-form

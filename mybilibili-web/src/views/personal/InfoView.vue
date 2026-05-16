@@ -150,7 +150,6 @@ const saveChanges = async () => {
               placeholder="请输入昵称"
               class="input-field"
             />
-            <span class="form-tip">注：修改一次昵称需要消耗 6 个硬币</span>
           </div>
         </div>
         

@@ -6,6 +6,7 @@ import com.mybilibili.common.entity.VideoTag;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface VideoMapper extends BaseMapper<Video> {
@@ -50,4 +51,7 @@ public interface VideoMapper extends BaseMapper<Video> {
 
     @Insert("INSERT INTO video_tags (video_id, tag_id) VALUES (#{videoId}, #{tagId})")
     int insertVideoTag(VideoTag videoTag);
+
+    @Select("SELECT t.name FROM tags t JOIN video_tags vt ON t.id = vt.tag_id WHERE vt.video_id = #{videoId}")
+    List<Map<String, Object>> selectTagsByVideoId(@Param("videoId") Integer videoId);
 }

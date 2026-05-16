@@ -52,7 +52,10 @@
           <div class="comment-main">
             <img :src="comment.userAvatar || defaultAvatar" alt="" class="comment-avatar" @click="goToUser(comment.userId)">
             <div class="comment-content">
-              <div class="comment-user" @click="goToUser(comment.userId)">{{ comment.userName }}</div>
+              <div class="comment-user" @click="goToUser(comment.userId)">
+                <span>{{ comment.userName }}</span>
+                <LevelBadge :level="comment.userLevel" />
+              </div>
               <div class="comment-text">{{ comment.content }}</div>
               <div class="comment-meta">
                 <span class="comment-time">{{ formatTime(comment.createTime) }}</span>
@@ -108,6 +111,7 @@
                   <div class="reply-content">
                     <div class="reply-user">
                       <span @click="goToUser(reply.userId)">{{ reply.userName }}</span>
+                      <LevelBadge :level="reply.userLevel" />
                       <span v-if="reply.replyToUserName" class="reply-to">
                         回复 <span @click="goToUser(reply.replyToUserId || reply.replyUserId)">{{ reply.replyToUserName }}</span>
                       </span>
@@ -188,6 +192,7 @@ import { ElMessage } from 'element-plus'
 import { Star, ChatDotRound, ArrowDown } from '@element-plus/icons-vue'
 import { commentApi } from '../api/index.js'
 import EmojiPopover from './EmojiPopover.vue'
+import LevelBadge from './LevelBadge.vue'
 
 const props = defineProps({
   // 评论目标类型：'VIDEO' | 'DYNAMIC'
@@ -842,6 +847,9 @@ onUnmounted(() => {
   color: #666;
   margin-bottom: 4px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .comment-user:hover {
@@ -966,6 +974,9 @@ onUnmounted(() => {
   font-size: 13px;
   color: #666;
   margin-bottom: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .reply-user span {

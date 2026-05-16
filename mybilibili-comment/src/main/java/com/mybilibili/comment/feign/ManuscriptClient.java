@@ -1,11 +1,9 @@
 package com.mybilibili.comment.feign;
 
 import com.mybilibili.common.vo.Result;
+import com.mybilibili.common.vo.ManuscriptVO;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 @FeignClient(name = "mybilibili-video", contextId = "manuscriptClient")
 public interface ManuscriptClient {
@@ -18,4 +16,10 @@ public interface ManuscriptClient {
 
     @PostMapping("/manuscript/{id}/decrement-comment")
     Result<?> decrementCommentCount(@PathVariable("id") Integer manuscriptId);
+
+    @GetMapping("/manuscript/internal/{id}")
+    Result<ManuscriptVO> getManuscriptById(@PathVariable("id") Integer manuscriptId);
+
+    @PutMapping("/manuscript/internal/{id}/take-down")
+    Result<?> takeDownManuscript(@PathVariable("id") Integer manuscriptId);
 }

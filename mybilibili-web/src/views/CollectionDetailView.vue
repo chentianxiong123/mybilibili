@@ -238,14 +238,9 @@ onMounted(() => {
           <!-- 统计信息 -->
           <div class="stats-info">
             <span class="stat-item">
-              <el-icon><View /></el-icon>
-              {{ collection.viewCount || 0 }} 次观看
-            </span>
-            <span class="stat-item">
               <el-icon><Clock /></el-icon>
               更新于 {{ formatDate(collection.updateTime) }}
             </span>
-            <span v-if="!collection.isPublic" class="private-tag">私密合集</span>
           </div>
 
           <!-- 操作按钮 -->

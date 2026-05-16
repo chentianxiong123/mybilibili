@@ -260,9 +260,9 @@ const handleFollow = async () => {
 
   try {
     loadingFollow.value = true
-    const response = await userApi.follow(props.userInfo.id, true)
+    const response = await userApi.follow(props.userInfo.id, !isFollowing.value)
     if (response.code === 200) {
-      const isNowFollowing = response.data === '关注成功'
+      const isNowFollowing = !isFollowing.value
       isFollowing.value = isNowFollowing
       emit('follow-change', { userId: props.userInfo.id, isFollowing: isNowFollowing })
       ElMessage.success(isNowFollowing ? '关注成功' : '取消关注成功')
@@ -305,13 +305,24 @@ const handleMouseLeave = () => {
 }
 
 // 监听visible变化
-watch(() => props.visible, (newVal) => {
+watch(() => props.visible, async (newVal) => {
   if (newVal) {
     isFollowing.value = props.userInfo.following || false
     loadUserBanner()
     nextTick(() => {
       calculatePosition()
     })
+    // 主动查询真实关注状态
+    if (props.userInfo.id) {
+      try {
+        const res = await userApi.checkFollow(props.userInfo.id)
+        if (res.code === 200 && res.data != null) {
+          isFollowing.value = res.data.following || res.data === true || false
+        }
+      } catch (e) {
+        // 保持 prop 传入的值
+      }
+    }
   }
 })
 

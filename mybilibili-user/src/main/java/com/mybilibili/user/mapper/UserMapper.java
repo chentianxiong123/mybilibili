@@ -78,4 +78,7 @@ public interface UserMapper extends BaseMapper<User> {
 
     @Select("SELECT COUNT(*) FROM users")
     Integer countAllUsers();
+
+    @Select("SELECT COUNT(*) FROM manuscripts WHERE user_id = #{userId}")
+    Integer countManuscriptsByUserId(@Param("userId") Integer userId);
 }

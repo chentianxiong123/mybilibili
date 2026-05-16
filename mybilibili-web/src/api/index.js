@@ -298,4 +298,9 @@ export const categoryApi = {
   getCategoryList: () => api.get('/category')
 }
 
+// 举报相关API
+export const reportApi = {
+  submitReport: (data) => api.post('/report/submit', data)
+}
+
 export default api

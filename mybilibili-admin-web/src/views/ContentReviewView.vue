@@ -8,6 +8,10 @@ import {
   deleteContent,
   batchProcess
 } from '../api/contentReview'
+import {
+  getReportList,
+  processReport
+} from '../api/report'
 
 // 表格数据
 const tableData = ref([])
@@ -27,6 +31,14 @@ const contentType = ref('')
 // 多选
 const selectedItems = ref([])
 
+// 举报相关
+const reportStatus = ref('')
+const reportType = ref('')
+const reportProcessDialog = ref(false)
+const currentReport = ref(null)
+const reportAction = ref('')
+const reportAdminRemark = ref('')
+
 // 内容类型选项
 const contentTypeOptions = [
   { label: '全部', value: '' },
@@ -34,26 +46,6 @@ const contentTypeOptions = [
   { label: '回复', value: 'REPLY' },
   { label: '动态评论', value: 'DYNAMIC_COMMENT' }
 ]
-
-// 加载待审核列表
-const loadPendingList = async () => {
-  loading.value = true
-  try {
-    const res = await getPendingList({
-      page: currentPage.value,
-      size: pageSize.value,
-      contentType: contentType.value || undefined
-    })
-    if (res.code === 200 || res.success) {
-      tableData.value = res.data?.list || res.data || []
-      total.value = res.data?.total || res.total || 0
-    }
-  } catch (error) {
-    ElMessage.error('获取待审核列表失败')
-  } finally {
-    loading.value = false
-  }
-}
 
 // 加载所有内容
 const loadAllContent = async () => {
@@ -77,9 +69,34 @@ const loadAllContent = async () => {
   }
 }
 
+// 加载举报列表
+const loadReportData = async () => {
+  loading.value = true
+  try {
+    const res = await getReportList({
+      page: currentPage.value,
+      size: pageSize.value,
+      status: reportStatus.value || undefined,
+      targetType: reportType.value || undefined
+    })
+    if (res.code === 200 || res.success) {
+      tableData.value = res.data?.list || []
+      total.value = res.data?.total || 0
+    }
+  } catch (error) {
+    ElMessage.error('获取举报列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
 // 加载数据
 const loadData = () => {
-  loadAllContent()
+  if (activeTab.value === 'reports') {
+    loadReportData()
+  } else {
+    loadAllContent()
+  }
 }
 
 // 标签页切换
@@ -93,6 +110,18 @@ const handleTabChange = () => {
 const handleTypeChange = () => {
   currentPage.value = 1
   loadData()
+}
+
+// 举报状态切换
+const handleReportStatusChange = () => {
+  currentPage.value = 1
+  loadReportData()
+}
+
+// 举报类型切换
+const handleReportTypeChange = () => {
+  currentPage.value = 1
+  loadReportData()
 }
 
 // 分页改变
@@ -119,17 +148,17 @@ const handleRestore = async (row) => {
   }
 }
 
-// 删除内容
+// 下架内容
 const handleDelete = async (row) => {
   try {
     await ElMessageBox.confirm(
-      '确定要删除该内容吗？此操作不可恢复！',
-      '警告',
-      { type: 'error' }
+      '确定要下架该内容吗？',
+      '提示',
+      { type: 'warning' }
     )
     const res = await deleteContent(row.targetType, row.id)
     if (res.code === 200 || res.success) {
-      ElMessage.success('删除成功')
+      ElMessage.success('下架成功')
       loadData()
     }
   } catch {}
@@ -157,17 +186,17 @@ const handleBatchRestore = async () => {
   }
 }
 
-// 批量删除
+// 批量下架
 const handleBatchDelete = async () => {
   if (selectedItems.value.length === 0) {
-    ElMessage.warning('请选择要删除的内容')
+    ElMessage.warning('请选择要下架的内容')
     return
   }
   try {
     await ElMessageBox.confirm(
-      `确定要删除选中的 ${selectedItems.value.length} 条内容吗？此操作不可恢复！`,
-      '警告',
-      { type: 'error' }
+      `确定要下架选中的 ${selectedItems.value.length} 条内容吗？`,
+      '提示',
+      { type: 'warning' }
     )
     const items = selectedItems.value.map(item => ({
       type: item.targetType,
@@ -175,17 +204,72 @@ const handleBatchDelete = async () => {
     }))
     const res = await batchProcess({ action: 'delete', items })
     if (res.code === 200 || res.success) {
-      ElMessage.success(`批量删除完成：成功 ${res.data?.successCount || 0} 条`)
+      ElMessage.success(`批量下架完成：成功 ${res.data?.successCount || 0} 条`)
       loadData()
       selectedItems.value = []
     }
   } catch {}
 }
 
+// 举报处理
+const openReportProcess = (row, action) => {
+  currentReport.value = row
+  reportAction.value = action
+  reportAdminRemark.value = ''
+  reportProcessDialog.value = true
+}
+
+const confirmReportProcess = async () => {
+  if (!currentReport.value) return
+  try {
+    const res = await processReport(currentReport.value.id, {
+      action: reportAction.value,
+      adminRemark: reportAdminRemark.value
+    })
+    if (res.code === 200 || res.success) {
+      ElMessage.success(reportAction.value === 'resolve' ? '已处理并下架内容' : '已驳回举报')
+      reportProcessDialog.value = false
+      loadReportData()
+    }
+  } catch (error) {
+    ElMessage.error('处理失败')
+  }
+}
+
 // 获取内容类型标签
 const getContentTypeLabel = (type) => {
   const option = contentTypeOptions.find(opt => opt.value === type)
   return option ? option.label : type
+}
+
+// 获取举报类型标签
+const getReportTypeLabel = (type) => {
+  switch (type) {
+    case 'COMMENT': return '评论'
+    case 'REPLY': return '回复'
+    case 'DYNAMIC_COMMENT': return '动态评论'
+    case 'MANUSCRIPT': return '稿件'
+    default: return type
+  }
+}
+
+// 获取举报状态标签
+const getReportStatusLabel = (status) => {
+  switch (status) {
+    case 'PENDING': return '待处理'
+    case 'RESOLVED': return '已处理'
+    case 'REJECTED': return '已驳回'
+    default: return status
+  }
+}
+
+const getReportStatusType = (status) => {
+  switch (status) {
+    case 'PENDING': return 'warning'
+    case 'RESOLVED': return 'success'
+    case 'REJECTED': return 'info'
+    default: return ''
+  }
 }
 
 // 格式化日期时间
@@ -214,10 +298,11 @@ onMounted(() => {
       <el-tab-pane label="全部" name="all"></el-tab-pane>
       <el-tab-pane label="正常" name="normal"></el-tab-pane>
       <el-tab-pane label="已下架" name="removed"></el-tab-pane>
+      <el-tab-pane label="举报管理" name="reports"></el-tab-pane>
     </el-tabs>
 
-    <!-- 筛选和操作区域 -->
-    <div class="filter-bar">
+    <!-- 内容审核筛选 -->
+    <div class="filter-bar" v-if="activeTab !== 'reports'">
       <el-select v-model="contentType" placeholder="内容类型" clearable @change="handleTypeChange" style="width: 150px">
         <el-option
           v-for="opt in contentTypeOptions"
@@ -232,12 +317,27 @@ onMounted(() => {
       </el-button>
       <el-button type="danger" @click="handleBatchDelete" :disabled="selectedItems.length === 0">
         <el-icon><Delete /></el-icon>
-        批量删除
+        批量下架
       </el-button>
     </div>
 
-    <!-- 表格 -->
+    <!-- 举报筛选 -->
+    <div class="filter-bar" v-if="activeTab === 'reports'">
+      <el-select v-model="reportStatus" placeholder="处理状态" clearable @change="handleReportStatusChange" style="width: 150px">
+        <el-option label="待处理" value="PENDING" />
+        <el-option label="已处理" value="RESOLVED" />
+        <el-option label="已驳回" value="REJECTED" />
+      </el-select>
+      <el-select v-model="reportType" placeholder="内容类型" clearable @change="handleReportTypeChange" style="width: 150px">
+        <el-option label="评论" value="COMMENT" />
+        <el-option label="回复" value="REPLY" />
+        <el-option label="动态评论" value="DYNAMIC_COMMENT" />
+      </el-select>
+    </div>
+
+    <!-- 内容审核表格 -->
     <el-table
+      v-if="activeTab !== 'reports'"
       v-loading="loading"
       :data="tableData"
       style="width: 100%"
@@ -280,18 +380,82 @@ onMounted(() => {
       </el-table-column>
       <el-table-column label="操作" fixed="right" width="150">
         <template #default="{ row }">
-          <el-button 
-            v-if="row.status === 'REMOVED'" 
-            link 
-            type="success" 
-            size="small" 
+          <el-button
+            v-if="row.status === 'REMOVED'"
+            link
+            type="success"
+            size="small"
             @click="handleRestore(row)"
           >
             恢复
           </el-button>
-          <el-button link type="danger" size="small" @click="handleDelete(row)">
-            删除
+          <el-button v-if="row.status !== 'REMOVED'" link type="danger" size="small" @click="handleDelete(row)">
+            下架
           </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <!-- 举报管理表格 -->
+    <el-table
+      v-if="activeTab === 'reports'"
+      v-loading="loading"
+      :data="tableData"
+      style="width: 100%"
+    >
+      <el-table-column label="类型" width="100">
+        <template #default="{ row }">
+          <el-tag type="info">{{ getReportTypeLabel(row.targetType) }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="举报原因" width="120">
+        <template #default="{ row }">
+          <span>{{ row.reason }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="被举报内容" min-width="250">
+        <template #default="{ row }">
+          <div v-if="row.targetContent" class="content-text">{{ row.targetContent }}</div>
+          <div v-else style="color: #909399;">(内容已删除或无法获取)</div>
+          <div v-if="row.manuscriptId" style="font-size: 12px; color: #909399; margin-top: 4px;">
+            稿件ID: {{ row.manuscriptId }}
+            <el-button link type="primary" size="small" @click="window.open(`/video/${row.manuscriptId}`, '_blank')">查看稿件</el-button>
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column label="补充说明" width="180">
+        <template #default="{ row }">
+          <span class="content-text">{{ row.description || '-' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="状态" width="100">
+        <template #default="{ row }">
+          <el-tag :type="getReportStatusType(row.status)">
+            {{ getReportStatusLabel(row.status) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="举报时间" width="170">
+        <template #default="{ row }">
+          {{ formatDateTime(row.createdAt) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="管理员备注" width="160">
+        <template #default="{ row }">
+          <span class="content-text">{{ row.adminRemark || '-' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" fixed="right" width="160">
+        <template #default="{ row }">
+          <template v-if="row.status === 'PENDING'">
+            <el-button link type="danger" size="small" @click="openReportProcess(row, 'resolve')">
+              下架内容
+            </el-button>
+            <el-button link type="info" size="small" @click="openReportProcess(row, 'reject')">
+              驳回
+            </el-button>
+          </template>
+          <span v-else style="color: #909399; font-size: 12px;">已处理</span>
         </template>
       </el-table-column>
     </el-table>
@@ -308,6 +472,37 @@ onMounted(() => {
         @size-change="loadData"
       />
     </div>
+
+    <!-- 举报处理弹窗 -->
+    <el-dialog
+      v-model="reportProcessDialog"
+      :title="reportAction === 'resolve' ? '确认下架' : '确认驳回'"
+      width="420px"
+    >
+      <div style="padding: 10px 0;">
+        <p v-if="reportAction === 'resolve'" style="margin-bottom: 16px; color: #606266;">
+          确认下架该被举报内容？下架后举报人和内容作者都将收到系统通知。
+        </p>
+        <p v-else style="margin-bottom: 16px; color: #606266;">
+          确认驳回该举报？驳回后举报人将收到系统通知。
+        </p>
+        <div style="font-size: 14px; color: #606266; margin-bottom: 8px;">管理员备注（选填）</div>
+        <el-input
+          v-model="reportAdminRemark"
+          type="textarea"
+          :rows="3"
+          placeholder="输入备注信息..."
+          maxlength="200"
+          show-word-limit
+        />
+      </div>
+      <template #footer>
+        <el-button @click="reportProcessDialog = false">取消</el-button>
+        <el-button :type="reportAction === 'resolve' ? 'danger' : 'primary'" @click="confirmReportProcess">
+          {{ reportAction === 'resolve' ? '确认下架' : '确认驳回' }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 

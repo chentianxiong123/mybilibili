@@ -84,7 +84,7 @@ const onDrag = (e) => {
   e.preventDefault()
   const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX
   const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY
-  
+
   offsetX.value = initialOffsetX.value + (clientX - startX.value)
   offsetY.value = initialOffsetY.value + (clientY - startY.value)
 }

@@ -15,4 +15,5 @@ public interface AdminUserService {
     AdminUser getAdminUserById(Integer id);
     boolean updateAdminUserRoles(Integer adminUserId, List<Integer> roleIds);
     List<Role> getAdminUserRoles(Integer adminUserId);
+    Result<?> updateAdminUser(Integer id, String username, Integer adminLevel, String newPassword);
 }

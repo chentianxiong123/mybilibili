@@ -75,6 +75,7 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
         vo.setUserName(isValidNickname(nickname) ? nickname : "用户" + comment.getUserId());
         if (user != null) {
             vo.setUserAvatar(user.getAvatar());
+            vo.setUserLevel(user.getLevel());
         }
 
         if (comment.getReplyUserId() != null) {

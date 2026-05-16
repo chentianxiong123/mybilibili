@@ -12,6 +12,7 @@ public class CommentVO {
     private Integer userId;
     private String userName;
     private String userAvatar;
+    private Integer userLevel;
     private String content;
     private Integer likeCount;
     private Integer replyCount;

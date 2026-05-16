@@ -1,7 +1,15 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { adminRegister, getAdminList } from '../api/admin'
+import { adminRegister, getAdminList, updateAdmin } from '../api/admin'
+import { useAdminStore } from '../stores/admin'
+
+const adminStore = useAdminStore()
+
+const isSuperAdmin = computed(() => {
+  const user = adminStore.userInfo
+  return user && (user.id === 1 || user.adminLevel === 0)
+})
 
 // 格式化日期
 const formatDate = (dateStr) => {
@@ -21,17 +29,18 @@ const formatDate = (dateStr) => {
 const tableData = ref([])
 const loading = ref(false)
 
-// 对话框
-const dialogVisible = ref(false)
-const dialogTitle = ref('添加管理员')
-const dialogForm = ref({
-  username: '',
-  password: ''
-})
-const dialogFormRef = ref(null)
+// 添加对话框
+const addDialogVisible = ref(false)
+const addForm = ref({ username: '', password: '' })
+const addFormRef = ref(null)
+
+// 编辑对话框
+const editDialogVisible = ref(false)
+const editForm = ref({ id: null, username: '', adminLevel: 1, newPassword: '' })
+const editFormRef = ref(null)
 
 // 表单验证规则
-const rules = {
+const addRules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
     { min: 3, max: 20, message: '用户名长度在3-20个字符', trigger: 'blur' }
@@ -39,6 +48,13 @@ const rules = {
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, message: '密码长度至少6个字符', trigger: 'blur' }
+  ]
+}
+
+const editRules = {
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 3, max: 20, message: '用户名长度在3-20个字符', trigger: 'blur' }
   ]
 }
 
@@ -59,29 +75,64 @@ const loadAdmins = async () => {
 
 // 打开添加对话框
 const handleAdd = () => {
-  dialogTitle.value = '添加管理员'
-  dialogForm.value = { username: '', password: '' }
-  dialogVisible.value = true
+  addForm.value = { username: '', password: '' }
+  addDialogVisible.value = true
 }
 
-// 保存
-const handleSave = async () => {
-  if (!dialogFormRef.value) return
-
-  await dialogFormRef.value.validate(async (valid) => {
+// 添加管理员
+const handleAddSave = async () => {
+  if (!addFormRef.value) return
+  await addFormRef.value.validate(async (valid) => {
     if (!valid) return
-
     try {
-      const res = await adminRegister(dialogForm.value)
+      const res = await adminRegister(addForm.value)
       if (res.code === 200 || res.success) {
         ElMessage.success('添加成功')
-        dialogVisible.value = false
+        addDialogVisible.value = false
         loadAdmins()
       } else {
         ElMessage.error(res.message || '添加失败')
       }
     } catch (error) {
-      ElMessage.error('添加失败')
+      ElMessage.error(error.response?.data?.message || '添加失败')
+    }
+  })
+}
+
+// 打开编辑对话框
+const handleEdit = (row) => {
+  editForm.value = {
+    id: row.id,
+    username: row.username,
+    adminLevel: row.adminLevel || 1,
+    newPassword: ''
+  }
+  editDialogVisible.value = true
+}
+
+// 保存编辑
+const handleEditSave = async () => {
+  if (!editFormRef.value) return
+  await editFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    try {
+      const data = {
+        username: editForm.value.username,
+        adminLevel: editForm.value.adminLevel
+      }
+      if (editForm.value.newPassword) {
+        data.newPassword = editForm.value.newPassword
+      }
+      const res = await updateAdmin(editForm.value.id, data)
+      if (res.code === 200 || res.success) {
+        ElMessage.success('修改成功')
+        editDialogVisible.value = false
+        loadAdmins()
+      } else {
+        ElMessage.error(res.message || '修改失败')
+      }
+    } catch (error) {
+      ElMessage.error(error.response?.data?.message || '修改失败')
     }
   })
 }
@@ -97,7 +148,7 @@ onMounted(() => {
 
     <!-- 操作区域 -->
     <div class="action-bar">
-      <el-button type="success" @click="handleAdd">
+      <el-button v-if="isSuperAdmin" type="success" @click="handleAdd">
         <el-icon><Plus /></el-icon>
         添加管理员
       </el-button>
@@ -110,7 +161,14 @@ onMounted(() => {
       style="width: 100%"
     >
       <el-table-column prop="id" label="ID" width="80" />
-      <el-table-column prop="username" label="用户名" min-width="200" />
+      <el-table-column prop="username" label="用户名" min-width="150" />
+      <el-table-column label="级别" width="120">
+        <template #default="{ row }">
+          <el-tag v-if="row.id === 1" type="danger">超级管理员</el-tag>
+          <el-tag v-else-if="row.adminLevel === 0" type="warning">超级管理员</el-tag>
+          <el-tag v-else>普通管理员</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="updatedAt" label="最后登录时间" width="180">
         <template #default="{ row }">
           {{ row.updatedAt ? formatDate(row.updatedAt) : '-' }}
@@ -121,26 +179,34 @@ onMounted(() => {
           {{ row.createdAt ? formatDate(row.createdAt) : '-' }}
         </template>
       </el-table-column>
+      <el-table-column v-if="isSuperAdmin" label="操作" width="120" fixed="right">
+        <template #default="{ row }">
+          <el-button v-if="row.id !== 1" type="primary" link size="small" @click="handleEdit(row)">
+            编辑
+          </el-button>
+          <span v-else style="color: #999; font-size: 12px;">不可操作</span>
+        </template>
+      </el-table-column>
     </el-table>
 
     <!-- 添加管理员对话框 -->
     <el-dialog
-      v-model="dialogVisible"
-      :title="dialogTitle"
+      v-model="addDialogVisible"
+      title="添加管理员"
       width="450px"
     >
       <el-form
-        ref="dialogFormRef"
-        :model="dialogForm"
-        :rules="rules"
+        ref="addFormRef"
+        :model="addForm"
+        :rules="addRules"
         label-width="80px"
       >
         <el-form-item label="用户名" prop="username">
-          <el-input v-model="dialogForm.username" placeholder="请输入用户名" />
+          <el-input v-model="addForm.username" placeholder="请输入用户名" />
         </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input
-            v-model="dialogForm.password"
+            v-model="addForm.password"
             type="password"
             placeholder="请输入密码"
             show-password
@@ -148,8 +214,38 @@ onMounted(() => {
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave">确定</el-button>
+        <el-button @click="addDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleAddSave">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑管理员对话框 -->
+    <el-dialog
+      v-model="editDialogVisible"
+      title="编辑管理员"
+      width="450px"
+    >
+      <el-form
+        ref="editFormRef"
+        :model="editForm"
+        :rules="editRules"
+        label-width="80px"
+      >
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="editForm.username" placeholder="请输入用户名" />
+        </el-form-item>
+        <el-form-item label="新密码">
+          <el-input
+            v-model="editForm.newPassword"
+            type="password"
+            placeholder="留空则不修改密码"
+            show-password
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleEditSave">确定</el-button>
       </template>
     </el-dialog>
   </div>

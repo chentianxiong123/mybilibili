@@ -258,7 +258,7 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
                     "-of", "zh-CN",
                     "-t", String.valueOf(whisperConfig.getThreads()),
                     "-pp",
-                    "--initial-prompt", "以下是普通话的句子。"
+                    "--prompt", "以下是普通话的句子。"
             };
 
             log.info("[Whisper] 开始识别, audioPath={}, outputDir={}", audioPath, outputDir);

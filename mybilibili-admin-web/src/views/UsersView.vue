@@ -231,7 +231,7 @@ onMounted(() => {
       <el-table-column label="稿件" width="100" align="center">
         <template #default="{ row }">
           <div style="font-size: 13px">
-            {{ row.videoCount || 0 }}
+            {{ row.manuscriptCount || 0 }}
           </div>
         </template>
       </el-table-column>
@@ -329,7 +329,7 @@ onMounted(() => {
           <el-descriptions :column="3" border>
             <el-descriptions-item label="粉丝数">{{ userDetail.followerCount || 0 }}</el-descriptions-item>
             <el-descriptions-item label="关注数">{{ userDetail.followingCount || 0 }}</el-descriptions-item>
-            <el-descriptions-item label="视频数">{{ userDetail.videoCount || 0 }}</el-descriptions-item>
+            <el-descriptions-item label="视频数">{{ userDetail.manuscriptCount || 0 }}</el-descriptions-item>
           </el-descriptions>
         </div>
 

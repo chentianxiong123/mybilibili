@@ -44,3 +44,11 @@ export const setAdminRoles = (id, roleIds) => {
     data: roleIds
   })
 }
+
+export const updateAdmin = (id, data) => {
+  return request({
+    url: `/admin/${id}`,
+    method: 'put',
+    data
+  })
+}

@@ -1,9 +1,8 @@
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { manuscriptApi } from '../api/manuscript.js'
 import { categoryApi } from '../api/index.js'
-import { videoProcessApi } from '../api/videoProcess.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled, Delete, ArrowUp, ArrowDown, VideoPlay, Document, Plus, Loading, CircleCheck } from '@element-plus/icons-vue'
 
@@ -16,23 +15,12 @@ const uploadForm = reactive({
   tags: [],
   description: '',
   coverFile: null,
-  type: 'original' // original: 自制, repost: 转载
+  type: 'original'
 })
 
-// 处理进度相关状态
-const isProcessing = ref(false)
-const processingProgress = ref(0)
-const processingStatus = ref('')
-const uploadedManuscriptId = ref(null)
-const isProcessingCompleted = ref(false)
-
-// 视频分P列表
 const videoParts = ref([])
-
-// 分类列表
 const categories = ref([])
 
-// 获取分类列表
 const loadCategories = async () => {
   try {
     const res = await categoryApi.getCategoryList()
@@ -43,7 +31,6 @@ const loadCategories = async () => {
       }))
     } else {
       ElMessage.warning('获取分区列表失败，使用默认分区')
-      // 使用默认分区作为后备
       categories.value = [
         { value: 1, label: '动画' },
         { value: 2, label: '音乐' },
@@ -58,7 +45,6 @@ const loadCategories = async () => {
   } catch (error) {
     console.error('获取分区列表失败:', error)
     ElMessage.warning('获取分区列表失败，使用默认分区')
-    // 使用默认分区作为后备
     categories.value = [
       { value: 1, label: '动画' },
       { value: 2, label: '音乐' },
@@ -72,7 +58,6 @@ const loadCategories = async () => {
   }
 }
 
-// 表单验证规则
 const uploadRules = {
   title: [
     { required: true, message: '请输入稿件标题', trigger: 'blur' },
@@ -86,24 +71,15 @@ const uploadRules = {
   ]
 }
 
-// 表单引用
 const uploadFormRef = ref()
-
-// 上传进度
 const uploadProgress = ref(0)
-const isUploading = ref(false)
+const showUploadDialog = ref(false)
+const isSubmittingRequest = ref(false)
 const currentUploadingPart = ref('')
-
-// 封面预览
 const coverPreview = ref('')
-
-// 标签输入
 const tagInput = ref('')
-
-// 视频上传相关
 const videoUploadRef = ref(null)
 
-// 获取视频时长
 const getVideoDuration = (file) => {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video')
@@ -112,14 +88,11 @@ const getVideoDuration = (file) => {
       URL.revokeObjectURL(video.src)
       resolve(Math.floor(video.duration))
     }
-    video.onerror = (error) => {
-      reject(error)
-    }
+    video.onerror = (error) => reject(error)
     video.src = URL.createObjectURL(file)
   })
 }
 
-// 处理封面上传
 const handleCoverUpload = (file) => {
   const isImage = file.raw.type.startsWith('image/')
   const isLt10M = file.raw.size / 1024 / 1024 < 10
@@ -134,22 +107,16 @@ const handleCoverUpload = (file) => {
   }
 
   uploadForm.coverFile = file.raw
-  // 生成封面预览
   const reader = new FileReader()
   reader.onload = (e) => {
     coverPreview.value = e.target.result
   }
   reader.readAsDataURL(file.raw)
-  return false // 阻止自动上传
+  return false
 }
 
-// 处理视频上传（添加分P）
 const handleVideoUpload = async (file) => {
-  console.log('handleVideoUpload called:', file)
-
-  // 检查file.raw是否存在
   if (!file.raw) {
-    console.error('file.raw is undefined or null:', file)
     ElMessage.error('视频文件读取失败，请重新选择')
     return false
   }
@@ -166,7 +133,6 @@ const handleVideoUpload = async (file) => {
     return false
   }
 
-  // 获取视频时长
   let duration = 0
   try {
     duration = await getVideoDuration(file.raw)
@@ -174,25 +140,20 @@ const handleVideoUpload = async (file) => {
     console.error('获取视频时长失败:', error)
   }
 
-  // 添加新的分P
   const newPart = {
-    id: Date.now(), // 临时ID
+    id: Date.now(),
     file: file.raw,
-    title: file.name.replace(/\.[^/.]+$/, ''), // 默认使用文件名（去掉扩展名）
+    title: file.name.replace(/\.[^/.]+$/, ''),
     sortOrder: videoParts.value.length,
     size: file.raw.size,
-    duration: duration
+    duration
   }
-  
-  console.log('Adding new video part:', newPart)
 
   videoParts.value.push(newPart)
-  console.log('Current video parts:', videoParts.value)
   ElMessage.success(`已添加分P: ${newPart.title}`)
-  return false // 阻止自动上传
+  return false
 }
 
-// 删除分P
 const removeVideoPart = (index) => {
   ElMessageBox.confirm(
     `确定要删除分P "${videoParts.value[index].title}" 吗？`,
@@ -204,7 +165,6 @@ const removeVideoPart = (index) => {
     }
   ).then(() => {
     videoParts.value.splice(index, 1)
-    // 重新排序
     videoParts.value.forEach((part, idx) => {
       part.sortOrder = idx
     })
@@ -212,31 +172,26 @@ const removeVideoPart = (index) => {
   }).catch(() => {})
 }
 
-// 上移分P
 const movePartUp = (index) => {
   if (index === 0) return
   const temp = videoParts.value[index]
   videoParts.value[index] = videoParts.value[index - 1]
   videoParts.value[index - 1] = temp
-  // 更新排序
   videoParts.value.forEach((part, idx) => {
     part.sortOrder = idx
   })
 }
 
-// 下移分P
 const movePartDown = (index) => {
   if (index === videoParts.value.length - 1) return
   const temp = videoParts.value[index]
   videoParts.value[index] = videoParts.value[index + 1]
   videoParts.value[index + 1] = temp
-  // 更新排序
   videoParts.value.forEach((part, idx) => {
     part.sortOrder = idx
   })
 }
 
-// 格式化文件大小
 const formatFileSize = (bytes) => {
   if (bytes === 0) return '0 B'
   const k = 1024
@@ -245,7 +200,6 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-// 检查登录状态
 const checkLoginStatus = () => {
   const token = localStorage.getItem('token')
   if (!token) {
@@ -271,31 +225,25 @@ const checkLoginStatus = () => {
   }
 }
 
-// 添加标签
 const addTag = () => {
   const tag = tagInput.value.trim()
   if (!tag) return
-  
   if (uploadForm.tags.length >= 20) {
     ElMessage.warning('最多只能添加20个标签')
     return
   }
-  
   if (uploadForm.tags.includes(tag)) {
     ElMessage.warning('标签已存在')
     return
   }
-  
   uploadForm.tags.push(tag)
   tagInput.value = ''
 }
 
-// 移除标签
 const removeTag = (index) => {
   uploadForm.tags.splice(index, 1)
 }
 
-// 处理标签输入回车
 const handleTagInputKeydown = (event) => {
   if (event.key === 'Enter') {
     event.preventDefault()
@@ -303,133 +251,80 @@ const handleTagInputKeydown = (event) => {
   }
 }
 
-// 提交上传
-const handleSubmit = () => {
-  // 检查登录状态
-  if (!checkLoginStatus()) {
-    return
-  }
+const closeUploadDialog = () => {
+  showUploadDialog.value = false
+}
 
-  // 检查是否有视频分P
+const handleSubmit = () => {
+  if (!checkLoginStatus()) return
   if (videoParts.value.length === 0) {
     ElMessage.warning('请至少添加一个视频分P')
     return
   }
 
   uploadFormRef.value.validate((valid) => {
-    if (valid) {
-      // 检查视频文件是否存在
-      console.log('Submitting with video parts:', videoParts.value)
-      const invalidParts = videoParts.value.filter(part => !part.file)
-      if (invalidParts.length > 0) {
-        console.error('Some video parts have no file:', invalidParts)
-        ElMessage.error('部分视频文件缺失，请重新上传')
-        return
-      }
-      
-      // 构建稿件数据
-      const manuscriptData = {
-        title: uploadForm.title,
-        description: uploadForm.description,
-        cover: uploadForm.coverFile,
-        categoryId: uploadForm.categoryId,
-        tags: uploadForm.tags,
-        videos: videoParts.value.map((part, index) => ({
-          file: part.file,
-          title: part.title,
-          sortOrder: index,
-          durationSeconds: part.duration || 0
-        }))
-      }
-      
-      console.log('Submitting manuscript data:', manuscriptData)
+    if (!valid) return false
 
-      // 开始上传
-      isUploading.value = true
-      uploadProgress.value = 0
-      currentUploadingPart.value = '正在上传稿件...'
+    const invalidParts = videoParts.value.filter(part => !part.file)
+    if (invalidParts.length > 0) {
+      ElMessage.error('部分视频文件缺失，请重新上传')
+      return
+    }
 
-      // 调用API上传稿件
-      manuscriptApi.uploadManuscript(manuscriptData, (progress) => {
-        uploadProgress.value = progress
-        if (progress < 100) {
-          currentUploadingPart.value = `正在上传... ${progress}%`
+    const manuscriptData = {
+      title: uploadForm.title,
+      description: uploadForm.description,
+      cover: uploadForm.coverFile,
+      categoryId: uploadForm.categoryId,
+      tags: uploadForm.tags,
+      videos: videoParts.value.map((part, index) => ({
+        file: part.file,
+        title: part.title,
+        sortOrder: index,
+        durationSeconds: part.duration || 0
+      }))
+    }
+
+    showUploadDialog.value = true
+    isSubmittingRequest.value = true
+    uploadProgress.value = 0
+    currentUploadingPart.value = '正在上传稿件...'
+
+    manuscriptApi.uploadManuscript(manuscriptData, (progress) => {
+      uploadProgress.value = progress
+      currentUploadingPart.value = progress < 100 ? `正在上传... ${progress}%` : '上传完成，正在提交...'
+    })
+      .then(response => {
+        if (response && response.code === 200 && response.data) {
+          isSubmittingRequest.value = false
+          showUploadDialog.value = false
+          currentUploadingPart.value = ''
+          ElMessage.success('投稿成功，已进入审核/处理中队列')
+          router.push('/create-center/content-articles')
         } else {
-          currentUploadingPart.value = '上传完成，正在处理...'
+          ElMessage.error(response?.message || '稿件上传失败，请检查服务器状态')
+          isSubmittingRequest.value = false
         }
       })
-        .then(response => {
-          if (response && response.code === 200 && response.data) {
-            ElMessage.success('稿件上传成功！正在处理视频...')
-            
-            // 保存稿件ID并启动进度模拟
-            uploadedManuscriptId.value = response.data.id || response.data
-            isUploading.value = false
-            isProcessing.value = true
-            processingProgress.value = 0
-            processingStatus.value = '处理中'
-            
-            // 启动进度模拟
-            startProcessingSimulation(uploadedManuscriptId.value)
-          } else {
-            const errorMessage = response?.message || '稿件上传失败，请检查服务器状态'
-            ElMessage.error(errorMessage)
-            isUploading.value = false
-          }
-        })
-        .catch(error => {
-          console.error('上传错误:', error)
-          if (error.response) {
-            const errorMessage = error.response.data?.message || '服务器错误'
-            ElMessage.error(`上传失败: ${errorMessage}`)
-          } else if (error.request) {
-            ElMessage.error('上传失败: 无法连接到服务器')
-          } else {
-            ElMessage.error(`上传失败: ${error.message}`)
-          }
-          isUploading.value = false
-          currentUploadingPart.value = ''
-        })
-    } else {
-      return false
-    }
+      .catch(error => {
+        console.error('上传错误:', error)
+        if (error.response) {
+          ElMessage.error(`上传失败: ${error.response.data?.message || '服务器错误'}`)
+        } else if (error.request) {
+          ElMessage.error('上传失败: 无法连接到服务器')
+        } else {
+          ElMessage.error(`上传失败: ${error.message}`)
+        }
+        isSubmittingRequest.value = false
+        currentUploadingPart.value = ''
+      })
   })
 }
 
-// 启动处理进度模拟
-const startProcessingSimulation = (manuscriptId) => {
-  videoProcessApi.startProcess(manuscriptId, 'transcode', {
-    onProgress: (progress, info) => {
-      processingProgress.value = progress
-      processingStatus.value = info.status || (progress >= 90 ? '即将完成' : '处理中')
-    },
-    onComplete: () => {
-      processingProgress.value = 100
-      processingStatus.value = '已完成'
-      isProcessingCompleted.value = true
-      ElMessage.success('视频处理完成！')
-    }
-  })
-}
-
-// 查看已上传的稿件
-const viewManuscript = () => {
-  if (uploadedManuscriptId.value) {
-    router.push(`/manuscript/${uploadedManuscriptId.value}`)
-  }
-}
-
-// 返回创作中心
-const goToCreateCenter = () => {
-  router.push('/create-center')
-}
-
-// 存草稿
 const saveDraft = () => {
   ElMessage.info('草稿保存功能暂未实现')
 }
 
-// 返回
 const cancelUpload = () => {
   if (videoParts.value.length > 0 || uploadForm.title || uploadForm.description) {
     ElMessageBox.confirm(
@@ -448,23 +343,14 @@ const cancelUpload = () => {
   }
 }
 
-// 触发视频上传
 const triggerVideoUpload = () => {
   if (videoUploadRef.value) {
     videoUploadRef.value.$el.querySelector('input').click()
   }
 }
 
-// 页面加载时获取分类列表
 onMounted(() => {
   loadCategories()
-})
-
-// 组件卸载时清理进度模拟器
-onUnmounted(() => {
-  if (uploadedManuscriptId.value) {
-    videoProcessApi.removeProcess(uploadedManuscriptId.value)
-  }
 })
 </script>
 
@@ -720,28 +606,26 @@ onUnmounted(() => {
 
     <!-- 底部操作按钮 -->
     <div class="form-actions">
-      <el-button @click="cancelUpload" :disabled="isUploading" size="large">取消</el-button>
-      <el-button @click="saveDraft" :disabled="isUploading" size="large">存草稿</el-button>
+      <el-button @click="cancelUpload" :disabled="isSubmittingRequest" size="large">取消</el-button>
+      <el-button @click="saveDraft" :disabled="isSubmittingRequest" size="large">存草稿</el-button>
       <el-button
         type="primary"
         @click="handleSubmit"
-        :loading="isUploading"
-        :disabled="isUploading || videoParts.length === 0"
+        :loading="isSubmittingRequest"
+        :disabled="isSubmittingRequest || videoParts.length === 0"
         size="large"
       >
-        {{ isUploading ? '上传中...' : '立即投稿' }}
+        {{ isSubmittingRequest ? '上传中...' : '立即投稿' }}
       </el-button>
     </div>
 
     <!-- 上传进度对话框 -->
     <el-dialog
-      v-model="isUploading"
+      v-model="showUploadDialog"
       title="稿件上传进度"
       width="500px"
-      :close-on-click-modal="false"
-      :close-on-press-escape="false"
-      :show-close="false"
       class="upload-progress-dialog"
+      @close="closeUploadDialog"
     >
       <div class="progress-content">
         <el-progress
@@ -756,48 +640,12 @@ onUnmounted(() => {
           <span class="status-text">{{ currentUploadingPart }}</span>
         </div>
         <div v-if="uploadProgress === 100" class="upload-hint">
-          正在处理视频，请稍候...
-        </div>
-      </div>
-    </el-dialog>
-
-    <!-- 处理进度对话框 -->
-    <el-dialog
-      v-model="isProcessing"
-      title="视频处理进度"
-      width="500px"
-      :close-on-click-modal="false"
-      :close-on-press-escape="false"
-      :show-close="false"
-      class="processing-progress-dialog"
-    >
-      <div class="progress-content">
-        <el-progress
-          :percentage="processingProgress"
-          :stroke-width="20"
-          :status="isProcessingCompleted ? 'success' : ''"
-          class="upload-progress-bar"
-        ></el-progress>
-        <div class="upload-status">
-          <el-icon v-if="!isProcessingCompleted" class="status-icon loading"><Loading /></el-icon>
-          <el-icon v-else class="status-icon success"><CircleCheck /></el-icon>
-          <span class="status-text">
-            {{ isProcessingCompleted ? '处理完成！' : processingStatus }}
-          </span>
-        </div>
-        <div v-if="processingProgress >= 90 && !isProcessingCompleted" class="upload-hint">
-          即将完成，请稍候...
+          正在提交稿件，请稍候...
         </div>
       </div>
       <template #footer>
         <div class="dialog-footer">
-          <el-button v-if="isProcessingCompleted" type="success" @click="viewManuscript">
-            查看稿件
-          </el-button>
-          <el-button v-if="isProcessingCompleted" @click="goToCreateCenter">
-            返回创作中心
-          </el-button>
-          <span v-else class="processing-hint">视频正在处理中，请耐心等待...</span>
+          <el-button @click="closeUploadDialog">确定</el-button>
         </div>
       </template>
     </el-dialog>
@@ -1235,24 +1083,18 @@ onUnmounted(() => {
   color: #606266;
 }
 
+
 .upload-hint {
   text-align: center;
   font-size: 13px;
   color: #909399;
 }
 
-/* 处理进度对话框样式 */
-.processing-progress-dialog .dialog-footer {
+.dialog-footer {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  align-items: center;
 }
 
-.processing-hint {
-  font-size: 13px;
-  color: #909399;
-}
 
 /* 响应式设计 */
 @media (max-width: 768px) {

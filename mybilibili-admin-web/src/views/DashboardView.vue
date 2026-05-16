@@ -70,6 +70,20 @@ const getStatusType = (status) => {
   return typeMap[status] || ''
 }
 
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return '-'
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }).replace(/\//g, '-')
+}
+
 const goToManuscripts = () => {
   router.push('/manuscripts')
 }
@@ -161,7 +175,7 @@ onMounted(() => {
               <el-tag :type="getStatusType(item.status)" size="small">
                 {{ getStatusText(item.status) }}
               </el-tag>
-              <span class="recent-time">{{ item.uploadTime }}</span>
+              <span class="recent-time">{{ formatDateTime(item.uploadTime) }}</span>
             </div>
           </div>
           <div v-if="recentManuscripts.length === 0" class="empty-text">

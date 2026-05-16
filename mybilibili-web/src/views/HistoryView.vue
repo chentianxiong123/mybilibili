@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { Search, Delete, List, Grid, VideoPlay, Clock } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { watchHistoryApi } from '../api/watchHistory.js'
+import { videoApi } from '../api/index.js'
 
 const router = useRouter()
 
@@ -286,15 +287,37 @@ const deleteItem = async (item) => {
 }
 
 // 点击视频
-const handleVideoClick = (item) => {
+const handleVideoClick = async (item) => {
   if (isBatchMode.value) {
     toggleSelect(item.id)
   } else {
-    // 使用 manuscriptId 跳转，如果没有则使用 videoId
-    const targetId = item.manuscriptId || item.videoId
-    if (targetId) {
-      router.push(`/manuscript/${targetId}`)
+    const manuscriptId = item.manuscriptId || item.videoId
+    if (!manuscriptId) return
+
+    let targetP = 1
+    const targetT = Math.max(0, Math.floor(item.progress || 0))
+
+    if (item.manuscriptId && item.videoId) {
+      try {
+        const response = await videoApi.getVideoByManuscriptId(item.manuscriptId)
+        if (response.code === 200 && response.data?.videos?.length) {
+          const partIndex = response.data.videos.findIndex(video => video.id === item.videoId)
+          if (partIndex >= 0) {
+            targetP = partIndex + 1
+          }
+        }
+      } catch (error) {
+        console.error('获取稿件分P信息失败:', error)
+      }
     }
+
+    router.push({
+      path: `/manuscript/${manuscriptId}`,
+      query: {
+        p: String(targetP),
+        ...(targetT > 0 ? { t: String(targetT) } : {})
+      }
+    })
   }
 }
 

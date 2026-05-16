@@ -43,11 +43,10 @@ public interface CreatorStatsMapper extends BaseMapper<Manuscript> {
             "SUM(like_count) as likes, " +
             "SUM(comment_count) as comments " +
             "FROM manuscripts " +
-            "WHERE user_id = #{userId} AND status = 3 " +
+            "WHERE user_id = #{userId} AND status = 3 AND DATE(upload_time) >= #{startDate} " +
             "GROUP BY DATE(upload_time) " +
-            "ORDER BY date DESC " +
-            "LIMIT #{days}")
-    List<Map<String, Object>> selectTrendData(@Param("userId") Integer userId, @Param("days") Integer days);
+            "ORDER BY date ASC")
+    List<Map<String, Object>> selectTrendData(@Param("userId") Integer userId, @Param("startDate") String startDate);
 
     @Select("SELECT * FROM manuscripts WHERE user_id = #{userId} AND status = 3 ORDER BY view_count DESC LIMIT #{limit}")
     List<Manuscript> selectTopByViews(@Param("userId") Integer userId, @Param("limit") Integer limit);
@@ -58,7 +57,7 @@ public interface CreatorStatsMapper extends BaseMapper<Manuscript> {
     @Select("SELECT * FROM manuscripts WHERE user_id = #{userId} AND status = 3 ORDER BY comment_count DESC LIMIT #{limit}")
     List<Manuscript> selectTopByComments(@Param("userId") Integer userId, @Param("limit") Integer limit);
 
-    @Select("SELECT c.id, c.content, c.created_at as time, u.username, u.avatar, m.title as manuscriptTitle " +
+    @Select("SELECT c.id, c.content, c.created_at as time, u.username, u.avatar, m.id as manuscriptId, m.title as manuscriptTitle " +
             "FROM comments c " +
             "JOIN users u ON c.user_id = u.id " +
             "JOIN manuscripts m ON c.manuscript_id = m.id " +
@@ -128,9 +127,8 @@ public interface CreatorStatsMapper extends BaseMapper<Manuscript> {
             "SUM(CASE WHEN interaction_type = 'FOLLOW' THEN 1 ELSE 0 END) as newFollowers, " +
             "SUM(CASE WHEN interaction_type = 'UNFOLLOW' THEN 1 ELSE 0 END) as unfollows " +
             "FROM user_interactions " +
-            "WHERE target_id = #{userId} AND target_type = 'USER' " +
+            "WHERE target_id = #{userId} AND target_type = 'USER' AND DATE(created_at) >= #{startDate} " +
             "GROUP BY DATE(created_at) " +
-            "ORDER BY date DESC " +
-            "LIMIT #{days}")
-    List<Map<String, Object>> selectFansTrendData(@Param("userId") Integer userId, @Param("days") Integer days);
+            "ORDER BY date ASC")
+    List<Map<String, Object>> selectFansTrendData(@Param("userId") Integer userId, @Param("startDate") String startDate);
 }

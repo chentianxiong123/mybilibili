@@ -20,4 +20,9 @@ public interface MessageClient {
                           @RequestParam Integer receiverId,
                           @RequestParam Integer commentId,
                           @RequestParam String commentContent);
+
+    @PostMapping("/notify/system")
+    Result<?> sendSystemNotification(@RequestParam Integer userId,
+                          @RequestParam String title,
+                          @RequestParam String content);
 }

@@ -20,6 +20,7 @@ public class DynamicCommentVO {
 
     private String userName;
     private String userAvatar;
+    private Integer userLevel;
     private Integer replyToUserId;
     private String replyToUserName;
     private Integer replyCount;

@@ -6,13 +6,14 @@ import Artplayer from 'artplayer'
 import ArtplayerPluginDanmuku from 'artplayer-plugin-danmuku'
 import { View, ChatDotRound, ArrowDown, Star, Share, Comment, Edit, MoreFilled, Promotion, CircleCheck, CircleClose, CirclePlus, Message, Close } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { videoApi, commentApi, interactionApi, userApi } from '../api/index.js'
+import { videoApi, commentApi, interactionApi, userApi, reportApi } from '../api/index.js'
 import { manuscriptApi } from '../api/manuscript.js'
 import { recommendApi } from '../api/recommend.js'
-import { watchHistoryApi } from '../api/watchHistory.js'
+
 import SubtitleDisplay from '../components/SubtitleDisplay.vue'
 import SubtitleUploader from '../components/SubtitleUploader.vue'
 import UserFloatCard from '../components/UserFloatCard.vue'
+import LevelBadge from '../components/LevelBadge.vue'
 import AiAssistantPanel from '../components/AiAssistantPanel.vue'
 import { subtitleApi } from '../api/subtitle.js'
 
@@ -34,6 +35,9 @@ const props = defineProps({
 // 当前稿件ID和分P - 从路由参数获取，确保响应式更新
 const currentManuscriptId = ref(parseInt(route.params.id))
 const currentP = ref(parseInt(route.query.p) || 1)
+const resumeTime = ref(parseInt(route.query.t) || 0)
+const pendingResumeTime = ref(parseInt(route.query.t) || 0)
+const hasAppliedResume = ref(false)
 
 // 兼容旧代码 - videoId用于某些API调用
 const videoId = ref(null)
@@ -61,7 +65,11 @@ const videoInfo = ref({
   uploader: {
     name: '',
     avatar: '',
-    bio: ''
+    bio: '',
+    level: 0,
+    followerCount: 0,
+    followingCount: 0,
+    likeCount: 0
   },
   viewCount: 0,
   likeCount: 0,
@@ -78,8 +86,23 @@ const videoInfo = ref({
   tags: []
 })
 
-// 视频简介折叠状态
-const isDescriptionCollapsed = ref(true)
+// 从路由读取续播时间
+const getResumeTimeFromRoute = () => {
+  const t = parseInt(route.query.t)
+  return Number.isFinite(t) && t > 0 ? t : 0
+}
+
+// 应用一次续播时间
+const applyResumeTime = (time) => {
+  if (!art || !time || time <= 0 || hasAppliedResume.value) return
+  const duration = Number(art.duration) || Number(videoInfo.value.duration?.split(':').reduce((acc, cur) => acc * 60 + Number(cur), 0)) || 0
+  const safeTime = duration > 0 ? Math.min(time, Math.max(0, duration - 1)) : time
+  art.currentTime = safeTime
+  currentVideoTime.value = safeTime
+  hasAppliedResume.value = true
+  pendingResumeTime.value = 0
+}
+
 
 // 弹幕列表
 const danmuList = ref([])
@@ -93,41 +116,92 @@ const isDanmuListCollapsed = ref(false)
 
 // 视频分P列表折叠状态
 const isVideoPartsCollapsed = ref(false)
+const isDescriptionCollapsed = ref(true)
 
 // 字幕相关
 const subtitleList = ref([])
 const currentSubtitle = ref(null)
 const currentSubtitleContent = ref([])
-const subtitleEnabled = ref(true)
+const subtitleEnabled = ref(localStorage.getItem('mybilibili_subtitle_enabled') !== 'false')
 const currentVideoTime = ref(0)
 const subtitleUploaderRef = ref(null)
 const subtitleDisplayRef = ref(null)
+const subtitleSettingsPanelRef = ref(null)
 const subtitleSettingsVisible = ref(false)
 
-// 字幕设置
-const subtitleSettings = ref({
+// 字幕设置默认值
+const SUBTITLE_SETTINGS_KEY = 'mybilibili_subtitle_settings'
+const FULLSCREEN_FONT_SCALE = 1.5
+const defaultSubtitleSettings = {
   fontSize: 32,
   color: '#ffffff',
   backgroundColor: 'rgba(0, 0, 0, 0.75)',
+  backgroundOpacity: 0.75,
   textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)',
   borderRadius: 4,
   padding: '8px 16px',
   lineHeight: 1.5
-})
+}
 
-// 更新字幕设置
+const loadSubtitleSettings = () => {
+  try {
+    const saved = localStorage.getItem(SUBTITLE_SETTINGS_KEY)
+    if (saved) {
+      return { ...defaultSubtitleSettings, ...JSON.parse(saved) }
+    }
+  } catch (e) { /* ignore */ }
+  return { ...defaultSubtitleSettings }
+}
+
+const subtitleSettings = ref(loadSubtitleSettings())
+
+const saveSubtitleSettings = () => {
+  try {
+    localStorage.setItem(SUBTITLE_SETTINGS_KEY, JSON.stringify(subtitleSettings.value))
+  } catch (e) { /* ignore */ }
+}
+
+// 全屏状态
+const isFullscreenMode = ref(false)
+
+// 推送设置到字幕组件（考虑全屏缩放）
+const pushSettingsToSubtitle = () => {
+  if (!subtitleDisplayRef.value) return
+  const scale = isFullscreenMode.value ? FULLSCREEN_FONT_SCALE : 1
+  subtitleDisplayRef.value.updateSettings({
+    ...subtitleSettings.value,
+    fontSize: Math.round(subtitleSettings.value.fontSize * scale)
+  })
+}
+
 const updateSubtitleSettings = (settings) => {
   subtitleSettings.value = { ...subtitleSettings.value, ...settings }
-  if (subtitleDisplayRef.value) {
-    subtitleDisplayRef.value.updateSettings(subtitleSettings.value)
-  }
+  saveSubtitleSettings()
+  pushSettingsToSubtitle()
 }
+
+// 深度监听设置变化，自动保存并同步到字幕组件
+watch(subtitleSettings, () => {
+  saveSubtitleSettings()
+  pushSettingsToSubtitle()
+}, { deep: true })
 
 // 重置字幕位置
 const resetSubtitlePosition = () => {
   if (subtitleDisplayRef.value) {
     subtitleDisplayRef.value.resetPosition()
   }
+}
+
+// 恢复默认字幕设置
+const resetSubtitleSettings = () => {
+  subtitleSettings.value = { ...defaultSubtitleSettings }
+  saveSubtitleSettings()
+  pushSettingsToSubtitle()
+  if (subtitleDisplayRef.value) {
+    subtitleDisplayRef.value.resetPosition()
+  }
+  ElMessage.success('已恢复默认设置')
 }
 
 // 加载字幕列表
@@ -275,7 +349,6 @@ const loadingRelatedVideos = ref(false)
 // 浏览历史记录相关
 const watchProgress = ref(0)
 const videoDuration = ref(0)
-const hasRecordedHistory = ref(false)
 
 // 加载相关视频
 const loadRelatedVideos = async () => {
@@ -304,31 +377,40 @@ const loadRelatedVideos = async () => {
   }
 }
 
-// 记录浏览历史（退出视频时记录，包含最终进度和观看比例）
-const recordWatchHistory = async () => {
-  if (!videoId.value || hasRecordedHistory.value) return
-  
-  try {
-    const progress = Math.floor(watchProgress.value || 0)
-    let duration = Math.floor(videoDuration.value || 0)
-    
-    if (duration <= 0 && manuscriptInfo.value.videos && manuscriptInfo.value.videos.length > 0) {
-      const currentVideo = manuscriptInfo.value.videos[currentVideoIndex.value]
-      if (currentVideo && currentVideo.durationSeconds) {
-        duration = currentVideo.durationSeconds
-      }
+// 同步记录浏览历史（使用 fetch keepalive，用于页面离开时可靠发送）
+const recordWatchHistorySync = () => {
+  if (!videoId.value) return
+
+  const progress = Math.floor(watchProgress.value || 0)
+  let duration = Math.floor(videoDuration.value || 0)
+
+  if (duration <= 0 && manuscriptInfo.value.videos && manuscriptInfo.value.videos.length > 0) {
+    const currentVideo = manuscriptInfo.value.videos[currentVideoIndex.value]
+    if (currentVideo && currentVideo.durationSeconds) {
+      duration = currentVideo.durationSeconds
     }
-    
-    const watchRatio = duration > 0 ? (progress / duration) : 0
-    
-    await watchHistoryApi.recordWatchHistory(
-      videoId.value,
-      progress,
-      currentManuscriptId.value,
-      duration
-    )
-    hasRecordedHistory.value = true
-    console.log('浏览历史记录成功', { progress, duration, watchRatio: (watchRatio * 100).toFixed(1) + '%' })
+  }
+
+  const watchRatio = duration > 0 ? (progress / duration) : 0
+  console.log('离开页面，记录最终播放进度', { progress, duration, watchRatio: (watchRatio * 100).toFixed(1) + '%' })
+
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    const params = new URLSearchParams({
+      videoId: String(videoId.value),
+      progressSeconds: String(progress),
+      videoDuration: String(duration || progress || 0)
+    })
+    const url = `/api/watch-history?${params.toString()}`
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      keepalive: true
+    }).catch(() => {})
   } catch (error) {
     console.error('记录浏览历史失败:', error)
   }
@@ -457,6 +539,7 @@ const submitComment = async () => {
         userId: response.data.userId,
         author: response.data.userName,
         avatar: response.data.userAvatar || currentUserAvatar.value,
+        userLevel: response.data.userLevel || currentUser.value?.level || 0,
         content: response.data.content,
         time: formatDate(response.data.createTime || new Date()),
         likeCount: response.data.likeCount || 0,
@@ -603,6 +686,7 @@ const loadReplies = async (commentId, page = 1) => {
           userId: reply.userId || reply.user?.id,
           author: reply.userName || reply.author || '未知用户',
           avatar: reply.userAvatar || reply.avatar || '/default-avatar.svg',
+          userLevel: reply.userLevel || 0,
           content: reply.content,
           time: reply.time || formatDate(reply.createTime),
           likeCount: reply.likeCount || 0,
@@ -711,6 +795,7 @@ const submitReply = async (commentId) => {
           userId: response.data.userId,
           author: response.data.userName || '未知用户',
           avatar: response.data.userAvatar || currentUserAvatar.value,
+          userLevel: response.data.userLevel || currentUser.value?.level || 0,
           content: response.data.content,
           time: formatDate(response.data.createTime),
           likeCount: response.data.likeCount || 0,
@@ -816,20 +901,24 @@ const currentCommentUser = ref({
   followerCount: 0,
   followingCount: 0,
   likeCount: 0,
-  level: 5
+  level: 0
 })
 const commentCardTimer = ref(null)
 
+// 评论区用户信息缓存
+const commentUserCache = ref({})
+
 // 处理评论头像鼠标进入
-const handleCommentAvatarMouseEnter = (event, comment) => {
+const handleCommentAvatarMouseEnter = async (event, comment) => {
   if (commentCardTimer.value) {
     clearTimeout(commentCardTimer.value)
     commentCardTimer.value = null
   }
-  // 保存当前触发元素
   commentAvatarRef.value = event.target
-  // 设置当前评论用户信息
-  currentCommentUser.value = {
+
+  // 先用评论基础数据或缓存快速展示
+  const cached = commentUserCache.value[comment.userId]
+  currentCommentUser.value = cached || {
     id: comment.userId,
     name: comment.author,
     avatar: comment.avatar,
@@ -839,9 +928,37 @@ const handleCommentAvatarMouseEnter = (event, comment) => {
     followerCount: 0,
     followingCount: 0,
     likeCount: 0,
-    level: 5
+    level: comment.userLevel || 0
   }
   showCommentUserCard.value = true
+
+  // 异步获取完整用户信息（如果没缓存）
+  if (!cached && comment.userId) {
+    try {
+      const res = await userApi.getUserById(comment.userId)
+      if (res.code === 200 && res.data) {
+        const u = res.data
+        const fullInfo = {
+          id: u.id,
+          name: u.nickname || u.username || comment.author,
+          avatar: u.avatar || comment.avatar,
+          bio: u.bio || u.signature || '',
+          signature: u.signature || '',
+          following: false,
+          followerCount: u.followerCount || 0,
+          followingCount: u.followingCount || 0,
+          likeCount: u.totalLikeCount || u.likedCount || 0,
+          level: u.level || comment.userLevel || 0
+        }
+        commentUserCache.value[comment.userId] = fullInfo
+        if (currentCommentUser.value.id === comment.userId) {
+          currentCommentUser.value = fullInfo
+        }
+      }
+    } catch (e) {
+      // 静默失败
+    }
+  }
 }
 
 // 处理评论头像鼠标离开
@@ -885,9 +1002,14 @@ const goToTagSearch = (tagName) => {
 // 切换分P视频
 const switchVideoPart = (index) => {
   if (index === currentVideoIndex.value || !manuscriptInfo.value.videos[index]) return
-  
-  // 使用浏览器刷新方式切换分P，确保播放器完全重新初始化
-  const newUrl = `/manuscript/${currentManuscriptId.value}?p=${index + 1}`
+
+  const query = new URLSearchParams({ p: String(index + 1) })
+  const currentResumeTime = getResumeTimeFromRoute()
+  if (currentResumeTime > 0) {
+    query.set('t', String(currentResumeTime))
+  }
+
+  const newUrl = `/manuscript/${currentManuscriptId.value}?${query.toString()}`
   window.location.href = newUrl
 }
 
@@ -953,6 +1075,7 @@ const loadComments = async (sort = 'new') => {
         userId: comment.userId || comment.user?.id,
         author: comment.userName || comment.author || comment.user?.name || '未知用户',
         avatar: comment.userAvatar || comment.avatar || comment.user?.avatar || '/default-avatar.svg',
+        userLevel: comment.userLevel || 0,
         content: comment.content,
         time: comment.time || formatDate(comment.createTime),
         likeCount: comment.likeCount || 0,
@@ -964,6 +1087,7 @@ const loadComments = async (sort = 'new') => {
           userId: reply.userId || reply.user?.id,
           author: reply.userName || reply.author || '未知用户',
           avatar: reply.userAvatar || reply.avatar || '/default-avatar.svg',
+          userLevel: reply.userLevel || 0,
           content: reply.content,
           time: reply.time || formatDate(reply.createTime),
           likeCount: reply.likeCount || 0,
@@ -1372,8 +1496,45 @@ const handleWatchLater = () => {
 }
 
 // 处理稿件举报
+const reportDialogVisible = ref(false)
+const reportForm = ref({
+  reason: '',
+  description: ''
+})
+const reportReasons = ['色情低俗', '政治敏感', '血腥暴力', '欺诈诈骗', '侵权抄袭', '垃圾广告', '引战', '其他']
+
 const handleReport = () => {
-  console.log('打开稿件举报')
+  const token = localStorage.getItem('token')
+  if (!token) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  reportForm.value = { reason: '', description: '' }
+  reportDialogVisible.value = true
+}
+
+const submitReport = async () => {
+  if (!reportForm.value.reason) {
+    ElMessage.warning('请选择举报原因')
+    return
+  }
+  try {
+    const res = await reportApi.submitReport({
+      targetType: 'MANUSCRIPT',
+      targetId: currentManuscriptId.value,
+      manuscriptId: currentManuscriptId.value,
+      reason: reportForm.value.reason,
+      description: reportForm.value.description
+    })
+    if (res.code === 200 || res.success) {
+      ElMessage.success(res.message || '举报成功')
+      reportDialogVisible.value = false
+    } else {
+      ElMessage.error(res.message || '举报失败')
+    }
+  } catch (e) {
+    ElMessage.error('举报失败')
+  }
 }
 
 // 处理关注/取消关注
@@ -1470,6 +1631,9 @@ onMounted(async () => {
   // 更新本地状态
   currentManuscriptId.value = manuscriptIdFromRoute
   currentP.value = pFromRoute
+  resumeTime.value = getResumeTimeFromRoute()
+  pendingResumeTime.value = resumeTime.value
+  hasAppliedResume.value = false
   
   try {
     // 使用新的API获取视频数据
@@ -1515,7 +1679,11 @@ onMounted(async () => {
           name: data.uploader?.name || '',
           avatar: data.uploader?.avatar || '',
           id: data.uploader?.id || '',
-          bio: data.uploader?.signature || data.uploader?.bio || ''
+          bio: data.uploader?.signature || data.uploader?.bio || '',
+          level: data.uploader?.level || 0,
+          followerCount: data.uploader?.followerCount || 0,
+          followingCount: data.uploader?.followingCount || 0,
+          likeCount: data.uploader?.likedCount || 0
         },
         viewCount: data.viewCount || 0,
         likeCount: data.likeCount || 0,
@@ -1740,10 +1908,25 @@ onMounted(async () => {
         zIndex: 2147483647
       },
       mounted: function(layer) {
-        // 在 layer 挂载后，将字幕组件添加到其中
         if (subtitleDisplayRef.value) {
           layer.appendChild(subtitleDisplayRef.value.$el)
-          console.log('[字幕] 已添加到 layer')
+        }
+      }
+    },
+    {
+      name: 'subtitleSettingsPanel',
+      html: '',
+      style: {
+        position: 'absolute',
+        bottom: '55px',
+        right: '10px',
+        zIndex: 2147483647,
+        pointerEvents: 'auto',
+        overflow: 'visible'
+      },
+      mounted: function(layer) {
+        if (subtitleSettingsPanelRef.value) {
+          layer.appendChild(subtitleSettingsPanelRef.value)
         }
       }
     }
@@ -1751,11 +1934,14 @@ onMounted(async () => {
 
   art = new Artplayer(playerConfig)
 
-  // 播放器准备好后更新字幕位置
+  // 播放器准备好后推送字幕设置并更新位置
   art.on('ready', () => {
+    pushSettingsToSubtitle()
     if (subtitleDisplayRef.value) {
       subtitleDisplayRef.value.centerSubtitle()
-      console.log('[字幕] 播放器就绪，字幕已居中')
+    }
+    if (resumeTime.value > 0) {
+      setTimeout(() => applyResumeTime(resumeTime.value), 100)
     }
   })
 
@@ -1799,34 +1985,26 @@ onMounted(async () => {
     console.log('[字幕] 视频暂停, 当前时间:', art.currentTime)
   })
 
-  // 监听全屏事件 - 进入全屏时重置字幕位置
+  // 监听全屏事件 - 进入全屏时重置字幕位置并缩放字体
   art.on('fullscreen', (isFullscreen) => {
-    console.log('[字幕] 全屏状态变化:', isFullscreen ? '进入全屏' : '退出全屏')
+    isFullscreenMode.value = isFullscreen
     if (subtitleDisplayRef.value) {
-      // 使用 setTimeout 确保 DOM 更新完成后再计算位置
       setTimeout(() => {
+        pushSettingsToSubtitle()
         subtitleDisplayRef.value.centerSubtitle()
         subtitleDisplayRef.value.updatePosition()
-        if (art.container) {
-          const rect = art.container.getBoundingClientRect()
-          console.log('[字幕] 播放器尺寸:', rect.width, 'x', rect.height)
-        }
       }, 100)
     }
   })
 
   // 监听网页全屏事件
   art.on('fullscreenWeb', (isFullscreen) => {
-    console.log('[字幕] 网页全屏状态变化:', isFullscreen ? '进入网页全屏' : '退出网页全屏')
+    isFullscreenMode.value = isFullscreen
     if (subtitleDisplayRef.value) {
-      // 使用 setTimeout 确保 DOM 更新完成后再计算位置
       setTimeout(() => {
+        pushSettingsToSubtitle()
         subtitleDisplayRef.value.centerSubtitle()
         subtitleDisplayRef.value.updatePosition()
-        if (art.container) {
-          const rect = art.container.getBoundingClientRect()
-          console.log('[字幕] 播放器尺寸:', rect.width, 'x', rect.height)
-        }
       }, 100)
     }
   })
@@ -1844,15 +2022,19 @@ onMounted(async () => {
   // 添加点击外部区域的事件监听
   document.addEventListener('click', handleClickOutside)
   
-  // 视频加载完成后立即记录浏览历史
-  if (!hasRecordedHistory.value && videoId.value) {
-    recordWatchHistory()
-  }
+  // 添加页面离开时记录浏览历史的监听
+  window.addEventListener('beforeunload', recordWatchHistorySync)
 
   console.log('视频播放器初始化完成')
 })
 
 onUnmounted(() => {
+  // 记录最终播放进度
+  recordWatchHistorySync()
+
+  // 移除页面离开监听
+  window.removeEventListener('beforeunload', recordWatchHistorySync)
+
   // 移除点击外部区域的事件监听
   document.removeEventListener('click', handleClickOutside)
 
@@ -1860,6 +2042,11 @@ onUnmounted(() => {
   if (art) {
     art.destroy()
   }
+})
+
+// 监听字幕开关变化，持久化到 localStorage
+watch(subtitleEnabled, (val) => {
+  try { localStorage.setItem(SUBTITLE_ENABLED_KEY, String(val)) } catch (e) { /* ignore */ }
 })
 
 // 监听评论排序变化，重新加载评论
@@ -1878,8 +2065,12 @@ watch(() => route.params.id, (newId) => {
 })
 
 // 监听路由参数变化，处理浏览器前进/后退
-watch(() => route.query.p, (newP) => {
+watch(() => [route.query.p, route.query.t], ([newP, newT]) => {
   const p = parseInt(newP) || 1
+  const t = parseInt(newT) || 0
+  resumeTime.value = t > 0 ? t : 0
+  pendingResumeTime.value = resumeTime.value
+  hasAppliedResume.value = false
   if (p !== currentP.value && manuscriptInfo.value.videos.length > 0) {
     // 切换到对应的分P（注意：p是1-based，index是0-based）
     const index = p - 1
@@ -1887,12 +2078,12 @@ watch(() => route.query.p, (newP) => {
       // 只更新数据和播放器，不修改URL（因为URL已经变了）
       currentP.value = p
       currentVideoIndex.value = index
-      
+
       const video = manuscriptInfo.value.videos[index]
-      
+
       // 更新videoId用于其他API调用
       videoId.value = video.id
-      
+
       // 更新视频信息（保留稿件标题，只更新播放地址和时长）
       videoInfo.value.playUrl = video.playUrl || ''
       videoInfo.value.playUrlHd = video.playUrlHd || ''
@@ -1912,7 +2103,7 @@ watch(() => route.query.p, (newP) => {
             url: video.playUrlHd
           })
         }
-        
+
         if (video.playUrlSd) {
           qualityOptions.push({
             default: !video.playUrlHd,
@@ -1921,7 +2112,7 @@ watch(() => route.query.p, (newP) => {
             url: video.playUrlSd
           })
         }
-        
+
         if (video.playUrlLd) {
           qualityOptions.push({
             default: !video.playUrlHd && !video.playUrlSd,
@@ -1930,7 +2121,7 @@ watch(() => route.query.p, (newP) => {
             url: video.playUrlLd
           })
         }
-        
+
         if (qualityOptions.length === 0 && video.playUrl) {
           qualityOptions.push({
             default: true,
@@ -1939,25 +2130,30 @@ watch(() => route.query.p, (newP) => {
             url: video.playUrl
           })
         }
-        
+
         // 切换视频源
         art.switchUrl(qualityOptions[0]?.url || video.playUrl)
-        
+
         // 更新画质选项
         if (qualityOptions.length > 0) {
           art.quality = qualityOptions
         }
-        
-        // 重置播放时间
+
+        // 重置播放时间，若路由带 t 则恢复到指定时间
         art.currentTime = 0
+        if (resumeTime.value > 0) {
+          setTimeout(() => applyResumeTime(resumeTime.value), 100)
+        }
       }
-      
+
       // 重新加载弹幕、字幕和互动状态
       loadDanmakus()
       loadInteractionStatus()
       loadComments(commentSort.value)
       loadSubtitles()
     }
+  } else if (resumeTime.value > 0 && art) {
+    setTimeout(() => applyResumeTime(resumeTime.value), 100)
   }
 })
 </script>
@@ -1994,6 +2190,7 @@ watch(() => route.query.p, (newP) => {
           <div class="author-meta">
             <div class="author-info-top">
               <span class="author-name" @click="goToAuthor(videoInfo.uploader.id)">{{ videoInfo.uploader.name }}</span>
+              <LevelBadge :level="videoInfo.uploader.level" />
               <el-button 
                 text 
                 size="small" 
@@ -2033,8 +2230,8 @@ watch(() => route.query.p, (newP) => {
               :current-time="currentVideoTime"
               :enabled="subtitleEnabled"
             />
-          <!-- 字幕设置面板 -->
-            <div v-if="subtitleSettingsVisible" class="subtitle-settings-panel">
+            <!-- 字幕设置面板（会通过 layer 移入播放器内部） -->
+            <div ref="subtitleSettingsPanelRef" v-show="subtitleSettingsVisible" class="subtitle-settings-panel" @click.stop>
               <div class="settings-header">
                 <span>字幕设置</span>
                 <el-button link size="small" @click="subtitleSettingsVisible = false">
@@ -2053,7 +2250,7 @@ watch(() => route.query.p, (newP) => {
                 </div>
                 <div class="setting-item">
                   <span class="setting-label">字体颜色</span>
-                  <el-color-picker v-model="subtitleSettings.color" @change="updateSubtitleSettings({ color: $event })" />
+                  <el-color-picker :teleported="false" v-model="subtitleSettings.color" @change="updateSubtitleSettings({ color: $event })" />
                 </div>
                 <div class="setting-item">
                   <span class="setting-label">背景透明度</span>
@@ -2064,8 +2261,11 @@ watch(() => route.query.p, (newP) => {
                   <el-slider v-model="subtitleSettings.borderRadius" :min="0" :max="20" :step="1" @change="updateSubtitleSettings({ borderRadius: $event })" />
                 </div>
                 <div class="setting-actions">
-                  <el-button size="small" @click="resetSubtitlePosition">重置位置</el-button>
-                  <el-button size="small" type="primary" @click="subtitleSettingsVisible = false">完成</el-button>
+                  <el-button size="small" @click="resetSubtitleSettings">恢复默认</el-button>
+                  <div style="display:flex;gap:8px;">
+                    <el-button size="small" @click="resetSubtitlePosition">重置位置</el-button>
+                    <el-button size="small" type="primary" @click="subtitleSettingsVisible = false">完成</el-button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2078,7 +2278,7 @@ watch(() => route.query.p, (newP) => {
             <div class="status-info">
               <span class="status-item">
                 <el-icon><View /></el-icon>
-                {{ (videoInfo.watchingCount || 0).toLocaleString() }}人正在看
+                {{ Math.max(1, videoInfo.watchingCount || 0).toLocaleString() }}人正在看
               </span>
               <span class="status-item">
                 <el-icon><ChatDotRound /></el-icon>
@@ -2130,10 +2330,6 @@ watch(() => route.query.p, (newP) => {
                 </el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item @click="handleWatchLater">
-                      <el-icon><View /></el-icon>
-                      稍后再看
-                    </el-dropdown-item>
                     <el-dropdown-item @click="handleReport">
                       <el-icon><ChatDotRound /></el-icon>
                       稿件举报
@@ -2264,6 +2460,7 @@ watch(() => route.query.p, (newP) => {
                   <div class="comment-content">
                     <div class="comment-info">
                       <span class="comment-author" @click="goToAuthor(comment.userId)">{{ comment.author }}</span>
+                      <LevelBadge :level="comment.userLevel" />
                     </div>
                     <div class="comment-text" v-html="formatContentWithAtLinks(comment.content)"></div>
                     <div class="comment-actions">
@@ -2284,7 +2481,12 @@ watch(() => route.query.p, (newP) => {
                       <div v-for="reply in comment.replies.filter(r => videoInfo.uploader.id && r.userId === videoInfo.uploader.id)" :key="reply.id" class="reply-item">
                         <img :src="reply.avatar || '/default-avatar.svg'" alt="用户头像" class="reply-avatar" @click="goToAuthor(reply.userId)">
                         <div class="reply-content">
-                          <div class="reply-text" v-html="formatContentWithAtLinks(reply.author + ': ' + reply.content)"></div>
+                          <div class="reply-text">
+                            <span class="reply-author" @click="goToAuthor(reply.userId)">{{ reply.author }}</span>
+                            <LevelBadge :level="reply.userLevel" />
+                            <span class="reply-colon">: </span>
+                            <span v-html="formatContentWithAtLinks(reply.content)"></span>
+                          </div>
                           <div class="reply-actions">
                             <span class="reply-time">{{ reply.time }}</span>
                             <el-button text size="small" :class="{ 'liked': reply.isLiked }" @click="likeReply(reply.id)">
@@ -2313,7 +2515,12 @@ watch(() => route.query.p, (newP) => {
                           <div v-for="reply in comment.replies.filter(r => !videoInfo.uploader.id || r.userId !== videoInfo.uploader.id)" :key="reply.id" class="reply-item">
                             <img :src="reply.avatar || '/default-avatar.svg'" alt="用户头像" class="reply-avatar" @click="goToAuthor(reply.userId)">
                             <div class="reply-content">
-                              <div class="reply-text" v-html="formatContentWithAtLinks(reply.author + ': ' + reply.content)"></div>
+                              <div class="reply-text">
+                                <span class="reply-author" @click="goToAuthor(reply.userId)">{{ reply.author }}</span>
+                                <LevelBadge :level="reply.userLevel" />
+                                <span class="reply-colon">: </span>
+                                <span v-html="formatContentWithAtLinks(reply.content)"></span>
+                              </div>
                               <div class="reply-actions">
                                 <span class="reply-time">{{ reply.time }}</span>
                                 <el-button text size="small" :class="{ 'liked': reply.isLiked }" @click="likeReply(reply.id)">
@@ -2550,7 +2757,48 @@ watch(() => route.query.p, (newP) => {
       <el-button type="primary" @click="confirmFavorite">确定</el-button>
     </template>
   </el-dialog>
-  
+
+  <!-- 举报弹窗 -->
+  <el-dialog
+    v-model="reportDialogVisible"
+    title="稿件举报"
+    width="420px"
+    :close-on-click-modal="false"
+  >
+    <div style="padding: 10px 0;">
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 14px; color: #606266; margin-bottom: 8px;">举报原因</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <el-tag
+            v-for="r in reportReasons"
+            :key="r"
+            :type="reportForm.reason === r ? '' : 'info'"
+            :effect="reportForm.reason === r ? 'dark' : 'plain'"
+            style="cursor: pointer;"
+            @click="reportForm.reason = r"
+          >
+            {{ r }}
+          </el-tag>
+        </div>
+      </div>
+      <div>
+        <div style="font-size: 14px; color: #606266; margin-bottom: 8px;">补充说明（选填）</div>
+        <el-input
+          v-model="reportForm.description"
+          type="textarea"
+          :rows="3"
+          placeholder="请详细描述举报内容..."
+          maxlength="200"
+          show-word-limit
+        />
+      </div>
+    </div>
+    <template #footer>
+      <el-button @click="reportDialogVisible = false">取消</el-button>
+      <el-button type="primary" @click="submitReport">提交举报</el-button>
+    </template>
+  </el-dialog>
+
   <!-- 浮动用户卡片 - 作者头像 -->
   <UserFloatCard
     v-model:visible="showUserFloatCard"
@@ -2564,9 +2812,9 @@ watch(() => route.query.p, (newP) => {
       signature: videoInfo.uploader.bio,
       following: isFollowing,
       followerCount: followerCount,
-      followingCount: 0,
-      likeCount: 0,
-      level: 5
+      followingCount: videoInfo.uploader.followingCount || 0,
+      likeCount: videoInfo.uploader.likeCount || 0,
+      level: videoInfo.uploader.level || 0
     }"
     placement="bottom"
     @follow-change="handleFollowChange"
@@ -2732,15 +2980,16 @@ watch(() => route.query.p, (newP) => {
 /* 字幕设置面板 */
 .subtitle-settings-panel {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  bottom: 50px;
+  right: 0;
   width: 280px;
   background: rgba(28, 28, 28, 0.95);
   border-radius: 8px;
   padding: 16px;
-  z-index: 200;
+  z-index: 120;
   color: #fff;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  overflow: visible;
 }
 
 .subtitle-settings-panel .settings-header {
@@ -3468,6 +3717,7 @@ watch(() => route.query.p, (newP) => {
   font-size: 13px;
   font-weight: 500;
   color: #333;
+  cursor: pointer;
 }
 
 .comment-section .reply-time {

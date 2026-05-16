@@ -8,8 +8,8 @@ import java.util.Date;
 public class JwtUtils {
     // 密钥
     private static final String SECRET_KEY = "mybilibili_secret_key_2026";
-    // 过期时间（24小时）
-    private static final long EXPIRATION_TIME = 24 * 60 * 60 * 1000;
+    // 过期时间（7天）
+    private static final long EXPIRATION_TIME = 7 * 24 * 60 * 60 * 1000;
 
     // 生成JWT令牌
     public static String generateToken(Integer userId, String username) {

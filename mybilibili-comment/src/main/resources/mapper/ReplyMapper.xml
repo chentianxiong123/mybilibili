@@ -20,4 +20,35 @@
         UPDATE replies SET like_count = #{count} WHERE id = #{id}
     </update>
 
+    <select id="selectByCreatorId" resultType="com.mybilibili.common.entity.Reply">
+        SELECT r.* FROM replies r
+        INNER JOIN comments c ON r.comment_id = c.id
+        INNER JOIN manuscripts m ON c.manuscript_id = m.id
+        WHERE m.user_id = #{userId}
+        <if test="manuscriptId != null">
+            AND c.manuscript_id = #{manuscriptId}
+        </if>
+        AND r.status = 'NORMAL'
+        <choose>
+            <when test="sort == 'likes'">
+                ORDER BY r.like_count DESC, r.created_at DESC
+            </when>
+            <otherwise>
+                ORDER BY r.created_at DESC
+            </otherwise>
+        </choose>
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countByCreatorId" resultType="int">
+        SELECT COUNT(*) FROM replies r
+        INNER JOIN comments c ON r.comment_id = c.id
+        INNER JOIN manuscripts m ON c.manuscript_id = m.id
+        WHERE m.user_id = #{userId}
+        <if test="manuscriptId != null">
+            AND c.manuscript_id = #{manuscriptId}
+        </if>
+        AND r.status = 'NORMAL'
+    </select>
+
 </mapper>

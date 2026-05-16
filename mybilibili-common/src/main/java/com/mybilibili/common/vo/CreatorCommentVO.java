@@ -22,4 +22,7 @@ public class CreatorCommentVO {
     private Integer replyCount;
     private Date createTime;
     private boolean liked;
+    private String commentType; // "comment" or "reply"
+    private Integer parentCommentId; // for replies, the parent comment id
+    private String replyToUserName; // for replies, who is being replied to
 }

@@ -25,7 +25,8 @@ public interface CommentMapper extends BaseMapper<Comment> {
             @Param("userId") Integer userId,
             @Param("manuscriptId") Integer manuscriptId,
             @Param("offset") int offset,
-            @Param("size") int size);
+            @Param("size") int size,
+            @Param("sort") String sort);
 
     int countByCreatorId(
             @Param("userId") Integer userId,

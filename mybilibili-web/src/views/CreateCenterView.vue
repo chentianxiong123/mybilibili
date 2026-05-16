@@ -4,7 +4,7 @@
     <header class="create-center-header">
       <div class="header-left">
         <el-button class="center-title-btn" @click="goToCreateCenterHome">
-          Bilibili创作中心
+          创作中心
         </el-button>
         <el-button class="main-site-btn" @click="goToMainSite">
           <el-icon><House /></el-icon>
@@ -20,7 +20,7 @@
           style="cursor: pointer;"
         ></el-avatar>
         <div class="up-day-box">
-          成为UP主的第123天
+          {{ creatorDaysText }}
         </div>
       </div>
     </header>
@@ -161,21 +161,32 @@
               
               <!-- 评论列表 -->
               <div v-if="activeCommentTab === 'comment'" class="interaction-list">
-                <div v-for="comment in latestComments.slice(0, 5)" :key="comment.id" class="interaction-item">
-                  <div class="user-info">
-                    <el-avatar :size="32" :src="comment.avatar"></el-avatar>
-                    <span class="username">{{ comment.username }}</span>
-                  </div>
-                  <div class="interaction-content">
-                    {{ comment.content }}
-                  </div>
-                  <div class="interaction-time">{{ comment.time }}</div>
-                  <div class="interaction-actions">
-                    <el-button type="danger" size="small" link @click="handleDeleteComment(comment.id)">删除</el-button>
-                  </div>
+                <div v-for="comment in paginatedComments" :key="comment.id" class="interaction-item">
+                  <el-avatar :size="28" :src="comment.avatar" class="item-avatar"></el-avatar>
+                  <span class="item-username">{{ comment.username }}</span>
+                  <span class="item-content">{{ comment.content }}</span>
+                  <el-link
+                    v-if="comment.manuscriptId"
+                    type="primary"
+                    underline="never"
+                    @click="router.push(`/manuscript/${comment.manuscriptId}`)"
+                    class="item-link"
+                  >
+                    {{ comment.manuscriptTitle || '查看视频' }}
+                  </el-link>
+                  <span class="item-time">{{ comment.createTime ? formatDate(comment.createTime) : comment.time }}</span>
+                  <el-button type="danger" size="small" link @click="handleDeleteComment(comment)" class="item-delete">删除</el-button>
                 </div>
+                <el-pagination
+                  v-if="latestComments.length > homeCommentPageSize"
+                  v-model:current-page="homeCommentPage"
+                  :page-size="homeCommentPageSize"
+                  :total="latestComments.length"
+                  layout="prev, pager, next"
+                  small
+                />
               </div>
-              
+
               <!-- 弹幕列表 -->
               <div v-else-if="activeCommentTab === 'danmu'" class="interaction-list" v-loading="danmakuLoading">
                 <div v-if="danmakuList.length === 0" class="developing-tip">
@@ -183,33 +194,23 @@
                 </div>
                 <div v-else class="danmaku-list">
                   <div v-for="item in danmakuList" :key="item.id" class="danmaku-card">
-                    <div class="danmaku-body">
-                      <div class="danmaku-content">
-                        {{ item.content }}
-                      </div>
-                    </div>
-                    <div class="danmaku-footer">
-                      <div class="danmaku-info">
-                        <el-link 
-                          type="primary" 
-                          underline="never"
-                          @click="goToVideo(item.manuscriptId, item.time, item.videoOrder)"
-                          class="danmaku-link"
-                        >
-                          {{ item.videoName || '未知视频' }}
-                        </el-link>
-                        <el-tag size="small" :type="getDanmakuModeType(item.mode)" effect="plain">
-                          {{ formatTime(item.time) }}
-                        </el-tag>
-                        <el-tag size="small" type="info" effect="plain">
-                          {{ getDanmakuModeText(item.mode) }}
-                        </el-tag>
-                      </div>
-                      <div class="danmaku-date">{{ item.createTime }}</div>
-                      <div class="danmaku-actions">
-                        <el-button type="danger" size="small" link @click="deleteDanmaku(item.id)">删除</el-button>
-                      </div>
-                    </div>
+                    <span class="danmaku-text">{{ item.content }}</span>
+                    <el-link
+                      type="primary"
+                      underline="never"
+                      @click="goToVideo(item.manuscriptId, item.time, item.videoOrder)"
+                      class="item-link"
+                    >
+                      {{ item.videoName || '未知视频' }}
+                    </el-link>
+                    <el-tag size="small" :type="getDanmakuModeType(item.mode)" effect="plain">
+                      {{ formatTime(item.time) }}
+                    </el-tag>
+                    <el-tag size="small" type="info" effect="plain">
+                      {{ getDanmakuModeText(item.mode) }}
+                    </el-tag>
+                    <span class="item-time">{{ formatDate(item.createTime) }}</span>
+                    <el-button type="danger" size="small" link @click="deleteDanmaku(item.id)" class="item-delete">删除</el-button>
                   </div>
                 </div>
                 <el-pagination
@@ -218,6 +219,7 @@
                   :page-size="danmakuPageSize"
                   :total="danmakuTotal"
                   layout="prev, pager, next"
+                  small
                   @current-change="fetchDanmakuList"
                 />
               </div>
@@ -253,9 +255,10 @@
                     <el-avatar :size="32" :src="user.avatar" :class="getRankingClass(index)"></el-avatar>
                     <span class="username" :class="getRankingClass(index)">{{ user.username }}</span>
                   </div>
+                  <div class="ranking-value">{{ user.interactionCount || 0 }} 次评论</div>
                 </div>
               </div>
-              
+
               <!-- 互动排行列表 -->
               <div v-else-if="activeRankingTab === 'interaction'" class="ranking-list-horizontal">
                 <div v-for="(user, index) in interactionRanking" :key="user.id" class="ranking-item-horizontal">
@@ -263,6 +266,7 @@
                     <el-avatar :size="32" :src="user.avatar" :class="getRankingClass(index)"></el-avatar>
                     <span class="username" :class="getRankingClass(index)">{{ user.username }}</span>
                   </div>
+                  <div class="ranking-value">{{ user.interactionCount || 0 }} 次互动</div>
                 </div>
               </div>
             </div>
@@ -286,10 +290,10 @@
               <!-- 第一行：全部稿件 -->
               <div class="filter-row">
                 <el-radio-group v-model="statusFilter" size="small">
-                  <el-radio-button value="processing">进行中</el-radio-button>
                   <el-radio-button value="published">已通过 ({{ approvedCount }})</el-radio-button>
+                  <el-radio-button value="processing">等待审核 / 处理中</el-radio-button>
                   <el-radio-button value="rejected">未通过 ({{ rejectedCount }})</el-radio-button>
-                  <el-radio-button value="unpublished">已下架</el-radio-button>
+                  <el-radio-button value="unpublished">已下架 ({{ unpublishedCount }})</el-radio-button>
                 </el-radio-group>
               </div>
             </div>
@@ -301,22 +305,8 @@
                 <el-table-column prop="title" label="标题" min-width="300"></el-table-column>
                 <el-table-column prop="status" label="状态" width="180">
                   <template #default="scope">
-                    <!-- 进行中状态显示进度条 -->
-                    <div v-if="scope.row.status === 0 || scope.row.status === 1" class="progress-cell">
-                      <el-progress 
-                        :percentage="articleProgress[scope.row.id] || 0" 
-                        :status="articleProgressStatus[scope.row.id] === 'completed' ? 'success' : ''"
-                        :stroke-width="6"
-                        :show-text="true"
-                      />
-                      <span class="progress-text">
-                        {{ articleProgressStatus[scope.row.id] === 'completed' ? '已完成' : (articleProgress[scope.row.id] >= 90 ? '即将完成' : '处理中') }}
-                      </span>
-                    </div>
-                    <!-- 其他状态显示标签 -->
-                    <el-tag 
-                      v-else
-                      :type="getArticleStatusType(scope.row.status)" 
+                    <el-tag
+                      :type="getArticleStatusType(scope.row.status)"
                       size="small"
                     >
                       {{ getArticleStatusText(scope.row.status) }}
@@ -332,23 +322,14 @@
                 </el-table-column>
                 <el-table-column label="操作" width="200" fixed="right">
                   <template #default="scope">
-                    <!-- 进行中状态 - 显示进度完成后的查看按钮 -->
+                    <!-- 待审核/处理中状态 -->
                     <template v-if="scope.row.status === 0 || scope.row.status === 1">
-                      <el-button 
-                        v-if="articleProgressStatus[scope.row.id] === 'completed'" 
-                        type="success" 
-                        size="small"
-                        @click="router.push(`/manuscript/${scope.row.id}`)"
-                      >
-                        查看
-                      </el-button>
-                      <el-button 
-                        v-else 
-                        type="info" 
+                      <el-button
+                        type="info"
                         size="small"
                         disabled
                       >
-                        处理中...
+                        {{ scope.row.status === 0 ? '审核中...' : '处理中...' }}
                       </el-button>
                     </template>
                     <!-- 已发布状态 -->
@@ -747,9 +728,9 @@
                   <!-- 评论类型和视频筛选 -->
                   <div class="filter-dropdowns">
                     <el-select v-model="commentTypeFilter" placeholder="全部评论" size="small" style="min-width: 120px; margin-right: 10px;">
-                      <el-option label="全部评论" value="all"></el-option>
-                      <el-option label="评论" value="comment"></el-option>
-                      <el-option label="回复" value="reply"></el-option>
+                      <el-option label="评论+回复" value="all"></el-option>
+                      <el-option label="仅评论" value="comment"></el-option>
+                      <el-option label="仅回复" value="reply"></el-option>
                     </el-select>
                     
                     <el-select v-model="videoFilter" placeholder="全部视频" size="small" style="min-width: 120px;">
@@ -777,16 +758,15 @@
                   <el-radio-group v-model="commentSortBy" size="small">
                     <el-radio-button value="latest">最近发布</el-radio-button>
                     <el-radio-button value="likes">点赞最多</el-radio-button>
-                    <el-radio-button value="replies">回复最多</el-radio-button>
                   </el-radio-group>
                 </div>
               </div>
               
               <!-- 评论列表 -->
               <div class="comment-list">
-                <div 
-                  v-for="comment in comments" 
-                  :key="comment.id" 
+                <div
+                  v-for="comment in pagedComments"
+                  :key="comment.id"
                   class="comment-item"
                 >
                   <!-- 复选框 -->
@@ -800,23 +780,30 @@
                     <div class="comment-header">
                       <el-avatar :size="40" :src="comment.avatar"></el-avatar>
                       <span class="username">{{ comment.username }}</span>
+                      <el-tag v-if="comment.commentType === 'reply'" size="small" type="warning" style="margin-left: 8px;">回复</el-tag>
+                      <span v-if="comment.commentType === 'reply' && comment.replyToUserName" class="reply-to-hint">
+                        回复给 <b>{{ comment.replyToUserName }}</b>
+                      </span>
                     </div>
-                    
+
                     <!-- 评论内容 -->
                     <div class="comment-content">
                       {{ comment.content }}
                     </div>
-                    
+
                     <!-- 评论时间和操作 -->
                     <div class="comment-meta">
-                      <span class="comment-time">{{ comment.time }}</span>
+                      <span class="comment-time">{{ formatDate(comment.time) }}</span>
+                      <el-button size="small" plain :type="comment.liked ? 'primary' : 'default'" @click="handleLikeComment(comment)">
+                        <el-icon><CircleCheck /></el-icon>{{ comment.likeCount || 0 }}
+                      </el-button>
                       <el-button size="small" plain @click="openReplyDialog(comment)">
                         <el-icon><ChatDotRound /></el-icon>回复
                       </el-button>
-                      
+
                       <!-- 删除按钮（鼠标悬停显示） -->
                       <div class="comment-actions-hover">
-                        <el-button size="small" plain type="danger">
+                        <el-button size="small" plain type="danger" @click="handleDeleteComment(comment)">
                           <el-icon><Delete /></el-icon>删除
                         </el-button>
                       </div>
@@ -1129,6 +1116,31 @@
         <div v-else-if="currentActive === 'upload'" class="content-section">
           <UploadView />
         </div>
+
+        <!-- 粉丝管理 -->
+        <div v-else-if="currentActive === 'fans'" class="content-section">
+          <div class="fans-container">
+            <div class="fans-header">
+              <h3>粉丝管理</h3>
+            </div>
+            <div class="fans-count-row">
+              <p class="fans-count">全部粉丝 ({{ totalFans }})</p>
+              <div class="fans-filter">
+                <el-radio-group v-model="fansFilter" size="small">
+                  <el-radio-button value="all">全部粉丝</el-radio-button>
+                  <el-radio-button value="mutual">互关好友</el-radio-button>
+                </el-radio-group>
+              </div>
+            </div>
+            <FansList
+              :users="fans"
+              :loading="fansLoading"
+              title=""
+              @follow="handleFollowUser"
+              @unfollow="handleUnfollowUser"
+            />
+          </div>
+        </div>
       </main>
     </div>
 
@@ -1151,23 +1163,6 @@
             maxlength="500"
             show-word-limit
           />
-        </el-form-item>
-        <el-form-item label="合集封面">
-          <el-upload
-            action="#"
-            :on-change="handleCreateCollectionCoverChange"
-            :auto-upload="false"
-            accept="image/*"
-            :show-file-list="false"
-          >
-            <div class="cover-preview-small" v-if="createCollectionForm.coverUrl">
-              <img :src="createCollectionForm.coverUrl" alt="封面">
-            </div>
-            <div class="cover-placeholder-small" v-else>
-              <el-icon><Picture /></el-icon>
-              <span>上传封面</span>
-            </div>
-          </el-upload>
         </el-form-item>
         <el-form-item label="公开">
           <el-switch v-model="createCollectionForm.isPublic" />
@@ -1198,23 +1193,6 @@
             maxlength="500"
             show-word-limit
           />
-        </el-form-item>
-        <el-form-item label="合集封面">
-          <el-upload
-            action="#"
-            :on-change="handleEditCollectionCoverChange"
-            :auto-upload="false"
-            accept="image/*"
-            :show-file-list="false"
-          >
-            <div class="cover-preview-small" v-if="editCollectionForm.coverUrl">
-              <img :src="editCollectionForm.coverUrl" alt="封面">
-            </div>
-            <div class="cover-placeholder-small" v-else>
-              <el-icon><Picture /></el-icon>
-              <span>上传封面</span>
-            </div>
-          </el-upload>
         </el-form-item>
         <el-form-item label="公开">
           <el-switch v-model="editCollectionForm.isPublic" />
@@ -1274,7 +1252,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ref, reactive, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { creatorApi, manuscriptApi, collectionApi, followApi, statsApi } from '@/api/creator'
-import { videoProcessApi } from '@/api/videoProcess'
+import { commentApi } from '@/api/index'
 import { useUserStore } from '@/stores/user'
 import * as echarts from 'echarts'
 import {
@@ -1298,6 +1276,7 @@ import {
   InfoFilled,
   WarningFilled,
   CircleCheckFilled,
+  CircleCheck,
   ArrowDown,
   ArrowUp,
   StarFilled,
@@ -1311,6 +1290,7 @@ import {
 } from '@element-plus/icons-vue'
 import UploadView from './UploadView.vue'
 import DataCenterView from './DataCenterView.vue'
+import FansList from '../components/FansList.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -1341,6 +1321,35 @@ const getCurrentUserId = () => {
     }
   }
   return userStore.userInfo.id
+}
+
+// 创作者天数计算
+const creatorDaysText = ref('还没成为创作者')
+
+const calcCreatorDays = async () => {
+  try {
+    const response = await manuscriptApi.getMyManuscripts({ page: 1, size: 100 })
+    if (response.code === 200) {
+      const list = response.data.list || response.data.records || []
+      if (list.length > 0) {
+        const firstTime = list.reduce((earliest, item) => {
+          const t = item.uploadTime || item.createdAt || item.createTime
+          return t && (!earliest || new Date(t) < new Date(earliest)) ? t : earliest
+        }, null)
+        if (firstTime) {
+          const startDate = new Date(firstTime)
+          const now = new Date()
+          const diffMs = now.getTime() - startDate.getTime()
+          const days = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)))
+          creatorDaysText.value = `成为创作者的第${days}天`
+          return
+        }
+      }
+    }
+  } catch (error) {
+    console.error('获取首个稿件失败:', error)
+  }
+  creatorDaysText.value = '还没成为创作者'
 }
 
 // 首页统计数据
@@ -1571,6 +1580,12 @@ const activeRankingTab = ref('view')
 
 // 最新评论数据
 const latestComments = ref([])
+const homeCommentPage = ref(1)
+const homeCommentPageSize = 5
+const paginatedComments = computed(() => {
+  const start = (homeCommentPage.value - 1) * homeCommentPageSize
+  return latestComments.value.slice(start, start + homeCommentPageSize)
+})
 
 // 最新弹幕数据（开发中）
 const latestDanmus = ref([])
@@ -1598,7 +1613,7 @@ const getRankingClass = (index) => {
 const mainTab = ref('video')
 
 // 状态筛选
-const statusFilter = ref('processing') // processing: 进行中, published: 已通过, rejected: 未通过
+const statusFilter = ref('published') // published: 已通过, processing: 进行中, rejected: 未通过
 
 // 稿件列表数据
 const articles = ref([])
@@ -1609,10 +1624,7 @@ const totalArticles = ref(0)
 const approvedCount = ref(0)
 const rejectedCount = ref(0)
 const processingCount = ref(0)
-
-// 进度模拟相关状态
-const articleProgress = ref({})  // 存储每个稿件的进度 { [id]: progress }
-const articleProgressStatus = ref({})  // 存储每个稿件的进度状态 { [id]: 'running' | 'completed' }
+const unpublishedCount = ref(0)
 
 // 分页相关状态
 const currentPage = ref(1)
@@ -1629,18 +1641,15 @@ const fetchArticles = async () => {
     if (statusFilter.value) {
       params.status = statusFilter.value
     }
-    
+
     console.log('获取稿件参数:', params)
     const response = await manuscriptApi.getMyManuscripts(params)
     console.log('获取稿件响应:', response)
-    
+
     if (response.code === 200) {
       articles.value = response.data.list || []
       totalArticles.value = response.data.total || 0
       console.log('稿件列表:', articles.value)
-      
-      // 为进行中的稿件启动进度模拟
-      startProgressSimulation()
     }
   } catch (error) {
     console.error('获取稿件列表失败:', error)
@@ -1650,48 +1659,17 @@ const fetchArticles = async () => {
   }
 }
 
-// 启动进度模拟
-const startProgressSimulation = () => {
-  articles.value.forEach(article => {
-    // 只为进行中状态的稿件启动进度模拟 (status: 0 或 1)
-    if ((article.status === 0 || article.status === 1) && !videoProcessApi.getStatus(article.id)) {
-      // 根据稿件类型选择任务类型
-      const taskType = article.hasSubtitle ? 'transcode' : 'transcode'
-      
-      videoProcessApi.startProcess(article.id, taskType, {
-        onProgress: (progress, info) => {
-          articleProgress.value[article.id] = progress
-          articleProgressStatus.value[article.id] = info.status
-        },
-        onComplete: () => {
-          articleProgressStatus.value[article.id] = 'completed'
-          // 刷新稿件列表
-          fetchManuscriptStats()
-        }
-      })
-    }
-  })
-}
-
-// 停止所有进度模拟
-const stopAllProgressSimulation = () => {
-  articles.value.forEach(article => {
-    if (videoProcessApi.getStatus(article.id)) {
-      videoProcessApi.removeProcess(article.id)
-    }
-  })
-}
-
 // 获取稿件统计
 const fetchManuscriptStats = async () => {
   try {
     const response = await manuscriptApi.getMyStats()
-    
+
     if (response.code === 200) {
       const stats = response.data
       processingCount.value = stats.processing || 0
       approvedCount.value = stats.published || 0
       rejectedCount.value = stats.rejected || 0
+      unpublishedCount.value = stats.unpublished || 0
     }
   } catch (error) {
     console.error('获取稿件统计失败:', error)
@@ -1746,12 +1724,12 @@ const getArticleStatusType = (status) => {
 // 获取稿件状态文本
 const getArticleStatusText = (status) => {
   const statusTextMap = {
-    0: '进行中',   // 待审核
+    0: '待审核',
     1: '处理中',
     2: '待发布',
-    3: '已通过',   // 已发布
-    4: '未通过',   // 已拒绝
-    '-1': '已下架' // 已下架
+    3: '已通过',
+    4: '未通过',
+    '-1': '已下架'
   }
   return statusTextMap[status] || '未知'
 }
@@ -1800,6 +1778,7 @@ const unpublishArticle = async (id) => {
     
     if (response.code === 200) {
       ElMessage.success('下架成功')
+      statusFilter.value = 'unpublished'
       fetchArticles()
       fetchManuscriptStats()
     } else {
@@ -1816,16 +1795,27 @@ const unpublishArticle = async (id) => {
 // 上架稿件
 const publishArticle = async (id) => {
   try {
+    await ElMessageBox.confirm('确定要重新上架这个稿件吗？上架后观众将可以观看。', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'info'
+    })
+
     const response = await manuscriptApi.publishManuscript(id)
-    
+
     if (response.code === 200) {
       ElMessage.success('上架成功')
+      statusFilter.value = 'published'
       fetchArticles()
       fetchManuscriptStats()
+    } else {
+      ElMessage.error(response.message || '上架失败')
     }
   } catch (error) {
-    console.error('上架稿件失败:', error)
-    ElMessage.error('上架失败')
+    if (error !== 'cancel') {
+      console.error('上架稿件失败:', error)
+      ElMessage.error('上架失败')
+    }
   }
 }
 
@@ -2314,6 +2304,30 @@ const handleFollowFan = async (fan) => {
   }
 }
 
+const handleFollowUser = async (userId) => {
+  try {
+    await followApi.follow(userId)
+    const fan = fans.value.find(f => f.id === userId)
+    if (fan) fan.isFollowing = true
+    ElMessage.success('关注成功')
+  } catch (error) {
+    console.error('关注失败:', error)
+    ElMessage.error('操作失败，请重试')
+  }
+}
+
+const handleUnfollowUser = async (userId) => {
+  try {
+    await followApi.unfollow(userId)
+    const fan = fans.value.find(f => f.id === userId)
+    if (fan) fan.isFollowing = false
+    ElMessage.success('已取消关注')
+  } catch (error) {
+    console.error('取消关注失败:', error)
+    ElMessage.error('操作失败，请重试')
+  }
+}
+
 watch(fansFilter, () => {
   fansCurrentPage.value = 1
 })
@@ -2373,7 +2387,7 @@ const selectedVideos = ref([])
 const addingVideo = ref(false)
 
 const getDefaultCover = () => {
-  return 'https://picsum.photos/id/1025/400/225'
+  return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225" viewBox="0 0 400 225"><rect fill="#e5e9ef" width="400" height="225"/><text fill="#9499a0" font-family="sans-serif" font-size="16" x="50%" y="50%" text-anchor="middle" dy=".3em">暂无封面</text></svg>')
 }
 
 const formatDate = (dateStr) => {
@@ -2418,6 +2432,10 @@ const loadUserCollections = async () => {
               ...video,
               date: formatDate(video.uploadTime)
             }))
+            // 如果合集没有封面，用第一个视频的封面
+            if (!collection.coverUrl && collection.videos.length > 0 && collection.videos[0].coverUrl) {
+              collection.coverUrl = collection.videos[0].coverUrl
+            }
           }
         } catch (e) {
           console.error('获取合集稿件失败:', e)
@@ -2992,13 +3010,38 @@ const commentPageSize = ref(10)
 
 const comments = ref([])
 const commentLoading = ref(false)
-const totalComments = ref(0)
-const totalPages = ref(0)
+const commentRawList = ref([])
+const totalComments = computed(() => filteredComments.value.length)
+const totalPages = computed(() => Math.max(1, Math.ceil(totalComments.value / commentPageSize.value)))
 const videoList = ref([])
 const replyDialogVisible = ref(false)
 const replyCommentId = ref(null)
 const replyContent = ref('')
 const replyToUserId = ref(null)
+
+const normalizeSearchText = (value) => (value || '').toString().trim().toLowerCase()
+
+const filteredComments = computed(() => {
+  const keyword = normalizeSearchText(commentSearchText.value)
+  if (!keyword) {
+    return commentRawList.value
+  }
+  return commentRawList.value.filter(comment => {
+    const fields = [
+      comment.username,
+      comment.content,
+      comment.videoTitle,
+      comment.replyToUserName,
+      comment.commentType === 'reply' ? '回复' : '评论'
+    ]
+    return fields.some(field => normalizeSearchText(field).includes(keyword))
+  })
+})
+
+const pagedComments = computed(() => {
+  const start = (commentCurrentPage.value - 1) * commentPageSize.value
+  return filteredComments.value.slice(start, start + commentPageSize.value)
+})
 
 const danmakuList = ref([])
 const danmakuLoading = ref(false)
@@ -3048,25 +3091,60 @@ const deleteDanmaku = async (danmakuId) => {
   }
 }
 
-const handleDeleteComment = async (commentId) => {
+const handleDeleteComment = async (comment) => {
+  const isReply = comment.commentType === 'reply'
+  const label = isReply ? '回复' : '评论'
   try {
-    await ElMessageBox.confirm('确定要删除这条评论吗？', '提示', {
+    await ElMessageBox.confirm(`确定要删除这条${label}吗？`, '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const res = await creatorApi.deleteComment(commentId)
+    const res = isReply
+      ? await creatorApi.deleteReply(comment.id)
+      : await creatorApi.deleteComment(comment.id)
     if (res.code === 200) {
       ElMessage.success('删除成功')
-      loadHomeData()
+      fetchComments()
     } else {
       ElMessage.error(res.message || '删除失败')
     }
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('删除评论失败:', error)
+      console.error(`删除${label}失败:`, error)
       ElMessage.error('删除失败')
     }
+  }
+}
+
+// 点赞/取消点赞评论
+const handleLikeComment = async (comment) => {
+  const isReply = comment.commentType === 'reply'
+  try {
+    if (comment.liked) {
+      const res = isReply
+        ? await commentApi.unlikeReply(comment.id)
+        : await commentApi.unlikeComment(comment.id)
+      if (res.code === 200) {
+        comment.likeCount = Math.max(0, (comment.likeCount || 0) - 1)
+        comment.liked = false
+      } else {
+        ElMessage.error(res.message || '取消点赞失败')
+      }
+    } else {
+      const res = isReply
+        ? await commentApi.likeReply(comment.id)
+        : await commentApi.likeComment(comment.id)
+      if (res.code === 200) {
+        comment.likeCount = (comment.likeCount || 0) + 1
+        comment.liked = true
+      } else {
+        ElMessage.error(res.message || '点赞失败')
+      }
+    }
+  } catch (error) {
+    console.error('点赞操作失败:', error)
+    ElMessage.error('操作失败')
   }
 }
 
@@ -3110,13 +3188,15 @@ const fetchComments = async () => {
   commentLoading.value = true
   try {
     const params = {
-      page: commentCurrentPage.value,
-      size: commentPageSize.value,
-      manuscriptId: videoFilter.value === 'all' ? undefined : videoFilter.value
+      page: 1,
+      size: 1000,
+      manuscriptId: videoFilter.value === 'all' ? undefined : videoFilter.value,
+      sort: commentSortBy.value,
+      commentType: commentTypeFilter.value
     }
     const res = await creatorApi.getComments(params)
     if (res.code === 200 && res.data) {
-      comments.value = res.data.list.map(item => ({
+      commentRawList.value = res.data.list.map(item => ({
         id: item.id,
         selected: false,
         username: item.userName || '未知用户',
@@ -3129,10 +3209,15 @@ const fetchComments = async () => {
         replyCount: item.replyCount || 0,
         liked: item.liked || false,
         userId: item.userId,
-        manuscriptId: item.manuscriptId
+        manuscriptId: item.manuscriptId,
+        commentType: item.commentType || 'comment',
+        parentCommentId: item.parentCommentId,
+        replyToUserName: item.replyToUserName
       }))
-      totalComments.value = res.data.total || 0
-      totalPages.value = Math.ceil((res.data.total || 0) / commentPageSize.value)
+      comments.value = pagedComments.value
+      if (commentCurrentPage.value > totalPages.value) {
+        commentCurrentPage.value = totalPages.value
+      }
     }
   } catch (error) {
     console.error('获取评论列表失败:', error)
@@ -3153,7 +3238,13 @@ const fetchVideoList = async () => {
 }
 
 const openReplyDialog = (comment) => {
-  replyCommentId.value = comment.id
+  // If clicking reply on a reply, use the parent comment ID
+  const targetCommentId = comment.commentType === 'reply' ? comment.parentCommentId : comment.id
+  if (!targetCommentId) {
+    ElMessage.warning('无法回复该内容')
+    return
+  }
+  replyCommentId.value = targetCommentId
   replyToUserId.value = comment.userId
   replyContent.value = ''
   replyDialogVisible.value = true
@@ -3177,44 +3268,65 @@ const handleReplyComment = async () => {
 }
 
 const handleSelectAll = (select) => {
-  comments.value.forEach(comment => {
+  pagedComments.value.forEach(comment => {
     comment.selected = select
   })
 }
 
 const handleBatchDelete = async () => {
-  const selectedComments = comments.value.filter(c => c.selected)
+  const selectedComments = commentRawList.value.filter(c => c.selected)
   if (selectedComments.length === 0) {
     ElMessage.warning('请选择要删除的评论')
     return
   }
   try {
-    await Promise.all(selectedComments.map(c => creatorApi.deleteComment(c.id)))
+    await ElMessageBox.confirm(`确定要删除选中的 ${selectedComments.length} 条内容吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await Promise.all(selectedComments.map(c =>
+      c.commentType === 'reply'
+        ? creatorApi.deleteReply(c.id)
+        : creatorApi.deleteComment(c.id)
+    ))
     ElMessage.success('批量删除成功')
     fetchComments()
   } catch (error) {
-    console.error('批量删除失败:', error)
+    if (error !== 'cancel') {
+      console.error('批量删除失败:', error)
+    }
   }
 }
 
-watch([commentCurrentPage, commentTypeFilter, videoFilter, commentSortBy], () => {
+watch([commentTypeFilter, videoFilter, commentSortBy], () => {
+  if (commentCurrentPage.value !== 1) {
+    commentCurrentPage.value = 1
+  }
   fetchComments()
+})
+
+watch(commentCurrentPage, () => {
+  comments.value = pagedComments.value
 })
 
 watch(commentSearchText, () => {
   if (commentCurrentPage.value !== 1) {
     commentCurrentPage.value = 1
-  } else {
-    fetchComments()
   }
+  comments.value = pagedComments.value
 })
 
 // 搜索评论
 const searchComments = () => {
-  fetchComments()
+  if (commentCurrentPage.value !== 1) {
+    commentCurrentPage.value = 1
+  }
+  comments.value = pagedComments.value
 }
 
 onMounted(() => {
+  calcCreatorDays()
   if (currentActive.value === 'home') {
     loadHomeData()
   }
@@ -3235,12 +3347,6 @@ onMounted(() => {
   }
 })
 
-// 组件卸载时清理进度模拟器
-onUnmounted(() => {
-  stopAllProgressSimulation()
-  videoProcessApi.clear()
-})
-
 watch(currentActive, (newVal) => {
   if (newVal === 'home') {
     loadHomeData()
@@ -3255,6 +3361,12 @@ watch(currentActive, (newVal) => {
   if (newVal === 'interaction-comment') {
     fetchComments()
     fetchVideoList()
+  }
+})
+
+watch(totalPages, (newTotal) => {
+  if (commentCurrentPage.value > newTotal) {
+    commentCurrentPage.value = newTotal
   }
 })
 
@@ -3646,27 +3758,69 @@ const searchDanmu = () => {
 .interaction-list {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 0;
 }
 
 .interaction-item {
-  padding: 15px;
-  background-color: #fafafa;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s ease;
+}
+
+.interaction-item:last-child {
+  border-bottom: none;
 }
 
 .interaction-item:hover {
   background-color: #f5f7fa;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.interaction-actions {
-  position: absolute;
-  right: 15px;
-  top: 50%;
-  transform: translateY(-50%);
+.interaction-item .item-avatar {
+  flex-shrink: 0;
+}
+
+.interaction-item .item-username {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #303133;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.interaction-item .item-content {
+  flex: 1;
+  font-size: 13px;
+  color: #606266;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.interaction-item .item-link {
+  flex-shrink: 0;
+  font-size: 12px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.interaction-item .item-time {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #909399;
+  white-space: nowrap;
+}
+
+.interaction-item .item-delete {
+  flex-shrink: 0;
 }
 
 /* 互动列表样式 - 水平布局 */
@@ -3703,22 +3857,6 @@ const searchDanmu = () => {
 .username {
   font-weight: 500;
   color: #303133;
-}
-
-/* 内容样式 */
-.interaction-content {
-  color: #606266;
-  margin-bottom: auto;
-  line-height: 1.5;
-  flex: 1;
-}
-
-/* 时间样式 */
-.interaction-time {
-  font-size: 12px;
-  color: #909399;
-  text-align: right;
-  margin-top: 8px;
 }
 
 /* 评论弹幕按钮样式 */
@@ -3813,7 +3951,7 @@ const searchDanmu = () => {
 .ranking-item-horizontal .user-info {
   flex-direction: column;
   gap: 5px;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 /* 水平排行项中的用户名称 */
@@ -3823,6 +3961,13 @@ const searchDanmu = () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 水平排行项中的数值 */
+.ranking-value {
+  font-size: 12px;
+  color: #909399;
+  margin-top: auto;
 }
 
 /* 排名样式 - 金色（第一名） */
@@ -4010,7 +4155,7 @@ const searchDanmu = () => {
 /* 头像和用户名样式 */
 .comment-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   margin-bottom: 5px;
 }
@@ -4025,7 +4170,17 @@ const searchDanmu = () => {
   font-weight: 500;
   color: #303133;
   font-size: 14px;
-  line-height: 40px;
+  line-height: 1;
+}
+
+.reply-to-hint {
+  font-size: 12px;
+  color: #909399;
+  margin-left: 4px;
+}
+
+.reply-to-hint b {
+  color: #409eff;
 }
 
 /* 评论内容样式 */
@@ -4393,23 +4548,6 @@ const searchDanmu = () => {
 /* 视频稿件列表 */
 .article-list {
   margin-bottom: 20px;
-}
-
-/* 进度条单元格样式 */
-.progress-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 140px;
-}
-
-.progress-cell .el-progress {
-  width: 100%;
-}
-
-.progress-text {
-  font-size: 12px;
-  color: #909399;
 }
 
 /* 表格样式调整 */
@@ -6820,78 +6958,39 @@ const searchDanmu = () => {
   padding: 10px 0;
 }
 
+/* 弹幕列表 */
+.danmaku-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 /* 弹幕卡片样式 */
 .danmaku-card {
-  background: #ffffff;
-  border-radius: 8px;
-  padding: 12px 16px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e8e8e8;
-  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s ease;
+}
+
+.danmaku-card:last-child {
+  border-bottom: none;
 }
 
 .danmaku-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border-color: #d0d0d0;
+  background-color: #f5f7fa;
 }
 
-/* 弹幕内容区域 */
-.danmaku-body {
-  background: #f5f5f5;
-  border-radius: 6px;
-  padding: 10px 14px;
-  margin-bottom: 10px;
-}
-
-.danmaku-content {
-  font-size: 14px;
-  line-height: 1.5;
-  font-weight: 500;
-}
-
-/* 弹幕底部信息 */
-.danmaku-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.danmaku-info {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.danmaku-info .el-tag {
-  display: inline-flex;
-  align-items: center;
-}
-
-.danmaku-date {
-  font-size: 12px;
-  color: #909399;
-  white-space: nowrap;
-}
-
-.danmaku-actions {
-  flex-shrink: 0;
-}
-
-/* 弹幕链接样式 */
-.danmaku-link {
+.danmaku-text {
+  flex: 1;
   font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.danmaku-link:hover {
-  text-decoration: underline;
-}
-
-.danmaku-divider {
-  color: #c0c4cc;
-  margin: 0 4px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 /* 弹幕空状态 */
@@ -6900,9 +6999,9 @@ const searchDanmu = () => {
   text-align: center;
 }
 
-/* 弹幕分页样式 */
-.danmaku-list + .el-pagination {
-  margin-top: 20px;
+/* 评论/弹幕分页样式 */
+.interaction-list .el-pagination {
+  margin-top: 12px;
   justify-content: center;
 }
 

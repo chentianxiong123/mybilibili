@@ -19,4 +19,10 @@ public interface AdminUserMapper {
 
     @Select("SELECT * FROM admin_users WHERE id = #{id}")
     AdminUser selectById(Integer id);
+
+    @Update("UPDATE admin_users SET username = #{username}, admin_level = #{adminLevel}, updated_at = NOW() WHERE id = #{id}")
+    int updateById(AdminUser adminUser);
+
+    @Update("UPDATE admin_users SET password = #{password}, updated_at = NOW() WHERE id = #{id}")
+    int updatePassword(@Param("id") Integer id, @Param("password") String password);
 }

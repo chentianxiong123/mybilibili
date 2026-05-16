@@ -1,12 +1,12 @@
 package com.mybilibili.ai.service.impl;
 
+import com.mybilibili.ai.mapper.VideoMapper;
 import com.mybilibili.ai.pipeline.PipelineTask;
 import com.mybilibili.ai.pipeline.VideoPipelineQueueManager;
 import com.mybilibili.ai.service.*;
 import com.mybilibili.ai.utils.SubtitleTextUtils;
 import com.mybilibili.ai.websocket.VideoProcessWebSocketHandler;
 import com.mybilibili.common.entity.Video;
-import com.mybilibili.ai.mapper.VideoMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

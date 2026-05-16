@@ -23,7 +23,7 @@ public class HotSearchServiceImpl implements HotSearchService {
     private static final String KEY_HOT_SEARCH_DETAIL = "hot_search:detail:%s";
     private static final double BASE_SCORE = 10.0;
     private static final double TIME_DECAY_FACTOR = 0.1;
-    private static final long EXPIRE_DAYS = 7;
+    private static final long EXPIRE_DAYS = 30;
 
     @Override
     public void incrementHotSearch(String keyword) {

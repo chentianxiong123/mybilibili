@@ -56,7 +56,7 @@ const formatDate = (dateString) => {
 
 // 获取默认封面
 const getDefaultCover = () => {
-  return 'https://picsum.photos/id/1025/400/225'
+  return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225" viewBox="0 0 400 225"><rect fill="#e5e9ef" width="400" height="225"/><text fill="#9499a0" font-family="sans-serif" font-size="16" x="50%" y="50%" text-anchor="middle" dy=".3em">暂无封面</text></svg>')
 }
 
 // 加载合集列表

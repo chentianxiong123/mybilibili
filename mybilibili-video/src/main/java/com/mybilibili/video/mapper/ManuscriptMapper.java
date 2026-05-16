@@ -32,7 +32,7 @@ public interface ManuscriptMapper extends BaseMapper<Manuscript> {
     @Select("SELECT * FROM manuscripts WHERE status = #{status} ORDER BY upload_time DESC")
     List<Manuscript> selectByStatus(@Param("status") Integer status);
 
-    @Select("SELECT * FROM manuscripts WHERE status = 3 ORDER BY upload_time DESC LIMIT #{offset}, #{size}")
+    @Select("SELECT * FROM manuscripts WHERE status = 3 ORDER BY upload_time DESC LIMIT 0, 60")
     List<Manuscript> selectRecommended(@Param("offset") Integer offset, @Param("size") Integer size);
 
     @Insert("INSERT INTO manuscripts (title, description, cover_url, user_id, category_id, view_count, like_count, coin_count, collect_count, share_count, comment_count, danmaku_count, duration, duration_seconds, status, review_status, upload_time) " +
@@ -61,13 +61,20 @@ public interface ManuscriptMapper extends BaseMapper<Manuscript> {
     @Select("SELECT COUNT(*) FROM manuscripts WHERE user_id = #{userId} AND status = 4")
     Integer countRejectedByUserId(Integer userId);
 
-    @Select("SELECT * FROM manuscripts WHERE category_id = #{categoryId} AND status = 3 ORDER BY upload_time DESC LIMIT #{offset}, #{size}")
+    @Select("SELECT COUNT(*) FROM manuscripts WHERE user_id = #{userId} AND status = -1")
+    Integer countUnpublishedByUserId(Integer userId);
+
+    @Select("SELECT * FROM manuscripts WHERE category_id = #{categoryId} AND status = 3 " +
+            "ORDER BY (view_count*1 + like_count*3 + coin_count*5 + collect_count*5 + comment_count*2 + danmaku_count*2) / (1 + DATEDIFF(NOW(), upload_time) / 7) DESC " +
+            "LIMIT #{offset}, #{size}")
     List<Manuscript> selectByCategoryId(@Param("categoryId") Integer categoryId, @Param("offset") Integer offset, @Param("size") Integer size);
 
     @Select("SELECT COUNT(*) FROM manuscripts WHERE category_id = #{categoryId} AND status = 3")
     Integer countByCategoryId(Integer categoryId);
 
-    @Select("SELECT * FROM manuscripts WHERE status = 3 ORDER BY view_count DESC LIMIT #{offset}, #{size}")
+    @Select("SELECT * FROM manuscripts WHERE status = 3 " +
+            "ORDER BY (view_count*1 + like_count*3 + coin_count*5 + collect_count*5 + comment_count*2 + danmaku_count*2) / (1 + DATEDIFF(NOW(), upload_time) / 7) DESC " +
+            "LIMIT #{offset}, #{size}")
     List<Manuscript> selectHot(@Param("offset") Integer offset, @Param("size") Integer size);
 
     @Select("SELECT id FROM manuscripts WHERE user_id = #{userId}")

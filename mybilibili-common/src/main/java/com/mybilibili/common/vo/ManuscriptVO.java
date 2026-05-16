@@ -73,6 +73,8 @@ public class ManuscriptVO {
         private String bio;
         private String signature;
         private Integer followerCount;
+        private Integer followingCount;
+        private Integer likedCount;
         private Boolean following;
     }
 }

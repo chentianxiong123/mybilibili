@@ -139,6 +139,37 @@ public class ManuscriptController {
         }
     }
 
+    @GetMapping("/internal/{id}")
+    @Operation(summary = "内部获取稿件详情", description = "服务间调用，不增加播放量")
+    public Result<ManuscriptVO> getManuscriptByIdInternal(@PathVariable Integer id) {
+        try {
+            ManuscriptVO manuscriptVO = manuscriptService.getManuscriptById(id);
+            if (manuscriptVO == null) {
+                return Result.error("稿件不存在");
+            }
+            return Result.success("获取成功", manuscriptVO);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @PutMapping("/internal/{id}/take-down")
+    @Operation(summary = "内部下架稿件", description = "服务间调用，下架违规稿件")
+    public Result<?> takeDownManuscriptInternal(@PathVariable Integer id) {
+        try {
+            Manuscript manuscript = new Manuscript();
+            manuscript.setId(id);
+            manuscript.setStatus(Manuscript.STATUS_UNPUBLISHED);
+            manuscript.setReviewStatus(Manuscript.REVIEW_STATUS_REJECTED);
+            manuscript.setReviewReason("举报违规，管理员下架");
+            manuscript.setReviewTime(new java.util.Date());
+            manuscriptService.updateManuscript(id, manuscript);
+            return Result.success("下架成功");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
     @GetMapping("/user/{userId}")
     @Operation(summary = "获取用户稿件列表", description = "根据用户ID获取稿件列表，支持状态筛选")
     public Result<List<ManuscriptVO>> getManuscriptsByUserId(

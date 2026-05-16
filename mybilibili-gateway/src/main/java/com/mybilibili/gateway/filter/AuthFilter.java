@@ -31,7 +31,6 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/api/user/register",
             "/api/user/check",
             "/api/admin/login",
-            "/api/admin/register",
             "/api/video/play",
             "/api/video/recommended",
             "/api/video/hot",
@@ -57,7 +56,8 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/covers/",
             "/videos/",
             "/api/ai/process/",
-            "/api/ai/summary/"
+            "/api/ai/summary/",
+            "/api/ai/admin/process/stream"
     );
 
     private static final List<String> PUBLIC_PATHS = Arrays.asList(
