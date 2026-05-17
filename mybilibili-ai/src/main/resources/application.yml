@@ -37,7 +37,7 @@ rocketmq:
 
 ai:
   deepseek:
-    api-key: "${AI_DEEPSEEK_API_KEY}"
+    api-key: ""
     api-url: "https://api.qnaigc.com/v1/chat/completions"
     model: "deepseek-r1"
     max-tokens: 2000

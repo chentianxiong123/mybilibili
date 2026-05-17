@@ -94,6 +94,9 @@ whisper/
 # 环境变量文件 (包含敏感密钥)
 .env
 
+# 开发环境配置文件 (包含本地密钥)
+**/application-dev.yml
+
 # RocketMQ 等消息队列本地存储
 store/
 logs/

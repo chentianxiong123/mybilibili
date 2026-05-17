@@ -36,7 +36,7 @@ Write-Host "[8/11] Starting Message (port 8087) ..."
 Start-Process powershell -ArgumentList "-NoExit -Command `"cd '$scriptDir\mybilibili-message'; mvn spring-boot:run`""
 
 Write-Host "[9/11] Starting AI (port 8088) ..."
-Start-Process powershell -ArgumentList "-NoExit -Command `"cd '$scriptDir\mybilibili-ai'; mvn spring-boot:run`""
+Start-Process powershell -ArgumentList "-NoExit -Command `"cd '$scriptDir\mybilibili-ai'; mvn spring-boot:run -Dspring-boot.run.profiles=dev`""
 
 Write-Host "[10/11] Starting User Frontend (port 5173) ..."
 Start-Process powershell -ArgumentList "-NoExit -Command `"cd '$scriptDir\mybilibili-web'; npm run dev`""
