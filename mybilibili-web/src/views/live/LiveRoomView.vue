@@ -2,8 +2,10 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Microphone, MicrophoneOff, Video, VideoOff, Phone, PhoneFilled } from '@element-plus/icons-vue'
 import flvJs from 'flv.js'
 import { liveApi } from '../../api/live.js'
+import { linkmicApi } from '../../api/linkmic.js'
 
 const route = useRoute()
 const roomId = route.params.roomId
@@ -26,6 +28,21 @@ let flvPlayer = null
 
 const danmakuColors = ['#fff', '#ff6b81', '#fad34a', '#4fc3f7', '#a78bfa', '#34d399']
 
+// 连麦相关
+const isLinkmicVisible = ref(false)
+const myLinkmicId = ref(null)  // 我的连麦ID
+const activeLinkmics = ref([])
+const pendingApplications = ref([])
+const linkmicLoading = ref(false)
+
+// 连麦者视频相关（用于主播端显示连麦者画面）
+const linkmicStreams = ref({})
+let linkmicWs = null
+
+// 当前用户信息（从cookie模拟，实际应该从store获取）
+const currentUserId = ref(parseInt(document.cookie.match(/userId=(\d+)/)?.[1] || '0') || 0)
+const isStreamer = ref(false)
+
 onMounted(async () => {
   try {
     console.log('[LiveRoom] 加载直播间, roomId:', roomId)
@@ -33,6 +50,7 @@ onMounted(async () => {
     console.log('[LiveRoom] API响应:', res)
     if (res.code === 200) {
       room.value = res.data
+      isStreamer.value = currentUserId.value === room.value?.userId
       console.log('[LiveRoom] 房间数据:', res.data, 'streamKey:', res.data?.streamKey)
     } else {
       console.error('[LiveRoom] 非200响应:', res)
@@ -43,7 +61,6 @@ onMounted(async () => {
     ElMessage.error('加载失败')
   } finally {
     loading.value = false
-    // 等 DOM 更新（loading=false 后 video 才出现）
     await nextTick()
     await new Promise(r => setTimeout(r, 100))
     const videoEl = document.querySelector('.live-video')
@@ -54,6 +71,10 @@ onMounted(async () => {
       console.error('[LiveRoom] video元素不存在')
     }
   }
+
+  // 加载连麦状态
+  await loadLinkmicStatus()
+  connectLinkmicWebSocket()
 })
 
 onUnmounted(() => {
@@ -62,22 +83,15 @@ onUnmounted(() => {
     flvPlayer.unload()
     flvPlayer.detachMediaElement()
   }
+  disconnectLinkmic()
 })
 
 const initPlayer = (videoEl) => {
-  if (!room.value) {
-    console.log('[LiveRoom] initPlayer: room为空，跳过')
-    return
-  }
+  if (!room.value) return
   const video = videoEl || videoRef.value
-  if (!video) {
-    console.error('[LiveRoom] initPlayer: video元素为空')
-    return
-  }
-  // FLV 播放地址
+  if (!video) return
   const flvUrl = `http://${window.location.hostname}:28080/live/${room.value.streamKey}.flv`
   console.log('[LiveRoom] FLV地址:', flvUrl)
-  console.log('[LiveRoom] flv.js支持:', flvJs.isSupported())
 
   if (flvJs.isSupported()) {
     flvPlayer = flvJs.createPlayer({
@@ -99,13 +113,179 @@ const initPlayer = (videoEl) => {
     flvPlayer.on(flvJs.Events.Error, (errType, errDetail, errInfo) => {
       console.error('[LiveRoom] 播放器错误:', errType, errDetail, errInfo)
     })
-    console.log('[LiveRoom] 播放器已创建并开始播放')
-  } else {
-    console.error('[LiveRoom] 浏览器不支持flv.js')
-    ElMessage.warning('您的浏览器不支持FLV播放，请使用Chrome')
   }
 }
 
+// ============ 连麦功能 ============
+const loadLinkmicStatus = async () => {
+  try {
+    const res = await linkmicApi.getActiveLinkmics(roomId)
+    if (res.code === 200) {
+      activeLinkmics.value = res.data || []
+    }
+    if (isStreamer.value) {
+      const pendingRes = await linkmicApi.getPendingApplications(roomId)
+      if (pendingRes.code === 200) {
+        pendingApplications.value = pendingRes.data || []
+      }
+    }
+  } catch (e) {
+    console.error('加载连麦状态失败:', e)
+  }
+}
+
+const connectLinkmicWebSocket = () => {
+  const wsUrl = `ws://${window.location.host}/ws/meeting`
+  linkmicWs = new WebSocket(wsUrl)
+
+  linkmicWs.onopen = () => {
+    console.log('[Linkmic WS] 连接成功')
+  }
+
+  linkmicWs.onmessage = async (event) => {
+    const msg = JSON.parse(event.data)
+    console.log('[Linkmic WS] 收到消息:', msg.type)
+
+    switch (msg.type) {
+      case 'linkmic-apply':
+        if (isStreamer.value) {
+          pendingApplications.value.push(msg.data)
+        }
+        break
+      case 'linkmic-accepted':
+        myLinkmicId.value = msg.data.linkmicId
+        ElMessage.success('连麦已接通')
+        break
+      case 'linkmic-rejected':
+        ElMessage.warning('连麦被拒绝')
+        break
+      case 'linkmic-disconnected':
+        removeLinkmicStream(msg.data.viewerId)
+        break
+      case 'offer':
+      case 'answer':
+      case 'ice-candidate':
+        await handleLinkmicSignaling(msg)
+        break
+    }
+  }
+
+  linkmicWs.onclose = () => {
+    console.log('[Linkmic WS] 断开')
+  }
+}
+
+// 观众申请连麦
+const applyLinkmic = async () => {
+  if (!currentUserId.value) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  linkmicLoading.value = true
+  try {
+    const res = await linkmicApi.applyLinkmic(roomId)
+    if (res.code === 200) {
+      myLinkmicId.value = res.data.id
+      ElMessage.success('连麦申请已发送，请等待主播同意')
+
+      if (linkmicWs && linkmicWs.readyState === WebSocket.OPEN) {
+        linkmicWs.send(JSON.stringify({
+          type: 'linkmic-apply',
+          roomCode: room.value?.streamKey,
+          userId: currentUserId.value,
+          data: res.data
+        }))
+      }
+    } else {
+      ElMessage.error(res.message || '申请失败')
+    }
+  } catch (e) {
+    ElMessage.error('申请连麦失败')
+  } finally {
+    linkmicLoading.value = false
+  }
+}
+
+// 主播同意连麦
+const acceptLinkmic = async (linkmic) => {
+  try {
+    await linkmicApi.acceptLinkmic(linkmic.id)
+    linkmic.status = 1
+
+    if (linkmicWs && linkmicWs.readyState === WebSocket.OPEN) {
+      linkmicWs.send(JSON.stringify({
+        type: 'linkmic-accepted',
+        roomCode: room.value?.streamKey,
+        userId: linkmic.viewerId,
+        data: { linkmicId: linkmic.id }
+      }))
+    }
+
+    activeLinkmics.value.push(linkmic)
+    pendingApplications.value = pendingApplications.value.filter(a => a.id !== linkmic.id)
+    ElMessage.success('已同意连麦')
+  } catch (e) {
+    ElMessage.error('操作失败')
+  }
+}
+
+// 主播拒绝连麦
+const rejectLinkmic = async (linkmic) => {
+  try {
+    await linkmicApi.rejectLinkmic(linkmic.id)
+    pendingApplications.value = pendingApplications.value.filter(a => a.id !== linkmic.id)
+
+    if (linkmicWs && linkmicWs.readyState === WebSocket.OPEN) {
+      linkmicWs.send(JSON.stringify({
+        type: 'linkmic-rejected',
+        roomCode: room.value?.streamKey,
+        userId: linkmic.viewerId,
+        data: {}
+      }))
+    }
+  } catch (e) {
+    ElMessage.error('操作失败')
+  }
+}
+
+// 断开连麦
+const disconnectLinkmic = async (linkmic) => {
+  try {
+    await linkmicApi.disconnectLinkmic(linkmic.id)
+    removeLinkmicStream(linkmic.viewerId)
+    activeLinkmics.value = activeLinkmics.value.filter(l => l.id !== linkmic.id)
+
+    if (linkmicWs && linkmicWs.readyState === WebSocket.OPEN) {
+      linkmicWs.send(JSON.stringify({
+        type: 'linkmic-disconnected',
+        roomCode: room.value?.streamKey,
+        userId: linkmic.viewerId,
+        data: { viewerId: linkmic.viewerId }
+      }))
+    }
+  } catch (e) {
+    ElMessage.error('操作失败')
+  }
+}
+
+// WebRTC 信令处理（简化版，实际需要更完整的逻辑）
+let linkmicPeerConnections = {}
+
+const handleLinkmicSignaling = async (msg) => {
+  // 这里需要完整的 WebRTC 连接逻辑
+  // 由于连麦涉及到主播和观众之间的 P2P 连接，需要更复杂的实现
+  console.log('[Linkmic] 信令消息:', msg.type, msg.userId)
+}
+
+const removeLinkmicStream = (viewerId) => {
+  if (linkmicPeerConnections[viewerId]) {
+    linkmicPeerConnections[viewerId].close()
+    delete linkmicPeerConnections[viewerId]
+  }
+  delete linkmicStreams.value[viewerId]
+}
+
+// ============ 弹幕功能 ============
 const sendDanmaku = () => {
   const text = danmakuText.value.trim()
   if (!text) return
@@ -154,6 +334,39 @@ const sendDanmaku = () => {
                 <span class="live-status-dot" />
                 <span>直播中</span>
                 <span class="viewer">{{ room.viewerCount || 0 }} 人观看</span>
+              </div>
+            </div>
+
+            <!-- 连麦视频区域（主播端显示连麦者） -->
+            <div v-if="activeLinkmics.length > 0" class="linkmic-videos">
+              <div v-for="linkmic in activeLinkmics" :key="linkmic.id" class="linkmic-video-card">
+                <video :id="'linkmic-' + linkmic.viewerId" autoplay playsinline />
+                <div class="linkmic-name">{{ linkmic.viewerName }}</div>
+                <div class="linkmic-actions">
+                  <el-button size="small" type="danger" @click="disconnectLinkmic(linkmic)">
+                    断开
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 观众端连麦按钮 -->
+          <div v-if="!isStreamer && !myLinkmicId" class="linkmic-apply-bar">
+            <el-button type="primary" size="large" round @click="applyLinkmic" :loading="linkmicLoading">
+              <el-icon><Phone /></el-icon>
+              申请连麦
+            </el-button>
+          </div>
+
+          <!-- 主播端连麦管理 -->
+          <div v-if="isStreamer && pendingApplications.length > 0" class="linkmic-pending-bar">
+            <div class="pending-title">连麦申请 ({{ pendingApplications.length }})</div>
+            <div class="pending-list">
+              <div v-for="app in pendingApplications" :key="app.id" class="pending-item">
+                <span>{{ app.viewerName }}</span>
+                <el-button size="small" type="success" @click="acceptLinkmic(app)">同意</el-button>
+                <el-button size="small" type="danger" @click="rejectLinkmic(app)">拒绝</el-button>
               </div>
             </div>
           </div>
@@ -230,6 +443,74 @@ const sendDanmaku = () => {
 .live-status-dot { width: 8px; height: 8px; background: #f04040; border-radius: 50%; animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 .viewer { color: #9499a0; }
+
+/* 连麦视频 */
+.linkmic-videos {
+  position: absolute;
+  top: 60px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 10;
+}
+.linkmic-video-card {
+  width: 160px;
+  height: 120px;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+.linkmic-video-card video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.linkmic-name {
+  position: absolute;
+  bottom: 4px;
+  left: 8px;
+  font-size: 12px;
+  color: #fff;
+}
+.linkmic-actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+/* 连麦申请栏 */
+.linkmic-apply-bar {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.linkmic-pending-bar {
+  background: rgba(0,0,0,0.8);
+  padding: 12px 16px;
+  border-top: 1px solid #333;
+}
+.pending-title {
+  color: #fff;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.pending-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pending-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 13px;
+}
 
 .chat-section { width: 320px; background: #fff; display: flex; flex-direction: column; border-left: 1px solid #e3e5e7; }
 .chat-header { padding: 16px; font-weight: 600; border-bottom: 1px solid #e3e5e7; }

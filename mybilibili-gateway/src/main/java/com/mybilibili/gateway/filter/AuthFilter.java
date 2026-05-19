@@ -57,7 +57,21 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/videos/",
             "/api/ai/process/",
             "/api/ai/summary/",
-            "/api/ai/admin/process/stream"
+            "/api/ai/admin/process/stream",
+            // 直播（无需登录）
+            "/api/live/room/list",
+            "/api/live/room/",
+            "/api/live/room/my",
+            // 会议（无需登录）
+            "/api/meeting/create",
+            "/api/meeting/room/",
+            "/api/meeting/join/",
+            "/api/meeting/my-rooms",
+            "/api/meeting/participants/",
+            // 连麦（无需登录）
+            "/api/live/linkmic/apply/",
+            "/api/live/linkmic/active/",
+            "/api/live/linkmic/pending/"
     );
 
     private static final List<String> PUBLIC_PATHS = Arrays.asList(
@@ -146,6 +160,10 @@ public class AuthFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isWhitelisted(String path) {
+        // 直播相关路径无需登录
+        if (path.startsWith("/api/live/")) {
+            return true;
+        }
         if (AUTH_REQUIRED_PATHS.stream().anyMatch(path::startsWith)) {
             return false;
         }
