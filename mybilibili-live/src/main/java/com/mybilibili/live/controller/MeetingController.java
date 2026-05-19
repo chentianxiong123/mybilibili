@@ -13,7 +13,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/meeting")
+@RequestMapping("/meeting")
 public class MeetingController {
 
     @Autowired

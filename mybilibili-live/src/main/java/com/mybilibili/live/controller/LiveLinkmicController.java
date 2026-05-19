@@ -12,7 +12,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/live/linkmic")
+@RequestMapping("/live/linkmic")
 public class LiveLinkmicController {
 
     @Autowired
