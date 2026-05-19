@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Microphone, MicrophoneOff, Video, VideoOff, Users, CopyDocument, Plus, Monitor } from '@element-plus/icons-vue'
@@ -9,20 +9,37 @@ const router = useRouter()
 const loading = ref(false)
 const myRooms = ref([])
 const joinCode = ref('')
-const createDialogVisible = ref(false)
 const newRoomName = ref('')
+
+// 当前用户（从 localStorage 读，登录态保证；未登录用临时 ID 兜底）
+const getCurrentUser = () => {
+  try {
+    const u = JSON.parse(localStorage.getItem('user') || '{}')
+    if (u && u.id) return { id: Number(u.id), name: u.username || u.nickname || ('用户' + u.id) }
+  } catch (e) {}
+  // 未登录场景的临时身份
+  let tmp = sessionStorage.getItem('meetingTmpId')
+  if (!tmp) {
+    tmp = String(Date.now() % 1000000)
+    sessionStorage.setItem('meetingTmpId', tmp)
+  }
+  return { id: Number(tmp), name: '访客' + tmp }
+}
+const me = ref(getCurrentUser())
 
 const localStream = ref(null)
 const localVideoRef = ref(null)
-const participants = ref([])
-let ws = null
-let peerConnections = {}
-const remoteStreams = ref({})
+const currentRoom = ref(null)
+
+// 远端：peerId(=对端 userId) -> { stream, name }
+const remotePeers = reactive({})    // 响应式，驱动 video 网格
+const peerConnections = {}          // 非响应式，纯运行时
+const pendingIce = {}               // setRemote 之前到的 ice 暂存
 
 const audioEnabled = ref(true)
 const videoEnabled = ref(true)
-const currentRoom = ref(null)
 const screenShareEnabled = ref(false)
+let ws = null
 
 onMounted(async () => {
   await loadMyRooms()
@@ -53,7 +70,6 @@ const createRoom = async () => {
     const res = await meetingApi.createRoom(newRoomName.value)
     if (res.code === 200) {
       ElMessage.success('创建成功')
-      createDialogVisible.value = false
       newRoomName.value = ''
       await loadMyRooms()
       await joinRoomByCode(res.data.roomCode)
@@ -90,6 +106,7 @@ const joinRoomByCode = async (code) => {
     connectWebSocket(roomCode)
     ElMessage.success('加入成功')
   } catch (e) {
+    console.error(e)
     ElMessage.error('加入失败')
   } finally {
     loading.value = false
@@ -98,45 +115,51 @@ const joinRoomByCode = async (code) => {
 
 const startLocalStream = async () => {
   try {
-    localStream.value = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true
-    })
+    localStream.value = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    await nextTick()
     if (localVideoRef.value) {
       localVideoRef.value.srcObject = localStream.value
     }
   } catch (e) {
+    console.error(e)
     ElMessage.error('无法获取摄像头/麦克风')
   }
 }
 
 const connectWebSocket = (roomCode) => {
-  const userId = parseInt(document.cookie.match(/userId=(\d+)/)?.[1] || '0') || Date.now()
-  ws = new WebSocket(`ws://${window.location.host}/ws/meeting`)
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
+  ws = new WebSocket(`${proto}//${location.host}/ws/meeting`)
 
   ws.onopen = () => {
     ws.send(JSON.stringify({
       type: 'join',
       roomCode,
-      userId,
-      userName: '用户' + userId
+      userId: me.value.id,
+      userName: me.value.name
     }))
   }
 
-  ws.onmessage = (event) => {
-    const msg = JSON.parse(event.data)
-    handleSignaling(msg)
+  ws.onmessage = async (event) => {
+    let msg
+    try { msg = JSON.parse(event.data) } catch { return }
+    await handleSignaling(msg)
   }
 
-  ws.onclose = () => {
-    console.log('[Meeting] WebSocket 断开')
-  }
+  ws.onclose = () => console.log('[Meeting WS] 断开')
+  ws.onerror = (e) => console.error('[Meeting WS] 错误', e)
 }
 
 const handleSignaling = async (msg) => {
   switch (msg.type) {
+    case 'room-users':
+      // 我是新人，对每个已有成员发起 offer
+      for (const u of (msg.data || [])) {
+        await createPeerConnection(u.userId, true)
+      }
+      break
     case 'user-joined':
-      await createPeerConnection(msg.userId, true)
+      // 我是已有成员，等新人发 offer 过来即可（不主动发，避免双方都发 offer）
+      console.log('[Meeting] 新成员加入', msg.userId)
       break
     case 'user-left':
       removePeerConnection(msg.userId)
@@ -150,14 +173,12 @@ const handleSignaling = async (msg) => {
     case 'ice-candidate':
       await handleIceCandidate(msg.userId, msg.data)
       break
-    case 'toggle-audio':
-    case 'toggle-video':
-    case 'toggle-screen':
-      break
   }
 }
 
 const createPeerConnection = async (peerId, isInitiator) => {
+  if (peerConnections[peerId]) return peerConnections[peerId]
+
   const pc = new RTCPeerConnection({
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
   })
@@ -170,11 +191,7 @@ const createPeerConnection = async (peerId, isInitiator) => {
   }
 
   pc.ontrack = (event) => {
-    remoteStreams.value[peerId] = event.streams[0]
-    const videoEl = document.getElementById('video-' + peerId)
-    if (videoEl) {
-      videoEl.srcObject = event.streams[0]
-    }
+    remotePeers[peerId] = { stream: event.streams[0], name: '参与者' + peerId }
   }
 
   pc.onicecandidate = (event) => {
@@ -183,114 +200,135 @@ const createPeerConnection = async (peerId, isInitiator) => {
     }
   }
 
+  pc.onconnectionstatechange = () => {
+    if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) {
+      console.log('[Meeting] 连接状态', peerId, pc.connectionState)
+    }
+  }
+
   if (isInitiator) {
     const offer = await pc.createOffer()
     await pc.setLocalDescription(offer)
     sendSignaling('offer', peerId, offer.sdp)
   }
+  return pc
 }
 
 const handleOffer = async (peerId, sdp) => {
-  await createPeerConnection(peerId, false)
-  await peerConnections[peerId].setRemoteDescription({ type: 'offer', sdp })
-  const answer = await peerConnections[peerId].createAnswer()
-  await peerConnections[peerId].setLocalDescription(answer)
+  const pc = await createPeerConnection(peerId, false)
+  await pc.setRemoteDescription({ type: 'offer', sdp })
+  // flush 暂存 ice
+  if (pendingIce[peerId]) {
+    for (const c of pendingIce[peerId]) await pc.addIceCandidate(c)
+    delete pendingIce[peerId]
+  }
+  const answer = await pc.createAnswer()
+  await pc.setLocalDescription(answer)
   sendSignaling('answer', peerId, answer.sdp)
 }
 
 const handleAnswer = async (peerId, sdp) => {
-  if (peerConnections[peerId]) {
-    await peerConnections[peerId].setRemoteDescription({ type: 'answer', sdp })
+  const pc = peerConnections[peerId]
+  if (!pc) return
+  await pc.setRemoteDescription({ type: 'answer', sdp })
+  if (pendingIce[peerId]) {
+    for (const c of pendingIce[peerId]) await pc.addIceCandidate(c)
+    delete pendingIce[peerId]
   }
 }
 
 const handleIceCandidate = async (peerId, candidate) => {
-  if (peerConnections[peerId]) {
-    await peerConnections[peerId].addIceCandidate(candidate)
+  const pc = peerConnections[peerId]
+  if (pc && pc.remoteDescription) {
+    try { await pc.addIceCandidate(candidate) } catch (e) { console.warn('addIceCandidate', e) }
+  } else {
+    (pendingIce[peerId] = pendingIce[peerId] || []).push(candidate)
   }
 }
 
-const sendSignaling = (type, peerId, data) => {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    const userId = parseInt(document.cookie.match(/userId=(\d+)/)?.[1] || '0') || Date.now()
-    ws.send(JSON.stringify({
-      type,
-      roomCode: currentRoom.value?.roomCode,
-      userId,
-      userName: '用户' + userId,
-      data
-    }))
+const sendSignaling = (type, targetUserId, data) => {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return
+  ws.send(JSON.stringify({
+    type,
+    roomCode: currentRoom.value?.roomCode,
+    userId: me.value.id,
+    userName: me.value.name,
+    targetUserId,
+    data
+  }))
+}
+
+const removePeerConnection = (peerId) => {
+  const pc = peerConnections[peerId]
+  if (pc) {
+    pc.close()
+    delete peerConnections[peerId]
   }
+  delete remotePeers[peerId]
+  delete pendingIce[peerId]
 }
 
 const toggleAudio = () => {
-  if (localStream.value) {
-    const audioTrack = localStream.value.getAudioTracks()[0]
-    if (audioTrack) {
-      audioTrack.enabled = !audioTrack.enabled
-      audioEnabled.value = audioTrack.enabled
-    }
+  if (!localStream.value) return
+  const track = localStream.value.getAudioTracks()[0]
+  if (track) {
+    track.enabled = !track.enabled
+    audioEnabled.value = track.enabled
   }
 }
 
 const toggleVideo = () => {
-  if (localStream.value) {
-    const videoTrack = localStream.value.getVideoTracks()[0]
-    if (videoTrack) {
-      videoTrack.enabled = !videoTrack.enabled
-      videoEnabled.value = videoTrack.enabled
-    }
+  if (!localStream.value) return
+  const track = localStream.value.getVideoTracks()[0]
+  if (track) {
+    track.enabled = !track.enabled
+    videoEnabled.value = track.enabled
   }
 }
 
 const startScreenShare = async () => {
+  if (screenShareEnabled.value) return stopScreenShare()
   try {
     const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
     const screenTrack = screenStream.getVideoTracks()[0]
-
-    // 替换所有 peer connection 中的视频轨道
     Object.values(peerConnections).forEach(pc => {
-      const senders = pc.getSenders()
-      const videoSender = senders.find(s => s.track?.kind === 'video')
-      if (videoSender) {
-        videoSender.replaceTrack(screenTrack)
-      }
+      const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video')
+      if (sender) sender.replaceTrack(screenTrack)
     })
-
+    if (localVideoRef.value) localVideoRef.value.srcObject = screenStream
     screenShareEnabled.value = true
-    screenTrack.onended = () => {
-      stopScreenShare()
-    }
+    screenTrack.onended = () => stopScreenShare()
   } catch (e) {
-    ElMessage.error('屏幕共享失败')
+    if (e.name !== 'NotAllowedError') ElMessage.error('屏幕共享失败')
   }
 }
 
 const stopScreenShare = () => {
-  if (localStream.value) {
-    const videoTrack = localStream.value.getVideoTracks()[0]
-    Object.values(peerConnections).forEach(pc => {
-      const senders = pc.getSenders()
-      const videoSender = senders.find(s => s.track?.kind === 'video')
-      if (videoSender && videoTrack) {
-        videoSender.replaceTrack(videoTrack)
-      }
-    })
-  }
+  if (!localStream.value) return
+  const cameraTrack = localStream.value.getVideoTracks()[0]
+  Object.values(peerConnections).forEach(pc => {
+    const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video')
+    if (sender && cameraTrack) sender.replaceTrack(cameraTrack)
+  })
+  if (localVideoRef.value) localVideoRef.value.srcObject = localStream.value
   screenShareEnabled.value = false
 }
 
 const cleanup = () => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    try {
+      ws.send(JSON.stringify({
+        type: 'leave',
+        roomCode: currentRoom.value?.roomCode,
+        userId: me.value.id
+      }))
+    } catch (e) {}
+  }
+  if (ws) { ws.close(); ws = null }
+  Object.keys(peerConnections).forEach(removePeerConnection)
   if (localStream.value) {
     localStream.value.getTracks().forEach(t => t.stop())
     localStream.value = null
-  }
-  Object.values(peerConnections).forEach(pc => pc.close())
-  peerConnections = {}
-  remoteStreams.value = {}
-  if (ws) {
-    ws.close()
-    ws = null
   }
 }
 
@@ -302,14 +340,23 @@ const copyRoomCode = (code) => {
 
 const leaveRoom = async () => {
   if (currentRoom.value) {
-    await meetingApi.leaveRoom(currentRoom.value.id)
+    try { await meetingApi.leaveRoom(currentRoom.value.id) } catch (e) {}
   }
   cleanup()
   currentRoom.value = null
-  router.push('/meeting')
+  await loadMyRooms()
 }
 
-const remotePeerIds = computed(() => Object.keys(peerConnections))
+// video 元素 ref 回调：把对应 peer 的 stream 绑上去
+const setRemoteVideo = (peerId, el) => {
+  if (!el) return
+  const peer = remotePeers[peerId]
+  if (peer && peer.stream && el.srcObject !== peer.stream) {
+    el.srcObject = peer.stream
+  }
+}
+
+const remotePeerIds = computed(() => Object.keys(remotePeers))
 </script>
 
 <template>
@@ -349,8 +396,8 @@ const remotePeerIds = computed(() => Object.keys(peerConnections))
 
         <!-- 远端视频 -->
         <div v-for="peerId in remotePeerIds" :key="peerId" class="video-card">
-          <video :id="'video-' + peerId" autoplay playsinline class="video-element" />
-          <div class="video-label">参与者 {{ remotePeerIds.indexOf(peerId) + 1 }}</div>
+          <video :ref="el => setRemoteVideo(peerId, el)" autoplay playsinline class="video-element" />
+          <div class="video-label">{{ remotePeers[peerId]?.name || ('参与者 ' + (remotePeerIds.indexOf(peerId) + 1)) }}</div>
         </div>
       </div>
 

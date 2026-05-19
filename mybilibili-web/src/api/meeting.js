@@ -1,22 +1,22 @@
-import { request } from '../utils/request'
+import api from './index.js'
 
 export const meetingApi = {
-  createRoom: (roomName) => {
-    return request.post('/api/meeting/create', null, { params: { roomName } })
+  createRoom(roomName) {
+    return api.post('/meeting/create', null, { params: { roomName } })
   },
-  getRoom: (roomCode) => {
-    return request.get(`/api/meeting/room/${roomCode}`)
+  getRoom(roomCode) {
+    return api.get(`/meeting/room/${roomCode}`)
   },
-  getMyRooms: () => {
-    return request.get('/api/meeting/my-rooms')
+  getMyRooms() {
+    return api.get('/meeting/my-rooms')
   },
-  joinRoom: (roomCode) => {
-    return request.post(`/api/meeting/join/${roomCode}`)
+  joinRoom(roomCode) {
+    return api.post(`/meeting/join/${roomCode}`)
   },
-  leaveRoom: (roomId) => {
-    return request.post(`/api/meeting/leave/${roomId}`)
+  leaveRoom(roomId) {
+    return api.post(`/meeting/leave/${roomId}`)
   },
-  getParticipants: (roomId) => {
-    return request.get(`/api/meeting/participants/${roomId}`)
+  getParticipants(roomId) {
+    return api.get(`/meeting/participants/${roomId}`)
   }
 }

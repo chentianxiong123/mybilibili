@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -26,12 +25,14 @@ public class MeetingWebSocketHandler extends TextWebSocketHandler {
     private final Map<String, Map<String, WebSocketSession>> roomSessions = new ConcurrentHashMap<>();
     private final Map<String, String> sessionRooms = new ConcurrentHashMap<>();
     private final Map<String, Long> sessionUsers = new ConcurrentHashMap<>();
+    private final Map<String, String> sessionUserNames = new ConcurrentHashMap<>();
 
     public static class SignalingMessage {
         public String type;
         public String roomCode;
         public Long userId;
         public String userName;
+        public Long targetUserId;
         public Object data;
     }
 
@@ -44,7 +45,8 @@ public class MeetingWebSocketHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         try {
             SignalingMessage msg = objectMapper.readValue(message.getPayload(), SignalingMessage.class);
-            log.info("[Meeting WS] type={}, roomCode={}, userId={}", msg.type, msg.roomCode, msg.userId);
+            log.info("[Meeting WS] type={}, roomCode={}, userId={}, target={}",
+                    msg.type, msg.roomCode, msg.userId, msg.targetUserId);
 
             switch (msg.type) {
                 case "join":
@@ -65,9 +67,11 @@ public class MeetingWebSocketHandler extends TextWebSocketHandler {
                 case "toggle-screen":
                     handleSignaling(session, msg);
                     break;
+                default:
+                    log.warn("[Meeting WS] 未知消息类型: {}", msg.type);
             }
         } catch (Exception e) {
-            log.error("[Meeting WS] 处理消息失败: {}", e.getMessage());
+            log.error("[Meeting WS] 处理消息失败: {}", e.getMessage(), e);
         }
     }
 
@@ -75,73 +79,102 @@ public class MeetingWebSocketHandler extends TextWebSocketHandler {
         String roomCode = msg.roomCode;
         roomSessions.computeIfAbsent(roomCode, k -> new ConcurrentHashMap<>());
         Map<String, WebSocketSession> sessions = roomSessions.get(roomCode);
+
+        // 先收集已有的成员（在添加新成员之前）
+        List<Map<String, Object>> existingUsers = new ArrayList<>();
+        for (WebSocketSession s : sessions.values()) {
+            Long uid = sessionUsers.get(s.getId());
+            String uname = sessionUserNames.get(s.getId());
+            if (uid != null) {
+                Map<String, Object> u = new ConcurrentHashMap<>();
+                u.put("userId", uid);
+                u.put("userName", uname == null ? "" : uname);
+                existingUsers.add(u);
+            }
+        }
+
+        // 注册新成员
         sessions.put(session.getId(), session);
         sessionRooms.put(session.getId(), roomCode);
         sessionUsers.put(session.getId(), msg.userId);
+        sessionUserNames.put(session.getId(), msg.userName == null ? "" : msg.userName);
 
+        // 通知现有成员，有新人加入（让他们发起 offer）
         for (WebSocketSession s : sessions.values()) {
             if (!s.getId().equals(session.getId())) {
-                sendMessage(s, "user-joined", msg.userId, msg.userName, null);
+                sendMessage(s, "user-joined", msg.userId, msg.userName, null, null);
             }
         }
 
-        List<String> userIds = sessions.values().stream()
-                .filter(s -> !s.getId().equals(session.getId()))
-                .map(s -> s.getId())
-                .collect(Collectors.toList());
-        sendMessage(session, "room-users", null, null, userIds);
+        // 把现有成员列表发给新人
+        sendMessage(session, "room-users", null, null, null, existingUsers);
     }
 
     private void handleLeave(WebSocketSession session, SignalingMessage msg) throws IOException {
+        Long userId = sessionUsers.get(session.getId());
+        String userName = sessionUserNames.get(session.getId());
+        String roomCode = sessionRooms.get(session.getId());
         removeSession(session);
-        String roomCode = msg.roomCode;
-        Map<String, WebSocketSession> sessions = roomSessions.get(roomCode);
-        if (sessions != null) {
-            for (WebSocketSession s : sessions.values()) {
-                sendMessage(s, "user-left", msg.userId, msg.userName, null);
+        if (roomCode != null) {
+            Map<String, WebSocketSession> sessions = roomSessions.get(roomCode);
+            if (sessions != null) {
+                for (WebSocketSession s : sessions.values()) {
+                    sendMessage(s, "user-left", userId, userName, null, null);
+                }
             }
         }
     }
 
+    /**
+     * 信令转发：
+     * - 如果指定了 targetUserId，仅投递给该用户（精确路由 offer/answer/ice）
+     * - 否则广播给房间内除自己外的所有人（房间级通知，比如 linkmic-apply）
+     */
     private void handleSignaling(WebSocketSession session, SignalingMessage msg) throws IOException {
         String roomCode = sessionRooms.get(session.getId());
         if (roomCode == null) return;
         Map<String, WebSocketSession> sessions = roomSessions.get(roomCode);
         if (sessions == null) return;
 
+        if (msg.targetUserId != null) {
+            for (WebSocketSession s : sessions.values()) {
+                Long uid = sessionUsers.get(s.getId());
+                if (uid != null && uid.equals(msg.targetUserId)) {
+                    sendMessage(s, msg.type, msg.userId, msg.userName, msg.targetUserId, msg.data);
+                    return;
+                }
+            }
+            log.warn("[Meeting WS] 找不到 targetUserId={} 在房间 {}", msg.targetUserId, roomCode);
+            return;
+        }
+
         for (WebSocketSession s : sessions.values()) {
             if (!s.getId().equals(session.getId())) {
-                sendMessage(s, msg.type, msg.userId, msg.userName, msg.data);
+                sendMessage(s, msg.type, msg.userId, msg.userName, null, msg.data);
             }
         }
     }
 
-    private void handleMediaToggle(WebSocketSession session, SignalingMessage msg) throws IOException {
-        String roomCode = sessionRooms.get(session.getId());
-        if (roomCode == null) return;
-        Map<String, WebSocketSession> sessions = roomSessions.get(roomCode);
-        if (sessions == null) return;
-
-        for (WebSocketSession s : sessions.values()) {
-            if (!s.getId().equals(session.getId())) {
-                sendMessage(s, msg.type, msg.userId, msg.userName, msg.data);
-            }
-        }
-    }
-
-    private void sendMessage(WebSocketSession session, String type, Object userId, Object userName, Object data) throws IOException {
+    private void sendMessage(WebSocketSession session, String type, Object userId, Object userName,
+                              Object targetUserId, Object data) throws IOException {
         Map<String, Object> payload = new ConcurrentHashMap<>();
         payload.put("type", type);
-        payload.put("userId", userId);
-        payload.put("userName", userName);
-        payload.put("data", data);
+        if (userId != null) payload.put("userId", userId);
+        if (userName != null) payload.put("userName", userName);
+        if (targetUserId != null) payload.put("targetUserId", targetUserId);
+        if (data != null) payload.put("data", data);
         String json = objectMapper.writeValueAsString(payload);
-        session.sendMessage(new TextMessage(json));
+        synchronized (session) {
+            if (session.isOpen()) {
+                session.sendMessage(new TextMessage(json));
+            }
+        }
     }
 
     private void removeSession(WebSocketSession session) {
         String roomCode = sessionRooms.remove(session.getId());
         sessionUsers.remove(session.getId());
+        sessionUserNames.remove(session.getId());
         if (roomCode != null) {
             Map<String, WebSocketSession> sessions = roomSessions.get(roomCode);
             if (sessions != null) {
@@ -158,13 +191,14 @@ public class MeetingWebSocketHandler extends TextWebSocketHandler {
         log.info("[Meeting WS] 连接关闭: {}", session.getId());
         String roomCode = sessionRooms.get(session.getId());
         Long userId = sessionUsers.get(session.getId());
+        String userName = sessionUserNames.get(session.getId());
         removeSession(session);
-        if (roomCode != null) {
+        if (roomCode != null && userId != null) {
             Map<String, WebSocketSession> sessions = roomSessions.get(roomCode);
             if (sessions != null) {
                 for (WebSocketSession s : sessions.values()) {
                     try {
-                        sendMessage(s, "user-left", userId, null, null);
+                        sendMessage(s, "user-left", userId, userName, null, null);
                     } catch (IOException ignored) {}
                 }
             }
