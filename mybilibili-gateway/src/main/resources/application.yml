@@ -581,6 +581,22 @@ spring:
           filters:
             - StripPrefix=1
 
+        # ========== 会议服务 ==========
+        - id: meeting-service
+          uri: lb://mybilibili-live
+          predicates:
+            - Path=/api/meeting/**
+          filters:
+            - StripPrefix=1
+
+        # ========== WebSocket 会议/连麦信令 ==========
+        - id: meeting-websocket
+          uri: lb://mybilibili-live
+          predicates:
+            - Path=/ws/meeting
+          filters:
+            - StripPrefix=0
+
         # ========== 字幕服务 ==========
         - id: subtitle-service
           uri: lb://mybilibili-video
