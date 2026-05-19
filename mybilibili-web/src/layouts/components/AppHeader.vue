@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   Star, House, Search, Bell, Clock, Edit, Upload,
-  Message, User, Lock, Delete, ChatDotRound, Coin, VideoCamera, Users
+  Message, User, Lock, Delete, ChatDotRound, Coin, VideoCamera, Monitor
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { userApi } from '../../api/index.js'
@@ -442,7 +442,7 @@ onUnmounted(() => {
           <span>直播</span>
         </el-button>
         <el-button link @click="router.push('/meeting')" class="home-icon">
-          <el-icon><Users /></el-icon>
+          <el-icon><Monitor /></el-icon>
           <span>会议</span>
         </el-button>
       </div>
