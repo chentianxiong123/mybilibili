@@ -2,7 +2,7 @@
 import { ref, reactive, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Microphone, MicrophoneOff, Video, VideoOff, Users, CopyDocument, Plus, Monitor } from '@element-plus/icons-vue'
+import { Microphone, Mute, VideoCamera, VideoPause, Users, CopyDocument, Plus, Monitor } from '@element-plus/icons-vue'
 import { meetingApi } from '../../api/meeting.js'
 
 const router = useRouter()
@@ -383,10 +383,10 @@ const remotePeerIds = computed(() => Object.keys(remotePeers))
           <div class="video-label">我</div>
           <div class="video-controls">
             <el-button :type="audioEnabled ? '' : 'danger'" circle @click="toggleAudio">
-              <el-icon><Microphone v-if="audioEnabled" /><MicrophoneOff v-else /></el-icon>
+              <el-icon><Microphone v-if="audioEnabled" /><Mute v-else /></el-icon>
             </el-button>
             <el-button :type="videoEnabled ? '' : 'danger'" circle @click="toggleVideo">
-              <el-icon><Video v-if="videoEnabled" /><VideoOff v-else /></el-icon>
+              <el-icon><VideoCamera v-if="videoEnabled" /><VideoPause v-else /></el-icon>
             </el-button>
             <el-button :type="screenShareEnabled ? 'primary' : ''" circle @click="startScreenShare">
               <el-icon><Monitor /></el-icon>

@@ -2,7 +2,7 @@
 import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Microphone, MicrophoneOff, Video, VideoOff, Phone, PhoneFilled } from '@element-plus/icons-vue'
+import { Phone, PhoneFilled } from '@element-plus/icons-vue'
 import flvJs from 'flv.js'
 import { liveApi } from '../../api/live.js'
 import { linkmicApi } from '../../api/linkmic.js'
