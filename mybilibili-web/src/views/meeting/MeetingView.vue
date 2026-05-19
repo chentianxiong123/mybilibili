@@ -2,7 +2,7 @@
 import { ref, reactive, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Microphone, Mute, VideoCamera, VideoPause, Users, CopyDocument, Plus, Monitor } from '@element-plus/icons-vue'
+import { Microphone, Mute, VideoCamera, VideoPause, UserFilled, CopyDocument, Plus, Monitor } from '@element-plus/icons-vue'
 import { meetingApi } from '../../api/meeting.js'
 
 const router = useRouter()
@@ -434,7 +434,7 @@ const remotePeerIds = computed(() => Object.keys(remotePeers))
         <el-card class="join-card" shadow="never">
           <template #header>
             <div class="card-header">
-              <Users style="width: 18px; height: 18px;" />
+              <UserFilled style="width: 18px; height: 18px;" />
               <span>加入会议</span>
             </div>
           </template>
@@ -450,7 +450,7 @@ const remotePeerIds = computed(() => Object.keys(remotePeers))
         <el-card class="rooms-card" shadow="never">
           <template #header>
             <div class="card-header">
-              <el-icon><Users /></el-icon>
+              <el-icon><UserFilled /></el-icon>
               <span>我的会议室</span>
             </div>
           </template>
