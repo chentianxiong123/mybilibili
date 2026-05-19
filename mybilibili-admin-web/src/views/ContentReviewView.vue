@@ -440,6 +440,30 @@ onMounted(() => {
           {{ formatDateTime(row.createdAt) }}
         </template>
       </el-table-column>
+      <el-table-column label="AI审核" width="180">
+        <template #default="{ row }">
+          <div v-if="row.aiReviewStatus">
+            <el-tag v-if="row.aiReviewStatus === 'COMPLETED'" size="small" type="success" style="margin-bottom: 4px;">已完成</el-tag>
+            <el-tag v-else-if="row.aiReviewStatus === 'FAILED'" size="small" type="danger">失败</el-tag>
+            <el-tag v-else size="small" type="warning">{{ row.aiReviewStatus }}</el-tag>
+            <div v-if="row.aiRiskLevel" style="margin-top: 4px;">
+              <el-tag
+                size="small"
+                :type="row.aiRiskLevel === 'HIGH' ? 'danger' : (row.aiRiskLevel === 'MEDIUM' ? 'warning' : 'info')"
+              >
+                {{ row.aiRiskLevel === 'HIGH' ? '高风险' : (row.aiRiskLevel === 'MEDIUM' ? '中风险' : '低风险') }}
+              </el-tag>
+            </div>
+            <div v-if="row.aiVerdict" style="font-size: 12px; color: #909399; margin-top: 4px; max-width: 200px;" class="content-text">
+              {{ row.aiVerdict }}
+            </div>
+            <div v-if="row.aiReviewedAt" style="font-size: 12px; color: #c0c4cc; margin-top: 2px;">
+              {{ formatDateTime(row.aiReviewedAt) }}
+            </div>
+          </div>
+          <span v-else style="color: #c0c4cc; font-size: 12px;">未审核</span>
+        </template>
+      </el-table-column>
       <el-table-column label="管理员备注" width="160">
         <template #default="{ row }">
           <span class="content-text">{{ row.adminRemark || '-' }}</span>

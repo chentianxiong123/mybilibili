@@ -84,6 +84,12 @@ const router = createRouter({
       name: 'bannerImages',
       component: () => import('../views/BannerImagesView.vue'),
       meta: { title: '图片管理 - 管理后台', requiresAuth: true }
+    },
+    {
+      path: '/api-management',
+      name: 'apiManagement',
+      component: () => import('../views/ApiManagementView.vue'),
+      meta: { title: 'API 管理 - 管理后台', requiresAuth: true }
     }
   ]
 })

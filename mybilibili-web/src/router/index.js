@@ -229,6 +229,44 @@ const router = createRouter({
       }
     },
     {
+      path: '/live',
+      name: 'live',
+      component: () => import('../views/live/LiveListView.vue'),
+      meta: {
+        title: '直播 - 哔哩哔哩',
+        layout: 'simple'
+      }
+    },
+    {
+      path: '/live/:roomId',
+      name: 'live-room',
+      component: () => import('../views/live/LiveRoomView.vue'),
+      meta: {
+        title: '直播间 - 哔哩哔哩',
+        layout: 'simple'
+      }
+    },
+    {
+      path: '/live/push',
+      name: 'live-push',
+      component: () => import('../views/live/LivePushView.vue'),
+      meta: {
+        title: '直播推流 - 哔哩哔哩',
+        layout: 'simple',
+        requiresAuth: true
+      }
+    },
+    {
+      path: '/meeting',
+      name: 'meeting',
+      component: () => import('../views/meeting/MeetingView.vue'),
+      meta: {
+        title: '视频会议 - 哔哩哔哩',
+        layout: 'simple',
+        requiresAuth: true
+      }
+    },
+    {
       path: '/admin',
       name: 'admin',
       meta: { title: '管理后台 - 哔哩哔哩', layout: 'none' },

@@ -1,5 +1,5 @@
 <script setup>
-import { ChatDotRound, ChatLineRound, Bell, Star, Setting } from '@element-plus/icons-vue'
+import { ChatDotRound, ChatLineRound, Bell, Star, Setting, MagicStick } from '@element-plus/icons-vue'
 
 const props = defineProps({
   activeType: {
@@ -12,7 +12,8 @@ const props = defineProps({
       private: 0,
       reply: 0,
       like: 0,
-      system: 0
+      system: 0,
+      ai: 0
     })
   }
 })
@@ -24,6 +25,7 @@ const menuItems = [
   { key: 'reply', label: '回复我的', icon: ChatLineRound },
   { key: 'like', label: '收到的赞', icon: Star },
   { key: 'system', label: '系统通知', icon: Bell },
+  { key: 'ai', label: 'AI客服', icon: MagicStick },
   { key: 'settings', label: '消息设置', icon: Setting }
 ]
 

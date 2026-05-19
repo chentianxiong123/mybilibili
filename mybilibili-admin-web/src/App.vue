@@ -20,7 +20,8 @@ const menuItems = [
   { path: '/categories', icon: 'Folder', title: '分类管理' },
   { path: '/banner-images', icon: 'Picture', title: '图片管理' },
   { path: '/index-manager', icon: 'DataLine', title: '索引管理' },
-  { path: '/admins', icon: 'Lock', title: '管理员管理' }
+  { path: '/admins', icon: 'Lock', title: '管理员管理' },
+  { path: '/api-management', icon: 'Setting', title: 'API 管理' }
 ]
 
 const activeMenu = computed(() => {
@@ -35,6 +36,7 @@ const activeMenu = computed(() => {
   if (path.startsWith('/banner-images')) return '/banner-images'
   if (path.startsWith('/index-manager')) return '/index-manager'
   if (path.startsWith('/admins')) return '/admins'
+  if (path.startsWith('/api-management')) return '/api-management'
   return path
 })
 

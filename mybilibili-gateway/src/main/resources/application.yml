@@ -573,6 +573,14 @@ spring:
           filters:
             - StripPrefix=1
 
+        # ========== 直播服务 ==========
+        - id: live-service
+          uri: lb://mybilibili-live
+          predicates:
+            - Path=/api/live/**
+          filters:
+            - StripPrefix=1
+
         # ========== 字幕服务 ==========
         - id: subtitle-service
           uri: lb://mybilibili-video

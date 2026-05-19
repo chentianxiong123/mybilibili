@@ -1,9 +1,9 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { 
-  Star, House, Search, Bell, Clock, Edit, Upload, 
-  Message, User, Lock, Delete, ChatDotRound, Coin
+import {
+  Star, House, Search, Bell, Clock, Edit, Upload,
+  Message, User, Lock, Delete, ChatDotRound, Coin, VideoCamera
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { userApi } from '../../api/index.js'
@@ -431,11 +431,15 @@ onUnmounted(() => {
 <template>
   <header :class="['app-header', { 'scrolled': shouldShowScrolled, 'white-mode': mode === 'white' }]">
     <div class="header-container">
-      <!-- 左侧：首页图标 -->
+      <!-- 左侧：首页图标 + 直播 -->
       <div class="header-left">
         <el-button link @click="router.push('/')" class="home-icon">
           <el-icon><House /></el-icon>
           <span>首页</span>
+        </el-button>
+        <el-button link @click="router.push('/live')" class="home-icon">
+          <el-icon><VideoCamera /></el-icon>
+          <span>直播</span>
         </el-button>
       </div>
       

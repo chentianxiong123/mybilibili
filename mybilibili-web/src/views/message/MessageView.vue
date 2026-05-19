@@ -11,6 +11,7 @@ import ReplyList from './components/ReplyList.vue'
 import LikeList from './components/LikeList.vue'
 import SystemList from './components/SystemList.vue'
 import MessageSettings from './components/MessageSettings.vue'
+import AiChatWindow from './components/AiChatWindow.vue'
 import { messageApi } from '../../api/message.js'
 import { userApi } from '../../api/index.js'
 
@@ -19,6 +20,7 @@ const router = useRouter()
 
 const activeType = computed(() => {
   const path = route.path
+  if (path.includes('/message/ai')) return 'ai'
   if (path.includes('/message/private')) return 'private'
   if (path.includes('/message/reply')) return 'reply'
   if (path.includes('/message/at')) return 'at'
@@ -272,6 +274,10 @@ watch(() => route.path, () => {
 
       <MessageSettings
         v-else-if="activeType === 'settings'"
+      />
+
+      <AiChatWindow
+        v-else-if="activeType === 'ai'"
       />
 
       <div v-else class="notification-placeholder">
