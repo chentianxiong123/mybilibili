@@ -2,6 +2,7 @@ package com.mybilibili.live.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.mybilibili.live.entity.LiveLinkmic;
+import com.mybilibili.live.entity.LiveRoom;
 import com.mybilibili.live.mapper.LiveLinkmicMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,9 +18,18 @@ public class LiveLinkmicService {
     @Autowired
     private LiveLinkmicMapper linkmicMapper;
 
+    @Autowired
+    private LiveRoomService liveRoomService;
+
     private static final int MAX_LINKMICS = 3;
 
     public LiveLinkmic applyLinkmic(Long roomId, Long viewerId, String viewerName) {
+        // 获取直播间信息
+        LiveRoom liveRoom = liveRoomService.getById(roomId.intValue());
+        if (liveRoom == null) {
+            return null;
+        }
+
         // 检查是否已经申请过
         LiveLinkmic existing = linkmicMapper.selectOne(new LambdaQueryWrapper<LiveLinkmic>()
                 .eq(LiveLinkmic::getRoomId, roomId)
@@ -39,6 +49,7 @@ public class LiveLinkmicService {
 
         LiveLinkmic linkmic = new LiveLinkmic();
         linkmic.setRoomId(roomId);
+        linkmic.setStreamerId(Long.valueOf(liveRoom.getUserId()));
         linkmic.setViewerId(viewerId);
         linkmic.setViewerName(viewerName);
         linkmic.setStatus(0);
