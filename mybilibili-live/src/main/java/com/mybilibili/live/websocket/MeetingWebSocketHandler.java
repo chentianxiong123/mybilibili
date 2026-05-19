@@ -56,12 +56,14 @@ public class MeetingWebSocketHandler extends TextWebSocketHandler {
                 case "offer":
                 case "answer":
                 case "ice-candidate":
-                    handleSignaling(session, msg);
-                    break;
+                case "linkmic-apply":
+                case "linkmic-accepted":
+                case "linkmic-rejected":
+                case "linkmic-disconnected":
                 case "toggle-audio":
                 case "toggle-video":
                 case "toggle-screen":
-                    handleMediaToggle(session, msg);
+                    handleSignaling(session, msg);
                     break;
             }
         } catch (Exception e) {
