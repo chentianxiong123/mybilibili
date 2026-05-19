@@ -17,4 +17,8 @@ public class MQConstants {
     public static final String GROUP_SEARCH_INDEX = "search-index-group";
 
     public static final String GROUP_MESSAGE_NOTIFY = "message-notify-group";
+
+    public static final String TOPIC_CONTENT_REVIEW = "content-review-topic";
+
+    public static final String GROUP_CONTENT_REVIEW = "content-review-group";
 }

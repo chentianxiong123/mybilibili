@@ -1,18 +1,17 @@
 package com.mybilibili.common.utils;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.UUID;
 
-@Component
 public class UploadFilePathUtils {
 
-    @Value("${upload.base-path}")
-    private String basePath;
+    private final String basePath;
+
+    public UploadFilePathUtils(String basePath) {
+        this.basePath = basePath;
+    }
 
     public String getBasePath() {
         return basePath;

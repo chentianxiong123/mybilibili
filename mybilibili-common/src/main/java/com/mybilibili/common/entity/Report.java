@@ -19,4 +19,8 @@ public class Report {
     private String adminRemark;
     private Date createdAt;
     private Date processedAt;
+    private String aiReviewStatus;
+    private String aiVerdict;
+    private String aiRiskLevel;
+    private Date aiReviewedAt;
 }

@@ -1,6 +1,7 @@
 package com.mybilibili.ai.service.impl;
 
 import com.mybilibili.ai.config.DeepSeekConfig;
+import com.mybilibili.ai.service.AiConfigService;
 import com.mybilibili.ai.service.AiSummaryService;
 import com.mybilibili.ai.utils.SubtitleTextUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,9 @@ public class AiSummaryServiceImpl implements AiSummaryService {
 
     @Autowired
     private DeepSeekConfig deepSeekConfig;
+
+    @Autowired
+    private AiConfigService aiConfigService;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -96,7 +100,7 @@ public class AiSummaryServiceImpl implements AiSummaryService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", "Bearer " + deepSeekConfig.getApiKey());
+            headers.set("Authorization", "Bearer " + aiConfigService.getApiKey());
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
             ResponseEntity<Map> response = restTemplate.postForEntity(deepSeekConfig.getApiUrl(), request, Map.class);
@@ -152,7 +156,7 @@ public class AiSummaryServiceImpl implements AiSummaryService {
         long startTime = System.currentTimeMillis();
 
         try {
-            if (deepSeekConfig.getApiKey() == null || deepSeekConfig.getApiKey().isEmpty() || "your-api-key-here".equals(deepSeekConfig.getApiKey())) {
+            if (aiConfigService.getApiKey() == null || aiConfigService.getApiKey().isEmpty()) {
                 return new TestResult(false, "API密钥未配置，请在application.yml中设置ai.deepseek.api-key");
             }
 
@@ -170,7 +174,7 @@ public class AiSummaryServiceImpl implements AiSummaryService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", "Bearer " + deepSeekConfig.getApiKey());
+            headers.set("Authorization", "Bearer " + aiConfigService.getApiKey());
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
             ResponseEntity<Map> response = restTemplate.postForEntity(deepSeekConfig.getApiUrl(), request, Map.class);

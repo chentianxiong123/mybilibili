@@ -12,6 +12,8 @@ import com.mybilibili.common.entity.DynamicComment;
 import com.mybilibili.common.entity.Reply;
 import com.mybilibili.common.entity.Report;
 import com.mybilibili.common.vo.Result;
+import com.mybilibili.mq.ContentReviewMessage;
+import com.mybilibili.mq.ContentReviewMQProducer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -38,6 +40,9 @@ public class ReportServiceImpl implements ReportService {
     @Autowired
     private ManuscriptClient manuscriptClient;
 
+    @Autowired
+    private ContentReviewMQProducer contentReviewMQProducer;
+
     @Override
     public Result<?> submitReport(Integer reporterId, String targetType, Integer targetId,
                                    Integer manuscriptId, String reason, String description) {
@@ -62,6 +67,17 @@ public class ReportServiceImpl implements ReportService {
             report.setDescription(description);
             report.setStatus("PENDING");
             reportMapper.insert(report);
+
+            // 异步发送 AI 审核消息
+            try {
+                String content = getTargetContent(targetType, targetId);
+                if (content != null) {
+                    contentReviewMQProducer.sendContentReviewMessage(
+                        ContentReviewMessage.of(report.getId(), targetType, targetId, manuscriptId, content, reason)
+                    );
+                }
+            } catch (Exception ignored) {}
+
             return Result.success("举报成功，我们会尽快处理", null);
         } catch (Exception e) {
             return Result.error("举报失败: " + e.getMessage());
@@ -90,6 +106,10 @@ public class ReportServiceImpl implements ReportService {
                 item.put("adminRemark", report.getAdminRemark());
                 item.put("createdAt", report.getCreatedAt());
                 item.put("processedAt", report.getProcessedAt());
+                item.put("aiReviewStatus", report.getAiReviewStatus());
+                item.put("aiVerdict", report.getAiVerdict());
+                item.put("aiRiskLevel", report.getAiRiskLevel());
+                item.put("aiReviewedAt", report.getAiReviewedAt());
 
                 // 获取被举报内容
                 String targetContent = getTargetContent(report.getTargetType(), report.getTargetId());
@@ -247,6 +267,31 @@ public class ReportServiceImpl implements ReportService {
             case "REPLY": return "回复";
             case "DYNAMIC_COMMENT": return "动态评论";
             default: return "内容";
+        }
+    }
+
+    @Override
+    public Result<?> updateAiReviewResult(Map<String, Object> result) {
+        try {
+            Integer reportId = (Integer) result.get("reportId");
+            String aiReviewStatus = (String) result.get("aiReviewStatus");
+            String aiVerdict = (String) result.get("aiVerdict");
+            String aiRiskLevel = (String) result.get("aiRiskLevel");
+
+            Report report = reportMapper.selectById(reportId);
+            if (report == null) {
+                return Result.error("举报记录不存在");
+            }
+
+            report.setAiReviewStatus(aiReviewStatus);
+            report.setAiVerdict(aiVerdict);
+            report.setAiRiskLevel(aiRiskLevel);
+            report.setAiReviewedAt(new Date());
+            reportMapper.updateById(report);
+
+            return Result.success("AI审核结果已更新");
+        } catch (Exception e) {
+            return Result.error("更新AI审核结果失败: " + e.getMessage());
         }
     }
 }

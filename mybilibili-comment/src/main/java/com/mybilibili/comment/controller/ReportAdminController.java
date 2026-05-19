@@ -48,4 +48,10 @@ public class ReportAdminController {
 
         return reportService.processReport(id, action, adminRemark, adminId);
     }
+
+    @PutMapping("/ai-review-result")
+    @Operation(summary = "AI审核结果回调", hidden = true)
+    public Result<?> updateAiReviewResult(@RequestBody Map<String, Object> result) {
+        return reportService.updateAiReviewResult(result);
+    }
 }
