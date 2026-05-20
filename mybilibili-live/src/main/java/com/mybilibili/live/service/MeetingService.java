@@ -101,6 +101,24 @@ public class MeetingService {
                 .isNull(MeetingParticipant::getLeaveTime));
     }
 
+    /**
+     * 主持人结束会议：把状态置 2，清空所有参与者。
+     * 仅创建者可调用。
+     */
+    @Transactional
+    public boolean endRoom(Long roomId, Long operatorId) {
+        MeetingRoom room = roomMapper.selectById(roomId);
+        if (room == null) return false;
+        if (!room.getCreatorId().equals(operatorId)) return false;
+        room.setStatus(2);
+        room.setEndTime(LocalDateTime.now());
+        room.setUpdateTime(LocalDateTime.now());
+        roomMapper.updateById(room);
+        participantMapper.delete(new LambdaQueryWrapper<MeetingParticipant>()
+                .eq(MeetingParticipant::getRoomId, roomId));
+        return true;
+    }
+
     private String generateRoomCode() {
         String code;
         do {

@@ -71,4 +71,11 @@ public class LiveLinkmicController {
         List<LiveLinkmic> applications = linkmicService.getPendingApplications(roomId, streamerId);
         return Result.success(applications);
     }
+
+    @GetMapping("/queue-position/{roomId}")
+    public Result<?> getQueuePosition(@PathVariable Long roomId, HttpServletRequest request) {
+        Long viewerId = Long.parseLong(request.getHeader("X-User-Id"));
+        int position = linkmicService.getQueuePosition(roomId, viewerId);
+        return Result.success(position);
+    }
 }

@@ -16,6 +16,9 @@ export const meetingApi = {
   leaveRoom(roomId) {
     return api.post(`/meeting/leave/${roomId}`)
   },
+  endRoom(roomId) {
+    return api.post(`/meeting/end/${roomId}`)
+  },
   getParticipants(roomId) {
     return api.get(`/meeting/participants/${roomId}`)
   }

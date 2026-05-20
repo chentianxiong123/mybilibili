@@ -8,7 +8,26 @@
       "Bash(python *)",
       "Bash(Get-ChildItem -Path \"D:\\\\files\\\\mybilibili-next\\\\mybilibili-cloud\" -Directory -Depth 0)",
       "Bash(Select-Object -ExpandProperty Name)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(Get-ChildItem *)",
+      "Bash(mysql -u root -p${MYSQL_ROOT_PASSWORD} mybilibili -e \"SHOW TABLES LIKE 'reports';\")",
+      "Bash(mysql -u root -p${MYSQL_ROOT_PASSWORD} mybilibili -e ' *)",
+      "Bash(git *)",
+      "Bash(mysql -u root -p${MYSQL_ROOT_PASSWORD} mybilibili -e \"DESCRIBE reports;\")",
+      "Bash(mysql *)",
+      "Bash(npx grep-dir *)",
+      "Bash(findstr /s /i \"art-layer\" mybilibili-web\\\\src\\\\*.vue mybilibili-web\\\\src\\\\*.css)",
+      "PowerShell(npm *)",
+      "mcp__mysql__execute_sql",
+      "PowerShell(Test-Path *)",
+      "PowerShell(ffmpeg *)",
+      "PowerShell(& \"D:\\\\Program Files\\\\whisper-bin-x64\\\\Release\\\\whisper-cli.exe\" --help)",
+      "PowerShell(mvn *)",
+      "WebSearch",
+      "WebFetch(domain:dify.ai)",
+      "WebFetch(domain:www.google.com)",
+      "Bash(npm --prefix \"D:\\\\files\\\\mybilibili-next\\\\mybilibili-cloud\\\\mybilibili-web\" run build)",
+      "Bash(Select-String -Pattern \"\\\\.env|application\\\\.yml\")"
     ]
   }
 }

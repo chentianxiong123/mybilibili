@@ -91,14 +91,13 @@ public class LiveRoomController {
         if (room == null) return Result.error("直播间不存在");
         if (!room.getUserId().equals(userId)) return Result.error("无权操作");
         Object scheduledAtObj = request.get("scheduledAt");
-        if (scheduledAtObj == null) {
-            room.setScheduledAt(null);
-        } else {
+        java.util.Date scheduledAt = null;
+        if (scheduledAtObj != null && !"".equals(scheduledAtObj)) {
             long ts = Long.parseLong(String.valueOf(scheduledAtObj));
-            room.setScheduledAt(new java.util.Date(ts));
+            scheduledAt = new java.util.Date(ts);
         }
-        liveRoomService.updateRoom(room);
-        return Result.success(room);
+        liveRoomService.scheduleRoom(id, scheduledAt);
+        return Result.success("定时开播已" + (scheduledAt == null ? "取消" : "设置"));
     }
 
     /**

@@ -49,6 +49,10 @@ public class MeetingWebSocketHandler extends TextWebSocketHandler {
                     msg.type, msg.roomCode, msg.userId, msg.targetUserId);
 
             switch (msg.type) {
+                case "ping":
+                    // 心跳，回个 pong，不广播
+                    sendMessage(session, "pong", null, null, null, null);
+                    break;
                 case "join":
                     handleJoin(session, msg);
                     break;
@@ -65,6 +69,17 @@ public class MeetingWebSocketHandler extends TextWebSocketHandler {
                 case "toggle-audio":
                 case "toggle-video":
                 case "toggle-screen":
+                case "peer-state":
+                case "kick":
+                case "mute-target":
+                case "mute-video-target":
+                case "mute-all":
+                case "chat":
+                case "meeting-ended":
+                case "hand-raised":
+                case "spotlight":
+                case "lock-room":
+                case "transfer-host":
                     handleSignaling(session, msg);
                     break;
                 default:
@@ -108,6 +123,21 @@ public class MeetingWebSocketHandler extends TextWebSocketHandler {
 
         // 把现有成员列表发给新人
         sendMessage(session, "room-users", null, null, null, existingUsers);
+
+        broadcastViewerCount(roomCode);
+    }
+
+    private void broadcastViewerCount(String roomCode) {
+        Map<String, WebSocketSession> sessions = roomSessions.get(roomCode);
+        if (sessions == null) return;
+        int count = sessions.size();
+        Map<String, Object> data = new ConcurrentHashMap<>();
+        data.put("count", count);
+        for (WebSocketSession s : sessions.values()) {
+            try {
+                sendMessage(s, "viewer-count", null, null, null, data);
+            } catch (IOException ignored) {}
+        }
     }
 
     private void handleLeave(WebSocketSession session, SignalingMessage msg) throws IOException {
@@ -122,6 +152,7 @@ public class MeetingWebSocketHandler extends TextWebSocketHandler {
                     sendMessage(s, "user-left", userId, userName, null, null);
                 }
             }
+            broadcastViewerCount(roomCode);
         }
     }
 
@@ -202,6 +233,7 @@ public class MeetingWebSocketHandler extends TextWebSocketHandler {
                     } catch (IOException ignored) {}
                 }
             }
+            broadcastViewerCount(roomCode);
         }
     }
 }

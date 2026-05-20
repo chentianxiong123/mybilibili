@@ -24,5 +24,8 @@ export const linkmicApi = {
   },
   getPendingApplications(roomId) {
     return api.get(`/live/linkmic/pending/${roomId}`)
+  },
+  getQueuePosition(roomId) {
+    return api.get(`/live/linkmic/queue-position/${roomId}`)
   }
 }

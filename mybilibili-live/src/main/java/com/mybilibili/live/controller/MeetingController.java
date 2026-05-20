@@ -67,4 +67,12 @@ public class MeetingController {
         List<MeetingParticipant> participants = meetingService.getParticipants(roomId);
         return Result.success(participants);
     }
+
+    @PostMapping("/end/{roomId}")
+    public Result<?> endRoom(@PathVariable Long roomId, HttpServletRequest request) {
+        Long userId = Long.parseLong(request.getHeader("X-User-Id"));
+        boolean ok = meetingService.endRoom(roomId, userId);
+        if (!ok) return Result.error("无权限结束会议或会议不存在");
+        return Result.success("会议已结束");
+    }
 }

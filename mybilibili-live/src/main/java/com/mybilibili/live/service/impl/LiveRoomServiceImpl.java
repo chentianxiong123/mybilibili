@@ -52,6 +52,10 @@ public class LiveRoomServiceImpl implements LiveRoomService {
         LiveRoom room = new LiveRoom();
         room.setId(id);
         room.setStatus(status);
+        // 开播或下播时把观众数清零（开播是新一场，下播也避免下次显示残留）
+        if ("live".equals(status) || "offline".equals(status)) {
+            room.setViewerCount(0);
+        }
         liveRoomMapper.updateById(room);
     }
 
@@ -61,6 +65,20 @@ public class LiveRoomServiceImpl implements LiveRoomService {
         if (room != null) {
             int count = Math.max(0, (room.getViewerCount() != null ? room.getViewerCount() : 0) + delta);
             room.setViewerCount(count);
+            liveRoomMapper.updateById(room);
+        }
+    }
+
+    @Override
+    public void updateRoom(LiveRoom room) {
+        liveRoomMapper.updateById(room);
+    }
+
+    @Override
+    public void scheduleRoom(Integer id, java.util.Date scheduledAt) {
+        LiveRoom room = liveRoomMapper.selectById(id);
+        if (room != null) {
+            room.setScheduledAt(scheduledAt);
             liveRoomMapper.updateById(room);
         }
     }

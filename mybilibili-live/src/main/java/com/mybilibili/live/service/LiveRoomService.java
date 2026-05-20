@@ -12,4 +12,6 @@ public interface LiveRoomService {
     List<LiveRoom> getLiveList();
     void updateStatus(Integer id, String status);
     void updateViewerCount(Integer id, int delta);
+    void updateRoom(LiveRoom room);
+    void scheduleRoom(Integer id, java.util.Date scheduledAt);
 }

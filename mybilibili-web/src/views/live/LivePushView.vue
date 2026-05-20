@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { VideoCamera, CopyDocument, Cellphone, UserFilled, ChatDotRound, Monitor, Mute, Close, Picture, Upload } from '@element-plus/icons-vue'
 import { liveApi } from '../../api/live.js'
 import { createReconnectingWS } from '../../utils/reconnectingWs.js'
+import { isNotificationEnabled, requestNotificationPermission } from '../../utils/notification.js'
 
 const room = ref(null)
 const loading = ref(true)
@@ -72,6 +73,7 @@ const me = (() => {
 })()
 
 onMounted(async () => {
+  requestNotificationPermission()
   try {
     let res = await liveApi.getMyRoom()
     if (!res || !res.data) {
@@ -83,6 +85,10 @@ onMounted(async () => {
       rtmpUrl.value = `rtmp://${hostname}/live`
       selectedCategory.value = res.data.category || ''
       connectWs()
+      // 定时开播提醒
+      if (res.data.scheduledAt) {
+        scheduleReminder(res.data.scheduledAt)
+      }
       metricsTimer = setInterval(() => {
         const cutoff = Date.now() - 60000
         danmakuRate.value = recentChats.value.filter(m => m.id > cutoff).length
@@ -274,6 +280,26 @@ const formatScheduledAt = (ts) => {
   const d = new Date(ts)
   const pad = n => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+let scheduleNotifyTimer = null
+
+const scheduleReminder = (ts) => {
+  clearTimeout(scheduleNotifyTimer)
+  const ms = typeof ts === 'number' ? ts : new Date(ts).getTime()
+  const notifyAt = ms - 5 * 60000  // 开播前5分钟
+  const delay = notifyAt - Date.now()
+  if (delay > 0) {
+    scheduleNotifyTimer = setTimeout(() => {
+      ElMessage.warning({
+        message: `距离开播还有 5 分钟：${room.value?.roomName || '我的直播间'}`,
+        duration: 0
+      })
+      if (isNotificationEnabled()) {
+        new Notification('直播提醒', { body: `${room.value?.roomName || '直播间'} 即将开播！` })
+      }
+    }, delay)
+  }
 }
 
 const goLive = async () => {

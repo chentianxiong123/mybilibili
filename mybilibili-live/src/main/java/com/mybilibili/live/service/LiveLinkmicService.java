@@ -30,7 +30,7 @@ public class LiveLinkmicService {
             return null;
         }
 
-        // 检查是否已经申请过
+        // 检查是否已经申请过（申请中或已连接的都视为已申请）
         LiveLinkmic existing = linkmicMapper.selectOne(new LambdaQueryWrapper<LiveLinkmic>()
                 .eq(LiveLinkmic::getRoomId, roomId)
                 .eq(LiveLinkmic::getViewerId, viewerId)
@@ -39,14 +39,7 @@ public class LiveLinkmicService {
             return existing;
         }
 
-        // 检查当前连麦人数
-        long currentCount = linkmicMapper.selectCount(new LambdaQueryWrapper<LiveLinkmic>()
-                .eq(LiveLinkmic::getRoomId, roomId)
-                .eq(LiveLinkmic::getStatus, 1));
-        if (currentCount >= MAX_LINKMICS) {
-            return null; // 人数已满
-        }
-
+        // 满员也允许进队列；主播看到排队后可逐个同意
         LiveLinkmic linkmic = new LiveLinkmic();
         linkmic.setRoomId(roomId);
         linkmic.setStreamerId(Long.valueOf(liveRoom.getUserId()));
@@ -59,6 +52,20 @@ public class LiveLinkmicService {
         linkmic.setApplyTime(LocalDateTime.now());
         linkmicMapper.insert(linkmic);
         return linkmic;
+    }
+
+    /**
+     * 查询某观众在排队中的位置（按申请时间排序，1 起算；返回 0 表示不在队列）
+     */
+    public int getQueuePosition(Long roomId, Long viewerId) {
+        List<LiveLinkmic> pending = linkmicMapper.selectList(new LambdaQueryWrapper<LiveLinkmic>()
+                .eq(LiveLinkmic::getRoomId, roomId)
+                .eq(LiveLinkmic::getStatus, 0)
+                .orderByAsc(LiveLinkmic::getApplyTime));
+        for (int i = 0; i < pending.size(); i++) {
+            if (pending.get(i).getViewerId().equals(viewerId)) return i + 1;
+        }
+        return 0;
     }
 
     public void acceptLinkmic(Long linkmicId) {
@@ -121,7 +128,8 @@ public class LiveLinkmicService {
         return linkmicMapper.selectList(new LambdaQueryWrapper<LiveLinkmic>()
                 .eq(LiveLinkmic::getRoomId, roomId)
                 .eq(LiveLinkmic::getStreamerId, streamerId)
-                .eq(LiveLinkmic::getStatus, 0));
+                .eq(LiveLinkmic::getStatus, 0)
+                .orderByAsc(LiveLinkmic::getApplyTime));
     }
 
     public LiveLinkmic getByViewerId(Long roomId, Long viewerId) {
