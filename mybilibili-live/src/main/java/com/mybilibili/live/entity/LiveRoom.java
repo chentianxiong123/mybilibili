@@ -17,6 +17,8 @@ public class LiveRoom {
     private String status;
     private String coverUrl;
     private Integer viewerCount;
+    private String category;   // 娱乐/游戏/学习/购物/赛事/其他
+    private Date scheduledAt;  // 定时开播时间（null 表示不定时）
     private Date createdAt;
     private Date updatedAt;
 
@@ -40,6 +42,12 @@ public class LiveRoom {
 
     public Integer getViewerCount() { return viewerCount; }
     public void setViewerCount(Integer viewerCount) { this.viewerCount = viewerCount; }
+
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
+
+    public Date getScheduledAt() { return scheduledAt; }
+    public void setScheduledAt(Date scheduledAt) { this.scheduledAt = scheduledAt; }
 
     public Date getCreatedAt() { return createdAt; }
     public void setCreatedAt(Date createdAt) { this.createdAt = createdAt; }

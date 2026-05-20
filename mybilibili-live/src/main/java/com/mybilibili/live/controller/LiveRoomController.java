@@ -65,6 +65,73 @@ public class LiveRoomController {
         return Result.success("状态已更新");
     }
 
+    @PutMapping("/{id}")
+    @Operation(summary = "更新直播间（封面/名称/分类）")
+    public Result<?> updateRoom(@PathVariable Integer id, @RequestBody Map<String, String> request,
+                                HttpServletRequest httpRequest) {
+        Integer userId = getUserId(httpRequest);
+        if (userId == null) return Result.error("未登录");
+        LiveRoom room = liveRoomService.getById(id);
+        if (room == null) return Result.error("直播间不存在");
+        if (!room.getUserId().equals(userId)) return Result.error("无权操作");
+        if (request.containsKey("coverUrl")) room.setCoverUrl(request.get("coverUrl"));
+        if (request.containsKey("roomName")) room.setRoomName(request.get("roomName"));
+        if (request.containsKey("category")) room.setCategory(request.get("category"));
+        liveRoomService.updateRoom(room);
+        return Result.success(room);
+    }
+
+    @PutMapping("/{id}/schedule")
+    @Operation(summary = "设置定时开播时间")
+    public Result<?> scheduleRoom(@PathVariable Integer id, @RequestBody Map<String, Object> request,
+                                  HttpServletRequest httpRequest) {
+        Integer userId = getUserId(httpRequest);
+        if (userId == null) return Result.error("未登录");
+        LiveRoom room = liveRoomService.getById(id);
+        if (room == null) return Result.error("直播间不存在");
+        if (!room.getUserId().equals(userId)) return Result.error("无权操作");
+        Object scheduledAtObj = request.get("scheduledAt");
+        if (scheduledAtObj == null) {
+            room.setScheduledAt(null);
+        } else {
+            long ts = Long.parseLong(String.valueOf(scheduledAtObj));
+            room.setScheduledAt(new java.util.Date(ts));
+        }
+        liveRoomService.updateRoom(room);
+        return Result.success(room);
+    }
+
+    /**
+     * SRS HTTP 回调，配置示例 (srs.conf):
+     *   http_hooks {
+     *       enabled on;
+     *       on_publish http://host:port/live/room/srs/hook;
+     *       on_unpublish http://host:port/live/room/srs/hook;
+     *   }
+     * 回调请求体由 SRS 发出，包含 action / stream / app / vhost 等字段。
+     * 这里按 stream（=streamKey）匹配房间，更新 status。
+     * 必须返回 {code:0} 给 SRS，否则 SRS 会拒绝推流。
+     */
+    @PostMapping("/srs/hook")
+    @Operation(summary = "SRS 推流/断流回调", hidden = true)
+    public Map<String, Object> srsHook(@RequestBody Map<String, Object> body) {
+        Object action = body.get("action");
+        Object stream = body.get("stream");
+        if (stream != null) {
+            LiveRoom room = liveRoomService.getByStreamKey(String.valueOf(stream));
+            if (room != null) {
+                if ("on_publish".equals(String.valueOf(action))) {
+                    liveRoomService.updateStatus(room.getId(), "live");
+                } else if ("on_unpublish".equals(String.valueOf(action))) {
+                    liveRoomService.updateStatus(room.getId(), "offline");
+                }
+            }
+        }
+        java.util.Map<String, Object> resp = new java.util.HashMap<>();
+        resp.put("code", 0);
+        return resp;
+    }
+
     private Integer getUserId(HttpServletRequest request) {
         String uid = request.getHeader("X-User-Id");
         if (uid != null) {
