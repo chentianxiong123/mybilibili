@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import mobileRoutes from '../mobile/router/index.ts'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -294,8 +293,5 @@ router.beforeEach((to, from, next) => {
   }
   next()
 })
-
-// 注册移动端路由
-mobileRoutes.forEach(route => router.addRoute(route))
 
 export default router
