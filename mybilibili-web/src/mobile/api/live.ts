@@ -1,38 +1,99 @@
-import axios from 'axios'
+import { liveApi } from '../../api/live.js'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://112.74.99.5:3000/web/api'
+const handleRes = (res) => {
+  if (res && res.code === 200) return res.data || {}
+  return {}
+}
 
-// 获取直播分区
+const adaptLive = (l) => ({
+  roomId: l.id,
+  title: l.roomName || l.title || '',
+  cover: l.coverUrl || l.cover,
+  isLive: l.status === 'live' ? 1 : 0,
+  onlineNum: l.viewerCount || 0,
+  playUrl: l.streamUrl || l.playUrl,
+  uname: l.anchorName || l.username || l.nickname || '',
+  description: l.description || ''
+})
+
 export async function getAreas() {
-  const res = await axios.get(`${API_BASE}/live/area`)
-  return res.data
+  try {
+    const res = await liveApi.getLiveList()
+    return {
+      code: '1',
+      data: (handleRes(res) || []).map(l => ({
+        id: l.id,
+        name: l.areaName || l.roomName || '未分类',
+        parentId: l.parentAreaId || 0
+      }))
+    }
+  } catch (e) {
+    return { code: '0', data: [] }
+  }
 }
 
-// 获取直播首页数据
 export async function getLiveIndexData() {
-  const res = await axios.get(`${API_BASE}/live/data`)
-  return res.data
+  try {
+    const res = await liveApi.getLiveList()
+    const list = handleRes(res) || []
+    const liveItems = list.map(adaptLive)
+    return {
+      code: '1',
+      data: {
+        bannerList: [],
+        itemList: [{
+          areaName: '热门直播',
+          areaId: 0,
+          lives: liveItems.slice(0, 6)
+        }]
+      }
+    }
+  } catch (e) {
+    return { code: '0', data: { bannerList: [], itemList: [] } }
+  }
 }
 
-// 获取直播房间列表
-export async function getLiveListData(params: {
-  parentAreaId: number
-  areaId: number
-  page?: number
-  pageSize?: number
-}) {
-  const res = await axios.get(`${API_BASE}/live/room/list`, { params })
-  return res.data
+export async function getLiveListData(params) {
+  try {
+    const res = await liveApi.getLiveList()
+    return {
+      code: '1',
+      data: {
+        areaName: params?.areaName || '直播列表',
+        list: (handleRes(res) || []).map(adaptLive)
+      }
+    }
+  } catch (e) {
+    return { code: '0', data: { list: [] } }
+  }
 }
 
-// 获取直播间信息
-export async function getRoomInfo(roomId: number) {
-  const res = await axios.get(`${API_BASE}/live/room/info`, { params: { roomId } })
-  return res.data
+export async function getRoomInfo(roomId) {
+  try {
+    const res = await liveApi.getRoom(roomId)
+    const data = handleRes(res)
+    return {
+      code: '1',
+      data: {
+        ...adaptLive(data),
+        uId: data.userId,
+        title: data.roomName || data.title,
+        cover: data.coverUrl,
+        playUrl: data.streamUrl
+      }
+    }
+  } catch (e) {
+    return { code: '0', data: null }
+  }
 }
 
-// 获取弹幕配置
-export async function getDanMuConfig(roomId: number) {
-  const res = await axios.get(`${API_BASE}/live/room/danmu_config`, { params: { roomId } })
-  return res.data
+export async function getDanMuConfig(roomId) {
+  // 弹幕 WebSocket 配置 - 使用项目的 ws 端点
+  return {
+    code: '1',
+    data: {
+      host: location.host,
+      port: ''
+    }
+  }
 }

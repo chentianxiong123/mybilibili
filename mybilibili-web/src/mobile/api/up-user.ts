@@ -1,15 +1,52 @@
-import axios from 'axios'
+import { userApi } from '../../api/index.js'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://112.74.99.5:3000/web/api'
-
-// 获取 UP 主信息
-export async function getUserInfo(mId: number) {
-  const res = await axios.get(`${API_BASE}/up/${mId}`)
-  return res.data
+const handleRes = (res) => {
+  if (res && res.code === 200) return res.data || {}
+  return {}
 }
 
-// 获取 UP 主投稿视频
-export async function getUserVideos(mId: number, p: number, size: number) {
-  const res = await axios.get(`${API_BASE}/up/video`, { params: { uId: mId, p, size } })
-  return res.data
+const adaptVideo = (v) => ({
+  aId: v.manuscriptId || v.id,
+  title: v.title,
+  pic: v.coverUrl,
+  author: v.username || v.nickname || '',
+  mid: v.userId,
+  play: v.viewCount || 0,
+  videoReview: v.danmakuCount || 0,
+  duration: v.duration
+})
+
+export async function getUserInfo(mId) {
+  try {
+    const res = await userApi.getUserById(mId)
+    const data = handleRes(res)
+    return {
+      code: '1',
+      data: {
+        mid: data.id,
+        name: data.username || data.nickname || '',
+        face: data.avatarUrl || '',
+        level: data.level || 1,
+        sign: data.bio || '',
+        follower: data.followerCount || 0,
+        following: data.followingCount || 0,
+        sex: data.gender || '保密'
+      }
+    }
+  } catch (e) {
+    return { code: '0', data: null }
+  }
+}
+
+export async function getUserVideos(mId, p = 1, size = 20) {
+  try {
+    const { videoApi } = await import('../../api/index.js')
+    const res = await videoApi.getVideosByUserId(mId)
+    return {
+      code: '1',
+      data: (handleRes(res) || []).map(adaptVideo)
+    }
+  } catch (e) {
+    return { code: '0', data: [] }
+  }
 }

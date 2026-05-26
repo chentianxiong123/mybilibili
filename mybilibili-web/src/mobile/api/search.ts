@@ -1,27 +1,59 @@
-import axios from 'axios'
+import { searchApi } from '../../api/search.js'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://112.74.99.5:3000/web/api'
+const handleRes = (res) => {
+  if (res && res.code === 200) return res.data || {}
+  return {}
+}
 
-// 热搜词
+const adaptVideo = (v) => ({
+  aId: v.manuscriptId || v.id,
+  title: v.title,
+  pic: v.coverUrl,
+  author: v.username || v.nickname || '',
+  play: v.viewCount || 0,
+  videoReview: v.danmakuCount || 0
+})
+
 export async function getHotwords() {
-  const res = await axios.get(`${API_BASE}/search/hotword`)
-  return res.data
+  try {
+    const res = await searchApi.getHotSearch()
+    const data = handleRes(res) || []
+    return {
+      code: '1',
+      data: data.map(item => ({ keyword: item.keyword || item }))
+    }
+  } catch (e) {
+    return { code: '0', data: [] }
+  }
 }
 
-// 搜索建议
-export async function getSuggests(keyword: string) {
-  const res = await axios.get(`${API_BASE}/search/suggest`, { params: { w: keyword } })
-  return res.data
+export async function getSuggests(keyword) {
+  try {
+    const res = await searchApi.getSearchSuggestions(keyword)
+    return {
+      code: '1',
+      data: (handleRes(res) || []).map(item => ({
+        name: item.keyword || item,
+        value: item.keyword || item
+      }))
+    }
+  } catch (e) {
+    return { code: '0', data: [] }
+  }
 }
 
-// 搜索结果
-export async function getSearchResult(params: {
-  keyword: string
-  page?: number
-  size?: number
-  searchType?: string
-  order?: string
-}) {
-  const res = await axios.post(`${API_BASE}/search`, params)
-  return res.data
+export async function getSearchResult(params) {
+  try {
+    const { keyword = '', page = 1, size = 20, searchType = 'all', order = 'totalrank' } = params || {}
+    let sort = 'relevance'
+    if (order === 'click') sort = 'hot'
+    if (order === 'pubdate') sort = 'time'
+    const res = await searchApi.searchVideos({ keyword, page, size, sort })
+    return {
+      code: '1',
+      data: (handleRes(res) || []).map(adaptVideo)
+    }
+  } catch (e) {
+    return { code: '0', data: [] }
+  }
 }

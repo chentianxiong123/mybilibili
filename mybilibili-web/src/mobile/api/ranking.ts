@@ -1,21 +1,48 @@
-import axios from 'axios'
+import { recommendApi } from '../../api/recommend.js'
+import { videoApi } from '../../api/index.js'
+import { categoryApi } from '../../api/index.js'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://112.74.99.5:3000/web/api'
-
-// 获取排行榜数据
-export async function getRankings(rId: number) {
-  const res = await axios.get(`${API_BASE}/ranking/${rId}`)
-  return res.data
+const handleRes = (res) => {
+  if (res && res.code === 200) return res.data || {}
+  return {}
 }
 
-// 获取分区排行榜
-export async function getRankingRegion(params: { rId: number, day?: number }) {
-  const res = await axios.get(`${API_BASE}/ranking/region`, { params })
-  return res.data
+const adaptVideo = (v) => ({
+  aId: v.manuscriptId || v.id,
+  title: v.title,
+  pic: v.coverUrl,
+  author: v.username || v.nickname || '',
+  mid: v.userId,
+  play: v.viewCount || 0,
+  videoReview: v.danmakuCount || 0
+})
+
+export async function getRankings(rId) {
+  try {
+    const res = await categoryApi.getCategoryList()
+    return {
+      code: '1',
+      data: (handleRes(res) || []).map(c => ({ id: c.id, name: c.name }))
+    }
+  } catch (e) {
+    return { code: '0', data: [] }
+  }
 }
 
-// 获取最新分区排行
-export async function getRankingArchive(params: { rId: number, p?: number, size?: number }) {
-  const res = await axios.get(`${API_BASE}/ranking/archive`, { params })
-  return res.data
+export async function getRankingArchive(params) {
+  try {
+    const { rId = 0, p = 1, size = 20 } = params || {}
+    let res
+    if (rId) {
+      res = await videoApi.getVideosByCategoryId(rId)
+    } else {
+      res = await videoApi.getVideoList(p, size)
+    }
+    return {
+      code: '1',
+      data: (handleRes(res) || []).map(adaptVideo)
+    }
+  } catch (e) {
+    return { code: '0', data: [] }
+  }
 }

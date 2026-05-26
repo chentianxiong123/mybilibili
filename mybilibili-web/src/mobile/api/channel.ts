@@ -1,21 +1,57 @@
-import axios from 'axios'
+import { categoryApi } from '../../api/index.js'
+import { videoApi } from '../../api/index.js'
+import { recommendApi } from '../../api/recommend.js'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://112.74.99.5:3000/web/api'
+const handleRes = (res) => {
+  if (res && res.code === 200) return res.data || {}
+  return {}
+}
 
-// 获取排行榜分区
+const adaptVideo = (v) => ({
+  aId: v.manuscriptId || v.id,
+  title: v.title,
+  pic: v.coverUrl,
+  author: v.username || v.nickname || '',
+  play: v.viewCount || 0,
+  videoReview: v.danmakuCount || 0
+})
+
 export async function getRankingPartitions() {
-  const res = await axios.get(`${API_BASE}/ranking/partitions`)
-  return res.data
+  try {
+    const res = await categoryApi.getCategoryList()
+    return {
+      code: '1',
+      data: (handleRes(res) || []).map(c => ({ id: c.id, name: c.name }))
+    }
+  } catch (e) {
+    return { code: '0', data: [] }
+  }
 }
 
-// 获取分区排行榜（7天）
-export async function getRankingRegion(rId: number) {
-  const res = await axios.get(`${API_BASE}/ranking/region`, { params: { rId, day: 7 } })
-  return res.data
+export async function getRankingRegion(rId) {
+  try {
+    const [hotRes, catRes] = await Promise.all([
+      recommendApi.getHotVideos(rId, 30),
+      rId ? videoApi.getVideosByCategoryId(rId) : Promise.resolve({ code: 200, data: [] })
+    ])
+    const hotList = handleRes(hotRes) || []
+    const catList = handleRes(catRes) || []
+    return {
+      code: '1',
+      data: {
+        hotVideos: hotList.slice(0, 4).map(adaptVideo),
+        partitions: [{
+          id: rId,
+          name: '当前分类',
+          videos: catList.map(adaptVideo)
+        }]
+      }
+    }
+  } catch (e) {
+    return { code: '0', data: { hotVideos: [], partitions: [] } }
+  }
 }
 
-// 获取视频分区列表
 export async function getPartitions() {
-  const res = await axios.get(`${API_BASE}/partitions`)
-  return res.data
+  return getRankingPartitions()
 }
