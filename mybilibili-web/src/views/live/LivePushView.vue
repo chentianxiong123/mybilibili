@@ -231,12 +231,14 @@ const scheduleTime = ref('')
 const openScheduleDialog = async () => {
   if (room.value?.scheduledAt) {
     const d = new Date(room.value.scheduledAt)
-    scheduleDate.value = d.toISOString().slice(0, 10)
-    scheduleTime.value = d.toTimeSlice().slice(0, 5)
+    const pad = n => String(n).padStart(2, '0')
+    scheduleDate.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
+    scheduleTime.value = `${pad(d.getHours())}:${pad(d.getMinutes())}`
   } else {
     const n = new Date(Date.now() + 3600000)
-    scheduleDate.value = n.toISOString().slice(0, 10)
-    scheduleTime.value = n.toTimeSlice().slice(0, 5)
+    const pad = n => String(n).padStart(2, '0')
+    scheduleDate.value = `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`
+    scheduleTime.value = `${pad(n.getHours())}:${pad(n.getMinutes())}`
   }
   showScheduleDialog.value = true
 }

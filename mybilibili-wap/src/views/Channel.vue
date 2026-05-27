@@ -69,7 +69,11 @@ const handleTabClick = (tab) => {
     <Header />
     <div class="partition-bar">
       <TabBar :data="tabBarData" :active-id="activeId" @click="handleTabClick" />
-      <div class="switch-btn" @click="drawerRef?.show()">▼</div>
+      <div class="switch-btn" @click="drawerRef?.show()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </div>
     </div>
     <Drawer :data="tabBarData" ref="drawerRef" @click="handleTabClick" />
 
@@ -109,41 +113,49 @@ const handleTabClick = (tab) => {
   display: flex;
   align-items: center;
   background: $bg-white;
-  border-bottom: 1px solid $border-color;
+  padding-right: 12px;
+  position: sticky;
+  top: 44px;
+  z-index: 10;
+  border-bottom: 1px solid #f4f4f4;
   .tab-bar { flex: 1; }
   .switch-btn {
-    width: 40px;
-    text-align: center;
-    color: $text-secondary;
-    font-size: 16px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #999;
     cursor: pointer;
+    user-select: none;
+    svg { width: 16px; height: 16px; }
   }
 }
 
-.content { padding: 12px; }
+.content { padding: 8px 4px 0; }
 
 .recommend-section, .partition-block { margin-bottom: 16px; }
 
 .section-title {
   font-size: 16px;
   font-weight: 600;
-  margin-bottom: 10px;
+  margin: 12px 8px 10px;
   a { color: $theme-pink; }
 }
 
 .partition-header {
   display: flex;
   align-items: center;
-  margin-bottom: 10px;
+  margin: 12px 8px 10px;
   padding-bottom: 8px;
-  border-bottom: 1px solid $border-color;
+  border-bottom: 1px solid #f4f4f4;
 }
 .partition-name { font-size: 16px; font-weight: 600; }
 
 .video-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 
 .loading {

@@ -66,7 +66,7 @@ public class UserService {
         user.setExperience(0);
         user.setBio("");
         user.setSignature("");
-        user.setStatus(0);
+        user.setStatus(1);
 
         userMapper.insert(user);
 
@@ -81,6 +81,9 @@ public class UserService {
         User user = userMapper.selectByUsername(loginDTO.getUsername());
         if (user == null) {
             throw new BusinessException("用户名或密码错误");
+        }
+        if (user.getStatus() == 0) {
+            throw new BusinessException("账号已被禁用，请联系管理员");
         }
 
         if (!passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {

@@ -23,8 +23,11 @@ const login = async () => {
     })
     const data = await res.json()
     if (data.code === 200 && data.data) {
-      localStorage.setItem('token', data.data.token || data.data)
-      localStorage.setItem('user', JSON.stringify(data.data))
+      // 兼容后端返回的对象包含 user 还是扁平结构
+      const userObj = data.data.user || data.data
+      const tokenStr = data.data.token || data.data
+      localStorage.setItem('token', tokenStr)
+      localStorage.setItem('user', JSON.stringify(userObj))
       router.push('/m/index')
     } else {
       errorMsg.value = data.message || '登录失败'

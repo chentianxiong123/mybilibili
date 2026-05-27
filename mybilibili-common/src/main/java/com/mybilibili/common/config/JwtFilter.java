@@ -32,7 +32,9 @@ public class JwtFilter extends OncePerRequestFilter {
             path.contains("/follow/") || path.contains("/test/") ||
             path.contains("/covers/") || path.contains("/static/") ||
             path.contains("/images/") || path.contains("/files/") ||
-            path.contains("/uploads/") || path.contains("/manuscript/recommended") || path.contains("/api/manuscript/recommended") ||
+            path.contains("/uploads/") || path.contains("/banner-images/") ||
+            path.contains("/recommend/") || path.contains("/search/") ||
+            path.contains("/manuscript/recommended") || path.contains("/api/manuscript/recommended") ||
             path.matches(".*/manuscript/\\d+$") ||
             path.endsWith(".jpg") ||
             path.endsWith(".jpeg") || path.endsWith(".png") ||

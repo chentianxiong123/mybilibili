@@ -49,6 +49,8 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/api/category/list",
             "/api/banner-images/",
             "/api/banner/",
+            "/api/recommend/hot",
+            "/api/recommend/related/",
             "/api/danmaku/",
             "/api/dynamic/hot",
             "/api/follow/check",

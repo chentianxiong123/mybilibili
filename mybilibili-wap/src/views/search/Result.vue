@@ -17,13 +17,6 @@ const loading = ref(false)
 const page = ref(1)
 const hasMore = ref(true)
 
-watch(() => props.keyword, (kw) => {
-  page.value = 1
-  videos.value = []
-  upUsers.value = []
-  loadResults()
-}, { immediate: true })
-
 const loadResults = async () => {
   loading.value = true
   try {
@@ -50,6 +43,13 @@ const loadResults = async () => {
     loading.value = false
   }
 }
+
+watch(() => props.keyword, (kw) => {
+  page.value = 1
+  videos.value = []
+  upUsers.value = []
+  loadResults()
+}, { immediate: true })
 
 const switchTab = (type) => {
   searchType.value = type
@@ -127,7 +127,10 @@ const loadMore = () => {
 .tabs {
   display: flex;
   background: $bg-white;
-  border-bottom: 1px solid $border-color;
+  border-bottom: 1px solid #f4f4f4;
+  position: sticky;
+  top: 44px; /* Header高度 */
+  z-index: 10;
 }
 
 .tab {
@@ -137,10 +140,23 @@ const loadMore = () => {
   font-size: 15px;
   color: $text-secondary;
   cursor: pointer;
+  position: relative;
 
   &.active {
     color: $theme-pink;
     font-weight: 600;
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 20px;
+      height: 3px;
+      background: $theme-pink;
+      border-radius: 2px;
+    }
   }
 }
 
@@ -149,7 +165,10 @@ const loadMore = () => {
   padding: 8px 12px;
   background: $bg-white;
   gap: 8px;
-  border-bottom: 1px solid $border-color;
+  border-bottom: 1px solid #f4f4f4;
+  position: sticky;
+  top: 89px; /* Header + Tabs 高度 */
+  z-index: 9;
 }
 
 .order-tab {
@@ -166,16 +185,18 @@ const loadMore = () => {
   }
 }
 
-.video-list { padding: 12px; }
-.video-list .video-item { margin-bottom: 10px; }
+.video-list { padding: 12px 6px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.video-list .video-item { margin-bottom: 0; }
 
 .up-list { padding: 12px; }
 
 .up-item {
   display: flex;
   gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid $border-color;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #fff;
+  border-radius: 6px;
   cursor: pointer;
 }
 
@@ -187,8 +208,8 @@ const loadMore = () => {
   background: #e3e5e7;
 }
 
-.up-info { flex: 1; }
-.up-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.up-info { flex: 1; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+.up-name { font-size: 14px; font-weight: 600; margin-bottom: 6px; color: #18191c; }
 .up-stats { font-size: 12px; color: $text-secondary; margin-bottom: 4px; }
 .up-sign { font-size: 12px; color: $text-third; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -198,6 +219,7 @@ const loadMore = () => {
   color: $theme-pink;
   cursor: pointer;
   font-size: 14px;
+  grid-column: 1 / -1;
 }
 
 .no-more, .empty {
@@ -205,11 +227,13 @@ const loadMore = () => {
   padding: 20px;
   color: $text-third;
   font-size: 13px;
+  grid-column: 1 / -1;
 }
 
 .loading {
   text-align: center;
   padding: 40px;
   color: $text-secondary;
+  grid-column: 1 / -1;
 }
 </style>

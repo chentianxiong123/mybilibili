@@ -13,7 +13,7 @@ const adaptVideo = (v) => ({
   author: v.username || v.nickname || v.author || '',
   mid: v.userId,
   play: v.viewCount || 0,
-  videoReview: v.danmakuCount || 0,
+  videoReview: v.commentCount || 0,
   duration: v.duration,
   description: v.description
 })

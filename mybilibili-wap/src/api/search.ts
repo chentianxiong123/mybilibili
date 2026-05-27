@@ -54,7 +54,7 @@ export async function getSearchResult(params) {
     const res = await api.get(`/search/videos?keyword=${encodeURIComponent(keyword)}&page=${page}&size=${size}&sort=${sort}`)
     return {
       code: '1',
-      data: (res?.data || res || []).map(adaptVideo)
+      data: ((res?.data?.content) || res || []).map(adaptVideo)
     }
   } catch (e) {
     return { code: '0', data: [] }

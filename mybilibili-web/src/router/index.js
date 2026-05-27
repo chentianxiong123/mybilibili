@@ -275,6 +275,12 @@ const router = createRouter({
         { path: 'index', name: 'admin-index', component: () => import('../views/admin/IndexManagerView.vue'), meta: { title: '索引管理 - 哔哩哔哩', layout: 'none' } },
         { path: 'system-notification', name: 'admin-system-notification', component: () => import('../views/admin/SystemNotificationManagerView.vue'), meta: { title: '全站系统通知 - 哔哩哔哩', layout: 'none' } }
       ]
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('../views/NotFoundView.vue'),
+      meta: { title: '页面未找到 - 哔哩哔哩', layout: 'simple' }
     }
   ],
   scrollBehavior(to, from, savedPosition) {

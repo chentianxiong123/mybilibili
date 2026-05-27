@@ -24,5 +24,7 @@ const hideOnLogin = computed(() => route.path === '/m/login')
 /* 给有 TabBar 的页面底部留出空间 */
 body {
   padding-bottom: 0;
+  background-color: #f4f4f4; /* 匹配B站的灰色背景 */
+  margin: 0;
 }
 </style>

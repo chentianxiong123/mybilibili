@@ -2,6 +2,10 @@ import type { RouteRecordRaw } from 'vue-router'
 
 const mobileRoutes: RouteRecordRaw[] = [
   {
+    path: '/',
+    redirect: '/m/index'
+  },
+  {
     path: '/m/index',
     name: 'mobile-home',
     component: () => import('../views/home/Index.vue'),
@@ -44,26 +48,34 @@ const mobileRoutes: RouteRecordRaw[] = [
     meta: { title: '搜索结果', mobile: true }
   },
   {
+    path: '/m/message',
+    name: 'mobile-message',
+    component: () => import('../views/message/Message.vue'),
+    meta: { title: '消息', mobile: true }
+  },
+  {
     path: '/m/space',
     name: 'mobile-space',
     component: () => import('../views/space/Space.vue'),
-    meta: { title: '我的', mobile: true },
-    children: [
-      {
-        path: '',
-        redirect: '/m/space/history'
-      },
-      {
-        path: 'history',
-        component: () => import('../views/space/History.vue'),
-        meta: { title: '历史记录', mobile: true }
-      },
-      {
-        path: ':mId',
-        component: () => import('../views/space/UpUser.vue'),
-        meta: { title: 'UP主主页', mobile: true }
-      }
-    ]
+    meta: { title: '我的', mobile: true }
+  },
+  {
+    path: '/m/space/history',
+    name: 'mobile-space-history',
+    component: () => import('../views/space/History.vue'),
+    meta: { title: '历史记录', mobile: true }
+  },
+  {
+    path: '/m/space/favorite',
+    name: 'mobile-space-favorite',
+    component: () => import('../views/space/Favorite.vue'),
+    meta: { title: '我的收藏', mobile: true }
+  },
+  {
+    path: '/m/space/:mId',
+    name: 'mobile-space-user',
+    component: () => import('../views/space/UpUser.vue'),
+    meta: { title: 'UP主主页', mobile: true }
   },
   {
     path: '/m/live',

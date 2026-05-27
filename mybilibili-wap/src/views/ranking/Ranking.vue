@@ -142,10 +142,13 @@ const handleScroll = () => {
 .ranking-header {
   display: flex;
   align-items: center;
-  height: $header-height;
+  height: 44px;
   padding: 0 12px;
   background: $theme-pink;
   color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 
   .back-btn {
     font-size: 28px;
@@ -159,6 +162,9 @@ const handleScroll = () => {
 .tab-bar-wrapper {
   background: $bg-white;
   border-bottom: 1px solid $border-color;
+  position: sticky;
+  top: 44px;
+  z-index: 10;
 }
 
 .video-list {
@@ -170,28 +176,32 @@ const handleScroll = () => {
 .rank-item {
   display: flex;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   cursor: pointer;
+  background: #fff;
+  padding: 10px;
+  border-radius: 6px;
 }
 
 .rank-badge {
-  width: 36px;
+  width: 32px;
   text-align: center;
   flex-shrink: 0;
+  margin-right: 8px;
 
   .rank-img { width: 24px; height: auto; }
-  .rank-num { font-size: 14px; color: $text-secondary; font-weight: 600; }
+  .rank-num { font-size: 16px; color: $text-secondary; font-weight: 600; }
 }
 
 .rank-video {
   flex: 1;
   display: flex;
-  gap: 10px;
+  gap: 12px;
 }
 
 .rank-cover {
-  width: 100px;
-  height: 56px;
+  width: 112px;
+  height: 63px;
   object-fit: cover;
   border-radius: 4px;
   background: #e3e5e7;
@@ -201,14 +211,14 @@ const handleScroll = () => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
   gap: 4px;
 }
 
 .rank-title {
-  font-size: 13px;
+  font-size: 14px;
   color: $text-primary;
-  line-height: 1.3;
+  line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -221,7 +231,7 @@ const handleScroll = () => {
 }
 
 .rank-stats {
-  font-size: 11px;
+  font-size: 12px;
   color: $text-third;
 }
 

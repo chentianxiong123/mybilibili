@@ -25,7 +25,7 @@ export async function getUserInfo(mId) {
       data: {
         mid: data.id,
         name: data.username || data.nickname || '',
-        face: data.avatarUrl || '',
+        face: data.avatar || '',
         level: data.level || 1,
         sign: data.bio || '',
         follower: data.followerCount || 0,

@@ -144,19 +144,20 @@ const onSuggestClick = (item) => {
 .search-header {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  background: $theme-pink;
+  padding: 10px 12px;
+  background: $bg-white;
   gap: 8px;
 }
 
 .search-input {
   flex: 1;
-  height: 32px;
+  height: 34px;
   border: none;
-  border-radius: 16px;
+  border-radius: 17px;
   padding: 0 12px;
   font-size: 14px;
   outline: none;
+  background: $bg-color;
 }
 
 .clear-btn {
@@ -166,7 +167,7 @@ const onSuggestClick = (item) => {
 }
 
 .cancel-btn {
-  color: #fff;
+  color: $text-primary;
   font-size: 14px;
   cursor: pointer;
 }
