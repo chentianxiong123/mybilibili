@@ -55,18 +55,9 @@ public class AdminAiServiceImpl implements AdminAiService {
             return emitter;
         }
 
-        // 注册 ToolCallback
+        // 注册 ToolCallback（@Tool 注解的方法会被自动扫描）
         List<ToolCallback> toolCallbacks = List.of(
-            ToolCallbacks.from(adminToolService, "getOverviewStats",
-                "获取平台概览统计：用户总数、稿件总数、评论总数等核心指标"),
-            ToolCallbacks.from(adminToolService, "getUserGrowth",
-                "获取用户增长趋势，参数 days 表示最近天数（默认7）"),
-            ToolCallbacks.from(adminToolService, "getManuscriptStats",
-                "获取稿件状态分布统计（审核通过/待审核/已下架等）"),
-            ToolCallbacks.from(adminToolService, "getAiUsageOverview",
-                "获取 AI 功能用量概览（总调用次数、Token消耗等）"),
-            ToolCallbacks.from(adminToolService, "getHotVideos",
-                "获取热门视频列表，参数 limit 表示返回数量（默认10）")
+            ToolCallbacks.from(adminToolService)
         );
 
         StringBuilder fullResp = new StringBuilder();

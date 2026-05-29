@@ -2,6 +2,7 @@ package com.mybilibili.ai.tool;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mybilibili.ai.mapper.AiUsageLogMapper;
+import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -28,6 +29,7 @@ public class AdminToolService {
         this.objectMapper = new ObjectMapper();
     }
 
+    @Tool(name = "getOverviewStats", description = "获取平台概览统计：用户总数、稿件总数、评论总数等核心指标")
     public StatsData getOverviewStats() {
         try {
             String url = GATEWAY_BASE_URL + "/statistics/overview";
@@ -39,6 +41,7 @@ public class AdminToolService {
         }
     }
 
+    @Tool(name = "getUserGrowth", description = "获取用户增长趋势，参数 days 表示最近天数（默认7）")
     public StatsData getUserGrowth(int days) {
         try {
             LocalDate endDate = LocalDate.now();
@@ -55,6 +58,7 @@ public class AdminToolService {
         }
     }
 
+    @Tool(name = "getManuscriptStats", description = "获取稿件状态分布统计（审核通过/待审核/已下架等）")
     public StatsData getManuscriptStats() {
         try {
             String url = GATEWAY_BASE_URL + "/statistics/manuscript/status";
@@ -66,6 +70,7 @@ public class AdminToolService {
         }
     }
 
+    @Tool(name = "getAiUsageOverview", description = "获取 AI 功能用量概览（总调用次数、Token消耗等）")
     public StatsData getAiUsageOverview() {
         try {
             Map<String, Object> data = aiUsageLogMapper.selectOverview();
@@ -75,6 +80,7 @@ public class AdminToolService {
         }
     }
 
+    @Tool(name = "getHotVideos", description = "获取热门视频列表，参数 limit 表示返回数量（默认10）")
     public StatsData getHotVideos(int limit) {
         try {
             String url = GATEWAY_BASE_URL + "/statistics/video/hot?limit=" + limit;
