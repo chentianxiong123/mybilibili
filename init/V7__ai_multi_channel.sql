@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS `ai_api_configs` (
 -- AI 功能绑定渠道
 CREATE TABLE IF NOT EXISTS `ai_bindings` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `feature` varchar(30) NOT NULL COMMENT 'CHAT / REVIEW / SUMMARY',
+  `feature` varchar(30) NOT NULL COMMENT 'CHAT / REVIEW / SUMMARY / ADMIN',
   `api_config_id` bigint NOT NULL COMMENT '绑定的渠道 ID',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_feature` (`feature`)

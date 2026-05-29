@@ -3,12 +3,15 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import { useAdminStore } from './stores/admin'
+import AdminAiFloatingButton from './components/AdminAiFloatingButton.vue'
+import AdminAiChatPanel from './components/AdminAiChatPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
 const adminStore = useAdminStore()
 const isSuperAdmin = computed(() => adminStore.role === '超级管理员')
 const isCollapse = ref(false)
+const showAiAssistant = ref(false)
 
 const isLoginPage = computed(() => route.path === '/login')
 
@@ -126,6 +129,9 @@ const handleCommand = (command) => {
         </el-main>
       </el-container>
     </el-container>
+
+    <AdminAiFloatingButton v-model:visible="showAiAssistant" />
+    <AdminAiChatPanel v-model:visible="showAiAssistant" />
   </div>
 
   <!-- 登录页面 -->

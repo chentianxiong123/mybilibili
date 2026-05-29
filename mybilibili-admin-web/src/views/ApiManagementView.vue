@@ -32,10 +32,11 @@ const testResult = ref({})
 const featureOptions = [
   { value: 'CHAT', label: 'AI 客服' },
   { value: 'REVIEW', label: '内容审核' },
-  { value: 'SUMMARY', label: '视频摘要' }
+  { value: 'SUMMARY', label: '视频摘要' },
+  { value: 'ADMIN', label: '管理助手' }
 ]
 
-const featureLabels = { CHAT: 'AI 客服', REVIEW: '内容审核', SUMMARY: '视频摘要' }
+const featureLabels = { CHAT: 'AI 客服', REVIEW: '内容审核', SUMMARY: '视频摘要', ADMIN: '管理助手' }
 
 async function loadData() {
   loading.value = true
