@@ -6,19 +6,16 @@ spring:
     name: mybilibili-video
   main:
     allow-circular-references: true
-  mvc:
-    pathmatch:
-      matching-strategy: ant_path_matcher
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/mybilibili?serverTimezone=GMT%2B8&useUnicode=true&characterEncoding=utf8&autoReconnect=true&allowMultiQueries=true&useSSL=false
     username: root
     password: ${MYSQL_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
-  redis:
-    host: 127.0.0.1
-    port: 6379
-    database: 1
   data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      database: 1
     mongodb:
       uri: mongodb://localhost:27017/mybilibili
   cloud:
@@ -27,6 +24,7 @@ spring:
         server-addr: 127.0.0.1:8848
       config:
         server-addr: 127.0.0.1:8848
+        file-extension: yaml
         import-check:
           enabled: false
   servlet:

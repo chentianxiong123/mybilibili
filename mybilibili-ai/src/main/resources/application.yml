@@ -4,13 +4,31 @@ server:
 spring:
   application:
     name: mybilibili-ai
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
   cloud:
     nacos:
       discovery:
         server-addr: 127.0.0.1:8848
       config:
+        server-addr: 127.0.0.1:8848
+        file-extension: yaml
         import-check:
           enabled: false
+  ai:
+    openai:
+      api-key: placeholder
+      base-url: https://api.qnaigc.com
+      chat:
+        options:
+          model: ${ai.deepseek.model:deepseek-chat}
+          max-tokens: ${ai.deepseek.max-tokens:2000}
+          temperature: ${ai.deepseek.temperature:0.7}
   data:
     mongodb:
       uri: mongodb://localhost:27017/mybilibili
@@ -38,7 +56,7 @@ rocketmq:
 ai:
   deepseek:
     api-key: ""
-    api-url: "https://api.qnaigc.com/v1/chat/completions"
+    api-url: "https://api.qnaigc.com"
     model: "deepseek-r1"
     max-tokens: 2000
     temperature: 0.7

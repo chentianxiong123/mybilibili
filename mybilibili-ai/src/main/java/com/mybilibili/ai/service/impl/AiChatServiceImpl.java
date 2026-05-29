@@ -1,32 +1,30 @@
 package com.mybilibili.ai.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mybilibili.ai.config.DeepSeekConfig;
+import com.mybilibili.ai.config.DynamicChatClient;
 import com.mybilibili.ai.entity.AiChatMessage;
 import com.mybilibili.ai.entity.AiConversation;
 import com.mybilibili.ai.mapper.AiChatMessageMapper;
 import com.mybilibili.ai.mapper.AiConversationMapper;
 import com.mybilibili.ai.service.AiChatService;
-import com.mybilibili.ai.service.AiConfigService;
+import com.mybilibili.ai.util.AiUsageLogger;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public class AiChatServiceImpl implements AiChatService {
 
     @Autowired
-    private AiConfigService aiConfigService;
-
-    @Autowired
-    private DeepSeekConfig deepSeekConfig;
+    private DynamicChatClient dynamicChatClient;
 
     @Autowired
     private AiConversationMapper aiConversationMapper;
@@ -34,7 +32,9 @@ public class AiChatServiceImpl implements AiChatService {
     @Autowired
     private AiChatMessageMapper aiChatMessageMapper;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    @Autowired
+    private AiUsageLogger aiUsageLogger;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String SYSTEM_PROMPT =
@@ -53,13 +53,14 @@ public class AiChatServiceImpl implements AiChatService {
     public SseEmitter sendMessage(Integer userId, Long conversationId, String content) {
         AiConversation conversation;
         boolean isNew = false;
+        Long convId = conversationId;
 
-        if (conversationId == null) {
+        if (convId == null) {
             conversation = createConversation(userId);
-            conversationId = conversation.getId();
+            convId = conversation.getId();
             isNew = true;
         } else {
-            conversation = aiConversationMapper.selectById(conversationId);
+            conversation = aiConversationMapper.selectById(convId);
             if (conversation == null || !conversation.getUserId().equals(userId)) {
                 SseEmitter err = new SseEmitter(0L);
                 try {
@@ -70,14 +71,12 @@ public class AiChatServiceImpl implements AiChatService {
             }
         }
 
-        // 保存用户消息
         AiChatMessage userMsg = new AiChatMessage();
-        userMsg.setConversationId(conversationId);
+        userMsg.setConversationId(convId);
         userMsg.setRole("user");
         userMsg.setContent(content);
         aiChatMessageMapper.insert(userMsg);
 
-        // 首次对话自动生成标题
         if (isNew) {
             String t = content.length() > 30 ? content.substring(0, 30) + "..." : content;
             conversation.setTitle(t);
@@ -85,110 +84,85 @@ public class AiChatServiceImpl implements AiChatService {
         }
 
         SseEmitter emitter = new SseEmitter(120000L);
-        Long finalConvId = conversationId;
+        Long finalConvId = convId;
         AiConversation finalConv = conversation;
 
-        new Thread(() -> {
-            try {
-                emitter.send(SseEmitter.event().name("start").data(""));
+        // 流式调用
+        List<Message> historyMessages = buildContextMessages(finalConvId, userMsg.getId(), content);
+        long startTime = System.currentTimeMillis();
 
-                // 构建上下文
-                List<AiChatMessage> history = aiChatMessageMapper.selectByConversationId(finalConvId);
-                List<Map<String, String>> msgs = new ArrayList<>();
+        Flux<String> flux = dynamicChatClient.getClient("CHAT").prompt()
+                .system(SYSTEM_PROMPT)
+                .messages(historyMessages)
+                .stream()
+                .content();
 
-                Map<String, String> sys = new HashMap<>();
-                sys.put("role", "system");
-                sys.put("content", SYSTEM_PROMPT);
-                msgs.add(sys);
+        StringBuilder fullResp = new StringBuilder();
+        AtomicReference<Disposable> subscriptionRef = new AtomicReference<>();
 
-                int start = Math.max(0, history.size() - MAX_CONTEXT_MESSAGES);
-                for (int i = start; i < history.size(); i++) {
-                    AiChatMessage m = history.get(i);
-                    if (m.getId().equals(userMsg.getId())) continue;
-                    Map<String, String> map = new HashMap<>();
-                    map.put("role", m.getRole());
-                    map.put("content", m.getContent());
-                    msgs.add(map);
-                }
-
-                Map<String, String> cur = new HashMap<>();
-                cur.put("role", "user");
-                cur.put("content", content);
-                msgs.add(cur);
-
-                // 构建请求
-                Map<String, Object> body = new HashMap<>();
-                body.put("model", deepSeekConfig.getModel());
-                body.put("messages", msgs);
-                body.put("stream", true);
-                body.put("max_tokens", deepSeekConfig.getMaxTokens());
-                body.put("temperature", deepSeekConfig.getTemperature());
-
-                String apiKey = aiConfigService.getApiKey();
-
-                // 流式调用
-                StringBuilder fullResp = new StringBuilder();
-
-                restTemplate.execute(deepSeekConfig.getApiUrl(), HttpMethod.POST,
-                    clientHttpRequest -> {
-                        clientHttpRequest.getHeaders().setContentType(MediaType.APPLICATION_JSON);
-                        clientHttpRequest.getHeaders().set("Authorization", "Bearer " + apiKey);
-                        clientHttpRequest.getBody().write(objectMapper.writeValueAsBytes(body));
-                    },
-                    clientHttpResponse -> {
-                        try (BufferedReader r = new BufferedReader(
-                                new InputStreamReader(clientHttpResponse.getBody(), StandardCharsets.UTF_8))) {
-                            String line;
-                            while ((line = r.readLine()) != null) {
-                                if (line.startsWith("data: ")) {
-                                    String data = line.substring(6).trim();
-                                    if ("[DONE]".equals(data)) break;
-                                    try {
-                                        Map<String, Object> j = objectMapper.readValue(data, Map.class);
-                                        List<Map<String, Object>> choices = (List<Map<String, Object>>) j.get("choices");
-                                        if (choices != null && !choices.isEmpty()) {
-                                            Map<String, Object> delta = (Map<String, Object>) choices.get(0).get("delta");
-                                            if (delta != null && delta.get("content") != null) {
-                                                String chunk = (String) delta.get("content");
-                                                fullResp.append(chunk);
-                                                emitter.send(SseEmitter.event().name("data").data(chunk));
-                                            }
-                                        }
-                                    } catch (Exception ignored) {}
-                                }
-                            }
-                        }
-                        return null;
-                    }
-                );
-
-                // 保存 assistant 回复
-                String reply = fullResp.toString();
-                if (!reply.isEmpty()) {
-                    AiChatMessage asst = new AiChatMessage();
-                    asst.setConversationId(finalConvId);
-                    asst.setRole("assistant");
-                    asst.setContent(reply);
-                    aiChatMessageMapper.insert(asst);
-                }
-
-                finalConv.setUpdatedAt(new Date());
-                aiConversationMapper.updateById(finalConv);
-
-                Map<String, Object> done = new HashMap<>();
-                done.put("conversationId", finalConvId);
-                emitter.send(SseEmitter.event().name("done").data(objectMapper.writeValueAsString(done)));
-                emitter.complete();
-
-            } catch (Exception e) {
+        Disposable subscription = flux.subscribe(
+            chunk -> {
                 try {
-                    emitter.send(SseEmitter.event().name("error").data("回复生成失败: " + e.getMessage()));
+                    fullResp.append(chunk);
+                    emitter.send(SseEmitter.event().name("data").data(chunk));
+                } catch (Exception ignored) {}
+            },
+            error -> {
+                aiUsageLogger.log("CHAT", "deepseek-r1", null, null, System.currentTimeMillis() - startTime, false, error.getMessage());
+                try {
+                    emitter.send(SseEmitter.event().name("error").data("回复生成失败: " + error.getMessage()));
+                    emitter.complete();
+                } catch (Exception ignored) {}
+            },
+            () -> {
+                try {
+                    String reply = fullResp.toString();
+                    if (!reply.isEmpty()) {
+                        AiChatMessage asst = new AiChatMessage();
+                        asst.setConversationId(finalConvId);
+                        asst.setRole("assistant");
+                        asst.setContent(reply);
+                        aiChatMessageMapper.insert(asst);
+                    }
+
+                    finalConv.setUpdatedAt(new Date());
+                    aiConversationMapper.updateById(finalConv);
+
+                    aiUsageLogger.log("CHAT", "deepseek-r1", null, null, System.currentTimeMillis() - startTime, true, null);
+
+                    Map<String, Object> done = new HashMap<>();
+                    done.put("conversationId", finalConvId);
+                    emitter.send(SseEmitter.event().name("done").data(objectMapper.writeValueAsString(done)));
                     emitter.complete();
                 } catch (Exception ignored) {}
             }
-        }).start();
+        );
+        subscriptionRef.set(subscription);
+
+        emitter.onCompletion(() -> subscriptionRef.get().dispose());
+        emitter.onTimeout(() -> subscriptionRef.get().dispose());
+        emitter.onError(e -> subscriptionRef.get().dispose());
 
         return emitter;
+    }
+
+    private List<Message> buildContextMessages(Long conversationId, Long excludeMsgId, String currentContent) {
+        List<AiChatMessage> history = aiChatMessageMapper.selectByConversationId(conversationId);
+        List<Message> messages = new ArrayList<>();
+
+        int start = Math.max(0, history.size() - MAX_CONTEXT_MESSAGES);
+        for (int i = start; i < history.size(); i++) {
+            AiChatMessage m = history.get(i);
+            if (m.getId().equals(excludeMsgId)) continue;
+            if ("user".equals(m.getRole())) {
+                messages.add(new UserMessage(m.getContent()));
+            } else if ("assistant".equals(m.getRole())) {
+                messages.add(new AssistantMessage(m.getContent()));
+            }
+        }
+
+        messages.add(new UserMessage(currentContent));
+        return messages;
     }
 
     @Override

@@ -1,16 +1,18 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import { useAdminStore } from './stores/admin'
 
 const route = useRoute()
 const router = useRouter()
+const adminStore = useAdminStore()
+const isSuperAdmin = computed(() => adminStore.role === '超级管理员')
+const isCollapse = ref(false)
 
-// 判断是否是登录页面
 const isLoginPage = computed(() => route.path === '/login')
 
-// 菜单项
-const menuItems = [
+const allMenuItems = [
   { path: '/dashboard', icon: 'DataBoard', title: '数据概览' },
   { path: '/users', icon: 'User', title: '用户管理' },
   { path: '/manuscripts', icon: 'Document', title: '稿件管理' },
@@ -20,9 +22,16 @@ const menuItems = [
   { path: '/categories', icon: 'Folder', title: '分类管理' },
   { path: '/banner-images', icon: 'Picture', title: '图片管理' },
   { path: '/index-manager', icon: 'DataLine', title: '索引管理' },
-  { path: '/admins', icon: 'Lock', title: '管理员管理' },
-  { path: '/api-management', icon: 'Setting', title: 'API 管理' }
+  { path: '/ai-usage', icon: 'DataAnalysis', title: 'AI 用量统计' },
+  { path: '/api-management', icon: 'Setting', title: 'API 管理' },
+  { path: '/live-rooms', icon: 'Connection', title: '直播管理' },
+  { path: '/meeting-admin', icon: 'Monitor', title: '会议管理' },
+  { path: '/admins', icon: 'Lock', title: '管理员与角色权限', superAdminOnly: true }
 ]
+
+const menuItems = computed(() =>
+  allMenuItems.filter(item => !item.superAdminOnly || isSuperAdmin.value)
+)
 
 const activeMenu = computed(() => {
   const path = route.path
@@ -37,14 +46,15 @@ const activeMenu = computed(() => {
   if (path.startsWith('/index-manager')) return '/index-manager'
   if (path.startsWith('/admins')) return '/admins'
   if (path.startsWith('/api-management')) return '/api-management'
+  if (path.startsWith('/ai-usage')) return '/ai-usage'
+  if (path.startsWith('/live-rooms')) return '/live-rooms'
+  if (path.startsWith('/meeting-admin')) return '/meeting-admin'
   return path
 })
 
 const handleCommand = (command) => {
-  const token = localStorage.getItem('admin_token')
   if (command === 'logout') {
-    localStorage.removeItem('admin_token')
-    localStorage.removeItem('admin_user')
+    adminStore.logout()
     router.push('/login')
   }
 }
@@ -54,28 +64,31 @@ const handleCommand = (command) => {
   <div class="app-container" v-if="!isLoginPage">
     <el-container class="layout-container">
       <!-- 侧边栏 -->
-      <el-aside width="220px" class="aside">
+      <el-aside :width="isCollapse ? '64px' : '220px'" class="aside">
         <div class="logo">
           <el-icon :size="28" color="#00aeec"><Monitor /></el-icon>
-          <span class="logo-text">管理后台</span>
+          <span v-if="!isCollapse" class="logo-text">管理后台</span>
         </div>
-        <el-menu
-          :default-active="activeMenu"
-          router
-          class="el-menu-vertical"
-          background-color="#304156"
-          text-color="#bfcbd9"
-          active-text-color="#409eff"
-        >
-          <el-menu-item
-            v-for="item in menuItems"
-            :key="item.path"
-            :index="item.path"
+        <el-scrollbar class="menu-scrollbar">
+          <el-menu
+            :default-active="activeMenu"
+            :collapse="isCollapse"
+            router
+            class="el-menu-vertical"
+            background-color="#304156"
+            text-color="#bfcbd9"
+            active-text-color="#409eff"
           >
-            <el-icon><component :is="ElementPlusIconsVue[item.icon]" /></el-icon>
-            <span>{{ item.title }}</span>
-          </el-menu-item>
-        </el-menu>
+            <el-menu-item
+              v-for="item in menuItems"
+              :key="item.path"
+              :index="item.path"
+            >
+              <el-icon><component :is="ElementPlusIconsVue[item.icon]" /></el-icon>
+              <template #title>{{ item.title }}</template>
+            </el-menu-item>
+          </el-menu>
+        </el-scrollbar>
       </el-aside>
 
       <!-- 主内容区 -->
@@ -83,13 +96,16 @@ const handleCommand = (command) => {
         <!-- 顶部导航栏 -->
         <el-header class="header">
           <div class="header-left">
-            <el-icon :size="20" class="breadcrumb-icon"><Fold /></el-icon>
+            <el-icon :size="20" class="breadcrumb-icon" @click="isCollapse = !isCollapse">
+              <Fold v-if="!isCollapse" /><Expand v-else />
+            </el-icon>
           </div>
           <div class="header-right">
             <el-dropdown trigger="click" @command="handleCommand">
               <div class="user-info">
                 <el-avatar :size="32" :icon="ElementPlusIconsVue.UserFilled" />
-                <span class="username">管理员</span>
+                <span class="username">{{ adminStore.userInfo?.username || '管理员' }}</span>
+                <el-tag v-if="adminStore.role" size="small" :type="isSuperAdmin ? 'danger' : 'info'" style="margin-left:4px">{{ adminStore.role }}</el-tag>
                 <el-icon class="dropdown-icon"><ArrowDown /></el-icon>
               </div>
               <template #dropdown>
@@ -130,6 +146,15 @@ const handleCommand = (command) => {
 .aside {
   background-color: #304156;
   overflow: hidden;
+  transition: width 0.3s;
+}
+
+.menu-scrollbar {
+  height: calc(100vh - 60px);
+}
+
+.menu-scrollbar :deep(.el-scrollbar__bar.is-vertical) {
+  width: 4px;
 }
 
 .logo {
@@ -138,6 +163,9 @@ const handleCommand = (command) => {
   justify-content: center;
   height: 60px;
   background-color: #2b3a4a;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .logo-text {
@@ -149,6 +177,10 @@ const handleCommand = (command) => {
 
 .el-menu-vertical {
   border-right: none;
+}
+
+.el-menu-vertical:not(.el-menu--collapse) {
+  width: 220px;
 }
 
 .header {

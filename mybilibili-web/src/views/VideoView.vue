@@ -2679,7 +2679,7 @@ watch(() => [route.query.p, route.query.t], ([newP, newT]) => {
               <div v-for="video in relatedVideos" :key="video.id" class="related-video-item">
                 <div class="video-cover">
                   <a :href="video.manuscriptId ? '/manuscript/' + video.manuscriptId : '/manuscript/' + video.id" class="video-cover-link">
-                    <img :src="video.cover || 'https://via.placeholder.com/320x180?text=视频封面'" alt="视频封面">
+                    <img :src="video.cover || '/assets/placeholder-cover.svg'" alt="视频封面">
                   </a>
                   <span class="video-duration">{{ video.duration }}</span>
                 </div>

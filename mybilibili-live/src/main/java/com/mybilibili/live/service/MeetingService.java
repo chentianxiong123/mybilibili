@@ -26,6 +26,66 @@ public class MeetingService {
 
     private final Random random = new Random();
 
+    public MeetingRoom reserve(String roomName, Long creatorId, String creatorName,
+                                LocalDateTime scheduledStart, LocalDateTime scheduledEnd, String reason) {
+        MeetingRoom room = createRoom(roomName, creatorId, creatorName);
+        room.setScheduledStart(scheduledStart);
+        room.setScheduledEnd(scheduledEnd);
+        room.setScheduledReason(reason);
+        room.setStatus(0);
+        roomMapper.updateById(room);
+        return room;
+    }
+
+    public List<MeetingRoom> getAllRooms(int page, int size, Integer status) {
+        LambdaQueryWrapper<MeetingRoom> wrapper = new LambdaQueryWrapper<>();
+        if (status != null) {
+            wrapper.eq(MeetingRoom::getStatus, status);
+        }
+        wrapper.orderByDesc(MeetingRoom::getCreateTime);
+        return roomMapper.selectList(wrapper);
+    }
+
+    public List<MeetingRoom> getPendingReservations() {
+        return roomMapper.selectList(new LambdaQueryWrapper<MeetingRoom>()
+                .isNotNull(MeetingRoom::getScheduledStart)
+                .eq(MeetingRoom::getStatus, 0)
+                .orderByAsc(MeetingRoom::getScheduledStart));
+    }
+
+    @Transactional
+    public boolean approveReservation(Long roomId, Long adminId) {
+        MeetingRoom room = roomMapper.selectById(roomId);
+        if (room == null || room.getScheduledStart() == null) return false;
+        room.setStatus(0);
+        roomMapper.updateById(room);
+        return true;
+    }
+
+    @Transactional
+    public boolean rejectReservation(Long roomId, Long adminId) {
+        MeetingRoom room = roomMapper.selectById(roomId);
+        if (room == null) return false;
+        room.setStatus(2);
+        room.setEndTime(LocalDateTime.now());
+        room.setUpdateTime(LocalDateTime.now());
+        roomMapper.updateById(room);
+        return true;
+    }
+
+    @Transactional
+    public void leaveAll(Long roomId) {
+        participantMapper.delete(new LambdaQueryWrapper<MeetingParticipant>()
+                .eq(MeetingParticipant::getRoomId, roomId));
+        MeetingRoom room = roomMapper.selectById(roomId);
+        if (room != null) {
+            room.setStatus(2);
+            room.setEndTime(LocalDateTime.now());
+            room.setUpdateTime(LocalDateTime.now());
+            roomMapper.updateById(room);
+        }
+    }
+
     public MeetingRoom createRoom(String roomName, Long creatorId, String creatorName) {
         MeetingRoom room = new MeetingRoom();
         room.setRoomName(roomName);

@@ -274,7 +274,7 @@ const goToAuthor = (authorId) => {
       <div v-for="video in videoList" :key="video.id" class="video-item">
         <div class="video-cover">
           <a :href="'/manuscript/' + (video.manuscriptId || video.id)" class="video-cover-link">
-            <img :src="video.coverUrl || 'https://via.placeholder.com/320x180?text=视频封面'" alt="视频封面">
+            <img :src="video.coverUrl || '/assets/placeholder-cover.svg'" alt="视频封面">
           </a>
           <!-- 左下角：播放量和评论量 -->
           <div class="video-stats-overlay">

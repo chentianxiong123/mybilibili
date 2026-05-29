@@ -151,7 +151,7 @@ onMounted(() => {
             @click="handleVideoClick(video)"
           >
             <div class="thumbnail-wrapper">
-              <img :src="video.thumbnail || 'https://via.placeholder.com/160x90?text=视频封面'" class="video-thumbnail" />
+              <img :src="video.thumbnail || '/assets/placeholder-cover.svg'" class="video-thumbnail" />
               <span v-if="video.duration" class="video-duration">{{ video.duration }}</span>
             </div>
             <div class="video-info">

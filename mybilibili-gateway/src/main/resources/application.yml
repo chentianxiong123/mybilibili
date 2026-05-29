@@ -552,6 +552,22 @@ spring:
           filters:
             - StripPrefix=1
 
+        # ========== 直播管理 ==========
+        - id: live-admin-service
+          uri: lb://mybilibili-live
+          predicates:
+            - Path=/api/admin/live/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 会议管理 ==========
+        - id: meeting-admin-service
+          uri: lb://mybilibili-live
+          predicates:
+            - Path=/api/admin/meeting/**
+          filters:
+            - StripPrefix=1
+
         - id: ai-process-service
           uri: lb://mybilibili-ai
           predicates:

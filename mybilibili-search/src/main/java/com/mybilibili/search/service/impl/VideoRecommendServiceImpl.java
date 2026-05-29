@@ -7,21 +7,19 @@ import com.mybilibili.common.vo.VideoVO;
 import com.mybilibili.common.vo.WatchHistoryVO;
 import com.mybilibili.search.service.VideoRecommendService;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.sort.FieldSortBuilder;
-import org.elasticsearch.search.sort.SortBuilders;
-import org.elasticsearch.search.sort.SortOrder;
+import co.elastic.clients.elasticsearch._types.SortOptions;
+import co.elastic.clients.elasticsearch._types.SortOrder;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
+import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.stereotype.Service;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -30,7 +28,7 @@ import java.util.stream.Collectors;
 public class VideoRecommendServiceImpl implements VideoRecommendService {
 
     @Autowired
-    private ElasticsearchRestTemplate elasticsearchRestTemplate;
+    private ElasticsearchTemplate elasticsearchRestTemplate;
 
     private static final Integer PUBLISHED_STATUS = 3;
     private static final int DEFAULT_SIZE = 10;
@@ -51,48 +49,50 @@ public class VideoRecommendServiceImpl implements VideoRecommendService {
                 return new ArrayList<>();
             }
 
-            BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-            boolQuery.must(QueryBuilders.termQuery("status", PUBLISHED_STATUS));
-            boolQuery.mustNot(QueryBuilders.termQuery("manuscriptId", currentManuscript.getManuscriptId()));
-
-            BoolQueryBuilder similarityQuery = QueryBuilders.boolQuery();
+            // Build similarity sub-query
+            List<Query> similarityClauses = new ArrayList<>();
 
             if (hasText(currentManuscript.getTitle())) {
-                similarityQuery.should(
-                    QueryBuilders.matchQuery("title", currentManuscript.getTitle()).boost(3.0f)
-                );
+                similarityClauses.add(Query.of(q -> q.match(m ->
+                    m.field("title").query(currentManuscript.getTitle()).boost(3.0f))));
             }
 
             if (hasText(currentManuscript.getDescription())) {
-                similarityQuery.should(
-                    QueryBuilders.matchQuery("description", currentManuscript.getDescription()).boost(1.5f)
-                );
+                similarityClauses.add(Query.of(q -> q.match(m ->
+                    m.field("description").query(currentManuscript.getDescription()).boost(1.5f))));
             }
 
             if (hasText(currentManuscript.getVideoTitles())) {
-                similarityQuery.should(
-                    QueryBuilders.matchQuery("videoTitles", currentManuscript.getVideoTitles()).boost(2.0f)
-                );
+                similarityClauses.add(Query.of(q -> q.match(m ->
+                    m.field("videoTitles").query(currentManuscript.getVideoTitles()).boost(2.0f))));
             }
 
             if (hasTags(currentManuscript.getTags())) {
                 for (String tag : currentManuscript.getTags()) {
-                    similarityQuery.should(
-                        QueryBuilders.termQuery("tags", tag).boost(2.0f)
-                    );
+                    similarityClauses.add(Query.of(q -> q.term(t ->
+                        t.field("tags").value(tag).boost(2.0f))));
                 }
             }
 
             if (currentManuscript.getCategoryId() != null) {
-                similarityQuery.should(
-                    QueryBuilders.termQuery("categoryId", currentManuscript.getCategoryId()).boost(1.0f)
-                );
+                similarityClauses.add(Query.of(q -> q.term(t ->
+                    t.field("categoryId").value(currentManuscript.getCategoryId().toString()).boost(1.0f))));
             }
 
-            boolQuery.must(similarityQuery);
+            Query similarityQuery = Query.of(q -> q.bool(b -> {
+                for (Query clause : similarityClauses) {
+                    b.should(clause);
+                }
+                return b;
+            }));
 
-            NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
-                .withQuery(boolQuery)
+            // Build main query
+            NativeQuery searchQuery = new NativeQueryBuilder()
+                .withQuery(q -> q.bool(b -> b
+                    .must(m -> m.term(t -> t.field("status").value(PUBLISHED_STATUS)))
+                    .mustNot(m -> m.term(t -> t.field("manuscriptId").value(currentManuscript.getManuscriptId().toString())))
+                    .must(similarityQuery)
+                ))
                 .withPageable(PageRequest.of(0, size))
                 .build();
 
@@ -114,22 +114,18 @@ public class VideoRecommendServiceImpl implements VideoRecommendService {
         size = Math.max(1, Math.min(size, MAX_SIZE));
 
         try {
-            BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-            boolQuery.must(QueryBuilders.termQuery("status", PUBLISHED_STATUS));
+            NativeQueryBuilder queryBuilder = new NativeQueryBuilder()
+                .withQuery(q -> q.bool(b -> {
+                    b.must(m -> m.term(t -> t.field("status").value(PUBLISHED_STATUS)));
+                    if (categoryId != null) {
+                        b.filter(f -> f.term(t -> t.field("categoryId").value(categoryId.toString())));
+                    }
+                    return b;
+                }))
+                .withSort(SortOptions.of(s -> s.field(f -> f.field("viewCount").order(SortOrder.Desc))))
+                .withPageable(PageRequest.of(0, size));
 
-            if (categoryId != null) {
-                boolQuery.filter(QueryBuilders.termQuery("categoryId", categoryId));
-            }
-
-            FieldSortBuilder sortBuilder = SortBuilders
-                .fieldSort("viewCount")
-                .order(SortOrder.DESC);
-
-            NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
-                .withQuery(boolQuery)
-                .withSort(sortBuilder)
-                .withPageable(PageRequest.of(0, size))
-                .build();
+            NativeQuery searchQuery = queryBuilder.build();
 
             SearchHits<ManuscriptDocument> searchHits = elasticsearchRestTemplate.search(
                 searchQuery, ManuscriptDocument.class);
@@ -170,12 +166,11 @@ public class VideoRecommendServiceImpl implements VideoRecommendService {
 
     private ManuscriptDocument getManuscriptByVideoId(Integer videoId) {
         try {
-            BoolQueryBuilder boolQuery = QueryBuilders.boolQuery()
-                .must(QueryBuilders.termQuery("status", PUBLISHED_STATUS))
-                .must(QueryBuilders.termQuery("videoIds", videoId));
-
-            NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
-                .withQuery(boolQuery)
+            NativeQuery searchQuery = new NativeQueryBuilder()
+                .withQuery(q -> q.bool(b -> b
+                    .must(m -> m.term(t -> t.field("status").value(PUBLISHED_STATUS)))
+                    .must(m -> m.term(t -> t.field("videoIds").value(videoId.toString())))
+                ))
                 .withPageable(PageRequest.of(0, 1))
                 .build();
 

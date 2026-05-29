@@ -1,14 +1,17 @@
 package com.mybilibili.ai.service;
 
 import com.mybilibili.ai.config.DeepSeekConfig;
+import com.mybilibili.ai.config.DynamicChatClient;
+import com.mybilibili.ai.util.AiUsageLogger;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
+@Slf4j
 @Service
 public class AiConfigService {
 
@@ -24,7 +27,11 @@ public class AiConfigService {
     @Autowired
     private StringRedisTemplate redisTemplate;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    @Autowired
+    private DynamicChatClient dynamicChatClient;
+
+    @Autowired
+    private AiUsageLogger aiUsageLogger;
 
     public String getApiKey() {
         String redisKey = redisTemplate.opsForValue().get(REDIS_KEY_API_KEY);
@@ -34,15 +41,58 @@ public class AiConfigService {
         return deepSeekConfig.getApiKey();
     }
 
+    /** 按属性短名取配置，如 "api-url"、"model" */
+    public String getConfigValue(String shortKey) {
+        String redisKey = "ai:config:deepseek-" + shortKey;
+        String value = redisTemplate.opsForValue().get(redisKey);
+        if (value != null && !value.isEmpty()) return value;
+        return switch (shortKey) {
+            case "api-url" -> deepSeekConfig.getApiUrl();
+            case "model" -> deepSeekConfig.getModel();
+            default -> null;
+        };
+    }
+
+    public int getConfigInt(String shortKey, int defaultValue) {
+        String redisKey = "ai:config:deepseek-" + shortKey;
+        String value = redisTemplate.opsForValue().get(redisKey);
+        if (value != null && !value.isEmpty()) {
+            try { return Integer.parseInt(value); } catch (NumberFormatException ignored) {}
+        }
+        if ("max-tokens".equals(shortKey)) return deepSeekConfig.getMaxTokens();
+        return defaultValue;
+    }
+
+    public double getConfigDouble(String shortKey, double defaultValue) {
+        String redisKey = "ai:config:deepseek-" + shortKey;
+        String value = redisTemplate.opsForValue().get(redisKey);
+        if (value != null && !value.isEmpty()) {
+            try { return Double.parseDouble(value); } catch (NumberFormatException ignored) {}
+        }
+        if ("temperature".equals(shortKey)) return deepSeekConfig.getTemperature();
+        return defaultValue;
+    }
+
     public Map<String, Object> getConfig() {
         Map<String, Object> config = new LinkedHashMap<>();
         config.put("apiKey", maskApiKey(getApiKey()));
-        config.put("apiUrl", getConfigValue(REDIS_KEY_API_URL, deepSeekConfig.getApiUrl()));
-        config.put("model", getConfigValue(REDIS_KEY_MODEL, deepSeekConfig.getModel()));
-        config.put("maxTokens", getConfigInt(REDIS_KEY_MAX_TOKENS, deepSeekConfig.getMaxTokens()));
-        config.put("temperature", getConfigDouble(REDIS_KEY_TEMPERATURE, deepSeekConfig.getTemperature()));
+        config.put("apiUrl", normalizeApiUrl(getConfigValue("api-url")));
+        config.put("model", getConfigValue("model"));
+        config.put("maxTokens", getConfigInt("max-tokens", 2000));
+        config.put("temperature", getConfigDouble("temperature", 0.7));
         config.put("hasApiKey", getApiKey() != null && !getApiKey().isEmpty());
         return config;
+    }
+
+    /**
+     * 统一 URL 为根地址格式，如 https://api.qnaigc.com
+     * Spring AI OpenAiApi 会自动拼 /v1/chat/completions
+     */
+    private String normalizeApiUrl(String url) {
+        if (url == null) return url;
+        return url.replaceAll("/chat/completions$", "")
+                  .replaceAll("/v1$", "")
+                  .replaceAll("/$", "");
     }
 
     public void updateConfig(Map<String, Object> updates) {
@@ -55,7 +105,7 @@ public class AiConfigService {
         if (updates.containsKey("apiUrl")) {
             String value = (String) updates.get("apiUrl");
             if (value != null && !value.isEmpty()) {
-                redisTemplate.opsForValue().set(REDIS_KEY_API_URL, value);
+                redisTemplate.opsForValue().set(REDIS_KEY_API_URL, normalizeApiUrl(value));
             }
         }
         if (updates.containsKey("model")) {
@@ -76,56 +126,62 @@ public class AiConfigService {
                 redisTemplate.opsForValue().set(REDIS_KEY_TEMPERATURE, String.valueOf(value));
             }
         }
+
+        // 配置变更后重建所有 ChatClient
+        dynamicChatClient.rebuildAll();
     }
 
-    public Map<String, Object> testConnection(String testText) {
+    public Map<String, Object> testConnection(Map<String, String> config) {
         long startTime = System.currentTimeMillis();
         Map<String, Object> result = new LinkedHashMap<>();
 
         try {
-            String apiKey = getApiKey();
-            if (apiKey == null || apiKey.isEmpty()) {
+            String prompt = config != null && config.get("text") != null && !config.get("text").isEmpty()
+                    ? config.get("text") : "你好，请回复'API测试成功'";
+
+            // 优先按 channelId 直接测，其次按 feature 绑定，最后用第一个活跃渠道
+            ChatClient client = null;
+            if (config != null && config.get("channelId") != null) {
+                Long channelId = Long.valueOf(config.get("channelId"));
+                client = dynamicChatClient.getClientById(channelId);
+            }
+            if (client == null) {
+                String feature = config != null ? config.get("feature") : null;
+                if (feature != null) {
+                    client = dynamicChatClient.getClient(feature);
+                }
+            }
+            if (client == null) {
+                client = dynamicChatClient.getFirstActiveClient();
+            }
+            if (client == null) {
                 result.put("success", false);
-                result.put("message", "API密钥未配置");
+                result.put("message", "没有可用的 API 渠道，请先配置渠道");
                 return result;
             }
 
-            String apiUrl = getConfigValue(REDIS_KEY_API_URL, deepSeekConfig.getApiUrl());
-            String model = getConfigValue(REDIS_KEY_MODEL, deepSeekConfig.getModel());
+            String responseContent = client.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
 
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", model);
-
-            List<Map<String, String>> messages = new ArrayList<>();
-            Map<String, String> message = new HashMap<>();
-            message.put("role", "user");
-            message.put("content", testText != null && !testText.isEmpty() ? testText : "你好，请回复'API测试成功'");
-            messages.add(message);
-
-            requestBody.put("messages", messages);
-            requestBody.put("max_tokens", 100);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", "Bearer " + apiKey);
-
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-            ResponseEntity<Map> response = restTemplate.postForEntity(apiUrl, request, Map.class);
+            aiUsageLogger.log("TEST", "deepseek-r1", null, null, System.currentTimeMillis() - startTime, responseContent != null, null);
 
             long responseTime = System.currentTimeMillis() - startTime;
             result.put("responseTime", responseTime + "ms");
 
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                String responseContent = parseResponse(response.getBody());
+            if (responseContent != null && !responseContent.isEmpty()) {
                 result.put("success", true);
                 result.put("message", "API连接成功");
                 result.put("response", responseContent);
             } else {
                 result.put("success", false);
-                result.put("message", "API返回错误，状态码: " + response.getStatusCode());
+                result.put("message", "API返回空响应");
             }
 
         } catch (Exception e) {
+            log.error("AI连接测试失败: {}", e.getMessage(), e);
+            aiUsageLogger.log("TEST", null, null, null, System.currentTimeMillis() - startTime, false, e.getMessage());
             long responseTime = System.currentTimeMillis() - startTime;
             result.put("success", false);
             result.put("message", "API调用异常: " + e.getMessage());
@@ -135,52 +191,10 @@ public class AiConfigService {
         return result;
     }
 
-    private String getConfigValue(String redisKey, String defaultValue) {
-        String value = redisTemplate.opsForValue().get(redisKey);
-        return value != null && !value.isEmpty() ? value : defaultValue;
-    }
-
-    private int getConfigInt(String redisKey, int defaultValue) {
-        String value = redisTemplate.opsForValue().get(redisKey);
-        if (value != null && !value.isEmpty()) {
-            try {
-                return Integer.parseInt(value);
-            } catch (NumberFormatException ignored) {}
-        }
-        return defaultValue;
-    }
-
-    private double getConfigDouble(String redisKey, double defaultValue) {
-        String value = redisTemplate.opsForValue().get(redisKey);
-        if (value != null && !value.isEmpty()) {
-            try {
-                return Double.parseDouble(value);
-            } catch (NumberFormatException ignored) {}
-        }
-        return defaultValue;
-    }
-
     private String maskApiKey(String apiKey) {
         if (apiKey == null || apiKey.length() < 8) {
             return apiKey;
         }
         return apiKey.substring(0, 6) + "****" + apiKey.substring(apiKey.length() - 4);
-    }
-
-    @SuppressWarnings("unchecked")
-    private String parseResponse(Map<String, Object> responseBody) {
-        try {
-            List<Map<String, Object>> choices = (List<Map<String, Object>>) responseBody.get("choices");
-            if (choices != null && !choices.isEmpty()) {
-                Map<String, Object> firstChoice = choices.get(0);
-                Map<String, Object> message = (Map<String, Object>) firstChoice.get("message");
-                if (message != null) {
-                    return (String) message.get("content");
-                }
-            }
-            return "无法解析API响应";
-        } catch (Exception e) {
-            return "解析响应异常: " + e.getMessage();
-        }
     }
 }

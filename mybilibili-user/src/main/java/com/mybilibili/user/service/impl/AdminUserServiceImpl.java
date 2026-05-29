@@ -42,11 +42,18 @@ public class AdminUserServiceImpl implements AdminUserService {
                 return Result.error("密码错误");
             }
 
-            String token = JwtUtils.generateToken(adminUser.getId(), adminUser.getUsername());
+            String role = "ADMIN";
+            List<Role> roles = adminUserRoleMapper.selectRolesByAdminUserId(adminUser.getId());
+            if (!roles.isEmpty()) {
+                role = roles.get(0).getName(); // 取第一个角色名
+            }
+
+            String token = JwtUtils.generateAdminToken(adminUser.getId(), adminUser.getUsername(), role);
 
             Map<String, Object> data = new HashMap<>();
             data.put("token", token);
             data.put("adminUser", adminUser);
+            data.put("role", role);
 
             return Result.success("登录成功", data);
         } catch (Exception e) {

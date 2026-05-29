@@ -29,11 +29,12 @@ public class AdminUserController {
     }
 
     @PostMapping("/register")
-    @Operation(summary = "管理员注册", description = "仅超级管理员(ID=1)可以创建新的管理员账号")
+    @Operation(summary = "管理员注册", description = "仅超级管理员可以创建新的管理员账号")
     public Result<?> register(
             @RequestBody AdminLoginDTO adminLoginDTO,
-            @RequestHeader("X-User-Id") Integer operatorId) {
-        if (operatorId == null || operatorId != 1) {
+            @RequestHeader("X-User-Id") Integer operatorId,
+            @RequestHeader("X-User-Role") String operatorRole) {
+        if (!"超级管理员".equals(operatorRole)) {
             return Result.error("仅超级管理员可以创建新管理员");
         }
         return adminUserService.register(adminLoginDTO);
@@ -96,12 +97,13 @@ public class AdminUserController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "修改管理员信息", description = "仅超级管理员(ID=1)可以修改其他管理员的信息")
+    @Operation(summary = "修改管理员信息", description = "仅超级管理员可以修改其他管理员的信息")
     public Result<?> updateAdminUser(
             @Parameter(description = "管理员ID") @PathVariable Integer id,
             @RequestBody Map<String, Object> body,
-            @RequestHeader("X-User-Id") Integer operatorId) {
-        if (operatorId == null || operatorId != 1) {
+            @RequestHeader("X-User-Id") Integer operatorId,
+            @RequestHeader("X-User-Role") String operatorRole) {
+        if (!"超级管理员".equals(operatorRole)) {
             return Result.error("仅超级管理员可以修改管理员信息");
         }
         String username = (String) body.get("username");

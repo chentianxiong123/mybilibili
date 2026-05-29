@@ -9,9 +9,10 @@ spring:
     username: root
     password: ${MYSQL_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
-  redis:
-    host: 127.0.0.1
-    port: 6379
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
   cloud:
     nacos:
       discovery:
@@ -19,6 +20,7 @@ spring:
         server-addr: 127.0.0.1:8848
       config:
         server-addr: 127.0.0.1:8848
+        file-extension: yaml
         import-check:
           enabled: false
 
@@ -26,11 +28,8 @@ feign:
   client:
     config:
       default:
-        connectTimeout: 5000
-        readTimeout: 5000
-  loadbalancer:
-    ribbon:
-      enabled: true
+        connect-timeout: 5000
+        read-timeout: 5000
 
 rocketmq:
   name-server: 127.0.0.1:9876

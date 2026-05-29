@@ -1,31 +1,34 @@
 package com.mybilibili.ai.service.impl;
 
-import com.mybilibili.ai.config.DeepSeekConfig;
+import org.springframework.ai.chat.client.ChatClient;
+import com.mybilibili.ai.config.DynamicChatClient;
 import com.mybilibili.ai.service.AiConfigService;
 import com.mybilibili.ai.service.AiSummaryService;
 import com.mybilibili.ai.utils.SubtitleTextUtils;
+import com.mybilibili.ai.util.AiUsageLogger;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Date;
 
+@Slf4j
 @Service
 public class AiSummaryServiceImpl implements AiSummaryService {
 
     @Autowired
-    private DeepSeekConfig deepSeekConfig;
+    private DynamicChatClient dynamicChatClient;
 
     @Autowired
     private AiConfigService aiConfigService;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    @Autowired
+    private AiUsageLogger aiUsageLogger;
 
     private static final String SYSTEM_PROMPT =
         "你是一个专业的视频内容分析助手。你的任务是根据视频字幕内容生成简洁、准确的视频摘要。\n\n" +
@@ -56,7 +59,6 @@ public class AiSummaryServiceImpl implements AiSummaryService {
 
         String cleanedText = SubtitleTextUtils.cleanText(subtitleText);
         String truncatedText = SubtitleTextUtils.truncateText(cleanedText);
-
         String userPrompt = buildUserPrompt(truncatedText, videoTitle, videoDescription);
 
         return callAiApi(userPrompt);
@@ -64,71 +66,29 @@ public class AiSummaryServiceImpl implements AiSummaryService {
 
     private String buildUserPrompt(String subtitleText, String videoTitle, String videoDescription) {
         StringBuilder prompt = new StringBuilder();
-
         prompt.append("视频标题: ").append(videoTitle).append("\n\n");
-
         if (videoDescription != null && !videoDescription.isEmpty()) {
             prompt.append("视频描述: ").append(videoDescription).append("\n\n");
         }
-
         prompt.append("视频字幕内容:\n");
         prompt.append(subtitleText);
-
         return prompt.toString();
     }
 
     private String callAiApi(String userPrompt) {
+        long start = System.currentTimeMillis();
         try {
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", deepSeekConfig.getModel());
-
-            List<Map<String, String>> messages = new ArrayList<>();
-
-            Map<String, String> systemMessage = new HashMap<>();
-            systemMessage.put("role", "system");
-            systemMessage.put("content", SYSTEM_PROMPT);
-            messages.add(systemMessage);
-
-            Map<String, String> userMessage = new HashMap<>();
-            userMessage.put("role", "user");
-            userMessage.put("content", userPrompt);
-            messages.add(userMessage);
-
-            requestBody.put("messages", messages);
-            requestBody.put("max_tokens", deepSeekConfig.getMaxTokens());
-            requestBody.put("temperature", deepSeekConfig.getTemperature());
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", "Bearer " + aiConfigService.getApiKey());
-
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-            ResponseEntity<Map> response = restTemplate.postForEntity(deepSeekConfig.getApiUrl(), request, Map.class);
-
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                return parseResponse(response.getBody());
-            } else {
-                return "API调用失败，状态码: " + response.getStatusCode();
-            }
-
+            String result = dynamicChatClient.getClient("SUMMARY").prompt()
+                    .system(SYSTEM_PROMPT)
+                    .user(userPrompt)
+                    .call()
+                    .content();
+            aiUsageLogger.log("SUMMARY", "deepseek-r1", null, null, System.currentTimeMillis() - start, true, null);
+            return result;
         } catch (Exception e) {
-            return "API调用异常: " + e.getMessage();
-        }
-    }
-
-    private String parseResponse(Map<String, Object> responseBody) {
-        try {
-            List<Map<String, Object>> choices = (List<Map<String, Object>>) responseBody.get("choices");
-            if (choices != null && !choices.isEmpty()) {
-                Map<String, Object> firstChoice = choices.get(0);
-                Map<String, Object> message = (Map<String, Object>) firstChoice.get("message");
-                if (message != null) {
-                    return (String) message.get("content");
-                }
-            }
-            return "无法解析API响应";
-        } catch (Exception e) {
-            return "解析响应异常: " + e.getMessage();
+            aiUsageLogger.log("SUMMARY", "deepseek-r1", null, null, System.currentTimeMillis() - start, false, e.getMessage());
+            log.error("AI摘要生成失败: {}", e.getMessage(), e);
+            return null;
         }
     }
 
@@ -136,59 +96,42 @@ public class AiSummaryServiceImpl implements AiSummaryService {
         StringBuilder summary = new StringBuilder();
         summary.append("【视频摘要】\n");
         summary.append("视频标题: ").append(videoTitle).append("\n\n");
-
         if (videoDescription != null && !videoDescription.isEmpty()) {
             summary.append("视频描述: ").append(videoDescription).append("\n\n");
         }
-
         summary.append("该视频暂无字幕内容，无法生成详细摘要。\n");
         summary.append("请上传字幕文件或等待系统自动生成字幕后重试。\n\n");
         summary.append("【关键要点】\n");
         summary.append("1. 视频暂无字幕数据\n");
         summary.append("2. 需要字幕才能生成AI摘要\n");
         summary.append("3. 可使用字幕生成功能自动生成字幕");
-
         return summary.toString();
     }
 
     @Override
     public TestResult testApiConnection(String testText) {
         long startTime = System.currentTimeMillis();
-
         try {
-            if (aiConfigService.getApiKey() == null || aiConfigService.getApiKey().isEmpty()) {
-                return new TestResult(false, "API密钥未配置，请在application.yml中设置ai.deepseek.api-key");
+            String apiKey = aiConfigService.getApiKey();
+            if (apiKey == null || apiKey.isEmpty()) {
+                return new TestResult(false, "API密钥未配置，请在API管理页面配置密钥");
             }
 
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", deepSeekConfig.getModel());
+            String prompt = testText != null && !testText.isEmpty() ? testText : "你好，请回复'API测试成功'";
+            ChatClient client = dynamicChatClient.getClient("CHAT");
+            if (client == null) client = dynamicChatClient.getFirstActiveClient();
+            String responseContent = client.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
 
-            List<Map<String, String>> messages = new ArrayList<>();
-            Map<String, String> message = new HashMap<>();
-            message.put("role", "user");
-            message.put("content", testText != null && !testText.isEmpty() ? testText : "你好，请回复'API测试成功'");
-            messages.add(message);
-
-            requestBody.put("messages", messages);
-            requestBody.put("max_tokens", 100);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", "Bearer " + aiConfigService.getApiKey());
-
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-            ResponseEntity<Map> response = restTemplate.postForEntity(deepSeekConfig.getApiUrl(), request, Map.class);
+            aiUsageLogger.log("TEST", "deepseek-r1", null, null, System.currentTimeMillis() - startTime, responseContent != null, null);
 
             long responseTime = System.currentTimeMillis() - startTime;
-
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                String responseContent = parseResponse(response.getBody());
-                return new TestResult(true, "API连接成功", responseContent, responseTime);
-            } else {
-                return new TestResult(false, "API返回错误，状态码: " + response.getStatusCode(), null, responseTime);
-            }
+            return new TestResult(true, "API连接成功", responseContent, responseTime);
 
         } catch (Exception e) {
+            aiUsageLogger.log("TEST", "deepseek-r1", null, null, System.currentTimeMillis() - startTime, false, e.getMessage());
             long responseTime = System.currentTimeMillis() - startTime;
             return new TestResult(false, "API调用异常: " + e.getMessage(), null, responseTime);
         }
@@ -214,14 +157,11 @@ public class AiSummaryServiceImpl implements AiSummaryService {
                 writer.write(repeatChar('=', 60));
                 writer.newLine();
                 writer.newLine();
-
                 writer.write(summary);
                 writer.newLine();
             }
-
             return true;
         } catch (IOException e) {
-            System.err.println("保存摘要文件失败: " + e.getMessage());
             return false;
         }
     }

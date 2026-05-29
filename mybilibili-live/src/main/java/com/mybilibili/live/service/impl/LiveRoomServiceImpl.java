@@ -6,7 +6,12 @@ import com.mybilibili.live.service.LiveRoomService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -81,5 +86,34 @@ public class LiveRoomServiceImpl implements LiveRoomService {
             room.setScheduledAt(scheduledAt);
             liveRoomMapper.updateById(room);
         }
+    }
+
+    @Override
+    public IPage<LiveRoom> listAll(int page, int size, String status) {
+        Page<LiveRoom> pageObj = new Page<>(page, size);
+        LambdaQueryWrapper<LiveRoom> wrapper = new LambdaQueryWrapper<>();
+        if (status != null && !status.isEmpty()) {
+            wrapper.eq(LiveRoom::getStatus, status);
+        }
+        wrapper.orderByDesc(LiveRoom::getViewerCount);
+        return liveRoomMapper.selectPage(pageObj, wrapper);
+    }
+
+    @Override
+    public Map<String, Object> getAdminStats() {
+        long totalRooms = liveRoomMapper.selectCount(null);
+        LambdaQueryWrapper<LiveRoom> liveWrapper = new LambdaQueryWrapper<>();
+        liveWrapper.eq(LiveRoom::getStatus, "live");
+        long onlineRooms = liveRoomMapper.selectCount(liveWrapper);
+        // 统计所有在线直播间的总观众数
+        List<LiveRoom> liveRooms = liveRoomMapper.selectList(liveWrapper);
+        int totalViewers = liveRooms.stream()
+                .mapToInt(r -> r.getViewerCount() != null ? r.getViewerCount() : 0)
+                .sum();
+        return Map.of(
+                "totalRooms", totalRooms,
+                "onlineRooms", onlineRooms,
+                "totalViewers", totalViewers
+        );
     }
 }

@@ -5,7 +5,7 @@ import com.mybilibili.search.mapper.ManuscriptMapper;
 import com.mybilibili.search.service.ManuscriptIndexService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.data.elasticsearch.core.IndexOperations;
 import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.stereotype.Service;
@@ -21,7 +21,7 @@ public class ManuscriptIndexServiceImpl implements ManuscriptIndexService {
     private ManuscriptMapper manuscriptMapper;
 
     @Autowired
-    private ElasticsearchRestTemplate elasticsearchTemplate;
+    private ElasticsearchTemplate elasticsearchTemplate;
 
     @Override
     public int bulkIndex() {

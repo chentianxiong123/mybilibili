@@ -216,6 +216,18 @@ onMounted(() => {
           <el-icon :size="24" color="#f56c6c"><DocumentChecked /></el-icon>
           <span>内容审核</span>
         </div>
+        <div class="action-item" @click="$router.push('/ai-usage')">
+          <el-icon :size="24" color="#409eff"><DataAnalysis /></el-icon>
+          <span>AI 用量</span>
+        </div>
+        <div class="action-item" @click="$router.push('/live-rooms')">
+          <el-icon :size="24" color="#e6a23c"><VideoCamera /></el-icon>
+          <span>直播管理</span>
+        </div>
+        <div class="action-item" @click="$router.push('/meeting-admin')">
+          <el-icon :size="24" color="#909399"><Monitor /></el-icon>
+          <span>会议管理</span>
+        </div>
         <div class="action-item" @click="$router.push('/banner-images')">
           <el-icon :size="24" color="#67c23a"><Picture /></el-icon>
           <span>图片管理</span>

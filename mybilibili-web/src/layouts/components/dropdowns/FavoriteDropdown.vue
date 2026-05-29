@@ -65,7 +65,7 @@ const fetchFavoriteVideos = async (folderId) => {
       favoriteVideos.value = response.data.map(video => ({
         id: video.id,
         title: video.title,
-        thumbnail: video.coverUrl || 'https://via.placeholder.com/160x90?text=No+Cover',
+        thumbnail: video.coverUrl || '/assets/placeholder-cover.svg',
         duration: video.duration || '00:00',
         uploader: video.uploader?.name || '未知UP主'
       }))

@@ -5,28 +5,30 @@ import com.mybilibili.search.document.ManuscriptDocument;
 import com.mybilibili.search.service.HotSearchService;
 import com.mybilibili.search.service.VideoSearchService;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
-import org.elasticsearch.search.sort.FieldSortBuilder;
-import org.elasticsearch.search.sort.SortBuilder;
-import org.elasticsearch.search.sort.SortBuilders;
-import org.elasticsearch.search.sort.SortOrder;
+import co.elastic.clients.elasticsearch._types.SortOptions;
+import co.elastic.clients.elasticsearch._types.SortOrder;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
+import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
+import org.springframework.data.elasticsearch.client.elc.QueryBuilders;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
+import org.springframework.data.elasticsearch.core.query.HighlightQuery;
+import org.springframework.data.elasticsearch.core.query.highlight.Highlight;
+import org.springframework.data.elasticsearch.core.query.highlight.HighlightField;
+import org.springframework.data.elasticsearch.core.query.highlight.HighlightFieldParameters;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,7 +38,7 @@ import java.util.stream.Collectors;
 public class VideoSearchServiceImpl implements VideoSearchService {
 
     @Autowired
-    private ElasticsearchRestTemplate elasticsearchRestTemplate;
+    private ElasticsearchTemplate elasticsearchTemplate;
 
     @Autowired
     private HotSearchService hotSearchService;
@@ -50,30 +52,47 @@ public class VideoSearchServiceImpl implements VideoSearchService {
     public Page<VideoSearchVO> search(String keyword, Integer categoryId, String tag, Integer userId,
                                       String sort, int page, int size) {
         try {
-            BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+            Pageable pageable = PageRequest.of(Math.max(0, page - 1), size);
 
-            // 暂时移除status过滤，测试数据
-            // boolQuery.must(QueryBuilders.termQuery("status", PUBLISHED_STATUS));
+            NativeQueryBuilder queryBuilder = new NativeQueryBuilder()
+                    .withQuery(q -> q.bool(b -> {
+                        // 暂时移除status过滤，测试数据
+                        // b.must(m -> m.term(t -> t.field("status").value(PUBLISHED_STATUS)));
 
-            if (StringUtils.hasText(keyword)) {
-                BoolQueryBuilder keywordQuery = QueryBuilders.boolQuery();
-                keywordQuery.should(QueryBuilders.matchQuery("title", keyword).boost(3.0f));
-                keywordQuery.should(QueryBuilders.matchQuery("description", keyword).boost(1.5f));
-                keywordQuery.should(QueryBuilders.matchQuery("videoTitles", keyword).boost(2.0f));
-                keywordQuery.minimumShouldMatch(1);
-                boolQuery.must(keywordQuery);
-            }
+                        if (StringUtils.hasText(keyword)) {
+                            b.must(m -> m.bool(kb -> {
+                                kb.should(s -> s.match(mt -> mt.field("title").query(keyword).boost(3.0f)));
+                                kb.should(s -> s.match(mt -> mt.field("description").query(keyword).boost(1.5f)));
+                                kb.should(s -> s.match(mt -> mt.field("videoTitles").query(keyword).boost(2.0f)));
+                                kb.minimumShouldMatch("1");
+                                return kb;
+                            }));
+                        }
 
-            if (categoryId != null) {
-                boolQuery.filter(QueryBuilders.termQuery("categoryId", categoryId));
-            }
+                        if (categoryId != null) {
+                            b.filter(f -> f.term(t -> t.field("categoryId").value(categoryId.toString())));
+                        }
 
-            if (StringUtils.hasText(tag)) {
-                boolQuery.filter(QueryBuilders.termQuery("tags", tag));
-            }
+                        if (StringUtils.hasText(tag)) {
+                            b.filter(f -> f.term(t -> t.field("tags").value(tag)));
+                        }
 
-            if (userId != null) {
-                boolQuery.filter(QueryBuilders.termQuery("userId", userId));
+                        if (userId != null) {
+                            b.filter(f -> f.term(t -> t.field("userId").value(userId.toString())));
+                        }
+
+                        return b;
+                    }))
+                    .withPageable(pageable);
+
+            // 添加高亮
+            HighlightQuery highlightQuery = buildHighlight();
+            queryBuilder.withHighlightQuery(highlightQuery);
+
+            // 添加排序
+            if (!SORT_RELEVANCE.equals(sort)) {
+                SortOptions sortOptions = buildSort(sort);
+                queryBuilder.withSort(sortOptions);
             }
 
             if (StringUtils.hasText(keyword)) {
@@ -84,22 +103,9 @@ public class VideoSearchServiceImpl implements VideoSearchService {
                 }
             }
 
-            SortBuilder<?> sortBuilder = buildSort(sort);
-            HighlightBuilder highlightBuilder = buildHighlight();
-            Pageable pageable = PageRequest.of(Math.max(0, page - 1), size);
+            NativeQuery searchQuery = queryBuilder.build();
 
-            NativeSearchQueryBuilder queryBuilder = new NativeSearchQueryBuilder()
-                    .withQuery(boolQuery)
-                    .withPageable(pageable)
-                    .withHighlightBuilder(highlightBuilder);
-
-            if (!SORT_RELEVANCE.equals(sort)) {
-                queryBuilder.withSort(sortBuilder);
-            }
-
-            NativeSearchQuery searchQuery = queryBuilder.build();
-
-            SearchHits<ManuscriptDocument> searchHits = elasticsearchRestTemplate.search(
+            SearchHits<ManuscriptDocument> searchHits = elasticsearchTemplate.search(
                     searchQuery, ManuscriptDocument.class);
 
             log.info("搜索命中 {} 条记录", searchHits.getTotalHits());
@@ -127,16 +133,15 @@ public class VideoSearchServiceImpl implements VideoSearchService {
         }
 
         try {
-            BoolQueryBuilder boolQuery = QueryBuilders.boolQuery()
-                    .must(QueryBuilders.prefixQuery("title", keyword))
-                    .must(QueryBuilders.termQuery("status", PUBLISHED_STATUS));
-
-            NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
-                    .withQuery(boolQuery)
+            NativeQuery searchQuery = new NativeQueryBuilder()
+                    .withQuery(q -> q.bool(b -> b
+                            .must(m -> m.prefix(p -> p.field("title").value(keyword)))
+                            .must(m -> m.term(t -> t.field("status").value(PUBLISHED_STATUS)))
+                    ))
                     .withPageable(PageRequest.of(0, 10))
                     .build();
 
-            SearchHits<ManuscriptDocument> searchHits = elasticsearchRestTemplate.search(
+            SearchHits<ManuscriptDocument> searchHits = elasticsearchTemplate.search(
                     searchQuery, ManuscriptDocument.class);
 
             return searchHits.getSearchHits().stream()
@@ -146,46 +151,41 @@ public class VideoSearchServiceImpl implements VideoSearchService {
                     .collect(Collectors.toList());
 
         } catch (Exception e) {
-            log.error("获取搜索建议失败，keyword: {}, error: {}", keyword, e.getMessage(), e);
+            log.error("获取搜���建议失败，keyword: {}, error: {}", keyword, e.getMessage(), e);
             return new ArrayList<>();
         }
     }
 
-    private SortBuilder<?> buildSort(String sort) {
+    private SortOptions buildSort(String sort) {
         if (!StringUtils.hasText(sort)) {
             sort = SORT_RELEVANCE;
         }
 
         switch (sort) {
             case SORT_TIME:
-                return SortBuilders.fieldSort("uploadTime").order(SortOrder.DESC);
+                return SortOptions.of(s -> s.field(f -> f.field("uploadTime").order(SortOrder.Desc)));
             case SORT_HOT:
-                return SortBuilders.fieldSort("viewCount").order(SortOrder.DESC);
+                return SortOptions.of(s -> s.field(f -> f.field("viewCount").order(SortOrder.Desc)));
             case SORT_RELEVANCE:
             default:
-                return SortBuilders.scoreSort().order(SortOrder.DESC);
+                return SortOptions.of(s -> s.score(sc -> sc.order(SortOrder.Desc)));
         }
     }
 
-    private HighlightBuilder buildHighlight() {
-        HighlightBuilder highlightBuilder = new HighlightBuilder();
+    private HighlightQuery buildHighlight() {
+        HighlightFieldParameters params = HighlightFieldParameters.builder()
+                .withPreTags("<em>")
+                .withPostTags("</em>")
+                .build();
 
-        HighlightBuilder.Field titleField = new HighlightBuilder.Field("title");
-        titleField.preTags("<em>");
-        titleField.postTags("</em>");
-        highlightBuilder.field(titleField);
+        List<HighlightField> fields = Arrays.asList(
+                new HighlightField("title", params),
+                new HighlightField("description", params),
+                new HighlightField("videoTitles", params)
+        );
 
-        HighlightBuilder.Field descField = new HighlightBuilder.Field("description");
-        descField.preTags("<em>");
-        descField.postTags("</em>");
-        highlightBuilder.field(descField);
-
-        HighlightBuilder.Field videoTitlesField = new HighlightBuilder.Field("videoTitles");
-        videoTitlesField.preTags("<em>");
-        videoTitlesField.postTags("</em>");
-        highlightBuilder.field(videoTitlesField);
-
-        return highlightBuilder;
+        Highlight highlight = new Highlight(fields);
+        return new HighlightQuery(highlight, ManuscriptDocument.class);
     }
 
     private VideoSearchVO convertToVO(SearchHit<ManuscriptDocument> searchHit) {

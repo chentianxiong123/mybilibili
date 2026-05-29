@@ -7,9 +7,8 @@ import com.mybilibili.search.service.VideoSearchService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.data.elasticsearch.core.IndexOperations;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,7 +24,7 @@ public class IndexAdminController {
     private VideoSearchService videoSearchService;
 
     @Autowired
-    private ElasticsearchRestTemplate elasticsearchTemplate;
+    private ElasticsearchTemplate elasticsearchTemplate;
 
     @Autowired
     private ManuscriptIndexService manuscriptIndexService;
@@ -49,7 +48,7 @@ public class IndexAdminController {
             }
 
             indexInfo.put("status", "active");
-            Query query = new NativeSearchQueryBuilder().build();
+            Query query = Query.findAll();
             long count = elasticsearchTemplate.count(query, ManuscriptDocument.class);
             indexInfo.put("indexedCount", count);
 

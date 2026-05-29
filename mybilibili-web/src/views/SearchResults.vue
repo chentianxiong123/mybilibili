@@ -401,7 +401,7 @@ onUnmounted(() => {
           @click="goToVideo(video)"
         >
           <div class="video-cover">
-            <img :src="video.coverUrl || video.cover || 'https://via.placeholder.com/320x180?text=视频封面'" :alt="video.title">
+            <img :src="video.coverUrl || video.cover || '/assets/placeholder-cover.svg'" :alt="video.title">
             <!-- 播放量 -->
             <div class="video-stats-overlay">
               <span class="stat-item">

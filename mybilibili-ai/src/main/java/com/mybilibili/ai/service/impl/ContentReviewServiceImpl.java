@@ -1,12 +1,11 @@
 package com.mybilibili.ai.service.impl;
 
-import com.mybilibili.ai.config.DeepSeekConfig;
+import com.mybilibili.ai.config.DynamicChatClient;
 import com.mybilibili.ai.service.AiConfigService;
 import com.mybilibili.ai.service.ContentReviewService;
+import com.mybilibili.ai.util.AiUsageLogger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
@@ -14,9 +13,13 @@ import java.util.*;
 public class ContentReviewServiceImpl implements ContentReviewService {
 
     @Autowired
+    private DynamicChatClient dynamicChatClient;
+
+    @Autowired
     private AiConfigService aiConfigService;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    @Autowired
+    private AiUsageLogger aiUsageLogger;
 
     private static final String SYSTEM_PROMPT =
         "你是一个内容审核助手，负责对用户举报的内容进行审核评估。" +
@@ -32,6 +35,7 @@ public class ContentReviewServiceImpl implements ContentReviewService {
     @Override
     public Map<String, Object> reviewContent(String content, String reason) {
         Map<String, Object> result = new HashMap<>();
+        long startTime = System.currentTimeMillis();
         try {
             String apiKey = aiConfigService.getApiKey();
             if (apiKey == null || apiKey.isEmpty()) {
@@ -43,64 +47,33 @@ public class ContentReviewServiceImpl implements ContentReviewService {
 
             String userPrompt = "举报原因：" + reason + "\n\n被举报内容：\n" + content;
 
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "deepseek-chat");
+            String responseContent = dynamicChatClient.getClient("REVIEW").prompt()
+                    .system(SYSTEM_PROMPT)
+                    .user(userPrompt)
+                    .call()
+                    .content();
 
-            List<Map<String, String>> messages = new ArrayList<>();
-            Map<String, String> systemMsg = new HashMap<>();
-            systemMsg.put("role", "system");
-            systemMsg.put("content", SYSTEM_PROMPT);
-            messages.add(systemMsg);
-
-            Map<String, String> userMsg = new HashMap<>();
-            userMsg.put("role", "user");
-            userMsg.put("content", userPrompt);
-            messages.add(userMsg);
-
-            requestBody.put("messages", messages);
-            requestBody.put("max_tokens", 500);
-            requestBody.put("temperature", 0.3);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", "Bearer " + apiKey);
-
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-            ResponseEntity<Map> response = restTemplate.postForEntity(
-                "https://api.qnaigc.com/v1/chat/completions", request, Map.class);
-
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                String responseContent = parseResponse(response.getBody());
-                Map<String, String> parsed = parseJsonResult(responseContent);
-
-                result.put("status", "COMPLETED");
-                result.put("verdict", parsed.getOrDefault("verdict", responseContent));
-                result.put("riskLevel", parsed.getOrDefault("riskLevel", "LOW"));
-            } else {
+            if (responseContent == null || responseContent.isEmpty()) {
                 result.put("status", "FAILED");
-                result.put("verdict", "API返回错误: " + response.getStatusCode());
+                result.put("verdict", "AI返回空响应");
                 result.put("riskLevel", null);
+                return result;
             }
+
+            Map<String, String> parsed = parseJsonResult(responseContent);
+            result.put("status", "COMPLETED");
+            result.put("verdict", parsed.getOrDefault("verdict", responseContent));
+            result.put("riskLevel", parsed.getOrDefault("riskLevel", "LOW"));
+
+            aiUsageLogger.log("REVIEW", "deepseek-r1", null, null, System.currentTimeMillis() - startTime, true, null);
+
         } catch (Exception e) {
             result.put("status", "FAILED");
             result.put("verdict", "审核调用异常: " + e.getMessage());
             result.put("riskLevel", null);
+            aiUsageLogger.log("REVIEW", "deepseek-r1", null, null, System.currentTimeMillis() - startTime, false, e.getMessage());
         }
         return result;
-    }
-
-    private String parseResponse(Map<String, Object> responseBody) {
-        try {
-            List<Map<String, Object>> choices = (List<Map<String, Object>>) responseBody.get("choices");
-            if (choices != null && !choices.isEmpty()) {
-                Map<String, Object> firstChoice = choices.get(0);
-                Map<String, Object> message = (Map<String, Object>) firstChoice.get("message");
-                if (message != null) {
-                    return (String) message.get("content");
-                }
-            }
-        } catch (Exception ignored) {}
-        return "";
     }
 
     private Map<String, String> parseJsonResult(String responseContent) {
@@ -109,9 +82,7 @@ public class ContentReviewServiceImpl implements ContentReviewService {
             return parsed;
         }
 
-        // 尝试提取JSON
         try {
-            // 查找JSON开始和结束位置
             int start = responseContent.indexOf('{');
             int end = responseContent.lastIndexOf('}');
             if (start != -1 && end > start) {
@@ -122,7 +93,6 @@ public class ContentReviewServiceImpl implements ContentReviewService {
             }
         } catch (Exception ignored) {}
 
-        // 失败则尝试正则提取
         String cleaned = responseContent.replaceAll("[\\n\\r]", " ");
         java.util.regex.Matcher verdictMatcher = java.util.regex.Pattern.compile("\"verdict\"\\s*:\\s*\"([^\"]+)\"").matcher(cleaned);
         java.util.regex.Matcher riskMatcher = java.util.regex.Pattern.compile("\"riskLevel\"\\s*:\\s*\"([^\"]+)\"").matcher(cleaned);

@@ -2,6 +2,7 @@ package com.mybilibili.gateway.filter;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
@@ -24,7 +26,8 @@ import java.util.List;
 @Component
 public class AuthFilter implements GlobalFilter, Ordered {
 
-    private static final String SECRET_KEY = "mybilibili_secret_key_2026";
+    private static final String SECRET_KEY = "REDACTED_JWT_SECRET";
+    private static final SecretKey KEY = Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
 
     private static final List<String> WHITELIST = Arrays.asList(
             "/api/user/login",
@@ -74,6 +77,12 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/api/live/linkmic/apply/",
             "/api/live/linkmic/active/",
             "/api/live/linkmic/pending/"
+    );
+
+    private static final List<String> SUPER_ADMIN_PATHS = Arrays.asList(
+            "/api/admin/roles",
+            "/api/admin/permissions",
+            "/api/admin/admins"
     );
 
     private static final List<String> PUBLIC_PATHS = Arrays.asList(
@@ -127,14 +136,26 @@ public class AuthFilter implements GlobalFilter, Ordered {
 
         try {
             Claims claims = Jwts.parser()
-                    .setSigningKey(SECRET_KEY)
-                    .parseClaimsJws(token)
-                    .getBody();
+                    .verifyWith(KEY)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
 
             String userIdStr = claims.getSubject();
             Integer userId = Integer.parseInt(userIdStr);
             String username = claims.get("username", String.class);
             String role = claims.get("role", String.class);
+
+            // 管理后台路径权限校验
+            if (path.startsWith("/api/admin/") || path.startsWith("/api/ai/admin")) {
+                String tokenType = claims.get("type", String.class);
+                if (!"admin".equals(tokenType)) {
+                    return forbidden(exchange.getResponse(), "非管理员无权访问");
+                }
+                if (SUPER_ADMIN_PATHS.stream().anyMatch(path::startsWith) && !"超级管理员".equals(role)) {
+                    return forbidden(exchange.getResponse(), "权限不足，仅超级管理员可操作");
+                }
+            }
 
             log.info("AuthFilter - Path: {}, UserId: {}, Username: {}", path, userId, username);
 
@@ -162,6 +183,10 @@ public class AuthFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isWhitelisted(String path) {
+        // 管理端路径不在此放行（需要登录验证）
+        if (path.startsWith("/api/admin/live") || path.startsWith("/api/admin/meeting")) {
+            return false;
+        }
         // 直播相关路径无需登录
         if (path.startsWith("/api/live/")) {
             return true;
@@ -179,6 +204,14 @@ public class AuthFilter implements GlobalFilter, Ordered {
         response.setStatusCode(HttpStatus.UNAUTHORIZED);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
         String body = "{\"code\":401,\"message\":\"" + message + "\",\"data\":null}";
+        DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
+        return response.writeWith(Mono.just(buffer));
+    }
+
+    private Mono<Void> forbidden(ServerHttpResponse response, String message) {
+        response.setStatusCode(HttpStatus.FORBIDDEN);
+        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+        String body = "{\"code\":403,\"message\":\"" + message + "\",\"data\":null}";
         DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
         return response.writeWith(Mono.just(buffer));
     }

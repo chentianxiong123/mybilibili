@@ -3,7 +3,7 @@ import request from './request'
 // 获取角色列表
 export const getRoleList = () => {
   return request({
-    url: '/roles',
+    url: '/admin/roles',
     method: 'get'
   })
 }
@@ -11,7 +11,7 @@ export const getRoleList = () => {
 // 获取角色详情
 export const getRoleById = (id) => {
   return request({
-    url: `/roles/${id}`,
+    url: `/admin/roles/${id}`,
     method: 'get'
   })
 }
@@ -19,7 +19,7 @@ export const getRoleById = (id) => {
 // 添加角色
 export const addRole = (data) => {
   return request({
-    url: '/roles',
+    url: '/admin/roles',
     method: 'post',
     data
   })
@@ -28,7 +28,7 @@ export const addRole = (data) => {
 // 更新角色
 export const updateRole = (id, data) => {
   return request({
-    url: `/roles/${id}`,
+    url: `/admin/roles/${id}`,
     method: 'put',
     data
   })
@@ -37,7 +37,7 @@ export const updateRole = (id, data) => {
 // 删除角色
 export const deleteRole = (id) => {
   return request({
-    url: `/roles/${id}`,
+    url: `/admin/roles/${id}`,
     method: 'delete'
   })
 }
@@ -45,7 +45,7 @@ export const deleteRole = (id) => {
 // 获取角色权限
 export const getRolePermissions = (id) => {
   return request({
-    url: `/roles/${id}/permissions`,
+    url: `/admin/roles/${id}/permissions`,
     method: 'get'
   })
 }
@@ -53,7 +53,7 @@ export const getRolePermissions = (id) => {
 // 设置角色权限
 export const setRolePermissions = (id, permissionIds) => {
   return request({
-    url: `/roles/${id}/permissions`,
+    url: `/admin/roles/${id}/permissions`,
     method: 'put',
     data: permissionIds
   })
@@ -62,7 +62,7 @@ export const setRolePermissions = (id, permissionIds) => {
 // 获取所有权限
 export const getAllPermissions = () => {
   return request({
-    url: '/roles/permissions/all',
+    url: '/admin/roles/permissions/all',
     method: 'get'
   })
 }

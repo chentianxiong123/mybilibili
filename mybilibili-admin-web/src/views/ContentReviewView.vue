@@ -23,7 +23,7 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 
 // 标签页
-const activeTab = ref('all')
+const activeTab = ref('removed')
 
 // 内容类型筛选
 const contentType = ref('')
@@ -47,16 +47,15 @@ const contentTypeOptions = [
   { label: '动态评论', value: 'DYNAMIC_COMMENT' }
 ]
 
-// 加载所有内容
+// 加载已下架内容
 const loadAllContent = async () => {
   loading.value = true
   try {
-    const status = activeTab.value === 'removed' ? 'REMOVED' : (activeTab.value === 'normal' ? 'NORMAL' : '')
     const res = await getAllContent({
       page: currentPage.value,
       size: pageSize.value,
       contentType: contentType.value || undefined,
-      status: status || undefined
+      status: 'REMOVED'
     })
     if (res.code === 200 || res.success) {
       tableData.value = res.data?.list || res.data || []
@@ -295,14 +294,12 @@ onMounted(() => {
 
     <!-- 标签页 -->
     <el-tabs v-model="activeTab" @tab-change="handleTabChange" class="review-tabs">
-      <el-tab-pane label="全部" name="all"></el-tab-pane>
-      <el-tab-pane label="正常" name="normal"></el-tab-pane>
-      <el-tab-pane label="已下架" name="removed"></el-tab-pane>
+      <el-tab-pane label="已下架内容" name="removed"></el-tab-pane>
       <el-tab-pane label="举报管理" name="reports"></el-tab-pane>
     </el-tabs>
 
     <!-- 内容审核筛选 -->
-    <div class="filter-bar" v-if="activeTab !== 'reports'">
+    <div class="filter-bar" v-if="activeTab === 'removed'">
       <el-select v-model="contentType" placeholder="内容类型" clearable @change="handleTypeChange" style="width: 150px">
         <el-option
           v-for="opt in contentTypeOptions"
@@ -314,10 +311,6 @@ onMounted(() => {
       <el-button type="success" @click="handleBatchRestore" :disabled="selectedItems.length === 0">
         <el-icon><Check /></el-icon>
         批量恢复
-      </el-button>
-      <el-button type="danger" @click="handleBatchDelete" :disabled="selectedItems.length === 0">
-        <el-icon><Delete /></el-icon>
-        批量下架
       </el-button>
     </div>
 
@@ -335,9 +328,9 @@ onMounted(() => {
       </el-select>
     </div>
 
-    <!-- 内容审核表格 -->
+    <!-- 已下架内容表格 -->
     <el-table
-      v-if="activeTab !== 'reports'"
+      v-if="activeTab === 'removed'"
       v-loading="loading"
       :data="tableData"
       style="width: 100%"
@@ -366,32 +359,14 @@ onMounted(() => {
           <div class="content-text">{{ row.content }}</div>
         </template>
       </el-table-column>
-      <el-table-column label="状态" width="100">
-        <template #default="{ row }">
-          <el-tag :type="row.status === 'NORMAL' ? 'success' : 'danger'">
-            {{ row.status === 'NORMAL' ? '正常' : '已下架' }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="创建时间" width="180">
+      <el-table-column label="下架时间" width="180">
         <template #default="{ row }">
           {{ formatDateTime(row.createdAt) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" fixed="right" width="150">
+      <el-table-column label="操作" fixed="right" width="100">
         <template #default="{ row }">
-          <el-button
-            v-if="row.status === 'REMOVED'"
-            link
-            type="success"
-            size="small"
-            @click="handleRestore(row)"
-          >
-            恢复
-          </el-button>
-          <el-button v-if="row.status !== 'REMOVED'" link type="danger" size="small" @click="handleDelete(row)">
-            下架
-          </el-button>
+          <el-button link type="success" size="small" @click="handleRestore(row)">恢复</el-button>
         </template>
       </el-table-column>
     </el-table>

@@ -36,8 +36,7 @@ public class AiConfigAdminController {
     @PostMapping("/test")
     public Result<Map<String, Object>> testConnection(@RequestBody(required = false) Map<String, String> request) {
         try {
-            String testText = request != null ? request.get("text") : null;
-            Map<String, Object> testResult = aiConfigService.testConnection(testText);
+            Map<String, Object> testResult = aiConfigService.testConnection(request);
             if (Boolean.TRUE.equals(testResult.get("success"))) {
                 return Result.success(testResult);
             } else {
