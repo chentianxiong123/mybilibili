@@ -134,7 +134,7 @@ public class CustomerServiceAiController {
             customerServiceAiService.transferToHuman(sessionId, userId, reason);
             return Result.success(null);
         } catch (RuntimeException e) {
-            return Result.fail(400, e.getMessage());
+            return Result.error(e.getMessage());
         }
     }
 }

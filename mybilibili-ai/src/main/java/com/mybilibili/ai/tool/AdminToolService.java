@@ -1,9 +1,12 @@
 package com.mybilibili.ai.tool;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mybilibili.ai.mapper.AiUsageLogMapper;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -15,8 +18,11 @@ import java.util.Map;
 @Component
 public class AdminToolService {
 
-    private static final String GATEWAY_BASE_URL = "http://localhost:8080/api";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
+
+    @Value("${mybilibili.gateway-base-url:http://localhost:8080/api}")
+    private String gatewayBaseUrl;
 
     private final AiUsageLogMapper aiUsageLogMapper;
     private final RestTemplate restTemplate;
@@ -25,16 +31,23 @@ public class AdminToolService {
     @Autowired
     public AdminToolService(AiUsageLogMapper aiUsageLogMapper) {
         this.aiUsageLogMapper = aiUsageLogMapper;
-        this.restTemplate = new RestTemplate();
+        this.restTemplate = createRestTemplate();
         this.objectMapper = new ObjectMapper();
+    }
+
+    private RestTemplate createRestTemplate() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(10000);
+        return new RestTemplate(factory);
     }
 
     @Tool(name = "getOverviewStats", description = "获取平台概览统计：用户总数、稿件总数、评论总数等核心指标")
     public StatsData getOverviewStats() {
         try {
-            String url = GATEWAY_BASE_URL + "/statistics/overview";
+            String url = gatewayBaseUrl + "/statistics/overview";
             String response = restTemplate.getForObject(url, String.class);
-            Map<String, Object> data = objectMapper.readValue(response, Map.class);
+            Map<String, Object> data = objectMapper.readValue(response, MAP_TYPE);
             return new StatsData("overview", data, "number", "平台数据概览");
         } catch (Exception e) {
             return createErrorStatsData("overview", "number", "平台数据概览");
@@ -49,9 +62,9 @@ public class AdminToolService {
             String startStr = startDate.format(DATE_FORMATTER);
             String endStr = endDate.format(DATE_FORMATTER);
 
-            String url = GATEWAY_BASE_URL + "/statistics/user/growth?startDate=" + startStr + "&endDate=" + endStr;
+            String url = gatewayBaseUrl + "/statistics/user/growth?startDate=" + startStr + "&endDate=" + endStr;
             String response = restTemplate.getForObject(url, String.class);
-            Map<String, Object> data = objectMapper.readValue(response, Map.class);
+            Map<String, Object> data = objectMapper.readValue(response, MAP_TYPE);
             return new StatsData("user_growth", data, "line", "用户增长趋势");
         } catch (Exception e) {
             return createErrorStatsData("user_growth", "line", "用户增长趋势");
@@ -61,9 +74,9 @@ public class AdminToolService {
     @Tool(name = "getManuscriptStats", description = "获取稿件状态分布统计（审核通过/待审核/已下架等）")
     public StatsData getManuscriptStats() {
         try {
-            String url = GATEWAY_BASE_URL + "/statistics/manuscript/status";
+            String url = gatewayBaseUrl + "/statistics/manuscript/status";
             String response = restTemplate.getForObject(url, String.class);
-            Map<String, Object> data = objectMapper.readValue(response, Map.class);
+            Map<String, Object> data = objectMapper.readValue(response, MAP_TYPE);
             return new StatsData("manuscript_stats", data, "pie", "稿件状态统计");
         } catch (Exception e) {
             return createErrorStatsData("manuscript_stats", "pie", "稿件状态统计");
@@ -83,9 +96,9 @@ public class AdminToolService {
     @Tool(name = "getHotVideos", description = "获取热门视频列表，参数 limit 表示返回数量（默认10）")
     public StatsData getHotVideos(int limit) {
         try {
-            String url = GATEWAY_BASE_URL + "/statistics/video/hot?limit=" + limit;
+            String url = gatewayBaseUrl + "/statistics/video/hot?limit=" + limit;
             String response = restTemplate.getForObject(url, String.class);
-            Map<String, Object> data = objectMapper.readValue(response, Map.class);
+            Map<String, Object> data = objectMapper.readValue(response, MAP_TYPE);
             return new StatsData("hot_videos", data, "table", "热门视频排行");
         } catch (Exception e) {
             return createErrorStatsData("hot_videos", "table", "热门视频排行");

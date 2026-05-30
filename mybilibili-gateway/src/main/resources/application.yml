@@ -35,6 +35,14 @@ spring:
           filters:
             - SetPath=/follow/user/{userId}/followers
 
+        # 用户管理接口 - 转发到 user 服务（必须放在 /api/user/** 之前）
+        - id: user-admin
+          uri: lb://mybilibili-user
+          predicates:
+            - Path=/api/user/admin/**
+          filters:
+            - StripPrefix=1
+
         # 用户端接口
         - id: user-service
           uri: lb://mybilibili-user
@@ -137,14 +145,6 @@ spring:
           uri: lb://mybilibili-comment
           predicates:
             - Path=/api/comment/admin/**
-          filters:
-            - StripPrefix=1
-
-        # 用户管理接口 - 转发到 user 服务
-        - id: user-admin
-          uri: lb://mybilibili-user
-          predicates:
-            - Path=/api/user/admin/**
           filters:
             - StripPrefix=1
 
@@ -575,7 +575,7 @@ spring:
           predicates:
             - Path=/api/ai/admin/**
           filters:
-            - StripPrefix=2
+            - StripPrefix=1
 
         - id: ai-process-service
           uri: lb://mybilibili-ai

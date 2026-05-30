@@ -1,6 +1,8 @@
 package com.mybilibili.ai.controller;
 
 import com.mybilibili.ai.service.CustomerSessionService;
+import com.mybilibili.common.exception.BusinessException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,8 +44,10 @@ public class CustomerSessionController {
      * 客服发送消息（人工回复）
      */
     @PostMapping("/sessions/{sessionId}/reply")
-    public Map<String, Object> sendReply(@PathVariable Long sessionId, @RequestBody Map<String, Object> body) {
-        Long adminId = Long.valueOf(body.get("adminId").toString());
+    public Map<String, Object> sendReply(@PathVariable Long sessionId,
+                                         @RequestBody Map<String, Object> body,
+                                         HttpServletRequest request) {
+        Long adminId = getAdminId(request);
         String content = body.get("content").toString();
         customerSessionService.sendHumanReply(sessionId, adminId, content);
         return Map.of(
@@ -74,5 +78,13 @@ public class CustomerSessionController {
             "code", 200,
             "data", count
         );
+    }
+
+    private Long getAdminId(HttpServletRequest request) {
+        String adminId = request.getHeader("X-Admin-Id");
+        if (adminId == null || adminId.isBlank()) {
+            throw new BusinessException("未登录");
+        }
+        return Long.valueOf(adminId);
     }
 }

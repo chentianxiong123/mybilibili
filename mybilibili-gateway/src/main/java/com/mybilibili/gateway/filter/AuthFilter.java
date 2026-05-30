@@ -19,7 +19,6 @@ import reactor.core.publisher.Mono;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.List;
 
 @Slf4j
@@ -29,11 +28,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
     private static final String SECRET_KEY = "REDACTED_JWT_SECRET";
     private static final SecretKey KEY = Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
 
-    private static final List<String> WHITELIST = Arrays.asList(
-            "/api/user/login",
-            "/api/user/register",
-            "/api/user/check",
-            "/api/admin/login",
+    private static final List<String> PUBLIC_PATH_PREFIXES = List.of(
             "/api/video/play",
             "/api/video/recommended",
             "/api/video/hot",
@@ -63,38 +58,44 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/api/ai/process/",
             "/api/ai/summary/",
             "/api/ai/admin/process/stream",
-            // 直播（无需登录）
-            "/api/live/room/list",
-            "/api/live/room/",
-            "/api/live/room/my",
-            // 会议（无需登录）
+            "/api/live/",
             "/api/meeting/create",
             "/api/meeting/room/",
             "/api/meeting/join/",
             "/api/meeting/my-rooms",
             "/api/meeting/participants/",
-            // 连麦（无需登录）
             "/api/live/linkmic/apply/",
             "/api/live/linkmic/active/",
             "/api/live/linkmic/pending/"
     );
 
-    private static final List<String> SUPER_ADMIN_PATHS = Arrays.asList(
+    private static final List<String> PUBLIC_EXACT_PATHS = List.of(
+            "/api/user/login",
+            "/api/user/register",
+            "/api/user/check",
+            "/api/user/email/code",
+            "/api/user/email/verify",
+            "/api/user/password/forgot",
+            "/api/admin/login"
+    );
+
+    private static final List<String> ADMIN_PATH_PREFIXES = List.of(
+            "/api/admin/",
+            "/api/ai/admin"
+    );
+
+    private static final List<String> SUPER_ADMIN_PATH_PREFIXES = List.of(
             "/api/admin/roles",
             "/api/admin/permissions",
             "/api/admin/admins"
     );
 
-    private static final List<String> PUBLIC_PATHS = Arrays.asList(
-            "/api/user/",
-            "/api/video/",
-            "/api/manuscript/"
-    );
-
-    private static final List<String> AUTH_REQUIRED_PATHS = Arrays.asList(
+    private static final List<String> AUTH_REQUIRED_PATH_PREFIXES = List.of(
+            "/api/user/admin/",
             "/api/user/following",
             "/api/user/followers",
             "/api/user/update",
+            "/api/user/login-logs",
             "/api/video/favorite",
             "/api/video/like",
             "/api/video/coin",
@@ -146,13 +147,12 @@ public class AuthFilter implements GlobalFilter, Ordered {
             String username = claims.get("username", String.class);
             String role = claims.get("role", String.class);
 
-            // 管理后台路径权限校验
-            if (path.startsWith("/api/admin/") || path.startsWith("/api/ai/admin")) {
+            if (isAdminPath(path)) {
                 String tokenType = claims.get("type", String.class);
                 if (!"admin".equals(tokenType)) {
                     return forbidden(exchange.getResponse(), "非管理员无权访问");
                 }
-                if (SUPER_ADMIN_PATHS.stream().anyMatch(path::startsWith) && !"超级管理员".equals(role)) {
+                if (isSuperAdminPath(path) && !"超级管理员".equals(role)) {
                     return forbidden(exchange.getResponse(), "权限不足，仅超级管理员可操作");
                 }
             }
@@ -161,10 +161,21 @@ public class AuthFilter implements GlobalFilter, Ordered {
 
             String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
             ServerHttpRequest mutatedRequest = request.mutate()
-                    .header("X-User-Id", String.valueOf(userId))
-                    .header("X-Username", username)
-                    .header("X-User-Role", role != null ? role : "USER")
-                    .header(HttpHeaders.AUTHORIZATION, authHeader)
+                    .headers(headers -> {
+                        headers.remove("X-User-Id");
+                        headers.remove("X-Admin-Id");
+                        headers.remove("X-Username");
+                        headers.remove("X-User-Role");
+                        headers.set("X-User-Id", String.valueOf(userId));
+                        if (isAdminPath(path)) {
+                            headers.set("X-Admin-Id", String.valueOf(userId));
+                        }
+                        headers.set("X-Username", username);
+                        headers.set("X-User-Role", role != null ? role : "USER");
+                        if (authHeader != null) {
+                            headers.set(HttpHeaders.AUTHORIZATION, authHeader);
+                        }
+                    })
                     .build();
 
             return chain.filter(exchange.mutate().request(mutatedRequest).build());
@@ -183,21 +194,25 @@ public class AuthFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isWhitelisted(String path) {
-        // 管理端路径不在此放行（需要登录验证）
-        if (path.startsWith("/api/admin/live") || path.startsWith("/api/admin/meeting")) {
+        if (isAuthRequiredPath(path) || isAdminPath(path)) {
             return false;
         }
-        // 直播相关路径无需登录
-        if (path.startsWith("/api/live/")) {
+        if (PUBLIC_EXACT_PATHS.contains(path)) {
             return true;
         }
-        if (AUTH_REQUIRED_PATHS.stream().anyMatch(path::startsWith)) {
-            return false;
-        }
-        if (WHITELIST.stream().anyMatch(path::startsWith)) {
-            return true;
-        }
-        return PUBLIC_PATHS.stream().anyMatch(path::startsWith);
+        return PUBLIC_PATH_PREFIXES.stream().anyMatch(path::startsWith);
+    }
+
+    private boolean isAdminPath(String path) {
+        return ADMIN_PATH_PREFIXES.stream().anyMatch(path::startsWith);
+    }
+
+    private boolean isSuperAdminPath(String path) {
+        return SUPER_ADMIN_PATH_PREFIXES.stream().anyMatch(path::startsWith);
+    }
+
+    private boolean isAuthRequiredPath(String path) {
+        return AUTH_REQUIRED_PATH_PREFIXES.stream().anyMatch(path::startsWith);
     }
 
     private Mono<Void> unauthorized(ServerHttpResponse response, String message) {

@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
@@ -62,6 +63,7 @@ public class AdminAiServiceImpl implements AdminAiService {
 
         StringBuilder fullResp = new StringBuilder();
         AtomicReference<Disposable> subscriptionRef = new AtomicReference<>();
+        AtomicBoolean completed = new AtomicBoolean(false);
         Set<String> calledTools = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
         Flux<String> flux = client.prompt()
@@ -83,16 +85,15 @@ public class AdminAiServiceImpl implements AdminAiService {
                         }
                     }
                     emitter.send(SseEmitter.event().name("data").data(chunk));
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    disposeSubscription(subscriptionRef);
+                    completeWithError(emitter, completed, e);
+                }
             },
             error -> {
                 aiUsageLogger.log("ADMIN", null, null, null,
                     System.currentTimeMillis() - startTime, false, error.getMessage());
-                try {
-                    emitter.send(SseEmitter.event().name("error")
-                        .data("请求失败: " + error.getMessage()));
-                    emitter.complete();
-                } catch (Exception ignored) {}
+                completeWithError(emitter, completed, error);
             },
             () -> {
                 try {
@@ -103,55 +104,99 @@ public class AdminAiServiceImpl implements AdminAiService {
                     if (renderJson != null) {
                         doneData.put("render", renderJson);
                     }
-                    emitter.send(SseEmitter.event().name("done")
-                        .data(objectMapper.writeValueAsString(doneData)));
-                    emitter.complete();
+                    if (completed.compareAndSet(false, true)) {
+                        emitter.send(SseEmitter.event().name("done")
+                            .data(objectMapper.writeValueAsString(doneData)));
+                        emitter.complete();
+                    }
 
                     aiUsageLogger.log("ADMIN", null, null, null,
                         System.currentTimeMillis() - startTime, true, null);
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    disposeSubscription(subscriptionRef);
+                    completeWithError(emitter, completed, e);
+                }
             }
         );
         subscriptionRef.set(subscription);
 
-        emitter.onCompletion(() -> subscriptionRef.get().dispose());
-        emitter.onTimeout(() -> subscriptionRef.get().dispose());
-        emitter.onError(e -> subscriptionRef.get().dispose());
+        emitter.onCompletion(() -> disposeSubscription(subscriptionRef));
+        emitter.onTimeout(() -> disposeSubscription(subscriptionRef));
+        emitter.onError(e -> disposeSubscription(subscriptionRef));
 
         return emitter;
+    }
+
+    private void disposeSubscription(AtomicReference<Disposable> subscriptionRef) {
+        Disposable subscription = subscriptionRef.getAndSet(null);
+        if (subscription != null && !subscription.isDisposed()) {
+            subscription.dispose();
+        }
+    }
+
+    private void completeWithError(SseEmitter emitter, AtomicBoolean completed, Throwable error) {
+        if (!completed.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            emitter.send(SseEmitter.event().name("error")
+                    .data("请求失败: " + error.getMessage()));
+        } catch (Exception ignored) {
+        } finally {
+            emitter.complete();
+        }
     }
 
     /**
      * 从 AI 回复中提取 render JSON（放在 ```json ... ``` 块中或行内）
      */
     private String extractRenderJson(String text) {
-        try {
-            int start = text.indexOf("{\"render\"");
-            if (start == -1) return null;
-            // 找到包含 render 的 JSON 块
-            int braceCount = 0;
-            boolean inString = false;
-            int end = start;
-            for (int i = start; i < text.length(); i++) {
-                char c = text.charAt(i);
-                if (c == '"' && (i == 0 || text.charAt(i - 1) != '\\')) {
-                    inString = !inString;
-                }
-                if (!inString) {
-                    if (c == '{') braceCount++;
-                    else if (c == '}') braceCount--;
+        if (text == null || text.isEmpty()) {
+            return null;
+        }
+        int searchFrom = 0;
+        while (searchFrom < text.length()) {
+            int start = text.indexOf('{', searchFrom);
+            if (start == -1) {
+                return null;
+            }
+            String json = extractJsonObject(text, start);
+            if (json != null && isRenderJson(json)) {
+                return json;
+            }
+            searchFrom = start + 1;
+        }
+        return null;
+    }
+
+    private String extractJsonObject(String text, int start) {
+        int braceCount = 0;
+        boolean inString = false;
+        for (int i = start; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '"' && (i == 0 || text.charAt(i - 1) != '\\')) {
+                inString = !inString;
+            }
+            if (!inString) {
+                if (c == '{') {
+                    braceCount++;
+                } else if (c == '}') {
+                    braceCount--;
                     if (braceCount == 0) {
-                        end = i + 1;
-                        break;
+                        return text.substring(start, i + 1);
                     }
                 }
             }
-            String json = text.substring(start, end);
-            // 验证是合法 JSON
-            objectMapper.readTree(json);
-            return json;
+        }
+        return null;
+    }
+
+    private boolean isRenderJson(String json) {
+        try {
+            var node = objectMapper.readTree(json);
+            return node.has("render") || (node.has("chartType") && node.has("title") && node.has("data"));
         } catch (Exception e) {
-            return null;
+            return false;
         }
     }
 }

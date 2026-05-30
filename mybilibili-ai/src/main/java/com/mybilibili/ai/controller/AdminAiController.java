@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 
 @RestController
@@ -21,8 +20,7 @@ public class AdminAiController {
     @PostMapping("/send")
     @Operation(summary = "发送消息给管理后台 AI 助手（SSE 流式）")
     public SseEmitter sendMessage(@RequestBody Map<String, String> request,
-                                  HttpServletRequest httpRequest) {
-        Integer adminId = getAdminId(httpRequest);
+                                  @RequestHeader(value = "X-Admin-Id", required = false) Integer adminId) {
         if (adminId == null) {
             SseEmitter emitter = new SseEmitter(0L);
             try {
@@ -43,15 +41,5 @@ public class AdminAiController {
         }
 
         return adminAiService.sendMessage(adminId, content);
-    }
-
-    private Integer getAdminId(HttpServletRequest request) {
-        String adminIdStr = request.getHeader("X-Admin-Id");
-        if (adminIdStr != null) {
-            try {
-                return Integer.parseInt(adminIdStr);
-            } catch (NumberFormatException ignored) {}
-        }
-        return null;
     }
 }

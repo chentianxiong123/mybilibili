@@ -1,5 +1,7 @@
 package com.mybilibili.ai.service.impl;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mybilibili.ai.config.DynamicChatClient;
 import com.mybilibili.ai.service.AiConfigService;
 import com.mybilibili.ai.service.ContentReviewService;
@@ -87,8 +89,8 @@ public class ContentReviewServiceImpl implements ContentReviewService {
             int end = responseContent.lastIndexOf('}');
             if (start != -1 && end > start) {
                 String json = responseContent.substring(start, end + 1);
-                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                Map<String, String> map = mapper.readValue(json, Map.class);
+                ObjectMapper mapper = new ObjectMapper();
+                Map<String, String> map = mapper.readValue(json, new TypeReference<>() {});
                 return map;
             }
         } catch (Exception ignored) {}

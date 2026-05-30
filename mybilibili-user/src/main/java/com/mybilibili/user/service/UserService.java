@@ -21,8 +21,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.util.concurrent.TimeUnit;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
@@ -53,6 +51,9 @@ public class UserService {
 
     @Autowired
     private LoginLogService loginLogService;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 

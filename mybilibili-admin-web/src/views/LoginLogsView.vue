@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { adminLoginLogApi } from '../../api/securitySettings.js'
+import { adminLoginLogApi } from '../api/securitySettings.js'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -106,7 +106,8 @@ const formatStatus = (status) => {
         <template #default="{ row }">
           {{ formatTime(row.loginTime) }}
         </template>
-      </el-table-column prop="status" label="状态" width="100">
+      </el-table-column>
+      <el-table-column prop="status" label="状态" width="100">
         <template #default="{ row }">
           <el-tag :type="row.status === 1 ? 'success' : 'danger'">
             {{ formatStatus(row.status) }}

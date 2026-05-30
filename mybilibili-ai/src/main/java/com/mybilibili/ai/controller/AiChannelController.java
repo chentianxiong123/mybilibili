@@ -19,28 +19,21 @@ public class AiChannelController {
     @GetMapping
     public Result<List<AiApiConfig>> listAll() {
         List<AiApiConfig> list = aiApiConfigService.listAll();
-        list.forEach(c -> {
-            if (c.getApiKey() != null && c.getApiKey().length() > 8) {
-                c.setApiKey(c.getApiKey().substring(0, 6) + "****" + c.getApiKey().substring(c.getApiKey().length() - 4));
-            }
-        });
+        list.forEach(this::maskApiKey);
         return Result.success(list);
     }
 
     @GetMapping("/type/{type}")
     public Result<List<AiApiConfig>> listByType(@PathVariable String type) {
         List<AiApiConfig> list = aiApiConfigService.listByType(type);
-        list.forEach(c -> {
-            if (c.getApiKey() != null && c.getApiKey().length() > 8) {
-                c.setApiKey(c.getApiKey().substring(0, 6) + "****" + c.getApiKey().substring(c.getApiKey().length() - 4));
-            }
-        });
+        list.forEach(this::maskApiKey);
         return Result.success(list);
     }
 
     @GetMapping("/{id}")
     public Result<AiApiConfig> getById(@PathVariable Long id) {
         AiApiConfig config = aiApiConfigService.getById(id);
+        maskApiKey(config);
         return Result.success(config);
     }
 
@@ -98,5 +91,17 @@ public class AiChannelController {
                 Map.of("value", "ADMIN", "label", "管理助手", "type", "LLM"),
                 Map.of("value", "TRANSCRIBE", "label", "语音转写", "type", "ASR")
         ));
+    }
+
+    private void maskApiKey(AiApiConfig config) {
+        if (config == null || config.getApiKey() == null) {
+            return;
+        }
+        String apiKey = config.getApiKey();
+        if (apiKey.length() <= 8) {
+            config.setApiKey("****");
+            return;
+        }
+        config.setApiKey(apiKey.substring(0, 6) + "****" + apiKey.substring(apiKey.length() - 4));
     }
 }

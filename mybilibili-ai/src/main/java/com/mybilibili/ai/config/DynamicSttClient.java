@@ -13,7 +13,6 @@ import jakarta.annotation.PostConstruct;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
  * STT 提供者管理器。
@@ -45,15 +44,14 @@ public class DynamicSttClient {
      * 优先使用绑定配置，其次降级到本地 Whisper
      */
     public SttProvider getProvider() {
-        SttProvider provider = providerCache.get("STT");
-        if (provider != null) {
-            return provider;
+        AiApiConfig config = getTranscribeConfig();
+        if (config != null) {
+            SttProvider provider = findProvider(config);
+            if (provider != null) {
+                return provider;
+            }
         }
-        // 降级：返回本地 Whisper
-        return providers.stream()
-                .filter(p -> p.getName().contains("local") && p.isAvailable())
-                .findFirst()
-                .orElse(null);
+        return findLocalProvider();
     }
 
     /**
@@ -61,64 +59,20 @@ public class DynamicSttClient {
      */
     public SttProvider getProviderByChannelId(Long channelId) {
         AiApiConfig config = aiApiConfigMapper.selectById(channelId);
-        if (config == null) return null;
-
-        // 本地 Whisper 渠道
-        if ("本地 Whisper".equals(config.getName()) || !config.getEnabled()) {
-            // 返回本地 Whisper 提供者
-            for (SttProvider provider : providers) {
-                if (provider.getName().contains("local") && provider.isAvailable()) {
-                    return provider;
-                }
-            }
-        }
-
-        if (!config.getEnabled()) return null;
-
-        // 查找匹配类型和渠道的提供者
-        for (SttProvider provider : providers) {
-            if (provider.getName().equalsIgnoreCase(config.getName())
-                    || config.getName().toLowerCase().contains(provider.getName().replace("-", "_"))) {
-                return provider;
-            }
-        }
-        return null;
+        if (config == null || !config.getEnabled()) return null;
+        SttProvider provider = findProvider(config);
+        return provider != null ? provider : findLocalProvider();
     }
 
     /**
      * 刷新提供者缓存
      */
     public void refreshProviders() {
-        List<AiApiConfig> sttConfigs = aiApiConfigMapper.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AiApiConfig>()
-                        .eq(AiApiConfig::getType, "ASR")
-                        .eq(AiApiConfig::getEnabled, true)
-        );
-
         providerCache.clear();
-        for (AiApiConfig config : sttConfigs) {
-            // 匹配对应名称的提供者
-            for (SttProvider provider : providers) {
-                String providerName = provider.getName().toLowerCase();
-                String configName = config.getName().toLowerCase();
-                if (providerName.equals(configName)
-                        || configName.contains(providerName)
-                        || providerName.contains(configName.replace("-", "_"))) {
-                    providerCache.put("STT", provider);
-                    log.info("STT 提供者已加载: {} (渠道: {})", provider.getName(), config.getName());
-                }
-            }
-        }
-
-        if (providerCache.isEmpty()) {
-            // 无 API 配置时，查找本地提供者
-            providers.stream()
-                    .filter(SttProvider::isAvailable)
-                    .findFirst()
-                    .ifPresent(p -> {
-                        providerCache.put("STT", p);
-                        log.info("STT 提供者: {} (本地)", p.getName());
-                    });
+        SttProvider provider = getProvider();
+        if (provider != null) {
+            providerCache.put("STT", provider);
+            log.info("STT 提供者已加载: {}", provider.getName());
         }
     }
 
@@ -126,25 +80,6 @@ public class DynamicSttClient {
      * 通过 API 转写音频，返回纯文本或 SRT 格式
      */
     public String transcribeWithApi(String audioPath, String language) {
-        // 优先使用 TRANSCRIBE 绑定的渠道
-        AiBinding binding = aiBindingMapper.selectByFeature("TRANSCRIBE");
-        if (binding != null) {
-            AiApiConfig config = aiApiConfigMapper.selectById(binding.getApiConfigId());
-            if (config != null && config.getEnabled()) {
-                for (SttProvider provider : providers) {
-                    if ("glm-asr".equals(provider.getName())) {
-                        Object result = provider.invoke(SttProvider.TranscribeRequest.of(audioPath, language));
-                        return result != null ? result.toString() : null;
-                    }
-                    // futureppo-whisper 返回 SRT 格式，带精确时间戳
-                    if ("futureppo-whisper".equals(provider.getName())) {
-                        Object result = provider.invoke(SttProvider.TranscribeRequest.of(audioPath, language));
-                        return result != null ? result.toString() : null;
-                    }
-                }
-            }
-        }
-        // 降级
         SttProvider provider = getProvider();
         if (provider == null) {
             System.err.println("[DynamicSttClient] 无可用的 STT 提供者");
@@ -181,6 +116,46 @@ public class DynamicSttClient {
             srt.append(line).append("\n\n");
         }
         return srt.toString();
+    }
+
+    private AiApiConfig getTranscribeConfig() {
+        AiBinding binding = aiBindingMapper.selectByFeature("TRANSCRIBE");
+        if (binding == null) {
+            return null;
+        }
+        AiApiConfig config = aiApiConfigMapper.selectById(binding.getApiConfigId());
+        if (config == null || !config.getEnabled()) {
+            return null;
+        }
+        return config;
+    }
+
+    private SttProvider findProvider(AiApiConfig config) {
+        if (config == null || config.getName() == null) {
+            return null;
+        }
+        String configName = normalize(config.getName());
+        String model = normalize(config.getModel());
+        String combinedConfig = configName + "-" + model;
+        for (SttProvider candidate : providers) {
+            String providerName = normalize(candidate.getName());
+            if (combinedConfig.contains(providerName) || providerName.contains(configName)
+                    || providerName.contains(model)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private SttProvider findLocalProvider() {
+        return providers.stream()
+                .filter(p -> p.getName().contains("local") && p.isAvailable())
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.toLowerCase().replace("_", "-").replace(" ", "-");
     }
 
     private String formatSrtTime(double seconds) {

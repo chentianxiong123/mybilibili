@@ -93,11 +93,11 @@ public class FutureppoWhisperProvider implements SttProvider {
 
             HttpEntity<MultiValueMap<String, Object>> entity = new HttpEntity<>(form, headers);
 
-            ResponseEntity<Map> response = restTemplate.exchange(
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     baseUrl + "/v1/audio/transcriptions",
                     HttpMethod.POST,
                     entity,
-                    Map.class
+                    new org.springframework.core.ParameterizedTypeReference<>() {}
             );
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
