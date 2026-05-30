@@ -152,13 +152,8 @@ public class UserService {
 
     private Result<Map<String, Object>> loginWithPassword(LoginDTO loginDTO) {
         String username = loginDTO.getUsername();
-        String lockKey = LOGIN_FAIL_PREFIX + username + ":lock";
-        if (Boolean.TRUE.equals(redisTemplate.hasKey(lockKey))) {
-            throw new BusinessException("账号已锁定，请15分钟后再试");
-        }
 
         User user = null;
-        // 优先用用户名查，再用邮箱查
         if (username != null && !username.isBlank()) {
             user = userMapper.selectByUsername(username);
             if (user == null) {
@@ -168,24 +163,30 @@ public class UserService {
         if (user == null) {
             throw new BusinessException("用户名或密码错误");
         }
+
+        String accountKey = LOGIN_FAIL_PREFIX + user.getId();
+        String lockKey = accountKey + ":lock";
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(lockKey))) {
+            throw new BusinessException("账号已锁定，请15分钟后再试");
+        }
+
         if (user.getStatus() == 0) {
             throw new BusinessException("账号已被禁用，请联系管理员");
         }
 
         if (!passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
-            // 登录失败，计数（用用户名或邮箱都可以）
-            String failKey = LOGIN_FAIL_PREFIX + username;
-            Long failCount = redisTemplate.opsForValue().increment(failKey);
+            loginLogService.saveLog(user.getId(), loginDTO.getLoginIp(), null, null, 0);
+            Long failCount = redisTemplate.opsForValue().increment(accountKey);
+            redisTemplate.expire(accountKey, LOCK_MINUTES, TimeUnit.MINUTES);
             if (failCount != null && failCount >= MAX_FAIL_COUNT) {
                 redisTemplate.opsForValue().set(lockKey, "1", LOCK_MINUTES, TimeUnit.MINUTES);
-                redisTemplate.delete(failKey);
+                redisTemplate.delete(accountKey);
                 throw new BusinessException("连续登录失败次数过多，账号已锁定15分钟");
             }
             throw new BusinessException("用户名或密码错误");
         }
 
-        // 登录成功，清除失败计数
-        redisTemplate.delete(LOGIN_FAIL_PREFIX + username);
+        redisTemplate.delete(accountKey);
 
         String token = JwtUtils.generateToken(user.getId(), user.getUsername());
         UserVO userVO = getUserVO(user);
