@@ -10,7 +10,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
-import java.util.Random;
+import java.security.SecureRandom;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -28,6 +28,7 @@ public class EmailCodeServiceImpl implements EmailCodeService {
     private static final String PREFIX = "email:code:";
     private static final long EXPIRE_MINUTES = 5;
     private static final int CODE_LENGTH = 6;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Override
     public String sendCode(String email) {
@@ -38,7 +39,7 @@ public class EmailCodeServiceImpl implements EmailCodeService {
             throw new BusinessException("发送过于频繁，请稍后再试");
         }
 
-        String code = String.format("%0" + CODE_LENGTH + "d", new Random().nextInt((int) Math.pow(10, CODE_LENGTH)));
+        String code = String.format("%0" + CODE_LENGTH + "d", SECURE_RANDOM.nextInt((int) Math.pow(10, CODE_LENGTH)));
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
