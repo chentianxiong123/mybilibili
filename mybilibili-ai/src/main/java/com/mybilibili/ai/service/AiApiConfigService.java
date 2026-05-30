@@ -5,6 +5,7 @@ import java.util.List;
 
 public interface AiApiConfigService {
     List<AiApiConfig> listAll();
+    List<AiApiConfig> listByType(String type);
     AiApiConfig getById(Long id);
     AiApiConfig create(AiApiConfig config);
     AiApiConfig update(Long id, AiApiConfig config);
@@ -16,4 +17,7 @@ public interface AiApiConfigService {
     void bindFeature(String feature, Long configId);
     /** 获取所有功能绑定关系 */
     java.util.Map<String, Long> getAllBindings();
+
+    /** 获取 Whisper 功能绑定配置 */
+    java.util.Map<String, Object> getWhisperConfig();
 }

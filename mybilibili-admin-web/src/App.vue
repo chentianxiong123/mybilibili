@@ -20,15 +20,19 @@ const allMenuItems = [
   { path: '/users', icon: 'User', title: '用户管理' },
   { path: '/manuscripts', icon: 'Document', title: '稿件管理' },
   { path: '/video-process', icon: 'VideoPlay', title: '视频处理' },
-  { path: '/prohibited-words', icon: 'Warning', title: '违禁词管理' },
+  { path: '/prohibited-words', icon: 'Warning', title: '违禁词与安全设置' },
   { path: '/content-review', icon: 'DocumentChecked', title: '内容审核中心' },
   { path: '/categories', icon: 'Folder', title: '分类管理' },
   { path: '/banner-images', icon: 'Picture', title: '图片管理' },
   { path: '/index-manager', icon: 'DataLine', title: '索引管理' },
   { path: '/ai-usage', icon: 'DataAnalysis', title: 'AI 用量统计' },
-  { path: '/api-management', icon: 'Setting', title: 'API 管理' },
+  { path: '/ai-skills', icon: 'Cpu', title: 'AI 技能管理' },
+  { path: '/ai-feedback', icon: 'Message', title: 'AI 反馈管理' },
+  { path: '/api-management', icon: 'Setting', title: 'AI 渠道管理' },
   { path: '/live-rooms', icon: 'Connection', title: '直播管理' },
   { path: '/meeting-admin', icon: 'Monitor', title: '会议管理' },
+  { path: '/customer-chat', icon: 'Headset', title: '客服会话' },
+  { path: '/login-logs', icon: 'List', title: '登录日志' },
   { path: '/admins', icon: 'Lock', title: '管理员与角色权限', superAdminOnly: true }
 ]
 
@@ -49,9 +53,13 @@ const activeMenu = computed(() => {
   if (path.startsWith('/index-manager')) return '/index-manager'
   if (path.startsWith('/admins')) return '/admins'
   if (path.startsWith('/api-management')) return '/api-management'
+  if (path.startsWith('/ai-skills')) return '/ai-skills'
   if (path.startsWith('/ai-usage')) return '/ai-usage'
+  if (path.startsWith('/ai-feedback')) return '/ai-feedback'
   if (path.startsWith('/live-rooms')) return '/live-rooms'
   if (path.startsWith('/meeting-admin')) return '/meeting-admin'
+  if (path.startsWith('/login-logs')) return '/login-logs'
+  if (path.startsWith('/customer-chat')) return '/customer-chat'
   return path
 })
 

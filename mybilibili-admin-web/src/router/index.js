@@ -41,7 +41,7 @@ const router = createRouter({
       path: '/prohibited-words',
       name: 'prohibitedWords',
       component: () => import('../views/ProhibitedWordsView.vue'),
-      meta: { title: '违禁词管理 - 管理后台', requiresAuth: true }
+      meta: { title: '违禁词与安全设置 - 管理后台', requiresAuth: true }
     },
     {
       path: '/content-review',
@@ -87,13 +87,25 @@ const router = createRouter({
       path: '/api-management',
       name: 'apiManagement',
       component: () => import('../views/ApiManagementView.vue'),
-      meta: { title: 'API 管理 - 管理后台', requiresAuth: true }
+      meta: { title: 'AI 渠道管理 - 管理后台', requiresAuth: true }
     },
     {
       path: '/ai-usage',
       name: 'aiUsage',
       component: () => import('../views/AiUsageView.vue'),
       meta: { title: 'AI 用量统计 - 管理后台', requiresAuth: true }
+    },
+    {
+      path: '/ai-skills',
+      name: 'aiSkills',
+      component: () => import('../views/AiSkillsView.vue'),
+      meta: { title: 'AI 技能管理 - 管理后台', requiresAuth: true }
+    },
+    {
+      path: '/ai-feedback',
+      name: 'aiFeedback',
+      component: () => import('../views/AiFeedbackView.vue'),
+      meta: { title: 'AI 反馈管理 - 管理后台', requiresAuth: true }
     },
     {
       path: '/live-rooms',
@@ -106,6 +118,18 @@ const router = createRouter({
       name: 'meetingAdmin',
       component: () => import('../views/MeetingView.vue'),
       meta: { title: '会议管理 - 管理后台', requiresAuth: true }
+    },
+    {
+      path: '/customer-chat',
+      name: 'customerChat',
+      component: () => import('../views/CustomerChatView.vue'),
+      meta: { title: '客服会话 - 管理后台', requiresAuth: true }
+    },
+    {
+      path: '/login-logs',
+      name: 'loginLogs',
+      component: () => import('../views/LoginLogsView.vue'),
+      meta: { title: '登录日志 - 管理后台', requiresAuth: true }
     }
   ]
 })

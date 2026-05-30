@@ -555,7 +555,27 @@ public class CommentServiceImpl implements CommentService {
     }
 
     private List<String> detectProhibitedWords(String content) {
-        return prohibitedWordCacheService.check(content);
+        List<String> words = new java.util.ArrayList<>(prohibitedWordCacheService.check(content));
+
+        // 调用 AI 审核服务进行评论/回复预过滤
+        try {
+            Result<Map<String, Object>> result = contentReviewClient.moderateComment(content);
+            if (result != null && result.getCode() == 200 && result.getData() != null) {
+                Boolean passed = (Boolean) result.getData().get("passed");
+                if (passed != null && !passed) {
+                    String reason = (String) result.getData().get("reason");
+                    if (reason != null && !reason.isEmpty()) {
+                        words.add("[AI审核] " + reason);
+                    } else {
+                        words.add("[AI审核] 内容违规");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // AI 审核失败时不影响正常流程，继续使用违禁词检测
+        }
+
+        return words;
     }
 
     private UserVO getUserById(Integer userId) {

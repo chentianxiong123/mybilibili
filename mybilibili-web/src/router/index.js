@@ -205,7 +205,8 @@ const router = createRouter({
         { path: 'invite', name: 'personal-center-invite', meta: { title: '邀请注册 - 哔哩哔哩', layout: 'simple' } },
         { path: 'space', name: 'personal-center-space', meta: { title: '个人空间 - 哔哩哔哩', layout: 'simple' } },
         { path: 'creator', name: 'personal-center-creator', meta: { title: '创作中心 - 哔哩哔哩', layout: 'simple' } },
-        { path: 'live', name: 'personal-center-live', meta: { title: '直播中心 - 哔哩哔哩', layout: 'simple' } }
+        { path: 'live', name: 'personal-center-live', meta: { title: '直播中心 - 哔哩哔哩', layout: 'simple' } },
+        { path: 'login-logs', name: 'personal-center-login-logs', component: () => import('../views/personal/LoginLogsView.vue'), meta: { title: '登录记录 - 哔哩哔哩', layout: 'simple' } }
       ]
     },
     {
@@ -275,6 +276,33 @@ const router = createRouter({
         { path: 'index', name: 'admin-index', component: () => import('../views/admin/IndexManagerView.vue'), meta: { title: '索引管理 - 哔哩哔哩', layout: 'none' } },
         { path: 'system-notification', name: 'admin-system-notification', component: () => import('../views/admin/SystemNotificationManagerView.vue'), meta: { title: '全站系统通知 - 哔哩哔哩', layout: 'none' } }
       ]
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: () => import('../views/LoginView.vue'),
+      meta: {
+        title: '登录 - 哔哩哔哩',
+        layout: 'none'
+      }
+    },
+    {
+      path: '/register',
+      name: 'register',
+      component: () => import('../views/RegisterView.vue'),
+      meta: {
+        title: '注册 - 哔哩哔哩',
+        layout: 'none'
+      }
+    },
+    {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('../views/ForgotPasswordView.vue'),
+      meta: {
+        title: '找回密码 - 哔哩哔哩',
+        layout: 'none'
+      }
     },
     {
       path: '/:pathMatch(.*)*',

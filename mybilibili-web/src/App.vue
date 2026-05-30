@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { User, Lock, Message } from '@element-plus/icons-vue'
+import { User, Lock, Message, Close, VideoPlay } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { userApi } from './api/index.js'
 
@@ -193,20 +193,30 @@ provide('showLoginDialog', showLoginDialog)
     <el-dialog
       v-model="showLoginDialog"
       :title="''"
-      width="400px"
+      width="420px"
       :close-on-click-modal="false"
       class="login-dialog"
       @close="handleCloseDialog"
     >
-      <!-- 登录表单 -->
-      <div class="login-form" v-if="dialogMode === 'login'">
-        <h2 class="login-title">登录</h2>
-        
+      <div class="dialog-content-wrapper">
+        <!-- 关闭按钮 -->
+        <button class="dialog-close-btn" @click="showLoginDialog = false">
+          <el-icon><Close /></el-icon>
+        </button>
+
+        <!-- 登录表单 -->
+        <div class="login-form" v-if="dialogMode === 'login'">
+          <div class="dialog-logo">
+            <el-icon><VideoPlay /></el-icon>
+            <span>哔哩哔哩</span>
+          </div>
+          <h2 class="dialog-title">登录</h2>
+
         <el-form :model="loginForm" label-position="top">
           <el-form-item label="">
             <el-input
               v-model="loginForm.username"
-              placeholder="请输入用户名/邮箱/手机号"
+              placeholder="请输入用户名/邮箱"
               size="large"
               :prefix-icon="User"
               clearable
@@ -223,16 +233,16 @@ provide('showLoginDialog', showLoginDialog)
             />
           </el-form-item>
         </el-form>
-        
+
         <div class="form-actions">
           <el-checkbox v-model="loginForm.rememberMe">记住我</el-checkbox>
-          <el-button type="text" class="forget-password">忘记密码？</el-button>
+          <el-button type="text" class="forget-password" @click="router.push('/forgot-password'); showLoginDialog = false">忘记密码？</el-button>
         </div>
-        
+
         <div class="action-buttons">
-          <el-button 
-            type="primary" 
-            @click="handleLogin" 
+          <el-button
+            type="primary"
+            @click="handleLogin"
             size="large"
             :loading="loading"
             class="action-btn-primary"
@@ -245,11 +255,15 @@ provide('showLoginDialog', showLoginDialog)
           </div>
         </div>
       </div>
-      
+
       <!-- 注册表单 -->
       <div class="register-form" v-else>
-        <h2 class="login-title">注册</h2>
-        
+        <div class="dialog-logo">
+          <el-icon><VideoPlay /></el-icon>
+          <span>哔哩哔哩</span>
+        </div>
+        <h2 class="dialog-title">注册</h2>
+
         <el-form :model="registerForm" label-position="top">
           <el-form-item label="">
             <el-input
@@ -299,11 +313,11 @@ provide('showLoginDialog', showLoginDialog)
             </el-checkbox>
           </el-form-item>
         </el-form>
-        
+
         <div class="action-buttons">
-          <el-button 
-            type="primary" 
-            @click="handleRegister" 
+          <el-button
+            type="primary"
+            @click="handleRegister"
             size="large"
             :loading="loading"
             class="action-btn-primary"
@@ -315,6 +329,7 @@ provide('showLoginDialog', showLoginDialog)
             <el-button type="text" @click="switchToLogin()" class="switch-btn">立即登录</el-button>
           </div>
         </div>
+      </div>
       </div>
     </el-dialog>
   </div>
@@ -340,9 +355,9 @@ body {
 
 /* 登录/注册弹窗样式 */
 .login-dialog {
-  border-radius: 0;
+  border-radius: 12px;
   overflow: visible;
-  box-shadow: none;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
 .login-dialog .el-dialog__header {
@@ -362,16 +377,23 @@ body {
   display: none;
 }
 
-.login-form,
-.register-form {
-  padding: 20px;
-  background-color: transparent;
-  border-radius: 0;
-  margin: 0;
+.login-dialog .el-dialog {
+  background: transparent;
   box-shadow: none;
 }
 
+.login-form,
+.register-form {
+  padding: 0;
+}
+
 .login-title {
+  font-size: 18px;
+  font-weight: 500;
+  color: #333;
+  margin: 0 0 15px 0;
+  text-align: center;
+}
   font-size: 18px;
   font-weight: 500;
   color: #333;
@@ -450,5 +472,83 @@ body {
   color: #409eff;
   padding: 0;
   font-size: 12px;
+}
+
+/* 弹窗内容包装 */
+.dialog-content-wrapper {
+  position: relative;
+  background: #fff;
+  border-radius: 12px;
+  overflow: visible;
+  padding: 30px;
+}
+
+/* 弹窗关闭按钮 */
+.dialog-close-btn {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #e8e9ea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s;
+}
+
+.dialog-close-btn:hover {
+  background: #f5f5f5;
+  transform: scale(1.05);
+}
+
+.dialog-close-btn .el-icon {
+  font-size: 16px;
+  color: #666;
+}
+
+/* Logo样式 */
+.dialog-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.dialog-logo .el-icon {
+  font-size: 28px;
+  color: #00a1d6;
+}
+
+.dialog-logo span {
+  font-size: 22px;
+  font-weight: bold;
+  color: #00a1d6;
+}
+
+/* 弹窗标题 */
+.dialog-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+/* 弹窗表单样式 */
+.login-form,
+.register-form {
+  padding: 0;
+}
+
+.login-form .el-input__wrapper,
+.register-form .el-input__wrapper {
+  border-radius: 6px;
 }
 </style>

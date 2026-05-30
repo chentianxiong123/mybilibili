@@ -11,17 +11,17 @@ public class AiChatMessage {
 
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long conversationId;
+    private Long sessionId;
     private String role;
     private String content;
     private Integer tokenCount;
     private Date createdAt;
 
+    public Long getSessionId() { return sessionId; }
+    public void setSessionId(Long sessionId) { this.sessionId = sessionId; }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-
-    public Long getConversationId() { return conversationId; }
-    public void setConversationId(Long conversationId) { this.conversationId = conversationId; }
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }

@@ -8,6 +8,7 @@ import {
   deleteProhibitedWord,
   batchImportProhibitedWords
 } from '../api/prohibitedWord'
+import { getSecuritySettings, updateSecuritySettings } from '../api/securitySettings'
 
 // 表格数据
 const tableData = ref([])
@@ -41,6 +42,16 @@ const importForm = ref({
   category: ''
 })
 const fileList = ref([])
+
+// 安全设置
+const securityLoading = ref(false)
+const securityForm = ref({
+  commentMaxCount: 10,
+  commentWindowSeconds: 60,
+  replyMaxCount: 20,
+  replyWindowSeconds: 60,
+  cacheRefreshIntervalSeconds: 300
+})
 
 // 匹配类型选项
 const matchTypeOptions = [
@@ -81,6 +92,41 @@ const loadWords = async () => {
     ElMessage.error('获取违禁词列表失败')
   } finally {
     loading.value = false
+  }
+}
+
+// 加载安全设置
+const loadSecuritySettings = async () => {
+  securityLoading.value = true
+  try {
+    const res = await getSecuritySettings()
+    if (res.code === 200 || res.success) {
+      const data = res.data || {}
+      securityForm.value.commentMaxCount = data.commentMaxCount || 10
+      securityForm.value.commentWindowSeconds = data.commentWindowSeconds || 60
+      securityForm.value.replyMaxCount = data.replyMaxCount || 20
+      securityForm.value.replyWindowSeconds = data.replyWindowSeconds || 60
+      securityForm.value.cacheRefreshIntervalSeconds = data.cacheRefreshIntervalSeconds || 300
+    }
+  } catch (error) {
+    ElMessage.error('获取安全设置失败')
+  } finally {
+    securityLoading.value = false
+  }
+}
+
+// 保存安全设置
+const handleSaveSecurity = async () => {
+  securityLoading.value = true
+  try {
+    const res = await updateSecuritySettings(securityForm.value)
+    if (res.code === 200 || res.success) {
+      ElMessage.success('保存成功')
+    }
+  } catch (error) {
+    ElMessage.error('保存失败')
+  } finally {
+    securityLoading.value = false
   }
 }
 
@@ -246,12 +292,13 @@ const formatDateTime = (dateStr) => {
 
 onMounted(() => {
   loadWords()
+  loadSecuritySettings()
 })
 </script>
 
 <template>
   <div class="prohibited-words-page">
-    <h2 class="page-title">违禁词管理</h2>
+    <h2 class="page-title">违禁词与安全设置</h2>
 
     <!-- 搜索和操作区域 -->
     <div class="search-bar">
@@ -334,6 +381,74 @@ onMounted(() => {
         @size-change="loadWords"
       />
     </div>
+
+    <!-- 安全设置区域 -->
+    <el-card v-loading="securityLoading" class="security-card">
+      <template #header>
+        <div class="security-header">
+          <span class="security-title">频率限制与缓存设置</span>
+        </div>
+      </template>
+
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-divider content-position="left">评论频率限制</el-divider>
+          <el-form-item label="最大评论次数">
+            <el-input-number
+              v-model="securityForm.commentMaxCount"
+              :min="1"
+              :max="1000"
+              style="width: 100%"
+            />
+            <div class="form-tip">用户在时间窗口内最多可发送的评论数量</div>
+          </el-form-item>
+          <el-form-item label="时间窗口（秒）">
+            <el-input-number
+              v-model="securityForm.commentWindowSeconds"
+              :min="1"
+              :max="3600"
+              style="width: 100%"
+            />
+          </el-form-item>
+        </el-col>
+
+        <el-col :span="12">
+          <el-divider content-position="left">回复频率限制</el-divider>
+          <el-form-item label="最大回复次数">
+            <el-input-number
+              v-model="securityForm.replyMaxCount"
+              :min="1"
+              :max="1000"
+              style="width: 100%"
+            />
+            <div class="form-tip">用户在时间窗口内最多可发送的回复数量</div>
+          </el-form-item>
+          <el-form-item label="时间窗口（秒）">
+            <el-input-number
+              v-model="securityForm.replyWindowSeconds"
+              :min="1"
+              :max="3600"
+              style="width: 100%"
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
+
+      <el-divider content-position="left">缓存设置</el-divider>
+      <el-form-item label="违禁词缓存刷新间隔（秒）">
+        <el-input-number
+          v-model="securityForm.cacheRefreshIntervalSeconds"
+          :min="10"
+          :max="3600"
+          style="width: 100%"
+        />
+        <div class="form-tip">违禁词缓存在 Redis 中的自动刷新间隔（建议值：60-600）</div>
+      </el-form-item>
+
+      <el-form-item>
+        <el-button type="primary" @click="handleSaveSecurity">保存设置</el-button>
+      </el-form-item>
+    </el-card>
 
     <!-- 添加/编辑对话框 -->
     <el-dialog
@@ -449,5 +564,27 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   margin-top: 20px;
+}
+
+.security-card {
+  margin-top: 30px;
+}
+
+.security-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.security-title {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+  line-height: 1.4;
 }
 </style>

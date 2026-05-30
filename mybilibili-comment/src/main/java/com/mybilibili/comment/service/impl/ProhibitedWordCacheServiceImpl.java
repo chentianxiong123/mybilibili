@@ -17,6 +17,8 @@ import java.util.Set;
 public class ProhibitedWordCacheServiceImpl implements ProhibitedWordCacheService {
 
     private static final String REDIS_SET_KEY = "prohibited_words:words";
+    private static final String CACHE_REFRESH_KEY = "security:cache:refresh_interval";
+    private static final int DEFAULT_REFRESH_INTERVAL = 300000; // 5分钟
 
     @Autowired
     private ProhibitedWordMapper prohibitedWordMapper;
@@ -24,14 +26,27 @@ public class ProhibitedWordCacheServiceImpl implements ProhibitedWordCacheServic
     @Autowired
     private StringRedisTemplate redisTemplate;
 
+    private volatile long refreshIntervalMs = DEFAULT_REFRESH_INTERVAL;
+
     @PostConstruct
     public void init() {
         refreshCache();
+        loadRefreshInterval();
     }
 
-    @Scheduled(fixedRate = 300000)
+    @Scheduled(fixedRateString = "#{@prohibitedWordCacheServiceImpl.refreshIntervalMs}")
     public void scheduledRefresh() {
         refreshCache();
+    }
+
+    private void loadRefreshInterval() {
+        String value = redisTemplate.opsForValue().get(CACHE_REFRESH_KEY);
+        if (value != null) {
+            try {
+                int seconds = Integer.parseInt(value);
+                refreshIntervalMs = seconds * 1000L;
+            } catch (NumberFormatException ignored) {}
+        }
     }
 
     @Override
@@ -53,6 +68,7 @@ public class ProhibitedWordCacheServiceImpl implements ProhibitedWordCacheServic
 
     @Override
     public void refreshCache() {
+        loadRefreshInterval();
         List<ProhibitedWord> words = prohibitedWordMapper.selectAllEnabled();
         if (words == null || words.isEmpty()) {
             redisTemplate.delete(REDIS_SET_KEY);

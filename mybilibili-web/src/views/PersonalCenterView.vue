@@ -14,6 +14,7 @@ const navItems = [
   { name: '首页', icon: 'Home', path: '/personal-center/home' },
   { name: '我的信息', icon: 'User', path: '/personal-center/info' },
   { name: '我的头像', icon: 'Avatar', path: '/personal-center/avatar' },
+  { name: '登录记录', icon: 'Clock', path: '/personal-center/login-logs' },
   { name: '个人空间', icon: 'UserFilled', path: 'space', special: true },
   { name: '创作中心', icon: 'Brush', path: '/create-center', special: true }
 ]

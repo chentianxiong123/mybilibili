@@ -18,6 +18,7 @@ import reactor.core.publisher.Flux;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
@@ -35,14 +36,13 @@ public class AdminAiServiceImpl implements AdminAiService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String SYSTEM_PROMPT =
-        "你是哔哩哔哩管理后台的 AI 助手，名叫\"管理助手\"。你的职责是帮助管理员完成以下工作：1. 查询平台统计数据，并以表格、图表或文字摘要形式呈现 2. 回答关于平台运营状况的问题。你可以使用以下工具获取数据：getOverviewStats: 获取平台概览统计；getUserGrowth(days): 获取用户增长趋势；getManuscriptStats: 获取稿件状态分布统计；getAiUsageOverview: 获取 AI 功能用量概览；getHotVideos(limit): 获取热门视频列表。当用户请求数据时，调用对应工具并将结果组织成清晰的中文回答。工具返回的 StatsData 中包含 chartType 字段。请在回答末尾用 JSON 格式返回渲染建议：{\"render\": {\"type\": \"chartType\", \"title\": \"标题\", \"data\": {...}}}";
+        "你是哔哩哔哩管理后台的 AI 助手，名叫\"管理助手\"。你的职责是帮助管理员完成以下工作：1. 查询平台统计数据，并以表格、图表或文字摘要形式呈现 2. 回答关于平台运营状况的问题。你可以使用以下工具获取数据：getOverviewStats: 获取平台概览统计；getUserGrowth(days): 获取用户增长趋势；getManuscriptStats: 获取稿件状态分布统计；getAiUsageOverview: 获取 AI 功能用量概览；getHotVideos(limit): 获取热门视频列表。当用户请求数据时，调用对应工具并将结果组织成清晰的中文回答。工具返回的 StatsData 中包含 chartType 字段。请在回答末尾用 JSON 格式返回渲染建议：{\"chartType\": \"number|line|pie|table\", \"title\": \"标题\", \"data\": {...}}";
 
     @Override
     public SseEmitter sendMessage(Integer adminId, String content) {
         SseEmitter emitter = new SseEmitter(120000L);
         long startTime = System.currentTimeMillis();
 
-        // 获取绑定 ADMIN feature 的 ChatClient，无则用第一个活跃渠道
         ChatClient client = dynamicChatClient.getClient("ADMIN");
         if (client == null) {
             client = dynamicChatClient.getFirstActiveClient();
@@ -50,19 +50,19 @@ public class AdminAiServiceImpl implements AdminAiService {
 
         if (client == null) {
             try {
-                emitter.send(SseEmitter.event().name("error").data("未配置可用的 AI 渠道，请先在 AI 渠道管理中配置并绑定 ADMIN 功能"));
+                emitter.send(SseEmitter.event().name("error").data("未配置可用的 AI 渠道"));
                 emitter.complete();
             } catch (Exception ignored) {}
             return emitter;
         }
 
-        // 注册 ToolCallback（@Tool 注解的方法会被自动扫描）
         List<ToolCallback> toolCallbacks = List.of(
             ToolCallbacks.from(adminToolService)
         );
 
         StringBuilder fullResp = new StringBuilder();
         AtomicReference<Disposable> subscriptionRef = new AtomicReference<>();
+        Set<String> calledTools = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
         Flux<String> flux = client.prompt()
                 .system(SYSTEM_PROMPT)
@@ -75,6 +75,13 @@ public class AdminAiServiceImpl implements AdminAiService {
             chunk -> {
                 try {
                     fullResp.append(chunk);
+                    // 检测工具调用关键字（AI 流式输出时会包含工具名提示）
+                    for (String tool : new String[]{"getOverviewStats","getUserGrowth","getManuscriptStats",
+                        "getAiUsageOverview","getHotVideos"}) {
+                        if (chunk.contains(tool) && calledTools.add(tool)) {
+                            emitter.send(SseEmitter.event().name("tool_call").data(tool));
+                        }
+                    }
                     emitter.send(SseEmitter.event().name("data").data(chunk));
                 } catch (Exception ignored) {}
             },
@@ -90,7 +97,6 @@ public class AdminAiServiceImpl implements AdminAiService {
             () -> {
                 try {
                     String reply = fullResp.toString();
-                    // 尝试从回复中提取 render JSON
                     String renderJson = extractRenderJson(reply);
                     Map<String, Object> doneData = new HashMap<>();
                     doneData.put("content", reply);

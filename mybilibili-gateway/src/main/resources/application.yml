@@ -67,6 +67,31 @@ spring:
           filters:
             - StripPrefix=1
 
+        # 安全设置接口 - 转发到 comment 服务（必须放在 /api/admin/** 之前）
+        - id: security-settings
+          uri: lb://mybilibili-comment
+          predicates:
+            - Path=/api/admin/security-settings/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 管理端接口 ==========
+        # 直播管理（必须放在 /api/admin/** 之前）
+        - id: live-admin-service
+          uri: lb://mybilibili-live
+          predicates:
+            - Path=/api/admin/live/**
+          filters:
+            - StripPrefix=1
+
+        # 会议管理（必须放在 /api/admin/** 之前）
+        - id: meeting-admin-service
+          uri: lb://mybilibili-live
+          predicates:
+            - Path=/api/admin/meeting/**
+          filters:
+            - StripPrefix=1
+
         # 管理端接口（复用user-service）
         - id: user-service-admin
           uri: lb://mybilibili-user
@@ -550,23 +575,7 @@ spring:
           predicates:
             - Path=/api/ai/admin/**
           filters:
-            - StripPrefix=1
-
-        # ========== 直播管理 ==========
-        - id: live-admin-service
-          uri: lb://mybilibili-live
-          predicates:
-            - Path=/api/admin/live/**
-          filters:
-            - StripPrefix=1
-
-        # ========== 会议管理 ==========
-        - id: meeting-admin-service
-          uri: lb://mybilibili-live
-          predicates:
-            - Path=/api/admin/meeting/**
-          filters:
-            - StripPrefix=1
+            - StripPrefix=2
 
         - id: ai-process-service
           uri: lb://mybilibili-ai

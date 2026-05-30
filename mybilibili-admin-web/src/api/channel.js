@@ -25,6 +25,11 @@ export function toggleChannel(id) {
   return request({ url: `/ai/admin/channels/${id}/toggle`, method: 'put' })
 }
 
+// ========== 按类型查询 ==========
+export function getChannelsByType(type) {
+  return request({ url: `/ai/admin/channels/type/${type}`, method: 'get' })
+}
+
 // ========== 功能绑定 ==========
 export function getBindings() {
   return request({ url: '/ai/admin/channels/bindings', method: 'get' })
@@ -37,4 +42,13 @@ export function bindFeature(feature, configId) {
 // ========== 测试连接 ==========
 export function testConnection(data) {
   return request({ url: '/ai/admin/config/test', method: 'post', data })
+}
+
+// ========== 可用类型和功能 ==========
+export function getAvailableTypes() {
+  return request({ url: '/ai/admin/channels/types', method: 'get' })
+}
+
+export function getAvailableFeatures() {
+  return request({ url: '/ai/admin/channels/features', method: 'get' })
 }

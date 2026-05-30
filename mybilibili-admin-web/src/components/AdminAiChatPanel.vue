@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { ChatDotRound, Close } from '@element-plus/icons-vue'
+import { ChatDotRound, Close, Tools, Download, TrendCharts, DataLine, PieChart } from '@element-plus/icons-vue'
 import { adminAiApi } from '../api/adminAi.js'
 
 const visible = defineModel('visible', { type: Boolean, default: false })
@@ -10,6 +10,8 @@ const messages = ref([])
 const inputText = ref('')
 const isStreaming = ref(false)
 const streamingContent = ref('')
+const toolCalling = ref(false)
+const toolCallingName = ref('')
 const messageListRef = ref(null)
 const eventSource = ref(null)
 
@@ -45,7 +47,6 @@ const handleSend = () => {
   isStreaming.value = true
   streamingContent.value = ''
 
-  // 添加用户消息
   messages.value.push({
     id: 'user-' + Date.now(),
     role: 'user',
@@ -55,28 +56,41 @@ const handleSend = () => {
 
   scrollToBottom()
 
-  // 调用 SSE 接口
   eventSource.value = adminAiApi.sendMessage(content, {
     onData: (chunk) => {
       streamingContent.value += chunk
       scrollToBottom()
     },
+    onToolCall: (name) => {
+      toolCalling.value = true
+      toolCallingName.value = name || '处理中'
+      scrollToBottom()
+    },
     onDone: (data) => {
-      // 提取 render 数据
+      let reply = ''
       let render = null
+
       if (data && typeof data === 'object') {
-        render = data.render || null
+        reply = data.content || data.reply || ''
+        // 兼容 render 字段（可能已经是对象或 JSON 字符串）
+        if (data.render) {
+          try {
+            render = typeof data.render === 'string' ? JSON.parse(data.render) : data.render
+          } catch { render = data.render }
+        }
+      } else if (typeof data === 'string') {
+        reply = data
       }
 
-      // 添加 AI 消息
       messages.value.push({
         id: 'ai-' + Date.now(),
         role: 'assistant',
-        content: streamingContent.value,
+        content: reply,
         render: render,
         createdAt: new Date().toISOString()
       })
 
+      toolCalling.value = false
       streamingContent.value = ''
       isStreaming.value = false
       eventSource.value = null
@@ -84,6 +98,7 @@ const handleSend = () => {
     },
     onError: (err) => {
       ElMessage.error(err || '回复失败，请重试')
+      toolCalling.value = false
       streamingContent.value = ''
       isStreaming.value = false
       eventSource.value = null
@@ -108,7 +123,7 @@ const handleClose = () => {
   visible.value = false
 }
 
-// 监听 visible 变化，关闭时中止请求
+// 监听 visible 变化
 watch(visible, (val) => {
   if (!val) {
     if (eventSource.value) {
@@ -117,8 +132,45 @@ watch(visible, (val) => {
     }
     isStreaming.value = false
     streamingContent.value = ''
+    toolCalling.value = false
   }
 })
+
+// 解析 render data 里的行数据
+const getTableRows = (data) => {
+  if (!data || typeof data !== 'object') return []
+  if (Array.isArray(data)) return data
+  // 取第一个数组字段
+  for (const key of Object.keys(data)) {
+    if (Array.isArray(data[key])) return data[key]
+  }
+  return []
+}
+
+// 获取表格列（从第一条数据推断）
+const getTableColumns = (rows) => {
+  if (!rows || rows.length === 0) return []
+  return Object.keys(rows[0]).map(k => ({ prop: k, label: k }))
+}
+
+// 判断 chartType
+const getChartIcon = (chartType) => {
+  switch (chartType) {
+    case 'line': return TrendCharts
+    case 'pie': return PieChart
+    case 'table': return DataLine
+    default: return DataLine
+  }
+}
+
+// 数字摘要格式化
+const formatNumberStat = (data) => {
+  if (!data || typeof data !== 'object') return null
+  return Object.entries(data).map(([key, val]) => ({
+    label: key,
+    value: typeof val === 'number' ? val.toLocaleString() : String(val)
+  }))
+}
 </script>
 
 <template>
@@ -156,12 +208,78 @@ watch(visible, (val) => {
               <span v-if="msg.id === 'streaming'" class="streaming-cursor">|</span>
             </div>
 
-            <!-- Render Block -->
-            <template v-if="msg.render">
-              <el-divider />
-              <div class="render-block">
-                <el-tag size="small" type="primary">{{ msg.render.title || '数据分析' }}</el-tag>
-                <span v-if="msg.render.chartType" class="chart-type">{{ msg.render.chartType }}</span>
+            <!-- Tool Calling Indicator -->
+            <div v-if="toolCalling && msg.id === 'streaming'" class="tool-calling">
+              <el-icon :size="14" class="tool-icon-spin"><Tools /></el-icon>
+              <span>正在查询：{{ toolCallingName }}</span>
+            </div>
+
+            <!-- Render Block: Number Cards -->
+            <template v-if="msg.render?.chartType === 'number' && formatNumberStat(msg.render?.data)">
+              <div class="stats-grid">
+                <div v-for="stat in formatNumberStat(msg.render.data)" :key="stat.label" class="stat-card">
+                  <span class="stat-label">{{ stat.label }}</span>
+                  <span class="stat-value">{{ stat.value }}</span>
+                </div>
+              </div>
+            </template>
+
+            <!-- Render Block: Table -->
+            <template v-if="msg.render?.chartType === 'table' && getTableRows(msg.render?.data).length">
+              <div class="table-block">
+                <el-tag :type="'primary'" size="small">
+                  <el-icon><DataLine /></el-icon>
+                  {{ msg.render.title || '数据表格' }}
+                </el-tag>
+                <el-table
+                  :data="getTableRows(msg.render.data)"
+                  size="small"
+                  stripe
+                  border
+                  class="stat-table"
+                  max-height="200"
+                >
+                  <el-table-column
+                    v-for="col in getTableColumns(getTableRows(msg.render.data))"
+                    :key="col.prop"
+                    :prop="col.prop"
+                    :label="col.label"
+                    show-overflow-tooltip
+                  />
+                </el-table>
+              </div>
+            </template>
+
+            <!-- Render Block: Pie -->
+            <template v-if="msg.render?.chartType === 'pie' && getTableRows(msg.render?.data).length">
+              <div class="chart-block">
+                <el-tag type="primary" size="small">
+                  <el-icon><PieChart /></el-icon>
+                  {{ msg.render.title || '分布图' }}
+                </el-tag>
+                <div class="pie-list">
+                  <div v-for="row in getTableRows(msg.render.data)" :key="row.label || row.name || row.key" class="pie-row">
+                    <span class="pie-label">{{ row.label || row.name || row.key }}</span>
+                    <span class="pie-value">{{ typeof row.value === 'number' ? row.value.toLocaleString() : row.value }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- Render Block: Line -->
+            <template v-if="msg.render?.chartType === 'line' && getTableRows(msg.render?.data).length">
+              <div class="chart-block">
+                <el-tag type="primary" size="small">
+                  <el-icon><TrendCharts /></el-icon>
+                  {{ msg.render.title || '趋势图' }}
+                </el-tag>
+                <div class="line-list">
+                  <div v-for="row in getTableRows(msg.render.data)" :key="row.date || row.label || row.x" class="line-row">
+                    <span class="line-label">{{ row.date || row.label || row.x }}</span>
+                    <span class="line-bar" :style="{ width: Math.min(100, (row.value || row.y || 0) / (getTableRows(msg.render.data)[0]?.value || 1) * 100) + '%' }"></span>
+                    <span class="line-value">{{ row.value || row.y }}</span>
+                  </div>
+                </div>
               </div>
             </template>
           </div>
@@ -373,17 +491,137 @@ watch(visible, (val) => {
   30% { transform: translateY(-4px); opacity: 1; }
 }
 
-/* Render Block */
-.render-block {
+/* Tool Calling */
+.tool-calling {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+  padding: 4px 8px;
+  background: #f5f7fa;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.tool-icon-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Stats Grid (number cards) */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.stat-card {
+  background: #f5f7fa;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #909399;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+/* Table Block */
+.table-block {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-table {
+  font-size: 12px;
+}
+
+/* Chart Block */
+.chart-block {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Pie List */
+.pie-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pie-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 0;
+  font-size: 12px;
 }
 
-.chart-type {
+.pie-label {
+  flex: 1;
+  color: #606266;
+}
+
+.pie-value {
+  font-weight: 500;
+  color: #303133;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* Line Chart */
+.line-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.line-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 12px;
+}
+
+.line-label {
+  width: 60px;
   color: #909399;
+  flex-shrink: 0;
+}
+
+.line-bar {
+  height: 8px;
+  background: linear-gradient(90deg, #00a1d6, #00d6b2);
+  border-radius: 4px;
+  min-width: 4px;
+  max-width: 120px;
+  transition: width 0.3s;
+}
+
+.line-value {
+  font-weight: 500;
+  color: #303133;
+  min-width: 40px;
+  text-align: right;
 }
 
 /* Input Area */

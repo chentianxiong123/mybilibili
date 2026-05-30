@@ -25,6 +25,15 @@ public class AiApiConfigServiceImpl implements AiApiConfigService {
     }
 
     @Override
+    public List<AiApiConfig> listByType(String type) {
+        return aiApiConfigMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AiApiConfig>()
+                        .eq(AiApiConfig::getType, type)
+                        .eq(AiApiConfig::getEnabled, true)
+        );
+    }
+
+    @Override
     public AiApiConfig getById(Long id) {
         return aiApiConfigMapper.selectById(id);
     }
@@ -90,5 +99,15 @@ public class AiApiConfigServiceImpl implements AiApiConfigService {
         List<AiBinding> bindings = aiBindingMapper.selectList(null);
         return bindings.stream()
                 .collect(Collectors.toMap(AiBinding::getFeature, AiBinding::getApiConfigId));
+    }
+
+    @Override
+    public Map<String, Object> getWhisperConfig() {
+        AiBinding binding = aiBindingMapper.selectByFeature("WHISPER");
+        if (binding == null) return null;
+        return Map.of(
+            "apiConfigId", binding.getApiConfigId(),
+            "feature", "WHISPER"
+        );
     }
 }

@@ -1,5 +1,6 @@
 package com.mybilibili.ai.service.impl;
 
+import com.mybilibili.ai.config.DynamicSttClient;
 import com.mybilibili.ai.config.UploadFilePathConfig;
 import com.mybilibili.ai.config.WhisperConfig;
 import com.mybilibili.ai.mapper.VideoMapper;
@@ -7,6 +8,7 @@ import com.mybilibili.ai.repository.SubtitleRepository;
 import com.mybilibili.ai.service.AiSubtitleService;
 import com.mybilibili.ai.utils.SubtitleTextUtils;
 import com.mybilibili.common.entity.Subtitle;
+import com.mybilibili.common.entity.Video;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +19,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -39,6 +42,9 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
 
     @Autowired
     private VideoMapper videoMapper;
+
+    @Autowired
+    private DynamicSttClient dynamicSttClient;
 
     private static final Pattern TIME_PATTERN = Pattern.compile(
             "(\\d{2}):\\s*(\\d{2}):\\s*(\\d{2})[,.](\\d{3})\\s*-->\\s*(\\d{2}):\\s*(\\d{2}):\\s*(\\d{2})[,.](\\d{3})"
@@ -65,13 +71,15 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
                 pushProgress(progressListener, 0, "音频提取失败");
                 return false;
             }
-            pushProgress(progressListener, 30, "音频提取完成，开始Whisper识别");
+            pushProgress(progressListener, 30, "音频提取完成，开始语音识别");
 
-            if (!generateSubtitleWithWhisper(manuscriptId, videoId, audioPath, subtitleDir, progressListener)) {
-                pushProgress(progressListener, 0, "Whisper识别失败");
+            boolean recognized = generateSubtitleWithApi(manuscriptId, videoId, audioPath, subtitleDir, progressListener);
+
+            if (!recognized) {
+                pushProgress(progressListener, 0, "语音识别失败");
                 return false;
             }
-            pushProgress(progressListener, 90, "Whisper识别完成，导入字幕");
+            pushProgress(progressListener, 90, "语音识别完成，导入字幕");
 
             String subtitlePath = uploadFilePathConfig.getChineseSubtitlePath(manuscriptId, videoId);
             if (importSystemSubtitle(videoId, subtitlePath)) {
@@ -244,6 +252,42 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
 
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    private boolean generateSubtitleWithApi(Integer manuscriptId, Integer videoId, String audioPath, String outputDir, ProgressListener progressListener) {
+        try {
+            log.info("[ApiStt] 开始识别, audioPath={}", audioPath);
+
+            String result = dynamicSttClient.transcribeWithApi(audioPath, "zh");
+            if (result == null || result.isEmpty()) {
+                log.warn("[ApiStt] 识别结果为空，降级到本地 Whisper");
+                return generateSubtitleWithWhisper(manuscriptId, videoId, audioPath, outputDir, progressListener);
+            }
+
+            // 判断是否为 SRT 格式（带时间戳）
+            if (dynamicSttClient.isSrtFormat(result)) {
+                // 直接写入 SRT 文件
+                java.io.File outputFile = new java.io.File(outputDir, "zh-CN.srt");
+                Files.writeString(outputFile.toPath(), result, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                log.info("[ApiStt] SRT 文件已写入（带时间戳）: {}", outputFile.getAbsolutePath());
+                return true;
+            }
+
+            // 纯文本模式，估算时间戳
+            log.info("[ApiStt] 识别成功（纯文本），估算时间戳");
+            Video video = videoMapper.selectById(videoId);
+            double duration = video != null && video.getDurationSeconds() != null ? video.getDurationSeconds() : 0;
+            String srtContent = dynamicSttClient.textToSrt(result, duration);
+
+            java.io.File outputFile = new java.io.File(outputDir, "zh-CN.srt");
+            Files.writeString(outputFile.toPath(), srtContent, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            log.info("[ApiStt] SRT 文件已写入（估算时间戳）: {}", outputFile.getAbsolutePath());
+            return true;
+
+        } catch (Exception e) {
+            log.error("[ApiStt] 异常: {}, 降级到本地 Whisper", e.getMessage());
+            return generateSubtitleWithWhisper(manuscriptId, videoId, audioPath, outputDir, progressListener);
         }
     }
 

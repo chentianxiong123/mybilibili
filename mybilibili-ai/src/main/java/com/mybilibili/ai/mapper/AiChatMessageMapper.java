@@ -11,4 +11,7 @@ public interface AiChatMessageMapper extends BaseMapper<AiChatMessage> {
 
     @Select("SELECT * FROM ai_chat_messages WHERE conversation_id = #{conversationId} ORDER BY created_at ASC")
     List<AiChatMessage> selectByConversationId(@Param("conversationId") Long conversationId);
+
+    @Select("SELECT * FROM ai_chat_messages WHERE session_id = #{sessionId} ORDER BY created_at ASC")
+    List<AiChatMessage> selectBySessionId(@Param("sessionId") Long sessionId);
 }

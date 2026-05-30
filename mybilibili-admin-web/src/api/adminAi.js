@@ -17,9 +17,10 @@ function parseSSEEvent(raw) {
 }
 
 function handleSSEEvent({ event, data }, callbacks) {
-  const { onData, onDone, onError } = callbacks
+  const { onData, onDone, onError, onToolCall } = callbacks
   switch (event) {
     case 'data':  if (onData) onData(data); break
+    case 'tool_call': if (onToolCall) onToolCall(data); break
     case 'done':  if (onDone) { try { onDone(JSON.parse(data)) } catch (e) { onDone(data) } }; break
     case 'error': if (onError) onError(data); break
   }
@@ -27,7 +28,11 @@ function handleSSEEvent({ event, data }, callbacks) {
 
 function getAuthHeaders() {
   const token = localStorage.getItem('admin_token')
-  return { 'Authorization': token ? `Bearer ${token}` : '' }
+  const adminId = localStorage.getItem('admin_id')
+  return {
+    'Authorization': token ? `Bearer ${token}` : '',
+    'X-Admin-Id': adminId || ''
+  }
 }
 
 export const adminAiApi = {

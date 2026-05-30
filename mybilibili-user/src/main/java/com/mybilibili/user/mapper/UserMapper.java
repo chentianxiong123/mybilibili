@@ -15,6 +15,9 @@ public interface UserMapper extends BaseMapper<User> {
     @Select("SELECT * FROM users WHERE username = #{username}")
     User selectByUsername(String username);
 
+    @Select("SELECT * FROM users WHERE email = #{email}")
+    User selectByEmail(@Param("email") String email);
+
     @Select("SELECT COUNT(*) FROM user_interactions WHERE user_id = #{userId} AND target_type = 'user' AND interaction_type = 'follow'")
     Integer countFollowing(@Param("userId") Integer userId);
 

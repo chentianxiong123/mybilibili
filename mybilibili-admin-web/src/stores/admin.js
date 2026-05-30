@@ -14,9 +14,11 @@ export const useAdminStore = defineStore('admin', () => {
         token.value = res.data.token || res.token
         userInfo.value = res.data.adminUser || res.data.user || res.user || { username: loginData.username }
         role.value = res.data.role || '管理员'
+        const adminId = res.data.adminUser?.id || res.data.user?.id || null
         localStorage.setItem('admin_token', token.value)
         localStorage.setItem('admin_user', JSON.stringify(userInfo.value))
         localStorage.setItem('admin_role', role.value)
+        if (adminId) localStorage.setItem('admin_id', adminId)
         return { success: true }
       }
       return { success: false, message: res.message || '登录失败' }
@@ -32,6 +34,7 @@ export const useAdminStore = defineStore('admin', () => {
     localStorage.removeItem('admin_token')
     localStorage.removeItem('admin_user')
     localStorage.removeItem('admin_role')
+    localStorage.removeItem('admin_id')
   }
 
   return {

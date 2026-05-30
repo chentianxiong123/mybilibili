@@ -79,12 +79,54 @@ api.interceptors.response.use(
   }
 )
 
+// 验证码相关API
+export const captchaApi = {
+  // 生成新验证码，返回 captchaId 和算术题
+  newCaptcha: () => api.post('/captcha/new'),
+  // 校验验证码
+  verifyCaptcha: (captchaId, answer) => api.post('/captcha/verify', { captchaId, answer })
+}
+
+// 邮箱验证码API
+export const emailCodeApi = {
+  // 发送邮箱验证码
+  sendCode: (email) => api.post('/user/email/code', { email }),
+  // 校验邮箱验证码
+  verifyCode: (email, code) => api.post('/user/email/verify', { email, code })
+}
+
 // 用户相关API
 export const userApi = {
   // 注册
   register: (userData) => api.post('/user/register', userData),
   // 登录
-  login: (username, password) => api.post('/user/login', { username, password }),
+  login: (username, password, loginType, email, emailCode) => {
+    const data = {}
+    if (loginType === 'email_code') {
+      data.loginType = 'email_code'
+      data.email = email
+      data.emailCode = emailCode
+    } else {
+      data.username = username
+      data.password = password
+    }
+    // 获取客户端IP
+    data.loginIp = localStorage.getItem('clientIp') || ''
+    return api.post('/user/login', data)
+  },
+  // 忘记密码
+  forgotPassword: (email, code, newPassword) => api.post('/user/password/forgot', { email, code, newPassword }),
+  // 获取登录日志
+  getLoginLogs: (page, size) => api.get('/user/login-logs', { params: { page, size } })
+}
+
+// 管理员登录日志API
+export const adminLoginLogApi = {
+  getLoginLogs: (params) => api.get('/admin/login-logs/list', { params }),
+  getUserLoginLogs: (userId, page, size) => api.get(`/admin/login-logs/user/${userId}`, { params: { page, size } })
+}
+  // 忘记密码
+  forgotPassword: (email, code, newPassword) => api.post('/user/password/forgot', { email, code, newPassword }),
   // 获取用户信息
   getUserById: (id) => api.get(`/user/${id}`),
   // 更新用户信息

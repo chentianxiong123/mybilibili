@@ -19,7 +19,17 @@ public class AiChannelController {
     @GetMapping
     public Result<List<AiApiConfig>> listAll() {
         List<AiApiConfig> list = aiApiConfigService.listAll();
-        // 隐藏 apiKey，只返回掩码
+        list.forEach(c -> {
+            if (c.getApiKey() != null && c.getApiKey().length() > 8) {
+                c.setApiKey(c.getApiKey().substring(0, 6) + "****" + c.getApiKey().substring(c.getApiKey().length() - 4));
+            }
+        });
+        return Result.success(list);
+    }
+
+    @GetMapping("/type/{type}")
+    public Result<List<AiApiConfig>> listByType(@PathVariable String type) {
+        List<AiApiConfig> list = aiApiConfigService.listByType(type);
         list.forEach(c -> {
             if (c.getApiKey() != null && c.getApiKey().length() > 8) {
                 c.setApiKey(c.getApiKey().substring(0, 6) + "****" + c.getApiKey().substring(c.getApiKey().length() - 4));
@@ -31,13 +41,13 @@ public class AiChannelController {
     @GetMapping("/{id}")
     public Result<AiApiConfig> getById(@PathVariable Long id) {
         AiApiConfig config = aiApiConfigService.getById(id);
-        if (config == null) return Result.error("渠道不存在");
         return Result.success(config);
     }
 
     @PostMapping
     public Result<AiApiConfig> create(@RequestBody AiApiConfig config) {
         if (config.getName() == null || config.getName().isEmpty()) return Result.error("渠道名称不能为空");
+        if (config.getType() == null || config.getType().isEmpty()) return Result.error("类型不能为空");
         if (config.getBaseUrl() == null || config.getBaseUrl().isEmpty()) return Result.error("API地址不能为空");
         if (config.getApiKey() == null || config.getApiKey().isEmpty()) return Result.error("API密钥不能为空");
         if (config.getModel() == null || config.getModel().isEmpty()) return Result.error("模型名称不能为空");
@@ -72,5 +82,21 @@ public class AiChannelController {
         if (configId == null) return Result.error("configId 不能为空");
         aiApiConfigService.bindFeature(feature, configId);
         return Result.success();
+    }
+
+    @GetMapping("/types")
+    public Result<List<String>> getAvailableTypes() {
+        return Result.success(List.of("LLM", "ASR", "TTS", "IMAGE", "MODERATION"));
+    }
+
+    @GetMapping("/features")
+    public Result<List<Map<String, String>>> getAvailableFeatures() {
+        return Result.success(List.of(
+                Map.of("value", "CHAT", "label", "AI 客服", "type", "LLM"),
+                Map.of("value", "REVIEW", "label", "内容审核", "type", "MODERATION"),
+                Map.of("value", "SUMMARY", "label", "视频摘要", "type", "LLM"),
+                Map.of("value", "ADMIN", "label", "管理助手", "type", "LLM"),
+                Map.of("value", "TRANSCRIBE", "label", "语音转写", "type", "ASR")
+        ));
     }
 }

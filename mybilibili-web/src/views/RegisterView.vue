@@ -2,7 +2,8 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { userApi } from '../api/index.js'
+import { userApi, emailCodeApi, captchaApi } from '../api/index.js'
+import { Close, VideoPlay } from '@element-plus/icons-vue'
 
 const router = useRouter()
 
@@ -12,8 +13,65 @@ const registerForm = reactive({
   email: '',
   password: '',
   confirmPassword: '',
+  emailCode: '',
   agreeTerms: false
 })
+
+// 验证码相关
+const emailCaptchaId = ref('')
+const emailCaptchaQuestion = ref('')
+const emailCaptchaAnswer = ref('')
+const captchaLoading = ref(false)
+const sendEmailLoading = ref(false)
+const emailSent = ref(false)
+const emailCountdown = ref(0)
+
+// 加载图形验证码（发邮箱验证码前需先过图形验证码）
+const loadEmailCaptcha = () => {
+  captchaLoading.value = true
+  captchaApi.newCaptcha().then(res => {
+    if (res.code === 200) {
+      emailCaptchaId.value = res.data.captchaId
+      emailCaptchaQuestion.value = res.data.question
+      emailCaptchaAnswer.value = ''
+    }
+  }).finally(() => { captchaLoading.value = false })
+}
+loadEmailCaptcha()
+
+// 发送邮箱验证码
+const handleSendEmailCode = () => {
+  if (!registerForm.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registerForm.email)) {
+    ElMessage.error('请先输入有效的邮箱地址')
+    return
+  }
+  if (!emailCaptchaAnswer.value.trim()) {
+    ElMessage.error('请先输入图形验证码')
+    return
+  }
+  captchaApi.verifyCaptcha(emailCaptchaId.value, emailCaptchaAnswer.value).then(res => {
+    if (res.code !== 200 || !res.data) {
+      ElMessage.error('图形验证码错误')
+      loadEmailCaptcha()
+      return
+    }
+    sendEmailLoading.value = true
+    emailCodeApi.sendCode(registerForm.email).then(res => {
+      if (res.code === 200) {
+        emailSent.value = true
+        emailCountdown.value = 60
+        ElMessage.success('验证码已发送到邮箱')
+        const timer = setInterval(() => {
+          emailCountdown.value--
+          if (emailCountdown.value <= 0) clearInterval(timer)
+        }, 1000)
+      } else {
+        ElMessage.error(res.message || '发送失败')
+        loadEmailCaptcha()
+      }
+    }).finally(() => { sendEmailLoading.value = false })
+  })
+}
 
 // 表单验证规则
 const registerRules = {
@@ -21,6 +79,10 @@ const registerRules = {
     { required: true, message: '请输入用户名', trigger: 'blur' },
     { min: 3, max: 20, message: '用户名长度在 3 到 20 个字符', trigger: 'blur' },
     { pattern: /^[a-zA-Z0-9_]+$/, message: '用户名只能包含字母、数字和下划线', trigger: 'blur' }
+  ],
+  emailCode: [
+    { required: true, message: '请输入邮箱验证码', trigger: 'blur' },
+    { len: 6, message: '验证码为6位数字', trigger: 'blur' }
   ],
   email: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
@@ -53,20 +115,25 @@ const loading = ref(false)
 // 注册处理
 const handleRegister = () => {
   registerFormRef.value.validate((valid) => {
-    if (valid) {
+    if (!valid) return
+
+    // 先校验邮箱验证码
+    emailCodeApi.verifyCode(registerForm.email, registerForm.emailCode).then(res => {
+      if (res.code !== 200 || !res.data) {
+        ElMessage.error('邮箱验证码错误')
+        return
+      }
+
       loading.value = true
-      // 准备注册数据
       const userData = {
         username: registerForm.username,
         email: registerForm.email,
         password: registerForm.password
       }
-      // 调用注册API
       userApi.register(userData)
         .then(response => {
           if (response.code === 200) {
-            ElMessage.success('注册成功')
-            // 注册成功后跳转到登录页
+            ElMessage.success('注册成功，请登录')
             router.push('/login')
           } else {
             ElMessage.error(response.message || '注册失败')
@@ -79,15 +146,17 @@ const handleRegister = () => {
         .finally(() => {
           loading.value = false
         })
-    } else {
-      return false
-    }
+    })
   })
 }
 
 // 跳转到登录页
 const goToLogin = () => {
   router.push('/login')
+}
+
+const goBack = () => {
+  router.back()
 }
 </script>
 
@@ -96,6 +165,11 @@ const goToLogin = () => {
     <div class="register-form-wrapper">
       <!-- 注册表单 -->
       <div class="register-form">
+        <!-- 关闭按钮 -->
+        <button class="close-btn" @click="goBack">
+          <el-icon><Close /></el-icon>
+        </button>
+
         <div class="register-logo">
           <el-icon><VideoPlay /></el-icon>
           <span>哔哩哔哩</span>
@@ -126,6 +200,36 @@ const goToLogin = () => {
               prefix-icon="el-icon-message"
               clearable
             ></el-input>
+          </el-form-item>
+
+          <el-form-item>
+            <div class="email-captcha-row">
+              <el-input
+                v-model="emailCaptchaAnswer"
+                placeholder="图形验证码"
+                style="flex:1"
+              ></el-input>
+              <span class="captcha-question" :class="{ loading: captchaLoading }">{{ emailCaptchaQuestion }}</span>
+              <el-button link type="primary" @click="loadEmailCaptcha" :loading="captchaLoading">刷新</el-button>
+            </div>
+          </el-form-item>
+
+          <el-form-item prop="emailCode">
+            <div class="email-code-row">
+              <el-input
+                v-model="registerForm.emailCode"
+                placeholder="邮箱验证码"
+                prefix-icon="el-icon-message"
+              ></el-input>
+              <el-button
+                type="primary"
+                :disabled="emailSent && emailCountdown > 0"
+                :loading="sendEmailLoading"
+                @click="handleSendEmailCode"
+              >
+                {{ emailCountdown > 0 ? emailCountdown + 's' : '发送验证码' }}
+              </el-button>
+            </div>
           </el-form-item>
           
           <el-form-item prop="password">
@@ -190,10 +294,36 @@ const goToLogin = () => {
 }
 
 .register-form {
+  position: relative;
   background-color: #fff;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 30px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: #f0f0f0;
+}
+
+.close-btn .el-icon {
+  font-size: 18px;
+  color: #999;
 }
 
 .register-logo {
@@ -251,5 +381,33 @@ const goToLogin = () => {
 .login-link el-button {
   color: #00a1d6;
   padding: 0;
+}
+
+.email-captcha-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.captcha-question {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+.captcha-question.loading {
+  color: #999;
+}
+
+.email-code-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.email-code-row .el-input {
+  flex: 1;
 }
 </style>

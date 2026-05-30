@@ -14,10 +14,15 @@ import com.mybilibili.user.feign.ManuscriptClient;
 import com.mybilibili.user.mapper.UserMapper;
 import com.mybilibili.user.mapper.UserTagMapper;
 import com.mybilibili.common.entity.UserTag;
+import com.mybilibili.user.service.EmailCodeService;
+import com.mybilibili.user.service.LoginLogService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.TimeUnit;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
@@ -43,7 +48,17 @@ public class UserService {
     @Autowired(required = false)
     private ManuscriptClient manuscriptClient;
 
+    @Autowired
+    private EmailCodeService emailCodeService;
+
+    @Autowired
+    private LoginLogService loginLogService;
+
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    private static final String LOGIN_FAIL_PREFIX = "login:fail:";
+    private static final int MAX_FAIL_COUNT = 5;
+    private static final long LOCK_MINUTES = 15;
 
     public Result<Map<String, Object>> register(UserDTO userDTO) {
         User existUser = userMapper.selectByUsername(userDTO.getUsername());
@@ -78,7 +93,67 @@ public class UserService {
     }
 
     public Result<Map<String, Object>> login(LoginDTO loginDTO) {
-        User user = userMapper.selectByUsername(loginDTO.getUsername());
+        String loginType = loginDTO.getLoginType();
+
+        if ("email_code".equals(loginType)) {
+            // 邮箱验证码登录
+            return loginWithEmailCode(loginDTO);
+        } else {
+            // 用户名/邮箱 + 密码登录
+            return loginWithPassword(loginDTO);
+        }
+    }
+
+    private Result<Map<String, Object>> loginWithEmailCode(LoginDTO loginDTO) {
+        String email = loginDTO.getEmail();
+        String emailCode = loginDTO.getEmailCode();
+
+        if (email == null || emailCode == null) {
+            throw new BusinessException("参数不完整");
+        }
+
+        // 校验邮箱验证码
+        if (!emailCodeService.verify(email, emailCode)) {
+            throw new BusinessException("验证码错误或已过期");
+        }
+
+        // 根据邮箱查找用户
+        User user = userMapper.selectByEmail(email);
+        if (user == null) {
+            throw new BusinessException("该邮箱未注册");
+        }
+        if (user.getStatus() == 0) {
+            throw new BusinessException("账号已被禁用，请联系管理员");
+        }
+
+        String token = JwtUtils.generateToken(user.getId(), user.getUsername());
+        UserVO userVO = getUserVO(user);
+
+        // 记录登录日志
+        loginLogService.saveLog(user.getId(), loginDTO.getLoginIp(), null, null, 1);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("user", userVO);
+        data.put("token", token);
+        data.put("refreshToken", token);
+        return Result.success("登录成功", data);
+    }
+
+    private Result<Map<String, Object>> loginWithPassword(LoginDTO loginDTO) {
+        String username = loginDTO.getUsername();
+        String lockKey = LOGIN_FAIL_PREFIX + username + ":lock";
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(lockKey))) {
+            throw new BusinessException("账号已锁定，请15分钟后再试");
+        }
+
+        User user = null;
+        // 优先用用户名查，再用邮箱查
+        if (username != null && !username.isBlank()) {
+            user = userMapper.selectByUsername(username);
+            if (user == null) {
+                user = userMapper.selectByEmail(username);
+            }
+        }
         if (user == null) {
             throw new BusinessException("用户名或密码错误");
         }
@@ -87,12 +162,25 @@ public class UserService {
         }
 
         if (!passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
+            // 登录失败，计数（用用户名或邮箱都可以）
+            String failKey = LOGIN_FAIL_PREFIX + username;
+            Long failCount = redisTemplate.opsForValue().increment(failKey);
+            if (failCount != null && failCount >= MAX_FAIL_COUNT) {
+                redisTemplate.opsForValue().set(lockKey, "1", LOCK_MINUTES, TimeUnit.MINUTES);
+                redisTemplate.delete(failKey);
+                throw new BusinessException("连续登录失败次数过多，账号已锁定15分钟");
+            }
             throw new BusinessException("用户名或密码错误");
         }
 
-        String token = JwtUtils.generateToken(user.getId(), user.getUsername());
+        // 登录成功，清除失败计数
+        redisTemplate.delete(LOGIN_FAIL_PREFIX + username);
 
+        String token = JwtUtils.generateToken(user.getId(), user.getUsername());
         UserVO userVO = getUserVO(user);
+
+        // 记录登录日志
+        loginLogService.saveLog(user.getId(), loginDTO.getLoginIp(), null, null, 1);
 
         Map<String, Object> data = new HashMap<>();
         data.put("user", userVO);
@@ -386,5 +474,27 @@ public class UserService {
         }
         userMapper.addExperience(userId, experienceAmount);
         return Result.success("经验值添加成功", null);
+    }
+
+    public Result<Void> resetPassword(String email, String code, String newPassword) {
+        if (email == null || code == null || newPassword == null) {
+            throw new BusinessException("参数不完整");
+        }
+        if (newPassword.length() < 6 || newPassword.length() > 20) {
+            throw new BusinessException("密码长度需在6-20个字符之间");
+        }
+        // 校验邮箱验证码
+        if (!emailCodeService.verify(email, code)) {
+            throw new BusinessException("验证码错误或已过期");
+        }
+        // 根据邮箱查找用户
+        User user = userMapper.selectByEmail(email);
+        if (user == null) {
+            throw new BusinessException("该邮箱未注册");
+        }
+        // 重置密码
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        userMapper.updatePassword(user.getId(), encodedPassword);
+        return Result.success("密码重置成功", null);
     }
 }

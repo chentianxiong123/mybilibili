@@ -10,13 +10,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class SpamPreventionServiceImpl implements SpamPreventionService {
 
-    /** 评论：60秒内最多10条 */
-    private static final int COMMENT_WINDOW_SECONDS = 60;
-    private static final int COMMENT_MAX_COUNT = 10;
-
-    /** 回复：60秒内最多20条 */
-    private static final int REPLY_WINDOW_SECONDS = 60;
-    private static final int REPLY_MAX_COUNT = 20;
+    private static final String RATE_PREFIX = "security:rate:";
 
     @Autowired
     private StringRedisTemplate redisTemplate;
@@ -25,10 +19,28 @@ public class SpamPreventionServiceImpl implements SpamPreventionService {
         return "spam:" + action + ":" + userId;
     }
 
+    private int getMaxCount(String action) {
+        String key = RATE_PREFIX + action + ":max_count";
+        String value = redisTemplate.opsForValue().get(key);
+        if (value == null) {
+            return "comment".equals(action) ? 10 : 20;
+        }
+        return Integer.parseInt(value);
+    }
+
+    private int getWindowSeconds(String action) {
+        String key = RATE_PREFIX + action + ":window_seconds";
+        String value = redisTemplate.opsForValue().get(key);
+        if (value == null) {
+            return 60;
+        }
+        return Integer.parseInt(value);
+    }
+
     @Override
     public boolean isRateLimited(Integer userId, String action) {
         if (userId == null) return false;
-        int maxCount = "comment".equals(action) ? COMMENT_MAX_COUNT : REPLY_MAX_COUNT;
+        int maxCount = getMaxCount(action);
         String k = key(userId, action);
         String countStr = redisTemplate.opsForValue().get(k);
         if (countStr == null) return false;
@@ -42,7 +54,7 @@ public class SpamPreventionServiceImpl implements SpamPreventionService {
         String k = key(userId, action);
         Long count = redisTemplate.opsForValue().increment(k);
         if (count != null && count == 1) {
-            int window = "comment".equals(action) ? COMMENT_WINDOW_SECONDS : REPLY_WINDOW_SECONDS;
+            int window = getWindowSeconds(action);
             redisTemplate.expire(k, window, TimeUnit.SECONDS);
         }
     }
@@ -50,7 +62,7 @@ public class SpamPreventionServiceImpl implements SpamPreventionService {
     @Override
     public long getRemainingCount(Integer userId, String action) {
         if (userId == null) return 0;
-        int maxCount = "comment".equals(action) ? COMMENT_MAX_COUNT : REPLY_MAX_COUNT;
+        int maxCount = getMaxCount(action);
         String k = key(userId, action);
         String countStr = redisTemplate.opsForValue().get(k);
         if (countStr == null) return maxCount;

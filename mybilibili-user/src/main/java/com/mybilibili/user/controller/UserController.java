@@ -6,7 +6,10 @@ import com.mybilibili.common.dto.UserUpdateDTO;
 import com.mybilibili.common.vo.ManuscriptVO;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.UserVO;
+import com.mybilibili.user.service.EmailCodeService;
+import com.mybilibili.user.service.LoginLogService;
 import com.mybilibili.user.service.UserService;
+import com.mybilibili.user.entity.LoginLog;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -26,6 +30,12 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private EmailCodeService emailCodeService;
+
+    @Autowired
+    private LoginLogService loginLogService;
 
     @PostMapping("/register")
     @Operation(summary = "用户注册", description = "新用户注册，创建账号")
@@ -37,6 +47,25 @@ public class UserController {
     @Operation(summary = "用户登录", description = "用户名密码登录，返回JWT令牌")
     public Result<Map<String, Object>> login(@RequestBody LoginDTO loginDTO) {
         return userService.login(loginDTO);
+    }
+
+    @PostMapping("/email/code")
+    @Operation(summary = "发送邮箱验证码（用于注册等）")
+    public Result<Void> sendEmailCode(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        if (email == null || email.isBlank()) return Result.error("邮箱不能为空");
+        emailCodeService.sendCode(email);
+        return Result.success("验证码已发送", null);
+    }
+
+    @PostMapping("/email/verify")
+    @Operation(summary = "校验邮箱验证码")
+    public Result<Boolean> verifyEmailCode(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String code = request.get("code");
+        if (email == null || code == null) return Result.error("参数不完整");
+        boolean ok = emailCodeService.verify(email, code);
+        return Result.success(ok);
     }
 
     @GetMapping("/{id}")
@@ -122,6 +151,32 @@ public class UserController {
             @RequestParam Integer userId,
             @RequestParam int experienceAmount) {
         return userService.addExperience(userId, experienceAmount);
+    }
+
+    @PostMapping("/password/forgot")
+    @Operation(summary = "忘记密码", description = "通过邮箱验证码重置密码")
+    public Result<Void> forgotPassword(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String code = request.get("code");
+        String newPassword = request.get("newPassword");
+        return userService.resetPassword(email, code, newPassword);
+    }
+
+    @GetMapping("/login-logs")
+    @Operation(summary = "获取登录日志", description = "获取当前用户的登录日志记录")
+    public Result<Map<String, Object>> getLoginLogs(
+            @RequestHeader(value = "X-User-Id", required = false) Integer currentUserId,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        if (currentUserId == null) return Result.error("请先登录");
+        List<LoginLog> logs = loginLogService.getUserLogs(currentUserId, page, size);
+        Integer total = loginLogService.countUserLogs(currentUserId);
+        Map<String, Object> data = new HashMap<>();
+        data.put("list", logs);
+        data.put("total", total);
+        data.put("page", page);
+        data.put("size", size);
+        return Result.success(data);
     }
 
     @GetMapping("/default-avatar")
