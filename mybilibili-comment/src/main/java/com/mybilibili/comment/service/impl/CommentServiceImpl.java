@@ -11,6 +11,7 @@ import com.mybilibili.comment.mapper.ProhibitedWordMapper;
 import com.mybilibili.comment.mapper.ReplyMapper;
 import com.mybilibili.comment.service.CommentService;
 import com.mybilibili.comment.service.ProhibitedWordCacheService;
+import com.mybilibili.comment.service.SpamPreventionService;
 import com.mybilibili.common.entity.Comment;
 import com.mybilibili.common.entity.DynamicComment;
 import com.mybilibili.common.entity.ProhibitedWord;
@@ -58,6 +59,9 @@ public class CommentServiceImpl implements CommentService {
     @Autowired
     private ProhibitedWordCacheService prohibitedWordCacheService;
 
+    @Autowired
+    private SpamPreventionService spamPreventionService;
+
     private static final String TARGET_TYPE_COMMENT = "COMMENT";
     private static final String TARGET_TYPE_REPLY = "REPLY";
     private static final int MESSAGE_TYPE_REPLY = 2;
@@ -66,6 +70,9 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public CommentVO addComment(Integer manuscriptId, Integer userId, String content) {
+        if (spamPreventionService.isRateLimited(userId, "comment")) {
+            throw new RuntimeException("发布太频繁，请稍后再试");
+        }
         List<String> prohibitedWords = detectProhibitedWords(content);
         boolean hasProhibitedWords = !prohibitedWords.isEmpty();
 
@@ -85,6 +92,10 @@ public class CommentServiceImpl implements CommentService {
             } catch (Exception e) {
                 org.slf4j.LoggerFactory.getLogger(getClass()).error("更新稿件评论数失败, manuscriptId={}, error={}", manuscriptId, e.getMessage());
             }
+        }
+
+        if (!hasProhibitedWords) {
+            spamPreventionService.recordAction(userId, "comment");
         }
 
         System.out.println("========== 准备添加经验值，userId=" + userId + ", experience=" + COMMENT_EXPERIENCE + " ==========");
@@ -148,6 +159,9 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public CommentVO addCommentByManuscriptId(Integer manuscriptId, Integer userId, String content) {
+        if (spamPreventionService.isRateLimited(userId, "comment")) {
+            throw new RuntimeException("发布太频繁，请稍后再试");
+        }
         List<String> prohibitedWords = detectProhibitedWords(content);
         boolean hasProhibitedWords = !prohibitedWords.isEmpty();
 
@@ -167,6 +181,10 @@ public class CommentServiceImpl implements CommentService {
             } catch (Exception e) {
                 org.slf4j.LoggerFactory.getLogger(getClass()).error("更新稿件评论数失败, manuscriptId={}, error={}", manuscriptId, e.getMessage());
             }
+        }
+
+        if (!hasProhibitedWords) {
+            spamPreventionService.recordAction(userId, "comment");
         }
 
         System.out.println("========== 准备添加经验值，userId=" + userId + ", experience=" + COMMENT_EXPERIENCE + " ==========");
@@ -241,6 +259,9 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public ReplyVO addReply(Integer commentId, Integer userId, String content, Integer replyToUserId) {
+        if (spamPreventionService.isRateLimited(userId, "reply")) {
+            throw new RuntimeException("发布太频繁，请稍后再试");
+        }
         Comment comment = commentMapper.selectById(commentId);
         if (comment == null) {
             throw new RuntimeException("评论不存在");
@@ -267,6 +288,7 @@ public class CommentServiceImpl implements CommentService {
         replyMapper.insert(reply);
         if (!hasProhibitedWords) {
             commentMapper.updateReplyCount(commentId, 1);
+            spamPreventionService.recordAction(userId, "reply");
         }
 
         System.out.println("========== 准备添加回复经验值，userId=" + userId + ", experience=" + REPLY_EXPERIENCE + " ==========");
