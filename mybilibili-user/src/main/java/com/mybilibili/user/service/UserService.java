@@ -62,6 +62,16 @@ public class UserService {
     private static final long LOCK_MINUTES = 15;
 
     public Result<Map<String, Object>> register(UserDTO userDTO) {
+        if (userDTO.getEmail() == null || userDTO.getEmail().isBlank()) {
+            throw new BusinessException("邮箱不能为空");
+        }
+        if (userDTO.getEmailCode() == null || userDTO.getEmailCode().isBlank()) {
+            throw new BusinessException("邮箱验证码不能为空");
+        }
+        if (!emailCodeService.verify(userDTO.getEmail(), userDTO.getEmailCode())) {
+            throw new BusinessException("验证码错误或已过期");
+        }
+
         User existUser = userMapper.selectByUsername(userDTO.getUsername());
         if (existUser != null) {
             throw new BusinessException("用户名已存在");

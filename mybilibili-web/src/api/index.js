@@ -117,16 +117,7 @@ export const userApi = {
   // 忘记密码
   forgotPassword: (email, code, newPassword) => api.post('/user/password/forgot', { email, code, newPassword }),
   // 获取登录日志
-  getLoginLogs: (page, size) => api.get('/user/login-logs', { params: { page, size } })
-}
-
-// 管理员登录日志API
-export const adminLoginLogApi = {
-  getLoginLogs: (params) => api.get('/admin/login-logs/list', { params }),
-  getUserLoginLogs: (userId, page, size) => api.get(`/admin/login-logs/user/${userId}`, { params: { page, size } })
-}
-  // 忘记密码
-  forgotPassword: (email, code, newPassword) => api.post('/user/password/forgot', { email, code, newPassword }),
+  getLoginLogs: (page, size) => api.get('/user/login-logs', { params: { page, size } }),
   // 获取用户信息
   getUserById: (id) => api.get(`/user/${id}`),
   // 更新用户信息
@@ -151,6 +142,12 @@ export const adminLoginLogApi = {
   setPinnedVideo: (videoId) => api.post(`/user/pinned-video`, { videoId }),
   // 取消置顶视频
   removePinnedVideo: () => api.delete(`/user/pinned-video`)
+}
+
+// 管理员登录日志API
+export const adminLoginLogApi = {
+  getLoginLogs: (params) => api.get('/admin/login-logs/list', { params }),
+  getUserLoginLogs: (userId, page, size) => api.get(`/admin/login-logs/user/${userId}`, { params: { page, size } })
 }
 
 // 视频相关API

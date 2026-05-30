@@ -128,6 +128,7 @@ const handleRegister = () => {
       const userData = {
         username: registerForm.username,
         email: registerForm.email,
+        emailCode: registerForm.emailCode,
         password: registerForm.password
       }
       userApi.register(userData)

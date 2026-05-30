@@ -394,12 +394,6 @@ body {
   margin: 0 0 15px 0;
   text-align: center;
 }
-  font-size: 18px;
-  font-weight: 500;
-  color: #333;
-  margin: 0 0 15px 0;
-  text-align: center;
-}
 
 .login-form .el-form-item,
 .register-form .el-form-item {

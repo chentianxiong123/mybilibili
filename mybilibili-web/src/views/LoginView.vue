@@ -382,7 +382,6 @@ const goToRegister = () => {
   font-size: 18px;
   color: #999;
 }
-}
 
 .login-form {
   background-color: #fff;
