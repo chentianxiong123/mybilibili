@@ -194,11 +194,11 @@ public class AuthFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isWhitelisted(String path) {
-        if (isAuthRequiredPath(path) || isAdminPath(path)) {
-            return false;
-        }
         if (PUBLIC_EXACT_PATHS.contains(path)) {
             return true;
+        }
+        if (isAuthRequiredPath(path) || isAdminPath(path)) {
+            return false;
         }
         return PUBLIC_PATH_PREFIXES.stream().anyMatch(path::startsWith);
     }
