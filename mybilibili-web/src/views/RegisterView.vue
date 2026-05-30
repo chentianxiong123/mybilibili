@@ -117,37 +117,29 @@ const handleRegister = () => {
   registerFormRef.value.validate((valid) => {
     if (!valid) return
 
-    // 先校验邮箱验证码
-    emailCodeApi.verifyCode(registerForm.email, registerForm.emailCode).then(res => {
-      if (res.code !== 200 || !res.data) {
-        ElMessage.error('邮箱验证码错误')
-        return
-      }
-
-      loading.value = true
-      const userData = {
-        username: registerForm.username,
-        email: registerForm.email,
-        emailCode: registerForm.emailCode,
-        password: registerForm.password
-      }
-      userApi.register(userData)
-        .then(response => {
-          if (response.code === 200) {
-            ElMessage.success('注册成功，请登录')
-            router.push('/login')
-          } else {
-            ElMessage.error(response.message || '注册失败')
-          }
-        })
-        .catch(error => {
-          ElMessage.error('注册失败，请检查输入信息')
-          console.error('注册错误:', error)
-        })
-        .finally(() => {
-          loading.value = false
-        })
-    })
+    loading.value = true
+    const userData = {
+      username: registerForm.username,
+      email: registerForm.email,
+      emailCode: registerForm.emailCode,
+      password: registerForm.password
+    }
+    userApi.register(userData)
+      .then(response => {
+        if (response.code === 200) {
+          ElMessage.success('注册成功，请登录')
+          router.push('/login')
+        } else {
+          ElMessage.error(response.message || '注册失败')
+        }
+      })
+      .catch(error => {
+        ElMessage.error('注册失败，请检查输入信息')
+        console.error('注册错误:', error)
+      })
+      .finally(() => {
+        loading.value = false
+      })
   })
 }
 
