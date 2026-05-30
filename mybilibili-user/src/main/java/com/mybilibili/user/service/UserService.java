@@ -106,6 +106,7 @@ public class UserService {
     public Result<Map<String, Object>> login(LoginDTO loginDTO, HttpServletRequest request) {
         if (loginDTO != null) {
             loginDTO.setLoginIp(getClientIp(request));
+            loginDTO.setUserAgent(getUserAgent(request));
         }
         return login(loginDTO);
     }
@@ -148,7 +149,7 @@ public class UserService {
         UserVO userVO = getUserVO(user);
 
         // 记录登录日志
-        loginLogService.saveLog(user.getId(), loginDTO.getLoginIp(), null, null, 1);
+        loginLogService.saveLog(user.getId(), loginDTO.getLoginIp(), loginDTO.getUserAgent(), null, 1);
 
         Map<String, Object> data = new HashMap<>();
         data.put("user", userVO);
@@ -182,7 +183,7 @@ public class UserService {
         }
 
         if (!passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
-            loginLogService.saveLog(user.getId(), loginDTO.getLoginIp(), null, null, 0);
+            loginLogService.saveLog(user.getId(), loginDTO.getLoginIp(), loginDTO.getUserAgent(), null, 0);
             Long failCount = redisTemplate.opsForValue().increment(accountKey);
             redisTemplate.expire(accountKey, LOCK_MINUTES, TimeUnit.MINUTES);
             if (failCount != null && failCount >= MAX_FAIL_COUNT) {
@@ -199,7 +200,7 @@ public class UserService {
         UserVO userVO = getUserVO(user);
 
         // 记录登录日志
-        loginLogService.saveLog(user.getId(), loginDTO.getLoginIp(), null, null, 1);
+        loginLogService.saveLog(user.getId(), loginDTO.getLoginIp(), loginDTO.getUserAgent(), null, 1);
 
         Map<String, Object> data = new HashMap<>();
         data.put("user", userVO);
@@ -231,6 +232,13 @@ public class UserService {
             return realIp.trim();
         }
         return request.getRemoteAddr();
+    }
+
+    private String getUserAgent(HttpServletRequest request) {
+        if (request == null) {
+            return null;
+        }
+        return request.getHeader("User-Agent");
     }
 
     private UserVO getUserVO(User user) {

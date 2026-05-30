@@ -12,4 +12,5 @@ public class LoginDTO {
     private String loginType;
     // 登录IP（用于日志记录）
     private String loginIp;
+    private String userAgent;
 }
