@@ -76,6 +76,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/api/user/email/code",
             "/api/user/email/verify",
             "/api/user/password/forgot",
+            "/api/user/default-avatar",
             "/api/admin/login"
     );
 
@@ -200,7 +201,14 @@ public class AuthFilter implements GlobalFilter, Ordered {
         if (isAuthRequiredPath(path) || isAdminPath(path)) {
             return false;
         }
+        if (isPublicUserProfilePath(path)) {
+            return true;
+        }
         return PUBLIC_PATH_PREFIXES.stream().anyMatch(path::startsWith);
+    }
+
+    private boolean isPublicUserProfilePath(String path) {
+        return path.matches("^/api/user/\\d+$") || path.matches("^/api/user/\\d+/pinned-video$");
     }
 
     private boolean isAdminPath(String path) {
