@@ -46,8 +46,8 @@ public class UserController {
 
     @PostMapping("/login")
     @Operation(summary = "用户登录", description = "用户名密码登录，返回JWT令牌")
-    public Result<Map<String, Object>> login(@RequestBody LoginDTO loginDTO) {
-        return userService.login(loginDTO);
+    public Result<Map<String, Object>> login(@RequestBody LoginDTO loginDTO, HttpServletRequest request) {
+        return userService.login(loginDTO, request);
     }
 
     @PostMapping("/email/code")

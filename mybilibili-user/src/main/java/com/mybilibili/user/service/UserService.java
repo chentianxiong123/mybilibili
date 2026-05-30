@@ -22,7 +22,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
@@ -101,6 +101,13 @@ public class UserService {
         Map<String, Object> data = new HashMap<>();
         data.put("user", userVO);
         return Result.success("注册成功", data);
+    }
+
+    public Result<Map<String, Object>> login(LoginDTO loginDTO, HttpServletRequest request) {
+        if (loginDTO != null) {
+            loginDTO.setLoginIp(getClientIp(request));
+        }
+        return login(loginDTO);
     }
 
     public Result<Map<String, Object>> login(LoginDTO loginDTO) {
@@ -209,6 +216,21 @@ public class UserService {
 
         UserVO userVO = getUserVO(user);
         return Result.success(userVO);
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        if (request == null) {
+            return null;
+        }
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
+        }
+        return request.getRemoteAddr();
     }
 
     private UserVO getUserVO(User user) {
