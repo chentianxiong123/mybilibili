@@ -48,7 +48,11 @@ public class CustomerSessionController {
                                          @RequestBody Map<String, Object> body,
                                          HttpServletRequest request) {
         Long adminId = getAdminId(request);
-        String content = body.get("content").toString();
+        Object contentObj = body.get("content");
+        if (contentObj == null || contentObj.toString().isBlank()) {
+            throw new BusinessException("回复内容不能为空");
+        }
+        String content = contentObj.toString();
         customerSessionService.sendHumanReply(sessionId, adminId, content);
         return Map.of(
             "code", 200,
