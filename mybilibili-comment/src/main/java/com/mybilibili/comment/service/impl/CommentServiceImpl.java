@@ -10,6 +10,7 @@ import com.mybilibili.comment.mapper.DynamicCommentMapper;
 import com.mybilibili.comment.mapper.ProhibitedWordMapper;
 import com.mybilibili.comment.mapper.ReplyMapper;
 import com.mybilibili.comment.service.CommentService;
+import com.mybilibili.comment.service.ProhibitedWordCacheService;
 import com.mybilibili.common.entity.Comment;
 import com.mybilibili.common.entity.DynamicComment;
 import com.mybilibili.common.entity.ProhibitedWord;
@@ -53,6 +54,9 @@ public class CommentServiceImpl implements CommentService {
 
     @Autowired
     private ProhibitedWordMapper prohibitedWordMapper;
+
+    @Autowired
+    private ProhibitedWordCacheService prohibitedWordCacheService;
 
     private static final String TARGET_TYPE_COMMENT = "COMMENT";
     private static final String TARGET_TYPE_REPLY = "REPLY";
@@ -529,24 +533,7 @@ public class CommentServiceImpl implements CommentService {
     }
 
     private List<String> detectProhibitedWords(String content) {
-        List<ProhibitedWord> prohibitedWords = prohibitedWordMapper.selectAllEnabled();
-        if (prohibitedWords == null || prohibitedWords.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        List<String> found = new ArrayList<>();
-        for (ProhibitedWord pw : prohibitedWords) {
-            if (pw.getMatchType() == null || "CONTAINS".equals(pw.getMatchType())) {
-                if (content.contains(pw.getWord())) {
-                    found.add(pw.getWord());
-                }
-            } else if ("EXACT".equals(pw.getMatchType())) {
-                if (content.equals(pw.getWord())) {
-                    found.add(pw.getWord());
-                }
-            }
-        }
-        return found;
+        return prohibitedWordCacheService.check(content);
     }
 
     private UserVO getUserById(Integer userId) {
