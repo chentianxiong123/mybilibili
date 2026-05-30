@@ -58,15 +58,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/api/ai/process/",
             "/api/ai/summary/",
             "/api/ai/admin/process/stream",
-            "/api/live/",
-            "/api/meeting/create",
-            "/api/meeting/room/",
-            "/api/meeting/join/",
-            "/api/meeting/my-rooms",
-            "/api/meeting/participants/",
-            "/api/live/linkmic/apply/",
-            "/api/live/linkmic/active/",
-            "/api/live/linkmic/pending/"
+            "/api/live/room/list"
     );
 
     private static final List<String> PUBLIC_EXACT_PATHS = List.of(
@@ -119,7 +111,9 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/api/message/at",
             "/api/message/likes",
             "/api/message/system",
-            "/api/message/settings"
+            "/api/message/settings",
+            "/api/live/linkmic/",
+            "/api/meeting/"
     );
 
     @Override
@@ -201,7 +195,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
         if (isAuthRequiredPath(path) || isAdminPath(path)) {
             return false;
         }
-        if (isPublicUserProfilePath(path)) {
+        if (isPublicUserProfilePath(path) || isPublicLiveReadPath(path)) {
             return true;
         }
         return PUBLIC_PATH_PREFIXES.stream().anyMatch(path::startsWith);
@@ -209,6 +203,10 @@ public class AuthFilter implements GlobalFilter, Ordered {
 
     private boolean isPublicUserProfilePath(String path) {
         return path.matches("^/api/user/\\d+$") || path.matches("^/api/user/\\d+/pinned-video$");
+    }
+
+    private boolean isPublicLiveReadPath(String path) {
+        return path.matches("^/api/live/room/\\d+$");
     }
 
     private boolean isAdminPath(String path) {
