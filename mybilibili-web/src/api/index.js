@@ -40,39 +40,99 @@ api.interceptors.request.use(
   }
 )
 
+// Token 刷新状态
+let isRefreshing = false
+let failedQueue = []
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error)
+    } else {
+      prom.resolve(token)
+    }
+  })
+  failedQueue = []
+}
+
 // 响应拦截器
 api.interceptors.response.use(
   response => {
     return response.data
   },
   error => {
-    // 处理错误
+    const originalRequest = error.config
+
+    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+      const refreshToken = localStorage.getItem('refreshToken')
+
+      if (!refreshToken || originalRequest.url === '/user/token/refresh') {
+        localStorage.removeItem('token')
+        localStorage.removeItem('refreshToken')
+        localStorage.removeItem('user')
+        return Promise.reject(error)
+      }
+
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject })
+        }).then(token => {
+          originalRequest.headers.Authorization = `Bearer ${token}`
+          return api(originalRequest)
+        }).catch(err => Promise.reject(err))
+      }
+
+      originalRequest._retry = true
+      isRefreshing = true
+
+      return new Promise((resolve, reject) => {
+        api.post('/user/token/refresh', { refreshToken })
+          .then(res => {
+            if (res.code === 200 && res.data) {
+              const { token, refreshToken: newRefreshToken } = res.data
+              localStorage.setItem('token', token)
+              localStorage.setItem('refreshToken', newRefreshToken)
+              originalRequest.headers.Authorization = `Bearer ${token}`
+              processQueue(null, token)
+              resolve(api(originalRequest))
+            } else {
+              localStorage.removeItem('token')
+              localStorage.removeItem('refreshToken')
+              localStorage.removeItem('user')
+              processQueue(new Error('refresh failed'), null)
+              reject(error)
+            }
+          })
+          .catch(err => {
+            localStorage.removeItem('token')
+            localStorage.removeItem('refreshToken')
+            localStorage.removeItem('user')
+            processQueue(err, null)
+            reject(err)
+          })
+          .finally(() => {
+            isRefreshing = false
+          })
+      })
+    }
+
     if (error.response) {
       switch (error.response.status) {
         case 401:
-          // 未授权，清除token但不跳转，让用户继续浏览
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
-          // 不自动跳转登录页，由组件自己处理登录状态
           break
         case 403:
-          // 禁止访问
           ElMessage.error('没有权限访问该资源')
           break
         case 404:
-          // 资源不存在
           ElMessage.error('请求的资源不存在')
           break
         case 500:
-          // 服务器错误
           ElMessage.error('服务器内部错误')
           break
         default:
-          // 其他错误
           ElMessage.error(error.response.data.message || '请求失败')
       }
     } else {
-      // 网络错误
       ElMessage.error('网络错误，请检查网络连接')
     }
     return Promise.reject(error)

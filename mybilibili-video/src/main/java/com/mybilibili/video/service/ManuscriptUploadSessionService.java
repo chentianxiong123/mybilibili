@@ -229,6 +229,10 @@ public class ManuscriptUploadSessionService {
         return videos;
     }
 
+    private static final java.util.Set<String> ALLOWED_VIDEO_EXTENSIONS = java.util.Set.of(
+            ".mp4", ".avi", ".mkv", ".mov", ".flv", ".wmv", ".webm", ".m4v", ".ts", ".mpeg", ".mpg", ".3gp"
+    );
+
     private String sanitizeFileName(String fileName) {
         String normalized = fileName.replace("\\", "/");
         int slashIndex = normalized.lastIndexOf('/');
@@ -238,6 +242,10 @@ public class ManuscriptUploadSessionService {
         normalized = normalized.replace("\u0000", "").trim();
         if (!StringUtils.hasText(normalized)) {
             throw new BusinessException("视频文件名无效");
+        }
+        String ext = fileExtension(normalized).toLowerCase(java.util.Locale.ROOT);
+        if (!ALLOWED_VIDEO_EXTENSIONS.contains(ext)) {
+            throw new BusinessException("不支持的视频格式: " + ext + "，支持: mp4/avi/mkv/mov/flv/wmv/webm/m4v/ts/mpeg/3gp");
         }
         return normalized;
     }

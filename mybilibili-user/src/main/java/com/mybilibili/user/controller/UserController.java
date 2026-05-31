@@ -50,6 +50,16 @@ public class UserController {
         return userService.login(loginDTO, request);
     }
 
+    @PostMapping("/token/refresh")
+    @Operation(summary = "刷新令牌", description = "使用refreshToken获取新的accessToken")
+    public Result<Map<String, Object>> refreshToken(@RequestBody Map<String, String> body) {
+        String refreshToken = body.get("refreshToken");
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return Result.error("refreshToken不能为空");
+        }
+        return userService.refreshToken(refreshToken);
+    }
+
     @PostMapping("/email/code")
     @Operation(summary = "发送邮箱验证码（用于注册等）")
     public Result<Void> sendEmailCode(@RequestBody Map<String, String> request) {

@@ -6,6 +6,7 @@ import com.mybilibili.common.dto.UserUpdateDTO;
 import com.mybilibili.common.entity.User;
 import com.mybilibili.common.exception.BusinessException;
 import com.mybilibili.common.utils.JwtUtils;
+import io.jsonwebtoken.Claims;
 import com.mybilibili.common.storage.StorageKeys;
 import com.mybilibili.common.storage.StorageService;
 import com.mybilibili.common.vo.ManuscriptVO;
@@ -145,6 +146,7 @@ public class UserService {
         }
 
         String token = JwtUtils.generateToken(user.getId(), user.getUsername());
+        String refreshToken = JwtUtils.generateRefreshToken(user.getId(), user.getUsername());
         UserVO userVO = getUserVO(user);
 
         // 记录登录日志
@@ -153,7 +155,7 @@ public class UserService {
         Map<String, Object> data = new HashMap<>();
         data.put("user", userVO);
         data.put("token", token);
-        data.put("refreshToken", token);
+        data.put("refreshToken", refreshToken);
         return Result.success("登录成功", data);
     }
 
@@ -196,6 +198,7 @@ public class UserService {
         redisTemplate.delete(accountKey);
 
         String token = JwtUtils.generateToken(user.getId(), user.getUsername());
+        String refreshToken = JwtUtils.generateRefreshToken(user.getId(), user.getUsername());
         UserVO userVO = getUserVO(user);
 
         // 记录登录日志
@@ -204,7 +207,7 @@ public class UserService {
         Map<String, Object> data = new HashMap<>();
         data.put("user", userVO);
         data.put("token", token);
-        data.put("refreshToken", token);
+        data.put("refreshToken", refreshToken);
         return Result.success("登录成功", data);
     }
 
@@ -527,5 +530,27 @@ public class UserService {
         String encodedPassword = passwordEncoder.encode(newPassword);
         userMapper.updatePassword(user.getId(), encodedPassword);
         return Result.success("密码重置成功", null);
+    }
+
+    public Result<Map<String, Object>> refreshToken(String refreshToken) {
+        try {
+            Claims claims = JwtUtils.parseToken(refreshToken);
+            String type = claims.get("type", String.class);
+            if (!"refresh".equals(type)) {
+                return Result.error("无效的refreshToken");
+            }
+            Integer userId = Integer.parseInt(claims.getSubject());
+            String username = claims.get("username", String.class);
+
+            String newAccessToken = JwtUtils.generateToken(userId, username);
+            String newRefreshToken = JwtUtils.generateRefreshToken(userId, username);
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("token", newAccessToken);
+            data.put("refreshToken", newRefreshToken);
+            return Result.success("刷新成功", data);
+        } catch (Exception e) {
+            return Result.error("refreshToken已过期，请重新登录");
+        }
     }
 }

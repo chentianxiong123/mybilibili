@@ -11,7 +11,8 @@ import java.util.Date;
 
 public class JwtUtils {
     private static final String SECRET_KEY = "REDACTED_JWT_SECRET";
-    private static final long EXPIRATION_TIME = 7 * 24 * 60 * 60 * 1000;
+    private static final long EXPIRATION_TIME = 2 * 60 * 60 * 1000; // 2 hours
+    private static final long REFRESH_EXPIRATION_TIME = 30L * 24 * 60 * 60 * 1000; // 30 days
     private static final SecretKey KEY = Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
 
     public static String generateToken(Integer userId, String username) {
@@ -21,6 +22,21 @@ public class JwtUtils {
         return Jwts.builder()
                 .subject(userId.toString())
                 .claim("username", username)
+                .claim("type", "access")
+                .issuedAt(now)
+                .expiration(expiration)
+                .signWith(KEY)
+                .compact();
+    }
+
+    public static String generateRefreshToken(Integer userId, String username) {
+        Date now = new Date();
+        Date expiration = new Date(now.getTime() + REFRESH_EXPIRATION_TIME);
+
+        return Jwts.builder()
+                .subject(userId.toString())
+                .claim("username", username)
+                .claim("type", "refresh")
                 .issuedAt(now)
                 .expiration(expiration)
                 .signWith(KEY)

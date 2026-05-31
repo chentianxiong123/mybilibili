@@ -48,7 +48,8 @@ public final class GatewayRequestPolicy {
             "/api/admin/login",
             "/api/live/room/srs/hook",
             "/ws/notification",
-            "/ws/danmaku"
+            "/ws/danmaku",
+            "/api/user/token/refresh"
     );
 
     private static final List<String> ADMIN_PATH_PREFIXES = List.of(

@@ -19,6 +19,7 @@ final class JwtRequestPolicy {
             "/user/email/verify",
             "/user/password/forgot",
             "/user/default-avatar",
+            "/user/token/refresh",
             "/ws/notification",
             "/ws/danmaku"
     );
