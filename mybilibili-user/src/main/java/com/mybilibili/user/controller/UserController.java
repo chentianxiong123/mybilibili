@@ -91,7 +91,7 @@ public class UserController {
     @Operation(summary = "更新用户信息", description = "修改当前登录用户的个人信息（昵称、头像、签名等）")
     public Result<UserVO> updateUser(
             @Parameter(description = "用户ID") @PathVariable Integer id,
-            @RequestBody UserUpdateDTO userUpdateDTO) {
+            @Valid @RequestBody UserUpdateDTO userUpdateDTO) {
         return userService.updateUser(id, userUpdateDTO);
     }
 
