@@ -1,7 +1,7 @@
 <template>
   <div class="video-process-page">
     <div class="page-header">
-      <h2>视频处理管理</h2>
+      <h2>任务看板</h2>
       <div class="header-actions">
         <el-tag :type="wsConnected ? 'success' : 'danger'" size="small">
           {{ wsConnected ? '实时连接' : '已断开' }}
@@ -10,7 +10,7 @@
         <el-button type="primary" :icon="Refresh" @click="loadAllData" :loading="loading">刷新</el-button>
       </div>
     </div>
-    <p class="page-desc">以视频为单位进行全流程处理控制，并发数为1，任务按顺序执行</p>
+    <p class="page-desc">视频处理任务串行执行，实时展示当前任务、队列与失败状态</p>
 
     <!-- 当前任务卡片 -->
     <el-card class="current-task-card" v-if="currentTask.processing">

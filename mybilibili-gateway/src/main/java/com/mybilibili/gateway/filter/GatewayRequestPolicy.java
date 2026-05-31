@@ -78,6 +78,8 @@ public final class GatewayRequestPolicy {
             new PermissionRule("/api/admin/permissions", "role:manage"),
             new PermissionRule("/api/admin/admins", "admin:manage"),
             new PermissionRule("/api/admin/register", "admin:manage"),
+            new PermissionRule("/api/admin/operation-tasks/", "operation:manage"),
+            new PermissionRule("/api/admin/audit-logs/", "audit:manage"),
             new PermissionRule("/api/admin/login-logs/", "security:manage"),
             new PermissionRule("/api/admin/content-review/", "review:manage"),
             new PermissionRule("/api/admin/report/", "review:manage"),
@@ -219,4 +221,3 @@ public final class GatewayRequestPolicy {
     private record PermissionRule(String pathPrefix, String permission) {
     }
 }
-

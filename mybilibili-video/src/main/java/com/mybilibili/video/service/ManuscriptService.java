@@ -1,6 +1,7 @@
 package com.mybilibili.video.service;
 
 import com.mybilibili.common.dto.ManuscriptUploadDTO;
+import com.mybilibili.common.dto.ManuscriptUpdateDTO;
 import com.mybilibili.common.entity.Manuscript;
 import com.mybilibili.common.entity.Video;
 import com.mybilibili.common.vo.ManuscriptVO;
@@ -21,6 +22,7 @@ public interface ManuscriptService {
     Map<String, Object> getManuscriptsByCategoryId(Integer categoryId, Integer page, Integer size);
     List<ManuscriptVO> getHotManuscripts(Integer userId);
     ManuscriptVO updateManuscript(Integer id, Manuscript manuscript);
+    ManuscriptVO updateManuscriptByOwner(Integer id, Integer userId, ManuscriptUpdateDTO dto) throws Exception;
     void deleteManuscript(Integer id, Integer userId);
     int fixAllManuscriptDurations();
 

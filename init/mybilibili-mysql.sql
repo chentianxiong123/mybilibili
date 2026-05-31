@@ -703,7 +703,67 @@ INSERT INTO `permissions` VALUES (14, '轮播图管理', 'banner:manage', '/bann
 INSERT INTO `permissions` VALUES (15, '搜索索引管理', 'search:manage', '/search/admin/index', 'GET', NULL, '搜索索引管理权限', '2026-05-31 00:00:00', '2026-05-31 00:00:00');
 INSERT INTO `permissions` VALUES (16, 'AI管理', 'ai:manage', '/ai', 'GET', NULL, 'AI配置、技能和处理任务管理权限', '2026-05-31 00:00:00', '2026-05-31 00:00:00');
 INSERT INTO `permissions` VALUES (17, '消息管理', 'message:manage', '/message', 'POST', NULL, '系统消息广播管理权限', '2026-05-31 00:00:00', '2026-05-31 00:00:00');
+INSERT INTO `permissions` VALUES (18, '审计日志管理', 'audit:manage', '/audit-logs', 'GET', NULL, '后台操作审计日志查询权限', '2026-05-31 00:00:00', '2026-05-31 00:00:00');
+INSERT INTO `permissions` VALUES (19, '任务中心管理', 'operation:manage', '/operation-tasks', 'GET', NULL, '统一任务中心查询权限', '2026-05-31 00:00:00', '2026-05-31 00:00:00');
 
+-- ----------------------------
+-- Table structure for audit_logs
+-- ----------------------------
+DROP TABLE IF EXISTS `audit_logs`;
+CREATE TABLE `audit_logs`  (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `operator_id` int(11) NULL DEFAULT NULL,
+  `operator_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `operator_role` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `module` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `action` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `target_type` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `target_id` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `request_method` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `request_uri` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `client_ip` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `user_agent` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `result` tinyint(4) NOT NULL COMMENT '1成功 0失败',
+  `message` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `detail` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_audit_operator`(`operator_id`) USING BTREE,
+  INDEX `idx_audit_module_action`(`module`, `action`) USING BTREE,
+  INDEX `idx_audit_result`(`result`) USING BTREE,
+  INDEX `idx_audit_target`(`target_type`, `target_id`) USING BTREE,
+  INDEX `idx_audit_created_at`(`created_at`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for operation_tasks
+-- ----------------------------
+DROP TABLE IF EXISTS `operation_tasks`;
+CREATE TABLE `operation_tasks`  (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `task_key` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `task_type` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `task_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `target_type` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `target_id` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `status` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `progress` int(11) NOT NULL DEFAULT 0,
+  `stage` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `message` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `error_message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
+  `operator_id` int(11) NULL DEFAULT NULL,
+  `operator_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `started_at` datetime NULL DEFAULT NULL,
+  `finished_at` datetime NULL DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_operation_task_key`(`task_key`) USING BTREE,
+  INDEX `idx_operation_task_type`(`task_type`) USING BTREE,
+  INDEX `idx_operation_task_status`(`status`) USING BTREE,
+  INDEX `idx_operation_task_target`(`target_type`, `target_id`) USING BTREE,
+  INDEX `idx_operation_task_created_at`(`created_at`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for prohibited_word
@@ -861,6 +921,10 @@ INSERT INTO `role_permissions` VALUES (1, 15);
 INSERT INTO `role_permissions` VALUES (1, 16);
 INSERT INTO `role_permissions` VALUES (2, 16);
 INSERT INTO `role_permissions` VALUES (1, 17);
+INSERT INTO `role_permissions` VALUES (1, 18);
+INSERT INTO `role_permissions` VALUES (2, 18);
+INSERT INTO `role_permissions` VALUES (1, 19);
+INSERT INTO `role_permissions` VALUES (2, 19);
 
 
 -- ----------------------------

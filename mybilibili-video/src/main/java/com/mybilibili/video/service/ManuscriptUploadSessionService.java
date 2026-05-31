@@ -3,10 +3,12 @@ package com.mybilibili.video.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mybilibili.common.dto.ManuscriptUploadDTO;
 import com.mybilibili.common.exception.BusinessException;
+import com.mybilibili.common.operation.OperationTaskRecorder;
 import com.mybilibili.common.utils.UploadFilePathUtils;
 import com.mybilibili.common.vo.ManuscriptVO;
 import com.mybilibili.video.dto.CreateUploadSessionRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,13 +38,17 @@ public class ManuscriptUploadSessionService {
     private final ManuscriptService manuscriptService;
     private final UploadFilePathUtils uploadFilePathUtils;
     private final ObjectMapper objectMapper;
+    private final OperationTaskRecorder operationTaskRecorder;
 
+    @Autowired
     public ManuscriptUploadSessionService(ManuscriptService manuscriptService,
                                           UploadFilePathUtils uploadFilePathUtils,
-                                          ObjectMapper objectMapper) {
+                                          ObjectMapper objectMapper,
+                                          OperationTaskRecorder operationTaskRecorder) {
         this.manuscriptService = manuscriptService;
         this.uploadFilePathUtils = uploadFilePathUtils;
         this.objectMapper = objectMapper;
+        this.operationTaskRecorder = operationTaskRecorder;
     }
 
     public UploadSessionInfo createSession(Integer userId, CreateUploadSessionRequest request) {
@@ -58,6 +64,7 @@ public class ManuscriptUploadSessionService {
                 normalizeVideos(request.getVideos())
         );
         storeSessionMetadata(metadata);
+        recordPending(userId, uploadId, metadata.title(), metadata.videos().size());
         return new UploadSessionInfo(uploadId, metadata.videos().size());
     }
 
@@ -112,26 +119,34 @@ public class ManuscriptUploadSessionService {
             throw new BusinessException("分片总数不一致");
         }
 
-        Path chunkPath = chunkPath(uploadId, partIndex, chunkIndex);
-        Files.createDirectories(chunkPath.getParent());
-        file.transferTo(chunkPath.toFile());
+        try {
+            Path chunkPath = chunkPath(uploadId, partIndex, chunkIndex);
+            Files.createDirectories(chunkPath.getParent());
+            file.transferTo(chunkPath.toFile());
 
-        List<Integer> uploadedChunks = listUploadedChunkIndexes(uploadId, partIndex);
-        boolean complete = isPartComplete(part, uploadedChunks);
-        return new UploadChunkStatus(
-                uploadId,
-                partIndex,
-                chunkIndex,
-                uploadedChunks.size(),
-                part.totalChunks(),
-                complete
-        );
+            List<Integer> uploadedChunks = listUploadedChunkIndexes(uploadId, partIndex);
+            boolean complete = isPartComplete(part, uploadedChunks);
+            recordRunning(userId, uploadId, metadata.title(), metadata, "分片已上传");
+            return new UploadChunkStatus(
+                    uploadId,
+                    partIndex,
+                    chunkIndex,
+                    uploadedChunks.size(),
+                    part.totalChunks(),
+                    complete
+            );
+        } catch (IOException e) {
+            recordFailed(userId, uploadId, metadata.title(), 0, "UPLOAD_FAILED", "分片上传失败", e.getMessage());
+            throw e;
+        }
     }
 
     public ManuscriptVO completeSession(Integer userId, String uploadId, MultipartFile cover) throws Exception {
         UploadSessionMetadata metadata = loadSessionMetadata(uploadId);
         ensureOwner(metadata, userId);
         if (cover == null || cover.isEmpty()) {
+            recordFailed(userId, uploadId, metadata.title(), calculateProgress(metadata, uploadId),
+                    "COMPLETING", "稿件上传失败", "请上传封面");
             throw new BusinessException("请上传封面");
         }
 
@@ -147,6 +162,8 @@ public class ManuscriptUploadSessionService {
             UploadVideoPartMetadata part = metadata.videos().get(i);
             List<Integer> uploadedChunks = listUploadedChunkIndexes(uploadId, i);
             if (!isPartComplete(part, uploadedChunks)) {
+                recordFailed(userId, uploadId, metadata.title(), calculateProgress(metadata, uploadId),
+                        "COMPLETING", "稿件上传失败", "视频分片尚未上传完成");
                 throw new BusinessException("视频分片尚未上传完成");
             }
             File mergedFile = mergePart(uploadId, i, part);
@@ -165,9 +182,11 @@ public class ManuscriptUploadSessionService {
 
         try {
             ManuscriptVO vo = manuscriptService.uploadManuscript(dto, userId);
+            recordSuccess(userId, uploadId, metadata.title(), "稿件上传完成");
             deleteSession(uploadId);
             return vo;
         } catch (Exception e) {
+            recordFailed(userId, uploadId, metadata.title(), 100, "COMPLETING", "稿件上传失败", e.getMessage());
             log.error("分片稿件合并上传失败: uploadId={}", uploadId, e);
             throw e;
         }
@@ -177,6 +196,7 @@ public class ManuscriptUploadSessionService {
         UploadSessionMetadata metadata = loadSessionMetadata(uploadId);
         ensureOwner(metadata, userId);
         deleteSession(uploadId);
+        recordCancelled(userId, uploadId, metadata.title(), "上传会话已取消");
         return true;
     }
 
@@ -380,6 +400,52 @@ public class ManuscriptUploadSessionService {
         } catch (IOException e) {
             log.warn("删除上传会话目录失败: {}", uploadId, e);
         }
+    }
+
+    private void recordPending(Integer userId, String uploadId, String title, int totalParts) {
+        operationTaskRecorder.pending(userId, taskKey(uploadId), "UPLOAD", title, "upload_session", uploadId,
+                "PENDING", "上传会话已创建，等待分片上传");
+    }
+
+    private void recordRunning(Integer userId, String uploadId, String title,
+                               UploadSessionMetadata metadata, String message) {
+        operationTaskRecorder.running(userId, taskKey(uploadId), "UPLOAD", title, "upload_session", uploadId,
+                calculateProgress(metadata, uploadId), "UPLOADING", message);
+    }
+
+    private void recordSuccess(Integer userId, String uploadId, String title, String message) {
+        operationTaskRecorder.success(userId, taskKey(uploadId), "UPLOAD", title, "upload_session", uploadId,
+                "COMPLETED", message);
+    }
+
+    private void recordFailed(Integer userId, String uploadId, String title, int progress,
+                              String stage, String message, String errorMessage) {
+        operationTaskRecorder.failed(userId, taskKey(uploadId), "UPLOAD", title, "upload_session", uploadId,
+                progress, stage, message, errorMessage);
+    }
+
+    private void recordCancelled(Integer userId, String uploadId, String title, String message) {
+        operationTaskRecorder.cancelled(userId, taskKey(uploadId), "UPLOAD", title, "upload_session", uploadId,
+                "CANCELLED", message);
+    }
+
+    private String taskKey(String uploadId) {
+        return "upload:" + uploadId;
+    }
+
+    private int calculateProgress(UploadSessionMetadata metadata, String uploadId) {
+        int totalChunks = 0;
+        int uploadedChunks = 0;
+        for (int i = 0; i < metadata.videos().size(); i++) {
+            UploadVideoPartMetadata part = metadata.videos().get(i);
+            List<Integer> chunks = listUploadedChunkIndexes(uploadId, i);
+            totalChunks += Math.max(part.totalChunks(), 0);
+            uploadedChunks += chunks.size();
+        }
+        if (totalChunks <= 0) {
+            return metadata.videos().isEmpty() ? 0 : 100;
+        }
+        return (int) Math.min(100, Math.round(uploadedChunks * 100.0 / totalChunks));
     }
 
     private String fileExtension(String fileName) {

@@ -40,7 +40,7 @@ public interface ManuscriptMapper extends BaseMapper<Manuscript> {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Manuscript manuscript);
 
-    @Update("UPDATE manuscripts SET title = #{title}, description = #{description}, cover_url = #{coverUrl}, category_id = #{categoryId}, duration = #{duration}, duration_seconds = #{durationSeconds}, status = #{status}, updated_at = NOW() WHERE id = #{id}")
+    @Update("UPDATE manuscripts SET title = #{title}, description = #{description}, cover_url = #{coverUrl}, category_id = #{categoryId}, duration = #{duration}, duration_seconds = #{durationSeconds}, status = #{status}, review_status = #{reviewStatus}, review_reason = #{reviewReason}, review_time = #{reviewTime}, reviewer_id = #{reviewerId}, updated_at = NOW() WHERE id = #{id}")
     int updateById(Manuscript manuscript);
 
     @Delete("DELETE FROM manuscripts WHERE id = #{id}")

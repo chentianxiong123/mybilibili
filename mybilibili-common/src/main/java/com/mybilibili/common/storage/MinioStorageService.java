@@ -2,6 +2,7 @@ package com.mybilibili.common.storage;
 
 import io.minio.*;
 import io.minio.http.Method;
+import io.minio.messages.Item;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.InputStream;
@@ -120,6 +121,23 @@ public class MinioStorageService implements StorageService {
             minioClient.removeObject(RemoveObjectArgs.builder().bucket(bucketName).object(key).build());
         } catch (Exception e) {
             log.warn("MinIO delete failed: {}", key, e);
+        }
+    }
+
+    @Override
+    public void deletePrefix(String prefix) {
+        try {
+            Iterable<io.minio.Result<Item>> results = minioClient.listObjects(ListObjectsArgs.builder()
+                    .bucket(bucketName)
+                    .prefix(prefix)
+                    .recursive(true)
+                    .build());
+            for (io.minio.Result<Item> result : results) {
+                Item item = result.get();
+                minioClient.removeObject(RemoveObjectArgs.builder().bucket(bucketName).object(item.objectName()).build());
+            }
+        } catch (Exception e) {
+            log.warn("MinIO prefix delete failed: {}", prefix, e);
         }
     }
 

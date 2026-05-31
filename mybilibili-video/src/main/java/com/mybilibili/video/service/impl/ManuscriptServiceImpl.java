@@ -1,6 +1,7 @@
 package com.mybilibili.video.service.impl;
 
 import com.mybilibili.common.dto.ManuscriptUploadDTO;
+import com.mybilibili.common.dto.ManuscriptUpdateDTO;
 import com.mybilibili.common.entity.Manuscript;
 import com.mybilibili.common.entity.Tag;
 import com.mybilibili.common.entity.Video;
@@ -9,15 +10,20 @@ import com.mybilibili.common.exception.BusinessException;
 import com.mybilibili.common.utils.DurationUtils;
 import com.mybilibili.common.storage.StorageKeys;
 import com.mybilibili.common.storage.StorageService;
+import com.mybilibili.common.vo.ManuscriptEditVersionVO;
 import com.mybilibili.common.vo.ManuscriptVO;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.UserVO;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.TypeReference;
 import com.mybilibili.mq.VideoMQProducer;
 import com.mybilibili.mq.VideoProcessMessage;
+import com.mybilibili.video.entity.ManuscriptEditVersion;
 import com.mybilibili.video.feign.MessageClient;
 import com.mybilibili.video.feign.UserClient;
 import com.mybilibili.video.feign.VideoPipelineClient;
 import com.mybilibili.video.mapper.CategoryMapper;
+import com.mybilibili.video.mapper.ManuscriptEditVersionMapper;
 import com.mybilibili.video.mapper.ManuscriptMapper;
 import com.mybilibili.video.mapper.TagMapper;
 import com.mybilibili.video.mapper.VideoMapper;
@@ -30,12 +36,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -49,6 +60,9 @@ public class ManuscriptServiceImpl implements ManuscriptService {
 
     @Autowired
     private ManuscriptMapper manuscriptMapper;
+
+    @Autowired
+    private ManuscriptEditVersionMapper manuscriptEditVersionMapper;
 
     @Autowired
     private StringRedisTemplate redisTemplate;
@@ -477,8 +491,299 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         if (existing == null) {
             throw new BusinessException("稿件不存在");
         }
-        manuscriptMapper.updateById(manuscript);
+        if (manuscript.getTitle() != null) {
+            existing.setTitle(manuscript.getTitle());
+        }
+        if (manuscript.getDescription() != null) {
+            existing.setDescription(manuscript.getDescription());
+        }
+        if (manuscript.getCoverUrl() != null) {
+            existing.setCoverUrl(manuscript.getCoverUrl());
+        }
+        if (manuscript.getCategoryId() != null) {
+            existing.setCategoryId(manuscript.getCategoryId());
+        }
+        if (manuscript.getDuration() != null) {
+            existing.setDuration(manuscript.getDuration());
+        }
+        if (manuscript.getDurationSeconds() != null) {
+            existing.setDurationSeconds(manuscript.getDurationSeconds());
+        }
+        if (manuscript.getStatus() != null) {
+            existing.setStatus(manuscript.getStatus());
+        }
+        if (manuscript.getReviewStatus() != null) {
+            existing.setReviewStatus(manuscript.getReviewStatus());
+        }
+        if (manuscript.getReviewReason() != null) {
+            existing.setReviewReason(manuscript.getReviewReason());
+        }
+        if (manuscript.getReviewTime() != null) {
+            existing.setReviewTime(manuscript.getReviewTime());
+        }
+        if (manuscript.getReviewerId() != null) {
+            existing.setReviewerId(manuscript.getReviewerId());
+        }
+        manuscriptMapper.updateById(existing);
         return convertToVO(manuscriptMapper.selectById(id));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ManuscriptVO updateManuscriptByOwner(Integer id, Integer userId, ManuscriptUpdateDTO dto) throws Exception {
+        if (userId == null) {
+            throw new BusinessException("用户未登录");
+        }
+        Manuscript existing = manuscriptMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("稿件不存在");
+        }
+        if (!existing.getUserId().equals(userId)) {
+            throw new BusinessException("没有权限编辑此稿件");
+        }
+
+        Map<String, Object> beforeSnapshot = buildEditSnapshot(existing);
+
+        existing.setTitle(dto.getTitle().trim());
+        existing.setDescription(dto.getDescription());
+        existing.setCategoryId(dto.getCategoryId());
+        existing.setStatus(Manuscript.STATUS_PENDING_REVIEW);
+        existing.setReviewStatus(Manuscript.REVIEW_STATUS_PENDING);
+        existing.setReviewReason(null);
+        existing.setReviewTime(null);
+        existing.setReviewerId(null);
+
+        if (dto.getCover() != null && !dto.getCover().isEmpty()) {
+            String coverKey = StorageKeys.manuscriptCover(id);
+            String coverUrl = storageService.upload(coverKey, dto.getCover().getInputStream(), dto.getCover().getSize(), dto.getCover().getContentType());
+            existing.setCoverUrl(coverUrl);
+            log.info("稿件封面更新成功，manuscriptId: {}", id);
+        }
+
+        manuscriptMapper.updateById(existing);
+        replaceManuscriptTags(id, dto.getTags());
+        replaceManuscriptVideos(existing, dto.getVideos());
+        Manuscript afterManuscript = manuscriptMapper.selectById(id);
+        Map<String, Object> afterSnapshot = buildEditSnapshot(afterManuscript);
+        recordEditVersion(id, userId, beforeSnapshot, afterSnapshot);
+        return getManuscriptWithVideos(id, userId);
+    }
+
+    private void recordEditVersion(Integer manuscriptId, Integer userId, Map<String, Object> beforeSnapshot, Map<String, Object> afterSnapshot) {
+        ManuscriptEditVersion version = new ManuscriptEditVersion();
+        version.setManuscriptId(manuscriptId);
+        version.setUserId(userId);
+        version.setBeforeSnapshot(JSON.toJSONString(beforeSnapshot));
+        version.setAfterSnapshot(JSON.toJSONString(afterSnapshot));
+        version.setChangedFields(JSON.toJSONString(diffEditFields(beforeSnapshot, afterSnapshot)));
+        version.setStatus(ManuscriptEditVersion.STATUS_PENDING);
+        manuscriptEditVersionMapper.insert(version);
+    }
+
+    private Map<String, Object> buildEditSnapshot(Manuscript manuscript) {
+        Map<String, Object> snapshot = new HashMap<>();
+        if (manuscript == null) {
+            return snapshot;
+        }
+        List<Video> videos = videoMapper.selectByManuscriptId(manuscript.getId());
+        snapshot.put("title", manuscript.getTitle());
+        snapshot.put("description", manuscript.getDescription());
+        snapshot.put("categoryId", manuscript.getCategoryId());
+        snapshot.put("categoryName", resolveCategoryName(manuscript.getCategoryId()));
+        snapshot.put("coverUrl", manuscript.getCoverUrl());
+        snapshot.put("tags", collectTags(videos));
+        snapshot.put("videos", videos.stream()
+                .map(this::buildVideoEditSnapshot)
+                .collect(Collectors.toList()));
+        return snapshot;
+    }
+
+    private Map<String, Object> buildVideoEditSnapshot(Video video) {
+        Map<String, Object> snapshot = new HashMap<>();
+        snapshot.put("id", video.getId());
+        snapshot.put("title", video.getTitle());
+        snapshot.put("videoOrder", video.getVideoOrder());
+        snapshot.put("sourceVideoUrl", video.getSourceVideoUrl());
+        snapshot.put("durationSeconds", video.getDurationSeconds());
+        return snapshot;
+    }
+
+    private String resolveCategoryName(Integer categoryId) {
+        if (categoryId == null) {
+            return null;
+        }
+        try {
+            return categoryMapper.selectById(categoryId).getName();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private List<String> collectTags(List<Video> videos) {
+        if (videos == null || videos.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Set<String> tags = new TreeSet<>();
+        for (Video video : videos) {
+            List<Map<String, Object>> rows = videoMapper.selectTagsByVideoId(video.getId());
+            if (rows == null) {
+                continue;
+            }
+            for (Map<String, Object> row : rows) {
+                Object name = row.get("name");
+                if (name != null) {
+                    tags.add(String.valueOf(name));
+                }
+            }
+        }
+        return new ArrayList<>(tags);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> diffEditFields(Map<String, Object> beforeSnapshot, Map<String, Object> afterSnapshot) {
+        List<String> fields = new ArrayList<>();
+        if (!Objects.equals(beforeSnapshot.get("title"), afterSnapshot.get("title"))) {
+            fields.add("title");
+        }
+        if (!Objects.equals(beforeSnapshot.get("description"), afterSnapshot.get("description"))) {
+            fields.add("description");
+        }
+        if (!Objects.equals(beforeSnapshot.get("categoryId"), afterSnapshot.get("categoryId"))) {
+            fields.add("category");
+        }
+        if (!Objects.equals(beforeSnapshot.get("coverUrl"), afterSnapshot.get("coverUrl"))) {
+            fields.add("cover");
+        }
+        if (!Objects.equals(beforeSnapshot.get("tags"), afterSnapshot.get("tags"))) {
+            fields.add("tags");
+        }
+        if (!Objects.equals(beforeSnapshot.get("videos"), afterSnapshot.get("videos"))) {
+            fields.add("videos");
+        }
+        return fields;
+    }
+
+    private void replaceManuscriptTags(Integer manuscriptId, List<String> tags) {
+        List<Video> videos = videoMapper.selectByManuscriptId(manuscriptId);
+        if (videos == null || videos.isEmpty()) {
+            return;
+        }
+        List<Integer> videoIds = videos.stream()
+                .map(Video::getId)
+                .collect(Collectors.toList());
+        videoMapper.deleteVideoTagsByVideoIds(videoIds);
+
+        List<String> normalizedTags = normalizeTags(tags);
+        if (normalizedTags.isEmpty()) {
+            return;
+        }
+        Integer firstVideoId = videos.get(0).getId();
+        for (String tagName : normalizedTags) {
+            Tag tag = tagMapper.selectByName(tagName);
+            if (tag == null) {
+                tag = new Tag();
+                tag.setName(tagName);
+                tagMapper.insert(tag);
+            }
+            VideoTag videoTag = new VideoTag();
+            videoTag.setVideoId(firstVideoId);
+            videoTag.setTagId(tag.getId());
+            videoMapper.insertVideoTag(videoTag);
+        }
+    }
+
+    private List<String> normalizeTags(List<String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return tags.stream()
+                .filter(tag -> tag != null && !tag.isBlank())
+                .map(String::trim)
+                .collect(Collectors.collectingAndThen(Collectors.toCollection(LinkedHashSet::new), ArrayList::new));
+    }
+
+    private void replaceManuscriptVideos(Manuscript manuscript, List<ManuscriptUpdateDTO.VideoUpdateDTO> updates) throws Exception {
+        if (manuscript == null || updates == null || updates.isEmpty()) {
+            return;
+        }
+        List<Video> existingVideos = videoMapper.selectByManuscriptId(manuscript.getId());
+        Map<Integer, Video> existingVideoMap = existingVideos.stream()
+                .collect(Collectors.toMap(Video::getId, video -> video, (a, b) -> a, java.util.LinkedHashMap::new));
+        for (ManuscriptUpdateDTO.VideoUpdateDTO update : updates) {
+            if (update == null || update.getId() == null) {
+                continue;
+            }
+            Video video = existingVideoMap.get(update.getId());
+            if (video == null) {
+                throw new BusinessException("稿件分P不存在");
+            }
+            if (update.getTitle() != null) {
+                video.setTitle(update.getTitle().trim());
+            }
+            if (update.getVideoOrder() != null) {
+                video.setVideoOrder(update.getVideoOrder());
+            }
+            String oldSourceKey = null;
+            String newVideoKey = null;
+            if (update.getFile() != null && !update.getFile().isEmpty()) {
+                String videoExt = getFileExtension(update.getFile().getOriginalFilename());
+                oldSourceKey = extractObjectKey(video.getSourceVideoUrl());
+                newVideoKey = StorageKeys.videoSource(manuscript.getId(), video.getId(), videoExt);
+                String videoUrl = storageService.upload(newVideoKey, update.getFile().getInputStream(), update.getFile().getSize(), update.getFile().getContentType());
+                video.setSourceVideoUrl(videoUrl);
+                video.setPlayUrlHd(videoUrl);
+                video.setPlayUrlSd(null);
+                video.setPlayUrlLd(null);
+                video.setDurationSeconds(update.getDurationSeconds() != null ? update.getDurationSeconds() : 0);
+                video.setProcessStatus(Video.PROCESS_STATUS_PENDING);
+                video.setProcessProgress(0);
+                video.setProcessStage("PENDING");
+                video.setProcessError(null);
+                video.setHasSubtitle(0);
+                video.setHasSummary(0);
+            }
+            videoMapper.updateById(video);
+            if (newVideoKey != null) {
+                cleanupReplacedVideoObjects(manuscript.getId(), video.getId(), oldSourceKey, newVideoKey);
+            }
+        }
+    }
+
+    private void cleanupReplacedVideoObjects(Integer manuscriptId, Integer videoId, String oldSourceKey, String newSourceKey) {
+        try {
+            if (oldSourceKey != null && !oldSourceKey.equals(newSourceKey)) {
+                storageService.delete(oldSourceKey);
+            }
+            String videoPrefix = "manuscripts/%d/videos/%d/".formatted(manuscriptId, videoId);
+            storageService.deletePrefix(videoPrefix + "transcoded/");
+            storageService.deletePrefix(videoPrefix + "audio/");
+            storageService.deletePrefix(videoPrefix + "subtitles/");
+            storageService.deletePrefix(videoPrefix + "summary/");
+            log.info("稿件分P旧处理产物已清理，manuscriptId: {}, videoId: {}", manuscriptId, videoId);
+        } catch (Exception e) {
+            log.warn("清理稿件分P旧处理产物失败，manuscriptId: {}, videoId: {}", manuscriptId, videoId, e);
+        }
+    }
+
+    private String extractObjectKey(String url) {
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        String value = url.trim();
+        if (!value.contains("://")) {
+            return value.startsWith("manuscripts/") ? value : null;
+        }
+        try {
+            String path = URLDecoder.decode(URI.create(value).getPath(), StandardCharsets.UTF_8);
+            int index = path.indexOf("/manuscripts/");
+            if (index < 0) {
+                return null;
+            }
+            return path.substring(index + 1);
+        } catch (Exception e) {
+            log.warn("解析对象存储Key失败: {}", url);
+            return null;
+        }
     }
 
     @Override
@@ -593,7 +898,49 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         Map<String, Object> result = new HashMap<>();
         result.put("manuscript", vo);
         result.put("videos", videos);
+        result.put("editVersion", convertEditVersionVO(manuscriptEditVersionMapper.selectLatestByManuscriptId(manuscriptId)));
         return result;
+    }
+
+    private ManuscriptEditVersionVO convertEditVersionVO(ManuscriptEditVersion version) {
+        if (version == null) {
+            return null;
+        }
+        ManuscriptEditVersionVO vo = new ManuscriptEditVersionVO();
+        vo.setId(version.getId());
+        vo.setManuscriptId(version.getManuscriptId());
+        vo.setUserId(version.getUserId());
+        vo.setStatus(version.getStatus());
+        vo.setReviewReason(version.getReviewReason());
+        vo.setReviewerId(version.getReviewerId());
+        vo.setReviewedAt(version.getReviewedAt());
+        vo.setCreatedAt(version.getCreatedAt());
+        vo.setChangedFields(parseStringList(version.getChangedFields()));
+        vo.setBeforeSnapshot(parseObjectMap(version.getBeforeSnapshot()));
+        vo.setAfterSnapshot(parseObjectMap(version.getAfterSnapshot()));
+        return vo;
+    }
+
+    private Map<String, Object> parseObjectMap(String json) {
+        if (json == null || json.isBlank()) {
+            return Collections.emptyMap();
+        }
+        try {
+            return JSON.parseObject(json, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            return Collections.emptyMap();
+        }
+    }
+
+    private List<String> parseStringList(String json) {
+        if (json == null || json.isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return JSON.parseArray(json, String.class);
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
     }
 
     @Override
@@ -609,6 +956,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         manuscript.setReviewReason(reason);
 
         if (manuscriptMapper.updateById(manuscript) > 0) {
+            updateLatestEditVersionStatus(manuscriptId, ManuscriptEditVersion.STATUS_APPROVED, reviewerId, reason);
             List<Video> videos = videoMapper.selectByManuscriptId(manuscriptId);
             for (Video video : videos) {
                 VideoProcessMessage message = VideoProcessMessage.of(
@@ -641,6 +989,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         if (manuscriptMapper.updateById(manuscript) <= 0) {
             return false;
         }
+        updateLatestEditVersionStatus(manuscriptId, ManuscriptEditVersion.STATUS_APPROVED, reviewerId, reason);
         
         List<Video> videos = videoMapper.selectByManuscriptId(manuscriptId);
         
@@ -666,7 +1015,18 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         manuscript.setReviewTime(new Date());
         manuscript.setReviewerId(reviewerId);
         manuscript.setReviewReason(reason);
-        return manuscriptMapper.updateById(manuscript) > 0;
+        boolean updated = manuscriptMapper.updateById(manuscript) > 0;
+        if (updated) {
+            updateLatestEditVersionStatus(manuscriptId, ManuscriptEditVersion.STATUS_REJECTED, reviewerId, reason);
+        }
+        return updated;
+    }
+
+    private void updateLatestEditVersionStatus(Integer manuscriptId, String status, Integer reviewerId, String reviewReason) {
+        ManuscriptEditVersion latest = manuscriptEditVersionMapper.selectLatestByManuscriptId(manuscriptId);
+        if (latest != null && ManuscriptEditVersion.STATUS_PENDING.equals(latest.getStatus())) {
+            manuscriptEditVersionMapper.updateReviewResult(latest.getId(), status, reviewerId, reviewReason);
+        }
     }
 
     @Override

@@ -3,6 +3,7 @@ package com.mybilibili.video.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mybilibili.common.dto.ManuscriptUploadDTO;
 import com.mybilibili.common.exception.BusinessException;
+import com.mybilibili.common.operation.OperationTaskRecorder;
 import com.mybilibili.common.utils.UploadFilePathUtils;
 import com.mybilibili.common.vo.ManuscriptVO;
 import com.mybilibili.video.dto.CreateUploadSessionRequest;
@@ -97,7 +98,8 @@ class ManuscriptUploadSessionServiceTest {
         return new ManuscriptUploadSessionService(
                 manuscriptService,
                 new UploadFilePathUtils(tempDir.toString()),
-                new ObjectMapper()
+                new ObjectMapper(),
+                mock(OperationTaskRecorder.class)
         );
     }
 

@@ -19,7 +19,16 @@ const allMenuItems = [
   { path: '/dashboard', icon: 'DataBoard', title: '数据概览', permission: 'statistics:manage' },
   { path: '/users', icon: 'User', title: '用户管理', permission: 'user:manage' },
   { path: '/manuscripts', icon: 'Document', title: '稿件管理', permission: 'review:manage' },
-  { path: '/video-process', icon: 'VideoPlay', title: '视频处理', permission: 'ai:manage' },
+  {
+    type: 'group',
+    icon: 'Operation',
+    title: '运营中心',
+    children: [
+      { path: '/operation-tasks', icon: 'List', title: '任务中心', permission: 'operation:manage' },
+      { path: '/video-process', icon: 'VideoPlay', title: '任务看板', permission: 'ai:manage' },
+      { path: '/audit-logs', icon: 'Tickets', title: '审计日志', permission: 'audit:manage' }
+    ]
+  },
   { path: '/prohibited-words', icon: 'Warning', title: '违禁词与安全设置', permission: 'comment:manage' },
   { path: '/content-review', icon: 'DocumentChecked', title: '内容审核中心', permission: 'review:manage' },
   { path: '/categories', icon: 'Folder', title: '分类管理', permission: 'category:manage' },
@@ -36,16 +45,25 @@ const allMenuItems = [
   { path: '/admins', icon: 'Lock', title: '管理员与角色权限', permission: 'role:manage', superAdminOnly: true }
 ]
 
-const menuItems = computed(() =>
-  allMenuItems.filter(item => (!item.superAdminOnly || isSuperAdmin.value) && adminStore.hasPermission(item.permission))
-)
+const filterMenuNode = (node) => {
+  if (node.type === 'group') {
+    const children = (node.children || [])
+      .filter(child => (!child.superAdminOnly || isSuperAdmin.value) && adminStore.hasPermission(child.permission))
+    return children.length ? { ...node, children } : null
+  }
+  return (!node.superAdminOnly || isSuperAdmin.value) && adminStore.hasPermission(node.permission) ? node : null
+}
+
+const menuItems = computed(() => allMenuItems.map(filterMenuNode).filter(Boolean))
 
 const activeMenu = computed(() => {
   const path = route.path
   if (path.startsWith('/users')) return '/users'
   if (path.startsWith('/manuscripts')) return '/manuscripts'
   if (path.startsWith('/comments')) return '/comments'
+  if (path.startsWith('/operation-tasks')) return '/operation-tasks'
   if (path.startsWith('/video-process')) return '/video-process'
+  if (path.startsWith('/audit-logs')) return '/audit-logs'
   if (path.startsWith('/prohibited-words')) return '/prohibited-words'
   if (path.startsWith('/content-review')) return '/content-review'
   if (path.startsWith('/categories')) return '/categories'
@@ -90,14 +108,26 @@ const handleCommand = (command) => {
             text-color="#bfcbd9"
             active-text-color="#409eff"
           >
-            <el-menu-item
-              v-for="item in menuItems"
-              :key="item.path"
-              :index="item.path"
-            >
-              <el-icon><component :is="ElementPlusIconsVue[item.icon]" /></el-icon>
-              <template #title>{{ item.title }}</template>
-            </el-menu-item>
+            <template v-for="item in menuItems" :key="item.type === 'group' ? item.title : item.path">
+              <el-sub-menu v-if="item.type === 'group'" :index="item.title">
+                <template #title>
+                  <el-icon><component :is="ElementPlusIconsVue[item.icon]" /></el-icon>
+                  <span>{{ item.title }}</span>
+                </template>
+                <el-menu-item
+                  v-for="child in item.children"
+                  :key="child.path"
+                  :index="child.path"
+                >
+                  <el-icon><component :is="ElementPlusIconsVue[child.icon]" /></el-icon>
+                  <template #title>{{ child.title }}</template>
+                </el-menu-item>
+              </el-sub-menu>
+              <el-menu-item v-else :index="item.path">
+                <el-icon><component :is="ElementPlusIconsVue[item.icon]" /></el-icon>
+                <template #title>{{ item.title }}</template>
+              </el-menu-item>
+            </template>
           </el-menu>
         </el-scrollbar>
       </el-aside>

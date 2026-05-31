@@ -71,6 +71,8 @@ final class JwtRequestPolicy {
             new PermissionRule("/admin/permissions", "role:manage"),
             new PermissionRule("/admin/admins", "admin:manage"),
             new PermissionRule("/admin/register", "admin:manage"),
+            new PermissionRule("/admin/operation-tasks/", "operation:manage"),
+            new PermissionRule("/admin/audit-logs/", "audit:manage"),
             new PermissionRule("/admin/login-logs/", "security:manage"),
             new PermissionRule("/admin/content-review/", "review:manage"),
             new PermissionRule("/admin/report/", "review:manage"),

@@ -5,6 +5,7 @@ import com.mybilibili.common.entity.AdminUser;
 import com.mybilibili.common.entity.AdminUserRole;
 import com.mybilibili.common.entity.Permission;
 import com.mybilibili.common.entity.Role;
+import com.mybilibili.common.exception.BusinessException;
 import com.mybilibili.common.utils.JwtUtils;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.user.mapper.AdminUserMapper;
@@ -134,6 +135,12 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     public boolean updateAdminUserRoles(Integer adminUserId, List<Integer> roleIds) {
+        if (adminUserId == null) {
+            throw new BusinessException("管理员ID不能为空");
+        }
+        if (roleIds == null) {
+            throw new BusinessException("角色ID列表不能为空");
+        }
         adminUserRoleMapper.deleteByAdminUserId(adminUserId);
         for (Integer roleId : roleIds) {
             AdminUserRole adminUserRole = new AdminUserRole();

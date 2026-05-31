@@ -1,6 +1,7 @@
 package com.mybilibili.video.controller;
 
 import com.mybilibili.common.dto.ManuscriptUploadDTO;
+import com.mybilibili.common.dto.ManuscriptUpdateDTO;
 import com.mybilibili.common.entity.Manuscript;
 import com.mybilibili.common.utils.JwtUtils;
 import com.mybilibili.common.vo.ManuscriptVO;
@@ -11,7 +12,9 @@ import com.mybilibili.video.service.ManuscriptUploadSessionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -321,15 +324,36 @@ public class ManuscriptController {
         }
     }
 
-    @PutMapping("/{id}")
+    @GetMapping("/me/{id}")
+    @Operation(summary = "获取当前用户稿件详情", description = "获取当前登录用户自己的稿件详情，不增加播放量")
+    public Result<ManuscriptVO> getMyManuscriptById(@PathVariable Integer id, HttpServletRequest request) {
+        try {
+            Integer userId = JwtUtils.getUserIdFromRequest(request);
+            if (userId == null) {
+                return Result.error("用户未登录");
+            }
+            ManuscriptVO manuscriptVO = manuscriptService.getManuscriptWithVideos(id, userId);
+            if (manuscriptVO == null) {
+                return Result.error("稿件不存在");
+            }
+            if (!userId.equals(manuscriptVO.getUserId())) {
+                return Result.error(403, "没有权限查看此稿件");
+            }
+            return Result.success("获取成功", manuscriptVO);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "更新稿件", description = "更新稿件信息")
     public Result<ManuscriptVO> updateManuscript(
             @PathVariable Integer id,
-            @RequestBody Manuscript manuscript,
+            @Valid @ModelAttribute ManuscriptUpdateDTO dto,
             HttpServletRequest request) {
         try {
             Integer userId = JwtUtils.getUserIdFromRequest(request);
-            ManuscriptVO manuscriptVO = manuscriptService.updateManuscript(id, manuscript);
+            ManuscriptVO manuscriptVO = manuscriptService.updateManuscriptByOwner(id, userId, dto);
             return Result.success("更新成功", manuscriptVO);
         } catch (Exception e) {
             return Result.error(e.getMessage());

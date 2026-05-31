@@ -35,7 +35,19 @@ const router = createRouter({
       path: '/video-process',
       name: 'videoProcess',
       component: () => import('../views/VideoProcessView.vue'),
-      meta: { title: '视频处理 - 管理后台', requiresAuth: true, permission: 'ai:manage' }
+      meta: { title: '任务看板 - 管理后台', requiresAuth: true, permission: 'ai:manage' }
+    },
+    {
+      path: '/operation-tasks',
+      name: 'operationTasks',
+      component: () => import('../views/OperationTasksView.vue'),
+      meta: { title: '任务中心 - 管理后台', requiresAuth: true, permission: 'operation:manage' }
+    },
+    {
+      path: '/audit-logs',
+      name: 'auditLogs',
+      component: () => import('../views/AuditLogsView.vue'),
+      meta: { title: '审计日志 - 管理后台', requiresAuth: true, permission: 'audit:manage' }
     },
     {
       path: '/prohibited-words',

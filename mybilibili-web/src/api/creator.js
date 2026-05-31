@@ -96,8 +96,35 @@ export const manuscriptApi = {
   getUserManuscripts: (userId, params) => api.get(`/video/user/${userId}`, { params }),
   
   getManuscriptById: (id) => api.get(`/video/manuscript/${id}`),
+
+  getMyManuscriptById: (id) => api.get(`/manuscript/me/${id}`),
   
-  updateManuscript: (id, data) => api.put(`/video/manuscript/${id}`, data),
+  updateManuscript: (id, data) => {
+    const formData = new FormData()
+    formData.append('title', data.title)
+    formData.append('description', data.description || '')
+    formData.append('categoryId', data.categoryId)
+    if (data.cover) {
+      formData.append('cover', data.cover)
+    }
+    if (data.tags && data.tags.length > 0) {
+      data.tags.forEach(tag => formData.append('tags', tag))
+    }
+    if (data.videos && data.videos.length > 0) {
+      data.videos.forEach((video, index) => {
+        formData.append(`videos[${index}].id`, video.id)
+        formData.append(`videos[${index}].title`, video.title || `P${index + 1}`)
+        formData.append(`videos[${index}].videoOrder`, video.videoOrder ?? index)
+        formData.append(`videos[${index}].durationSeconds`, video.durationSeconds || 0)
+        if (video.file) {
+          formData.append(`videos[${index}].file`, video.file)
+        }
+      })
+    }
+    return api.put(`/manuscript/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
   
   deleteManuscript: (id) => api.delete(`/video/manuscript/${id}`),
   

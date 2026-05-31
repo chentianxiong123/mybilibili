@@ -6,6 +6,7 @@ import {
   getProcessingManuscripts,
   getReadyManuscripts,
   getAllManuscripts,
+  getManuscriptDetail,
   approveManuscript,
   approveWithProcess,
   rejectManuscript,
@@ -32,7 +33,9 @@ const statusFilter = ref('')
 
 const videosDialogVisible = ref(false)
 const videoPlayerVisible = ref(false)
+const detailDialogVisible = ref(false)
 const currentManuscript = ref({})
+const currentDetail = ref(null)
 const manuscriptVideos = ref([])
 const currentVideo = ref(null)
 const videoPlayerUrl = ref('')
@@ -215,6 +218,22 @@ const handleViewVideos = async (row) => {
     }
   } catch (error) {
     ElMessage.error('获取视频列表失败: ' + (error.message || '未知错误'))
+  }
+}
+
+const handleViewDetail = async (row) => {
+  currentManuscript.value = row
+  detailDialogVisible.value = true
+  currentDetail.value = null
+  try {
+    const res = await getManuscriptDetail(row.id)
+    if (res.code === 200 || res.success) {
+      currentDetail.value = res.data || null
+    } else {
+      ElMessage.error(res.message || '获取稿件详情失败')
+    }
+  } catch (error) {
+    ElMessage.error('获取稿件详情失败: ' + (error.message || '未知错误'))
   }
 }
 
@@ -448,6 +467,31 @@ const formatDuration = (seconds) => {
   return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
+const getEditFieldLabel = (field) => {
+  const map = {
+    title: '标题',
+    description: '简介',
+    category: '分区',
+    cover: '封面',
+    tags: '标签',
+    videos: '分P'
+  }
+  return map[field] || field
+}
+
+const formatSnapshotValue = (value) => {
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value.join('，') : '无'
+  }
+  if (value === null || value === undefined || value === '') {
+    return '无'
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value)
+  }
+  return String(value)
+}
+
 onMounted(() => {
   loadManuscripts()
   loadStatistics()
@@ -570,6 +614,14 @@ onMounted(() => {
           >
             视频列表
           </el-button>
+          <el-button
+            link
+            type="info"
+            size="small"
+            @click="handleViewDetail(row)"
+          >
+            审核对比
+          </el-button>
 
           <el-dropdown v-if="row.status === 0" trigger="click">
             <el-button link type="primary" size="small">
@@ -625,6 +677,93 @@ onMounted(() => {
         </template>
       </el-table-column>
     </el-table>
+
+    <!-- 审核对比弹窗 -->
+    <el-dialog v-model="detailDialogVisible" title="稿件审核对比" width="960px">
+      <div v-if="currentDetail" class="review-detail">
+        <el-descriptions :column="3" border size="small">
+          <el-descriptions-item label="稿件ID">{{ currentDetail.manuscript?.id || currentManuscript.id }}</el-descriptions-item>
+          <el-descriptions-item label="标题">{{ currentDetail.manuscript?.title || currentManuscript.title }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="getStatusType(currentDetail.manuscript?.status)">
+              {{ getStatusText(currentDetail.manuscript?.status) }}
+            </el-tag>
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <template v-if="currentDetail.editVersion">
+          <div class="edit-version-header">
+            <div>
+              <span class="section-title">本次编辑记录</span>
+              <el-tag size="small" type="warning">{{ currentDetail.editVersion.status }}</el-tag>
+            </div>
+            <span class="edit-time">{{ formatTime(currentDetail.editVersion.createdAt) }}</span>
+          </div>
+
+          <div class="changed-fields">
+            <span class="changed-label">变更字段</span>
+            <el-tag
+              v-for="field in currentDetail.editVersion.changedFields"
+              :key="field"
+              size="small"
+              effect="plain"
+            >
+              {{ getEditFieldLabel(field) }}
+            </el-tag>
+            <span v-if="!currentDetail.editVersion.changedFields?.length" class="muted-text">无字段变化</span>
+          </div>
+
+          <el-table
+            :data="[
+              { field: '标题', before: currentDetail.editVersion.beforeSnapshot?.title, after: currentDetail.editVersion.afterSnapshot?.title },
+              { field: '简介', before: currentDetail.editVersion.beforeSnapshot?.description, after: currentDetail.editVersion.afterSnapshot?.description },
+              { field: '分区', before: currentDetail.editVersion.beforeSnapshot?.categoryName || currentDetail.editVersion.beforeSnapshot?.categoryId, after: currentDetail.editVersion.afterSnapshot?.categoryName || currentDetail.editVersion.afterSnapshot?.categoryId },
+              { field: '标签', before: currentDetail.editVersion.beforeSnapshot?.tags, after: currentDetail.editVersion.afterSnapshot?.tags },
+              { field: '封面', before: currentDetail.editVersion.beforeSnapshot?.coverUrl ? '已设置' : '无', after: currentDetail.editVersion.afterSnapshot?.coverUrl ? '已设置' : '无' }
+            ]"
+            size="small"
+            border
+            class="diff-table"
+          >
+            <el-table-column prop="field" label="字段" width="90" />
+            <el-table-column label="编辑前">
+              <template #default="{ row }">{{ formatSnapshotValue(row.before) }}</template>
+            </el-table-column>
+            <el-table-column label="编辑后">
+              <template #default="{ row }">{{ formatSnapshotValue(row.after) }}</template>
+            </el-table-column>
+          </el-table>
+
+          <div class="section-title video-diff-title">分P对比</div>
+          <el-table
+            :data="currentDetail.editVersion.afterSnapshot?.videos || []"
+            size="small"
+            border
+          >
+            <el-table-column label="分P" width="70">
+              <template #default="{ row, $index }">P{{ (row.videoOrder ?? $index) + 1 }}</template>
+            </el-table-column>
+            <el-table-column label="视频ID" prop="id" width="90" />
+            <el-table-column label="标题">
+              <template #default="{ row }">{{ row.title || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="源视频" width="120">
+              <template #default="{ row }">
+                <el-tag
+                  size="small"
+                  :type="(currentDetail.editVersion.beforeSnapshot?.videos || []).find(v => v.id === row.id)?.sourceVideoUrl === row.sourceVideoUrl ? 'info' : 'warning'"
+                >
+                  {{ (currentDetail.editVersion.beforeSnapshot?.videos || []).find(v => v.id === row.id)?.sourceVideoUrl === row.sourceVideoUrl ? '未替换' : '已替换' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+        </template>
+
+        <el-empty v-else description="暂无编辑版本记录" :image-size="90" />
+      </div>
+      <el-skeleton v-else :rows="6" animated />
+    </el-dialog>
 
     <!-- 视频列表弹窗 -->
     <el-dialog v-model="videosDialogVisible" title="视频列表" width="900px">
@@ -755,6 +894,53 @@ onMounted(() => {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
+}
+
+.review-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.edit-version-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  margin-right: 10px;
+}
+
+.edit-time,
+.muted-text {
+  color: #909399;
+  font-size: 13px;
+}
+
+.changed-fields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.changed-label {
+  color: #606266;
+  font-size: 13px;
+}
+
+.diff-table {
+  margin-top: 2px;
+}
+
+.video-diff-title {
+  margin-top: 4px;
 }
 
 /* 视频播放器样式 */

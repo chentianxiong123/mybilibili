@@ -37,7 +37,7 @@ public interface VideoMapper extends BaseMapper<Video> {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Video video);
 
-    @Update("UPDATE videos SET title = #{title}, play_url_hd = #{playUrlHd}, play_url_sd = #{playUrlSd}, play_url_ld = #{playUrlLd}, duration_seconds = #{durationSeconds}, process_progress = #{processProgress}, process_stage = #{processStage}, process_status = #{processStatus}, process_error = #{processError}, source_video_url = #{sourceVideoUrl}, has_subtitle = #{hasSubtitle}, has_summary = #{hasSummary}, updated_at = NOW() WHERE id = #{id}")
+    @Update("UPDATE videos SET video_order = #{videoOrder}, title = #{title}, description = #{description}, play_url_hd = #{playUrlHd}, play_url_sd = #{playUrlSd}, play_url_ld = #{playUrlLd}, duration_seconds = #{durationSeconds}, process_progress = #{processProgress}, process_stage = #{processStage}, process_status = #{processStatus}, process_error = #{processError}, source_video_url = #{sourceVideoUrl}, has_subtitle = #{hasSubtitle}, has_summary = #{hasSummary}, updated_at = NOW() WHERE id = #{id}")
     int updateById(Video video);
 
     @Delete("DELETE FROM videos WHERE id = #{id}")
@@ -51,6 +51,12 @@ public interface VideoMapper extends BaseMapper<Video> {
 
     @Insert("INSERT INTO video_tags (video_id, tag_id) VALUES (#{videoId}, #{tagId})")
     int insertVideoTag(VideoTag videoTag);
+
+    @Delete("<script>" +
+            "DELETE FROM video_tags WHERE video_id IN " +
+            "<foreach collection='videoIds' item='videoId' open='(' separator=',' close=')'>#{videoId}</foreach>" +
+            "</script>")
+    int deleteVideoTagsByVideoIds(@Param("videoIds") List<Integer> videoIds);
 
     @Select("SELECT t.name FROM tags t JOIN video_tags vt ON t.id = vt.tag_id WHERE vt.video_id = #{videoId}")
     List<Map<String, Object>> selectTagsByVideoId(@Param("videoId") Integer videoId);

@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import com.mybilibili.common.vo.ManuscriptVO;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.UserVO;
+import com.mybilibili.user.service.AuditLogService;
 import com.mybilibili.user.service.EmailCodeService;
 import com.mybilibili.user.service.LoginLogService;
 import com.mybilibili.user.service.UserService;
@@ -38,6 +39,9 @@ public class UserController {
 
     @Autowired
     private LoginLogService loginLogService;
+
+    @Autowired
+    private AuditLogService auditLogService;
 
     @PostMapping("/register")
     @Operation(summary = "用户注册", description = "新用户注册，创建账号")
@@ -123,16 +127,32 @@ public class UserController {
     @Operation(summary = "更新用户状态（管理员）", description = "管理员修改用户状态（正常/封禁等）")
     public Result<Void> updateUserStatus(
             @Parameter(description = "用户ID") @PathVariable Integer id,
-            @Parameter(description = "状态值") @RequestParam Integer status) {
-        return userService.updateUserStatus(id, status);
+            @Parameter(description = "状态值") @RequestParam Integer status,
+            HttpServletRequest request) {
+        try {
+            Result<Void> result = userService.updateUserStatus(id, status);
+            recordAudit(request, "user", "user_status_update", "user", String.valueOf(id), result);
+            return result;
+        } catch (Exception e) {
+            recordAuditFailure(request, "user", "user_status_update", "user", String.valueOf(id), e.getMessage());
+            throw e;
+        }
     }
 
     @PutMapping("/admin/{id}/password")
     @Operation(summary = "重置用户密码（管理员）", description = "管理员重置指定用户的密码")
     public Result<Void> resetPassword(
             @Parameter(description = "用户ID") @PathVariable Integer id,
-            @Parameter(description = "新密码") @RequestParam String newPassword) {
-        return userService.resetPassword(id, newPassword);
+            @Parameter(description = "新密码") @RequestParam String newPassword,
+            HttpServletRequest request) {
+        try {
+            Result<Void> result = userService.resetPassword(id, newPassword);
+            recordAudit(request, "user", "user_password_reset", "user", String.valueOf(id), result);
+            return result;
+        } catch (Exception e) {
+            recordAuditFailure(request, "user", "user_password_reset", "user", String.valueOf(id), e.getMessage());
+            throw e;
+        }
     }
 
     @GetMapping("/{userId}/pinned-video")
@@ -203,5 +223,18 @@ public class UserController {
         }
         String svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"128\" height=\"128\" viewBox=\"0 0 128 128\"><rect width=\"128\" height=\"128\" fill=\"#0D8ABC\" rx=\"64\"/><text x=\"64\" y=\"72\" font-family=\"Arial, sans-serif\" font-size=\"48\" fill=\"white\" text-anchor=\"middle\" dominant-baseline=\"middle\">" + name.substring(0, Math.min(name.length(), 2)).toUpperCase() + "</text></svg>";
         response.getWriter().write(svg);
+    }
+
+    private void recordAudit(HttpServletRequest request, String module, String action, String targetType,
+                             String targetId, Result<?> result) {
+        auditLogService.recordFromRequest(request, module, action, targetType, targetId,
+                result != null && result.getCode() != null && result.getCode() == 200 ? 1 : 0,
+                result == null ? null : result.getMessage(),
+                result == null || result.getData() == null ? null : result.getData().toString());
+    }
+
+    private void recordAuditFailure(HttpServletRequest request, String module, String action, String targetType,
+                                    String targetId, String message) {
+        auditLogService.recordFromRequest(request, module, action, targetType, targetId, 0, message, null);
     }
 }
