@@ -96,7 +96,15 @@ public class MessageServiceImpl implements MessageService {
         receiverConversation.setUnreadCount(receiverConversation.getUnreadCount() + 1);
         conversationMapper.update(receiverConversation);
 
-        pushNotificationAndCounts(dto.getReceiverId(), "private", dto.getContent());
+        Map<String, Object> extra = new HashMap<>();
+        extra.put("messageId", message.getId());
+        extra.put("senderId", senderId);
+        extra.put("receiverId", dto.getReceiverId());
+        extra.put("conversationId", senderConversation.getId());
+        extra.put("messageType", dto.getMessageType());
+        notificationPushService.pushToUser(dto.getReceiverId(), "private", "新私信", dto.getContent(), extra);
+        Map<String, Integer> counts = getUnreadCounts(dto.getReceiverId());
+        notificationPushService.pushUnreadCount(dto.getReceiverId(), counts);
 
         return getMessageById(message.getId());
     }
