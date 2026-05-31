@@ -25,6 +25,7 @@ import com.mybilibili.video.service.ManuscriptService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,6 +39,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -47,6 +49,9 @@ public class ManuscriptServiceImpl implements ManuscriptService {
 
     @Autowired
     private ManuscriptMapper manuscriptMapper;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
     @Autowired
     private VideoMapper videoMapper;
@@ -867,9 +872,20 @@ public class ManuscriptServiceImpl implements ManuscriptService {
 
     @Override
     public void incrementViewCount(Integer manuscriptId) {
-        if (manuscriptId != null) {
-            manuscriptMapper.incrementViewCount(manuscriptId);
+        incrementViewCount(manuscriptId, null);
+    }
+
+    @Override
+    public void incrementViewCount(Integer manuscriptId, String viewerKey) {
+        if (manuscriptId == null) return;
+        if (viewerKey != null) {
+            String redisKey = "view:dedup:" + manuscriptId + ":" + viewerKey;
+            Boolean isNew = redisTemplate.opsForValue().setIfAbsent(redisKey, "1", 30, TimeUnit.MINUTES);
+            if (!Boolean.TRUE.equals(isNew)) {
+                return;
+            }
         }
+        manuscriptMapper.incrementViewCount(manuscriptId);
     }
 
     @Override

@@ -156,7 +156,8 @@ public class ManuscriptController {
             if (manuscriptVO == null) {
                 return Result.error("稿件不存在");
             }
-            manuscriptService.incrementViewCount(id);
+            String viewerKey = currentUserId != null ? "u:" + currentUserId : "ip:" + getClientIp(request);
+            manuscriptService.incrementViewCount(id, viewerKey);
             return Result.success("获取成功", manuscriptVO);
         } catch (Exception e) {
             return Result.error(e.getMessage());
@@ -550,5 +551,17 @@ public class ManuscriptController {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip != null && !ip.isBlank()) {
+            return ip.split(",")[0].trim();
+        }
+        ip = request.getHeader("X-Real-IP");
+        if (ip != null && !ip.isBlank()) {
+            return ip;
+        }
+        return request.getRemoteAddr();
     }
 }

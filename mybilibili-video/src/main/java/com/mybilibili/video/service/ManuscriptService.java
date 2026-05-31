@@ -50,6 +50,7 @@ public interface ManuscriptService {
     Map<String, Object> getVideoSourceUrl(Integer videoId);
     Video getVideoById(Integer videoId);
     void incrementViewCount(Integer manuscriptId);
+    void incrementViewCount(Integer manuscriptId, String viewerKey);
     void updateCommentCount(Integer manuscriptId, Integer count);
     void incrementCommentCount(Integer manuscriptId);
     void decrementCommentCount(Integer manuscriptId);
