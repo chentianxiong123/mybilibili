@@ -3,6 +3,7 @@ package com.mybilibili.user.controller;
 import com.mybilibili.common.dto.LoginDTO;
 import com.mybilibili.common.dto.UserDTO;
 import com.mybilibili.common.dto.UserUpdateDTO;
+import jakarta.validation.Valid;
 import com.mybilibili.common.vo.ManuscriptVO;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.UserVO;
@@ -40,7 +41,7 @@ public class UserController {
 
     @PostMapping("/register")
     @Operation(summary = "用户注册", description = "新用户注册，创建账号")
-    public Result<Map<String, Object>> register(@RequestBody UserDTO userDTO) {
+    public Result<Map<String, Object>> register(@Valid @RequestBody UserDTO userDTO) {
         return userService.register(userDTO);
     }
 

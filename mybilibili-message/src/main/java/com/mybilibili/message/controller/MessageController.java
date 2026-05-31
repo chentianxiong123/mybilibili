@@ -3,6 +3,7 @@ package com.mybilibili.message.controller;
 import com.mybilibili.common.dto.MessageSettingDTO;
 import com.mybilibili.common.dto.SendMessageDTO;
 import com.mybilibili.common.vo.*;
+import jakarta.validation.Valid;
 import com.mybilibili.message.feign.UserClient;
 import com.mybilibili.message.service.ConversationService;
 import com.mybilibili.message.service.MessageService;
@@ -74,7 +75,7 @@ public class MessageController {
 
     @PostMapping("/send")
     public Result<MessageVO> sendMessage(
-            @RequestBody SendMessageDTO dto,
+            @Valid @RequestBody SendMessageDTO dto,
             @RequestHeader("X-User-Id") Integer senderId) {
         if (senderId.equals(dto.getReceiverId())) {
             return Result.error("不能给自己发送消息");
