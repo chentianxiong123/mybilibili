@@ -1,68 +1,26 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { getLiveRooms, updateLiveRoomStatus, getLiveStats } from '../api/live'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { onMounted } from 'vue'
+import { getLiveStatusText, getLiveStatusType, isLiveRoomStatus } from '../utils/liveMeetingStatus'
+import { formatDateTime } from '../utils/adminPage'
+import { useAdminLiveRooms } from '../composables/useAdminLiveRooms'
 
-const loading = ref(false)
-const rooms = ref([])
-const total = ref(0)
-const page = ref(1)
-const pageSize = ref(10)
-const statusFilter = ref('')
-const stats = ref({ totalRooms: 0, onlineRooms: 0, totalViewers: 0 })
-
-const statusOptions = [
-  { label: '全部', value: '' },
-  { label: '直播中', value: 'live' },
-  { label: '离线', value: 'offline' }
-]
-
-const statusTypeMap = { live: 'success', offline: 'info' }
-
-async function loadRooms() {
-  loading.value = true
-  try {
-    const res = await getLiveRooms(page.value, pageSize.value, statusFilter.value)
-    if (res.code === 200) {
-      rooms.value = res.data.records || res.data
-      total.value = res.data.total || rooms.value.length
-    }
-  } catch (e) {
-    console.error(e)
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadStats() {
-  try {
-    const res = await getLiveStats()
-    if (res.code === 200) stats.value = res.data
-  } catch (e) { /* ignore */ }
-}
-
-function handlePageChange(p) {
-  page.value = p
-  loadRooms()
-}
-
-async function handleToggleStatus(row) {
-  const newStatus = row.status === 'live' ? 'offline' : 'live'
-  const action = newStatus === 'live' ? '开播' : '下播'
-  try {
-    await ElMessageBox.confirm(`确定${action}「${row.roomName}」？`, '提示')
-    await updateLiveRoomStatus(row.id, newStatus)
-    ElMessage.success(`${action}成功`)
-    loadRooms()
-    loadStats()
-  } catch (e) {
-    if (e !== 'cancel') ElMessage.error('操作失败')
-  }
-}
+const {
+  loading,
+  rooms,
+  total,
+  page,
+  pageSize,
+  statusFilter,
+  stats,
+  statusOptions,
+  handlePageChange,
+  handleStatusFilterChange,
+  toggleRoomStatus,
+  initialize
+} = useAdminLiveRooms()
 
 onMounted(() => {
-  loadRooms()
-  loadStats()
+  initialize()
 })
 </script>
 
@@ -87,7 +45,7 @@ onMounted(() => {
 
     <el-card shadow="never">
       <div class="toolbar">
-        <el-select v-model="statusFilter" placeholder="状态筛选" @change="page=1;loadRooms()" style="width:140px">
+        <el-select v-model="statusFilter" placeholder="状态筛选" @change="handleStatusFilterChange" style="width:140px">
           <el-option v-for="o in statusOptions" :key="o.value" :label="o.label" :value="o.value" />
         </el-select>
       </div>
@@ -97,26 +55,24 @@ onMounted(() => {
         <el-table-column label="主播ID" prop="userId" width="100" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="statusTypeMap[row.status] || 'info'">
-              {{ row.status === 'live' ? '直播中' : '离线' }}
-            </el-tag>
+            <el-tag :type="getLiveStatusType(row.status)">{{ getLiveStatusText(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="观看人数" prop="viewerCount" width="100" />
         <el-table-column label="分类" prop="category" width="120" />
         <el-table-column label="开播时间" prop="createdAt" width="170">
           <template #default="{ row }">
-            {{ row.createdAt ? new Date(row.createdAt).toLocaleString('zh-CN') : '-' }}
+            {{ formatDateTime(row.createdAt) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="130">
           <template #default="{ row }">
             <el-button
-              :type="row.status === 'live' ? 'danger' : 'success'"
+              :type="isLiveRoomStatus(row.status) ? 'danger' : 'success'"
               size="small"
-              @click="handleToggleStatus(row)"
+              @click="toggleRoomStatus(row)"
             >
-              {{ row.status === 'live' ? '下播' : '开播' }}
+              {{ isLiveRoomStatus(row.status) ? '下播' : '开播' }}
             </el-button>
           </template>
         </el-table-column>

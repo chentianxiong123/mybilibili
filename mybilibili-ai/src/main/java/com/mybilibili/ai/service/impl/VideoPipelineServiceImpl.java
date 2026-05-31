@@ -3,9 +3,11 @@ package com.mybilibili.ai.service.impl;
 import com.mybilibili.ai.mapper.VideoMapper;
 import com.mybilibili.ai.pipeline.PipelineTask;
 import com.mybilibili.ai.pipeline.VideoPipelineQueueManager;
+import com.mybilibili.ai.repository.SubtitleRepository;
 import com.mybilibili.ai.service.*;
 import com.mybilibili.ai.utils.SubtitleTextUtils;
 import com.mybilibili.ai.websocket.VideoProcessWebSocketHandler;
+import com.mybilibili.common.entity.Subtitle;
 import com.mybilibili.common.entity.Video;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +16,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -49,6 +52,12 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
 
     @Autowired
     private StringRedisTemplate redisTemplate;
+
+    @Autowired
+    private SubtitleRepository subtitleRepository;
+
+    @Autowired
+    private VideoProcessingStorageService processingStorageService;
 
     /**
      * 初始化：设置任务处理器并启动队列管理器
@@ -194,6 +203,8 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
             log.error("[全流程服务] 任务处理异常: {}", task.getTaskKey(), e);
             task.markFailed("UNKNOWN", e.getMessage());
             broadcastError(videoId, manuscriptId, videoTitle, "UNKNOWN", e.getMessage());
+        } finally {
+            processingStorageService.cleanupWorkDir(manuscriptId, videoId);
         }
     }
 
@@ -307,18 +318,24 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
 
         try {
             Video video = videoMapper.selectById(videoId);
-            String subtitlePath = getSubtitlePath(manuscriptId, videoId);
-            String subtitlePlainText = "";
-
-            java.io.File subtitleFile = new java.io.File(subtitlePath);
-            if (subtitleFile.exists()) {
-                subtitlePlainText = SubtitleTextUtils.extractPlainText(subtitlePath);
+            String subtitlePlainText = buildSubtitleText(videoId);
+            if (subtitlePlainText.isBlank()) {
+                throw new IllegalStateException("字幕内容为空，不能生成AI摘要");
             }
 
             String title = video != null ? video.getTitle() : "未知视频";
 
             progressSseService.pushProgress(videoId, 50, "AI分析中", "ai");
             String summary = aiSummaryService.generateSummary(subtitlePlainText, title, "");
+            if (summary == null || summary.isBlank()) {
+                throw new IllegalStateException("AI摘要生成结果为空");
+            }
+
+            Path summaryPath = processingStorageService.getSummaryPath(manuscriptId, videoId);
+            if (!aiSummaryService.saveSummaryToFile(summary, summaryPath.toString(), title)) {
+                throw new IllegalStateException("AI摘要保存失败");
+            }
+            processingStorageService.uploadSummary(manuscriptId, videoId, summaryPath);
 
             redisTemplate.opsForValue().set("summary:" + videoId, summary);
 
@@ -418,10 +435,22 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
         }
     }
 
-    /**
-     * 获取字幕路径
-     */
-    private String getSubtitlePath(Integer manuscriptId, Integer videoId) {
-        return "d:/files/mybilibili/uploads/manuscripts/" + manuscriptId + "/videos/" + videoId + "/subtitles/zh-CN.srt";
+    private String buildSubtitleText(Integer videoId) {
+        List<Subtitle> subtitles = subtitleRepository.findByVideoId(videoId);
+        if (subtitles == null || subtitles.isEmpty()) {
+            return "";
+        }
+        StringBuilder text = new StringBuilder();
+        for (Subtitle subtitle : subtitles) {
+            if (subtitle.getContent() == null) {
+                continue;
+            }
+            for (Subtitle.SubtitleItem item : subtitle.getContent()) {
+                if (item.getText() != null && !item.getText().isBlank()) {
+                    text.append(item.getText()).append('\n');
+                }
+            }
+        }
+        return text.toString();
     }
 }

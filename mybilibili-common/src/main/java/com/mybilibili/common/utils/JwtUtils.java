@@ -6,6 +6,7 @@ import io.jsonwebtoken.security.Keys;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.Date;
 
 public class JwtUtils {
@@ -27,6 +28,10 @@ public class JwtUtils {
     }
 
     public static String generateAdminToken(Integer adminId, String username, String role) {
+        return generateAdminToken(adminId, username, role, java.util.List.of());
+    }
+
+    public static String generateAdminToken(Integer adminId, String username, String role, Collection<String> permissions) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + EXPIRATION_TIME);
 
@@ -35,6 +40,7 @@ public class JwtUtils {
                 .claim("username", username)
                 .claim("role", role)
                 .claim("type", "admin")
+                .claim("permissions", permissions == null ? java.util.List.of() : permissions)
                 .issuedAt(now)
                 .expiration(expiration)
                 .signWith(KEY)

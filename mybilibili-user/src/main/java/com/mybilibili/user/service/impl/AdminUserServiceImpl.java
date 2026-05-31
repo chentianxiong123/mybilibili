@@ -3,20 +3,24 @@ package com.mybilibili.user.service.impl;
 import com.mybilibili.common.dto.AdminLoginDTO;
 import com.mybilibili.common.entity.AdminUser;
 import com.mybilibili.common.entity.AdminUserRole;
+import com.mybilibili.common.entity.Permission;
 import com.mybilibili.common.entity.Role;
 import com.mybilibili.common.utils.JwtUtils;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.user.mapper.AdminUserMapper;
 import com.mybilibili.user.mapper.AdminUserRoleMapper;
+import com.mybilibili.user.mapper.RolePermissionMapper;
 import com.mybilibili.user.service.AdminUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,6 +31,9 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Autowired
     private AdminUserRoleMapper adminUserRoleMapper;
+
+    @Autowired
+    private RolePermissionMapper rolePermissionMapper;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -45,15 +52,21 @@ public class AdminUserServiceImpl implements AdminUserService {
             String role = "ADMIN";
             List<Role> roles = adminUserRoleMapper.selectRolesByAdminUserId(adminUser.getId());
             if (!roles.isEmpty()) {
-                role = roles.get(0).getName(); // 取第一个角色名
+                role = roles.stream()
+                        .map(Role::getName)
+                        .filter("超级管理员"::equals)
+                        .findFirst()
+                        .orElse(roles.get(0).getName());
             }
+            Set<String> permissionCodes = collectPermissionCodes(roles);
 
-            String token = JwtUtils.generateAdminToken(adminUser.getId(), adminUser.getUsername(), role);
+            String token = JwtUtils.generateAdminToken(adminUser.getId(), adminUser.getUsername(), role, permissionCodes);
 
             Map<String, Object> data = new HashMap<>();
             data.put("token", token);
             data.put("adminUser", adminUser);
             data.put("role", role);
+            data.put("permissions", permissionCodes);
 
             return Result.success("登录成功", data);
         } catch (Exception e) {
@@ -78,7 +91,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
             int result = adminUserMapper.insert(adminUser);
             if (result > 0) {
-                return Result.success("注册成功", null);
+                return Result.success("注册成��", null);
             } else {
                 return Result.error("注册失败");
             }
@@ -171,5 +184,18 @@ public class AdminUserServiceImpl implements AdminUserService {
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }
+    }
+
+    private Set<String> collectPermissionCodes(List<Role> roles) {
+        Set<String> permissionCodes = new LinkedHashSet<>();
+        for (Role role : roles) {
+            List<Permission> permissions = rolePermissionMapper.selectPermissionsByRoleId(role.getId());
+            for (Permission permission : permissions) {
+                if (permission.getCode() != null && !permission.getCode().isBlank()) {
+                    permissionCodes.add(permission.getCode());
+                }
+            }
+        }
+        return permissionCodes;
     }
 }

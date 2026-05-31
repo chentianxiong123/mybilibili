@@ -1,0 +1,74 @@
+package com.mybilibili.gateway.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.authentication.ReactiveAuthenticationManager;
+import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+@Component
+public class JwtReactiveAuthenticationManager implements ReactiveAuthenticationManager {
+
+    private static final String SECRET_KEY = "REDACTED_JWT_SECRET";
+    private static final SecretKey KEY = Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
+
+    @Override
+    public Mono<Authentication> authenticate(Authentication authentication) {
+        String token = String.valueOf(authentication.getCredentials());
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(KEY)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
+            Integer userId = Integer.parseInt(claims.getSubject());
+            String username = claims.get("username", String.class);
+            String role = claims.get("role", String.class);
+            String tokenType = claims.get("type", String.class);
+            GatewayUserPrincipal principal = new GatewayUserPrincipal(userId, username, role, tokenType);
+
+            List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+            authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+            if (principal.isAdmin()) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+                if ("超级管理员".equals(role)) {
+                    authorities.add(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"));
+                }
+            }
+            if (role != null && !role.isBlank()) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_NAME_" + role));
+            }
+            for (String permission : extractPermissions(claims.get("permissions"))) {
+                authorities.add(new SimpleGrantedAuthority("PERMISSION_" + permission));
+            }
+
+            return Mono.just(new UsernamePasswordAuthenticationToken(principal, token, authorities));
+        } catch (Exception e) {
+            return Mono.error(new BadCredentialsException("Token无效或已过期", e));
+        }
+    }
+
+    private List<String> extractPermissions(Object permissionsClaim) {
+        if (!(permissionsClaim instanceof Collection<?> permissions)) {
+            return List.of();
+        }
+        return permissions.stream()
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .filter(permission -> !permission.isBlank())
+                .distinct()
+                .toList();
+    }
+}

@@ -5,6 +5,7 @@ import { manuscriptApi } from '../api/manuscript.js'
 import { categoryApi } from '../api/index.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled, Delete, ArrowUp, ArrowDown, VideoPlay, Document, Plus, Loading, CircleCheck } from '@element-plus/icons-vue'
+import { useChunkedManuscriptUpload } from '../composables/useChunkedManuscriptUpload.js'
 
 const router = useRouter()
 
@@ -79,6 +80,23 @@ const currentUploadingPart = ref('')
 const coverPreview = ref('')
 const tagInput = ref('')
 const videoUploadRef = ref(null)
+
+const {
+  stage: uploadStage,
+  stageLabel: uploadStageLabel,
+  percentage: chunkedPercentage,
+  uploadedBytes,
+  totalBytes,
+  speed: uploadSpeed,
+  etaSeconds,
+  partProgress: chunkPartProgress,
+  error: uploadError,
+  isUploading: isChunkedUploading,
+  isFinished: isChunkedFinished,
+  start: startChunkedUpload,
+  cancel: cancelChunkedUpload,
+  UPLOAD_STAGES
+} = useChunkedManuscriptUpload()
 
 const getVideoDuration = (file) => {
   return new Promise((resolve, reject) => {
@@ -255,6 +273,21 @@ const closeUploadDialog = () => {
   showUploadDialog.value = false
 }
 
+const formatSpeed = (bytesPerSec) => {
+  if (bytesPerSec <= 0) return '--'
+  if (bytesPerSec < 1024) return bytesPerSec + ' B/s'
+  if (bytesPerSec < 1024 * 1024) return (bytesPerSec / 1024).toFixed(1) + ' KB/s'
+  if (bytesPerSec < 1024 * 1024 * 1024) return (bytesPerSec / (1024 * 1024)).toFixed(1) + ' MB/s'
+  return (bytesPerSec / (1024 * 1024 * 1024)).toFixed(2) + ' GB/s'
+}
+
+const formatEta = (seconds) => {
+  if (seconds < 0 || !seconds) return '--'
+  if (seconds < 60) return seconds + '秒'
+  if (seconds < 3600) return Math.floor(seconds / 60) + '分' + (seconds % 60) + '秒'
+  return Math.floor(seconds / 3600) + '时' + Math.floor((seconds % 3600) / 60) + '分'
+}
+
 const handleSubmit = () => {
   if (!checkLoginStatus()) return
   if (videoParts.value.length === 0) {
@@ -287,38 +320,35 @@ const handleSubmit = () => {
 
     showUploadDialog.value = true
     isSubmittingRequest.value = true
-    uploadProgress.value = 0
-    currentUploadingPart.value = '正在上传稿件...'
 
-    manuscriptApi.uploadManuscript(manuscriptData, (progress) => {
-      uploadProgress.value = progress
-      currentUploadingPart.value = progress < 100 ? `正在上传... ${progress}%` : '上传完成，正在提交...'
-    })
+    startChunkedUpload(manuscriptData)
       .then(response => {
-        if (response && response.code === 200 && response.data) {
-          isSubmittingRequest.value = false
-          showUploadDialog.value = false
-          currentUploadingPart.value = ''
-          ElMessage.success('投稿成功，已进入审核/处理中队列')
-          router.push('/create-center/content-articles')
-        } else {
-          ElMessage.error(response?.message || '稿件上传失败，请检查服务器状态')
-          isSubmittingRequest.value = false
-        }
+        isSubmittingRequest.value = false
+        ElMessage.success('投稿成功，已进入审核/处理中队列')
+        router.push('/create-center/content-articles')
       })
       .catch(error => {
         console.error('上传错误:', error)
-        if (error.response) {
-          ElMessage.error(`上传失败: ${error.response.data?.message || '服务器错误'}`)
-        } else if (error.request) {
-          ElMessage.error('上传失败: 无法连接到服务器')
-        } else {
-          ElMessage.error(`上传失败: ${error.message}`)
+        if (error.message !== 'cancelled') {
+          ElMessage.error(uploadError.value || error.message || '上传失败')
         }
         isSubmittingRequest.value = false
-        currentUploadingPart.value = ''
       })
   })
+}
+
+const handleCancelUpload = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要取消上传吗？已上传的分片将被清除。',
+      '提示',
+      { confirmButtonText: '确定取消', cancelButtonText: '继续上传', type: 'warning' }
+    )
+    await cancelChunkedUpload()
+    isSubmittingRequest.value = false
+    showUploadDialog.value = false
+    ElMessage.info('上传已取消')
+  } catch {}
 }
 
 const saveDraft = () => {
@@ -623,29 +653,59 @@ onMounted(() => {
     <el-dialog
       v-model="showUploadDialog"
       title="稿件上传进度"
-      width="500px"
+      width="560px"
       class="upload-progress-dialog"
-      @close="closeUploadDialog"
+      :close-on-click-modal="!isSubmittingRequest"
+      :close-on-press-escape="!isSubmittingRequest"
     >
       <div class="progress-content">
         <el-progress
-          :percentage="uploadProgress"
+          :percentage="chunkedPercentage"
           :stroke-width="20"
-          :status="uploadProgress === 100 ? 'success' : ''"
+          :status="uploadStage === UPLOAD_STAGES.COMPLETED ? 'success' : uploadStage === UPLOAD_STAGES.FAILED ? 'exception' : ''"
           class="upload-progress-bar"
         ></el-progress>
         <div class="upload-status">
-          <el-icon v-if="uploadProgress < 100" class="status-icon loading"><Loading /></el-icon>
-          <el-icon v-else class="status-icon success"><CircleCheck /></el-icon>
-          <span class="status-text">{{ currentUploadingPart }}</span>
+          <el-icon v-if="!isChunkedFinished" class="status-icon loading"><Loading /></el-icon>
+          <el-icon v-else-if="uploadStage === UPLOAD_STAGES.COMPLETED" class="status-icon success"><CircleCheck /></el-icon>
+          <el-icon v-else class="status-icon" style="color: #f56c6c"><CircleCheck /></el-icon>
+          <span class="status-text">{{ uploadStageLabel }}</span>
         </div>
-        <div v-if="uploadProgress === 100" class="upload-hint">
-          正在提交稿件，请稍候...
+        <div v-if="isChunkedUploading" class="upload-stats">
+          <span class="stat-item">{{ formatFileSize(uploadedBytes) }} / {{ formatFileSize(totalBytes) }}</span>
+          <span class="stat-item">{{ formatSpeed(uploadSpeed) }}</span>
+          <span class="stat-item" v-if="etaSeconds > 0">剩余 {{ formatEta(etaSeconds) }}</span>
+        </div>
+        <div v-if="isChunkedUploading && chunkPartProgress.length > 1" class="part-progress-list">
+          <div v-for="(pp, idx) in chunkPartProgress" :key="idx" class="part-progress-item">
+            <span class="part-progress-label">{{ pp.title }}</span>
+            <el-progress
+              :percentage="pp.total > 0 ? Math.round((pp.uploaded / pp.total) * 100) : 0"
+              :stroke-width="6"
+              :show-text="false"
+              class="part-mini-progress"
+            />
+            <span class="part-progress-count">{{ pp.uploaded }}/{{ pp.total }}</span>
+          </div>
+        </div>
+        <div v-if="uploadStage === UPLOAD_STAGES.COMPLETED" class="upload-hint">
+          稿件已提交，正在等待审核/转码处理
+        </div>
+        <div v-if="uploadError" class="upload-error">
+          {{ uploadError }}
         </div>
       </div>
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="closeUploadDialog">确定</el-button>
+          <el-button
+            v-if="isChunkedUploading"
+            type="danger"
+            @click="handleCancelUpload"
+          >取消上传</el-button>
+          <el-button
+            v-if="isChunkedFinished"
+            @click="showUploadDialog = false"
+          >关闭</el-button>
         </div>
       </template>
     </el-dialog>
@@ -1095,6 +1155,66 @@ onMounted(() => {
   justify-content: center;
 }
 
+
+.upload-stats {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: #909399;
+}
+
+.stat-item {
+  white-space: nowrap;
+}
+
+.part-progress-list {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #f5f7fa;
+  border-radius: 8px;
+}
+
+.part-progress-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.part-progress-item:last-child {
+  margin-bottom: 0;
+}
+
+.part-progress-label {
+  width: 80px;
+  font-size: 12px;
+  color: #606266;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.part-mini-progress {
+  flex: 1;
+}
+
+.part-progress-count {
+  width: 48px;
+  font-size: 11px;
+  color: #909399;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.upload-error {
+  text-align: center;
+  font-size: 13px;
+  color: #f56c6c;
+  margin-top: 8px;
+}
 
 /* 响应式设计 */
 @media (max-width: 768px) {

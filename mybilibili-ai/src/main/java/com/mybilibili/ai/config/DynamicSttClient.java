@@ -40,18 +40,16 @@ public class DynamicSttClient {
     }
 
     /**
-     * 获取 STT 提供者
-     * 优先使用绑定配置，其次降级到本地 Whisper
+     * 获取 STT 提供者。
+     * 只使用 TRANSCRIBE 明确绑定的渠道，不做运行时降级。
      */
     public SttProvider getProvider() {
         AiApiConfig config = getTranscribeConfig();
-        if (config != null) {
-            SttProvider provider = findProvider(config);
-            if (provider != null) {
-                return provider;
-            }
+        if (config == null) {
+            return null;
         }
-        return findLocalProvider();
+        SttProvider provider = findProvider(config);
+        return provider != null && provider.isAvailable() ? provider : null;
     }
 
     /**
@@ -61,7 +59,7 @@ public class DynamicSttClient {
         AiApiConfig config = aiApiConfigMapper.selectById(channelId);
         if (config == null || !config.getEnabled()) return null;
         SttProvider provider = findProvider(config);
-        return provider != null ? provider : findLocalProvider();
+        return provider != null && provider.isAvailable() ? provider : null;
     }
 
     /**
@@ -145,13 +143,6 @@ public class DynamicSttClient {
             }
         }
         return null;
-    }
-
-    private SttProvider findLocalProvider() {
-        return providers.stream()
-                .filter(p -> p.getName().contains("local") && p.isAvailable())
-                .findFirst()
-                .orElse(null);
     }
 
     private String normalize(String value) {

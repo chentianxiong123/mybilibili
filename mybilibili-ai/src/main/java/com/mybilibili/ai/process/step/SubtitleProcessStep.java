@@ -48,7 +48,8 @@ public class SubtitleProcessStep implements VideoProcessStep {
             String subtitlePath = aiSubtitleService.getSubtitlePath(context.getManuscriptId(), context.getVideoId());
             String subtitleContent = SubtitleTextUtils.extractPlainText(subtitlePath);
             redisTemplate.opsForValue().set("subtitle:" + context.getVideoId(), subtitleContent);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            return StepExecutionResult.fail("字幕缓存失败: " + e.getMessage());
         }
         videoMapper.updateHasSubtitle(context.getVideoId(), 1);
         return StepExecutionResult.success();

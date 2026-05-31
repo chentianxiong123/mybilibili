@@ -59,6 +59,7 @@ public class ManuscriptVO {
         private String playUrlLd;
         private String duration;           // 时长显示字符串
         private Integer durationSeconds;   // 时长秒数
+        private String sourceVideoUrl;
         private Integer videoOrder;
         private Integer status;
         private Integer processStatus;

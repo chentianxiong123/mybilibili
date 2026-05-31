@@ -1,11 +1,10 @@
 package com.mybilibili.ai.service.impl;
 
 import com.mybilibili.ai.config.DynamicSttClient;
-import com.mybilibili.ai.config.UploadFilePathConfig;
-import com.mybilibili.ai.config.WhisperConfig;
 import com.mybilibili.ai.mapper.VideoMapper;
 import com.mybilibili.ai.repository.SubtitleRepository;
 import com.mybilibili.ai.service.AiSubtitleService;
+import com.mybilibili.ai.service.VideoProcessingStorageService;
 import com.mybilibili.ai.utils.SubtitleTextUtils;
 import com.mybilibili.common.entity.Subtitle;
 import com.mybilibili.common.entity.Video;
@@ -18,6 +17,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -32,10 +32,7 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
     private static final Logger log = LoggerFactory.getLogger(AiSubtitleServiceImpl.class);
 
     @Autowired
-    private UploadFilePathConfig uploadFilePathConfig;
-
-    @Autowired
-    private WhisperConfig whisperConfig;
+    private VideoProcessingStorageService processingStorageService;
 
     @Autowired
     private SubtitleRepository subtitleRepository;
@@ -58,22 +55,25 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
     @Override
     public boolean generateSubtitle(Integer manuscriptId, Integer videoId, ProgressListener progressListener) {
         try {
-            String sourceVideoPath = uploadFilePathConfig.getVideoSourcePath(manuscriptId, videoId);
-            String audioPath = uploadFilePathConfig.getAudioPath(manuscriptId, videoId);
-            String subtitleDir = uploadFilePathConfig.getVideoSubtitleDir(manuscriptId, videoId);
+            Path sourceVideoPath = processingStorageService.materializeSourceVideo(manuscriptId, videoId);
+            Path audioPath = processingStorageService.getAudioPath(manuscriptId, videoId);
+            Path subtitleDir = processingStorageService.getSubtitleDir(manuscriptId, videoId);
 
-            uploadFilePathConfig.ensureDirectoryExists(uploadFilePathConfig.getVideoAudioDir(manuscriptId, videoId));
-            uploadFilePathConfig.ensureDirectoryExists(subtitleDir);
+            Files.createDirectories(audioPath.getParent());
+            Files.createDirectories(subtitleDir);
 
-            pushProgress(progressListener, 5, "提取音频中");
+            if (!Files.exists(audioPath) || Files.size(audioPath) == 0) {
+                pushProgress(progressListener, 5, "提取音频中");
 
-            if (!extractAudio(sourceVideoPath, audioPath)) {
-                pushProgress(progressListener, 0, "音频提取失败");
-                return false;
+                if (!extractAudio(sourceVideoPath.toString(), audioPath.toString())) {
+                    pushProgress(progressListener, 0, "音频提取失败");
+                    return false;
+                }
+                processingStorageService.uploadAudio(manuscriptId, videoId, audioPath);
             }
             pushProgress(progressListener, 30, "音频提取完成，开始语音识别");
 
-            boolean recognized = generateSubtitleWithApi(manuscriptId, videoId, audioPath, subtitleDir, progressListener);
+            boolean recognized = generateSubtitleWithApi(manuscriptId, videoId, audioPath.toString(), subtitleDir.toString(), progressListener);
 
             if (!recognized) {
                 pushProgress(progressListener, 0, "语音识别失败");
@@ -81,8 +81,9 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
             }
             pushProgress(progressListener, 90, "语音识别完成，导入字幕");
 
-            String subtitlePath = uploadFilePathConfig.getChineseSubtitlePath(manuscriptId, videoId);
-            if (importSystemSubtitle(videoId, subtitlePath)) {
+            Path subtitlePath = processingStorageService.getSubtitlePath(manuscriptId, videoId);
+            if (importSystemSubtitle(videoId, subtitlePath.toString())) {
+                processingStorageService.uploadSubtitle(manuscriptId, videoId, subtitlePath);
                 pushProgress(progressListener, 100, "字幕生成完成");
                 return true;
             } else {
@@ -261,8 +262,8 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
 
             String result = dynamicSttClient.transcribeWithApi(audioPath, "zh");
             if (result == null || result.isEmpty()) {
-                log.warn("[ApiStt] 识别结果为空，降级到本地 Whisper");
-                return generateSubtitleWithWhisper(manuscriptId, videoId, audioPath, outputDir, progressListener);
+                log.error("[ApiStt] 识别结果为空");
+                return false;
             }
 
             // 判断是否为 SRT 格式（带时间戳）
@@ -286,62 +287,13 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
             return true;
 
         } catch (Exception e) {
-            log.error("[ApiStt] 异常: {}, 降级到本地 Whisper", e.getMessage());
-            return generateSubtitleWithWhisper(manuscriptId, videoId, audioPath, outputDir, progressListener);
-        }
-    }
-
-    private boolean generateSubtitleWithWhisper(Integer manuscriptId, Integer videoId, String audioPath, String outputDir, ProgressListener progressListener) {
-        try {
-            String[] cmd = {
-                    whisperConfig.getCliPath(),
-                    "-m", whisperConfig.getModelPath(),
-                    "-f", audioPath,
-                    "-l", whisperConfig.getLanguage(),
-                    "-osrt",
-                    "-of", "zh-CN",
-                    "-t", String.valueOf(whisperConfig.getThreads()),
-                    "-pp",
-                    "--prompt", "以下是普通话的句子。"
-            };
-
-            log.info("[Whisper] 开始识别, audioPath={}, outputDir={}", audioPath, outputDir);
-            log.info("[Whisper] 命令: {}", String.join(" ", cmd));
-
-            ProcessBuilder pb = new ProcessBuilder(cmd);
-            pb.directory(new java.io.File(outputDir));
-            pb.redirectErrorStream(true);
-
-            Process process = pb.start();
-
-            long startTime = System.currentTimeMillis();
-            int lastPushedPercent = 30;
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    log.info("[Whisper] {}", line);
-                    long elapsed = System.currentTimeMillis() - startTime;
-                    // Map elapsed time to 30-90 range (the Whisper portion of overall progress)
-                    int percent = 30 + (int) Math.min(59, elapsed / 3000);
-                    if (percent > lastPushedPercent) {
-                        pushProgress(progressListener, percent, "Whisper识别中 " + (percent - 30) * 100 / 60 + "%");
-                        lastPushedPercent = percent;
-                    }
-                }
-            }
-
-            int exitCode = process.waitFor();
-            log.info("[Whisper] 完成, exitCode={}", exitCode);
-            return exitCode == 0;
-
-        } catch (Exception e) {
-            log.error("[Whisper] 异常: {}", e.getMessage(), e);
+            log.error("[ApiStt] 异常: {}", e.getMessage(), e);
             return false;
         }
     }
 
     @Override
     public String getSubtitlePath(Integer manuscriptId, Integer videoId) {
-        return uploadFilePathConfig.getChineseSubtitlePath(manuscriptId, videoId);
+        return processingStorageService.getSubtitlePath(manuscriptId, videoId).toString();
     }
 }

@@ -1,6 +1,5 @@
 package com.mybilibili.ai.process.step;
 
-import com.mybilibili.ai.config.UploadFilePathConfig;
 import com.mybilibili.ai.mapper.VideoMapper;
 import com.mybilibili.ai.process.StepExecutionResult;
 import com.mybilibili.ai.process.VideoProcessContext;
@@ -8,11 +7,13 @@ import com.mybilibili.ai.process.VideoProcessStep;
 import com.mybilibili.ai.process.VideoProcessStepType;
 import com.mybilibili.ai.repository.SubtitleRepository;
 import com.mybilibili.ai.service.AiSummaryService;
+import com.mybilibili.ai.service.VideoProcessingStorageService;
 import com.mybilibili.common.entity.Subtitle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.nio.file.Path;
 import java.util.List;
 
 @Component
@@ -25,7 +26,7 @@ public class AiSummaryProcessStep implements VideoProcessStep {
     private SubtitleRepository subtitleRepository;
 
     @Autowired
-    private UploadFilePathConfig uploadFilePathConfig;
+    private VideoProcessingStorageService processingStorageService;
 
     @Autowired
     private StringRedisTemplate redisTemplate;
@@ -63,10 +64,15 @@ public class AiSummaryProcessStep implements VideoProcessStep {
             return StepExecutionResult.fail("AI总结失败");
         }
 
-        String summaryPath = uploadFilePathConfig.getAiSummaryPath(context.getManuscriptId(), context.getVideoId());
-        boolean saved = aiSummaryService.saveSummaryToFile(summary, summaryPath, title);
+        Path summaryPath = processingStorageService.getSummaryPath(context.getManuscriptId(), context.getVideoId());
+        boolean saved = aiSummaryService.saveSummaryToFile(summary, summaryPath.toString(), title);
         if (!saved) {
             return StepExecutionResult.fail("摘要保存失败");
+        }
+        try {
+            processingStorageService.uploadSummary(context.getManuscriptId(), context.getVideoId(), summaryPath);
+        } catch (Exception e) {
+            return StepExecutionResult.fail("摘要上传失败: " + e.getMessage());
         }
 
         redisTemplate.opsForValue().set("summary:" + context.getVideoId(), summary);

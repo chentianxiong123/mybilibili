@@ -1,7 +1,12 @@
 package com.mybilibili.common.config;
 
+import com.mybilibili.common.security.JwtPrincipal;
 import com.mybilibili.common.utils.JwtUtils;
+import io.jsonwebtoken.Claims;
 import org.springframework.stereotype.Component;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import jakarta.servlet.FilterChain;
@@ -9,65 +14,102 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
+    private final JwtRequestPolicy requestPolicy = new JwtRequestPolicy();
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        // 获取请求头中的Authorization
-        String authorization = request.getHeader("Authorization");
-        
-        // 不需要认证的路径
         String path = request.getRequestURI();
-        // 打印请求路径，用于调试
-        System.out.println("Request path: " + path);
-        // 静态资源和公开接口不需要认证
-        if (path.contains("/user/register") || path.contains("/user/login") ||
-            path.contains("/user/add-experience") ||
-            path.contains("/admin/register") || path.contains("/admin/login") ||
-            path.contains("/user/") && path.matches(".*/user/\\d+(/following|/followers)?$") ||
-            path.contains("/swagger") || path.contains("/v3/api-docs") ||
-            path.contains("/category") || path.contains("/video/") ||
-            path.contains("/follow/") || path.contains("/test/") ||
-            path.contains("/covers/") || path.contains("/static/") ||
-            path.contains("/images/") || path.contains("/files/") ||
-            path.contains("/uploads/") || path.contains("/banner-images/") ||
-            path.contains("/recommend/") || path.contains("/search/") ||
-            path.contains("/manuscript/recommended") || path.contains("/api/manuscript/recommended") ||
-            path.matches(".*/manuscript/\\d+$") ||
-            path.endsWith(".jpg") ||
-            path.endsWith(".jpeg") || path.endsWith(".png") ||
-            path.endsWith(".gif") || path.endsWith(".mp4") ||
-            path.endsWith(".avi") || path.endsWith(".mov")) {
+        if (requestPolicy.isPublicPath(request.getMethod(), path)) {
             filterChain.doFilter(request, response);
             return;
         }
-        
-        // 验证token
+
+        String authorization = request.getHeader("Authorization");
         if (authorization == null || !authorization.startsWith("Bearer ")) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("未授权，请登录");
+            writeUnauthorized(response, "未授权，请登录");
             return;
         }
-        
+
         String token = authorization.substring(7);
+        UsernamePasswordAuthenticationToken authentication;
         try {
-            // 验证token是否过期
             if (JwtUtils.isTokenExpired(token)) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.getWriter().write("token已过期");
+                writeUnauthorized(response, "token已过期");
                 return;
             }
-            
-            // 将用户信息存储到请求中
-            Integer userId = JwtUtils.getUserIdFromToken(token);
+
+            Claims claims = JwtUtils.parseToken(token);
+            Integer userId = Integer.parseInt(claims.getSubject());
+            String username = claims.get("username", String.class);
+            String role = claims.get("role", String.class);
+            String tokenType = claims.get("type", String.class);
+
             request.setAttribute("userId", userId);
-            
-            filterChain.doFilter(request, response);
+            if ("admin".equals(tokenType)) {
+                request.setAttribute("adminId", userId);
+            }
+
+            JwtPrincipal principal = new JwtPrincipal(userId, username, role, tokenType);
+            authentication = new UsernamePasswordAuthenticationToken(
+                    principal,
+                    null,
+                    buildAuthorities(role, tokenType, claims.get("permissions"))
+            );
         } catch (Exception e) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("token无效");
+            writeUnauthorized(response, "token无效");
+            return;
         }
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    private List<SimpleGrantedAuthority> buildAuthorities(String role, String tokenType, Object permissionsClaim) {
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+        if ("admin".equals(tokenType)) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            if ("超级管理员".equals(role)) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"));
+            }
+        }
+        if (role != null && !role.isBlank()) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_NAME_" + role));
+        }
+        for (String permission : extractPermissions(permissionsClaim)) {
+            authorities.add(new SimpleGrantedAuthority("PERMISSION_" + permission));
+        }
+        return authorities;
+    }
+
+    private List<String> extractPermissions(Object permissionsClaim) {
+        if (!(permissionsClaim instanceof Collection<?> permissions)) {
+            return List.of();
+        }
+        return permissions.stream()
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .filter(permission -> !permission.isBlank())
+                .distinct()
+                .toList();
+    }
+
+    private void writeUnauthorized(HttpServletResponse response, String message) throws IOException {
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setContentType("text/plain;charset=UTF-8");
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.getWriter().write(message);
     }
 }

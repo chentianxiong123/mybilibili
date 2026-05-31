@@ -1,6 +1,8 @@
 package com.mybilibili.video.controller;
 
 import com.mybilibili.common.entity.BannerImage;
+import com.mybilibili.common.storage.StorageKeys;
+import com.mybilibili.common.storage.StorageService;
 import com.mybilibili.common.utils.UploadFilePathUtils;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.video.service.BannerImageRedisService;
@@ -24,6 +26,9 @@ public class BannerImageController {
 
     @Autowired
     private UploadFilePathUtils uploadFilePathUtils;
+
+    @Autowired
+    private StorageService storageService;
 
     @GetMapping("/home")
     @Operation(summary = "获取首页轮播图", description = "获取首页轮播图列表")
@@ -151,15 +156,13 @@ public class BannerImageController {
                 return Result.error("图片格式不支持");
             }
 
-            uploadFilePathUtils.createImagesDirectory();
-
             String fileName = uploadFilePathUtils.generateImageFileName(file.getOriginalFilename());
-            String filePath = uploadFilePathUtils.getImagePath(fileName);
-
-            java.io.File destFile = new java.io.File(filePath);
-            file.transferTo(destFile);
-
-            String imageUrl = uploadFilePathUtils.getImageUrl(fileName);
+            String imageUrl = storageService.upload(
+                    StorageKeys.bannerImage(fileName),
+                    file.getInputStream(),
+                    file.getSize(),
+                    file.getContentType()
+            );
 
             Map<String, String> result = new HashMap<>();
             result.put("url", imageUrl);

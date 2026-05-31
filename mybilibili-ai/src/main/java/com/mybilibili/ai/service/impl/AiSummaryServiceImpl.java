@@ -54,7 +54,8 @@ public class AiSummaryServiceImpl implements AiSummaryService {
     @Override
     public String generateSummary(String subtitleText, String videoTitle, String videoDescription) {
         if (subtitleText == null || subtitleText.trim().isEmpty()) {
-            return generateFallbackSummary(videoTitle, videoDescription);
+            log.warn("AI摘要生成中止：字幕内容为空, title={}", videoTitle);
+            return null;
         }
 
         String cleanedText = SubtitleTextUtils.cleanText(subtitleText);
@@ -90,22 +91,6 @@ public class AiSummaryServiceImpl implements AiSummaryService {
             log.error("AI摘要生成失败: {}", e.getMessage(), e);
             return null;
         }
-    }
-
-    private String generateFallbackSummary(String videoTitle, String videoDescription) {
-        StringBuilder summary = new StringBuilder();
-        summary.append("【视频摘要】\n");
-        summary.append("视频标题: ").append(videoTitle).append("\n\n");
-        if (videoDescription != null && !videoDescription.isEmpty()) {
-            summary.append("视频描述: ").append(videoDescription).append("\n\n");
-        }
-        summary.append("该视频暂无字幕内容，无法生成详细摘要。\n");
-        summary.append("请上传字幕文件或等待系统自动生成字幕后重试。\n\n");
-        summary.append("【关键要点】\n");
-        summary.append("1. 视频暂无字幕数据\n");
-        summary.append("2. 需要字幕才能生成AI摘要\n");
-        summary.append("3. 可使用字幕生成功能自动生成字幕");
-        return summary.toString();
     }
 
     @Override

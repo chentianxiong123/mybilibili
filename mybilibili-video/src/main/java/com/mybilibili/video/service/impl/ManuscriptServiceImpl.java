@@ -7,7 +7,8 @@ import com.mybilibili.common.entity.Video;
 import com.mybilibili.common.entity.VideoTag;
 import com.mybilibili.common.exception.BusinessException;
 import com.mybilibili.common.utils.DurationUtils;
-import com.mybilibili.common.utils.UploadFilePathUtils;
+import com.mybilibili.common.storage.StorageKeys;
+import com.mybilibili.common.storage.StorageService;
 import com.mybilibili.common.vo.ManuscriptVO;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.UserVO;
@@ -28,7 +29,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -61,7 +61,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     private UserClient userClient;
 
     @Autowired
-    private UploadFilePathUtils uploadFilePathUtils;
+    private StorageService storageService;
 
     @Autowired
     private VideoMQProducer videoMQProducer;
@@ -96,13 +96,12 @@ public class ManuscriptServiceImpl implements ManuscriptService {
             log.warn("添加经验值失败: {}", e.getMessage());
         }
 
-        uploadFilePathUtils.createManuscriptDirectory(manuscriptId);
         if (dto.getCover() != null && !dto.getCover().isEmpty()) {
-            String coverPath = uploadFilePathUtils.getManuscriptCoverPath(manuscriptId);
-            dto.getCover().transferTo(new File(coverPath));
-            manuscript.setCoverUrl(uploadFilePathUtils.getManuscriptCoverUrl(manuscriptId));
+            String coverKey = StorageKeys.manuscriptCover(manuscriptId);
+            String coverUrl = storageService.upload(coverKey, dto.getCover().getInputStream(), dto.getCover().getSize(), dto.getCover().getContentType());
+            manuscript.setCoverUrl(coverUrl);
             manuscriptMapper.updateById(manuscript);
-            log.info("封面保存成功，manuscriptId: {}", manuscriptId);
+            log.info("封面保存到MinIO成功，manuscriptId: {}", manuscriptId);
         }
 
         List<Video> videoList = new ArrayList<>();
@@ -161,28 +160,16 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         Integer videoId = video.getId();
         log.info("视频记录创建成功，videoId: {}", videoId);
 
-        uploadFilePathUtils.createVideoDirectories(manuscriptId, videoId);
-        log.info("视频目录创建成功，manuscriptId: {}, videoId: {}", manuscriptId, videoId);
-
         MultipartFile videoFile = dto.getVideo();
-        int durationSeconds = 0;
         if (videoFile != null && !videoFile.isEmpty()) {
             String videoExt = getFileExtension(videoFile.getOriginalFilename());
-            String sourceVideoPath = uploadFilePathUtils.getVideoSourcePath(manuscriptId, videoId, videoExt);
-            log.info("准备保存视频文件到: {}", sourceVideoPath);
-            try {
-                videoFile.transferTo(new File(sourceVideoPath));
-                log.info("视频文件保存成功: {}", sourceVideoPath);
-
-                video.setSourceVideoUrl(uploadFilePathUtils.getVideoSourceUrl(manuscriptId, videoId, videoExt));
-
-                durationSeconds = dto.getDurationSeconds() != null ? dto.getDurationSeconds() : 0;
-                video.setDurationSeconds(durationSeconds);
-                log.info("视频时长已设置: {} 秒", durationSeconds);
-            } catch (Exception e) {
-                log.error("视频文件保存失败: {}", sourceVideoPath, e);
-                throw e;
-            }
+            String videoKey = StorageKeys.videoSource(manuscriptId, videoId, videoExt);
+            String videoUrl = storageService.upload(videoKey, videoFile.getInputStream(), videoFile.getSize(), videoFile.getContentType());
+            video.setSourceVideoUrl(videoUrl);
+            video.setPlayUrlHd(videoUrl);
+            int durationSeconds = dto.getDurationSeconds() != null ? dto.getDurationSeconds() : 0;
+            video.setDurationSeconds(durationSeconds);
+            log.info("视频保存到MinIO成功: {}", videoKey);
         } else {
             log.warn("视频文件为空，manuscriptId: {}, videoId: {}", manuscriptId, videoId);
         }
@@ -194,7 +181,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
 
     private String getFileExtension(String filename) {
         if (filename == null || !filename.contains(".")) {
-            return ".mp4";
+            throw new BusinessException("视频文件缺少扩展名");
         }
         return filename.substring(filename.lastIndexOf("."));
     }
@@ -233,10 +220,11 @@ public class ManuscriptServiceImpl implements ManuscriptService {
                 videoVO.setVideoOrder(video.getVideoOrder());
                 videoVO.setDuration(DurationUtils.formatDuration(video.getDurationSeconds()));
                 videoVO.setDurationSeconds(video.getDurationSeconds());
-                videoVO.setPlayUrl(video.getPlayUrlHd() != null ? video.getPlayUrlHd() : video.getPlayUrlSd());
+                videoVO.setPlayUrl(video.getPlayUrlHd());
                 videoVO.setPlayUrlHd(video.getPlayUrlHd());
                 videoVO.setPlayUrlSd(video.getPlayUrlSd());
                 videoVO.setPlayUrlLd(video.getPlayUrlLd());
+                videoVO.setSourceVideoUrl(video.getSourceVideoUrl());
                 videoVOs.add(videoVO);
             }
             videoVOs.sort((a, b) -> a.getVideoOrder() - b.getVideoOrder());
@@ -551,10 +539,11 @@ public class ManuscriptServiceImpl implements ManuscriptService {
             item.setId(video.getId());
             item.setVideoOrder(video.getVideoOrder());
             item.setTitle(video.getTitle());
-            item.setPlayUrl(video.getPlayUrlHd() != null ? video.getPlayUrlHd() : video.getPlayUrlSd());
+            item.setPlayUrl(video.getPlayUrlHd());
             item.setPlayUrlHd(video.getPlayUrlHd());
             item.setPlayUrlSd(video.getPlayUrlSd());
             item.setPlayUrlLd(video.getPlayUrlLd());
+            item.setSourceVideoUrl(video.getSourceVideoUrl());
             item.setDurationSeconds(video.getDurationSeconds());
             item.setProcessStatus(video.getProcessStatus());
             items.add(item);
@@ -745,10 +734,11 @@ public class ManuscriptServiceImpl implements ManuscriptService {
             item.setVideoOrder(video.getVideoOrder());
             item.setTitle(video.getTitle());
             item.setDescription(video.getDescription());
-            item.setPlayUrl(video.getPlayUrlHd() != null ? video.getPlayUrlHd() : video.getPlayUrlSd());
+            item.setPlayUrl(video.getPlayUrlHd());
             item.setPlayUrlHd(video.getPlayUrlHd());
             item.setPlayUrlSd(video.getPlayUrlSd());
             item.setPlayUrlLd(video.getPlayUrlLd());
+            item.setSourceVideoUrl(video.getSourceVideoUrl());
             item.setDurationSeconds(video.getDurationSeconds());
             item.setStatus(video.getStatus());
             item.setProcessStatus(video.getProcessStatus());
@@ -862,10 +852,9 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         if (video == null) {
             return null;
         }
-        String sourceUrl = "/uploads/manuscripts/" + video.getManuscriptId() + "/videos/" + videoId + "/source/video.mp4";
         Map<String, Object> result = new HashMap<>();
         result.put("videoId", videoId);
-        result.put("sourceUrl", sourceUrl);
+        result.put("sourceUrl", video.getSourceVideoUrl());
         result.put("title", video.getTitle());
         result.put("durationSeconds", video.getDurationSeconds());
         return result;

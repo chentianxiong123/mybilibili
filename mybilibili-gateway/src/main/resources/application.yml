@@ -638,28 +638,6 @@ spring:
           filters:
             - StripPrefix=1
 
-        # ========== 静态资源（上传文件） ==========
-        - id: static-resource
-          uri: lb://mybilibili-video
-          predicates:
-            - Path=/uploads/**
-          filters:
-            - StripPrefix=0
-
-        - id: static-resource-covers
-          uri: lb://mybilibili-interaction
-          predicates:
-            - Path=/covers/**
-          filters:
-            - StripPrefix=0
-
-        - id: static-resource-videos
-          uri: lb://mybilibili-interaction
-          predicates:
-            - Path=/videos/**
-          filters:
-            - StripPrefix=0
-
 logging:
   level:
     com.mybilibili: debug

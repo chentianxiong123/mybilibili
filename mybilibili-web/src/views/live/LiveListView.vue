@@ -1,73 +1,25 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { VideoCamera, Star, Search, Refresh } from '@element-plus/icons-vue'
-import { liveApi } from '../../api/live.js'
+import { useLiveRoomList } from '../../composables/useLiveRoomList.js'
+import { isLiveRoomStatus } from '../../utils/liveMeetingStatus.js'
 
 const router = useRouter()
-const liveRooms = ref([])
-const myRoom = ref(null)
-const loading = ref(false)
-const keyword = ref('')
-const sortBy = ref('hot') // 'hot' | 'new'
-const categories = ['全部', '娱乐', '游戏', '学习', '购物', '赛事', '其他']
-const selectedCategory = ref('全部')
-let pollTimer = null
-
-const filteredRooms = computed(() => {
-  let list = liveRooms.value
-  // 排除自己（已有"我的直播间"区块）
-  if (myRoom.value) {
-    list = list.filter(r => r.userId !== myRoom.value.userId)
-  }
-  // 分类筛选
-  if (selectedCategory.value && selectedCategory.value !== '全部') {
-    list = list.filter(r => r.category === selectedCategory.value)
-  }
-  // 关键字搜索
-  const kw = keyword.value.trim().toLowerCase()
-  if (kw) {
-    list = list.filter(r =>
-      (r.roomName || '').toLowerCase().includes(kw) ||
-      String(r.userId).includes(kw)
-    )
-  }
-  // 排序
-  list = [...list]
-  if (sortBy.value === 'hot') {
-    list.sort((a, b) => (b.viewerCount || 0) - (a.viewerCount || 0))
-  } else {
-    list.sort((a, b) => (b.id || 0) - (a.id || 0))
-  }
-  return list
-})
-
-const totalLive = computed(() => liveRooms.value.length)
-
-const loadData = async (silent = false) => {
-  if (!silent) loading.value = true
-  try {
-    const [listRes, myRoomRes] = await Promise.allSettled([
-      liveApi.getLiveList(),
-      liveApi.getMyRoom()
-    ])
-
-    if (listRes.status === 'fulfilled' && listRes.value.code === 200) {
-      liveRooms.value = listRes.value.data || []
-    }
-
-    if (myRoomRes.status === 'fulfilled' && myRoomRes.value.code === 200 && myRoomRes.value.data) {
-      myRoom.value = myRoomRes.value.data
-    } else {
-      myRoom.value = null
-    }
-  } catch (e) {
-    console.error('获取直播数据失败:', e)
-  } finally {
-    if (!silent) loading.value = false
-  }
-}
+const {
+  myRoom,
+  loading,
+  keyword,
+  sortBy,
+  categories,
+  selectedCategory,
+  filteredRooms,
+  totalLive,
+  loadData,
+  refreshData,
+  startPolling,
+  cleanupLiveRoomList
+} = useLiveRoomList()
 
 const goToRoom = (id) => {
   router.push(`/live/${id}`)
@@ -83,19 +35,13 @@ const enterMyRoom = () => {
   }
 }
 
-const handleRefresh = () => {
-  loadData()
-  ElMessage.success('已刷新')
-}
-
 onMounted(() => {
   loadData()
-  // 每 10s 静默刷新一次列表
-  pollTimer = setInterval(() => loadData(true), 10000)
+  startPolling()
 })
 
 onUnmounted(() => {
-  if (pollTimer) clearInterval(pollTimer)
+  cleanupLiveRoomList()
 })
 </script>
 
@@ -109,7 +55,7 @@ onUnmounted(() => {
         </el-tag>
       </div>
       <div class="header-actions">
-        <el-button v-if="myRoom && myRoom.status === 'live'" type="warning" plain @click="enterMyRoom">
+        <el-button v-if="myRoom && isLiveRoomStatus(myRoom.status)" type="warning" plain @click="enterMyRoom">
           <el-icon><VideoCamera /></el-icon>
           进入我的直播间
         </el-button>
@@ -138,7 +84,7 @@ onUnmounted(() => {
         <el-radio-button value="hot">最热</el-radio-button>
         <el-radio-button value="new">最新</el-radio-button>
       </el-radio-group>
-      <el-button :icon="Refresh" circle @click="handleRefresh" :loading="loading" title="刷新" />
+      <el-button :icon="Refresh" circle @click="refreshData" :loading="loading" title="刷新" />
     </div>
 
     <!-- 分类标签 -->
@@ -158,18 +104,18 @@ onUnmounted(() => {
           <el-icon><VideoCamera /></el-icon>
           我的直播间
         </div>
-        <div class="live-card my-live-card" @click="myRoom.status === 'live' ? enterMyRoom() : startLive()">
+        <div class="live-card my-live-card" @click="isLiveRoomStatus(myRoom.status) ? enterMyRoom() : startLive()">
           <div class="card-cover">
             <img :src="myRoom.coverUrl || '/live-placeholder.svg'" alt="cover" />
-            <span v-if="myRoom.status === 'live'" class="live-badge">LIVE</span>
+            <span v-if="isLiveRoomStatus(myRoom.status)" class="live-badge">LIVE</span>
             <span v-else class="offline-badge">未开播</span>
-            <span v-if="myRoom.status === 'live'" class="viewer-count">
+            <span v-if="isLiveRoomStatus(myRoom.status)" class="viewer-count">
               {{ myRoom.viewerCount || 0 }} 人观看
             </span>
           </div>
           <div class="card-info">
             <div class="room-name">{{ myRoom.roomName || '我的直播间' }}</div>
-            <div v-if="myRoom.status === 'live'" class="live-status">
+            <div v-if="isLiveRoomStatus(myRoom.status)" class="live-status">
               <span class="status-dot" />直播中（点击进入）
             </div>
             <div v-else class="offline-hint">

@@ -50,7 +50,7 @@ public class UploadFilePathUtils {
     }
 
     public String getAvatarUrl(Integer userId) {
-        return "/uploads/avatars/" + userId + "/avatar.jpg";
+        return unsupportedUploadsUrl();
     }
 
     public String getManuscriptsDir() {
@@ -174,11 +174,11 @@ public class UploadFilePathUtils {
     }
 
     public String getManuscriptCoverUrl(Integer manuscriptId) {
-        return "/uploads/manuscripts/" + manuscriptId + "/cover.jpg";
+        return unsupportedUploadsUrl();
     }
 
     public String getVideoUrl(Integer manuscriptId, Integer videoId, String resolution) {
-        return "/uploads/manuscripts/" + manuscriptId + "/videos/" + videoId + "/transcoded/" + resolution + ".mp4";
+        return unsupportedUploadsUrl();
     }
 
     public String getHdVideoUrl(Integer manuscriptId, Integer videoId) {
@@ -194,7 +194,7 @@ public class UploadFilePathUtils {
     }
 
     public String getVideoSourceUrl(Integer manuscriptId, Integer videoId, String ext) {
-        return "/uploads/manuscripts/" + manuscriptId + "/videos/" + videoId + "/source/video" + ext;
+        return unsupportedUploadsUrl();
     }
 
     public String getVideoSourceUrl(Integer manuscriptId, Integer videoId) {
@@ -202,7 +202,7 @@ public class UploadFilePathUtils {
     }
 
     public String getSubtitleUrl(Integer manuscriptId, Integer videoId, String lang) {
-        return "/uploads/manuscripts/" + manuscriptId + "/videos/" + videoId + "/subtitles/" + lang + ".srt";
+        return unsupportedUploadsUrl();
     }
 
     public String getImagesDir() {
@@ -224,7 +224,11 @@ public class UploadFilePathUtils {
     }
 
     public String getImageUrl(String fileName) {
-        return "/uploads/images/" + fileName;
+        return unsupportedUploadsUrl();
+    }
+
+    private String unsupportedUploadsUrl() {
+        throw new UnsupportedOperationException("Local /uploads URLs are disabled; use StorageService URLs instead");
     }
 
     public void createImagesDirectory() {

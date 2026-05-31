@@ -1,4 +1,4 @@
-/*
+﻿/*
  Navicat Premium Data Transfer
 
  Source Server         : localhost_3306
@@ -405,6 +405,8 @@ CREATE TABLE `live_rooms`  (
   `status` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'offline' COMMENT 'offline/live',
   `cover_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '封面图',
   `viewer_count` int(11) NOT NULL DEFAULT 0 COMMENT '在线观众数',
+  `category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '直播分类',
+  `scheduled_at` datetime NULL DEFAULT NULL COMMENT '定时开播时间',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
@@ -416,8 +418,8 @@ CREATE TABLE `live_rooms`  (
 -- ----------------------------
 -- Records of live_rooms
 -- ----------------------------
-INSERT INTO `live_rooms` VALUES (1, 4, '我的直播间', 'e4a53048e3fd45c6a91964b44df6262b', 'live', NULL, 0, '2026-05-19 11:31:55', '2026-05-19 12:22:28');
-INSERT INTO `live_rooms` VALUES (2, 5, '我的直播间', '7d42fcf7f4d84cbf9f24b763b46a34a9', 'offline', NULL, 0, '2026-05-20 22:57:40', '2026-05-20 22:57:40');
+INSERT INTO `live_rooms` VALUES (1, 4, '我的直播间', 'e4a53048e3fd45c6a91964b44df6262b', 'live', NULL, 0, NULL, NULL, '2026-05-19 11:31:55', '2026-05-19 12:22:28');
+INSERT INTO `live_rooms` VALUES (2, 5, '我的直播间', '7d42fcf7f4d84cbf9f24b763b46a34a9', 'offline', NULL, 0, NULL, NULL, '2026-05-20 22:57:40', '2026-05-20 22:57:40');
 
 -- ----------------------------
 -- Table structure for manuscript_collection_relations
@@ -559,9 +561,12 @@ CREATE TABLE `meeting_room`  (
   `creator_id` bigint(20) NOT NULL COMMENT '创建者用户ID',
   `creator_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '创建者用户名',
   `max_participants` int(11) NULL DEFAULT 5 COMMENT '最大参与人数',
-  `status` tinyint(4) NULL DEFAULT 0 COMMENT '状态: 0=未开始 1=进行中 2=已结束',
+  `status` tinyint(4) NULL DEFAULT 0 COMMENT '状态: 0=未开始/已通过 1=进行中 2=已结束 3=待审批 4=已拒绝',
   `start_time` datetime NULL DEFAULT NULL COMMENT '开始时间',
   `end_time` datetime NULL DEFAULT NULL COMMENT '结束时间',
+  `scheduled_start` datetime NULL DEFAULT NULL COMMENT '预约开始时间',
+  `scheduled_end` datetime NULL DEFAULT NULL COMMENT '预约结束时间',
+  `scheduled_reason` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '预约事由',
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
@@ -689,6 +694,16 @@ INSERT INTO `permissions` VALUES (5, '标签管理', 'tag:manage', '/tags', 'GET
 INSERT INTO `permissions` VALUES (6, '内容审核', 'review:manage', '/review', 'GET', NULL, '内容审核权限', '2026-03-06 20:47:32', '2026-03-06 20:47:32');
 INSERT INTO `permissions` VALUES (7, '统计分析', 'statistics:manage', '/statistics', 'GET', NULL, '统计分析权限', '2026-03-06 20:47:32', '2026-03-06 20:47:32');
 INSERT INTO `permissions` VALUES (8, '角色管理', 'role:manage', '/roles', 'GET', NULL, '角色管理权限', '2026-03-06 20:47:32', '2026-03-06 20:47:32');
+INSERT INTO `permissions` VALUES (9, '管理员管理', 'admin:manage', '/admin', 'GET', NULL, '管理员账号管理权限', '2026-05-31 00:00:00', '2026-05-31 00:00:00');
+INSERT INTO `permissions` VALUES (10, '安全设置', 'security:manage', '/security-settings', 'GET', NULL, '安全设置和登录日志管理权限', '2026-05-31 00:00:00', '2026-05-31 00:00:00');
+INSERT INTO `permissions` VALUES (11, '直播管理', 'live:manage', '/live', 'GET', NULL, '直播间管理权限', '2026-05-31 00:00:00', '2026-05-31 00:00:00');
+INSERT INTO `permissions` VALUES (12, '会议管理', 'meeting:manage', '/meeting', 'GET', NULL, '会议室管理权限', '2026-05-31 00:00:00', '2026-05-31 00:00:00');
+INSERT INTO `permissions` VALUES (13, '存储管理', 'storage:manage', '/storage', 'POST', NULL, '对象存储迁移管理权限', '2026-05-31 00:00:00', '2026-05-31 00:00:00');
+INSERT INTO `permissions` VALUES (14, '轮播图管理', 'banner:manage', '/banner-images', 'GET', NULL, '轮播图和背景图管理权限', '2026-05-31 00:00:00', '2026-05-31 00:00:00');
+INSERT INTO `permissions` VALUES (15, '搜索索引管理', 'search:manage', '/search/admin/index', 'GET', NULL, '搜索索引管理权限', '2026-05-31 00:00:00', '2026-05-31 00:00:00');
+INSERT INTO `permissions` VALUES (16, 'AI管理', 'ai:manage', '/ai', 'GET', NULL, 'AI配置、技能和处理任务管理权限', '2026-05-31 00:00:00', '2026-05-31 00:00:00');
+INSERT INTO `permissions` VALUES (17, '消息管理', 'message:manage', '/message', 'POST', NULL, '系统消息广播管理权限', '2026-05-31 00:00:00', '2026-05-31 00:00:00');
+
 
 -- ----------------------------
 -- Table structure for prohibited_word
@@ -832,7 +847,21 @@ INSERT INTO `role_permissions` VALUES (1, 5);
 INSERT INTO `role_permissions` VALUES (1, 6);
 INSERT INTO `role_permissions` VALUES (2, 6);
 INSERT INTO `role_permissions` VALUES (1, 7);
+INSERT INTO `role_permissions` VALUES (2, 7);
 INSERT INTO `role_permissions` VALUES (1, 8);
+INSERT INTO `role_permissions` VALUES (1, 9);
+INSERT INTO `role_permissions` VALUES (1, 10);
+INSERT INTO `role_permissions` VALUES (1, 11);
+INSERT INTO `role_permissions` VALUES (2, 11);
+INSERT INTO `role_permissions` VALUES (1, 12);
+INSERT INTO `role_permissions` VALUES (2, 12);
+INSERT INTO `role_permissions` VALUES (1, 13);
+INSERT INTO `role_permissions` VALUES (1, 14);
+INSERT INTO `role_permissions` VALUES (1, 15);
+INSERT INTO `role_permissions` VALUES (1, 16);
+INSERT INTO `role_permissions` VALUES (2, 16);
+INSERT INTO `role_permissions` VALUES (1, 17);
+
 
 -- ----------------------------
 -- Table structure for roles
@@ -1220,3 +1249,4 @@ INSERT INTO `videos` VALUES (38, 31, 0, 'github短视频生成工具', NULL, NUL
 INSERT INTO `videos` VALUES (39, 32, 0, '开源Skills', NULL, NULL, NULL, '2026-05-10 08:05:28', '2026-05-10 08:05:27', 0, NULL, NULL, NULL, 0, NULL, '/uploads/manuscripts/32/videos/39/source/video.mp4', 27);
 
 SET FOREIGN_KEY_CHECKS = 1;
+

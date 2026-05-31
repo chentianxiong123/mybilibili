@@ -4,6 +4,8 @@ import com.mybilibili.ai.mapper.VideoMapper;
 import com.mybilibili.ai.service.AiSummaryService;
 import com.mybilibili.ai.service.impl.AiTaskService;
 import com.mybilibili.common.entity.Video;
+import com.mybilibili.common.storage.StorageKeys;
+import com.mybilibili.common.storage.StorageService;
 import com.mybilibili.common.vo.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -13,9 +15,9 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/ai")
@@ -33,6 +35,9 @@ public class AiController {
 
     @Autowired
     private AiTaskService aiTaskService;
+
+    @Autowired
+    private StorageService storageService;
 
     @PostMapping("/subtitle/generate")
     @Operation(summary = "提交字幕生成任务", description = "直接执行字幕生成任务")
@@ -96,7 +101,7 @@ public class AiController {
                     .name("start")
                     .data("开始生成摘要..."));
 
-                String summaryContent = readSummaryFile(videoId, video.getManuscriptId());
+                String summaryContent = readSummaryFromStorage(videoId, video.getManuscriptId());
                 if (summaryContent == null || summaryContent.isEmpty()) {
                     emitter.send(SseEmitter.event()
                         .name("error")
@@ -189,32 +194,17 @@ public class AiController {
         }
     }
 
-    private String readSummaryFile(Integer videoId, Integer manuscriptId) {
+    private String readSummaryFromStorage(Integer videoId, Integer manuscriptId) {
         try {
-            String basePath = System.getProperty("upload.base-path", "d:/files/mybilibili/uploads");
-            String summaryPath = basePath + "/manuscripts/" + manuscriptId + "/videos/" + videoId + "/summary/ai-summary.txt";
-
-            File summaryFile = new File(summaryPath);
-
-            if (!summaryFile.exists()) {
-                summaryPath = basePath + "/manuscripts/" + manuscriptId + "/videos/" + videoId + "/ai_summary.txt";
-                summaryFile = new File(summaryPath);
-
-                if (!summaryFile.exists()) {
-                    summaryPath = basePath + "/uploads/videos/" + videoId + "/ai_summary.txt";
-                    summaryFile = new File(summaryPath);
-
-                    if (!summaryFile.exists()) {
-                        return null;
-                    }
-                }
+            String key = StorageKeys.videoSummary(manuscriptId, videoId);
+            String content;
+            try (InputStream input = storageService.download(key)) {
+                content = new String(input.readAllBytes(), StandardCharsets.UTF_8);
             }
-
-            String content = new String(Files.readAllBytes(summaryFile.toPath()), "UTF-8");
             return extractSummaryContent(content);
 
-        } catch (IOException e) {
-            System.err.println("读取摘要文件失败: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("读取摘要对象失败: " + e.getMessage());
             return null;
         }
     }

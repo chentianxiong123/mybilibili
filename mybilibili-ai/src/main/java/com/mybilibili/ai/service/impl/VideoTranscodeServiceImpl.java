@@ -1,17 +1,20 @@
 package com.mybilibili.ai.service.impl;
 
-import com.mybilibili.ai.config.UploadFilePathConfig;
+import com.mybilibili.ai.service.VideoProcessingStorageService;
 import com.mybilibili.ai.service.VideoProgressSseService;
 import com.mybilibili.ai.service.VideoTranscodeService;
 import com.mybilibili.ai.utils.FFmpegUtils;
+import com.mybilibili.common.storage.StorageKeys;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.nio.file.Path;
 
 @Service
 public class VideoTranscodeServiceImpl implements VideoTranscodeService {
 
     @Autowired
-    private UploadFilePathConfig uploadFilePathConfig;
+    private VideoProcessingStorageService processingStorageService;
 
     @Autowired
     private FFmpegUtils ffmpegUtils;
@@ -26,59 +29,60 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
 
     @Override
     public StepTranscodeResult transcodeStep(Integer manuscriptId, Integer videoId, TranscodeProgressListener listener) {
+        Path transcodedDir = null;
         try {
-            String sourceVideoPath = uploadFilePathConfig.getVideoSourcePath(manuscriptId, videoId);
-            String transcodedDir = uploadFilePathConfig.getTranscodedDir(manuscriptId, videoId);
+            Path sourceVideoPath = processingStorageService.materializeSourceVideo(manuscriptId, videoId);
+            transcodedDir = processingStorageService.getTranscodedDir(manuscriptId, videoId);
+            processingStorageService.recreateDirectory(transcodedDir);
 
-            java.io.File videoFile = new java.io.File(sourceVideoPath);
-            if (!videoFile.exists()) {
-                notifyProgress(videoId, listener, 0, "源视频不存在");
-                return new StepTranscodeResult(false, "源视频不存在", null, null, null);
-            }
-
-            String hdDir = transcodedDir + "/1080p";
-            String sdDir = transcodedDir + "/720p";
-            String ldDir = transcodedDir + "/480p";
+            Path hdDir = transcodedDir.resolve("1080p");
+            Path sdDir = transcodedDir.resolve("720p");
+            Path ldDir = transcodedDir.resolve("480p");
 
             notifyProgress(videoId, listener, 0, "开始HLS转码");
 
-            boolean hdSuccess = transcodeVariant(videoId, sourceVideoPath, hdDir, 1920, 1080, 0, 34, "1080p", listener);
+            boolean hdSuccess = transcodeVariant(videoId, sourceVideoPath.toString(), hdDir.toString(), 1920, 1080, 0, 34, "1080p", listener);
             if (!hdSuccess) {
                 notifyProgress(videoId, listener, 0, "1080p转码失败");
                 return new StepTranscodeResult(false, "1080p转码失败", null, null, null);
             }
 
-            boolean sdSuccess = transcodeVariant(videoId, sourceVideoPath, sdDir, 1280, 720, 35, 69, "720p", listener);
+            boolean sdSuccess = transcodeVariant(videoId, sourceVideoPath.toString(), sdDir.toString(), 1280, 720, 35, 69, "720p", listener);
             if (!sdSuccess) {
                 notifyProgress(videoId, listener, 0, "720p转码失败");
                 return new StepTranscodeResult(false, "720p转码失败", null, null, null);
             }
 
-            boolean ldSuccess = transcodeVariant(videoId, sourceVideoPath, ldDir, 854, 480, 70, 100, "480p", listener);
+            boolean ldSuccess = transcodeVariant(videoId, sourceVideoPath.toString(), ldDir.toString(), 854, 480, 70, 100, "480p", listener);
             if (!ldSuccess) {
                 notifyProgress(videoId, listener, 0, "480p转码失败");
                 return new StepTranscodeResult(false, "480p转码失败", null, null, null);
             }
 
+            String playUrlHd = processingStorageService.uploadHlsDirectory(manuscriptId, videoId, "1080p", hdDir);
+            String playUrlSd = processingStorageService.uploadHlsDirectory(manuscriptId, videoId, "720p", sdDir);
+            String playUrlLd = processingStorageService.uploadHlsDirectory(manuscriptId, videoId, "480p", ldDir);
+
             notifyProgress(videoId, listener, 100, "转码完成");
             return new StepTranscodeResult(
                     true,
                     null,
-                    buildPlayUrl(manuscriptId, videoId, "1080p"),
-                    buildPlayUrl(manuscriptId, videoId, "720p"),
-                    buildPlayUrl(manuscriptId, videoId, "480p")
+                    playUrlHd,
+                    playUrlSd,
+                    playUrlLd
             );
 
         } catch (Exception e) {
             notifyProgress(videoId, listener, 0, "转码失败");
             return new StepTranscodeResult(false, e.getMessage(), null, null, null);
+        } finally {
+            processingStorageService.deleteDirectory(transcodedDir);
         }
     }
 
     @Override
     public String getVideoPath(Integer manuscriptId, Integer videoId, String quality) {
-        String basePath = uploadFilePathConfig.getTranscodedDir(manuscriptId, videoId);
-        return basePath + "/" + quality + "/playlist.m3u8";
+        return processingStorageService.getPublicUrl(StorageKeys.videoHlsPlaylist(manuscriptId, videoId, quality));
     }
 
     @Override
@@ -127,9 +131,5 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
         if (listener != null) {
             listener.onProgress(progress, stageText);
         }
-    }
-
-    private String buildPlayUrl(Integer manuscriptId, Integer videoId, String quality) {
-        return "/uploads/manuscripts/" + manuscriptId + "/videos/" + videoId + "/transcoded/" + quality + "/playlist.m3u8";
     }
 }

@@ -1,7 +1,8 @@
 package com.mybilibili.interaction.controller;
 
 import com.mybilibili.common.utils.JwtUtils;
-import com.mybilibili.common.utils.FileUploadUtils;
+import com.mybilibili.common.storage.StorageKeys;
+import com.mybilibili.common.storage.StorageService;
 import com.mybilibili.common.vo.DynamicVO;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.interaction.service.DynamicService;
@@ -24,7 +25,7 @@ public class DynamicController {
     private DynamicService dynamicService;
 
     @Autowired
-    private FileUploadUtils fileUploadUtils;
+    private StorageService storageService;
 
     @GetMapping("/list")
     @Operation(summary = "获取全部动态列表", description = "获取全部动态列表（分页）")
@@ -109,7 +110,7 @@ public class DynamicController {
             if (images != null && !images.isEmpty()) {
                 for (MultipartFile image : images) {
                     if (image != null && !image.isEmpty()) {
-                        String url = fileUploadUtils.uploadCover(image);
+                        String url = uploadDynamicImage(userId, image);
                         imageUrls.add(url);
                     }
                 }
@@ -119,6 +120,28 @@ public class DynamicController {
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }
+    }
+
+    private String uploadDynamicImage(Integer userId, MultipartFile image) throws Exception {
+        String originalFilename = image.getOriginalFilename();
+        if (originalFilename == null || !originalFilename.contains(".")) {
+            throw new IllegalArgumentException("图片文件缺少扩展名");
+        }
+        String extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase(Locale.ROOT);
+        if (!List.of(".jpg", ".jpeg", ".png", ".gif", ".webp").contains(extension)) {
+            throw new IllegalArgumentException("图片格式不支持");
+        }
+        String contentType = image.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("图片类型不支持");
+        }
+        String fileName = UUID.randomUUID() + extension;
+        return storageService.upload(
+                StorageKeys.dynamicImage(userId, fileName),
+                image.getInputStream(),
+                image.getSize(),
+                contentType
+        );
     }
 
     @DeleteMapping("/{id}")

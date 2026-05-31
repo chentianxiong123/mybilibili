@@ -62,6 +62,7 @@ const videoInfo = ref({
   playUrlHd: '',
   playUrlSd: '',
   playUrlLd: '',
+  sourceVideoUrl: '',
   uploader: {
     name: '',
     avatar: '',
@@ -1672,9 +1673,10 @@ onMounted(async () => {
         title: currentVideo?.title || data.title,
         coverUrl: data.coverUrl,
         playUrl: currentVideo?.playUrl || '',
-        playUrlHd: currentVideo?.playUrlHd || currentVideo?.playUrl || '',
+        playUrlHd: currentVideo?.playUrlHd || '',
         playUrlSd: currentVideo?.playUrlSd || '',
         playUrlLd: currentVideo?.playUrlLd || '',
+        sourceVideoUrl: currentVideo?.sourceVideoUrl || '',
         uploader: {
           name: data.uploader?.name || '',
           avatar: data.uploader?.avatar || '',
@@ -1740,7 +1742,7 @@ onMounted(async () => {
     ElMessage.error('获取视频信息失败')
   }
   
-  const defaultUrl = videoInfo.value.playUrl || videoInfo.value.playUrlHd || 'https://media.w3.org/2010/05/sintel/trailer.mp4'
+  let defaultUrl = ''
   
   const qualityOptions = []
   
@@ -1772,13 +1774,10 @@ onMounted(async () => {
   }
   
   if (qualityOptions.length === 0) {
-    qualityOptions.push({
-      default: true,
-      name: '默认',
-      html: '默认',
-      url: defaultUrl
-    })
+    ElMessage.error('视频播放地址缺失')
+    return
   }
+  defaultUrl = qualityOptions[0].url
   
   // 字幕数据已从MongoDB加载，不需要再构建SRT选项
   // 使用 SubtitleDisplay 组件显示字幕
@@ -1787,7 +1786,7 @@ onMounted(async () => {
   const playerConfig = {
     container: playerRef.value,
     url: defaultUrl,
-    poster: videoInfo.value.coverUrl || 'https://media.w3.org/2010/05/sintel/poster.png',
+    poster: videoInfo.value.coverUrl,
     volume: 0.7,
     isLive: false,
     muted: false,
@@ -2089,6 +2088,7 @@ watch(() => [route.query.p, route.query.t], ([newP, newT]) => {
       videoInfo.value.playUrlHd = video.playUrlHd || ''
       videoInfo.value.playUrlSd = video.playUrlSd || ''
       videoInfo.value.playUrlLd = video.playUrlLd || ''
+      videoInfo.value.sourceVideoUrl = video.sourceVideoUrl || ''
       videoInfo.value.duration = video.duration || '00:00'
 
       // 更新播放器
@@ -2122,17 +2122,13 @@ watch(() => [route.query.p, route.query.t], ([newP, newT]) => {
           })
         }
 
-        if (qualityOptions.length === 0 && video.playUrl) {
-          qualityOptions.push({
-            default: true,
-            name: '默认',
-            html: '默认',
-            url: video.playUrl
-          })
+        if (qualityOptions.length === 0) {
+          ElMessage.error('视频播放地址缺失')
+          return
         }
 
         // 切换视频源
-        art.switchUrl(qualityOptions[0]?.url || video.playUrl)
+        art.switchUrl(qualityOptions[0].url)
 
         // 更新画质选项
         if (qualityOptions.length > 0) {

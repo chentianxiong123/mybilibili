@@ -1,6 +1,5 @@
 package com.mybilibili.common.config;
 
-import com.mybilibili.common.utils.FileUploadUtils;
 import com.mybilibili.common.utils.UploadFilePathUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -19,18 +18,6 @@ public class FileUploadConfig {
         @Bean
         public UploadFilePathUtils uploadFilePathUtils() {
             return new UploadFilePathUtils(uploadBasePath);
-        }
-    }
-
-    @Configuration
-    @ConditionalOnProperty(name = "project.folder")
-    public static class FileUploadUtilsConfig {
-        @Value("${project.folder}")
-        private String projectFolder;
-
-        @Bean
-        public FileUploadUtils fileUploadUtils() {
-            return new FileUploadUtils(projectFolder);
         }
     }
 }

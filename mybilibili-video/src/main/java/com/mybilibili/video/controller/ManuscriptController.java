@@ -5,19 +5,26 @@ import com.mybilibili.common.entity.Manuscript;
 import com.mybilibili.common.utils.JwtUtils;
 import com.mybilibili.common.vo.ManuscriptVO;
 import com.mybilibili.common.vo.Result;
+import com.mybilibili.video.dto.CreateUploadSessionRequest;
 import com.mybilibili.video.service.ManuscriptService;
+import com.mybilibili.video.service.ManuscriptUploadSessionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @RestController
@@ -25,98 +32,115 @@ import java.util.stream.Collectors;
 @Tag(name = "稿件接口", description = "稿件查询、管理接口")
 public class ManuscriptController {
 
+    private static final Pattern VIDEO_FILE_PATTERN = Pattern.compile("^videos\\[(\\d+)]\\.file$");
+
     @Autowired
     private ManuscriptService manuscriptService;
 
+    @Autowired
+    private ManuscriptUploadSessionService uploadSessionService;
+
     @PostMapping(value = "/upload", consumes = "multipart/form-data")
     @Operation(summary = "上传稿件", description = "上传新稿件，支持单视频和多视频分P")
-    public Result<ManuscriptVO> uploadManuscript(
-            @RequestParam("title") String title,
-            @RequestParam(value = "description", required = false) String description,
-            @RequestParam("cover") MultipartFile cover,
-            @RequestParam("categoryId") Integer categoryId,
-            @RequestParam(value = "tags", required = false) List<String> tags,
-            @RequestParam(value = "videos[0].file", required = false) MultipartFile video0,
-            @RequestParam(value = "videos[0].title", required = false) String videoTitle0,
-            @RequestParam(value = "videos[0].videoOrder", required = false) Integer videoOrder0,
-            @RequestParam(value = "videos[0].durationSeconds", required = false) Integer videoDuration0,
-            @RequestParam(value = "videos[1].file", required = false) MultipartFile video1,
-            @RequestParam(value = "videos[1].title", required = false) String videoTitle1,
-            @RequestParam(value = "videos[1].videoOrder", required = false) Integer videoOrder1,
-            @RequestParam(value = "videos[1].durationSeconds", required = false) Integer videoDuration1,
-            @RequestParam(value = "videos[2].file", required = false) MultipartFile video2,
-            @RequestParam(value = "videos[2].title", required = false) String videoTitle2,
-            @RequestParam(value = "videos[2].videoOrder", required = false) Integer videoOrder2,
-            @RequestParam(value = "videos[2].durationSeconds", required = false) Integer videoDuration2,
-            @RequestParam(value = "videos[3].file", required = false) MultipartFile video3,
-            @RequestParam(value = "videos[3].title", required = false) String videoTitle3,
-            @RequestParam(value = "videos[3].videoOrder", required = false) Integer videoOrder3,
-            @RequestParam(value = "videos[3].durationSeconds", required = false) Integer videoDuration3,
-            @RequestParam(value = "videos[4].file", required = false) MultipartFile video4,
-            @RequestParam(value = "videos[4].title", required = false) String videoTitle4,
-            @RequestParam(value = "videos[4].videoOrder", required = false) Integer videoOrder4,
-            @RequestParam(value = "videos[4].durationSeconds", required = false) Integer videoDuration4,
-            HttpServletRequest request) {
+    public Result<ManuscriptVO> uploadManuscript(HttpServletRequest request) {
         try {
             Integer userId = JwtUtils.getUserIdFromRequest(request);
             if (userId == null) {
                 return Result.error("用户未登录");
             }
+            if (!(request instanceof MultipartHttpServletRequest multipartRequest)) {
+                return Result.error("请求格式错误");
+            }
 
             ManuscriptUploadDTO dto = new ManuscriptUploadDTO();
-            dto.setTitle(title);
-            dto.setDescription(description);
-            dto.setCover(cover);
-            dto.setCategoryId(categoryId);
-            dto.setTags(tags);
-
-            List<ManuscriptUploadDTO.VideoItemDTO> videos = new ArrayList<>();
-            if (video0 != null && !video0.isEmpty()) {
-                ManuscriptUploadDTO.VideoItemDTO videoItem = new ManuscriptUploadDTO.VideoItemDTO();
-                videoItem.setVideo(video0);
-                videoItem.setTitle(videoTitle0);
-                videoItem.setVideoOrder(videoOrder0 != null ? videoOrder0 : 0);
-                videoItem.setDurationSeconds(videoDuration0);
-                videos.add(videoItem);
-            }
-            if (video1 != null && !video1.isEmpty()) {
-                ManuscriptUploadDTO.VideoItemDTO videoItem = new ManuscriptUploadDTO.VideoItemDTO();
-                videoItem.setVideo(video1);
-                videoItem.setTitle(videoTitle1);
-                videoItem.setVideoOrder(videoOrder1 != null ? videoOrder1 : 1);
-                videoItem.setDurationSeconds(videoDuration1);
-                videos.add(videoItem);
-            }
-            if (video2 != null && !video2.isEmpty()) {
-                ManuscriptUploadDTO.VideoItemDTO videoItem = new ManuscriptUploadDTO.VideoItemDTO();
-                videoItem.setVideo(video2);
-                videoItem.setTitle(videoTitle2);
-                videoItem.setVideoOrder(videoOrder2 != null ? videoOrder2 : 2);
-                videoItem.setDurationSeconds(videoDuration2);
-                videos.add(videoItem);
-            }
-            if (video3 != null && !video3.isEmpty()) {
-                ManuscriptUploadDTO.VideoItemDTO videoItem = new ManuscriptUploadDTO.VideoItemDTO();
-                videoItem.setVideo(video3);
-                videoItem.setTitle(videoTitle3);
-                videoItem.setVideoOrder(videoOrder3 != null ? videoOrder3 : 3);
-                videoItem.setDurationSeconds(videoDuration3);
-                videos.add(videoItem);
-            }
-            if (video4 != null && !video4.isEmpty()) {
-                ManuscriptUploadDTO.VideoItemDTO videoItem = new ManuscriptUploadDTO.VideoItemDTO();
-                videoItem.setVideo(video4);
-                videoItem.setTitle(videoTitle4);
-                videoItem.setVideoOrder(videoOrder4 != null ? videoOrder4 : 4);
-                videoItem.setDurationSeconds(videoDuration4);
-                videos.add(videoItem);
-            }
-            dto.setVideos(videos);
+            dto.setTitle(multipartRequest.getParameter("title"));
+            dto.setDescription(multipartRequest.getParameter("description"));
+            dto.setCover(multipartRequest.getFile("cover"));
+            dto.setCategoryId(parseInteger(multipartRequest.getParameter("categoryId")));
+            dto.setTags(extractTags(multipartRequest));
+            dto.setVideos(extractVideos(multipartRequest));
 
             ManuscriptVO manuscriptVO = manuscriptService.uploadManuscript(dto, userId);
             return Result.success("上传成功", manuscriptVO);
         } catch (Exception e) {
-            e.printStackTrace();
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @PostMapping("/upload-session")
+    @Operation(summary = "创建分片上传会话", description = "为大文件分片上传创建会话")
+    public Result<?> createUploadSession(@RequestBody CreateUploadSessionRequest body, HttpServletRequest request) {
+        Integer userId = JwtUtils.getUserIdFromRequest(request);
+        if (userId == null) {
+            return Result.error("用户未登录");
+        }
+        try {
+            return Result.success("创建成功", uploadSessionService.createSession(userId, body));
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @GetMapping("/upload-session/{uploadId}")
+    @Operation(summary = "获取分片上传会话状态", description = "查询已上传分片和待上传进度")
+    public Result<?> getUploadSessionStatus(@PathVariable String uploadId, HttpServletRequest request) {
+        Integer userId = JwtUtils.getUserIdFromRequest(request);
+        if (userId == null) {
+            return Result.error("用户未登录");
+        }
+        try {
+            return Result.success("获取成功", uploadSessionService.getSessionStatus(userId, uploadId));
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @PostMapping(value = "/upload-chunk", consumes = "multipart/form-data")
+    @Operation(summary = "上传视频分片", description = "上传单个视频分片")
+    public Result<?> uploadChunk(@RequestParam String uploadId,
+                                 @RequestParam int partIndex,
+                                 @RequestParam int chunkIndex,
+                                 @RequestParam int totalChunks,
+                                 @RequestParam("file") MultipartFile file,
+                                 HttpServletRequest request) {
+        Integer userId = JwtUtils.getUserIdFromRequest(request);
+        if (userId == null) {
+            return Result.error("用户未登录");
+        }
+        try {
+            return Result.success("上传成功", uploadSessionService.uploadChunk(userId, uploadId, partIndex, chunkIndex, totalChunks, file));
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @PostMapping(value = "/upload-complete", consumes = "multipart/form-data")
+    @Operation(summary = "完成分片上传", description = "合并分片并提交稿件")
+    public Result<ManuscriptVO> completeUploadSession(@RequestParam String uploadId,
+                                                      @RequestParam("cover") MultipartFile cover,
+                                                      HttpServletRequest request) {
+        Integer userId = JwtUtils.getUserIdFromRequest(request);
+        if (userId == null) {
+            return Result.error("用户未登录");
+        }
+        try {
+            return Result.success("上传成功", uploadSessionService.completeSession(userId, uploadId, cover));
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/upload-session/{uploadId}")
+    @Operation(summary = "取消分片上传", description = "取消并清理分片上传会话")
+    public Result<?> cancelUploadSession(@PathVariable String uploadId, HttpServletRequest request) {
+        Integer userId = JwtUtils.getUserIdFromRequest(request);
+        if (userId == null) {
+            return Result.error("用户未登录");
+        }
+        try {
+            uploadSessionService.cancelSession(userId, uploadId);
+            return Result.success("已取消");
+        } catch (Exception e) {
             return Result.error(e.getMessage());
         }
     }
@@ -462,6 +486,69 @@ public class ManuscriptController {
             case "ready": return Manuscript.STATUS_READY_TO_PUBLISH;  // 待发布 -> 待发布(2)
             case "unpublished": return Manuscript.STATUS_UNPUBLISHED;  // 已下架 -> -1
             default: return null;
+        }
+    }
+
+    private List<String> extractTags(MultipartHttpServletRequest request) {
+        String[] values = request.getParameterValues("tags");
+        if (values == null || values.length == 0) {
+            return List.of();
+        }
+        return Arrays.stream(values)
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    private List<ManuscriptUploadDTO.VideoItemDTO> extractVideos(MultipartHttpServletRequest request) {
+        return request.getFileMap().entrySet().stream()
+                .map(entry -> toVideoItem(entry.getKey(), entry.getValue(), request))
+                .filter(java.util.Objects::nonNull)
+                .sorted(Comparator.comparingInt(ManuscriptUploadDTO.VideoItemDTO::getVideoOrder))
+                .collect(Collectors.toList());
+    }
+
+    private ManuscriptUploadDTO.VideoItemDTO toVideoItem(String key, MultipartFile file, MultipartHttpServletRequest request) {
+        Matcher matcher = VIDEO_FILE_PATTERN.matcher(key);
+        if (!matcher.matches() || file == null || file.isEmpty()) {
+            return null;
+        }
+        int index = Integer.parseInt(matcher.group(1));
+        ManuscriptUploadDTO.VideoItemDTO item = new ManuscriptUploadDTO.VideoItemDTO();
+        item.setVideo(file);
+        item.setTitle(resolveVideoTitle(request.getParameter("videos[" + index + "].title"), file, index));
+        Integer order = parseInteger(request.getParameter("videos[" + index + "].videoOrder"));
+        item.setVideoOrder(order == null ? index : order);
+        item.setDurationSeconds(parseInteger(request.getParameter("videos[" + index + "].durationSeconds")));
+        return item;
+    }
+
+    private String resolveVideoTitle(String title, MultipartFile file, int index) {
+        if (StringUtils.hasText(title)) {
+            return title.trim();
+        }
+        String originalFilename = file.getOriginalFilename();
+        if (StringUtils.hasText(originalFilename)) {
+            String filename = originalFilename.replace("\\", "/");
+            int slashIndex = filename.lastIndexOf('/');
+            if (slashIndex >= 0) {
+                filename = filename.substring(slashIndex + 1);
+            }
+            int dotIndex = filename.lastIndexOf('.');
+            return dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
+        }
+        return "P" + (index + 1);
+    }
+
+    private Integer parseInteger(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 }

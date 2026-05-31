@@ -109,7 +109,7 @@ public class FutureppoWhisperProvider implements SttProvider {
                     }
                     return srt;
                 }
-                // 降级取 text
+                // verbose_json 没有 segments 时，使用接口返回的 text 字段。
                 Object textObj = body.get("text");
                 if (textObj != null) {
                     if (aiUsageLogger != null) {

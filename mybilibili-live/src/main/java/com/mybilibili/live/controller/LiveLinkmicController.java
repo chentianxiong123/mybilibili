@@ -1,6 +1,8 @@
 package com.mybilibili.live.controller;
 
 import com.mybilibili.common.vo.Result;
+import com.mybilibili.live.common.AuthUser;
+import com.mybilibili.live.common.RequestUserResolver;
 import com.mybilibili.live.entity.LiveLinkmic;
 import com.mybilibili.live.service.LiveLinkmicService;
 import lombok.extern.slf4j.Slf4j;
@@ -18,44 +20,48 @@ public class LiveLinkmicController {
     @Autowired
     private LiveLinkmicService linkmicService;
 
+    @Autowired
+    private RequestUserResolver userResolver;
+
     @PostMapping("/apply/{roomId}")
     public Result<?> applyLinkmic(@PathVariable Long roomId, HttpServletRequest request) {
-        Long viewerId = Long.parseLong(request.getHeader("X-User-Id"));
-        String viewerName = request.getHeader("X-Username");
-        LiveLinkmic linkmic = linkmicService.applyLinkmic(roomId, viewerId, viewerName);
-        if (linkmic == null) {
-            return Result.error("连麦人数已满，请稍后再试");
-        }
+        AuthUser user = userResolver.requireUser(request);
+        LiveLinkmic linkmic = linkmicService.applyLinkmic(roomId, user.id(), user.username());
         return Result.success(linkmic);
     }
 
     @PostMapping("/accept/{linkmicId}")
-    public Result<?> acceptLinkmic(@PathVariable Long linkmicId) {
-        linkmicService.acceptLinkmic(linkmicId);
+    public Result<?> acceptLinkmic(@PathVariable Long linkmicId, HttpServletRequest request) {
+        AuthUser user = userResolver.requireUser(request);
+        linkmicService.acceptLinkmic(linkmicId, user.id());
         return Result.success("已同意连麦");
     }
 
     @PostMapping("/reject/{linkmicId}")
-    public Result<?> rejectLinkmic(@PathVariable Long linkmicId) {
-        linkmicService.rejectLinkmic(linkmicId);
+    public Result<?> rejectLinkmic(@PathVariable Long linkmicId, HttpServletRequest request) {
+        AuthUser user = userResolver.requireUser(request);
+        linkmicService.rejectLinkmic(linkmicId, user.id());
         return Result.success("已拒绝连麦");
     }
 
     @PostMapping("/disconnect/{linkmicId}")
-    public Result<?> disconnectLinkmic(@PathVariable Long linkmicId) {
-        linkmicService.disconnectLinkmic(linkmicId);
+    public Result<?> disconnectLinkmic(@PathVariable Long linkmicId, HttpServletRequest request) {
+        AuthUser user = userResolver.requireUser(request);
+        linkmicService.disconnectLinkmic(linkmicId, user.id());
         return Result.success("已断开连麦");
     }
 
     @PostMapping("/toggle-audio/{linkmicId}")
-    public Result<?> toggleAudio(@PathVariable Long linkmicId, @RequestParam boolean enabled) {
-        linkmicService.toggleAudio(linkmicId, enabled);
+    public Result<?> toggleAudio(@PathVariable Long linkmicId, @RequestParam boolean enabled, HttpServletRequest request) {
+        AuthUser user = userResolver.requireUser(request);
+        linkmicService.toggleAudio(linkmicId, user.id(), enabled);
         return Result.success(enabled ? "麦克风已开启" : "麦克风已关闭");
     }
 
     @PostMapping("/toggle-video/{linkmicId}")
-    public Result<?> toggleVideo(@PathVariable Long linkmicId, @RequestParam boolean enabled) {
-        linkmicService.toggleVideo(linkmicId, enabled);
+    public Result<?> toggleVideo(@PathVariable Long linkmicId, @RequestParam boolean enabled, HttpServletRequest request) {
+        AuthUser user = userResolver.requireUser(request);
+        linkmicService.toggleVideo(linkmicId, user.id(), enabled);
         return Result.success(enabled ? "摄像头已开启" : "摄像头已关闭");
     }
 
@@ -67,15 +73,15 @@ public class LiveLinkmicController {
 
     @GetMapping("/pending/{roomId}")
     public Result<?> getPendingApplications(@PathVariable Long roomId, HttpServletRequest request) {
-        Long streamerId = Long.parseLong(request.getHeader("X-User-Id"));
-        List<LiveLinkmic> applications = linkmicService.getPendingApplications(roomId, streamerId);
+        AuthUser user = userResolver.requireUser(request);
+        List<LiveLinkmic> applications = linkmicService.getPendingApplications(roomId, user.id());
         return Result.success(applications);
     }
 
     @GetMapping("/queue-position/{roomId}")
     public Result<?> getQueuePosition(@PathVariable Long roomId, HttpServletRequest request) {
-        Long viewerId = Long.parseLong(request.getHeader("X-User-Id"));
-        int position = linkmicService.getQueuePosition(roomId, viewerId);
+        AuthUser user = userResolver.requireUser(request);
+        int position = linkmicService.getQueuePosition(roomId, user.id());
         return Result.success(position);
     }
 }

@@ -16,28 +16,28 @@ const showAiAssistant = ref(false)
 const isLoginPage = computed(() => route.path === '/login')
 
 const allMenuItems = [
-  { path: '/dashboard', icon: 'DataBoard', title: '数据概览' },
-  { path: '/users', icon: 'User', title: '用户管理' },
-  { path: '/manuscripts', icon: 'Document', title: '稿件管理' },
-  { path: '/video-process', icon: 'VideoPlay', title: '视频处理' },
-  { path: '/prohibited-words', icon: 'Warning', title: '违禁词与安全设置' },
-  { path: '/content-review', icon: 'DocumentChecked', title: '内容审核中心' },
-  { path: '/categories', icon: 'Folder', title: '分类管理' },
-  { path: '/banner-images', icon: 'Picture', title: '图片管理' },
-  { path: '/index-manager', icon: 'DataLine', title: '索引管理' },
-  { path: '/ai-usage', icon: 'DataAnalysis', title: 'AI 用量统计' },
-  { path: '/ai-skills', icon: 'Cpu', title: 'AI 技能管理' },
-  { path: '/ai-feedback', icon: 'Message', title: 'AI 反馈管理' },
-  { path: '/api-management', icon: 'Setting', title: 'AI 渠道管理' },
-  { path: '/live-rooms', icon: 'Connection', title: '直播管理' },
-  { path: '/meeting-admin', icon: 'Monitor', title: '会议管理' },
-  { path: '/customer-chat', icon: 'Headset', title: '客服会话' },
-  { path: '/login-logs', icon: 'List', title: '登录日志' },
-  { path: '/admins', icon: 'Lock', title: '管理员与角色权限', superAdminOnly: true }
+  { path: '/dashboard', icon: 'DataBoard', title: '数据概览', permission: 'statistics:manage' },
+  { path: '/users', icon: 'User', title: '用户管理', permission: 'user:manage' },
+  { path: '/manuscripts', icon: 'Document', title: '稿件管理', permission: 'review:manage' },
+  { path: '/video-process', icon: 'VideoPlay', title: '视频处理', permission: 'ai:manage' },
+  { path: '/prohibited-words', icon: 'Warning', title: '违禁词与安全设置', permission: 'comment:manage' },
+  { path: '/content-review', icon: 'DocumentChecked', title: '内容审核中心', permission: 'review:manage' },
+  { path: '/categories', icon: 'Folder', title: '分类管理', permission: 'category:manage' },
+  { path: '/banner-images', icon: 'Picture', title: '图片管理', permission: 'banner:manage' },
+  { path: '/index-manager', icon: 'DataLine', title: '索引管理', permission: 'search:manage' },
+  { path: '/ai-usage', icon: 'DataAnalysis', title: 'AI 用量统计', permission: 'ai:manage' },
+  { path: '/ai-skills', icon: 'Cpu', title: 'AI 技能管理', permission: 'ai:manage' },
+  { path: '/ai-feedback', icon: 'Message', title: 'AI 反馈管理', permission: 'ai:manage' },
+  { path: '/api-management', icon: 'Setting', title: 'AI 渠道管理', permission: 'ai:manage' },
+  { path: '/live-rooms', icon: 'Connection', title: '直播管理', permission: 'live:manage' },
+  { path: '/meeting-admin', icon: 'Monitor', title: '会议管理', permission: 'meeting:manage' },
+  { path: '/customer-chat', icon: 'Headset', title: '客服会话', permission: 'ai:manage' },
+  { path: '/login-logs', icon: 'List', title: '登录日志', permission: 'security:manage' },
+  { path: '/admins', icon: 'Lock', title: '管理员与角色权限', permission: 'role:manage', superAdminOnly: true }
 ]
 
 const menuItems = computed(() =>
-  allMenuItems.filter(item => !item.superAdminOnly || isSuperAdmin.value)
+  allMenuItems.filter(item => (!item.superAdminOnly || isSuperAdmin.value) && adminStore.hasPermission(item.permission))
 )
 
 const activeMenu = computed(() => {

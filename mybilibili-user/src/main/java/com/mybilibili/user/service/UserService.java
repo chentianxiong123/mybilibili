@@ -6,7 +6,8 @@ import com.mybilibili.common.dto.UserUpdateDTO;
 import com.mybilibili.common.entity.User;
 import com.mybilibili.common.exception.BusinessException;
 import com.mybilibili.common.utils.JwtUtils;
-import com.mybilibili.common.utils.UploadFilePathUtils;
+import com.mybilibili.common.storage.StorageKeys;
+import com.mybilibili.common.storage.StorageService;
 import com.mybilibili.common.vo.ManuscriptVO;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.UserVO;
@@ -23,8 +24,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.HttpServletRequest;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.List;
@@ -41,7 +40,7 @@ public class UserService {
     private UserTagMapper userTagMapper;
 
     @Autowired
-    private UploadFilePathUtils uploadFilePathUtils;
+    private StorageService storageService;
 
     @Autowired(required = false)
     private ManuscriptClient manuscriptClient;
@@ -335,18 +334,8 @@ public class UserService {
         }
 
         try {
-            uploadFilePathUtils.createUserAvatarDirectory(userId);
-
-            String avatarPath = uploadFilePathUtils.getAvatarPath(userId);
-
-            File destFile = new File(avatarPath);
-            byte[] bytes = avatarFile.getBytes();
-            FileOutputStream fos = new FileOutputStream(destFile);
-            fos.write(bytes);
-            fos.close();
-
-            String avatarUrl = uploadFilePathUtils.getAvatarUrl(userId);
-
+            String avatarKey = StorageKeys.avatar(userId);
+            String avatarUrl = storageService.upload(avatarKey, avatarFile.getInputStream(), avatarFile.getSize(), avatarFile.getContentType());
             user.setAvatar(avatarUrl);
             userMapper.updateById(user);
 

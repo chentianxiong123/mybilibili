@@ -1,818 +1,172 @@
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { Phone, PhoneFilled, Microphone, Mute, VideoCamera, VideoPause, Share } from '@element-plus/icons-vue'
-import flvJs from 'flv.js'
-import Artplayer from 'artplayer'
-import ArtplayerPluginDanmuku from 'artplayer-plugin-danmuku'
-import { liveApi } from '../../api/live.js'
-import { linkmicApi } from '../../api/linkmic.js'
-import { createReconnectingWS } from '../../utils/reconnectingWs.js'
-import { requestNotificationPermission, isNotificationEnabled, notifyMention, notifyStreamLive } from '../../utils/notification.js'
+import { isOfflineRoomStatus } from '../../utils/liveMeetingStatus.js'
+import { useLiveRoomSession } from '../../composables/useLiveRoomSession.js'
+import { useLiveRoomFollow } from '../../composables/useLiveRoomFollow.js'
+import { useLiveRoomPlayer } from '../../composables/useLiveRoomPlayer.js'
+import { useLiveRoomRealtime } from '../../composables/useLiveRoomRealtime.js'
+import { useLiveRoomInteractions } from '../../composables/useLiveRoomInteractions.js'
+import { useLiveLinkmic } from '../../composables/useLiveLinkmic.js'
 
 const route = useRoute()
 const roomId = route.params.roomId
-const room = ref(null)
-const playerRef = ref(null)
-const loading = ref(true)
-const isBuffering = ref(false)
-let bufferingTimer = null
-let art = null
+const {
+  room,
+  loading,
+  me,
+  currentUserId,
+  isStreamer,
+  initializeLiveRoom,
+  shareRoom
+} = useLiveRoomSession({ roomId })
 
-const showBuffering = () => {
-  clearTimeout(bufferingTimer)
-  isBuffering.value = true
-}
-const hideBuffering = () => {
-  bufferingTimer = setTimeout(() => { isBuffering.value = false }, 500)
-}
-const danmakuList = ref([])
-const danmakuText = ref('')
+const {
+  isFollowing,
+  followerCount,
+  syncFollowState,
+  toggleFollow
+} = useLiveRoomFollow({ room })
 
-const danmakuColors = ['#fff', '#ff6b81', '#fad34a', '#4fc3f7', '#a78bfa', '#34d399']
-const reactionEmojis = ['❤️', '😂', '👍', '👏', '🔥', '🎉', '😮', '🤔']
-const showEmojiPicker = ref(false)
-const chatEmojis = ['😀', '😂', '👍', '👏', '❤️', '🔥', '🤔', '😅', '🙌', '😎', '🤝', '👀', '🎉', '💯', '😱', '🤯']
+const {
+  playerRef,
+  replayPlayerRef,
+  isBuffering,
+  currentQuality,
+  showReplayTab,
+  replayList,
+  currentReplay,
+  initPlayer,
+  emitDanmaku,
+  loadReplays,
+  playReplay,
+  closeReplay,
+  cleanupLiveRoomPlayer
+} = useLiveRoomPlayer({ room })
 
-// 连麦相关
-const myLinkmicId = ref(null)
-const myQueuePosition = ref(0)
-const activeLinkmics = ref([])
-const pendingApplications = ref([])
-const linkmicLoading = ref(false)
-const reactions = ref([])  // { id, emoji, x, y, from }
-const pinnedMessage = ref(null)  // { text, from, time }
-const gifts = ref([])  // { id, emoji, name, from, count }
-const showGiftPicker = ref(false)
-const giftOptions = [
-  { emoji: '👏', name: '鼓掌', cost: 10 },
-  { emoji: '🌹', name: '鲜花', cost: 50 },
-  { emoji: '🚀', name: '飞船', cost: 100 },
-  { emoji: '⭐', name: '星星', cost: 200 },
-  { emoji: '666', name: '666', cost: 66 },
-  { emoji: '❤️', name: '爱心', cost: 30 }
-]
+const {
+  realtimeViewerCount,
+  sendRoomMessage,
+  connectLiveRoomSocket,
+  cleanupLiveRoomRealtime,
+  attachRoomMessageHandlers
+} = useLiveRoomRealtime({
+  room,
+  me,
+  currentUserId
+})
 
-// 回放相关
-const showReplayTab = ref(false)
-const replayList = ref([])  // [{ id, title, coverUrl, url, duration, createTime }]
-const currentReplay = ref(null)
-const replayPlayerRef = ref(null)
-let replayArt = null
+const {
+  myLinkmicId,
+  myQueuePosition,
+  activeLinkmics,
+  pendingApplications,
+  linkmicLoading,
+  linkmicStreams,
+  localLinkmicVideoRef,
+  localLinkmicAudioEnabled,
+  localLinkmicVideoEnabled,
+  viewerHandRaised,
+  loadLinkmicStatus,
+  cleanupLinkmic,
+  setRemoteVideo,
+  applyLinkmic,
+  acceptLinkmic,
+  rejectLinkmic,
+  disconnectLinkmic,
+  viewerHangup,
+  toggleViewerHandRaise,
+  toggleLocalAudio,
+  toggleLocalVideo,
+  muteLinkmicAudio,
+  muteLinkmicVideo,
+  handleLinkmicApplyMessage,
+  handleLinkmicAcceptedMessage,
+  handleLinkmicRejectedMessage,
+  handleLinkmicDisconnectedMessage,
+  handleHandRaisedMessage,
+  handleMuteAudioMessage,
+  handleMuteVideoMessage,
+  handlePeerStateMessage,
+  handleOffer,
+  handleAnswer,
+  handleIceCandidate
+} = useLiveLinkmic({
+  roomId,
+  room,
+  isStreamer,
+  currentUserId,
+  sendRoomMessage
+})
 
-const loadReplays = async () => {
-  // TODO: 后端提供回放列表 API
-  // 模拟数据（后端接入后可替换为: const res = await liveApi.getReplays(roomId)）
-  replayList.value = []
-}
+const {
+  danmakuList,
+  danmakuText,
+  showEmojiPicker,
+  reactionEmojis,
+  chatEmojis,
+  reactions,
+  pinnedMessage,
+  gifts,
+  showGiftPicker,
+  giftOptions,
+  sendReaction,
+  receiveReaction,
+  receiveGift,
+  receivePinMessage,
+  clearPinnedMessage,
+  receiveDanmaku,
+  toggleEmojiPicker,
+  insertChatEmoji,
+  sendGift,
+  pinMessage,
+  unpinMessage,
+  sendDanmaku,
+  cleanupLiveRoomInteractions
+} = useLiveRoomInteractions({
+  room,
+  me,
+  currentUserId,
+  sendRoomMessage,
+  emitDanmaku
+})
 
-const playReplay = async (replay) => {
-  currentReplay.value = replay
-  await nextTick()
-  if (replayPlayerRef.value && replay.url) {
-    replayArt = new Artplayer({
-      container: replayPlayerRef.value,
-      url: replay.url,
-      type: replay.url.includes('.m3u8') ? 'm3u8' : undefined,
-      autoplay: true,
-      setting: true,
-      fullscreen: true,
-      playbackRate: true,
-    })
-  }
-}
+attachRoomMessageHandlers({
+  handleLinkmicApplyMessage,
+  handleLinkmicAcceptedMessage,
+  handleLinkmicRejectedMessage,
+  handleLinkmicDisconnectedMessage,
+  handleHandRaisedMessage,
+  receiveGift,
+  handleOffer,
+  handleAnswer,
+  handleIceCandidate,
+  receiveReaction,
+  receivePinMessage,
+  clearPinnedMessage,
+  receiveDanmaku,
+  handleMuteAudioMessage,
+  handleMuteVideoMessage,
+  handlePeerStateMessage
+})
 
-const closeReplay = () => {
-  currentReplay.value = null
-  if (replayArt) {
-    replayArt.destroy()
-    replayArt = null
-  }
-}
-
-// peerId(=对端 userId) -> { stream, name }
-const linkmicStreams = reactive({})
-const linkmicPeerConnections = {}
-const pendingIce = {}
-let linkmicWs = null
-const realtimeViewerCount = ref(0)
-
-// 当前用户：从 localStorage（登录态可靠）
-const getCurrentUser = () => {
-  try {
-    const u = JSON.parse(localStorage.getItem('user') || '{}')
-    if (u && u.id) return { id: Number(u.id), name: u.username || u.nickname || ('用户' + u.id) }
-  } catch (e) {}
-  return { id: 0, name: '游客' }
-}
-const me = ref(getCurrentUser())
-const currentUserId = ref(me.value.id)
-const isStreamer = ref(false)
-
-// 观众端的本地媒体流（连麦后产生）
-const localLinkmicStream = ref(null)
-const localLinkmicVideoRef = ref(null)
-const localLinkmicAudioEnabled = ref(true)
-const localLinkmicVideoEnabled = ref(true)
-const viewerHandRaised = ref(false)
-const currentQuality = ref('自动')
-const bufferStallCount = ref(0)
-const isFollowing = ref(false)
-const followerCount = ref(0)
-
-onMounted(async () => {
-  // 请求通知权限
-  requestNotificationPermission()
-  try {
-    const res = await liveApi.getRoom(roomId)
-    if (res.code === 200) {
-      room.value = res.data
-      isStreamer.value = currentUserId.value === room.value?.userId
-      // 检查是否已关注
-      try {
-        const followed = JSON.parse(localStorage.getItem('followedRooms') || '[]')
-        isFollowing.value = followed.includes(room.value.userId)
-      } catch (e) {}
-      followerCount.value = room.value.followerCount || 0
-    } else {
-      ElMessage.error(res.message || '直播间不存在')
-    }
-  } catch (e) {
-    console.error('[LiveRoom] 加载失败:', e)
-    ElMessage.error('加载失败')
-  } finally {
-    loading.value = false
-    await nextTick()
-    if (room.value) initPlayer()
-  }
-
-  await loadLinkmicStatus()
-  connectLinkmicWebSocket()
+onMounted(() => {
+  initializeLiveRoom({
+    syncFollowState,
+    initPlayer,
+    loadLinkmicStatus,
+    connectLiveRoomSocket
+  })
 })
 
 onUnmounted(() => {
-  if (art) {
-    try { art.destroy() } catch (e) {}
-    art = null
-  }
+  cleanupLiveRoomPlayer()
+  cleanupLiveRoomInteractions()
   cleanupLinkmic()
+  cleanupLiveRoomRealtime()
 })
 
-const shareRoom = () => {
-  const url = window.location.href
-  navigator.clipboard.writeText(url).then(() => {
-    ElMessage.success('直播间链接已复制，可分享给好友！')
-  })
-}
-
-const toggleFollow = () => {
-  if (!room.value) return
-  try {
-    const followed = JSON.parse(localStorage.getItem('followedRooms') || '[]')
-    if (isFollowing.value) {
-      isFollowing.value = false
-      const updated = followed.filter(id => id !== room.value.userId)
-      localStorage.setItem('followedRooms', JSON.stringify(updated))
-      ElMessage.success('已取消关注')
-    } else {
-      isFollowing.value = true
-      followed.push(room.value.userId)
-      localStorage.setItem('followedRooms', JSON.stringify(followed))
-      followerCount.value++
-      ElMessage.success('已关注主播')
-    }
-  } catch (e) {}
-}
-
-const initPlayer = () => {
-  if (!room.value || !playerRef.value) return
-  const flvUrl = `http://${window.location.hostname}:28080/live/${room.value.streamKey}.flv`
-
-  art = new Artplayer({
-    container: playerRef.value,
-    url: flvUrl,
-    type: 'flv',
-    isLive: true,                  // 启用直播模式（隐藏进度条、跳跃等）
-    autoplay: true,
-    muted: true,                   // 浏览器策略：自动播放必须先静音
-    autoSize: false,
-    autoOrientation: true,
-    setting: true,                 // 启用设置面板（含画质选择）
-    playbackRate: false,
-    aspectRatio: false,
-    fullscreen: true,
-    fullscreenWeb: true,
-    pip: true,
-    miniProgressBar: false,
-    mutex: true,
-    backdrop: true,
-    theme: '#fb7299',
-    customType: {
-      flv: function (video, url) {
-        if (flvJs.isSupported()) {
-          const flvPlayer = flvJs.createPlayer({
-            type: 'flv',
-            url,
-            isLive: true,
-            config: {
-              enableWorker: true,
-              enableStashBuffer: false,
-              stashInitialSize: 128,
-              autoCleanupSourceBuffer: true,
-              autoCleanupMaxDuration: 3,
-              autoCleanupMinRecoverDuration: 2,
-            }
-          })
-          flvPlayer.attachMediaElement(video)
-          flvPlayer.load()
-          flvPlayer.on(flvJs.Events.ERROR, (errType, errDetail) => {
-            console.error('[LiveRoom] FLV 错误:', errType, errDetail)
-          })
-          // 把 flvPlayer 句柄挂到 art 上以便销毁时一起 cleanup
-          art.flvPlayer = flvPlayer
-        }
-      }
-    },
-    plugins: [
-      ArtplayerPluginDanmuku({
-        danmuku: [],               // 直播弹幕实时推送，无需历史
-        speed: 5,
-        opacity: 1,
-        fontSize: 22,
-        synchronousPlayback: false
-      })
-    ]
-  })
-
-  art.on('video:waiting', () => showBuffering())
-  art.on('video:playing', () => {
-    hideBuffering()
-    bufferStallCount.value = 0
-  })
-  art.on('video:stalled', () => {
-    bufferStallCount.value++
-    if (bufferStallCount.value >= 3) {
-      currentQuality.value = '流畅'
-      ElMessage.warning('当前网络不稳定，已自动切换到流畅模式')
-    }
-  })
-  art.on('error', (e) => console.error('[LiveRoom] 播放器错误:', e))
-
-  art.on('destroy', () => {
-    if (art && art.flvPlayer) {
-      try {
-        art.flvPlayer.pause()
-        art.flvPlayer.unload()
-        art.flvPlayer.detachMediaElement()
-        art.flvPlayer.destroy()
-      } catch (e) {}
-      art.flvPlayer = null
-    }
-  })
-}
-
-// ============ 连麦核心 ============
-const loadLinkmicStatus = async () => {
-  try {
-    const res = await linkmicApi.getActiveLinkmics(roomId)
-    if (res.code === 200) {
-      activeLinkmics.value = res.data || []
-    }
-    if (isStreamer.value) {
-      const pendingRes = await linkmicApi.getPendingApplications(roomId)
-      if (pendingRes.code === 200) {
-        pendingApplications.value = pendingRes.data || []
-      }
-    }
-  } catch (e) {
-    console.error('加载连麦状态失败:', e)
-  }
-}
-
-const connectLinkmicWebSocket = () => {
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  linkmicWs = createReconnectingWS({
-    url: `${proto}//${location.host}/ws/meeting`,
-    onOpen: () => {
-      // 用 streamKey 作为 roomCode 加入房间，便于主播/观众间路由（含弹幕）
-      if (room.value?.streamKey && currentUserId.value) {
-        linkmicWs.send({
-          type: 'join',
-          roomCode: room.value.streamKey,
-          userId: currentUserId.value,
-          userName: me.value.name
-        })
-      }
-    },
-    onMessage: async (msg) => {
-      switch (msg.type) {
-        case 'linkmic-apply':
-          if (isStreamer.value && msg.data) {
-            if (!pendingApplications.value.find(a => a.id === msg.data.id)) {
-              pendingApplications.value.push(msg.data)
-            }
-          }
-          break
-        case 'linkmic-accepted':
-          myLinkmicId.value = msg.data?.linkmicId
-          myQueuePosition.value = 0
-          ElMessage.success('连麦已接通，正在建立连接...')
-          await viewerStartConnection(msg.userId)
-          break
-        case 'linkmic-rejected':
-          ElMessage.warning('连麦被拒绝')
-          myLinkmicId.value = null
-          myQueuePosition.value = 0
-          break
-        case 'linkmic-disconnected':
-          removeLinkmicStream(msg.data?.viewerId || msg.userId)
-          break
-        case 'hand-raised':
-          // 主播看到观众的举手状态
-          if (isStreamer.value && msg.data) {
-            const viewerId = msg.userId
-            const raised = !!msg.data.raised
-            // 更新对应申请项的 handRaised 状态
-            const app = pendingApplications.value.find(a => a.viewerId === viewerId)
-            if (app) app.handRaised = raised
-            if (raised) ElMessage.info(`${msg.userName || ('观众' + viewerId)} 举手了`)
-          }
-          break
-        case 'gift':
-          if (msg.data?.emoji) {
-            const id = Date.now() + Math.random()
-            gifts.value.push({ id, emoji: msg.data.emoji, name: msg.data.name, from: msg.userName || '观众' })
-            setTimeout(() => { gifts.value = gifts.value.filter(g => g.id !== id) }, 3000)
-          }
-          break
-        case 'offer':
-          await handleOffer(msg.userId, msg.data)
-          break
-        case 'answer':
-          await handleAnswer(msg.userId, msg.data)
-          break
-        case 'ice-candidate':
-          await handleIceCandidate(msg.userId, msg.data)
-          break
-        case 'reaction':
-          if (msg.data?.emoji) {
-            addReaction({ emoji: msg.data.emoji, x: msg.data.x, y: msg.data.y, from: msg.userName || ('用户' + msg.userId) })
-          }
-          break
-        case 'pin-message':
-          if (msg.data?.text) {
-            pinnedMessage.value = { text: msg.data.text, from: msg.userName || '主播', time: Date.now() }
-          }
-          break
-        case 'unpin-message':
-          pinnedMessage.value = null
-          break
-        case 'chat':
-          if (msg.data?.text) {
-            const item = {
-              id: Date.now() + Math.random(),
-              text: msg.data.text,
-              color: msg.data.color || danmakuColors[0],
-              from: msg.userName || ('用户' + msg.userId)
-            }
-            danmakuList.value.push(item)
-            if (danmakuList.value.length > 200) danmakuList.value.splice(0, 50)
-            // 同时把弹幕推到 artplayer 飘过画面
-            emitDanmaku(item.text, item.color)
-            // @提及通知（页面不可见时）
-            if (isNotificationEnabled() && msg.data.text.includes('@' + me.value.name) && msg.userId !== currentUserId.value) {
-              notifyMention(msg.userName || ('用户' + msg.userId), room.value.roomName, msg.data.text)
-            }
-          }
-          break
-        case 'mute-target':
-          // 主播让指定观众静音
-          if (msg.targetUserId === currentUserId.value || msg.data?.targetUserId === currentUserId.value) {
-            if (localLinkmicAudioEnabled.value) {
-              toggleLocalAudio()
-              ElMessage.info('主播已将你静音')
-            }
-          }
-          break
-        case 'mute-video-target':
-          if (msg.targetUserId === currentUserId.value || msg.data?.targetUserId === currentUserId.value) {
-            if (localLinkmicVideoEnabled.value) {
-              toggleLocalVideo()
-              ElMessage.info('主播已关闭你的摄像头')
-            }
-          }
-          break
-        case 'peer-state':
-          // 连麦双方音视频状态同步
-          if (linkmicStreams[msg.userId]) {
-            Object.assign(linkmicStreams[msg.userId], msg.data || {})
-          } else {
-            linkmicStreams[msg.userId] = { ...(msg.data || {}) }
-          }
-          break
-        case 'viewer-count':
-          if (msg.data?.count !== undefined) {
-            realtimeViewerCount.value = msg.data.count
-          }
-          break
-      }
-    },
-    onClose: () => console.log('[Linkmic WS] 断开（将自动重连）')
-  })
-}
-
-// ============ WebRTC P2P ============
-const createPC = (peerId) => {
-  if (linkmicPeerConnections[peerId]) return linkmicPeerConnections[peerId]
-  const pc = new RTCPeerConnection({
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-  })
-  linkmicPeerConnections[peerId] = pc
-
-  pc.ontrack = (event) => {
-    linkmicStreams[peerId] = { stream: event.streams[0] }
-  }
-
-  pc.onicecandidate = (event) => {
-    if (event.candidate) {
-      sendSignaling('ice-candidate', peerId, event.candidate)
-    }
-  }
-
-  pc.onconnectionstatechange = () => {
-    console.log('[Linkmic] PC状态', peerId, pc.connectionState)
-  }
-
-  pc.oniceconnectionstatechange = async () => {
-    if (pc.iceConnectionState === 'failed') {
-      console.warn('[Linkmic] ICE failed, 尝试 restart', peerId)
-      try {
-        // 只有发起方（观众端）能 restart；主播侧由对方触发
-        if (localLinkmicStream.value) {
-          const offer = await pc.createOffer({ iceRestart: true })
-          await pc.setLocalDescription(offer)
-          sendSignaling('offer', peerId, offer.sdp)
-        }
-      } catch (e) {
-        console.error('[Linkmic] ICE restart 失败', e)
-      }
-    }
-  }
-
-  return pc
-}
-
-// 观众侧：主播同意后，由观众发起 offer（观众有摄像头要推给主播）
-const viewerStartConnection = async (streamerId) => {
-  try {
-    if (!localLinkmicStream.value) {
-      localLinkmicStream.value = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-      await nextTick()
-      if (localLinkmicVideoRef.value) {
-        localLinkmicVideoRef.value.srcObject = localLinkmicStream.value
-      }
-    }
-    // 如果旧 PC 还在（重新协商场景），先关掉
-    if (linkmicPeerConnections[streamerId]) {
-      removePC(streamerId)
-    }
-    const pc = createPC(streamerId)
-    localLinkmicStream.value.getTracks().forEach(t => pc.addTrack(t, localLinkmicStream.value))
-    const offer = await pc.createOffer()
-    await pc.setLocalDescription(offer)
-    sendSignaling('offer', streamerId, offer.sdp)
-  } catch (e) {
-    console.error('[Linkmic] viewer start failed', e)
-    ElMessage.error('无法获取摄像头/麦克风')
-  }
-}
-
-const handleOffer = async (peerId, sdp) => {
-  // 主播侧收到观众的 offer，旧 PC 还在则替换（重新协商）
-  if (linkmicPeerConnections[peerId]) {
-    removePC(peerId)
-  }
-  const pc = createPC(peerId)
-  await pc.setRemoteDescription({ type: 'offer', sdp })
-  if (pendingIce[peerId]) {
-    for (const c of pendingIce[peerId]) await pc.addIceCandidate(c)
-    delete pendingIce[peerId]
-  }
-  const answer = await pc.createAnswer()
-  await pc.setLocalDescription(answer)
-  sendSignaling('answer', peerId, answer.sdp)
-}
-
-const handleAnswer = async (peerId, sdp) => {
-  const pc = linkmicPeerConnections[peerId]
-  if (!pc) return
-  await pc.setRemoteDescription({ type: 'answer', sdp })
-  if (pendingIce[peerId]) {
-    for (const c of pendingIce[peerId]) await pc.addIceCandidate(c)
-    delete pendingIce[peerId]
-  }
-}
-
-const handleIceCandidate = async (peerId, candidate) => {
-  const pc = linkmicPeerConnections[peerId]
-  if (pc && pc.remoteDescription) {
-    try { await pc.addIceCandidate(candidate) } catch (e) { console.warn(e) }
-  } else {
-    (pendingIce[peerId] = pendingIce[peerId] || []).push(candidate)
-  }
-}
-
-const sendSignaling = (type, targetUserId, data) => {
-  if (!linkmicWs || !linkmicWs.isOpen()) return
-  linkmicWs.send({
-    type,
-    roomCode: room.value?.streamKey,
-    userId: currentUserId.value,
-    userName: me.value.name,
-    targetUserId,
-    data
-  })
-}
-
-const sendBroadcast = (type, data) => {
-  if (!linkmicWs || !linkmicWs.isOpen()) return
-  linkmicWs.send({
-    type,
-    roomCode: room.value?.streamKey,
-    userId: currentUserId.value,
-    userName: me.value.name,
-    data
-  })
-}
-
-// ============ 业务动作 ============
-const applyLinkmic = async () => {
-  if (!currentUserId.value) {
-    ElMessage.warning('请先登录')
-    return
-  }
-  linkmicLoading.value = true
-  try {
-    const res = await linkmicApi.applyLinkmic(roomId)
-    if (res.code === 200) {
-      myLinkmicId.value = res.data.id
-      // 申请通过后查询队列位置
-      try {
-        const qres = await linkmicApi.getQueuePosition(roomId)
-        if (qres.code === 200) myQueuePosition.value = qres.data || 0
-      } catch (e) {}
-      if (myQueuePosition.value > 0) {
-        ElMessage.success('连麦申请已发送，当前排队第 ' + myQueuePosition.value + ' 位')
-      } else {
-        ElMessage.success('连麦申请已发送，请等待主播同意')
-      }
-      sendBroadcast('linkmic-apply', res.data)
-    } else {
-      ElMessage.error(res.message || '申请失败')
-    }
-  } catch (e) {
-    ElMessage.error('申请连麦失败')
-  } finally {
-    linkmicLoading.value = false
-  }
-}
-
-const acceptLinkmic = async (linkmic) => {
-  try {
-    await linkmicApi.acceptLinkmic(linkmic.id)
-    linkmic.status = 1
-    activeLinkmics.value.push(linkmic)
-    pendingApplications.value = pendingApplications.value.filter(a => a.id !== linkmic.id)
-    // 定向告诉这个观众："你被同意了"，观众收到后会发 offer
-    sendSignaling('linkmic-accepted', linkmic.viewerId, { linkmicId: linkmic.id })
-    ElMessage.success('已同意连麦')
-  } catch (e) {
-    ElMessage.error('操作失败')
-  }
-}
-
-const rejectLinkmic = async (linkmic) => {
-  try {
-    await linkmicApi.rejectLinkmic(linkmic.id)
-    pendingApplications.value = pendingApplications.value.filter(a => a.id !== linkmic.id)
-    sendSignaling('linkmic-rejected', linkmic.viewerId, {})
-  } catch (e) {
-    ElMessage.error('操作失败')
-  }
-}
-
-const disconnectLinkmic = async (linkmic) => {
-  try {
-    await linkmicApi.disconnectLinkmic(linkmic.id)
-    removeLinkmicStream(linkmic.viewerId)
-    activeLinkmics.value = activeLinkmics.value.filter(l => l.id !== linkmic.id)
-    sendSignaling('linkmic-disconnected', linkmic.viewerId, { viewerId: linkmic.viewerId })
-  } catch (e) {
-    ElMessage.error('操作失败')
-  }
-}
-
-const viewerHangup = async () => {
-  if (!myLinkmicId.value) return
-  try {
-    await linkmicApi.disconnectLinkmic(myLinkmicId.value)
-  } catch (e) {}
-  if (room.value?.userId) {
-    sendSignaling('linkmic-disconnected', room.value.userId, { viewerId: currentUserId.value })
-  }
-  myLinkmicId.value = null
-  myQueuePosition.value = 0
-  if (localLinkmicStream.value) {
-    localLinkmicStream.value.getTracks().forEach(t => t.stop())
-    localLinkmicStream.value = null
-  }
-  // 关掉跟主播的 PC
-  if (room.value?.userId) {
-    removePC(room.value.userId)
-  }
-  ElMessage.info('已断开连麦')
-}
-
-const toggleViewerHandRaise = () => {
-  if (!linkmicWs || !linkmicWs.isOpen()) return
-  viewerHandRaised.value = !viewerHandRaised.value
-  sendSignaling('hand-raised', room.value?.userId, { raised: viewerHandRaised.value })
-  ElMessage.info(viewerHandRaised.value ? '已举手，请等待主播接受' : '已放下手')
-}
-
-const removePC = (peerId) => {
-  const pc = linkmicPeerConnections[peerId]
-  if (pc) { pc.close(); delete linkmicPeerConnections[peerId] }
-  delete linkmicStreams[peerId]
-  delete pendingIce[peerId]
-}
-
-const removeLinkmicStream = (viewerId) => {
-  removePC(viewerId)
-}
-
-const cleanupLinkmic = () => {
-  Object.keys(linkmicPeerConnections).forEach(removePC)
-  if (localLinkmicStream.value) {
-    localLinkmicStream.value.getTracks().forEach(t => t.stop())
-    localLinkmicStream.value = null
-  }
-  if (linkmicWs) {
-    try { linkmicWs.close() } catch (e) {}
-    linkmicWs = null
-  }
-}
-
-const setRemoteVideo = (peerId, el) => {
-  if (!el) return
-  const peer = linkmicStreams[peerId]
-  if (peer && peer.stream && el.srcObject !== peer.stream) {
-    el.srcObject = peer.stream
-  }
-}
-
-// ============ 连麦音视频控制 ============
-const toggleLocalAudio = async () => {
-  if (!localLinkmicStream.value) return
-  const track = localLinkmicStream.value.getAudioTracks()[0]
-  if (!track) return
-  track.enabled = !track.enabled
-  localLinkmicAudioEnabled.value = track.enabled
-  // 同步状态给房间内（主播能看到）
-  sendBroadcast('peer-state', {
-    audioEnabled: localLinkmicAudioEnabled.value,
-    videoEnabled: localLinkmicVideoEnabled.value
-  })
-  if (myLinkmicId.value) {
-    try { await linkmicApi.toggleAudio(myLinkmicId.value, track.enabled) } catch (e) {}
-  }
-}
-
-const toggleLocalVideo = async () => {
-  if (!localLinkmicStream.value) return
-  const track = localLinkmicStream.value.getVideoTracks()[0]
-  if (!track) return
-  track.enabled = !track.enabled
-  localLinkmicVideoEnabled.value = track.enabled
-  sendBroadcast('peer-state', {
-    audioEnabled: localLinkmicAudioEnabled.value,
-    videoEnabled: localLinkmicVideoEnabled.value
-  })
-  if (myLinkmicId.value) {
-    try { await linkmicApi.toggleVideo(myLinkmicId.value, track.enabled) } catch (e) {}
-  }
-}
-
-// 主播：让指定连麦观众静音
-const muteLinkmicAudio = (linkmic) => {
-  sendSignaling('mute-target', linkmic.viewerId, { targetUserId: linkmic.viewerId })
-  ElMessage.success('已请求 ' + linkmic.viewerName + ' 静音')
-}
-const muteLinkmicVideo = (linkmic) => {
-  sendSignaling('mute-video-target', linkmic.viewerId, { targetUserId: linkmic.viewerId })
-  ElMessage.success('已请求 ' + linkmic.viewerName + ' 关摄像头')
-}
-
-// ============ 观众反应 ============
-const sendReaction = (emoji) => {
-  if (!linkmicWs || !linkmicWs.isOpen()) return
-  const x = Math.random() * 80 + 10
-  const y = Math.random() * 60 + 20
-  linkmicWs.send({
-    type: 'reaction',
-    roomCode: room.value?.streamKey,
-    userId: currentUserId.value,
-    userName: me.value.name,
-    data: { emoji, x, y }
-  })
-  // 自己立即显示
-  addReaction({ emoji, x, y, from: me.value.name })
-}
-
-const addReaction = (r) => {
-  const id = Date.now() + Math.random()
-  reactions.value.push({ id, ...r })
-  if (reactions.value.length > 20) reactions.value.shift()
-  // 动画 1.5s 后移除
-  setTimeout(() => {
-    reactions.value = reactions.value.filter(r2 => r2.id !== id)
-  }, 1500)
-}
-
-const showReactionPicker = ref(false)
-
-// ============ 弹幕 ============
-const emitDanmaku = (text, color) => {
-  if (!art) return
-  const plugin = art.plugins?.artplayerPluginDanmuku
-  if (plugin && typeof plugin.emit === 'function') {
-    try {
-      plugin.emit({ text, color, border: false })
-    } catch (e) { console.warn('emit danmaku failed', e) }
-  }
-}
-
-const toggleEmojiPicker = () => { showEmojiPicker.value = !showEmojiPicker.value }
-const insertChatEmoji = (e) => { danmakuText.value += e; showEmojiPicker.value = false }
-const sendGift = (gift) => {
-  if (!linkmicWs || !linkmicWs.isOpen()) return
-  linkmicWs.send({
-    type: 'gift',
-    roomCode: room.value?.streamKey,
-    userId: currentUserId.value,
-    userName: me.value.name,
-    data: { emoji: gift.emoji, name: gift.name, cost: gift.cost }
-  })
-  const id = Date.now() + Math.random()
-  gifts.value.push({ id, emoji: gift.emoji, name: gift.name, from: me.value.name })
-  setTimeout(() => { gifts.value = gifts.value.filter(g => g.id !== id) }, 3000)
-  ElMessage.success(`赠送了 ${gift.name}`)
-  showGiftPicker.value = false
-}
-const pinMessage = (item) => {
-  if (!linkmicWs || !linkmicWs.isOpen()) return
-  linkmicWs.send({ type: 'pin-message', roomCode: room.value?.streamKey, userId: currentUserId.value, userName: me.value.name, data: { text: item.text || item.from } })
-  pinnedMessage.value = { text: item.text || item.from, from: item.from || '观众', time: Date.now() }
-}
-const unpinMessage = () => {
-  if (!linkmicWs || !linkmicWs.isOpen()) return
-  linkmicWs.send({ type: 'unpin-message', roomCode: room.value?.streamKey, userId: currentUserId.value })
-  pinnedMessage.value = null
-}
-
-const sendDanmaku = () => {
-  const text = danmakuText.value.trim()
-  if (!text) return
-  const color = danmakuColors[Math.floor(Math.random() * danmakuColors.length)]
-  // 通过 ws 广播，其他观众和自己都会收到 'chat' 推送回来再渲染
-  if (linkmicWs && linkmicWs.isOpen()) {
-    linkmicWs.send({
-      type: 'chat',
-      roomCode: room.value?.streamKey,
-      userId: currentUserId.value,
-      userName: me.value.name,
-      data: { text, color }
-    })
-    // 自己立即看见——侧边聊天 + 画面飘过
-    danmakuList.value.push({
-      id: Date.now(),
-      text,
-      color,
-      from: me.value.name
-    })
-    emitDanmaku(text, color)
-  } else {
-    danmakuList.value.push({
-      id: Date.now(),
-      text,
-      color,
-      from: me.value.name
-    })
-    emitDanmaku(text, color)
-  }
-  danmakuText.value = ''
-}
 </script>
 
 <template>
@@ -855,7 +209,7 @@ const sendDanmaku = () => {
               </div>
             </transition>
             <transition name="fade">
-              <div v-if="room.status === 'offline'" class="stream-ended-overlay">
+              <div v-if="isOfflineRoomStatus(room.status)" class="stream-ended-overlay">
                 <div v-if="currentReplay" class="replay-player-wrap">
                   <div class="replay-header">
                     <span class="replay-title">{{ currentReplay.title }}</span>

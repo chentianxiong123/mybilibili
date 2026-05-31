@@ -1,48 +1,39 @@
 package com.mybilibili.ai.service.impl;
 
-import com.mybilibili.ai.config.UploadFilePathConfig;
 import com.mybilibili.ai.service.AudioExtractService;
+import com.mybilibili.ai.service.VideoProcessingStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 @Service
 public class AudioExtractServiceImpl implements AudioExtractService {
 
     @Autowired
-    private UploadFilePathConfig uploadFilePathConfig;
+    private VideoProcessingStorageService processingStorageService;
 
     @Override
     public boolean extractAudio(Integer manuscriptId, Integer videoId) {
         try {
-            String sourceVideoPath = uploadFilePathConfig.getVideoSourcePath(manuscriptId, videoId);
-            String audioPath = getAudioPath(manuscriptId, videoId);
-
-            java.io.File videoFile = new java.io.File(sourceVideoPath);
-            if (!videoFile.exists()) {
-                System.err.println("[音频提取] 源视频文件不存在: " + sourceVideoPath);
-                return false;
-            }
-
-            java.io.File audioFile = new java.io.File(audioPath);
-            java.io.File audioDir = audioFile.getParentFile();
-            if (audioDir != null && !audioDir.exists()) {
-                audioDir.mkdirs();
-            }
+            Path sourceVideoPath = processingStorageService.materializeSourceVideo(manuscriptId, videoId);
+            Path audioPath = processingStorageService.getAudioPath(manuscriptId, videoId);
+            Files.createDirectories(audioPath.getParent());
 
             System.out.println("[音频提取] 开始提取音频: " + audioPath);
 
             ProcessBuilder pb = new ProcessBuilder(
                 "ffmpeg",
-                "-i", sourceVideoPath,
+                "-i", sourceVideoPath.toString(),
                 "-vn",
                 "-acodec", "pcm_s16le",
                 "-ar", "16000",
                 "-ac", "1",
                 "-y",
-                audioPath
+                audioPath.toString()
             );
             pb.redirectErrorStream(true);
 
@@ -58,7 +49,12 @@ public class AudioExtractServiceImpl implements AudioExtractService {
             int exitCode = process.waitFor();
             System.out.println("[音频提取] 退出码: " + exitCode);
 
-            return exitCode == 0;
+            if (exitCode != 0 || !Files.exists(audioPath) || Files.size(audioPath) == 0) {
+                return false;
+            }
+
+            processingStorageService.uploadAudio(manuscriptId, videoId, audioPath);
+            return true;
 
         } catch (Exception e) {
             System.err.println("[音频提取] 异常: " + e.getMessage());
@@ -69,6 +65,6 @@ public class AudioExtractServiceImpl implements AudioExtractService {
 
     @Override
     public String getAudioPath(Integer manuscriptId, Integer videoId) {
-        return uploadFilePathConfig.getAudioPath(manuscriptId, videoId);
+        return processingStorageService.getAudioPath(manuscriptId, videoId).toString();
     }
 }

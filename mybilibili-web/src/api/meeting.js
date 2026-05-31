@@ -4,6 +4,9 @@ export const meetingApi = {
   createRoom(roomName) {
     return api.post('/meeting/create', null, { params: { roomName } })
   },
+  reserveRoom(data) {
+    return api.post('/meeting/reserve', data)
+  },
   getRoom(roomCode) {
     return api.get(`/meeting/room/${roomCode}`)
   },

@@ -107,6 +107,89 @@ export const manuscriptApi = {
       } : undefined
     })
   },
+  /**
+   * 创建分片上传会话
+   * @param {Object} payload - 稿件元数据
+   * @param {string} payload.title - 稿件标题
+   * @param {string} payload.description - 稿件描述
+   * @param {number} payload.categoryId - 分类ID
+   * @param {string[]} payload.tags - 标签数组
+   * @param {Array} payload.videos - 视频分P数组
+   * @param {string} payload.videos[].title - 分P标题
+   * @param {string} payload.videos[].fileName - 原始文件名
+   * @param {number} payload.videos[].size - 文件大小
+   * @param {number} payload.videos[].videoOrder - 排序顺序
+   * @param {number} payload.videos[].durationSeconds - 时长秒数
+   * @param {number} payload.videos[].totalChunks - 分片总数
+   */
+  createUploadSession: (payload) => {
+    return api.post('/manuscript/upload-session', payload, {
+      headers: { 'Content-Type': 'application/json' }
+    })
+  },
+
+  /**
+   * 获取分片上传会话状态
+   * @param {string} uploadId - 上传会话ID
+   */
+  getUploadSessionStatus: (uploadId) => {
+    return api.get(`/manuscript/upload-session/${uploadId}`)
+  },
+
+  /**
+   * 上传单个视频分片
+   * @param {Object} chunkData - 分片数据
+   * @param {string} chunkData.uploadId - 上传会话ID
+   * @param {number} chunkData.partIndex - 分P索引
+   * @param {number} chunkData.chunkIndex - 分片序号
+   * @param {number} chunkData.totalChunks - 分片总数
+   * @param {File} chunkData.file - 分片文件
+   * @param {Function} onProgress - 上传进度回调
+   */
+  uploadChunk: (chunkData, onProgress) => {
+    const formData = new FormData()
+    formData.append('uploadId', chunkData.uploadId)
+    formData.append('partIndex', chunkData.partIndex)
+    formData.append('chunkIndex', chunkData.chunkIndex)
+    formData.append('totalChunks', chunkData.totalChunks)
+    formData.append('file', chunkData.file)
+    return api.post('/manuscript/upload-chunk', formData, {
+      timeout: 120000,
+      onUploadProgress: onProgress ? (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+        onProgress(percentCompleted)
+        return percentCompleted
+      } : undefined
+    })
+  },
+
+  /**
+   * 完成分片上传并提交稿件
+   * @param {string} uploadId - 上传会话ID
+   * @param {File} cover - 封面文件
+   * @param {Function} onProgress - 上传进度回调
+   */
+  completeUploadSession: (uploadId, cover, onProgress) => {
+    const formData = new FormData()
+    formData.append('uploadId', uploadId)
+    formData.append('cover', cover)
+    return api.post('/manuscript/upload-complete', formData, {
+      timeout: 600000,
+      onUploadProgress: onProgress ? (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+        onProgress(percentCompleted)
+        return percentCompleted
+      } : undefined
+    })
+  },
+
+  /**
+   * 取消分片上传会话
+   * @param {string} uploadId - 上传会话ID
+   */
+  cancelUploadSession: (uploadId) => {
+    return api.delete(`/manuscript/upload-session/${uploadId}`)
+  },
 
   /**
    * 获取稿件列表
