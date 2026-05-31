@@ -135,8 +135,12 @@ public class VideoSearchServiceImpl implements VideoSearchService {
         try {
             NativeQuery searchQuery = new NativeQueryBuilder()
                     .withQuery(q -> q.bool(b -> b
-                            .must(m -> m.prefix(p -> p.field("title").value(keyword)))
                             .must(m -> m.term(t -> t.field("status").value(PUBLISHED_STATUS)))
+                            .must(m -> m.bool(inner -> inner
+                                    .should(s -> s.matchPhrasePrefix(mp -> mp.field("title").query(keyword).boost(3.0f)))
+                                    .should(s -> s.prefix(p -> p.field("tags").value(keyword).boost(2.0f)))
+                                    .should(s -> s.matchPhrasePrefix(mp -> mp.field("description").query(keyword).boost(1.0f)))
+                            ))
                     ))
                     .withPageable(PageRequest.of(0, 10))
                     .build();
@@ -144,14 +148,34 @@ public class VideoSearchServiceImpl implements VideoSearchService {
             SearchHits<ManuscriptDocument> searchHits = elasticsearchTemplate.search(
                     searchQuery, ManuscriptDocument.class);
 
-            return searchHits.getSearchHits().stream()
-                    .map(hit -> hit.getContent().getTitle())
-                    .distinct()
-                    .limit(10)
-                    .collect(Collectors.toList());
+            List<String> suggestions = new ArrayList<>();
+            for (var hit : searchHits.getSearchHits()) {
+                ManuscriptDocument doc = hit.getContent();
+                if (doc.getTitle() != null && !suggestions.contains(doc.getTitle())) {
+                    suggestions.add(doc.getTitle());
+                }
+                if (suggestions.size() >= 8) break;
+            }
+
+            if (suggestions.size() < 8) {
+                for (var hit : searchHits.getSearchHits()) {
+                    ManuscriptDocument doc = hit.getContent();
+                    if (doc.getTags() != null) {
+                        for (String tag : doc.getTags()) {
+                            if (tag.contains(keyword) && !suggestions.contains(tag)) {
+                                suggestions.add(tag);
+                                if (suggestions.size() >= 10) break;
+                            }
+                        }
+                    }
+                    if (suggestions.size() >= 10) break;
+                }
+            }
+
+            return suggestions;
 
         } catch (Exception e) {
-            log.error("获取搜���建议失败，keyword: {}, error: {}", keyword, e.getMessage(), e);
+            log.error("获取搜索建议失败, keyword: {}, error: {}", keyword, e.getMessage(), e);
             return new ArrayList<>();
         }
     }

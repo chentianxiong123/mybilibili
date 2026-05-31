@@ -95,6 +95,26 @@ const showAllHistory = ref(false)
 const isSearchFocused = ref(false)
 const searchHistory = ref([])
 const hotSearchList = ref([])
+const suggestList = ref([])
+let suggestTimer = null
+
+watch(searchText, (val) => {
+  clearTimeout(suggestTimer)
+  if (!val || val.trim().length < 1) {
+    suggestList.value = []
+    return
+  }
+  suggestTimer = setTimeout(async () => {
+    try {
+      const res = await searchApi.getSearchSuggestions(val.trim())
+      if (res.code === 200 && res.data) {
+        suggestList.value = res.data.slice(0, 8)
+      }
+    } catch (e) {
+      suggestList.value = []
+    }
+  }, 300)
+})
 
 // 从 localStorage 加载搜索历史
 const loadSearchHistory = () => {
@@ -352,6 +372,12 @@ const handleHotSearchClick = (keyword) => {
   handleSearch()
 }
 
+const handleSuggestClick = (keyword) => {
+  searchText.value = keyword
+  suggestList.value = []
+  handleSearch()
+}
+
 // 清空搜索历史
 const clearSearchHistory = () => {
   searchHistory.value = []
@@ -480,8 +506,20 @@ onUnmounted(() => {
           </el-input>
           <!-- 搜索下拉框 -->
           <div class="search-dropdown" v-show="showSearchDropdown" @mousedown="handleSearchContentMouseDown">
+            <!-- 搜索联想词 -->
+            <div class="search-suggestions" v-if="suggestList.length > 0 && searchText.trim()">
+              <div
+                v-for="(item, index) in suggestList"
+                :key="'suggest-' + index"
+                class="suggest-item"
+                @click="handleSuggestClick(item)"
+              >
+                <el-icon class="suggest-icon"><Search /></el-icon>
+                <span class="suggest-text">{{ item }}</span>
+              </div>
+            </div>
             <!-- 搜索历史 -->
-            <div class="search-history" v-if="searchHistory.length > 0">
+            <div class="search-history" v-if="searchHistory.length > 0 && !searchText.trim()">
               <div class="search-history-header">
                 <span class="search-history-title">搜索历史</span>
                 <span class="clear-history" @click="clearSearchHistory">清除</span>
@@ -778,6 +816,37 @@ onUnmounted(() => {
 }
 
 /* 搜索下拉框 */
+.search-suggestions {
+  padding: 8px 0;
+}
+
+.suggest-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.suggest-item:hover {
+  background: #f5f7fa;
+}
+
+.suggest-icon {
+  color: #9499a0;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.suggest-text {
+  font-size: 14px;
+  color: #18191c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .search-dropdown {
   position: absolute;
   top: 100%;
