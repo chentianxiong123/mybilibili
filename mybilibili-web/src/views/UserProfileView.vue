@@ -11,6 +11,7 @@ import { userPrivacyApi } from '../api/userPrivacy.js'
 import api from '../api/index.js'
 import CommentSystem from '../components/CommentSystem.vue'
 import FansList from '../components/FansList.vue'
+import InterestsPanel from '../components/profile/InterestsPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -135,6 +136,7 @@ const activeTab = computed(() => {
   if (path.endsWith('/collections')) return '合集和列表'
   if (path.endsWith('/favorites')) return '收藏'
   if (path.endsWith('/settings')) return '设置'
+  if (path.endsWith('/interests')) return '兴趣画像'
   if (path.endsWith('/following')) return '关注'
   if (path.endsWith('/followers')) return '粉丝'
   if (path.endsWith('/search')) return '搜索'
@@ -162,6 +164,9 @@ const handleTabClick = (tab) => {
       break
     case '设置':
       path = `/profile/${userId.value}/settings`
+      break
+    case '兴趣画像':
+      path = `/profile/${userId.value}/interests`
       break
     case '关注':
       path = `/profile/${userId.value}/following`
@@ -1969,7 +1974,7 @@ onMounted(() => {
         <!-- 左侧选择栏 -->
         <div class="profile-tabs">
           <div
-            v-for="tab in (isOwnSpace ? ['主页', '动态', '投稿', '合集和列表', '收藏', '设置'] : ['主页', '动态', '投稿', '合集和列表', '收藏'])"
+            v-for="tab in (isOwnSpace ? ['主页', '动态', '投稿', '合集和列表', '收藏', '兴趣画像', '设置'] : ['主页', '动态', '投稿', '合集和列表', '收藏'])"
             :key="tab"
             :class="['tab-item', { active: activeTab === tab }]"
             @click="handleTabClick(tab)"
@@ -3146,6 +3151,11 @@ onMounted(() => {
           </div>
         </div>
 
+        <!-- 兴趣画像 -->
+        <div v-else-if="activeTab === '兴趣画像'" class="interests-section">
+          <InterestsPanel />
+        </div>
+
         <!-- 设置页面 -->
         <div v-else-if="activeTab === '设置'" class="settings-section">
           <div class="settings-container">
@@ -3249,7 +3259,7 @@ onMounted(() => {
       </div>
 
       <!-- 右侧内容区域 - 投稿、合集和列表、收藏、关注、粉丝页面不显示 -->
-      <div v-if="activeTab !== '投稿' && activeTab !== '合集和列表' && activeTab !== '收藏' && activeTab !== '关注' && activeTab !== '粉丝'" class="side-content">
+      <div v-if="activeTab !== '投稿' && activeTab !== '合集和列表' && activeTab !== '收藏' && activeTab !== '关注' && activeTab !== '粉丝' && activeTab !== '兴趣画像'" class="side-content">
         <!-- 公告 -->
         <div class="content-section" v-if="activeTab === '主页'">
           <h3 class="section-title">公告</h3>

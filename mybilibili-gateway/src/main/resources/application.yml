@@ -517,6 +517,14 @@ spring:
           filters:
             - StripPrefix=1
 
+        # ========== 用户画像 ==========
+        - id: user-profile-api
+          uri: lb://mybilibili-interaction
+          predicates:
+            - Path=/api/profile/**
+          filters:
+            - StripPrefix=1
+
         # 动态评论接口
         - id: dynamic-comment
           uri: lb://mybilibili-comment
@@ -619,6 +627,22 @@ spring:
           uri: lb://mybilibili-live
           predicates:
             - Path=/ws/meeting
+          filters:
+            - StripPrefix=0
+
+        # ========== WebSocket 通知推送 ==========
+        - id: notification-websocket
+          uri: lb://mybilibili-message
+          predicates:
+            - Path=/ws/notification
+          filters:
+            - StripPrefix=0
+
+        # ========== WebSocket 弹幕实时推送 ==========
+        - id: danmaku-websocket
+          uri: lb://mybilibili-danmaku
+          predicates:
+            - Path=/ws/danmaku
           filters:
             - StripPrefix=0
 

@@ -10,6 +10,7 @@ import com.mybilibili.danmaku.feign.VideoClient;
 import com.mybilibili.danmaku.repository.DanmakuRepository;
 import com.mybilibili.danmaku.service.DanmakuService;
 import com.mybilibili.danmaku.vo.DanmakuVO;
+import com.mybilibili.danmaku.websocket.DanmakuBroadcastService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -39,6 +40,9 @@ public class DanmakuServiceImpl implements DanmakuService {
 
     @Autowired
     private MongoTemplate mongoTemplate;
+
+    @Autowired
+    private DanmakuBroadcastService broadcastService;
 
     @Override
     public Result<List<DanmakuVO>> getDanmakus(Integer videoId) {
@@ -87,6 +91,18 @@ public class DanmakuServiceImpl implements DanmakuService {
         }
 
         danmakuRepository.save(danmaku);
+
+        broadcastService.broadcast(danmaku.getVideoId(), Map.of(
+                "type", "danmaku",
+                "videoId", danmaku.getVideoId(),
+                "userId", userId,
+                "content", danmaku.getContent(),
+                "time", danmaku.getTime(),
+                "color", danmaku.getColor(),
+                "mode", danmaku.getMode(),
+                "timestamp", System.currentTimeMillis()
+        ));
+
         return Result.<Void>success();
     }
 

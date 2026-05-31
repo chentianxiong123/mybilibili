@@ -10,6 +10,7 @@ import com.mybilibili.message.mapper.MessageMapper;
 import com.mybilibili.message.service.ConversationService;
 import com.mybilibili.message.service.MessageService;
 import com.mybilibili.message.service.MessageSettingService;
+import com.mybilibili.message.websocket.NotificationPushService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,18 @@ public class MessageServiceImpl implements MessageService {
 
     @Autowired
     private MessageSettingService messageSettingService;
+
+    @Autowired
+    private NotificationPushService notificationPushService;
+
+    private void pushNotificationAndCounts(Integer receiverId, String notificationType, String content) {
+        try {
+            notificationPushService.pushToUser(receiverId, notificationType, notificationType, content);
+            Map<String, Integer> counts = getUnreadCounts(receiverId);
+            notificationPushService.pushUnreadCount(receiverId, counts);
+        } catch (Exception ignored) {
+        }
+    }
 
     private boolean isNotificationEnabled(Integer receiverId, Integer messageType) {
         try {
@@ -82,6 +95,8 @@ public class MessageServiceImpl implements MessageService {
         receiverConversation.setLastMessageTime(new Date());
         receiverConversation.setUnreadCount(receiverConversation.getUnreadCount() + 1);
         conversationMapper.update(receiverConversation);
+
+        pushNotificationAndCounts(dto.getReceiverId(), "private", dto.getContent());
 
         return getMessageById(message.getId());
     }
@@ -197,6 +212,7 @@ public class MessageServiceImpl implements MessageService {
         message.setTargetId(videoId);
         message.setIsRead(false);
         messageMapper.insert(message);
+        pushNotificationAndCounts(receiverId, "like", message.getContent());
     }
 
     @Override
@@ -209,6 +225,7 @@ public class MessageServiceImpl implements MessageService {
         message.setMessageType(5);
         message.setIsRead(false);
         messageMapper.insert(message);
+        pushNotificationAndCounts(userId, "system", content);
     }
 
     @Override
@@ -223,6 +240,7 @@ public class MessageServiceImpl implements MessageService {
         message.setCommentId(commentId);
         message.setIsRead(false);
         messageMapper.insert(message);
+        pushNotificationAndCounts(receiverId, "reply", content);
     }
 
     @Override
@@ -242,6 +260,7 @@ public class MessageServiceImpl implements MessageService {
         message.setCommentId(commentId);
         message.setIsRead(false);
         messageMapper.insert(message);
+        pushNotificationAndCounts(receiverId, "like", message.getContent());
     }
 
     @Override
@@ -257,6 +276,7 @@ public class MessageServiceImpl implements MessageService {
                 message.setMessageType(5);
                 message.setIsRead(false);
                 messageMapper.insert(message);
+                pushNotificationAndCounts(userId, "system", content);
             } catch (Exception e) {
                 org.slf4j.LoggerFactory.getLogger(getClass()).warn("向用户 {} 发送系统通知失败: {}", userId, e.getMessage());
             }

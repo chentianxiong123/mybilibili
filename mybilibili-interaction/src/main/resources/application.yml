@@ -14,6 +14,8 @@ spring:
       host: 127.0.0.1
       port: 6379
       database: 1
+    mongodb:
+      uri: mongodb://127.0.0.1:27017/mybilibili
   cloud:
     nacos:
       discovery:

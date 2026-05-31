@@ -3,6 +3,7 @@ import { ref, onMounted, nextTick } from 'vue'
 import { ArrowLeft, ArrowRight, View, Star } from '@element-plus/icons-vue'
 import { videoApi, commentApi } from '../api/index.js'
 import { manuscriptApi } from '../api/manuscript.js'
+import { recommendApi } from '../api/recommend.js'
 import { getHomeBanners } from '../api/banner.js'
 
 // 轮播图数据
@@ -83,10 +84,41 @@ const fetchVideoList = async () => {
 
   loading.value = true
   try {
-    // 获取推荐稿件列表
-    const recommendedResponse = await manuscriptApi.getRecommendedManuscripts()
-    if (recommendedResponse.code === 200) {
-      const manuscripts = recommendedResponse.data
+    let manuscripts = null
+
+    // 已登录用户尝试个性化推荐
+    const token = localStorage.getItem('token')
+    if (token) {
+      try {
+        const forYouResponse = await recommendApi.getRecommendedVideos(30)
+        if (forYouResponse.code === 200 && forYouResponse.data && forYouResponse.data.length > 0) {
+          manuscripts = forYouResponse.data.map(item => ({
+            id: item.manuscriptId,
+            firstVideoId: item.videoId,
+            title: item.title,
+            coverUrl: item.coverUrl,
+            viewCount: item.viewCount || 0,
+            commentCount: item.commentCount || 0,
+            userId: item.userId,
+            userName: item.userName,
+            duration: item.duration,
+            uploadTime: item.uploadTime
+          }))
+        }
+      } catch (e) {
+        // 个性化推荐失败，回退到默认列表
+      }
+    }
+
+    // 回退到推荐稿件列表
+    if (!manuscripts || manuscripts.length === 0) {
+      const recommendedResponse = await manuscriptApi.getRecommendedManuscripts()
+      if (recommendedResponse.code === 200) {
+        manuscripts = recommendedResponse.data
+      }
+    }
+
+    if (manuscripts) {
 
       // 清空现有视频列表
       videoList.value = []

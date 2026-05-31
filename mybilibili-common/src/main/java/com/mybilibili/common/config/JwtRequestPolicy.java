@@ -18,7 +18,9 @@ final class JwtRequestPolicy {
             "/user/email/code",
             "/user/email/verify",
             "/user/password/forgot",
-            "/user/default-avatar"
+            "/user/default-avatar",
+            "/ws/notification",
+            "/ws/danmaku"
     );
 
     private static final List<String> PUBLIC_GET_PREFIXES = List.of(

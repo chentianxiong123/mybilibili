@@ -4,6 +4,7 @@ import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.VideoVO;
 import com.mybilibili.common.vo.WatchHistoryVO;
 import com.mybilibili.interaction.feign.VideoClient;
+import com.mybilibili.interaction.service.UserProfileService;
 import com.mybilibili.interaction.service.WatchHistoryService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,9 @@ public class WatchHistoryServiceImpl implements WatchHistoryService {
 
     @Autowired
     private VideoClient videoClient;
+
+    @Autowired
+    private UserProfileService userProfileService;
 
     private static final String KEY_WATCH_HISTORY_LIST = "watch_history:user:%s";
     private static final String KEY_WATCH_HISTORY_DETAIL = "watch_history:detail:%s:%s";
@@ -113,6 +117,16 @@ public class WatchHistoryServiceImpl implements WatchHistoryService {
 
         redisTemplate.expire(listKey, EXPIRE_DAYS, TimeUnit.DAYS);
         redisTemplate.expire(detailKey, EXPIRE_DAYS, TimeUnit.DAYS);
+
+        try {
+            Result<VideoVO> videoResult = videoClient.getVideoById(videoId);
+            if (videoResult != null && videoResult.getCode() == 200 && videoResult.getData() != null) {
+                VideoVO video = videoResult.getData();
+                userProfileService.recordWatch(userId, video.getCategoryId(), video.getTags(), videoDuration);
+            }
+        } catch (Exception e) {
+            log.debug("更新用户画像失败: {}", e.getMessage());
+        }
 
         log.debug("记录用户 {} 的视频 {} 浏览历史", userId, videoId);
     }

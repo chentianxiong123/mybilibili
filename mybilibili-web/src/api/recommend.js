@@ -34,7 +34,7 @@ export const recommendApi = {
    * @returns {Promise} 个性化推荐视频列表
    */
   getRecommendedVideos: (size = 10) => {
-    return api.get(`/recommend/personalized?size=${size}`)
+    return api.get(`/recommend/for-you?size=${size}`)
   },
 
   /**

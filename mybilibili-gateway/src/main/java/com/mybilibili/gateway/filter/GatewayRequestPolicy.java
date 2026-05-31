@@ -46,7 +46,9 @@ public final class GatewayRequestPolicy {
             "/api/user/password/forgot",
             "/api/user/default-avatar",
             "/api/admin/login",
-            "/api/live/room/srs/hook"
+            "/api/live/room/srs/hook",
+            "/ws/notification",
+            "/ws/danmaku"
     );
 
     private static final List<String> ADMIN_PATH_PREFIXES = List.of(
@@ -130,7 +132,8 @@ public final class GatewayRequestPolicy {
             "/api/live/linkmic/",
             "/api/live/room/create",
             "/api/live/room/my",
-            "/api/meeting/"
+            "/api/meeting/",
+            "/api/profile/"
     );
 
     private static final Pattern PUBLIC_USER_PROFILE =

@@ -16,6 +16,7 @@ import UserFloatCard from '../components/UserFloatCard.vue'
 import LevelBadge from '../components/LevelBadge.vue'
 import AiAssistantPanel from '../components/AiAssistantPanel.vue'
 import { subtitleApi } from '../api/subtitle.js'
+import { useDanmakuWs } from '../composables/useDanmakuWs.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -112,6 +113,25 @@ const loadingDanmus = ref(false)
 
 // 弹幕列表折叠状态
 const isDanmuListCollapsed = ref(false)
+
+// 弹幕实时 WebSocket
+const { connect: connectDanmakuWs, disconnect: disconnectDanmakuWs, onDanmaku } = useDanmakuWs()
+onDanmaku((msg) => {
+  if (art && art.plugins && art.plugins.artplayerPluginDanmuku) {
+    art.plugins.artplayerPluginDanmuku.emit({
+      text: msg.content,
+      time: msg.time,
+      color: msg.color || '#ffffff',
+      mode: msg.mode || 0
+    })
+  }
+  danmuList.value.push({
+    text: msg.content,
+    time: msg.time,
+    color: msg.color || '#ffffff',
+    sendTime: formatDate(new Date())
+  })
+})
 
 
 
@@ -1729,6 +1749,11 @@ onMounted(async () => {
       // 获取视频弹幕
       await loadDanmakus()
 
+      // 连接弹幕实时 WebSocket
+      if (currentVideo) {
+        connectDanmakuWs(currentVideo.id)
+      }
+
       // 加载相关视频推荐
       await loadRelatedVideos()
       
@@ -2037,6 +2062,9 @@ onUnmounted(() => {
   // 移除点击外部区域的事件监听
   document.removeEventListener('click', handleClickOutside)
 
+  // 断开弹幕 WebSocket
+  disconnectDanmakuWs()
+
   // 销毁视频播放器
   if (art) {
     art.destroy()
@@ -2147,6 +2175,12 @@ watch(() => [route.query.p, route.query.t], ([newP, newT]) => {
       loadInteractionStatus()
       loadComments(commentSort.value)
       loadSubtitles()
+
+      // 重连弹幕 WebSocket 到新视频
+      const switchedVideo = manuscriptInfo.value.videos[currentVideoIndex.value]
+      if (switchedVideo) {
+        connectDanmakuWs(switchedVideo.id)
+      }
     }
   } else if (resumeTime.value > 0 && art) {
     setTimeout(() => applyResumeTime(resumeTime.value), 100)

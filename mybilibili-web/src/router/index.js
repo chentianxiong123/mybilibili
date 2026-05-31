@@ -70,7 +70,8 @@ const router = createRouter({
         { path: 'create-center', name: 'profile-create-center', component: () => import('../views/UserProfileView.vue'), meta: { title: '创作中心 - 哔哩哔哩', layout: 'simple' } },
         { path: 'settings', name: 'profile-settings', component: () => import('../views/UserProfileView.vue'), meta: { title: '设置 - 哔哩哔哩', layout: 'simple' } },
         { path: 'following', name: 'profile-following', component: () => import('../views/UserProfileView.vue'), meta: { title: '关注 - 哔哩哔哩', layout: 'simple' } },
-        { path: 'followers', name: 'profile-followers', component: () => import('../views/UserProfileView.vue'), meta: { title: '粉丝 - 哔哩哔哩', layout: 'simple' } }
+        { path: 'followers', name: 'profile-followers', component: () => import('../views/UserProfileView.vue'), meta: { title: '粉丝 - 哔哩哔哩', layout: 'simple' } },
+        { path: 'interests', name: 'profile-interests', component: () => import('../views/UserProfileView.vue'), meta: { title: '兴趣画像 - 哔哩哔哩', layout: 'simple' } }
       ]
     },
     {

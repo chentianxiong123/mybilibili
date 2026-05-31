@@ -6,6 +6,7 @@ import com.mybilibili.common.enums.InteractionType;
 import com.mybilibili.common.exception.BusinessException;
 import com.mybilibili.common.vo.VideoVO;
 import com.mybilibili.interaction.mapper.*;
+import com.mybilibili.interaction.service.UserProfileService;
 import com.mybilibili.interaction.service.VideoInteractionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +43,9 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
     @Autowired
     private StringRedisTemplate redisTemplate;
 
+    @Autowired
+    private UserProfileService userProfileService;
+
     private static final String TARGET_TYPE_MANUSCRIPT = "MANUSCRIPT";
 
     @Override
@@ -74,6 +78,8 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
 
         manuscriptMapper.updateLikeCount(manuscriptId, 1);
         userMapper.updateLikedCount(userId, 1);
+
+        updateProfileForManuscript(userId, manuscriptId, "like");
 
         return true;
     }
@@ -177,6 +183,8 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
         userInteractionMapper.insert(interaction);
 
         manuscriptMapper.updateCollectCount(manuscriptId, 1);
+
+        updateProfileForManuscript(userId, manuscriptId, "collect");
 
         return true;
     }
@@ -782,5 +790,21 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
         }
 
         return videoVO;
+    }
+
+    private void updateProfileForManuscript(Integer userId, Integer manuscriptId, String action) {
+        try {
+            Manuscript manuscript = manuscriptMapper.selectBasicFieldsById(manuscriptId);
+            if (manuscript == null) return;
+            Integer categoryId = manuscript.getCategoryId();
+            List<String> tags = manuscript.getTags();
+            if ("like".equals(action)) {
+                userProfileService.recordLike(userId, categoryId, tags);
+            } else if ("collect".equals(action)) {
+                userProfileService.recordCollect(userId, categoryId, tags);
+            }
+        } catch (Exception e) {
+            log.debug("更新用户画像失败: {}", e.getMessage());
+        }
     }
 }

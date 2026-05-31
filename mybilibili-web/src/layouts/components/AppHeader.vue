@@ -9,6 +9,7 @@ import { ElMessage } from 'element-plus'
 import { userApi } from '../../api/index.js'
 import { messageApi } from '../../api/message.js'
 import { searchApi } from '../../api/search.js'
+import { useNotificationWs } from '../../composables/useNotificationWs.js'
 import MessageDropdown from './dropdowns/MessageDropdown.vue'
 import DynamicDropdown from './dropdowns/DynamicDropdown.vue'
 import FavoriteDropdown from './dropdowns/FavoriteDropdown.vue'
@@ -26,6 +27,8 @@ const emit = defineEmits(['showLogin', 'logout'])
 
 const router = useRouter()
 const route = useRoute()
+
+const { unreadCounts: wsUnreadCounts, connect: wsConnect, disconnect: wsDisconnect } = useNotificationWs()
 
 
 
@@ -76,6 +79,12 @@ const fetchUnreadCounts = async () => {
     }
   }
 }
+
+watch(wsUnreadCounts, (counts) => {
+  if (counts) {
+    unreadCounts.value = { ...unreadCounts.value, ...counts }
+  }
+}, { deep: true })
 
 
 
@@ -209,6 +218,7 @@ const handleLogout = () => {
   localStorage.removeItem('token')
   isLogged.value = false
   userInfo.value = null
+  wsDisconnect()
   ElMessage.success('退出登录成功')
   emit('logout')
 }
@@ -395,8 +405,13 @@ onMounted(() => {
   
   // 获取未读消息数
   fetchUnreadCounts()
-  // 定时刷新未读消息数（每30秒）
-  const unreadInterval = setInterval(fetchUnreadCounts, 30000)
+  // 定时刷新未读消息数（每60秒，WS 作为主通道，轮询作为兜底）
+  const unreadInterval = setInterval(fetchUnreadCounts, 60000)
+
+  // 建立 WebSocket 通知连接
+  if (localStorage.getItem('token')) {
+    wsConnect()
+  }
   
   // 加载搜索历史
   loadSearchHistory()
@@ -407,6 +422,7 @@ onMounted(() => {
   // 清理函数
   onUnmounted(() => {
     clearInterval(unreadInterval)
+    wsDisconnect()
   })
 })
 

@@ -2,9 +2,11 @@ package com.mybilibili.search.service.impl;
 
 import com.mybilibili.common.document.ManuscriptDocument;
 import com.mybilibili.common.utils.JwtUtils;
+import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.VideoRecommendVO;
 import com.mybilibili.common.vo.VideoVO;
 import com.mybilibili.common.vo.WatchHistoryVO;
+import com.mybilibili.search.feign.UserProfileClient;
 import com.mybilibili.search.service.VideoRecommendService;
 import lombok.extern.slf4j.Slf4j;
 import co.elastic.clients.elasticsearch._types.SortOptions;
@@ -29,6 +31,9 @@ public class VideoRecommendServiceImpl implements VideoRecommendService {
 
     @Autowired
     private ElasticsearchTemplate elasticsearchRestTemplate;
+
+    @Autowired
+    private UserProfileClient userProfileClient;
 
     private static final Integer PUBLISHED_STATUS = 3;
     private static final int DEFAULT_SIZE = 10;
@@ -157,11 +162,124 @@ public class VideoRecommendServiceImpl implements VideoRecommendService {
         size = Math.max(1, Math.min(size, MAX_SIZE));
 
         try {
-            return getHotVideos(null, size);
+            Map<String, Object> profile = fetchUserProfile(userId);
+            if (profile == null || profile.isEmpty()) {
+                return getHotVideos(null, size);
+            }
+
+            @SuppressWarnings("unchecked")
+            Map<String, Number> categoryWeights = (Map<String, Number>) profile.get("categoryWeights");
+            @SuppressWarnings("unchecked")
+            Map<String, Number> tagWeights = (Map<String, Number>) profile.get("tagWeights");
+
+            if ((categoryWeights == null || categoryWeights.isEmpty()) &&
+                (tagWeights == null || tagWeights.isEmpty())) {
+                return getHotVideos(null, size);
+            }
+
+            List<Query> profileClauses = new ArrayList<>();
+
+            if (categoryWeights != null) {
+                List<Map.Entry<String, Number>> topCategories = categoryWeights.entrySet().stream()
+                        .sorted(Map.Entry.<String, Number>comparingByValue(
+                                Comparator.comparingDouble(Number::doubleValue)).reversed())
+                        .limit(5)
+                        .toList();
+                for (Map.Entry<String, Number> entry : topCategories) {
+                    float boost = Math.max(1.0f, entry.getValue().floatValue());
+                    String catId = entry.getKey();
+                    profileClauses.add(Query.of(q -> q.term(t ->
+                            t.field("categoryId").value(catId).boost(boost))));
+                }
+            }
+
+            if (tagWeights != null) {
+                List<Map.Entry<String, Number>> topTags = tagWeights.entrySet().stream()
+                        .sorted(Map.Entry.<String, Number>comparingByValue(
+                                Comparator.comparingDouble(Number::doubleValue)).reversed())
+                        .limit(10)
+                        .toList();
+                for (Map.Entry<String, Number> entry : topTags) {
+                    float boost = Math.max(1.0f, entry.getValue().floatValue() * 0.5f);
+                    String tag = entry.getKey();
+                    profileClauses.add(Query.of(q -> q.term(t ->
+                            t.field("tags").value(tag).boost(boost))));
+                }
+            }
+
+            Query profileQuery = Query.of(q -> q.bool(b -> {
+                for (Query clause : profileClauses) {
+                    b.should(clause);
+                }
+                return b;
+            }));
+
+            NativeQuery searchQuery = new NativeQueryBuilder()
+                    .withQuery(q -> q.bool(b -> b
+                            .must(m -> m.term(t -> t.field("status").value(PUBLISHED_STATUS)))
+                            .should(profileQuery)
+                    ))
+                    .withSort(SortOptions.of(s -> s.score(sc -> sc.order(SortOrder.Desc))))
+                    .withPageable(PageRequest.of(0, size))
+                    .build();
+
+            SearchHits<ManuscriptDocument> searchHits = elasticsearchRestTemplate.search(
+                    searchQuery, ManuscriptDocument.class);
+
+            List<VideoRecommendVO> result = new ArrayList<>();
+            for (SearchHit<ManuscriptDocument> hit : searchHits.getSearchHits()) {
+                VideoRecommendVO vo = convertToVO(hit);
+                vo.setRecommendReason(generateProfileRecommendReason(hit.getContent(), categoryWeights, tagWeights));
+                vo.setScore((double) hit.getScore());
+                result.add(vo);
+            }
+
+            if (result.size() < size) {
+                List<VideoRecommendVO> hotFill = getHotVideos(null, size - result.size());
+                Set<Integer> existingIds = result.stream()
+                        .map(VideoRecommendVO::getManuscriptId).collect(Collectors.toSet());
+                for (VideoRecommendVO hot : hotFill) {
+                    if (!existingIds.contains(hot.getManuscriptId())) {
+                        result.add(hot);
+                    }
+                }
+            }
+
+            return result;
         } catch (Exception e) {
             log.error("获取个性化推荐失败，userId: {}, error: {}", userId, e.getMessage(), e);
             return getHotVideos(null, size);
         }
+    }
+
+    private Map<String, Object> fetchUserProfile(Integer userId) {
+        try {
+            Result<Map<String, Object>> result = userProfileClient.getProfile(userId);
+            if (result != null && result.getCode() == 200 && result.getData() != null) {
+                return result.getData();
+            }
+        } catch (Exception e) {
+            log.debug("获取用户画像失败: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    private String generateProfileRecommendReason(ManuscriptDocument doc,
+                                                   Map<String, Number> categoryWeights,
+                                                   Map<String, Number> tagWeights) {
+        if (tagWeights != null && hasTags(doc.getTags())) {
+            for (String tag : doc.getTags()) {
+                if (tagWeights.containsKey(tag)) {
+                    return "你可能感兴趣: " + tag;
+                }
+            }
+        }
+        if (categoryWeights != null && doc.getCategoryId() != null) {
+            if (categoryWeights.containsKey(doc.getCategoryId().toString())) {
+                return "基于你常看的" + (doc.getCategoryName() != null ? doc.getCategoryName() : "分类");
+            }
+        }
+        return "为你推荐";
     }
 
     private ManuscriptDocument getManuscriptByVideoId(Integer videoId) {
