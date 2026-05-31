@@ -1,6 +1,7 @@
 package com.mybilibili.user.controller;
 
 import com.mybilibili.common.dto.AdminLoginDTO;
+import jakarta.validation.Valid;
 import com.mybilibili.common.entity.AdminUser;
 import com.mybilibili.common.entity.Role;
 import com.mybilibili.common.vo.Result;
@@ -24,7 +25,7 @@ public class AdminUserController {
 
     @PostMapping("/login")
     @Operation(summary = "管理员登录", description = "管理员用户名密码登录，返回JWT令牌")
-    public Result<?> login(@RequestBody AdminLoginDTO adminLoginDTO) {
+    public Result<?> login(@Valid @RequestBody AdminLoginDTO adminLoginDTO) {
         return adminUserService.login(adminLoginDTO);
     }
 
