@@ -35,6 +35,9 @@ public class VideoRecommendServiceImpl implements VideoRecommendService {
     @Autowired
     private UserProfileClient userProfileClient;
 
+    @Autowired
+    private com.mybilibili.search.service.RecommendConfigService recommendConfigService;
+
     private static final Integer PUBLISHED_STATUS = 3;
     private static final int DEFAULT_SIZE = 10;
     private static final int MAX_SIZE = 50;
@@ -178,15 +181,16 @@ public class VideoRecommendServiceImpl implements VideoRecommendService {
             }
 
             List<Query> profileClauses = new ArrayList<>();
+            var rcfg = recommendConfigService.getConfig();
 
             if (categoryWeights != null) {
                 List<Map.Entry<String, Number>> topCategories = categoryWeights.entrySet().stream()
                         .sorted(Map.Entry.<String, Number>comparingByValue(
                                 Comparator.comparingDouble(Number::doubleValue)).reversed())
-                        .limit(5)
+                        .limit(rcfg.getTopCategoryCount() != null ? rcfg.getTopCategoryCount() : 5)
                         .toList();
                 for (Map.Entry<String, Number> entry : topCategories) {
-                    float boost = Math.max(1.0f, entry.getValue().floatValue());
+                    float boost = Math.max(1.0f, entry.getValue().floatValue() * (rcfg.getCategoryBoost() != null ? rcfg.getCategoryBoost() : 1.0f));
                     String catId = entry.getKey();
                     profileClauses.add(Query.of(q -> q.term(t ->
                             t.field("categoryId").value(catId).boost(boost))));
@@ -197,10 +201,10 @@ public class VideoRecommendServiceImpl implements VideoRecommendService {
                 List<Map.Entry<String, Number>> topTags = tagWeights.entrySet().stream()
                         .sorted(Map.Entry.<String, Number>comparingByValue(
                                 Comparator.comparingDouble(Number::doubleValue)).reversed())
-                        .limit(10)
+                        .limit(rcfg.getTopTagCount() != null ? rcfg.getTopTagCount() : 10)
                         .toList();
                 for (Map.Entry<String, Number> entry : topTags) {
-                    float boost = Math.max(1.0f, entry.getValue().floatValue() * 0.5f);
+                    float boost = Math.max(1.0f, entry.getValue().floatValue() * (rcfg.getTagBoost() != null ? rcfg.getTagBoost() : 0.5f));
                     String tag = entry.getKey();
                     profileClauses.add(Query.of(q -> q.term(t ->
                             t.field("tags").value(tag).boost(boost))));

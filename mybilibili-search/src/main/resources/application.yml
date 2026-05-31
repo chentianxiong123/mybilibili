@@ -18,6 +18,8 @@ spring:
     redis:
       host: 127.0.0.1
       port: 6379
+    mongodb:
+      uri: mongodb://127.0.0.1:27017/mybilibili
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/mybilibili?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: root

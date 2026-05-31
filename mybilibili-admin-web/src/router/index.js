@@ -56,6 +56,12 @@ const router = createRouter({
       meta: { title: '分类管理 - 管理后台', requiresAuth: true, permission: 'category:manage' }
     },
     {
+      path: '/recommend-config',
+      name: 'recommendConfig',
+      component: () => import('../views/RecommendConfigView.vue'),
+      meta: { title: '推荐配置 - 管理后台', requiresAuth: true, permission: 'search:manage' }
+    },
+    {
       path: '/roles',
       redirect: '/admins'
     },
