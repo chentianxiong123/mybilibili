@@ -21,6 +21,14 @@ public class UserProfileController {
         return Result.success("获取成功", profile);
     }
 
+    @PostMapping("/init/{userId}")
+    public Result<?> initProfile(@PathVariable Integer userId, @RequestBody Map<String, Object> body) {
+        @SuppressWarnings("unchecked")
+        java.util.List<String> tags = (java.util.List<String>) body.get("tags");
+        userProfileService.initProfileWithTags(userId, tags);
+        return Result.success("初始化成功", null);
+    }
+
     @PostMapping("/record/watch")
     public Result<?> recordWatch(
             @RequestHeader("X-User-Id") Integer userId,

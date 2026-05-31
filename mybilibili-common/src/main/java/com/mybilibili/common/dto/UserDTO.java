@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class UserDTO {
     @NotBlank(message = "用户名不能为空")
@@ -22,4 +24,6 @@ public class UserDTO {
 
     @NotBlank(message = "邮箱验证码不能为空")
     private String emailCode;
+
+    private List<String> interestTags;
 }

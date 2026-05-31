@@ -3,6 +3,7 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { userApi, emailCodeApi, captchaApi } from '../api/index.js'
+import api from '../api/index.js'
 import { Close, VideoPlay } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -127,8 +128,8 @@ const handleRegister = () => {
     userApi.register(userData)
       .then(response => {
         if (response.code === 200) {
-          ElMessage.success('注册成功，请登录')
-          router.push('/login')
+          showInterestDialog.value = true
+          registeredUser.value = response.data.user
         } else {
           ElMessage.error(response.message || '注册失败')
         }
@@ -145,6 +146,37 @@ const handleRegister = () => {
 
 // 跳转到登录页
 const goToLogin = () => {
+  router.push('/login')
+}
+
+// 兴趣标签选择
+const showInterestDialog = ref(false)
+const registeredUser = ref(null)
+const selectedTags = ref([])
+const allInterestTags = [
+  '游戏', '科技', '音乐', '舞蹈', '动画', '番剧', '影视', '娱乐',
+  '生活', '美食', '知识', '教育', '体育', '汽车', '时尚', '搞笑',
+  '动物', '自然', '历史', '军事', '财经', '新闻', '鬼畜', '手工',
+  '绘画', '摄影', '编程', 'AI', '数码', '家电', '旅行', '健身'
+]
+const toggleTag = (tag) => {
+  const idx = selectedTags.value.indexOf(tag)
+  if (idx >= 0) selectedTags.value.splice(idx, 1)
+  else if (selectedTags.value.length < 10) selectedTags.value.push(tag)
+}
+const finishInterestSelection = async () => {
+  if (selectedTags.value.length > 0) {
+    try {
+      await api.post(`/profile/init/${registeredUser.value.id}`, { tags: selectedTags.value })
+    } catch (e) { /* ignore */ }
+  }
+  showInterestDialog.value = false
+  ElMessage.success('注册成功，请登录')
+  router.push('/login')
+}
+const skipInterest = () => {
+  showInterestDialog.value = false
+  ElMessage.success('注册成功，请登录')
   router.push('/login')
 }
 
@@ -268,6 +300,34 @@ const goBack = () => {
       </div>
     </div>
   </div>
+
+  <!-- 兴趣标签选择弹窗 -->
+  <el-dialog v-model="showInterestDialog" title="选择你感兴趣的内容" width="560px" :close-on-click-modal="false" :close-on-press-escape="false" :show-close="false">
+    <p style="color:#61666d;margin-bottom:16px;font-size:14px;">选择 1-10 个你感兴趣的标签，我们会为你推荐更精准的内容</p>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;">
+      <span
+        v-for="tag in allInterestTags"
+        :key="tag"
+        @click="toggleTag(tag)"
+        :style="{
+          padding: '6px 16px',
+          borderRadius: '20px',
+          cursor: 'pointer',
+          fontSize: '14px',
+          border: selectedTags.includes(tag) ? '2px solid #00a1d6' : '2px solid #e3e5e7',
+          background: selectedTags.includes(tag) ? 'rgba(0,161,214,0.1)' : '#fff',
+          color: selectedTags.includes(tag) ? '#00a1d6' : '#61666d',
+          transition: 'all 0.2s'
+        }"
+      >{{ tag }}</span>
+    </div>
+    <template #footer>
+      <el-button @click="skipInterest">跳过</el-button>
+      <el-button type="primary" @click="finishInterestSelection" :disabled="selectedTags.length === 0">
+        完成 ({{ selectedTags.length }}/10)
+      </el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <style scoped>

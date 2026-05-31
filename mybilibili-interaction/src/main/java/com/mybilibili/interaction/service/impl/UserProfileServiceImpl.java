@@ -33,6 +33,22 @@ public class UserProfileServiceImpl implements UserProfileService {
     }
 
     @Override
+    public void initProfileWithTags(Integer userId, List<String> tags) {
+        if (tags == null || tags.isEmpty()) return;
+        UserProfile profile = getOrCreateProfile(userId);
+        Map<String, Double> weights = profile.getTagWeights();
+        if (weights == null) weights = new HashMap<>();
+        for (String tag : tags) {
+            if (tag != null && !tag.isBlank()) {
+                weights.put(tag.trim(), 5.0);
+            }
+        }
+        profile.setTagWeights(weights);
+        profile.setLastUpdated(LocalDateTime.now());
+        userProfileRepository.save(profile);
+    }
+
+    @Override
     public void recordWatch(Integer userId, Integer categoryId, List<String> tags, Integer durationSeconds) {
         UserProfile profile = getOrCreateProfile(userId);
         profile.setTotalWatchCount(profile.getTotalWatchCount() + 1);

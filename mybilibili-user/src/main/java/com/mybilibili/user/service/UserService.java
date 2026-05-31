@@ -13,6 +13,7 @@ import com.mybilibili.common.vo.ManuscriptVO;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.UserVO;
 import com.mybilibili.user.feign.ManuscriptClient;
+import com.mybilibili.user.feign.UserProfileClient;
 import com.mybilibili.user.mapper.UserMapper;
 import com.mybilibili.user.mapper.UserTagMapper;
 import com.mybilibili.common.entity.UserTag;
@@ -31,6 +32,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class UserService {
 
@@ -51,6 +55,9 @@ public class UserService {
 
     @Autowired
     private LoginLogService loginLogService;
+
+    @Autowired
+    private UserProfileClient userProfileClient;
 
     @Autowired
     private StringRedisTemplate redisTemplate;
@@ -95,6 +102,16 @@ public class UserService {
         user.setStatus(1);
 
         userMapper.insert(user);
+
+        if (userDTO.getInterestTags() != null && !userDTO.getInterestTags().isEmpty()) {
+            try {
+                Map<String, Object> body = new HashMap<>();
+                body.put("tags", userDTO.getInterestTags());
+                userProfileClient.initProfile(user.getId(), body);
+            } catch (Exception e) {
+                log.debug("初始化用户画像失败: {}", e.getMessage());
+            }
+        }
 
         UserVO userVO = new UserVO();
         BeanUtils.copyProperties(user, userVO);
