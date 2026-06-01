@@ -44,12 +44,16 @@ public class AiChannelController {
         if (config.getBaseUrl() == null || config.getBaseUrl().isEmpty()) return Result.error("API地址不能为空");
         if (config.getApiKey() == null || config.getApiKey().isEmpty()) return Result.error("API密钥不能为空");
         if (config.getModel() == null || config.getModel().isEmpty()) return Result.error("模型名称不能为空");
-        return Result.success(aiApiConfigService.create(config));
+        AiApiConfig saved = aiApiConfigService.create(config);
+        maskApiKey(saved);
+        return Result.success(saved);
     }
 
     @PutMapping("/{id}")
     public Result<AiApiConfig> update(@PathVariable Long id, @RequestBody AiApiConfig config) {
-        return Result.success(aiApiConfigService.update(id, config));
+        AiApiConfig saved = aiApiConfigService.update(id, config);
+        maskApiKey(saved);
+        return Result.success(saved);
     }
 
     @DeleteMapping("/{id}")

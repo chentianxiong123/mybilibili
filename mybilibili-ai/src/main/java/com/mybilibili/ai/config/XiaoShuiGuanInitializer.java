@@ -31,7 +31,6 @@ public class XiaoShuiGuanInitializer {
 
     private static final String PROVIDER_NAME = "小水管";
     private static final String BASE_URL = "https://api.pie-xian.com";
-    private static final String API_KEY = "REDACTED_API_KEY";
     private static final String MODEL = "qwen3guard";
     private static final String TYPE = "MODERATION";
     private static final String FEATURE = "REVIEW";
@@ -54,12 +53,13 @@ public class XiaoShuiGuanInitializer {
 
         AiApiConfig config;
         if (existingConfigs.isEmpty()) {
+            String apiKey = resolveApiKey();
             // 创建新渠道
             config = new AiApiConfig();
             config.setName(PROVIDER_NAME);
             config.setType(TYPE);
             config.setBaseUrl(BASE_URL);
-            config.setApiKey(API_KEY);
+            config.setApiKey(apiKey);
             config.setModel(MODEL);
             config.setMaxTokens(2000);
             config.setTemperature(0.7);
@@ -82,5 +82,25 @@ public class XiaoShuiGuanInitializer {
 
         // 刷新提供者
         moderationClient.rebuild();
+    }
+
+    private String resolveApiKey() {
+        String apiKey = firstNonBlank(
+                System.getProperty("xiaoshuiguan.api-key"),
+                System.getenv("XIAOSHUIGUAN_API_KEY")
+        );
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException("小水管 API key is required: set -Dxiaoshuiguan.api-key or XIAOSHUIGUAN_API_KEY");
+        }
+        return apiKey;
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 }

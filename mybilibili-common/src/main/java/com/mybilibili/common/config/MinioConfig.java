@@ -18,8 +18,8 @@ public class MinioConfig {
     @ConfigurationProperties(prefix = "minio")
     public static class MinioProperties {
         private String endpoint = "http://127.0.0.1:9000";
-        private String accessKey = "REDACTED_MINIO_CREDENTIAL";
-        private String secretKey = "REDACTED_MINIO_CREDENTIAL";
+        private String accessKey = "";
+        private String secretKey = "";
         private String bucketName = "mybilibili";
 
         public String getEndpoint() { return endpoint; }
@@ -35,6 +35,8 @@ public class MinioConfig {
     @Bean
     @ConditionalOnProperty(name = "minio.endpoint")
     public MinioClient minioClient(MinioProperties properties) {
+        requireText(properties.getAccessKey(), "minio.access-key");
+        requireText(properties.getSecretKey(), "minio.secret-key");
         return MinioClient.builder()
                 .endpoint(properties.getEndpoint())
                 .credentials(properties.getAccessKey(), properties.getSecretKey())
@@ -46,5 +48,11 @@ public class MinioConfig {
     public StorageService storageService(MinioClient minioClient, MinioProperties properties) {
         log.info("Initializing MinIO storage: endpoint={}, bucket={}", properties.getEndpoint(), properties.getBucketName());
         return new MinioStorageService(minioClient, properties.getBucketName(), properties.getEndpoint());
+    }
+
+    private void requireText(String value, String propertyName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(propertyName + " is required");
+        }
     }
 }

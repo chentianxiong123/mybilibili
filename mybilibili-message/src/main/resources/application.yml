@@ -15,7 +15,7 @@ spring:
           enabled: false
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/mybilibili?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: root
+    username: ${MYSQL_USERNAME:root}
     password: ${MYSQL_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:

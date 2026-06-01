@@ -8,7 +8,7 @@ spring:
     allow-circular-references: true
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/mybilibili?serverTimezone=GMT%2B8&useUnicode=true&characterEncoding=utf8&autoReconnect=true&allowMultiQueries=true&useSSL=false
-    username: root
+    username: ${MYSQL_USERNAME:root}
     password: ${MYSQL_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
@@ -39,8 +39,8 @@ mybatis-plus:
 
 minio:
   endpoint: http://127.0.0.1:9000
-  access-key: REDACTED_MINIO_CREDENTIAL
-  secret-key: REDACTED_MINIO_CREDENTIAL
+  access-key: ${MINIO_ACCESS_KEY:}
+  secret-key: ${MINIO_SECRET_KEY:}
   bucket-name: mybilibili
 
 upload:

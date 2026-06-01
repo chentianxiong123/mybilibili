@@ -14,6 +14,10 @@ import static org.mockito.Mockito.verify;
 
 class JwtFilterTest {
 
+    static {
+        System.setProperty("jwt.secret", "test-jwt-secret-0123456789abcdef0123456789abcdef");
+    }
+
     private final JwtFilter filter = new JwtFilter();
 
     @Test

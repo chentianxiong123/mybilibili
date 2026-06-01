@@ -22,7 +22,7 @@ spring:
           enabled: false
   ai:
     openai:
-      api-key: placeholder
+      api-key: ${OPENAI_API_KEY:}
       base-url: https://api.qnaigc.com
       chat:
         options:
@@ -35,7 +35,7 @@ spring:
       database: mybilibili
   datasource:
     url: jdbc:mysql://localhost:3306/mybilibili?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: root
+    username: ${MYSQL_USERNAME:root}
     password: ${MYSQL_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
@@ -47,8 +47,8 @@ mybatis:
 
 minio:
   endpoint: http://127.0.0.1:9000
-  access-key: REDACTED_MINIO_CREDENTIAL
-  secret-key: REDACTED_MINIO_CREDENTIAL
+  access-key: ${MINIO_ACCESS_KEY:}
+  secret-key: ${MINIO_SECRET_KEY:}
   bucket-name: mybilibili
 
 video:
@@ -62,7 +62,7 @@ rocketmq:
 
 ai:
   deepseek:
-    api-key: ""
+    api-key: ${DEEPSEEK_API_KEY:}
     api-url: "https://api.qnaigc.com"
     model: "deepseek-r1"
     max-tokens: 2000

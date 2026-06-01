@@ -22,7 +22,7 @@ public class EmailCodeServiceImpl implements EmailCodeService {
     @Autowired
     private StringRedisTemplate redisTemplate;
 
-    @Value("${spring.mail.username:redacted@example.com}")
+    @Value("${spring.mail.username:}")
     private String fromEmail;
 
     private static final String PREFIX = "email:code:";
@@ -32,6 +32,9 @@ public class EmailCodeServiceImpl implements EmailCodeService {
 
     @Override
     public String sendCode(String email) {
+        if (fromEmail == null || fromEmail.isBlank()) {
+            throw new BusinessException("邮件发件人未配置");
+        }
         // 检查发送频率：同一邮箱 60 秒内只能发一次
         String rateKey = "email:send:rate:" + email;
         Boolean limited = redisTemplate.hasKey(rateKey);

@@ -132,7 +132,7 @@ setx PATH "%PATH%;%JAVA_HOME%\bin"
 下载地址：https://nodejs.org/zh-cn/（选择 LTS 版本）
 
 #### 3.3.4 MySQL
-安装 MySQL 8.0+，端口 3306，root 密码设为 `123456`。创建数据库：
+安装 MySQL 8.0+，端口 3306，root 密码使用环境变量或本地 `.env` 中的 `MYSQL_ROOT_PASSWORD`。创建数据库：
 ```sql
 CREATE DATABASE mybilibili CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
@@ -219,7 +219,7 @@ java -jar mybilibili-gateway/target/mybilibili-gateway-1.0.0.jar
 spring:
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/mybilibili
-    username: root
+    username: ${MYSQL_USERNAME:root}
     password: ${MYSQL_PASSWORD:}
   redis:
     host: 127.0.0.1

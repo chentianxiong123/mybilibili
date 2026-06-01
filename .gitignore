@@ -82,6 +82,7 @@ whisper/
 *.db
 *.sqlite
 *.sqlitedb
+backups/
 
 # Docker 相关 (可选保留)
 # docker-compose*.yml
