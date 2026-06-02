@@ -5,32 +5,40 @@
 // /banner-images/home → 轮播图
 import api from './client'
 
-// 字段适配：后端字段 → 移动端期望的字段
+// 视频字段统一适配（兼容 VideoRecommendVO、ManuscriptVO、ManuscriptDocument）
 const adaptVideo = (v) => ({
-  aId: v.manuscriptId || v.id,
-  title: v.title,
-  pic: v.coverUrl,
-  author: v.username || v.nickname || v.author || '',
+  aId: v.manuscriptId || v.id || v.videoId,
+  title: v.title || '无标题',
+  pic: v.coverUrl || v.cover || '',
+  author: v.userName || v.uploader?.name || v.username || v.nickname || v.author || 'UP主',
   mid: v.userId,
-  play: v.viewCount || 0,
-  videoReview: v.commentCount || 0,
-  duration: v.duration,
-  description: v.description
+  play: v.viewCount || v.play || 0,
+  videoReview: v.commentCount || v.videoReview || v.danmakuCount || 0,
+  duration: v.duration || v.durationSeconds,
+  description: v.description || ''
 })
 
 // 首页推荐 + 排行榜 + 分区
 export async function getHomeContent() {
   try {
-    const recRes = await api.get('/manuscript/recommended').catch(() => ({ code: 500, data: [] }))
-    const hotRes = await api.get('/recommend/hot?size=30').catch(() => ({ code: 500, data: [] }))
-    const catRes = await api.get('/category').catch(() => ({ code: 500, data: [] }))
+    // 并行请求，不相互阻塞
+    const [recRes, catRes] = await Promise.all([
+      api.get('/manuscript/recommended').catch(() => ({ code: 500, data: [] })),
+      api.get('/category').catch(() => ({ code: 500, data: [] }))
+    ])
+
+    // 热门视频独立请求，不阻塞主内容加载
+    const hotRes = await api.get('/manuscript/hot').catch(() => ({ code: 500, data: [] }))
+    const hotRaw = hotRes?.data || hotRes || []
+    const hotList = Array.isArray(hotRaw) ? hotRaw : (hotRaw?.list || [])
+    console.log('[getHomeContent] hotRes:', hotRes, 'hotList:', hotList)
 
     return {
       code: '1',
       data: {
         oneLevelPartitions: (catRes?.data || catRes || []).map?.(c => ({ id: c.id, name: c.name })) || [],
         additionalVideos: (recRes?.data || recRes || []).map(adaptVideo),
-        rankingVideos: (hotRes?.data || hotRes || []).map(adaptVideo)
+        rankingVideos: hotList.map(adaptVideo)
       }
     }
   } catch (e) {
@@ -43,14 +51,15 @@ export async function getHomeContent() {
 export async function getBanners() {
   try {
     const res = await api.get('/banner-images/home')
-    const list = res?.data || res || []
+    const rawData = res?.data || res
+    const list = Array.isArray(rawData) ? rawData : (rawData?.list || [])
     return {
       code: '1',
       data: list.map(b => ({
         id: b.id,
         name: b.title || '',
-        pic: b.imageUrl || b.url,
-        url: b.link || b.targetUrl || '#'
+        pic: b.imageUrl,
+        url: b.linkUrl || '#'
       }))
     }
   } catch (e) {
@@ -83,9 +92,11 @@ export async function getCategories() {
 export async function getVideosByCategory(categoryId) {
   try {
     const res = await api.get(`/manuscript/category/${categoryId}`)
+    const rawData = res?.data || res
+    const list = rawData?.list || (Array.isArray(rawData) ? rawData : [])
     return {
       code: '1',
-      data: (res?.data || res || []).map(adaptVideo)
+      data: list.map(adaptVideo)
     }
   } catch (e) {
     return { code: '0', data: [] }
@@ -96,24 +107,26 @@ export async function getVideosByCategory(categoryId) {
 export async function getVideoList(page = 1, size = 20) {
   try {
     const res = await api.get(`/manuscript/list?page=${page}&size=${size}`)
+    const rawData = res?.data || res
+    const list = rawData?.list || (Array.isArray(rawData) ? rawData : [])
     return {
       code: '1',
-      data: (res?.data || res || []).map(adaptVideo)
+      data: list.map(adaptVideo)
     }
   } catch (e) {
     return { code: '0', data: [] }
   }
 }
 
-// 热门视频
+// 热门视频（复用 manuscriptApi.getHotManuscripts → /manuscript/hot）
 export async function getHotVideos(categoryId, size = 10) {
   try {
-    let url = `/recommend/hot?size=${size}`
-    if (categoryId) url += `&categoryId=${categoryId}`
-    const res = await api.get(url)
+    const res = await api.get('/manuscript/hot')
+    const rawData = res?.data || res || []
+    const list = Array.isArray(rawData) ? rawData : (rawData?.list || [])
     return {
       code: '1',
-      data: (res?.data || res || []).map(adaptVideo)
+      data: list.map(adaptVideo)
     }
   } catch (e) {
     return { code: '0', data: [] }
@@ -127,11 +140,14 @@ export { getCategories as getRankingPartitions }
 export async function getRankingRegion(rId) {
   try {
     const [hotRes, catRes] = await Promise.all([
-      api.get(`/recommend/hot?size=30${rId ? `&categoryId=${rId}` : ''}`).catch(() => ({ code: 500, data: [] })),
-      rId ? api.get(`/manuscript/category/${rId}`).catch(() => ({ code: 500, data: [] })) : Promise.resolve({ code: 200, data: [] })
+      api.get('/manuscript/hot').catch(() => ({ code: 500, data: [] })),
+      rId ? api.get(`/manuscript/category/${rId}`).catch(() => ({ code: 500, data: null })) : Promise.resolve({ code: 200, data: null })
     ])
     const hotList = hotRes?.data || hotRes || []
-    const catList = catRes?.data || catRes || []
+
+    const rawCatData = catRes?.data || catRes
+    const catList = rawCatData?.list || (Array.isArray(rawCatData) ? rawCatData : [])
+
     return {
       code: '1',
       data: {
