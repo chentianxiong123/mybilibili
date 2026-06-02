@@ -125,6 +125,9 @@ start-nacos.bat
 # Claude Agent worktrees (massive duplicate directories)
 .claude/worktrees/
 
+# Reference projects kept outside version control
+references/
+
 # 图片二进制文件 (项目资源除外)
 # favicon.ico 和 vite.svg 等项目资源保留跟踪
 # *.png
