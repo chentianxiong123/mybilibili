@@ -1,6 +1,5 @@
 import { IPropertyManager } from './properties-managers/properties-manager';
 import { IObsListOption, TObsFormData } from 'components/obs/inputs/ObsInput';
-import { WidgetType } from 'services/widgets';
 import { Observable } from 'rxjs';
 import { IAudioSource } from 'services/audio';
 import { EDeinterlaceFieldOrder, EDeinterlaceMode } from 'obs-studio-node';
@@ -48,10 +47,6 @@ export interface ISource {
 export interface ISourceComparison {
   type: TSourceType;
   propertiesManager: TPropertiesManager;
-  widgetType?: WidgetType;
-  isStreamlabel?: boolean;
-  appId?: string;
-  appSourceId?: string;
 }
 
 export interface ISourceApi extends ISource {
@@ -104,7 +99,6 @@ export interface ISourceAddOptions<TPropertiesManagerSettings = Dictionary<any>>
   propertiesManagerSettings?: TPropertiesManagerSettings;
   audioSettings?: Partial<IAudioSource>;
   isTemporary?: boolean;
-  guestCamStreamId?: string; // Automatically assign a guest to this source after creation
   deinterlaceMode?: EDeinterlaceMode;
   deinterlaceFieldOrder?: EDeinterlaceFieldOrder;
   display?: TDisplayType;
@@ -140,21 +134,14 @@ export type TSourceType =
   | 'display_capture'
   | 'audio_line'
   | 'syphon-input'
-  | 'soundtrack_source'
-  | 'mediasoupconnector'
   | 'wasapi_process_output_capture'
-  | 'smart_browser_source'
   | 'spout_capture';
 
 // Register new properties managers here
 export type TPropertiesManager =
   | 'default'
-  | 'widget'
-  | 'streamlabels'
-  | 'platformApp'
   | 'replay'
-  | 'iconLibrary'
-  | 'smartBrowserSource';
+  | 'iconLibrary';
 
 export interface ISourcesState {
   sources: Dictionary<ISource>;

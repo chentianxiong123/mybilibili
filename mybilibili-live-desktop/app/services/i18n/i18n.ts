@@ -57,45 +57,14 @@ export function $translateIfExistWithCheck(key: string, ...args: any[]) {
  * @see https://electronjs.org/docs/api/locales
  */
 const LANG_CODE_MAP: Dictionary<{ lang: string; locale: string }> = {
-  cs: { lang: 'Czech', locale: 'cs-CZ' },
-  de: { lang: 'German', locale: 'de-DE' },
-  'en-US': { lang: 'English', locale: 'en-US' },
-  es: { lang: 'Spanish', locale: 'es-ES' },
-  fr: { lang: 'French', locale: 'fr-FR' },
-  it: { lang: 'Italian', locale: 'it-IT' },
-  ja: { lang: 'Japanese', locale: 'ja-JP' },
-  ko: { lang: 'Korean', locale: 'ko-KR' },
-  pl: { lang: 'Polish', locale: 'pl-PL' },
-  pt: { lang: 'Portuguese', locale: 'pt-PT' },
-  'pt-BR': { lang: 'Portuguese (Brazil)', locale: 'pt-BR' },
-  ru: { lang: 'Russian', locale: 'ru-RU' },
-  sk: { lang: 'Slovak', locale: 'sk-SK' },
-  th: { lang: 'Thai', locale: 'th-TH' },
-  tr: { lang: 'Turkish', locale: 'tr-TR' },
   'zh-CN': { lang: 'Chinese (Simplified)', locale: 'zh-CN' },
 };
 
-export const WHITE_LIST = [
-  'en-US',
-  'ru-RU',
-  'zh-TW',
-  'da-DK',
-  'de-DE',
-  'hu-HU',
-  'it-IT',
-  'ja-JP',
-  'ko-KR',
-  'pl-PL',
-  'pt-PT',
-  'pt-BR',
-  'es-ES',
-  'fr-FR',
-  'tr-TR',
-];
+export const WHITE_LIST = ['zh-CN'];
 
 export class I18nService extends PersistentStatefulService<II18nState> implements I18nServiceApi {
   static defaultState: II18nState = {
-    locale: '',
+    locale: 'zh-CN',
     localeList: [],
   };
 
@@ -186,7 +155,7 @@ export class I18nService extends PersistentStatefulService<II18nState> implement
     if (!locale) {
       const electronLocale = remote.app.getLocale();
       const langDescription = LANG_CODE_MAP[electronLocale];
-      locale = langDescription ? langDescription.locale : 'en-US';
+      locale = langDescription ? langDescription.locale : 'zh-CN';
     }
 
     // if electron has unsupported locale, don't allow to use it
@@ -221,7 +190,7 @@ export class I18nService extends PersistentStatefulService<II18nState> implement
   }
 
   getFallbackLocale() {
-    return 'en-US';
+    return 'zh-CN';
   }
 
   getLoadedDictionaries() {
@@ -242,10 +211,10 @@ export class I18nService extends PersistentStatefulService<II18nState> implement
   private loadDictionary(locale: string): Dictionary<string> {
     if (this.loadedDictionaries[locale]) return this.loadedDictionaries[locale];
 
-    if (locale === 'en-US') {
-      // en-US is included in the webpack bundle, so we don't
+    if (locale === 'zh-CN') {
+      // zh-CN is included in the webpack bundle, so we don't
       // load it from disk on demand.
-      this.loadedDictionaries['en-US'] = fallback;
+      this.loadedDictionaries['zh-CN'] = fallback;
       return fallback;
     }
 

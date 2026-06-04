@@ -82,27 +82,11 @@ export class GoLiveWindow extends ReactComponent {}
 
 @Component({
   props: {
-    name: { default: 'GuestCamProperties' },
-    wrapperStyles: { default: () => ({ height: '100%' }) },
-  },
-})
-export class GuestCamProperties extends ReactComponent {}
-
-@Component({
-  props: {
     name: { default: 'IconLibraryProperties' },
     wrapperStyles: { default: () => ({ height: '100%' }) },
   },
 })
 export class IconLibraryProperties extends ReactComponent {}
-
-@Component({
-  props: {
-    name: { default: 'InstalledApps' },
-    wrapperStyles: { default: () => ({ height: '100%' }) },
-  },
-})
-export class InstalledApps extends ReactComponent {}
 
 @Component({ props: { name: { default: 'Loader' } } })
 export class Loader extends ReactComponent {}
@@ -179,60 +163,10 @@ export class NotificationsAndNews extends ReactComponent {}
 })
 export class PerformanceMetrics extends ReactComponent<{ mode: 'full' | 'limited' }> {}
 
-@Component({ props: { name: { default: 'PlatformAppPageView' } } })
-export class PlatformAppPageView extends ReactComponent {}
-
-@Component({ props: { name: { default: 'PlatformAppMainPage' } } })
-export class PlatformAppMainPage extends ReactComponent {}
-
-@Component({
-  props: {
-    name: { default: 'PlatformAppPopOut' },
-    wrapperStyles: { default: () => ({ height: '100%' }) },
-  },
-})
-export class PlatformAppPopOut extends ReactComponent {}
-
-@Component({ props: { name: { default: 'PlatformAppStore' } } })
-export class PlatformAppStore extends ReactComponent {}
-
-@Component({ props: { name: { default: 'PlatformLogo' } } })
-export class PlatformLogo extends ReactComponent<{
-  platform: string;
-  size?: 'medium' | number;
-  color?: string;
-  unwrapped?: boolean;
-}> {}
-
-@Component({
-  props: {
-    name: { default: 'PlatformMerge' },
-    wrapperStyles: { default: () => ({ height: '100%' }) },
-  },
-})
-export class PlatformMerge extends ReactComponent {}
-
 @Component({
   props: { name: { default: 'Projector' }, wrapperStyles: { default: () => ({ height: '100%' }) } },
 })
 export class Projector extends ReactComponent {}
-
-@Component({
-  props: {
-    name: { default: 'RecentEvents' },
-    wrapperStyles: { default: () => ({ height: '100%' }) },
-    componentProps: { default: () => ({ isOverlay: false }) },
-  },
-})
-export class RecentEvents extends ReactComponent<{ isOverlay?: boolean }> {}
-
-@Component({
-  props: {
-    name: { default: 'RecentEventsWindow' },
-    wrapperStyles: { default: () => ({ height: '100%' }) },
-  },
-})
-export class RecentEventsWindow extends ReactComponent {}
 
 @Component({
   props: {
@@ -336,22 +270,6 @@ export class Troubleshooter extends ReactComponent {}
 
 @Component({
   props: {
-    name: { default: 'WelcomeToPrime' },
-    wrapperStyles: { default: () => ({ height: '100%' }) },
-  },
-})
-export class WelcomeToPrime extends ReactComponent {}
-
-@Component({
-  props: {
-    name: { default: 'WidgetWindow' },
-    wrapperStyles: { default: () => ({ height: '100%' }) },
-  },
-})
-export class WidgetWindow extends ReactComponent {}
-
-@Component({
-  props: {
     name: { default: 'CustomCodeWindow' },
     wrapperStyles: { default: () => ({ height: '100%' }) },
   },
@@ -360,11 +278,6 @@ export class CustomCodeWindow extends ReactComponent {}
 
 @Component({ props: { name: { default: 'DismissableBadge' } } })
 export class DismissableBadge extends ReactComponent {}
-@Component({ props: { name: { default: 'UltraIcon' } } })
-export class UltraIcon extends ReactComponent<{
-  type?: string;
-  className?: string;
-}> {}
 
 @Component({ props: { name: { default: 'AuthModal' } } })
 export class AuthModal extends ReactComponent {}
@@ -396,13 +309,3 @@ export class Hotkeys extends ReactComponent<{
   },
 })
 export class GLVolmeters extends ReactComponent {}
-
-@Component({
-  props: {
-    name: { default: 'MultistreamChatInfo' },
-    wrapperStyles: {
-      default: () => ({ width: '100%', height: '100%', minWidth: '748px', minHeight: '635px' }),
-    },
-  },
-})
-export class MultistreamChatInfo extends ReactComponent {}

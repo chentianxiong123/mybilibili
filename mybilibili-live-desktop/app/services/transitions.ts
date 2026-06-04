@@ -11,7 +11,6 @@ import { SceneCollectionsService } from 'services/scene-collections';
 import { $t } from 'services/i18n';
 import { DefaultManager } from 'services/sources/properties-managers/default-manager';
 import { Subject } from 'rxjs';
-import { isUrl } from '../util/requests';
 import { getOS, OS } from 'util/operating-systems';
 import { UsageStatisticsService } from './usage-statistics';
 import { SourcesService } from 'services/sources';
@@ -537,28 +536,6 @@ export class TransitionsService extends StatefulService<ITransitionsState> {
         height: 650,
       },
     });
-  }
-
-  clearPlatformAppTransitions(appId: string): void {
-    Object.entries(this.propertiesManagers)
-      .filter(([_, manager]) => {
-        return manager.settings && (manager.settings as any).appId === appId;
-      })
-      .forEach(([propertyManagerId]) => {
-        const formData = this.getPropertiesFormData(propertyManagerId);
-
-        this.setPropertiesFormData(
-          propertyManagerId,
-          formData.map(setting => {
-            // We really wanna make sure we're getting the right property
-            if (setting.name && setting.name === 'path' && isUrl(setting.value as string)) {
-              return { ...setting, value: '' };
-            }
-
-            return setting;
-          }),
-        );
-      });
   }
 
   /**

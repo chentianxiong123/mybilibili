@@ -40,11 +40,9 @@ import { DefaultHardwareService } from 'services/hardware';
 import { byOS, OS, getOS } from 'util/operating-systems';
 import Utils from 'services/utils';
 import * as remote from '@electron/remote';
-import { GuestCamNode } from './nodes/guest-cam';
 import { DualOutputService } from 'services/dual-output';
 import { NodeMapNode } from './nodes/node-map';
 import { VideoSettingsService } from 'services/settings-v2';
-import { WidgetsService, WidgetType } from 'services/widgets';
 
 const uuid = window['require']('uuid/v4');
 
@@ -57,7 +55,6 @@ export const NODE_TYPES = {
   TransitionsNode,
   HotkeysNode,
   SceneFiltersNode,
-  GuestCamNode,
   TransitionNode: TransitionsNode, // Alias old name to new node
 };
 
@@ -95,7 +92,6 @@ export class SceneCollectionsService extends Service implements ISceneCollection
   @Inject() dualOutputService: DualOutputService;
   @Inject() videoSettingsService: VideoSettingsService;
   @Inject() private defaultHardwareService: DefaultHardwareService;
-  @Inject() private widgetsService: WidgetsService;
 
   collectionAdded = new Subject<ISceneCollectionsManifestEntry>();
   collectionRemoved = new Subject<ISceneCollectionsManifestEntry>();
@@ -632,7 +628,7 @@ export class SceneCollectionsService extends Service implements ISceneCollection
 
     remote.dialog
       .showMessageBox(Utils.getMainWindow(), {
-        title: 'Streamlabs Desktop',
+        title: 'mybilibili Live Desktop',
         message: $t('Failed to load scene collection.  A new one will be created instead.'),
       })
       .then(() => (this.collectionErrorOpen = false));
@@ -666,7 +662,7 @@ export class SceneCollectionsService extends Service implements ISceneCollection
           title: 'Unsupported Sources',
           type: 'warning',
           message: $t(
-            'Scene items were removed because there was an error loading them: %{inputs}.\n\nPlease accept or reject permissions to view the Streamlabs Editor panel',
+            'Scene items were removed because there was an error loading them: %{inputs}.\n\nPlease check source permissions in the editor panel.',
             { inputs: this.sourcesService.missingInputs.join(', ') },
           ),
         })
@@ -1140,8 +1136,7 @@ export class SceneCollectionsService extends Service implements ISceneCollection
 
       let operatingSystem = getOS();
 
-      // Empty data means that the collection was created from the Streamlabs
-      // dashboard and does not currently have any scenes assoicated with it.
+      // Empty data means that the remote collection does not currently have any scenes.
       // The first time we try to load this collection, we will initialize it
       // with some scenes.
 
@@ -1233,9 +1228,6 @@ export class SceneCollectionsService extends Service implements ISceneCollection
     } else {
       scene.addSource(webCam.sourceId, { display: 'horizontal' });
     }
-
-    // add alert box widget
-    this.widgetsService.createWidget(WidgetType.AlertBox, 'Alert Box');
 
     this.newUserFirstLogin = false;
   }

@@ -1,13 +1,13 @@
 const fallbackDictionary = {
-  ...require('./en-US/advanced-statistics.json'),
-  ...require('./en-US/audio.json'),
-  ...require('./en-US/common.json'),
-  ...require('./en-US/customization.json'),
-  ...require('./en-US/scenes.json'),
-  ...require('./en-US/settings.json'),
-  ...require('./en-US/sources.json'),
-  ...require('./en-US/streaming.json'),
-  ...require('./en-US/troubleshooter.json'),
+  ...require('./zh-CN/advanced-statistics.json'),
+  ...require('./zh-CN/audio.json'),
+  ...require('./zh-CN/common.json'),
+  ...require('./zh-CN/customization.json'),
+  ...require('./zh-CN/scenes.json'),
+  ...require('./zh-CN/settings.json'),
+  ...require('./zh-CN/sources.json'),
+  ...require('./zh-CN/streaming.json'),
+  ...require('./zh-CN/troubleshooter.json'),
 };
 
 export default fallbackDictionary;

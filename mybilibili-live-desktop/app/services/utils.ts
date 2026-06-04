@@ -319,21 +319,17 @@ export function getAppPath() {
 }
 
 /**
- * A fallback-safe method of fetching images
- * from either our local storage or the CDN
+ * A fallback-safe method of fetching images from local packaged media.
  * @param mediaPath The path structure to retrieve the image from the media folders
  */
 export function $i(mediaPath: string) {
   try {
-    // Useful for testing media fetches properly from the CDN
-    if (Utils.env.SLOBS_USE_CDN_MEDIA) throw new Error('Using CDN');
-
     const localMediaPath = require(`../../media/${mediaPath}`);
 
-    if (!fs.existsSync(path.resolve(getAppPath(), localMediaPath))) throw new Error('Using CDN');
+    if (!fs.existsSync(path.resolve(getAppPath(), localMediaPath))) throw new Error('Missing media');
 
     return localMediaPath;
   } catch (e: unknown) {
-    return `https://slobs-cdn.streamlabs.com/media/${mediaPath}`;
+    return '';
   }
 }

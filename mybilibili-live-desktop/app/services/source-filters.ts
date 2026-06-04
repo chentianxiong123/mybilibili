@@ -47,9 +47,6 @@ export type TSourceFilterType =
   | 'limiter_filter'
   | 'expander_filter'
   | 'shader_filter'
-  | 'mediasoupconnector_afilter'
-  | 'mediasoupconnector_vfilter'
-  | 'mediasoupconnector_vsfilter'
   | 'hdr_tonemap_filter'
   | 'nv_greenscreen_filter';
 
@@ -87,7 +84,7 @@ interface IFiltersServiceState {
  * Determines how the filter is displayed in the UI.
  * Normal = A filter manually added by the user
  * Preset = A visual preset selected from the dropdown
- * Hidden = A filter automatically added but hidden from the user, i.e. Guest Cam
+ * Hidden = A filter automatically added but hidden from the user.
  */
 export enum EFilterDisplayType {
   Normal = 'normal',

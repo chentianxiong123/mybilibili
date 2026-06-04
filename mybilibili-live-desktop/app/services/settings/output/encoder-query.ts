@@ -6,11 +6,9 @@ import {
   AdvancedStreamingFactory,
   SimpleRecordingFactory,
   AdvancedRecordingFactory,
-  ServiceFactory,
   ERecordingFormat,
 } from '../../../../obs-api';
 import { StreamingService } from 'services/streaming';
-import { TPlatform } from 'services/platforms';
 
 /**
  * The module.ts in obs-studio-node is out of sync with module.d.ts and is
@@ -34,18 +32,6 @@ function hasGetAvailableEncoders(instance: any): instance is IWithAvailableEncod
   return typeof instance?.getAvailableEncoders === 'function';
 }
 
-const platformServiceConfig: Record<TPlatform, { streamType: string; service?: string }> = {
-  twitch: { streamType: 'rtmp_common', service: 'Twitch' },
-  youtube: { streamType: 'rtmp_common', service: 'YouTube - RTMPS' },
-  facebook: { streamType: 'rtmp_common', service: 'Facebook Live' },
-  trovo: { streamType: 'rtmp_custom' },
-  tiktok: { streamType: 'rtmp_custom' },
-  twitter: { streamType: 'rtmp_custom' },
-  instagram: { streamType: 'rtmp_custom' },
-  kick: { streamType: 'rtmp_custom' },
-  patreon: { streamType: 'rtmp_custom' },
-};
-
 interface ICacheEntry {
   key: string;
   value: IObsListOption<string>[];
@@ -61,8 +47,7 @@ export class EncoderQueryService extends Service {
     mode: 'Simple' | 'Advanced',
     streamSettings?: Record<string, any>,
   ): IObsListOption<string>[] {
-    const platform = this.getPrimaryPlatform();
-    const cacheKey = `${mode}:${platform || 'none'}`;
+    const cacheKey = `${mode}:custom-rtmp`;
 
     if (this.streamingEncoderCache?.key === cacheKey) {
       return this.streamingEncoderCache.value;
@@ -80,27 +65,23 @@ export class EncoderQueryService extends Service {
         const instance = SimpleStreamingFactory.create();
         let service: any = null;
         try {
-          service = this.setupTempStreamingService(instance);
           if (!hasGetAvailableEncoders(instance)) return [];
           const result = mapEncoders(instance.getAvailableEncoders());
           this.streamingEncoderCache = { key: cacheKey, value: result };
           return result;
         } finally {
           SimpleStreamingFactory.destroy(instance);
-          if (service) ServiceFactory.destroy(service);
         }
       } else {
         const instance = AdvancedStreamingFactory.create();
         let service: any = null;
         try {
-          service = this.setupTempStreamingService(instance);
           if (!hasGetAvailableEncoders(instance)) return [];
           const result = mapEncoders(instance.getAvailableEncoders());
           this.streamingEncoderCache = { key: cacheKey, value: result };
           return result;
         } finally {
           AdvancedStreamingFactory.destroy(instance);
-          if (service) ServiceFactory.destroy(service);
         }
       }
     } catch (e: unknown) {
@@ -156,43 +137,4 @@ export class EncoderQueryService extends Service {
     }
   }
 
-  /**
-   * Creates a temp OBS service and assigns it to the streaming instance.
-   * Returns the created service so the caller can destroy it after use.
-   */
-  private setupTempStreamingService(instance: any): any {
-    try {
-      const platform = this.getPrimaryPlatform();
-      const legacySettings = ServiceFactory.legacySettings;
-
-      if (platform) {
-        const config = platformServiceConfig[platform];
-        const serviceName = config.service || legacySettings?.settings?.service;
-
-        const service = ServiceFactory.create(config.streamType, 'encoder-query-temp-service', {
-          ...legacySettings?.settings,
-          service: serviceName,
-        });
-        instance.service = service;
-        return service;
-      } else {
-        // No enabled platform — fall back to legacySettings
-        instance.service = legacySettings;
-        return null;
-      }
-    } catch (e: unknown) {
-      console.error('[EncoderQueryService] setupTempService failed, proceeding without service', e);
-      return null;
-    }
-  }
-
-  private getPrimaryPlatform(): TPlatform | null {
-    try {
-      const enabledPlatforms = this.streamingService.views.enabledPlatforms;
-      if (!enabledPlatforms.length) return null;
-      return enabledPlatforms[0];
-    } catch (e: unknown) {
-      return null;
-    }
-  }
 }

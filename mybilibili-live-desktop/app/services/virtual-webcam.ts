@@ -142,7 +142,7 @@ export class VirtualWebcamService extends StatefulService<IVirtualWebcamServiceS
     switch (errorCode) {
       case InstallationErrorCodes.OSSystemExtensionErrorUnsupportedParentBundleLocation:
         errorMessage = $t(
-          "Streamlabs Desktop cannot install the virtual camera if it's not in Applications. Please move Streamlabs Desktop to the Applications directory.",
+          'mybilibili 直播桌面端需要放在“应用程序”目录中才能安装虚拟摄像头。',
         );
         break;
       case InstallationErrorCodes.RebootRequired:
@@ -157,17 +157,17 @@ export class VirtualWebcamService extends StatefulService<IVirtualWebcamServiceS
           const isMacOS15OrGreater = Number(darwinVersion) >= 15;
           if (isMacOS15OrGreater) {
             errorMessage = $t(
-              'The virtual camera is not installed.\n\nPlease allow Streamlabs Desktop to install the camera system extension in System Settings → General → Login Items & Extensions → Camera Extensions.\n\nYou may need to restart Streamlabs Desktop if this message still appears afterward.',
+              '虚拟摄像头尚未安装。\n\n请在系统设置 → 通用 → 登录项与扩展 → 摄像头扩展中允许 mybilibili 直播桌面端安装摄像头系统扩展。\n\n如果之后仍然看到此提示，请重启 mybilibili 直播桌面端。',
             );
           } else {
             errorMessage = $t(
-              'The virtual camera is not installed.\n\nPlease allow Streamlabs Desktop to install system software in System Settings → Privacy & Security → Security.\n\nYou may need to restart Streamlabs Desktop if this message still appears afterward.',
+              '虚拟摄像头尚未安装。\n\n请在系统设置 → 隐私与安全性 → 安全性中允许 mybilibili 直播桌面端安装系统软件。\n\n如果之后仍然看到此提示，请重启 mybilibili 直播桌面端。',
             );
           }
         }
         break;
       case InstallationErrorCodes.MacOS13Unavailable:
-        errorMessage = $t('Streamlabs Virtual Webcam feature requires macOS 13 or later.');
+        errorMessage = $t('虚拟摄像头功能需要 macOS 13 或更高版本。');
         break;
       default:
         errorMessage = $t('An error has occured while installing the virtual camera');

@@ -1,7 +1,6 @@
 import { Service, Inject } from 'services';
 import { RootNode } from './nodes/overlays/root';
 import { ScenesNode } from './nodes/overlays/scenes';
-import { SlotsNode } from './nodes/overlays/slots';
 import { ImageNode } from './nodes/overlays/image';
 import { TextNode } from './nodes/overlays/text';
 import { WebcamNode } from './nodes/overlays/webcam';
@@ -9,8 +8,6 @@ import { VideoNode } from './nodes/overlays/video';
 import { TransitionNode } from './nodes/overlays/transition';
 import { GameCaptureNode } from './nodes/overlays/game-capture';
 import { parse } from './parse';
-import { StreamlabelNode } from './nodes/overlays/streamlabel';
-import { WidgetNode } from './nodes/overlays/widget';
 import { IconLibraryNode } from './nodes/overlays/icon-library';
 import fs from 'fs';
 import os from 'os';
@@ -23,24 +20,19 @@ import { AppService } from 'services/app';
 import { importExtractZip } from '../../util/slow-imports';
 import { downloadFile, IDownloadProgress } from 'util/requests';
 import { NodeMapNode } from './nodes/node-map';
-import { SmartBrowserNode } from './nodes/overlays/smartBrowserSource';
 
 const NODE_TYPES = {
   RootNode,
   ScenesNode,
-  SlotsNode,
   ImageNode,
   TextNode,
   WebcamNode,
   VideoNode,
-  StreamlabelNode,
-  WidgetNode,
   TransitionNode,
   SceneSourceNode,
   GameCaptureNode,
   IconLibraryNode,
   NodeMapNode,
-  SmartBrowserNode,
 };
 
 export class OverlaysPersistenceService extends Service {

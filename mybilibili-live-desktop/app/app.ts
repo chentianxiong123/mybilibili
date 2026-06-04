@@ -250,7 +250,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const i18n = new VueI18n({
     locale: 'zh-CN',
-    fallbackLocale: 'en-US',
+    fallbackLocale: 'zh-CN',
     messages: {},
     silentTranslationWarn: false,
     missing: (language: string, key: string) => {
@@ -386,7 +386,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (usingSentry) {
-      // User identity is owned by mybilibili services, not Streamlabs platform login.
+      // User identity is owned by mybilibili services.
     }
   });
 });

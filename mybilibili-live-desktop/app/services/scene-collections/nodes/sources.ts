@@ -126,11 +126,6 @@ export class SourcesNode extends Node<ISchema, {}> {
             propertiesManagerSettings: source.getPropertiesManagerSettings(),
           };
 
-          // For now, don't save any settings for mediasoup
-          if (source.type === 'mediasoupconnector') {
-            data.settings = {};
-          }
-
           if (audioSource) {
             data = {
               ...data,

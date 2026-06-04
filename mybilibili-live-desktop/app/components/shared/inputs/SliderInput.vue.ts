@@ -4,7 +4,7 @@ import { BaseInput } from './BaseInput';
 import { CustomizationService } from 'services/customization';
 import { Inject } from 'services/core/injector';
 import { ISliderMetadata } from './index';
-import { isString } from 'util';
+import isString from 'lodash/isString';
 
 const Slider = {
   props: ['value', 'max', 'min', 'interval'],

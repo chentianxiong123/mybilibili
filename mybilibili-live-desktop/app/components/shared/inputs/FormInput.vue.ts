@@ -1,5 +1,4 @@
 import * as sharedInputComponents from 'components/shared/inputs/inputs';
-import * as widgetInputComponents from 'components/widgets/inputs/inputs';
 import { EInputType, IInputMetadata } from 'components/shared/inputs';
 import { Component, Prop } from 'vue-property-decorator';
 import { BaseInput } from './BaseInput';
@@ -10,7 +9,6 @@ import { BaseInput } from './BaseInput';
 @Component({
   components: {
     ...sharedInputComponents,
-    ...widgetInputComponents,
   },
 })
 export default class FormInput extends BaseInput<any, IInputMetadata> {

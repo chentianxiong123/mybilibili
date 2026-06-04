@@ -23,7 +23,6 @@ import {
   convertFileFormatToRecordingFormat,
   EncoderQueryService,
 } from './output';
-import { VideoEncodingOptimizationService } from 'services/video-encoding-optimizations';
 import { EDeviceType, HardwareService } from 'services/hardware';
 import { StreamingService } from 'services/streaming';
 import { byOS, getOS, OS } from 'util/operating-systems';
@@ -39,26 +38,20 @@ import { UserService } from 'app-services';
 import { EScaleType } from '../../../obs-api';
 
 export enum ESettingsCategory {
-  AI = 'AI',
   SceneCollections = 'Scene Collections',
   Advanced = 'Advanced',
   Audio = 'Audio',
   Video = 'Video',
   Output = 'Output',
-  Multistreaming = 'Multistreaming',
   Notifications = 'Notifications',
   Appearance = 'Appearance',
   VirtualWebcam = 'Virtual Webcam',
-  GameOverlay = 'Game Overlay',
   Developer = 'Developer',
   Experimental = 'Experimental',
   GetSupport = 'Get Support',
-  InstalledApps = 'Installed Apps',
   Stream = 'Stream',
   General = 'General',
-  Mobile = 'Mobile',
   Hotkeys = 'Hotkeys',
-  Ultra = 'Ultra',
   // ...
 }
 
@@ -317,9 +310,6 @@ export class SettingsService extends StatefulService<ISettingsServiceState> {
   @Inject() private navigationService: NavigationService;
   @Inject() private userService: UserService;
 
-  @Inject()
-  private videoEncodingOptimizationService: VideoEncodingOptimizationService;
-
   @Inject() private encoderQueryService: EncoderQueryService;
 
   private isSaving = false;
@@ -393,8 +383,7 @@ export class SettingsService extends StatefulService<ISettingsServiceState> {
     // We hide the encoder preset and settings if the optimized ones are in used
     if (
       categoryName === 'Output' &&
-      !this.streamingService.isIdle &&
-      this.videoEncodingOptimizationService.state.useOptimizedProfile
+      !this.streamingService.isIdle
     ) {
       const encoder = obsEncoderToEncoderFamily(
         this.findSettingValue(settings, 'Streaming', 'Encoder') ||
@@ -434,25 +423,14 @@ export class SettingsService extends StatefulService<ISettingsServiceState> {
 
   getCategories(): ESettingsCategory[] {
     let categories: ESettingsCategory[] = obs.NodeObs.OBS_settings_getListCategories();
-    // insert 'Multistreaming' after 'General'
-    categories.splice(1, 0, ESettingsCategory.Multistreaming);
     // Deleting 'Virtual Webcam' category to add it below to position properly
     categories = categories.filter(category => category !== ESettingsCategory.VirtualWebcam);
     categories = categories.concat([
       ESettingsCategory.SceneCollections,
       ESettingsCategory.Notifications,
       ESettingsCategory.Appearance,
-      ESettingsCategory.Mobile,
       ESettingsCategory.VirtualWebcam,
     ]);
-
-    // Platform-specific categories
-    byOS({
-      [OS.Mac]: () => {},
-      [OS.Windows]: () => {
-        categories.push(ESettingsCategory.GameOverlay);
-      },
-    });
 
     if (this.views.advancedSettingEnabled) {
       categories = categories.concat([ESettingsCategory.Developer, ESettingsCategory.Experimental]);
@@ -460,21 +438,11 @@ export class SettingsService extends StatefulService<ISettingsServiceState> {
 
     categories.push(ESettingsCategory.GetSupport);
 
-    // TODO: Lock behind admin?
-    // Show AI settings for Windows, or for Mac in development. Do not show to Mac users in production.
-    if (getOS() === OS.Windows || (getOS() === OS.Mac && Utils.isDevMode())) {
-      categories.push(ESettingsCategory.AI);
-    }
-
     // dual output mode returns additional categories for each context
     // so hide these from the settings list
     categories = categories.filter(
       category => !category.toLowerCase().startsWith('stream') || category === 'Stream',
     );
-
-    if (!this.userService.views.isPrime) {
-      categories.push(ESettingsCategory.Ultra);
-    }
 
     return categories;
   }
