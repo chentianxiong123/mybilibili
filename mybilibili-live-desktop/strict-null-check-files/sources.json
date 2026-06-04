@@ -1,9 +1,0 @@
-{
-  "ts": [
-    "app/services/sources/*.ts",
-    "app/services/scenes/*.ts"
-  ],
-  "tsx": [
-
-  ]
-}

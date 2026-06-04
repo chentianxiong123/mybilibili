@@ -1,0 +1,249 @@
+@import 'mixins';
+
+.input-container {
+  .margin-bottom(2);
+
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+
+  &.input-container--no-label {
+    width: 100%;
+
+    .input-label {
+      display: none;
+    }
+
+    .input-wrapper {
+      width: 100%;
+    }
+  }
+
+  &.input-container--no-margin {
+    margin-bottom: 0;
+  }
+}
+
+.input-label {
+  width: 30%;
+  .padding-right(2);
+}
+
+.input-wrapper {
+  width: 70%;
+
+  .checkbox {
+    &:last-child {
+      margin-right: 0;
+    }
+  }
+
+  .button {
+    &:last-child {
+      margin-right: 0;
+    }
+  }
+}
+
+.input-wrapper--search {
+  position: relative;
+
+  &::after {
+    .absolute(@top: 0, @right: 8px, @bottom: 0);
+
+    content: '\f002';
+    font-family: "Font Awesome 5 Free", sans-serif;
+    font-weight: 900;
+    line-height: 32px;
+  }
+}
+
+.input-wrapper.disabled {
+  opacity: 0.5;
+
+  div,
+  input {
+    cursor: not-allowed;
+  }
+}
+
+.input--search {
+  padding: 0 30px 0 8px;
+  width: 100%;
+}
+
+.input-description {
+  margin-top: 6px;
+  font-size: 11px;
+  font-style: italic;
+}
+
+// assume only Vue components have these containers
+span[data-role="input"],
+.ModalLayout-fixed,
+.modal-layout-vue,
+.Hotkey-bindings,
+.row,
+.input-wrapper--search,
+.manage-scene-collections__header,
+.multiselect,
+[data-vv-scope] {
+
+  // add styles for Vue inputs
+
+  input[type=text],
+  input[type=number],
+  input[type=password],
+  textarea,
+  textarea[type=text] {
+    .radius();
+
+    border: 1px solid var(--button);
+    background: var(--input-bg);
+    margin-bottom: 0;
+    font-size: 14px;
+    color: var(--paragraph);
+    box-shadow: none;
+    outline: none;
+    height: 32px;
+    padding: 0 @spacing;
+
+    &:focus {
+      box-shadow: none;
+      background: var(--input-bg);
+      border-color: var(--primary);
+    }
+
+    &:disabled:not('.ant-input'),
+    .is-disabled {
+      background-color: var(--button);
+      border-color: var(--button);
+    }
+
+    &.input--transparent {
+      border: 0;
+      border-bottom: 1px dashed var(--midtone);
+      padding: 0;
+      height: 20px;
+      background: transparent;
+      border-radius: 0;
+    }
+  }
+
+  textarea,
+  textarea[type=text] {
+    .padding();
+    line-height: 20px;
+    min-height: 50px
+  }
+
+}
+
+.list-input .multiselect {
+  input[type=text] {
+    border: none;
+    height: 20px;
+    color: var(--title);
+    &::placeholder {
+      color: var(--paragraph);
+    }
+  }
+
+  .multiselect__placeholder {
+    padding-top: 0px;
+    padding-left: 6px;
+  }
+
+
+  .multiselect__tags {
+    min-height: auto;
+    height: 32px;
+    padding: 5px 40px 0 3px;
+    background: var(--dropdown-bg);
+    border-color: var(--button);
+  }
+  .multiselect__select:before {
+    top: 55%;
+  }
+  &.multiselect--active .multiselect__select:before {
+    top: 80%;
+  }
+  .multiselect__single {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    font-size: 14px;
+    color: var(--paragraph);
+    background: var(--dropdown-bg);
+  }
+  .multiselect__option.multiselect__option {
+    font-size: 14px;
+    color: var(--paragraph);
+  }
+
+  .multiselect__option.multiselect__option--highlight {
+    background: var(--dropdown-alt-bg);
+    color: var(--title);
+  }
+
+  .multiselect__option--disabled {
+    background: var(--dropdown-bg) !important;
+  }
+
+
+  .multiselect__option--selected {
+    background: var(--dropdown-alt-bg);
+    color: var(--title);
+
+    &.multiselect__option--highlight {
+      background: var(--dropdown-alt-bg);
+    }
+  }
+
+  .multiselect__content-wrapper {
+    background: var(--dropdown-bg);
+    border: 1px solid var(--button);
+    border-top: none;
+    margin-top: -4px;
+    .shadow();
+  }
+
+  .multiselect__spinner {
+    height: 30px;
+    background: var(--dropdown-bg);
+  }
+
+  &.multiselect--disabled {
+    opacity: 0.5;
+    background: none;
+
+    .multiselect__select {
+      background: none;
+    }
+
+    &:focus {
+      outline: none;
+    }
+
+    .multiselect__tags {
+      .multiselect__input {
+        cursor: not-allowed;
+      }
+    }
+  }
+
+}
+
+// Path inputs
+.path__input {
+  flex-grow: 1;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.path__browse-button {
+  flex-shrink: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  margin-left: -1px;
+}

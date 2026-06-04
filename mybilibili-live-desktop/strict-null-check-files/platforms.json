@@ -1,8 +1,0 @@
-{
-  "ts": [
-    "app/services/platforms/**/*.ts"
-  ],
-  "tsx": [
-
-  ]
-}

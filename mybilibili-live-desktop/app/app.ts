@@ -25,7 +25,6 @@ import VModal from 'vue-js-modal';
 import VeeValidate from 'vee-validate';
 import ChildWindow from 'components/windows/ChildWindow';
 import OneOffWindow from 'components/windows/OneOffWindow.vue';
-import { UserService, setSentryContext } from 'services/user';
 import { getResource } from 'services';
 import * as obs from '../obs-api';
 import path from 'path';
@@ -37,12 +36,6 @@ import { MetricsService } from 'services/metrics';
 import { UsageStatisticsService } from 'services/usage-statistics';
 import * as remote from '@electron/remote';
 import { RealmService } from 'app-services';
-
-// // TODO: commented until we remove slap library
-// // For React Windows
-// import React from 'react';
-// import ReactDOM from 'react-dom';
-// import Main from 'components-react/windows/Main';
 
 const { ipcRenderer } = electron;
 const slobsVersion = Utils.env.SLOBS_VERSION;
@@ -174,7 +167,7 @@ if (isProduction || process.env.SLOBS_REPORT_TO_SENTRY) {
         event.request.url = normalize(event.request.url);
       }
 
-      return isSampled || event.tags?.feature === 'highlighter' ? event : null;
+      return isSampled ? event : null;
     },
     integrations: [new Integrations.Vue({ Vue })],
   });
@@ -330,8 +323,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const windowId = Utils.getCurrentUrlParams().windowId;
 
-  // // TODO: commented until we remove slap library
-  // if (windowId !== 'main') {
   // create a root Vue component
   const vm = new Vue({
     i18n,
@@ -374,12 +365,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (ev.key === 'F5') vm.startWindowRefresh();
     });
   }
-  // // TODO: commented until we remove slap library
-  // } else {
-  //   // create a roote React component
-  //   ReactDOM.render(React.createElement(Main), document.getElementById('app'));
-  // }
-
   let mainWindowShowTime = 0;
   if (Utils.isMainWindow()) {
     remote.getCurrentWindow().show();
@@ -401,10 +386,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (usingSentry) {
-      const userService = getResource<UserService>('UserService');
-      const ctx = userService.getSentryContext();
-      if (ctx) setSentryContext(ctx);
-      userService.sentryContext.subscribe(setSentryContext);
+      // User identity is owned by mybilibili services, not Streamlabs platform login.
     }
   });
 });

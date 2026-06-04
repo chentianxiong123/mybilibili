@@ -23,7 +23,6 @@
     "jsx": "preserve",
     "types": [
       "node-fetch",
-      "archiver",
       "classnames",
       "extract-zip",
       "fs-extra",

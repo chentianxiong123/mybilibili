@@ -1,0 +1,331 @@
+button {
+  cursor: pointer;
+}
+
+.button {
+  .radius();
+  .weight(@medium);
+  .padding-h-sides();
+  .padding-v-sides(@0);
+
+  border: 1px solid transparent;
+  margin: 0;
+  font-family: 'Roboto', sans-serif;
+  min-height: 32px;
+  line-height: 30px;
+  cursor: pointer;
+  background-color: var(--button);
+
+  &:focus,
+  &:visited {
+    outline: none;
+  }
+
+  &.is-disabled,
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  span,
+  i {
+    .margin-right();
+  }
+}
+
+.button--default {
+  background-color: var(--button);
+  color: var(--paragraph);
+
+  &:hover {
+    background-color: var(--button-hover);
+    color: var(--title);
+  }
+
+  &:focus {
+    background-color: var(--button);
+    color: var(--title);
+  }
+
+  &.is-disabled,
+  &:disabled {
+    &:hover {
+      background-color: var(--button);
+      color: var(--title);
+    }
+  }
+}
+
+.button--action {
+  background-color: var(--teal);
+  border-color: var(--teal);
+  color: var(--action-button-text);
+
+  &:hover {
+    background-color: var(--teal-hover);
+    color: var(--action-button-text);
+  }
+
+  &:focus {
+    background-color: var(--teal);
+  }
+
+  &.is-disabled,
+  &:disabled {
+    &:hover {
+      background-color: var(--teal);
+    }
+  }
+}
+
+.button--prime {
+  background-color: var(--prime);
+  border-color: var(--prime);
+  color: var(--action-button-text);
+
+  &:hover {
+    background-color: var(--prime-hover);
+    color: var(--action-button-text);
+  }
+
+  &:focus {
+    background-color: var(--prime);
+  }
+
+  &.is-disabled,
+  &:disabled {
+    &:hover {
+      background-color: var(--prime);
+    }
+  }
+}
+
+.button--trans {
+  background: transparent;
+  color: var(--paragraph);
+  border-color: transparent;
+
+  &:hover,
+  &:focus {
+    color: var(--title);
+    background: transparent;
+
+    i {
+      color: inherit;
+    }
+  }
+}
+
+.button--warn {
+  background-color: var(--warning-button-bg);
+  color: white;
+
+  &:hover,
+  &:focus,
+  &:active {
+    background-color: var(--warning-hover);
+  }
+}
+
+.circle-button {
+  .weight(@bold);
+
+  position: relative;
+  width: 30px;
+  height: 30px;
+  background: var(--button);
+  color: var(--paragraph);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 100%;
+  box-sizing: border-box;
+  letter-spacing: 0.2px;
+  border: none;
+
+  &:hover {
+    background-color: var(--button-hover);
+  }
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.icon-button {
+  font-size: 14px;
+  cursor: pointer;
+  margin-left: 10px;
+  .icon-hover();
+
+  &:first-child {
+    margin-left: inherit;
+  }
+}
+
+.icon-button--lg {
+  font-size: 15px;
+}
+
+.square-button {
+  .radius();
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 50px;
+  height: 50px;
+  color: var(--white);
+  font-size: 16px;
+}
+
+.button-container {
+  display: flex;
+  justify-content: flex-start;
+  align-content: center;
+
+  .button,
+  .square-button {
+    margin-right: 10px;
+  }
+}
+
+.button-container--right {
+  justify-content: flex-end;
+
+  .button,
+  .square-button {
+    margin-right: 0;
+    margin-left: 10px;
+  }
+}
+
+.square-button--twitch,
+.button--twitch {
+  background: var(--twitch);
+
+  &:hover {
+    background: var(--twitch-hover) !important;
+  }
+
+  &:focus,
+  &:active {
+    background: var(--twitch);
+  }
+}
+
+.square-button--youtube,
+.button--youtube {
+  background: var(--youtube);
+
+  &:hover {
+    background: var(--youtube-hover) !important;
+  }
+
+  &:focus,
+  &:active,
+  &:disabled {
+    background: var(--youtube);
+  }
+}
+
+.square-button--facebook,
+.button--facebook {
+  background: var(--facebook);
+
+  &:hover,
+  &:active {
+    background: var(--facebook-hover) !important;
+  }
+}
+
+.square-button--tiktok,
+.button--tiktok {
+  background: var(--tiktok-btn);
+  color: black;
+
+  &:hover,
+  &:active {
+    background: var(--tiktok-btn) !important;
+    color: black !important;
+  }
+}
+
+.square-button--trovo,
+.button--trovo {
+  background: var(--trovo);
+  color: black;
+
+  &:hover,
+  &:active {
+    background: var(--trovo-hover) !important;
+  }
+}
+
+.square-button--twitter {
+  background: var(--twitter);
+
+  &:hover,
+  &:active {
+    background: var(--twitter-hover) !important;
+  }
+}
+
+.square-button--kick,
+.button--kick {
+  background: black;
+  color: var(--kick);
+
+  &:hover,
+  &:active {
+    background: var(--kick-hover) !important;
+  }
+}
+
+.button--dlive {
+  background: #ffd300;
+
+  &:hover {
+    box-shadow: 0 3px 5px 0 rgba(255, 211, 0, 0.15) !important;
+  }
+
+  &:focus,
+  &:active {
+    background: lighten(#ffd300, 4%) !important;
+  }
+}
+
+.button--nimotv {
+  background: #343ed1;
+
+  &:hover {
+    box-shadow: 0 3px 5px 0 rgba(#343ed1, 0.15) !important;
+  }
+
+  &:focus,
+  &:active {
+    background: lighten(#343ed1, 4%) !important;
+  }
+}
+
+.button--soft-warning {
+  color: var(--warning) !important;
+  background: rgba(251, 72, 76, 0.16) !important;
+  border-color: transparent !important;
+
+  &:focus {
+    color: var(--warning) !important;
+    background: rgba(251, 72, 76, 0.16) !important;
+  }
+
+  &:hover {
+    background: rgba(251, 72, 76, 0.2) !important;
+    color: var(--warning) !important;
+  }
+}
+
+.theme-toggle {
+  &:focus {
+    outline: 0;
+  }
+}
