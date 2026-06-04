@@ -16,17 +16,6 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    const userStr = localStorage.getItem('user')
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr)
-        if (user && user.id) {
-          config.headers['X-User-Id'] = user.id
-        }
-      } catch (e) {
-        console.error('解析用户信息失败:', e)
-      }
-    }
     return config
   },
   error => {
@@ -43,6 +32,7 @@ api.interceptors.response.use(
       switch (error.response.status) {
         case 401:
           localStorage.removeItem('token')
+          localStorage.removeItem('refreshToken')
           localStorage.removeItem('user')
           break
         case 403:
@@ -194,5 +184,3 @@ export const statsApi = {
 
   getManuscriptTrend: () => api.get('/creator/stats/manuscript-trend')
 }
-
-export default api

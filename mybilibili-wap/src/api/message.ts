@@ -1,6 +1,11 @@
 import api from './client'
 
+function hasToken() {
+  return !!localStorage.getItem('token')
+}
+
 export async function getConversations() {
+  if (!hasToken()) return { code: '0', data: [] }
   try {
     const res = await api.get('/message/conversations')
     return {
@@ -13,6 +18,7 @@ export async function getConversations() {
 }
 
 export async function getUnreadCounts() {
+  if (!hasToken()) return { code: '0', data: {} }
   try {
     const res = await api.get('/message/unread/counts')
     return {

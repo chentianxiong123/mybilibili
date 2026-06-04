@@ -5,6 +5,8 @@ import com.mybilibili.common.entity.*;
 import com.mybilibili.common.enums.InteractionType;
 import com.mybilibili.common.exception.BusinessException;
 import com.mybilibili.common.vo.VideoVO;
+import com.mybilibili.mq.ManuscriptAnalyticsEvent;
+import com.mybilibili.mq.VideoMQProducer;
 import com.mybilibili.interaction.mapper.*;
 import com.mybilibili.interaction.service.UserProfileService;
 import com.mybilibili.interaction.service.VideoInteractionService;
@@ -46,6 +48,9 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
     @Autowired
     private UserProfileService userProfileService;
 
+    @Autowired
+    private VideoMQProducer videoMQProducer;
+
     private static final String TARGET_TYPE_MANUSCRIPT = "MANUSCRIPT";
 
     @Override
@@ -80,6 +85,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
         userMapper.updateLikedCount(userId, 1);
 
         updateProfileForManuscript(userId, manuscriptId, "like");
+        publishMetric(manuscriptId, ManuscriptAnalyticsEvent.METRIC_LIKE, 1);
 
         return true;
     }
@@ -108,6 +114,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
 
         manuscriptMapper.updateLikeCount(manuscriptId, -1);
         userMapper.updateLikedCount(userId, -1);
+        publishMetric(manuscriptId, ManuscriptAnalyticsEvent.METRIC_LIKE, -1);
 
         return true;
     }
@@ -142,6 +149,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
             int coinDiff = coinCount - oldCoinCount;
             manuscriptMapper.updateCoinCount(manuscriptId, coinDiff);
             userMapper.updateCoinCount(userId, -coinDiff);
+            publishMetric(manuscriptId, ManuscriptAnalyticsEvent.METRIC_COIN, coinDiff);
         } else {
             UserInteraction interaction = new UserInteraction();
             interaction.setUserId(userId);
@@ -151,6 +159,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
             userInteractionMapper.insert(interaction);
             manuscriptMapper.updateCoinCount(manuscriptId, coinCount);
             userMapper.updateCoinCount(userId, -coinCount);
+            publishMetric(manuscriptId, ManuscriptAnalyticsEvent.METRIC_COIN, coinCount);
         }
 
         return true;
@@ -185,6 +194,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
         manuscriptMapper.updateCollectCount(manuscriptId, 1);
 
         updateProfileForManuscript(userId, manuscriptId, "collect");
+        publishMetric(manuscriptId, ManuscriptAnalyticsEvent.METRIC_COLLECT, 1);
 
         return true;
     }
@@ -210,6 +220,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
 
         userInteractionMapper.delete(wrapper);
         manuscriptMapper.updateCollectCount(manuscriptId, -1);
+        publishMetric(manuscriptId, ManuscriptAnalyticsEvent.METRIC_COLLECT, -1);
 
         return true;
     }
@@ -254,6 +265,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
         if (!alreadyShared) {
             int rows = manuscriptMapper.updateShareCount(manuscriptId, 1);
             System.out.println("[SHARE-SVC] updateShareCount rows affected=" + rows);
+            publishMetric(manuscriptId, ManuscriptAnalyticsEvent.METRIC_SHARE, 1);
         }
     }
 
@@ -466,6 +478,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
             List<ManuscriptFavorite> remainingFavorites = favoriteVideoMapper.findByUserIdAndManuscriptId(userId, favoriteVideo.getManuscriptId());
             if (remainingFavorites.isEmpty()) {
                 manuscriptMapper.updateCollectCount(favoriteVideo.getManuscriptId(), -1);
+                publishMetric(favoriteVideo.getManuscriptId(), ManuscriptAnalyticsEvent.METRIC_COLLECT, -1);
             }
         }
 
@@ -518,6 +531,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
             interaction.setInteractionType(InteractionType.COLLECT.getCode());
             userInteractionMapper.insert(interaction);
             manuscriptMapper.updateCollectCount(manuscriptId, 1);
+            publishMetric(manuscriptId, ManuscriptAnalyticsEvent.METRIC_COLLECT, 1);
         }
 
         return success;
@@ -552,6 +566,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
                        .eq(UserInteraction::getInteractionType, InteractionType.COLLECT.getCode());
                 userInteractionMapper.delete(wrapper);
                 manuscriptMapper.updateCollectCount(manuscriptId, -1);
+                publishMetric(manuscriptId, ManuscriptAnalyticsEvent.METRIC_COLLECT, -1);
             }
             return true;
         }
@@ -588,6 +603,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
                        .eq(UserInteraction::getInteractionType, InteractionType.COLLECT.getCode());
                 userInteractionMapper.delete(wrapper);
                 manuscriptMapper.updateCollectCount(manuscriptId, -1);
+                publishMetric(manuscriptId, ManuscriptAnalyticsEvent.METRIC_COLLECT, -1);
             }
             return true;
         }
@@ -736,6 +752,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
         if (remainingFavorites.isEmpty() && existingCollection != null) {
             userInteractionMapper.delete(wrapper);
             manuscriptMapper.updateCollectCount(manuscriptId, -1);
+            publishMetric(manuscriptId, ManuscriptAnalyticsEvent.METRIC_COLLECT, -1);
         } else if (!remainingFavorites.isEmpty() && existingCollection == null) {
             UserInteraction interaction = new UserInteraction();
             interaction.setUserId(userId);
@@ -744,6 +761,7 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
             interaction.setInteractionType(InteractionType.COLLECT.getCode());
             userInteractionMapper.insert(interaction);
             manuscriptMapper.updateCollectCount(manuscriptId, 1);
+            publishMetric(manuscriptId, ManuscriptAnalyticsEvent.METRIC_COLLECT, 1);
         }
 
         if (!success && !currentFolderIds.equals(newFolderIds)) {
@@ -806,5 +824,18 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
         } catch (Exception e) {
             log.debug("更新用户画像失败: {}", e.getMessage());
         }
+    }
+
+    private void publishMetric(Integer manuscriptId, String metricType, Integer delta) {
+        Manuscript manuscript = manuscriptMapper.selectById(manuscriptId);
+        if (manuscript == null || manuscript.getUserId() == null) {
+            throw new BusinessException("稿件不存在");
+        }
+        videoMQProducer.sendManuscriptAnalyticsEvent(ManuscriptAnalyticsEvent.metricIncrement(
+                manuscriptId,
+                manuscript.getUserId(),
+                metricType,
+                delta
+        ));
     }
 }

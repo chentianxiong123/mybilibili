@@ -235,7 +235,7 @@ onMounted(loadData)
 
     <!-- 类型筛选 Tab -->
     <el-tabs v-model="activeTypeFilter" @tab-change="handleTypeFilterChange" class="type-filter-tabs">
-      <el-tabs-tab
+      <el-tab-pane
         v-for="tab in filterTabs"
         :key="tab.value"
         :label="tab.label"

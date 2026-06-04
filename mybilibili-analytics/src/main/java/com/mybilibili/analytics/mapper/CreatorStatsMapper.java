@@ -1,4 +1,4 @@
-package com.mybilibili.video.mapper;
+package com.mybilibili.analytics.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.mybilibili.common.entity.Manuscript;
@@ -30,6 +30,11 @@ public interface CreatorStatsMapper extends BaseMapper<Manuscript> {
             "FROM manuscripts m " +
             "WHERE m.user_id = #{userId} AND m.status = 3 AND DATE(m.upload_time) >= #{startDate}")
     Map<String, Object> selectIncreaseStats(@Param("userId") Integer userId, @Param("startDate") String startDate);
+
+    @Select("SELECT COALESCE(SUM(view_count), 0) " +
+            "FROM manuscript_daily_metrics " +
+            "WHERE user_id = #{userId} AND metric_date >= #{startDate}")
+    Integer selectViewIncreaseFromDailyMetrics(@Param("userId") Integer userId, @Param("startDate") String startDate);
 
     @Select("SELECT * FROM manuscripts WHERE user_id = #{userId} AND status = 3 ORDER BY view_count DESC LIMIT #{limit}")
     List<Manuscript> selectTopByViews(@Param("userId") Integer userId, @Param("limit") Integer limit);
@@ -129,6 +134,15 @@ public interface CreatorStatsMapper extends BaseMapper<Manuscript> {
             "GROUP BY DATE(i.created_at) " +
             "ORDER BY date ASC")
     List<Map<String, Object>> selectInteractionTrendData(@Param("userId") Integer userId, @Param("startDate") String startDate);
+
+    @Select("SELECT " +
+            "metric_date as date, " +
+            "SUM(view_count) as views " +
+            "FROM manuscript_daily_metrics " +
+            "WHERE user_id = #{userId} AND metric_date >= #{startDate} " +
+            "GROUP BY metric_date " +
+            "ORDER BY metric_date ASC")
+    List<Map<String, Object>> selectViewTrendData(@Param("userId") Integer userId, @Param("startDate") String startDate);
 
     @Select("SELECT " +
             "DATE(c.created_at) as date, " +

@@ -26,15 +26,6 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     config.headers['X-Client-Platform'] = 'wap'
-    const userStr = localStorage.getItem('user')
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr)
-        if (user && user.id) {
-          config.headers['X-User-Id'] = user.id
-        }
-      } catch (e) {}
-    }
     return config
   },
   error => Promise.reject(error)

@@ -123,7 +123,7 @@ const handleLike = async (item) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-User-Id': localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).id : null
+        'Authorization': localStorage.getItem('token') ? `Bearer ${localStorage.getItem('token')}` : ''
       }
     })
     const res = await response.json()

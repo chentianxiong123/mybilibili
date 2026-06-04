@@ -1443,7 +1443,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { creatorApi, manuscriptApi, collectionApi, followApi, statsApi } from '@/api/creator'
 import { categoryApi, commentApi } from '@/api/index'
 import { useUserStore } from '@/stores/user'
-import * as echarts from 'echarts'
+import echarts from '@/utils/echartsCore'
 import {
   VideoPlay,
   Upload,

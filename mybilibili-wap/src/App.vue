@@ -8,7 +8,7 @@ const route = useRoute()
 // 只在主要页面显示底部 TabBar
 const showTabBar = computed(() => {
   const path = route.path
-  return path === '/m/index' || path.startsWith('/m/live') || path.startsWith('/m/search') || path.startsWith('/m/space')
+  return path === '/m/index' || path.startsWith('/m/live') || path.startsWith('/m/search') || path.startsWith('/m/space') || path.startsWith('/m/dynamic')
 })
 
 // 登录页不显示

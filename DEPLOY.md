@@ -23,13 +23,14 @@ Spring Cloud Gateway (:8080) ─── 统一入口，JWT 鉴权
     ├── mybilibili-interaction (:8086) ─── 点赞/投币/收藏/动态
     ├── mybilibili-message (:8087) ─── 私信/会话
     ├── mybilibili-ai      (:8088) ─── 视频转码/AI字幕/AI摘要
-    └── mybilibili-live     (:8090) ─── 直播房间/连麦/WebRTC会议
+    ├── mybilibili-live     (:8089) ─── 直播房间/连麦/WebRTC会议
+    └── mybilibili-analytics (:8090) ─── 创作者数据中心/趋势统计
 ```
 
 ### 1.2 核心技术栈
 
 **后端：**
-- Spring Boot 2.7.18 + Spring Cloud 2021.0.8
+- Spring Boot 3.2.4 + Spring Cloud 2023.0.1 + Spring Cloud Alibaba 2023.0.1.0
 - Spring Cloud Alibaba（Nacos 注册/配置中心）
 - Spring Cloud Gateway（API 网关）
 - MyBatis Plus 3.5.3（ORM）
@@ -82,7 +83,7 @@ Spring Cloud Gateway (:8080) ─── 统一入口，JWT 鉴权
 
 | 依赖 | 版本 | 说明 | 端口 |
 |------|------|------|------|
-| JDK | 1.8+ | 后端运行环境 | - |
+| JDK | 17 | 后端运行环境 | - |
 | Maven | 3.6+ | 后端编译构建 | - |
 | Node.js | 16+ | 前端运行环境 | - |
 | npm | 8+ | 前端包管理 | - |
@@ -107,19 +108,20 @@ Spring Cloud Gateway (:8080) ─── 统一入口，JWT 鉴权
 | mybilibili-comment | 8085 | MySQL, Redis, Nacos |
 | mybilibili-interaction | 8086 | MySQL, Redis, Nacos |
 | mybilibili-message | 8087 | MySQL, Redis, Nacos |
-|| mybilibili-ai | 8088 | MySQL, MongoDB, Nacos, RocketMQ |
-|| mybilibili-live | 8090 | MySQL, Redis, Nacos |
-|| 用户端前端 | 5173 | - |
-|| 管理端前端 | 3002 | - |
+| mybilibili-ai | 8088 | MySQL, MongoDB, Nacos, RocketMQ |
+| mybilibili-live | 8089 | MySQL, Redis, Nacos |
+| mybilibili-analytics | 8090 | MySQL, Nacos, RocketMQ |
+| 用户端前端 | 5173 | - |
+| 管理端前端 | 3002 | - |
 
 ### 3.3 环境准备
 
-#### 3.3.1 JDK 1.8
-下载地址：https://adoptium.net/temurin/releases/?version=8
+#### 3.3.1 JDK 17
+下载地址：https://adoptium.net/temurin/releases/?version=17
 
 配置环境变量：
 ```bash
-setx JAVA_HOME "C:\Program Files\Eclipse Adoptium\jdk-8.0.412.8-hotspot"
+setx JAVA_HOME "D:\Program Files (x86)\corretto-17"
 setx PATH "%PATH%;%JAVA_HOME%\bin"
 ```
 
@@ -193,6 +195,8 @@ mvn clean install -DskipTests
 7. **mybilibili-interaction**（端口 8086）
 8. **mybilibili-message**（端口 8087）
 9. **mybilibili-ai**（端口 8088）
+10. **mybilibili-live**（端口 8089）
+11. **mybilibili-analytics**（端口 8090）
 
 #### 3.4.3 启动方式
 
@@ -210,7 +214,7 @@ java -jar mybilibili-gateway/target/mybilibili-gateway-1.0.0.jar
 .\scripts\start-all.bat    # CMD
 .\scripts\start-all.ps1    # PowerShell
 ```
-脚本启动顺序：Gateway → User → Video → Danmaku → Search → Comment → Interaction → Message → AI → 用户端前端 → 管理端前端。
+脚本启动顺序：Gateway → User → Video → Danmaku → Search → Comment → Interaction → Message → AI → Live → Analytics → 用户端前端 → 管理端前端。
 
 #### 3.4.4 配置文件说明
 
@@ -249,16 +253,16 @@ mkdir d:\files\mybilibili\uploads\subtitles
 #### 3.5.1 用户端
 ```bash
 cd mybilibili-web
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 访问 http://localhost:5173
 
 #### 3.5.2 管理端
 ```bash
 cd mybilibili-admin-web
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 访问 http://localhost:3002
 
@@ -266,8 +270,8 @@ npm run dev
 
 #### 3.6.1 编译前端
 ```bash
-cd mybilibili-web && npm install && npm run build
-cd mybilibili-admin-web && npm install && npm run build
+cd mybilibili-web && pnpm install && pnpm run build
+cd mybilibili-admin-web && pnpm install && pnpm run build
 ```
 构建产物位于 `mybilibili-web/dist` 和 `mybilibili-admin-web/dist`。
 
@@ -474,7 +478,8 @@ mybilibili-cloud/
 ├── mybilibili-message/          # 消息服务（端口 8087）
 ├── mybilibili-search/           # 搜索服务（端口 8084）
 ├── mybilibili-ai/               # AI 服务（端口 8088）
-├── mybilibili-live/              # 直播服务（端口 8090）
+├── mybilibili-live/              # 直播服务（端口 8089）
+├── mybilibili-analytics/         # 创作者数据服务（端口 8090）
 ├── mybilibili-common/           # 公共模块（JWT、VO、工具类）
 ├── mybilibili-mq/               # 消息队列模块（RocketMQ 生产者）
 ├── mybilibili-web/               # 用户端前端（Vue 3）

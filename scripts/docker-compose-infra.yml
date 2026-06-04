@@ -5,11 +5,19 @@ services:
     image: mysql:5.7
     container_name: mybilibili-mysql
     restart: unless-stopped
+    mem_limit: 384m
+    cpus: 0.50
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --default-time-zone=+08:00
       - --max-allowed-packet=512M
+      - --max-connections=50
+      - --innodb-buffer-pool-size=128M
+      - --performance-schema=OFF
+      - --table-open-cache=256
+      - --tmp-table-size=32M
+      - --max-heap-table-size=32M
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: mybilibili
@@ -27,7 +35,9 @@ services:
     image: redis:7.2-alpine
     container_name: mybilibili-redis
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    mem_limit: 160m
+    cpus: 0.25
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
     ports:
       - "6379:6379"
     volumes:
@@ -42,13 +52,15 @@ services:
     image: nacos/nacos-server:v2.3.2
     container_name: mybilibili-nacos
     restart: unless-stopped
+    mem_limit: 512m
+    cpus: 0.75
     environment:
       MODE: standalone
       PREFER_HOST_MODE: hostname
       NACOS_AUTH_ENABLE: "false"
-      JVM_XMS: 256m
-      JVM_XMX: 512m
-      JVM_XMN: 128m
+      JVM_XMS: 128m
+      JVM_XMX: 256m
+      JVM_XMN: 64m
     ports:
       - "8848:8848"
       - "9848:9848"
@@ -66,6 +78,9 @@ services:
     image: mongo:6.0
     container_name: mybilibili-mongodb
     restart: unless-stopped
+    mem_limit: 384m
+    cpus: 0.50
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.25"]
     ports:
       - "27017:27017"
     volumes:
@@ -81,17 +96,20 @@ services:
     image: minio/minio:latest
     container_name: mybilibili-minio
     restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.50
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
+      GOMEMLIMIT: 192MiB
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - D:/DockerFiles/mybilibili/minio/data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/minio/health/live || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -100,10 +118,14 @@ services:
     image: apache/rocketmq:4.9.7
     container_name: mybilibili-rocketmq-namesrv
     restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.35
     working_dir: /home/rocketmq/rocketmq-4.9.7/bin
+    environment:
+      JAVA_OPT_EXT: "-server -Xms96m -Xmx160m -Xmn48m"
     command: ["sh", "mqnamesrv"]
     ports:
-      - "9876:9876"
+      - "127.0.0.1:9876:9876"
     volumes:
       - D:/DockerFiles/mybilibili/rocketmq/namesrv/logs:/home/rocketmq/logs
 
@@ -111,6 +133,8 @@ services:
     image: apache/rocketmq:4.9.7
     container_name: mybilibili-rocketmq-broker
     restart: unless-stopped
+    mem_limit: 384m
+    cpus: 0.75
     depends_on:
       - rocketmq-namesrv
     working_dir: /home/rocketmq/rocketmq-4.9.7/bin
@@ -121,26 +145,28 @@ services:
         nohup sh mqbroker -n rocketmq-namesrv:9876 -c /home/rocketmq/conf/broker.conf >/home/rocketmq/logs/broker.stdout 2>&1 &
         tail -f /dev/null
     environment:
-      JAVA_OPT_EXT: "-server -Xms512m -Xmx512m -Xmn256m"
+      JAVA_OPT_EXT: "-server -Xms160m -Xmx256m -Xmn96m"
     ports:
-      - "10909:10909"
-      - "10911:10911"
+      - "127.0.0.1:10911:10911"
     volumes:
-      - D:/DockerFiles/mybilibili/rocketmq/broker/conf/broker.conf:/home/rocketmq/conf/broker.conf:ro
+      - ./rocketmq/broker.conf:/home/rocketmq/conf/broker.conf:ro
       - D:/DockerFiles/mybilibili/rocketmq/broker/logs:/home/rocketmq/logs
       - D:/DockerFiles/mybilibili/rocketmq/broker/store:/home/rocketmq/store
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.18
+    build:
+      context: ./elasticsearch
+    image: mybilibili-elasticsearch-ik:7.17.18
     container_name: mybilibili-elasticsearch
     restart: unless-stopped
+    mem_limit: 512m
+    cpus: 0.75
     environment:
       discovery.type: single-node
       xpack.security.enabled: "false"
-      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+      ES_JAVA_OPTS: "-Xms256m -Xmx256m"
     ports:
-      - "9200:9200"
-      - "9300:9300"
+      - "127.0.0.1:9200:9200"
     volumes:
       - D:/DockerFiles/mybilibili/elasticsearch/data:/usr/share/elasticsearch/data
     healthcheck:
@@ -153,8 +179,12 @@ services:
     image: bladex/sentinel-dashboard:1.8.6
     container_name: mybilibili-sentinel
     restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.35
+    environment:
+      JAVA_OPTS: "-Xms64m -Xmx128m -XX:+UseSerialGC"
     ports:
-      - "8858:8858"
+      - "127.0.0.1:8858:8858"
     volumes:
       - D:/DockerFiles/mybilibili/sentinel/logs:/root/logs
 
@@ -162,6 +192,8 @@ services:
     image: registry.cn-hangzhou.aliyuncs.com/ossrs/srs:5
     container_name: mybilibili-srs
     restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.25
     working_dir: /usr/local/srs
     command: ["./objs/srs", "-c", "conf/srs.conf"]
     ports:
@@ -170,5 +202,10 @@ services:
       - "28080:28080"
       - "8000:8000/udp"
     volumes:
-      - D:/DockerFiles/mybilibili/srs/conf/srs.conf:/usr/local/srs/conf/srs.conf:ro
+      - ../srs.conf:/usr/local/srs/conf/srs.conf:ro
       - D:/DockerFiles/mybilibili/srs/data:/usr/local/srs/objs/nginx/html
+
+networks:
+  default:
+    external: true
+    name: mybilibili-net

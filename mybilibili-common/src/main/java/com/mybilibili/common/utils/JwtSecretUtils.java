@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 public final class JwtSecretUtils {
 
     private static final int MIN_SECRET_BYTES = 32;
+    private static final String LOCAL_DEV_SECRET = "mybilibili-local-dev-jwt-secret-0123456789abcdef";
 
     private JwtSecretUtils() {
     }
@@ -19,7 +20,8 @@ public final class JwtSecretUtils {
     public static String resolveSecret() {
         String secret = firstNonBlank(
                 System.getProperty("jwt.secret"),
-                System.getenv("JWT_SECRET")
+                System.getenv("JWT_SECRET"),
+                LOCAL_DEV_SECRET
         );
         if (secret == null || secret.isBlank()) {
             throw new IllegalStateException("JWT secret is required: set -Djwt.secret or JWT_SECRET");

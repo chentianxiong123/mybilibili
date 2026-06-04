@@ -1,7 +1,33 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import {
+  ArrowDown,
+  Connection,
+  Cpu,
+  DataAnalysis,
+  DataBoard,
+  DataLine,
+  Document,
+  DocumentChecked,
+  Expand,
+  Fold,
+  Folder,
+  Headset,
+  List,
+  Lock,
+  Message,
+  Monitor,
+  Operation,
+  Picture,
+  Setting,
+  SwitchButton,
+  Tickets,
+  User,
+  UserFilled,
+  VideoPlay,
+  Warning
+} from '@element-plus/icons-vue'
 import { useAdminStore } from './stores/admin'
 import AdminAiFloatingButton from './components/AdminAiFloatingButton.vue'
 import AdminAiChatPanel from './components/AdminAiChatPanel.vue'
@@ -14,6 +40,29 @@ const isCollapse = ref(false)
 const showAiAssistant = ref(false)
 
 const isLoginPage = computed(() => route.path === '/login')
+
+const iconMap = {
+  Connection,
+  Cpu,
+  DataAnalysis,
+  DataBoard,
+  DataLine,
+  Document,
+  DocumentChecked,
+  Folder,
+  Headset,
+  List,
+  Lock,
+  Message,
+  Monitor,
+  Operation,
+  Picture,
+  Setting,
+  Tickets,
+  User,
+  VideoPlay,
+  Warning
+}
 
 const allMenuItems = [
   { path: '/dashboard', icon: 'DataBoard', title: '数据概览', permission: 'statistics:manage' },
@@ -111,7 +160,7 @@ const handleCommand = (command) => {
             <template v-for="item in menuItems" :key="item.type === 'group' ? item.title : item.path">
               <el-sub-menu v-if="item.type === 'group'" :index="item.title">
                 <template #title>
-                  <el-icon><component :is="ElementPlusIconsVue[item.icon]" /></el-icon>
+                  <el-icon><component :is="iconMap[item.icon]" /></el-icon>
                   <span>{{ item.title }}</span>
                 </template>
                 <el-menu-item
@@ -119,12 +168,12 @@ const handleCommand = (command) => {
                   :key="child.path"
                   :index="child.path"
                 >
-                  <el-icon><component :is="ElementPlusIconsVue[child.icon]" /></el-icon>
+                  <el-icon><component :is="iconMap[child.icon]" /></el-icon>
                   <template #title>{{ child.title }}</template>
                 </el-menu-item>
               </el-sub-menu>
               <el-menu-item v-else :index="item.path">
-                <el-icon><component :is="ElementPlusIconsVue[item.icon]" /></el-icon>
+                <el-icon><component :is="iconMap[item.icon]" /></el-icon>
                 <template #title>{{ item.title }}</template>
               </el-menu-item>
             </template>
@@ -144,7 +193,7 @@ const handleCommand = (command) => {
           <div class="header-right">
             <el-dropdown trigger="click" @command="handleCommand">
               <div class="user-info">
-                <el-avatar :size="32" :icon="ElementPlusIconsVue.UserFilled" />
+                <el-avatar :size="32" :icon="UserFilled" />
                 <span class="username">{{ adminStore.userInfo?.username || '管理员' }}</span>
                 <el-tag v-if="adminStore.role" size="small" :type="isSuperAdmin ? 'danger' : 'info'" style="margin-left:4px">{{ adminStore.role }}</el-tag>
                 <el-icon class="dropdown-icon"><ArrowDown /></el-icon>

@@ -5,7 +5,7 @@ import com.mybilibili.common.storage.StorageKeys;
 import com.mybilibili.common.storage.StorageService;
 import com.mybilibili.common.utils.UploadFilePathUtils;
 import com.mybilibili.common.vo.Result;
-import com.mybilibili.video.service.BannerImageRedisService;
+import com.mybilibili.video.service.BannerImageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +22,7 @@ import java.util.Map;
 public class BannerImageController {
 
     @Autowired
-    private BannerImageRedisService bannerImageService;
+    private BannerImageService bannerImageService;
 
     @Autowired
     private UploadFilePathUtils uploadFilePathUtils;

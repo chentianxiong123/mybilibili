@@ -16,6 +16,7 @@ import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.UserVO;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
+import com.mybilibili.mq.ManuscriptAnalyticsEvent;
 import com.mybilibili.mq.VideoMQProducer;
 import com.mybilibili.mq.VideoProcessMessage;
 import com.mybilibili.video.entity.ManuscriptEditVersion;
@@ -34,6 +35,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URI;
@@ -107,6 +110,8 @@ public class ManuscriptServiceImpl implements ManuscriptService {
 
         manuscriptMapper.insert(manuscript);
         Integer manuscriptId = manuscript.getId();
+        recordManuscriptStatusEvent(manuscript, null, Manuscript.STATUS_PENDING_REVIEW,
+                "UPLOAD_SUBMITTED", "USER", userId, null);
         log.info("稿件记录创建成功，manuscriptId: {}", manuscriptId);
 
         try {
@@ -543,6 +548,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         }
 
         Map<String, Object> beforeSnapshot = buildEditSnapshot(existing);
+        Integer fromStatus = existing.getStatus();
 
         existing.setTitle(dto.getTitle().trim());
         existing.setDescription(dto.getDescription());
@@ -561,6 +567,8 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         }
 
         manuscriptMapper.updateById(existing);
+        recordManuscriptStatusEvent(existing, fromStatus, Manuscript.STATUS_PENDING_REVIEW,
+                "OWNER_EDIT_SUBMITTED", "USER", userId, "稿件编辑后重新进入审核");
         replaceManuscriptTags(id, dto.getTags());
         replaceManuscriptVideos(existing, dto.getVideos());
         Manuscript afterManuscript = manuscriptMapper.selectById(id);
@@ -943,12 +951,50 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         }
     }
 
+    private void recordManuscriptStatusEvent(Manuscript manuscript,
+                                             Integer fromStatus,
+                                             Integer toStatus,
+                                             String action,
+                                             String operatorType,
+                                             Integer operatorId,
+                                             String reason) {
+        if (manuscript == null || manuscript.getId() == null || toStatus == null) {
+            throw new BusinessException("稿件状态流水缺少必要字段");
+        }
+        ManuscriptAnalyticsEvent event = ManuscriptAnalyticsEvent.statusChange(
+                manuscript.getId(),
+                manuscript.getUserId(),
+                fromStatus,
+                toStatus,
+                action,
+                operatorType,
+                operatorId,
+                reason
+        );
+        publishAnalyticsEventAfterCommit(event);
+    }
+
+    private void publishAnalyticsEventAfterCommit(ManuscriptAnalyticsEvent event) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    videoMQProducer.sendManuscriptAnalyticsEvent(event);
+                }
+            });
+            return;
+        }
+        videoMQProducer.sendManuscriptAnalyticsEvent(event);
+    }
+
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean approveManuscript(Integer manuscriptId, Integer reviewerId, String reason) {
         Manuscript manuscript = manuscriptMapper.selectById(manuscriptId);
         if (manuscript == null) {
             return false;
         }
+        Integer fromStatus = manuscript.getStatus();
         manuscript.setStatus(Manuscript.STATUS_PROCESSING);
         manuscript.setReviewStatus(Manuscript.REVIEW_STATUS_APPROVED);
         manuscript.setReviewTime(new Date());
@@ -956,6 +1002,8 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         manuscript.setReviewReason(reason);
 
         if (manuscriptMapper.updateById(manuscript) > 0) {
+            recordManuscriptStatusEvent(manuscript, fromStatus, Manuscript.STATUS_PROCESSING,
+                    "ADMIN_APPROVE", "ADMIN", reviewerId, reason);
             updateLatestEditVersionStatus(manuscriptId, ManuscriptEditVersion.STATUS_APPROVED, reviewerId, reason);
             List<Video> videos = videoMapper.selectByManuscriptId(manuscriptId);
             for (Video video : videos) {
@@ -974,11 +1022,13 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean approveManuscriptWithProcess(Integer manuscriptId, Integer reviewerId, String reason, boolean autoProcess) {
         Manuscript manuscript = manuscriptMapper.selectById(manuscriptId);
         if (manuscript == null) {
             return false;
         }
+        Integer fromStatus = manuscript.getStatus();
         
         manuscript.setStatus(Manuscript.STATUS_PROCESSING);
         manuscript.setReviewStatus(Manuscript.REVIEW_STATUS_APPROVED);
@@ -989,6 +1039,8 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         if (manuscriptMapper.updateById(manuscript) <= 0) {
             return false;
         }
+        recordManuscriptStatusEvent(manuscript, fromStatus, Manuscript.STATUS_PROCESSING,
+                "ADMIN_APPROVE_WITH_PROCESS", "ADMIN", reviewerId, reason);
         updateLatestEditVersionStatus(manuscriptId, ManuscriptEditVersion.STATUS_APPROVED, reviewerId, reason);
         
         List<Video> videos = videoMapper.selectByManuscriptId(manuscriptId);
@@ -1005,11 +1057,13 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean rejectManuscript(Integer manuscriptId, Integer reviewerId, String reason) {
         Manuscript manuscript = manuscriptMapper.selectById(manuscriptId);
         if (manuscript == null) {
             return false;
         }
+        Integer fromStatus = manuscript.getStatus();
         manuscript.setStatus(Manuscript.STATUS_REJECTED);
         manuscript.setReviewStatus(Manuscript.REVIEW_STATUS_REJECTED);
         manuscript.setReviewTime(new Date());
@@ -1017,6 +1071,8 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         manuscript.setReviewReason(reason);
         boolean updated = manuscriptMapper.updateById(manuscript) > 0;
         if (updated) {
+            recordManuscriptStatusEvent(manuscript, fromStatus, Manuscript.STATUS_REJECTED,
+                    "ADMIN_REJECT", "ADMIN", reviewerId, reason);
             updateLatestEditVersionStatus(manuscriptId, ManuscriptEditVersion.STATUS_REJECTED, reviewerId, reason);
         }
         return updated;
@@ -1030,15 +1086,19 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean publishManuscript(Integer manuscriptId) {
         Manuscript manuscript = manuscriptMapper.selectById(manuscriptId);
         if (manuscript == null) {
             return false;
         }
+        Integer fromStatus = manuscript.getStatus();
         manuscript.setStatus(Manuscript.STATUS_PUBLISHED);
         boolean updated = manuscriptMapper.updateById(manuscript) > 0;
 
         if (updated) {
+            recordManuscriptStatusEvent(manuscript, fromStatus, Manuscript.STATUS_PUBLISHED,
+                    "ADMIN_PUBLISH", "ADMIN", null, null);
             try {
                 String content = "您的稿件《" + manuscript.getTitle() + "》已通过审核并成功上架啦！";
                 messageClient.sendSystemNotification(manuscript.getUserId(), "稿件上架通知", content);
@@ -1051,42 +1111,51 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean unpublishManuscript(Integer manuscriptId) {
         Manuscript manuscript = manuscriptMapper.selectById(manuscriptId);
         if (manuscript == null) {
             return false;
         }
+        Integer fromStatus = manuscript.getStatus();
         manuscript.setStatus(Manuscript.STATUS_UNPUBLISHED);
-        return manuscriptMapper.updateById(manuscript) > 0;
+        boolean updated = manuscriptMapper.updateById(manuscript) > 0;
+        if (updated) {
+            recordManuscriptStatusEvent(manuscript, fromStatus, Manuscript.STATUS_UNPUBLISHED,
+                    "ADMIN_UNPUBLISH", "ADMIN", null, null);
+        }
+        return updated;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean publishManuscriptByOwner(Integer manuscriptId, Integer userId) {
         Manuscript manuscript = manuscriptMapper.selectById(manuscriptId);
         if (manuscript == null || !manuscript.getUserId().equals(userId)) {
             return false;
         }
-        return manuscriptMapper.updateStatusById(manuscriptId, Manuscript.STATUS_PUBLISHED) > 0;
+        Integer fromStatus = manuscript.getStatus();
+        boolean updated = manuscriptMapper.updateStatusById(manuscriptId, Manuscript.STATUS_PUBLISHED) > 0;
+        if (updated) {
+            recordManuscriptStatusEvent(manuscript, fromStatus, Manuscript.STATUS_PUBLISHED,
+                    "OWNER_PUBLISH", "USER", userId, null);
+        }
+        return updated;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean unpublishManuscriptByOwner(Integer manuscriptId, Integer userId) {
         Manuscript manuscript = manuscriptMapper.selectById(manuscriptId);
-        System.out.println("=== 下架稿件调试 ===");
-        System.out.println("manuscriptId: " + manuscriptId);
-        System.out.println("userId: " + userId);
-        System.out.println("manuscript: " + manuscript);
-        if (manuscript != null) {
-            System.out.println("manuscript.userId: " + manuscript.getUserId());
-            System.out.println("当前status: " + manuscript.getStatus());
-        }
         if (manuscript == null || !manuscript.getUserId().equals(userId)) {
-            System.out.println("稿件不存在或无权操作");
             return false;
         }
+        Integer fromStatus = manuscript.getStatus();
         int result = manuscriptMapper.updateStatusById(manuscriptId, Manuscript.STATUS_UNPUBLISHED);
-        System.out.println("更新结果: " + result);
-        System.out.println("=====================");
+        if (result > 0) {
+            recordManuscriptStatusEvent(manuscript, fromStatus, Manuscript.STATUS_UNPUBLISHED,
+                    "OWNER_UNPUBLISH", "USER", userId, null);
+        }
         return result > 0;
     }
 
@@ -1125,13 +1194,20 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean retryManuscript(Integer manuscriptId) {
         Manuscript manuscript = manuscriptMapper.selectById(manuscriptId);
         if (manuscript == null) {
             return false;
         }
+        Integer fromStatus = manuscript.getStatus();
         manuscript.setStatus(Manuscript.STATUS_PROCESSING);
-        return manuscriptMapper.updateById(manuscript) > 0;
+        boolean updated = manuscriptMapper.updateById(manuscript) > 0;
+        if (updated) {
+            recordManuscriptStatusEvent(manuscript, fromStatus, Manuscript.STATUS_PROCESSING,
+                    "ADMIN_RETRY", "ADMIN", null, null);
+        }
+        return updated;
     }
 
     @Override
@@ -1236,6 +1312,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void incrementViewCount(Integer manuscriptId, String viewerKey) {
         if (manuscriptId == null) return;
         if (viewerKey != null) {
@@ -1246,6 +1323,10 @@ public class ManuscriptServiceImpl implements ManuscriptService {
             }
         }
         manuscriptMapper.incrementViewCount(manuscriptId);
+        Manuscript manuscript = manuscriptMapper.selectById(manuscriptId);
+        if (manuscript != null) {
+            publishAnalyticsEventAfterCommit(ManuscriptAnalyticsEvent.viewIncrement(manuscriptId, manuscript.getUserId()));
+        }
     }
 
     @Override
@@ -1259,6 +1340,15 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     public void incrementCommentCount(Integer manuscriptId) {
         if (manuscriptId != null) {
             manuscriptMapper.incrementCommentCount(manuscriptId);
+            Manuscript manuscript = manuscriptMapper.selectById(manuscriptId);
+            if (manuscript != null) {
+                publishAnalyticsEventAfterCommit(ManuscriptAnalyticsEvent.metricIncrement(
+                        manuscriptId,
+                        manuscript.getUserId(),
+                        ManuscriptAnalyticsEvent.METRIC_COMMENT,
+                        1
+                ));
+            }
         }
     }
 

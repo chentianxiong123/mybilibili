@@ -1,7 +1,6 @@
 package com.mybilibili.ai.service;
 
 import com.mybilibili.ai.pipeline.PipelineTask;
-import com.mybilibili.ai.pipeline.VideoPipelineQueueManager;
 
 import java.util.List;
 import java.util.Map;

@@ -1,4 +1,4 @@
-package com.mybilibili.video.service;
+package com.mybilibili.analytics.service;
 
 import com.mybilibili.common.vo.CreatorOverviewVO;
 import com.mybilibili.common.vo.FansRankingVO;

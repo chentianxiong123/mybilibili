@@ -10,6 +10,8 @@ import java.util.regex.Pattern;
 public final class GatewayRequestPolicy {
 
     private static final List<String> PUBLIC_GET_PATH_PREFIXES = List.of(
+            "/actuator/health",
+            "/actuator/info",
             "/api/video/play",
             "/api/video/recommended",
             "/api/video/hot",
@@ -123,6 +125,7 @@ public final class GatewayRequestPolicy {
             "/api/manuscript/user/likes",
             "/api/manuscript/user/collections",
             "/api/manuscript/me/",
+            "/api/creator/stats/",
             "/api/watch-history",
             "/api/message/conversations",
             "/api/message/send",

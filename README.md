@@ -8,9 +8,9 @@
 
 | 技术 | 版本 | 说明 |
 |------|------|------|
-| Spring Boot | 2.7.18 | 基础框架 |
-| Spring Cloud | 2021.0.8 | 微服务框架 |
-| Spring Cloud Alibaba | 2021.0.5.0 | Nacos 注册/配置中心 |
+| Spring Boot | 3.2.4 | 基础框架 |
+| Spring Cloud | 2023.0.1 | 微服务框架 |
+| Spring Cloud Alibaba | 2023.0.1.0 | Nacos 注册/配置中心 |
 | Spring Cloud Gateway | - | API 网关 |
 | MyBatis Plus | 3.5.3 | ORM 框架 |
 | MySQL | 8.0 | 关系型数据库 |
@@ -22,7 +22,7 @@
 | FFmpeg | - | 视频转码 (HLS) |
 | Whisper | - | AI 语音识别/字幕生成 |
 | DeepSeek | - | AI 视频摘要 / AI 客服 / AI 内容审核 |
-| Java | 1.8 | 开发语言 |
+| Java | 17 | 开发语言 |
 
 ### 前端
 
@@ -75,6 +75,7 @@
 | mybilibili-search | - | Elasticsearch 全文搜索、索引管理、推荐 |
 | mybilibili-ai | - | 视频转码(HLS)、AI 字幕生成、AI 摘要、SSE 进度推送、AI 客服对话、AI 内容审核、API 配置管理 |
 | mybilibili-live | - | 直播推流(SRS)、视频会议(WebRTC)、观众连麦、WebSocket 信令 |
+| mybilibili-analytics | - | 创作者数据中心、趋势统计、排行 |
 | mybilibili-common | - | 公共模块（JWT、VO、工具类） |
 | mybilibili-mq | - | 消息队列公共模块 |
 
@@ -131,7 +132,7 @@
 
 ### 环境依赖
 
-- JDK 1.8+
+- JDK 17+
 - MySQL 8.0+
 - Nacos 2.x
 - RocketMQ 4.9+
@@ -148,8 +149,8 @@
 # 启动 Nacos
 # 启动 MySQL，导入 scripts/mybilibili.sql
 
-# 启动 RocketMQ（Docker 方式）
-docker-compose -f docker-compose-rocketmq.yml up -d
+# Docker 基础设施组
+docker compose -f scripts/docker-compose-infra.yml up -d
 ```
 
 ### 2. 启动后端微服务
@@ -159,13 +160,14 @@ docker-compose -f docker-compose-rocketmq.yml up -d
 1. mybilibili-gateway
 2. mybilibili-user
 3. mybilibili-video
-4. mybilibili-comment
-5. mybilibili-danmaku
-6. mybilibili-interaction
-7. mybilibili-message
-8. mybilibili-search
+4. mybilibili-danmaku
+5. mybilibili-search
+6. mybilibili-comment
+7. mybilibili-interaction
+8. mybilibili-message
 9. mybilibili-ai
 10. mybilibili-live
+11. mybilibili-analytics
 
 或使用一键启动脚本：
 
@@ -182,18 +184,18 @@ docker-compose -f docker-compose-rocketmq.yml up -d
 ```bash
 # 用户端
 cd mybilibili-web
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 
 # 管理端
 cd mybilibili-admin-web
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 
 # 移动端
 cd mybilibili-wap
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 ### 4. Nginx 配置（生产部署）
@@ -234,6 +236,7 @@ mybilibili-cloud/
 ├── mybilibili-search/           # 搜索服务
 ├── mybilibili-ai/               # AI 服务
 ├── mybilibili-live/             # 直播/会议/连麦服务
+├── mybilibili-analytics/        # 创作者数据服务
 ├── mybilibili-common/           # 公共模块
 ├── mybilibili-mq/               # 消息队列模块
 ├── mybilibili-web/              # 用户端前端
@@ -243,7 +246,6 @@ mybilibili-cloud/
 ├── init/                        # 初始化 SQL
 ├── scripts/                     # 数据库脚本
 ├── pom.xml                      # Maven 父 POM
-├── docker-compose-rocketmq.yml  # RocketMQ Docker 配置
 └── settings.xml                 # Maven 镜像配置
 ```
 

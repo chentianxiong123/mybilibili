@@ -27,6 +27,18 @@ class GatewayAuthorizationManagerTest {
     @Test
     void deniesProtectedPathsWithoutAuthentication() {
         assertFalse(check("/api/meeting/my-rooms", Mono.empty()));
+        assertFalse(check("/api/creator/stats/overview", Mono.empty()));
+    }
+
+    @Test
+    void allowsCreatorStatsForAuthenticatedUser() {
+        var authentication = new UsernamePasswordAuthenticationToken(
+                new GatewayUserPrincipal(12, "alice", null, null),
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        assertTrue(check("/api/creator/stats/overview", Mono.just(authentication)));
     }
 
     @Test

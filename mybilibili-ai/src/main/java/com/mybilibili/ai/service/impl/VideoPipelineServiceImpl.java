@@ -1,8 +1,9 @@
 package com.mybilibili.ai.service.impl;
 
+import com.mybilibili.ai.entity.VideoPipelineTaskEntity;
+import com.mybilibili.ai.mapper.VideoPipelineTaskMapper;
 import com.mybilibili.ai.mapper.VideoMapper;
 import com.mybilibili.ai.pipeline.PipelineTask;
-import com.mybilibili.ai.pipeline.VideoPipelineQueueManager;
 import com.mybilibili.ai.repository.SubtitleRepository;
 import com.mybilibili.ai.service.*;
 import com.mybilibili.ai.utils.SubtitleTextUtils;
@@ -16,9 +17,22 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import java.net.InetAddress;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * 视频全流程处理服务实现
@@ -29,9 +43,29 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
 
     private static final Logger log = LoggerFactory.getLogger(VideoPipelineServiceImpl.class);
 
-    @Autowired
-    private VideoPipelineQueueManager queueManager;
+    private static final int TASK_LEASE_SECONDS = 3600;
 
+    private final String workerId = buildWorkerId();
+
+    private final ExecutorService pipelineExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread thread = new Thread(r, "video-pipeline-db-worker");
+        thread.setDaemon(true);
+        return thread;
+    });
+
+    private final ScheduledExecutorService leaseScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread thread = new Thread(r, "video-pipeline-lease-renewer");
+        thread.setDaemon(true);
+        return thread;
+    });
+
+    private volatile boolean workerRunning = true;
+
+    private volatile PipelineTask currentTask;
+    private volatile ScheduledFuture<?> leaseRenewalFuture;
+
+    @Autowired
+    private VideoPipelineTaskMapper pipelineTaskMapper;
     @Autowired
     private VideoTranscodeService videoTranscodeService;
 
@@ -60,13 +94,13 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
     private VideoProcessingStorageService processingStorageService;
 
     /**
-     * 初始化：设置任务处理器并启动队列管理器
+     * 初始化：启动基于数据库租约的单线程任务处理器
      */
     @PostConstruct
     public void init() {
-        queueManager.setTaskProcessor(this::processTask);
-        queueManager.start();
-        log.info("[全流程服务] 初始化完成");
+        // 实验性架构：暂时关掉轮询 worker，任务由 API 手动触发；如需恢复调度取消下一行注释。
+        // pipelineExecutor.submit(this::processTaskLoop);
+        log.info("[全流程服务] 初始化完成，轮询 worker 已禁用（实验模式），workerId={}", workerId);
     }
 
     @Override
@@ -77,63 +111,80 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
 
         // 创建任务
         PipelineTask task = PipelineTask.create(manuscriptId, videoId, uploaderId, videoTitle);
+        String taskKey = task.getTaskKey();
+        if (pipelineTaskMapper.countActiveByTaskKey(taskKey) > 0) {
+            log.warn("[全流程服务] 视频处理任务已存在: {}", taskKey);
+            return false;
+        }
+        VideoPipelineTaskEntity entity = toEntity(task);
+        pipelineTaskMapper.insert(entity);
+        task.setPersistentId(entity.getId());
 
         // 设置视频标题到进度服务
         progressSseService.setVideoTitle(videoId, videoTitle);
 
-        // 提交到队列
-        boolean submitted = queueManager.submitTask(task);
-
-        if (submitted) {
-            log.info("[全流程服务] 任务已提交: manuscriptId={}, videoId={}, title={}",
-                    manuscriptId, videoId, videoTitle);
-            // 更新视频状态为处理中
-            updateVideoStatus(videoId, Video.PROCESS_STATUS_TRANSCODING);
-        }
-
-        return submitted;
+        log.info("[全流程服务] 任务已提交: manuscriptId={}, videoId={}, title={}",
+                manuscriptId, videoId, videoTitle);
+        updateVideoStatus(videoId, Video.PROCESS_STATUS_TRANSCODING);
+        return true;
     }
 
     @Override
     public boolean cancelTask(Integer manuscriptId, Integer videoId) {
         String taskKey = manuscriptId + "-" + videoId;
-        return queueManager.cancelTask(taskKey);
+        VideoPipelineTaskEntity task = pipelineTaskMapper.selectLatestByTaskKey(taskKey);
+        if (task == null || !"PENDING".equals(task.getStatus())) {
+            return false;
+        }
+        return pipelineTaskMapper.markCancelled(task.getId()) > 0;
     }
 
     @Override
     public PipelineTask getTaskStatus(Integer manuscriptId, Integer videoId) {
         String taskKey = manuscriptId + "-" + videoId;
-        return queueManager.getTaskStatus(taskKey);
+        return toTask(pipelineTaskMapper.selectLatestByTaskKey(taskKey));
     }
 
     @Override
     public Map<String, Object> getStatistics() {
-        return queueManager.getStatistics();
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("workerId", workerId);
+        stats.put("workerRunning", workerRunning);
+        stats.put("currentTask", currentTask != null ? currentTask.toString() : null);
+        stats.put("dbPending", pipelineTaskMapper.countByStatus(PipelineTask.TaskStatus.PENDING.name()));
+        stats.put("dbRunning", pipelineTaskMapper.countByStatus(PipelineTask.TaskStatus.RUNNING.name()));
+        stats.put("dbCompleted", pipelineTaskMapper.countByStatus(PipelineTask.TaskStatus.COMPLETED.name()));
+        stats.put("dbFailed", pipelineTaskMapper.countByStatus(PipelineTask.TaskStatus.FAILED.name()));
+        stats.put("dbCancelled", pipelineTaskMapper.countByStatus(PipelineTask.TaskStatus.CANCELLED.name()));
+        return stats;
     }
 
     @Override
     public List<PipelineTask> getQueuedTasks() {
-        return queueManager.getQueuedTasks();
+        return toTasks(pipelineTaskMapper.selectByStatus(PipelineTask.TaskStatus.PENDING.name(), 100));
     }
 
     @Override
     public List<PipelineTask> getProcessingTasks() {
-        return queueManager.getProcessingTasks();
+        return toTasks(pipelineTaskMapper.selectByStatus(PipelineTask.TaskStatus.RUNNING.name(), 100));
     }
 
     @Override
     public List<PipelineTask> getCompletedTasks() {
-        return queueManager.getCompletedTasks();
+        return toTasks(pipelineTaskMapper.selectByStatus(PipelineTask.TaskStatus.COMPLETED.name(), 100));
     }
 
     @Override
     public PipelineTask getCurrentTask() {
-        return queueManager.getCurrentTask();
+        if (currentTask != null) {
+            return currentTask;
+        }
+        return toTask(pipelineTaskMapper.selectClaimedTask(workerId));
     }
 
     @Override
     public void clearQueue() {
-        queueManager.clearQueue();
+        pipelineTaskMapper.cancelPendingTasks();
     }
 
     @Override
@@ -156,6 +207,56 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
         return submitPipelineTask(manuscriptId, videoId, oldTask.getUploaderId());
     }
 
+    private void processTaskLoop() {
+        while (workerRunning) {
+            try {
+                int interrupted = pipelineTaskMapper.markExpiredRunningTasksInterrupted();
+                if (interrupted > 0) {
+                    log.warn("[全流程服务] 已将 {} 个租约过期任务标记为失败", interrupted);
+                }
+                int claimed = pipelineTaskMapper.claimNextPendingTask(workerId, TASK_LEASE_SECONDS);
+                if (claimed <= 0) {
+                    sleepQuietly(1000);
+                    continue;
+                }
+                PipelineTask task = toTask(pipelineTaskMapper.selectClaimedTask(workerId));
+                if (task == null) {
+                    log.warn("[全流程服务] 已认领任务但未查询到任务实体，workerId={}", workerId);
+                    continue;
+                }
+                currentTask = task;
+                progressSseService.setVideoTitle(task.getVideoId(), task.getVideoTitle());
+                processTask(task);
+            } catch (Exception e) {
+                log.error("[全流程服务] 数据库任务调度循环异常", e);
+                sleepQuietly(1000);
+            } finally {
+                currentTask = null;
+            }
+        }
+        log.info("[全流程服务] 数据库任务调度循环已停止，workerId={}", workerId);
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        workerRunning = false;
+        stopLeaseRenewal();
+        pipelineExecutor.shutdown();
+        leaseScheduler.shutdown();
+        try {
+            if (!pipelineExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                pipelineExecutor.shutdownNow();
+            }
+            if (!leaseScheduler.awaitTermination(30, TimeUnit.SECONDS)) {
+                leaseScheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            pipelineExecutor.shutdownNow();
+            leaseScheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+
     /**
      * 处理任务（核心处理逻辑）
      */
@@ -167,6 +268,8 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
         log.info("[全流程服务] 开始处理任务: {}", task.getTaskKey());
 
         try {
+            markTaskRunning(task);
+            startLeaseRenewal(task);
             // 广播开始
             broadcastProgress(videoId, manuscriptId, videoTitle, "STARTING", 0, null);
 
@@ -182,16 +285,19 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
                     // 步骤失败，停止后续步骤
                     log.error("[全流程服务] 步骤失败: {} - {}", task.getTaskKey(), currentStep.getDescription());
                     task.markFailed(currentStep.getCode(), currentStep.getDescription() + "失败");
+                    markTaskFailed(task);
                     broadcastError(videoId, manuscriptId, videoTitle, currentStep.getCode(), currentStep.getDescription() + "失败");
                     return;
                 }
 
                 // 步骤成功，前进到下一步
                 boolean hasMoreSteps = task.advanceToNextStep();
+                updateTaskStep(task);
 
                 if (!hasMoreSteps) {
                     // 所有步骤完成
                     task.markCompleted();
+                    markTaskCompleted(task);
                     log.info("[全流程服务] 任务完成: {}", task.getTaskKey());
                     broadcastProgress(videoId, manuscriptId, videoTitle, "COMPLETED", 100, Video.PROCESS_STATUS_COMPLETED);
                     VideoProcessWebSocketHandler.broadcastComplete(videoId, manuscriptId, videoTitle);
@@ -202,8 +308,10 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
         } catch (Exception e) {
             log.error("[全流程服务] 任务处理异常: {}", task.getTaskKey(), e);
             task.markFailed("UNKNOWN", e.getMessage());
+            markTaskFailed(task);
             broadcastError(videoId, manuscriptId, videoTitle, "UNKNOWN", e.getMessage());
         } finally {
+            stopLeaseRenewal();
             processingStorageService.cleanupWorkDir(manuscriptId, videoId);
         }
     }
@@ -452,5 +560,116 @@ public class VideoPipelineServiceImpl implements VideoPipelineService {
             }
         }
         return text.toString();
+    }
+
+    private VideoPipelineTaskEntity toEntity(PipelineTask task) {
+        VideoPipelineTaskEntity entity = new VideoPipelineTaskEntity();
+        entity.setTaskKey(task.getTaskKey());
+        entity.setManuscriptId(task.getManuscriptId());
+        entity.setVideoId(task.getVideoId());
+        entity.setUploaderId(task.getUploaderId());
+        entity.setVideoTitle(task.getVideoTitle());
+        entity.setCurrentStepIndex(task.getCurrentStepIndex() != null ? task.getCurrentStepIndex().get() : 0);
+        entity.setStatus(task.getStatus().name());
+        entity.setWorkerId(null);
+        entity.setLockedUntil(null);
+        entity.setCreateTime(task.getCreateTime() != null ? task.getCreateTime() : LocalDateTime.now());
+        entity.setStartTime(task.getStartTime());
+        entity.setEndTime(task.getEndTime());
+        entity.setFailedStep(task.getFailedStep());
+        entity.setErrorMessage(task.getErrorMessage());
+        return entity;
+    }
+
+    private PipelineTask toTask(VideoPipelineTaskEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        PipelineTask task = new PipelineTask();
+        task.setPersistentId(entity.getId());
+        task.setManuscriptId(entity.getManuscriptId());
+        task.setVideoId(entity.getVideoId());
+        task.setUploaderId(entity.getUploaderId());
+        task.setVideoTitle(entity.getVideoTitle());
+        task.setCurrentStepIndex(new AtomicInteger(entity.getCurrentStepIndex() != null ? entity.getCurrentStepIndex() : 0));
+        task.setCreateTime(entity.getCreateTime());
+        task.setStartTime(entity.getStartTime());
+        task.setEndTime(entity.getEndTime());
+        task.setFailedStep(entity.getFailedStep());
+        task.setErrorMessage(entity.getErrorMessage());
+        task.setStatus(PipelineTask.TaskStatus.valueOf(entity.getStatus()));
+        return task;
+    }
+
+    private void startLeaseRenewal(PipelineTask task) {
+        stopLeaseRenewal();
+        if (task.getPersistentId() == null) {
+            return;
+        }
+        leaseRenewalFuture = leaseScheduler.scheduleAtFixedRate(
+                () -> pipelineTaskMapper.renewLease(task.getPersistentId(), workerId, TASK_LEASE_SECONDS),
+                30,
+                30,
+                TimeUnit.SECONDS
+        );
+    }
+
+    private void stopLeaseRenewal() {
+        ScheduledFuture<?> future = leaseRenewalFuture;
+        if (future != null) {
+            future.cancel(false);
+            leaseRenewalFuture = null;
+        }
+    }
+
+    private List<PipelineTask> toTasks(List<VideoPipelineTaskEntity> entities) {
+        if (entities == null || entities.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return entities.stream().map(this::toTask).collect(Collectors.toList());
+    }
+
+    private void markTaskRunning(PipelineTask task) {
+        if (task.getPersistentId() != null) {
+            pipelineTaskMapper.markRunning(task.getPersistentId(), task.getCurrentStepIndex().get(), workerId, TASK_LEASE_SECONDS);
+        }
+    }
+
+    private void updateTaskStep(PipelineTask task) {
+        if (task.getPersistentId() != null) {
+            pipelineTaskMapper.updateCurrentStep(task.getPersistentId(), task.getCurrentStepIndex().get());
+            pipelineTaskMapper.renewLease(task.getPersistentId(), workerId, TASK_LEASE_SECONDS);
+        }
+    }
+
+    private void markTaskCompleted(PipelineTask task) {
+        if (task.getPersistentId() != null) {
+            pipelineTaskMapper.markCompleted(task.getPersistentId(), task.getCurrentStepIndex().get());
+        }
+    }
+
+    private void markTaskFailed(PipelineTask task) {
+        if (task.getPersistentId() != null) {
+            pipelineTaskMapper.markFailed(task.getPersistentId(), task.getFailedStep(), task.getErrorMessage());
+        }
+    }
+
+    private static String buildWorkerId() {
+        String host;
+        try {
+            host = InetAddress.getLocalHost().getHostName();
+        } catch (Exception e) {
+            host = "unknown-host";
+        }
+        return host + "-" + UUID.randomUUID();
+    }
+
+    private void sleepQuietly(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            workerRunning = false;
+        }
     }
 }

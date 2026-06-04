@@ -21,6 +21,7 @@ public class MinioConfig {
         private String accessKey = "";
         private String secretKey = "";
         private String bucketName = "mybilibili";
+        private String publicEndpoint = "";
 
         public String getEndpoint() { return endpoint; }
         public void setEndpoint(String endpoint) { this.endpoint = endpoint; }
@@ -30,6 +31,12 @@ public class MinioConfig {
         public void setSecretKey(String secretKey) { this.secretKey = secretKey; }
         public String getBucketName() { return bucketName; }
         public void setBucketName(String bucketName) { this.bucketName = bucketName; }
+        public String getPublicEndpoint() { return publicEndpoint; }
+        public void setPublicEndpoint(String publicEndpoint) { this.publicEndpoint = publicEndpoint; }
+
+        String effectivePublicEndpoint() {
+            return publicEndpoint == null || publicEndpoint.isBlank() ? endpoint : publicEndpoint;
+        }
     }
 
     @Bean
@@ -46,8 +53,14 @@ public class MinioConfig {
     @Bean
     @ConditionalOnProperty(name = "minio.endpoint")
     public StorageService storageService(MinioClient minioClient, MinioProperties properties) {
-        log.info("Initializing MinIO storage: endpoint={}, bucket={}", properties.getEndpoint(), properties.getBucketName());
-        return new MinioStorageService(minioClient, properties.getBucketName(), properties.getEndpoint());
+        MinioClient publicMinioClient = MinioClient.builder()
+                .endpoint(properties.effectivePublicEndpoint())
+                .credentials(properties.getAccessKey(), properties.getSecretKey())
+                .build();
+        log.info("Initializing MinIO storage: endpoint={}, publicEndpoint={}, bucket={}",
+                properties.getEndpoint(), properties.effectivePublicEndpoint(), properties.getBucketName());
+        return new MinioStorageService(minioClient, publicMinioClient, properties.getBucketName(),
+                properties.effectivePublicEndpoint());
     }
 
     private void requireText(String value, String propertyName) {

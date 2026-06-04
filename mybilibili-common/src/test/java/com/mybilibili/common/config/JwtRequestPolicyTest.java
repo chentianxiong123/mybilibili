@@ -11,6 +11,8 @@ class JwtRequestPolicyTest {
 
     @Test
     void allowsConfiguredPublicRoutesAndAssets() {
+        assertTrue(policy.isPublicPath("/actuator/health"));
+        assertTrue(policy.isPublicPath("/actuator/health/readiness"));
         assertTrue(policy.isPublicPath("/api/user/login"));
         assertTrue(policy.isPublicPath("/api/admin/login"));
         assertTrue(policy.isPublicPath("/api/user/42/following"));
@@ -32,6 +34,7 @@ class JwtRequestPolicyTest {
         assertFalse(policy.isPublicPath("/api/meeting/my-rooms"));
         assertFalse(policy.isPublicPath("/api/live/linkmic/apply/1"));
         assertFalse(policy.isPublicPath("/api/manuscript/100/status"));
+        assertFalse(policy.isPublicPath("/actuator/prometheus"));
         assertFalse(policy.isPublicPath("/api/video/admin/list"));
         assertFalse(policy.isPublicPath("/api/search/admin/index/status"));
         assertFalse(policy.isPublicPath("POST", "/api/category"));

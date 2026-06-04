@@ -2,12 +2,10 @@ package com.mybilibili.common.operation;
 
 import com.mybilibili.common.vo.Result;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnBean(JdbcTemplate.class)
 public class OperationTaskRecorder {
 
     public static final String STATUS_PENDING = "PENDING";

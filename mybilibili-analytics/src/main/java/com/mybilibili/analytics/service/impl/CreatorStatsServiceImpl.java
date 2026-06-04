@@ -1,11 +1,10 @@
-package com.mybilibili.video.service.impl;
+package com.mybilibili.analytics.service.impl;
 
 import com.mybilibili.common.entity.Manuscript;
 import com.mybilibili.common.vo.*;
-import com.mybilibili.video.feign.DanmakuClient;
-import com.mybilibili.video.mapper.CreatorStatsMapper;
-import com.mybilibili.video.mapper.ManuscriptMapper;
-import com.mybilibili.video.service.CreatorStatsService;
+import com.mybilibili.analytics.feign.DanmakuClient;
+import com.mybilibili.analytics.mapper.CreatorStatsMapper;
+import com.mybilibili.analytics.service.CreatorStatsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -21,9 +20,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class CreatorStatsServiceImpl implements CreatorStatsService {
-
-    @Autowired
-    private ManuscriptMapper manuscriptMapper;
 
     @Autowired
     private CreatorStatsMapper creatorStatsMapper;
@@ -71,10 +67,8 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
         LocalDate sevenDaysAgo = LocalDate.now().minusDays(7);
         String startDate = sevenDaysAgo.toString();
 
-        Map<String, Object> increaseStats = creatorStatsMapper.selectIncreaseStats(userId, startDate);
-        if (increaseStats != null) {
-            overview.setViewsIncrease(getIntValue(increaseStats, "viewsIncrease"));
-        }
+        Integer viewsIncrease = creatorStatsMapper.selectViewIncreaseFromDailyMetrics(userId, startDate);
+        overview.setViewsIncrease(viewsIncrease != null ? viewsIncrease : 0);
 
         Map<String, Object> interactionIncrease = creatorStatsMapper.selectInteractionIncrease(userId, startDate);
         if (interactionIncrease != null) {
@@ -125,6 +119,8 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
 
         String startDate = LocalDate.now().minusDays(days - 1).toString();
 
+        // View trends from daily metrics, not from manuscript upload-time snapshots.
+        List<Map<String, Object>> viewTrend = creatorStatsMapper.selectViewTrendData(userId, startDate);
         // Interaction trends (likes, coins, collects, shares) from user_interactions
         List<Map<String, Object>> interactionTrend = creatorStatsMapper.selectInteractionTrendData(userId, startDate);
         // Comment trend from comments table
@@ -150,6 +146,11 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
         }
 
         // Index by date
+        Map<String, Integer> viewMap = new HashMap<>();
+        for (Map<String, Object> row : viewTrend) {
+            viewMap.put(row.get("date").toString(), getIntValue(row, "views"));
+        }
+
         Map<String, Map<String, Integer>> interactionMap = new HashMap<>();
         for (Map<String, Object> row : interactionTrend) {
             String date = row.get("date").toString();
@@ -173,6 +174,7 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
 
         // Build full date range
         List<String> dates = new ArrayList<>();
+        List<Integer> views = new ArrayList<>();
         List<Integer> likes = new ArrayList<>();
         List<Integer> comments = new ArrayList<>();
         List<Integer> followers = new ArrayList<>();
@@ -186,6 +188,7 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
         for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
             String dateStr = d.toString();
             dates.add(dateStr);
+            views.add(viewMap.getOrDefault(dateStr, 0));
 
             Map<String, Integer> dayInteraction = interactionMap.get(dateStr);
             if (dayInteraction != null) {
@@ -206,6 +209,7 @@ public class CreatorStatsServiceImpl implements CreatorStatsService {
         }
 
         trend.setDates(dates);
+        trend.setViews(views);
         trend.setLikes(likes);
         trend.setComments(comments);
         trend.setDanmaku(danmaku);

@@ -425,7 +425,7 @@ spring:
 
         # ========== 创作者数据统计 ==========
         - id: creator-stats
-          uri: lb://mybilibili-video
+          uri: lb://mybilibili-analytics
           predicates:
             - Path=/api/creator/stats/**
           filters:
@@ -674,3 +674,14 @@ logging:
   level:
     com.mybilibili: debug
     reactor.netty: info
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized

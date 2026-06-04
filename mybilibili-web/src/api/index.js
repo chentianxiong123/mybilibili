@@ -21,18 +21,6 @@ api.interceptors.request.use(
     if (token && !isImageRequest) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    // 添加用户ID到请求头
-    const userStr = localStorage.getItem('user')
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr)
-        if (user && user.id) {
-          config.headers['X-User-Id'] = user.id
-        }
-      } catch (e) {
-        console.error('解析用户信息失败:', e)
-      }
-    }
     return config
   },
   error => {
@@ -119,9 +107,14 @@ api.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
+          if (hasToken) {
+            localStorage.removeItem('token')
+            localStorage.removeItem('refreshToken')
+            localStorage.removeItem('user')
+          }
           break
         case 403:
-          ElMessage.error('没有权限访问该资源')
+          if (hasToken) ElMessage.error('没有权限访问该资源')
           break
         case 404:
           ElMessage.error('请求的资源不存在')
@@ -332,6 +325,12 @@ export const commentApi = {
 }
 
 // 稿件互动相关API
+const requireAuthResult = (data) => (
+  localStorage.getItem('token')
+    ? null
+    : Promise.resolve({ code: 401, message: '请先登录', data })
+)
+
 export const interactionApi = {
   // 点赞稿件
   likeManuscript: (manuscriptId, liked) => liked ? api.post(`/manuscript/${manuscriptId}/like`) : api.delete(`/manuscript/${manuscriptId}/like`),
@@ -356,11 +355,11 @@ export const interactionApi = {
   // 获取互动状态
   getInteractionStatus: (manuscriptId) => api.get(`/manuscript/${manuscriptId}/status`),
   // 获取用户点赞视频
-  getLikedVideos: () => api.get('/manuscript/user/likes'),
+  getLikedVideos: () => requireAuthResult([]) || api.get('/manuscript/user/likes'),
   // 获取用户收藏视频
-  getCollectedVideos: () => api.get('/manuscript/user/collections'),
+  getCollectedVideos: () => requireAuthResult([]) || api.get('/manuscript/user/collections'),
   // 获取收藏夹列表
-  getFavoriteFolders: () => api.get('/manuscript/favorite/folders'),
+  getFavoriteFolders: () => requireAuthResult([]) || api.get('/manuscript/favorite/folders'),
   // 创建收藏夹
   createFavoriteFolder: (folderData) => api.post('/manuscript/favorite/folders', folderData),
   // 更新收藏夹
@@ -384,7 +383,7 @@ export const interactionApi = {
 // 历史记录相关API
 export const historyApi = {
   // 获取历史记录列表
-  getHistoryList: (page = 1, size = 20) => api.get('/watch-history', { params: { page, size } }),
+  getHistoryList: (page = 1, size = 20) => requireAuthResult([]) || api.get('/watch-history', { params: { page, size } }),
   // 清空历史记录
   clearHistory: () => api.delete('/watch-history'),
   // 删除单条历史记录
@@ -403,3 +402,81 @@ export const reportApi = {
 }
 
 export default api
+
+// ====== 主动定时刷新 access token（无感登录） ======
+// access token 2 小时过期；refresh token 30 天过期。
+// 每 60 秒检查一次，剩余有效期 < 10 分钟时主动用 refreshToken 续期。
+
+function decodeJwtPayload(token) {
+  try {
+    const part = token.split('.')[1]
+    if (!part) return null
+    // 兼容 base64url
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/')
+    const pad = b64.length % 4
+    const padded = pad ? b64 + '='.repeat(4 - pad) : b64
+    return JSON.parse(atob(padded))
+  } catch (e) {
+    return null
+  }
+}
+
+function getAccessTokenRemainingMs() {
+  const token = localStorage.getItem('token')
+  if (!token) return -1
+  const payload = decodeJwtPayload(token)
+  if (!payload || !payload.exp) return -1
+  return payload.exp * 1000 - Date.now()
+}
+
+async function silentRefreshOnce() {
+  const refreshToken = localStorage.getItem('refreshToken')
+  if (!refreshToken) {
+    stopSilentRefresh()
+    return false
+  }
+  try {
+    // 直接走原始 axios（绕开拦截器，避免 401 触发递归 refresh）
+    const res = await api.post('/user/token/refresh', { refreshToken })
+    if (res && res.code === 200 && res.data && res.data.token) {
+      localStorage.setItem('token', res.data.token)
+      if (res.data.refreshToken) {
+        localStorage.setItem('refreshToken', res.data.refreshToken)
+      }
+      return true
+    }
+    // 失败：清态并停止
+    localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('user')
+    stopSilentRefresh()
+    return false
+  } catch (e) {
+    // 网络或服务端错误，保留 token 由下次重试
+    return false
+  }
+}
+
+let silentRefreshTimer = null
+
+export function startSilentRefresh() {
+  if (silentRefreshTimer) return
+  silentRefreshTimer = setInterval(async () => {
+    if (!localStorage.getItem('refreshToken')) {
+      stopSilentRefresh()
+      return
+    }
+    const remaining = getAccessTokenRemainingMs()
+    // 剩余 < 10 分钟 或 已过期：主动刷新
+    if (remaining < 10 * 60 * 1000) {
+      await silentRefreshOnce()
+    }
+  }, 60 * 1000)
+}
+
+export function stopSilentRefresh() {
+  if (silentRefreshTimer) {
+    clearInterval(silentRefreshTimer)
+    silentRefreshTimer = null
+  }
+}
