@@ -10,8 +10,5 @@
     "build:web": "pnpm --filter mybilibili-front-web build",
     "build:admin": "pnpm --filter mybilibili-admin-web build",
     "build:wap": "pnpm --filter mybilibili-wap build"
-  },
-  "devDependencies": {
-    "pnpm": "11.5.1"
   }
 }
