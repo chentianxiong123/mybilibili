@@ -40,11 +40,11 @@ export const SourceDisplayData = (): { [key: string]: ISourceDisplayData } => ({
   browser_source: {
     name: $t('Browser Source'),
     description: $t(
-      'Allows you to add web-based content as a source, such as web pages, widgets, and streaming video.',
+      'Allows you to add local or trusted web content as a source.',
     ),
     shortDesc: $t('Your web-based content'),
     demoFilename: 'browser-source.png',
-    supportList: [$t('Websites'), $t('Third party widgets'), 'HTML'],
+    supportList: [$t('Websites'), 'HTML'],
     icon: 'fas fa-globe',
     group: 'capture',
   },
@@ -277,14 +277,6 @@ export const SourceDisplayData = (): { [key: string]: ISourceDisplayData } => ({
     icon: 'fas fa-file',
     group: 'av',
   },
-  soundtrack_source: {
-    name: $t('Twitch Soundtrack'),
-    description: $t(
-      'Audio source working with the Twitch Soundtrack music application. Add this source to be able to filter out the music from your Twitch VODs.',
-    ),
-    icon: 'fas fa-file',
-    group: 'media',
-  },
   replay: {
     name: $t('Instant Replay'),
     shortDesc: $t('Display latest replay'),
@@ -299,36 +291,6 @@ export const SourceDisplayData = (): { [key: string]: ISourceDisplayData } => ({
     demoFilename: 'image.png',
     icon: 'fas fa-file',
     group: 'media',
-  },
-  streamlabel: {
-    name: $t('Stream Label'),
-    description: $t(
-      'Include text into your stream, such as follower count, latest tip, last sub and more.',
-    ),
-    demoFilename: 'source-stream-labels.png',
-    supportList: [
-      $t('New Followers'),
-      $t('New Subscribers'),
-      $t('New Cheers'),
-      $t('New Tips'),
-      $t('All-Time Top Tipper'),
-      $t('Weekly Top Tipper'),
-      $t('Monthly Follows'),
-      $t('And more'),
-    ],
-    icon: 'fas fa-file',
-    shortDesc: $t('Stream stats and events'),
-    group: 'media',
-  },
-  mediasoupconnector: {
-    name: $t('Collab Cam'),
-    shortDesc: $t('Stream with guests'),
-    description: $t(
-      'Invite guests to join your stream from a web browser or their Streamlabs Desktop. Stream games or IRL broadcasts together, use as additional camera angles and more.',
-    ),
-    demoFilename: 'source-collab-cam.png',
-    icon: 'icon-team-2',
-    group: 'av',
   },
   wasapi_process_output_capture: {
     name: $t('Application Audio'),
@@ -346,20 +308,6 @@ export const SourceDisplayData = (): { [key: string]: ISourceDisplayData } => ({
     demoFilename: 'source-spout2-thumbnail.gif',
     supportList: ['VSeeFace', 'VTube Studio'],
     icon: 'icon-face-masks-3',
-    link: 'https://streamlabs.com/content-hub/post/vtuber-support-on-streamlabs-desktop',
-    linkText: $t('Learn how to set it up'),
     group: 'capture',
-  },
-  smart_browser_source: {
-    name: 'Reactive Source',
-    demoVideo: true,
-    demoFilename: 'reactive-overlay-webm.webm',
-    shortDesc: $t('Dynamic game animation'),
-    description: $t(
-      "Dynamic real time animation based on your game events, powered by Streamlabs AI. Install Reactive Overlays from our Library to see what it's capable of!",
-    ),
-    supportList: [$t('Kills & Eliminations'), $t('Health changes'), $t('Victory & Defeat')],
-    group: 'capture',
-    icon: 'icon-ai',
   },
 });

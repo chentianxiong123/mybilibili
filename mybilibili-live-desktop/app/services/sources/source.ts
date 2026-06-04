@@ -115,24 +115,10 @@ export class Source implements ISourceApi {
   }
 
   getComparisonDetails(): ISourceComparison {
-    const details: ISourceComparison = {
+    return {
       type: this.type,
       propertiesManager: this.getPropertiesManagerType(),
     };
-    if (this.getPropertiesManagerType() === 'streamlabels') {
-      details.isStreamlabel = true;
-    }
-
-    if (this.getPropertiesManagerType() === 'widget') {
-      details.widgetType = this.getPropertiesManagerSettings().widgetType;
-    }
-
-    if (this.getPropertiesManagerType() === 'platformApp') {
-      details.appId = this.getPropertiesManagerSettings().appId;
-      details.appSourceId = this.getPropertiesManagerSettings().appSourceId;
-    }
-
-    return details;
   }
 
   getPropertiesManagerType(): TPropertiesManager {

@@ -11,30 +11,24 @@ import { RealmObject } from './realm';
 import { ObjectSchema } from 'realm';
 import { Theme } from 'styles/antd';
 
-export type TApplicationTheme = 'night-theme' | 'day-theme' | 'prime-dark' | 'prime-light';
+export type TApplicationTheme = 'night-theme' | 'day-theme';
 
 // Maps to --background
 const THEME_BACKGROUNDS = {
   'night-theme': { r: 23, g: 36, b: 45 },
-  'prime-dark': { r: 17, g: 17, b: 17 },
   'day-theme': { r: 245, g: 248, b: 250 },
-  'prime-light': { r: 243, g: 243, b: 243 },
 };
 
 // Maps to --section
 const SECTION_BACKGROUNDS = {
   'night-theme': { r: 11, g: 22, b: 29 },
-  'prime-dark': { r: 0, g: 0, b: 0 },
   'day-theme': { r: 227, g: 232, b: 235 },
-  'prime-light': { r: 255, g: 255, b: 255 },
 };
 
 // Doesn't map 1:1
 const DISPLAY_BACKGROUNDS = {
   'night-theme': { r: 11, g: 22, b: 29 },
-  'prime-dark': { r: 37, g: 37, b: 37 },
   'day-theme': { r: 227, g: 232, b: 235 },
-  'prime-light': { r: 255, g: 255, b: 255 },
 };
 
 export interface IPinnedStatistics {
@@ -157,7 +151,7 @@ export class CustomizationState extends RealmObject {
   }
 
   get isDarkTheme() {
-    return ['night-theme', 'prime-dark'].includes(this.theme);
+    return this.theme === 'night-theme';
   }
 
   get displayBackground() {
@@ -227,7 +221,7 @@ export class CustomizationService extends Service {
   }
 
   setTheme(theme: TApplicationTheme) {
-    obs.NodeObs.OBS_content_setDayTheme(['day-theme', 'prime-light'].includes(theme));
+    obs.NodeObs.OBS_content_setDayTheme(theme === 'day-theme');
     return this.setSettings({ theme });
   }
 
@@ -284,13 +278,6 @@ export class CustomizationService extends Service {
       { value: 'night-theme', label: $t('Night') },
       { value: 'day-theme', label: $t('Day') },
     ];
-
-    if (this.userService.isPrime) {
-      options.push(
-        { value: 'prime-dark', label: $t('Obsidian Ultra') },
-        { value: 'prime-light', label: $t('Alabaster Ultra') },
-      );
-    }
     return options;
   }
 

@@ -7,22 +7,11 @@ import { RealmObject } from './realm';
 import { TCategoryName } from './settings';
 
 export type TAppPage =
-  | 'AILanding'
-  | 'AlertboxLibrary'
-  | 'BrowseOverlays'
-  | 'Grow'
-  | 'Highlighter'
   | 'LayoutEditor'
   | 'Onboarding'
   | 'PatchNotes'
-  | 'PlatformAppMainPage'
-  | 'PlatformAppStore'
-  | 'PlatformMerge'
-  | 'PrimeExpiration'
   | 'RecordingHistory'
-  | 'StreamScheduler'
-  | 'Studio'
-  | 'ThemeAudit';
+  | 'Studio';
 
 interface INavigationState {
   currentPage: TAppPage;
@@ -64,11 +53,6 @@ export class NavigationService extends Service {
     }
     this.setPageNavigation(page, params);
     this.navigated.next(this.state);
-  }
-
-  navigateApp(appId: string, key?: string) {
-    this.navigate('PlatformAppMainPage', { appId });
-    this.sideNavService.setCurrentMenuItem(key ?? appId);
   }
 
   private setPageNavigation(page: TAppPage, params: Dictionary<string | boolean>) {

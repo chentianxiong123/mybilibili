@@ -6,7 +6,6 @@ import { ClipboardService } from 'services/clipboard';
 import { SourceTransformMenu } from './SourceTransformMenu';
 import { GroupMenu } from './GroupMenu';
 import { SourceFiltersService } from '../../services/source-filters';
-import { WidgetsService } from 'services/widgets';
 import { CustomizationService } from 'services/customization';
 import { SelectionService } from 'services/selection';
 import { ProjectorService } from 'services/projector';
@@ -37,7 +36,6 @@ export class EditMenu extends Menu {
   @Inject() private scenesService!: ScenesService;
   @Inject() private sourceFiltersService: SourceFiltersService;
   @Inject() private clipboardService: ClipboardService;
-  @Inject() private widgetsService: WidgetsService;
   @Inject() private customizationService: CustomizationService;
   @Inject() private selectionService: SelectionService;
   @Inject() private projectorService: ProjectorService;
@@ -72,13 +70,6 @@ export class EditMenu extends Menu {
   }
 
   private appendEditMenuItems() {
-    if (this.source && this.source.propertiesManagerType === 'smartBrowserSource') {
-      this.append({
-        label: $t('Edit Reactive Data'),
-        click: () => this.sourcesService.actions.showReactiveDataEditorWindow(this.source.sourceId),
-      });
-    }
-
     if (this.scene) {
       this.append({
         label: $t('Paste (Reference)'),
@@ -246,36 +237,6 @@ export class EditMenu extends Menu {
           });
         }
 
-        if (this.source && this.source.getPropertiesManagerType() === 'widget') {
-          this.append({
-            label: $t('Export Widget'),
-            click: () => {
-              remote.dialog
-                .showSaveDialog({
-                  filters: [{ name: 'Widget File', extensions: ['widget'] }],
-                })
-                .then(({ filePath }) => {
-                  if (!filePath) return;
-
-                  /**
-                   * In dual output mode, the edit menu can be opened on either display
-                   * but for the purposes of persisting widget data, only the horizontal
-                   * scene item data should be persisted. Determine the correct sceneItemId
-                   * here.
-                   */
-
-                  const sceneItemId =
-                    this.options?.display === 'vertical'
-                      ? this.dualOutputService.views.getDualOutputNodeId(selectedItem.sceneItemId)
-                      : selectedItem.sceneItemId;
-
-                  console.log('sceneItemId ', sceneItemId);
-
-                  this.widgetsService.saveWidgetFile(filePath, sceneItemId);
-                });
-            },
-          });
-        }
       }
     }
 
@@ -328,7 +289,7 @@ export class EditMenu extends Menu {
               // remove a global source
               remote.dialog
                 .showMessageBox(remote.getCurrentWindow(), {
-                  title: 'Streamlabs Desktop',
+                  title: 'mybilibili Live Desktop',
                   message: $t('This source will be removed from all of your scenes'),
                   type: 'warning',
                   buttons: [$t('Cancel'), $t('OK')],

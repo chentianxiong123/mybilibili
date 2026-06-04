@@ -120,7 +120,7 @@ export class WindowsService extends StatefulService<IWindowsState> {
       scaleFactor: 1,
       isShown: true,
       hideStyleBlockers: true,
-      title: `Streamlabs Desktop - ${Utils.env.SLOBS_VERSION}`,
+      title: `mybilibili Live Desktop - ${Utils.env.SLOBS_VERSION}`,
       modalOptions: { hideStyleBlockers: false, visible: false },
     },
     child: {

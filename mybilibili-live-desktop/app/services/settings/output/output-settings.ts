@@ -170,8 +170,8 @@ interface IAdvancedStreamingOutputSettings extends IStreamingOutputSettings {
   outputWidth: number;
   outputHeight: number;
   videoEncoder: EObsAdvancedEncoder;
-  enableTwitchVOD: boolean;
-  twitchTrack?: number;
+  enableVodTrack: boolean;
+  vodTrack?: number;
 }
 
 export interface IEncoderSettings {
@@ -208,22 +208,6 @@ export interface IFramerateSettings {
   fracNum: number;
   fracDen: number;
 }
-
-export enum EIncompatibleRestreamCodec {
-  ffmpeg_aom_av1 = 'ffmpeg_aom_av1',
-  ffmpeg_svt_av1 = 'ffmpeg_svt_av1',
-  obs_nvenc_av1_tex = 'obs_nvenc_av1_tex',
-  obs_nvenc_hevc_tex = 'obs_nvenc_hevc_tex',
-}
-
-export const incompatibleRestreamCodecs = (codec: EIncompatibleRestreamCodec) => {
-  return {
-    [EIncompatibleRestreamCodec.ffmpeg_aom_av1]: 'AV1',
-    [EIncompatibleRestreamCodec.ffmpeg_svt_av1]: 'AV1',
-    [EIncompatibleRestreamCodec.obs_nvenc_av1_tex]: 'NVIDIA AV1',
-    [EIncompatibleRestreamCodec.obs_nvenc_hevc_tex]: 'NVIDIA HEVC',
-  }[codec];
-};
 
 type TOutputSettingsMode = 'Simple' | 'Advanced';
 
@@ -663,7 +647,7 @@ export class OutputSettingsService extends Service {
       'x264Settings',
     );
 
-    const enableTwitchVOD = this.settingsService.findSettingValue(
+    const enableVodTrack = this.settingsService.findSettingValue(
       output,
       'Streaming',
       'VodTrackEnabled',
@@ -680,7 +664,7 @@ export class OutputSettingsService extends Service {
       const advancedStreamSettings = {
         videoEncoder,
         enforceServiceBitrate,
-        enableTwitchVOD,
+        enableVodTrack,
         rescaling,
         rescaleFilter,
         outputWidth,
@@ -688,14 +672,14 @@ export class OutputSettingsService extends Service {
         audioTrack,
       };
 
-      if (enableTwitchVOD) {
-        const twitchTrack = this.settingsService.findSettingValue(
+      if (enableVodTrack) {
+        const vodTrack = this.settingsService.findSettingValue(
           output,
           'Streaming',
           'VodTrackIndex',
         );
 
-        return { ...advancedStreamSettings, twitchTrack } as IAdvancedStreamingOutputSettings;
+        return { ...advancedStreamSettings, vodTrack } as IAdvancedStreamingOutputSettings;
       }
 
       return advancedStreamSettings as IAdvancedStreamingOutputSettings;
@@ -1136,8 +1120,7 @@ export class OutputSettingsService extends Service {
    * Fetch enhanced broadcasting setting from the backend
    * @remark This function is used in the diagnostics report to determine if a stream
    * went live with enhanced broadcasting enabled. It should not be used for logic.
-   * This only represents the setting in the backend but not the setting in the Twitch service,
-   * which is the actual source of truth.
+   * This only represents the setting in the backend and is not a streaming-provider source of truth.
    * @returns string representation of the setting for the diagnositics report
    */
   getIsEnhancedBroadcasting() {

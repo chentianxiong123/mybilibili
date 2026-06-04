@@ -119,7 +119,7 @@ export class AudioService extends StatefulService<IAudioSourcesState> {
           isControlledViaObs &&
           audioSource.monitoringType === obs.EMonitoringType.MonitoringOnly
         ) {
-          // When the option "Control audio via Streamlabs Desktop" is unchecked, the browser engine plays directly to
+          // When desktop audio control is disabled, the browser engine plays directly to
           // the system audio device (Desktop Audio). The monitoring setting is just a saved state in this case.
           // When it is checked, monitoring behaves like other sources and we need to make sure that it is reset
           // to conform to the OBS default behavior. Users can opt back into monitoring afterward.

@@ -43,7 +43,6 @@ export const components = {
   BrowserView: Placeholder,
   Settings: Placeholder,
   TestWidgets: Placeholder,
-  RecentEvents: Placeholder,
   Projector: Placeholder,
   SourceProperties: Placeholder,
 };

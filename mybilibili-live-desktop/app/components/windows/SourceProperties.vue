@@ -8,12 +8,6 @@
   >
     <display slot="fixed" v-if="source" :componentProps="{ sourceId: source.id }" />
     <div slot="content" v-if="source">
-      <component
-        v-if="propertiesManagerUI"
-        :is="propertiesManagerUI"
-        :source="source"
-        @update="refresh"
-      />
       <GenericForm v-model="properties" @input="onInputHandler" @validate="onValidateHandler" />
     </div>
   </modal-layout>

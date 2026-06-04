@@ -10,11 +10,8 @@ import defer from 'lodash/defer';
 import mapValues from 'lodash/mapValues';
 import { $t } from 'services/i18n';
 import * as obs from '../../obs-api';
-import { GameOverlayService } from './game-overlay';
 import { CustomizationService } from './customization';
-import { RecentEventsService } from './recent-events';
 import { UsageStatisticsService } from './usage-statistics';
-import { getOS, OS } from 'util/operating-systems';
 import { TDisplayType } from './settings-v2';
 import { VirtualWebcamService } from 'app-services';
 
@@ -34,16 +31,8 @@ function getTransitionsService(): TransitionsService {
   return TransitionsService.instance;
 }
 
-function getGameOverlayService(): GameOverlayService {
-  return GameOverlayService.instance;
-}
-
 function getCustomizationService(): CustomizationService {
   return CustomizationService.instance;
-}
-
-function getRecentEventsService(): RecentEventsService {
-  return RecentEventsService.instance;
 }
 
 function getVirtualCameraService(): VirtualWebcamService {
@@ -177,27 +166,10 @@ const GENERAL_ACTIONS: HotkeyGroup = {
     description: () => $t('Split Recording File'),
     down: () => getStreamingService().splitFile(),
   },
-  TOGGLE_OVERLAY: {
-    name: 'TOGGLE_OVERLAY',
-    description: () => $t('Toggle in-game overlay'),
-    down: () => getGameOverlayService().toggleOverlay(),
-    shouldApply: () => getOS() === OS.Windows,
-  },
-  TOGGLE_OVERLAY_POSITIONING: {
-    name: 'TOGGLE_OVERLAY_POSITIONING',
-    description: () => $t('Toggle overlay positioning mode'),
-    down: () => getGameOverlayService().setPreviewMode(!getGameOverlayService().state.previewMode),
-    shouldApply: () => getOS() === OS.Windows,
-  },
   TOGGLE_PERFORMANCE_MODE: {
     name: 'TOGGLE_PERFORMANCE_MODE',
     description: () => $t('Toggle Performance Mode'),
     down: () => getCustomizationService().togglePerformanceMode(),
-  },
-  SKIP_ALERT: {
-    name: 'SKIP_ALERT',
-    description: () => $t('Skip Alert'),
-    down: () => getRecentEventsService().skipAlert(),
   },
   TOGGLE_VIRTUAL_CAMERA_ON: {
     name: 'TOGGLE_VIRTUAL_CAMERA_ON',

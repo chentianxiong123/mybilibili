@@ -1,116 +1,16 @@
-import { Inject } from 'services/core/injector';
-import { authorizedHeaders, jfetch } from 'util/requests';
-import { mutation, StatefulService, ViewHandler } from 'services/core/stateful-service';
-import { UserService } from 'services/user';
-import { HostsService } from './hosts';
-import Utils from 'services/utils';
-import { InitAfter } from './core';
-import { AppService } from './app';
+import { StatefulService, ViewHandler } from 'services/core/stateful-service';
 
 export enum EAvailableFeatures {
-  platform = 'slobs--platform',
-  creatorSites = 'slobs--creator-sites',
-  facebookOnboarding = 'slobs--facebook-onboarding',
-  twitter = 'slobs--twitter',
-  restream = 'slobs--restream',
-  tiktok = 'slobs--tiktok',
-  highlighter = 'slobs--highlighter',
-  aiHighlighter = 'slobs--ai-highlighter',
-  growTab = 'slobs--grow-tab',
-  themeAudit = 'slobs--theme-audit',
-  reactWidgets = 'slobs--react-widgets',
-  sharedStorage = 'slobs--shared-storage',
-  dualOutputRecording = 'slobs--dual-output-recording',
-  verticalRecording = 'slobs--vertical-recording',
-  streamShift = 'slobs--stream-shift',
-  twitchDualStream = 'slobs--twitch-dual-stream',
-  twitchDualStreamPreview = 'slobs--twitch-dual-stream-preview',
-  patreon = 'slobs--patreon',
-
-  /**
-   * There are two flags because one is used for beta access and
-   * grandfathering access, whereas the other is for production
-   * availability at launch.
-   */
-  guestCamBeta = 'slobs--guest-join',
-  guestCamProduction = 'slobs--guest-join-prod',
-  newChatBox = 'core--widgets-v2--chat-box',
+  platform = 'mybilibili-platform',
+  creatorSites = 'mybilibili-creator-sites',
+  highlighter = 'mybilibili-highlighter',
+  themeAudit = 'mybilibili-theme-audit',
+  sharedStorage = 'mybilibili-shared-storage',
+  verticalRecording = 'mybilibili-vertical-recording',
 }
 
 interface IIncrementalRolloutServiceState {
   availableFeatures: string[];
-}
-
-@InitAfter('UserService')
-export class IncrementalRolloutService extends StatefulService<IIncrementalRolloutServiceState> {
-  @Inject() private userService: UserService;
-  @Inject() private hostsService: HostsService;
-  @Inject() private appService: AppService;
-
-  static initialState: IIncrementalRolloutServiceState = {
-    availableFeatures: [],
-  };
-
-  /**
-   * Available features are fetched async.  This is normally not a problem,
-   * as they are reactive.  However, any service logic that happens during
-   * initialization probably needs to wait on this promise before accessing
-   * the list of available features.
-   */
-  featuresReady: Promise<void>;
-
-  private featuresReadyResolve: () => void;
-
-  init() {
-    this.featuresReady = new Promise(resolve => {
-      this.featuresReadyResolve = resolve;
-    });
-
-    this.setCommandLineFeatures();
-
-    this.userService.userLogin.subscribe(() => this.fetchAvailableFeatures());
-    this.userService.userLogout.subscribe(() => this.resetAvailableFeatures());
-  }
-
-  get views() {
-    return new IncrementalRolloutView(this.state);
-  }
-
-  @mutation()
-  private SET_AVAILABLE_FEATURES(features: string[]) {
-    this.state.availableFeatures = features;
-  }
-
-  fetchAvailableFeatures() {
-    if (this.userService.isLoggedIn) {
-      const host = this.hostsService.streamlabs;
-      const url = `https://${host}/api/v5/slobs/available-features`;
-      const headers = authorizedHeaders(this.userService.apiToken);
-      const request = new Request(url, { headers });
-
-      return jfetch<{ features: string[] }>(request).then(response => {
-        this.SET_AVAILABLE_FEATURES([...this.state.availableFeatures, ...response.features]);
-        this.featuresReadyResolve();
-      });
-    }
-  }
-
-  setCommandLineFeatures() {
-    this.appService.state.argv.forEach(arg => {
-      const match = arg.match(/^\-\-feature-enable\-([a-zA-Z\-]*)$/);
-
-      if (match) {
-        this.SET_AVAILABLE_FEATURES([...this.state.availableFeatures, match[1]]);
-      }
-    });
-  }
-
-  resetAvailableFeatures() {
-    this.SET_AVAILABLE_FEATURES([]);
-
-    // Command line features are always available
-    this.setCommandLineFeatures();
-  }
 }
 
 class IncrementalRolloutView extends ViewHandler<IIncrementalRolloutServiceState> {
@@ -119,8 +19,24 @@ class IncrementalRolloutView extends ViewHandler<IIncrementalRolloutServiceState
   }
 
   featureIsEnabled(feature: EAvailableFeatures): boolean {
-    if (Utils.isDevMode()) return true; // always show for dev mode
-
-    return this.availableFeatures.indexOf(feature) > -1;
+    return this.availableFeatures.includes(feature);
   }
+}
+
+export class IncrementalRolloutService extends StatefulService<IIncrementalRolloutServiceState> {
+  static initialState: IIncrementalRolloutServiceState = {
+    availableFeatures: [],
+  };
+
+  featuresReady = Promise.resolve();
+
+  get views() {
+    return new IncrementalRolloutView(this.state);
+  }
+
+  fetchAvailableFeatures() {}
+
+  setCommandLineFeatures() {}
+
+  resetAvailableFeatures() {}
 }
