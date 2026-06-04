@@ -61,7 +61,6 @@ if (!gotTheLock) {
   return;
 }
 
-const bundleUpdater = require('./updater/build/bundle-updater.js');
 const uuid = require('uuid/v4');
 const windowStateKeeper = require('electron-window-state');
 
@@ -249,8 +248,6 @@ const waitingVuexStores = [];
 let workerInitFinished = false;
 
 async function startApp() {
-  await bundleUpdater(__dirname);
-
   ipcMain.on('register-in-crash-handler', () => {});
   ipcMain.on('unregister-in-crash-handler', () => {});
 
@@ -605,28 +602,6 @@ ipcMain.on('restartApp', () => {
   app.relaunch();
   // Closing the main window starts the shut down sequence
   mainWindow.close();
-});
-
-ipcMain.on('streamlabels-writeFile', (e, info) => {
-  fs.writeFile(info.path, info.data, err => {
-    if (err) {
-      console.log('Streamlabels: Error writing file', err);
-    }
-  });
-});
-
-const guestApiInfo = {};
-
-ipcMain.on('guestApi-setInfo', (e, info) => {
-  guestApiInfo[info.webContentsId] = {
-    schema: info.schema,
-    hostWebContentsId: info.hostWebContentsId,
-    ipcChannel: info.ipcChannel,
-  };
-});
-
-ipcMain.on('guestApi-getInfo', e => {
-  e.returnValue = guestApiInfo[e.sender.id];
 });
 
 /* The following 3 methods need to live in the main process

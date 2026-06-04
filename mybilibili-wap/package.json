@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "artplayer": "^5.1.6",
+    "artplayer-plugin-danmuku": "^5.1.4",
     "axios": "^1.7.2",
     "hls.js": "^1.5.13",
     "vue": "^3.4.21",

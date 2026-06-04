@@ -4,7 +4,6 @@ const cp = require('child_process');
 const { WebpackManifestPlugin } = require('webpack-manifest-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const VueLoaderPlugin = require('vue-loader/lib/plugin');
-const fs = require('fs');
 
 const plugins = [];
 
@@ -18,15 +17,6 @@ const envDef = {
     process.env.SLD_SENTRY_BACKEND_SERVER_PREVIEW_URL ?? '',
   ),
 };
-
-if (process.env.SLD_COMPILE_FOR_BETA) {
-  console.log('Compiling build with forced beta SL host.');
-  envDef['process.env.SLD_COMPILE_FOR_BETA'] = JSON.stringify(true);
-}
-if (process.env.HIGHLIGHTER_ENV) {
-  console.log('Compiling build with ' + process.env.HIGHLIGHTER_ENV + ' highlighter version.');
-  envDef['process.env.HIGHLIGHTER_ENV'] = JSON.stringify(process.env.HIGHLIGHTER_ENV ?? '');
-}
 
 plugins.push(new webpack.DefinePlugin(envDef));
 
@@ -47,16 +37,6 @@ const OUTPUT_DIR = path.join(__dirname, 'bundles');
 const tsFiles = [];
 const tsxFiles = [];
 
-if (process.env.SLOBS_STRICT_NULLS) {
-  const filesPath = 'strict-null-check-files';
-  const files = fs.readdirSync(filesPath);
-  files.forEach(file => {
-    const json = JSON.parse(fs.readFileSync(`${filesPath}/${file}`));
-    if (json.ts) tsFiles.push(...json.ts);
-    if (json.tsx) tsxFiles.push(...json.tsx);
-  });
-}
-
 // uncomment and install to analyze bundle size
 // const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 // plugins.push(new BundleAnalyzerPlugin());
@@ -64,8 +44,6 @@ if (process.env.SLOBS_STRICT_NULLS) {
 module.exports = {
   entry: {
     renderer: './app/app.ts',
-    updater: './updater/mac/ui.js',
-    'guest-api': './guest-api',
   },
 
   output: {
@@ -91,7 +69,6 @@ module.exports = {
 
     // Not actually a native addons, but for one reason or another
     // we don't want them compiled in our webpack bundle.
-    'aws-sdk': 'require("aws-sdk")',
     asar: 'require("asar")',
     'backtrace-node': 'require("backtrace-node")',
     'node-fontinfo': 'require("node-fontinfo")',
@@ -99,7 +76,6 @@ module.exports = {
     rimraf: 'require("rimraf")',
     'backtrace-js': 'require("backtrace-js")',
     request: 'require("request")',
-    archiver: 'require("archiver")',
     'extract-zip': 'require("extract-zip")',
     'fs-extra': 'require("fs-extra")',
   },
@@ -132,9 +108,6 @@ module.exports = {
           loader: 'ts-loader',
           options: {
             reportFiles: tsFiles,
-            compilerOptions: {
-              strictNullChecks: !!process.env.SLOBS_STRICT_NULLS,
-            },
           },
         },
       },
@@ -150,9 +123,6 @@ module.exports = {
             loader: 'ts-loader',
             options: {
               reportFiles: tsxFiles,
-              compilerOptions: {
-                strictNullChecks: !!process.env.SLOBS_STRICT_NULLS,
-              },
             },
           },
         ],

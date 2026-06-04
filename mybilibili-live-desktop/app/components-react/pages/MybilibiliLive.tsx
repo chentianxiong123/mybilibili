@@ -2,8 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import cx from 'classnames';
 import { Services } from 'components-react/service-provider';
 import { useVuex } from 'components-react/hooks';
-import { EStreamingState } from 'services/streaming';
-import { EMenuItemKey } from 'services/side-nav';
 import styles from './MybilibiliLive.m.less';
 
 const maskKey = (key?: string) => {
@@ -12,17 +10,17 @@ const maskKey = (key?: string) => {
   return `${key.slice(0, 4)}****${key.slice(-4)}`;
 };
 
-const statusLabel = (status: EStreamingState) => {
+const statusLabel = (status?: string) => {
   switch (status) {
-    case EStreamingState.Live:
+    case 'live':
       return '直播中';
-    case EStreamingState.Starting:
+    case 'starting':
       return '启动中';
-    case EStreamingState.Ending:
+    case 'ending':
       return '结束中';
-    case EStreamingState.Reconnecting:
+    case 'reconnecting':
       return '重连中';
-    case EStreamingState.Offline:
+    case 'offline':
     default:
       return '未开播';
   }
@@ -38,7 +36,7 @@ function Field(p: { label: string; children: React.ReactNode; className?: string
 }
 
 export default function MybilibiliLivePage(p: { className?: string }) {
-  const { MybilibiliLiveService, StreamingService, NavigationService } = Services;
+  const { MybilibiliLiveService } = Services;
   const {
     baseUrl,
     token,
@@ -46,7 +44,6 @@ export default function MybilibiliLivePage(p: { className?: string }) {
     room,
     rtmpUrl,
     lastError,
-    streamingStatus,
   } = useVuex(() => ({
     baseUrl: MybilibiliLiveService.state.baseUrl,
     token: MybilibiliLiveService.state.token,
@@ -54,7 +51,6 @@ export default function MybilibiliLivePage(p: { className?: string }) {
     room: MybilibiliLiveService.state.room,
     rtmpUrl: MybilibiliLiveService.state.rtmpUrl,
     lastError: MybilibiliLiveService.state.lastError,
-    streamingStatus: StreamingService.views.streamingStatus,
   }));
 
   const [draftBaseUrl, setDraftBaseUrl] = useState(baseUrl);
@@ -66,13 +62,10 @@ export default function MybilibiliLivePage(p: { className?: string }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
 
-  const isStreaming = useMemo(() => streamingStatus !== EStreamingState.Offline, [
-    streamingStatus,
-  ]);
-
   const roomName = room?.roomName || '我的直播间';
   const roomCategory = room?.category || '未设置';
   const roomStatus = room?.status || '未加载';
+  const isStreaming = useMemo(() => roomStatus === 'live', [roomStatus]);
   const streamKey = room?.streamKey || '';
   const isLoggedIn = Boolean(token);
   const accountName = user?.nickname || user?.username || (isLoggedIn ? '已登录账号' : '未登录');
@@ -116,10 +109,6 @@ export default function MybilibiliLivePage(p: { className?: string }) {
     setMessage('已退出 mybilibili 站点登录');
   }
 
-  function openStudio() {
-    NavigationService.actions.navigate('Studio', {}, EMenuItemKey.Editor);
-  }
-
   async function saveRoom() {
     await MybilibiliLiveService.actions.return.updateRoom({
       roomName: draftRoomName,
@@ -129,7 +118,6 @@ export default function MybilibiliLivePage(p: { className?: string }) {
   }
 
   async function stopStreaming() {
-    await StreamingService.actions.return.stopStreaming();
     await MybilibiliLiveService.actions.return.updateRoomStatus('offline');
   }
 
@@ -150,7 +138,7 @@ export default function MybilibiliLivePage(p: { className?: string }) {
           <div className={styles.titleRow}>
             <h1>直播控制台</h1>
             <span className={cx(styles.liveChip, isStreaming && styles.liveChipOn)}>
-              {statusLabel(streamingStatus)}
+              {statusLabel(roomStatus)}
             </span>
           </div>
           <div className={styles.roomLine}>
@@ -161,14 +149,13 @@ export default function MybilibiliLivePage(p: { className?: string }) {
           </div>
         </div>
         <div className={styles.headerActions}>
-          <button className={styles.secondaryButton} onClick={openStudio}>
-            编辑场景
-          </button>
           {!isStreaming ? (
             <button
               className={styles.dangerButton}
               onClick={() =>
-                run('已请求开始直播', () => StreamingService.actions.return.goLive())
+                run('房间已标记为直播中', () =>
+                  MybilibiliLiveService.actions.return.updateRoomStatus('live'),
+                )
               }
               disabled={busy || !room}
             >
@@ -404,7 +391,7 @@ export default function MybilibiliLivePage(p: { className?: string }) {
             <dl className={styles.statusList}>
               <div>
                 <dt>OBS 状态</dt>
-                <dd>{statusLabel(streamingStatus)}</dd>
+                <dd>{statusLabel(roomStatus)}</dd>
               </div>
               <div>
                 <dt>平台状态</dt>
