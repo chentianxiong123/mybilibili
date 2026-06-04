@@ -17,6 +17,7 @@ public class PipelineTask implements Serializable {
     private Integer videoId;
     private Integer uploaderId;
     private String videoTitle;
+    private Long persistentId;
 
     /**
      * 当前步骤索引

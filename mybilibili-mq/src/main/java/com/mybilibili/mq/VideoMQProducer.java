@@ -41,4 +41,18 @@ public class VideoMQProducer {
             message
         );
     }
+
+    public void sendManuscriptAnalyticsEvent(ManuscriptAnalyticsEvent event) {
+        rocketMQTemplate.syncSend(
+            MQConstants.TOPIC_MANUSCRIPT_ANALYTICS,
+            event
+        );
+    }
+
+    public void sendVideoProcessAnalyticsEvent(VideoProcessAnalyticsEvent event) {
+        rocketMQTemplate.syncSend(
+            MQConstants.TOPIC_VIDEO_PROCESS_ANALYTICS,
+            event
+        );
+    }
 }

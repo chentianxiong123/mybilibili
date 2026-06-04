@@ -25,6 +25,20 @@ spring:
     exclude:
       - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
 
+rocketmq:
+  name-server: 127.0.0.1:9876
+
 logging:
   level:
     com.mybilibili: debug
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized

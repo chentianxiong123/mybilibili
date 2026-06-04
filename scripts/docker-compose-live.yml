@@ -10,4 +10,4 @@ services:
       - "8000:8000/udp" # WebRTC UDP端口
       - "1985:1985"    # SRS HTTP API管理
     volumes:
-      - ./srs.conf:/usr/local/srs/conf/srs.conf
+      - ../srs.conf:/usr/local/srs/conf/srs.conf:ro

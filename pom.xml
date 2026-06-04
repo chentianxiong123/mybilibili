@@ -23,6 +23,7 @@
         <module>mybilibili-message</module>
         <module>mybilibili-ai</module>
         <module>mybilibili-live</module>
+        <module>mybilibili-analytics</module>
     </modules>
 
     <parent>

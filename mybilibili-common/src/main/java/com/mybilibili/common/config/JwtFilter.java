@@ -12,11 +12,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
 
 @Component
@@ -40,6 +43,10 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String token = authorization.substring(7);
         UsernamePasswordAuthenticationToken authentication;
+        Integer authenticatedUserId;
+        String authenticatedUsername;
+        String authenticatedRole;
+        String tokenType;
         try {
             if (JwtUtils.isTokenExpired(token)) {
                 writeUnauthorized(response, "token已过期");
@@ -47,21 +54,21 @@ public class JwtFilter extends OncePerRequestFilter {
             }
 
             Claims claims = JwtUtils.parseToken(token);
-            Integer userId = Integer.parseInt(claims.getSubject());
-            String username = claims.get("username", String.class);
-            String role = claims.get("role", String.class);
-            String tokenType = claims.get("type", String.class);
+            authenticatedUserId = Integer.parseInt(claims.getSubject());
+            authenticatedUsername = claims.get("username", String.class);
+            authenticatedRole = claims.get("role", String.class);
+            tokenType = claims.get("type", String.class);
 
-            request.setAttribute("userId", userId);
+            request.setAttribute("userId", authenticatedUserId);
             if ("admin".equals(tokenType)) {
-                request.setAttribute("adminId", userId);
+                request.setAttribute("adminId", authenticatedUserId);
             }
 
-            JwtPrincipal principal = new JwtPrincipal(userId, username, role, tokenType);
+            JwtPrincipal principal = new JwtPrincipal(authenticatedUserId, authenticatedUsername, authenticatedRole, tokenType);
             authentication = new UsernamePasswordAuthenticationToken(
                     principal,
                     null,
-                    buildAuthorities(role, tokenType, claims.get("permissions"))
+                    buildAuthorities(authenticatedRole, tokenType, claims.get("permissions"))
             );
         } catch (Exception e) {
             writeUnauthorized(response, "token无效");
@@ -70,7 +77,13 @@ public class JwtFilter extends OncePerRequestFilter {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         try {
-            filterChain.doFilter(request, response);
+            filterChain.doFilter(new AuthenticatedHeaderRequest(
+                    request,
+                    authenticatedUserId,
+                    authenticatedUsername,
+                    authenticatedRole,
+                    tokenType
+            ), response);
         } finally {
             SecurityContextHolder.clearContext();
         }
@@ -108,8 +121,57 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private void writeUnauthorized(HttpServletResponse response, String message) throws IOException {
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        response.setContentType("text/plain;charset=UTF-8");
+        response.setContentType("application/json;charset=UTF-8");
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.getWriter().write(message);
+        response.getWriter().write("{\"code\":401,\"message\":\"" + message + "\",\"data\":null}");
+    }
+
+    private static class AuthenticatedHeaderRequest extends HttpServletRequestWrapper {
+        private final Integer userId;
+        private final String username;
+        private final String role;
+        private final String tokenType;
+
+        AuthenticatedHeaderRequest(HttpServletRequest request, Integer userId, String username, String role, String tokenType) {
+            super(request);
+            this.userId = userId;
+            this.username = username;
+            this.role = role;
+            this.tokenType = tokenType;
+        }
+
+        @Override
+        public String getHeader(String name) {
+            String securityHeader = securityHeader(name);
+            if (securityHeader != null) {
+                return securityHeader;
+            }
+            return super.getHeader(name);
+        }
+
+        @Override
+        public Enumeration<String> getHeaders(String name) {
+            String securityHeader = securityHeader(name);
+            if (securityHeader != null) {
+                return Collections.enumeration(List.of(securityHeader));
+            }
+            return super.getHeaders(name);
+        }
+
+        private String securityHeader(String name) {
+            if ("X-User-Id".equalsIgnoreCase(name)) {
+                return String.valueOf(userId);
+            }
+            if ("X-Username".equalsIgnoreCase(name)) {
+                return username == null ? "" : username;
+            }
+            if ("X-User-Role".equalsIgnoreCase(name)) {
+                return role == null ? "USER" : role;
+            }
+            if ("X-Admin-Id".equalsIgnoreCase(name) && "admin".equals(tokenType)) {
+                return String.valueOf(userId);
+            }
+            return null;
+        }
     }
 }

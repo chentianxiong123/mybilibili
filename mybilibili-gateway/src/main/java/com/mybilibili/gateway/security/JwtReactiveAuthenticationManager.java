@@ -20,6 +20,7 @@ import java.util.List;
 @Component
 public class JwtReactiveAuthenticationManager implements ReactiveAuthenticationManager {
 
+    private static final String LOCAL_DEV_SECRET = "mybilibili-local-dev-jwt-secret-0123456789abcdef";
     private static final SecretKey KEY = resolveKey();
 
     @Override
@@ -72,10 +73,7 @@ public class JwtReactiveAuthenticationManager implements ReactiveAuthenticationM
     }
 
     private static SecretKey resolveKey() {
-        String secret = firstNonBlank(System.getProperty("jwt.secret"), System.getenv("JWT_SECRET"));
-        if (secret == null || secret.isBlank()) {
-            throw new IllegalStateException("JWT secret is required: set -Djwt.secret or JWT_SECRET");
-        }
+        String secret = firstNonBlank(System.getProperty("jwt.secret"), System.getenv("JWT_SECRET"), LOCAL_DEV_SECRET);
         if (secret.getBytes(StandardCharsets.UTF_8).length < 32) {
             throw new IllegalStateException("JWT secret must be at least 32 bytes");
         }
@@ -88,6 +86,7 @@ public class JwtReactiveAuthenticationManager implements ReactiveAuthenticationM
                 return value;
             }
         }
-        return null;
+        return LOCAL_DEV_SECRET;
     }
+
 }

@@ -27,6 +27,8 @@ final class JwtRequestPolicy {
     private static final List<String> PUBLIC_GET_PREFIXES = List.of(
             "/swagger",
             "/v3/api-docs",
+            "/actuator/health",
+            "/actuator/info",
             "/category",
             "/video",
             "/follow/check/",

@@ -1,9 +1,11 @@
 <script setup>
-import { ref, computed, onMounted, provide } from 'vue'
+import { ref, computed, onMounted, onUnmounted, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { User, Lock, Message, Close, VideoPlay } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { userApi } from './api/index.js'
+import { startSilentRefresh, stopSilentRefresh } from './api/index.js'
 
 // 导入布局组件
 import LayoutHome from './layouts/LayoutHome.vue'
@@ -60,6 +62,7 @@ const handleLogin = () => {
       if (response.code === 200) {
         localStorage.setItem('user', JSON.stringify(response.data.user))
         localStorage.setItem('token', response.data.token)
+        localStorage.setItem('refreshToken', response.data.refreshToken || '')
         showLoginDialog.value = false
         ElMessage.success('登录成功')
         
@@ -180,24 +183,33 @@ const handleCloseDialog = () => {
 
 // 提供给子组件使用
 provide('showLoginDialog', showLoginDialog)
+
+// 启动无感登录：access token 剩余 < 10 分钟时主动续期
+onMounted(() => {
+  if (localStorage.getItem('refreshToken')) {
+    startSilentRefresh()
+  }
+})
+onUnmounted(stopSilentRefresh)
 </script>
 
 <template>
-  <div class="app-container">
-    <!-- 动态布局 -->
-    <component :is="currentLayout">
-      <router-view />
-    </component>
-    
-    <!-- 登录/注册弹窗（全局） -->
-    <el-dialog
-      v-model="showLoginDialog"
-      :title="''"
-      width="420px"
-      :close-on-click-modal="false"
-      class="login-dialog"
-      @close="handleCloseDialog"
-    >
+  <el-config-provider :locale="zhCn">
+    <div class="app-container">
+      <!-- 动态布局 -->
+      <component :is="currentLayout">
+        <router-view />
+      </component>
+
+      <!-- 登录/注册弹窗（全局） -->
+      <el-dialog
+        v-model="showLoginDialog"
+        :title="''"
+        width="420px"
+        :close-on-click-modal="false"
+        class="login-dialog"
+        @close="handleCloseDialog"
+      >
       <div class="dialog-content-wrapper">
         <!-- 关闭按钮 -->
         <button class="dialog-close-btn" @click="showLoginDialog = false">
@@ -331,8 +343,9 @@ provide('showLoginDialog', showLoginDialog)
         </div>
       </div>
       </div>
-    </el-dialog>
-  </div>
+      </el-dialog>
+    </div>
+  </el-config-provider>
 </template>
 
 <style>

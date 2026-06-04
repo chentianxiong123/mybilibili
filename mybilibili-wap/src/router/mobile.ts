@@ -78,6 +78,12 @@ const mobileRoutes: RouteRecordRaw[] = [
     meta: { title: 'UP主主页', mobile: true }
   },
   {
+    path: '/m/dynamic',
+    name: 'mobile-dynamic',
+    component: () => import('../views/dynamic/Index.vue'),
+    meta: { title: '关注动态 - 哔哩哔哩', mobile: true }
+  },
+  {
     path: '/m/live',
     name: 'mobile-live',
     component: () => import('../views/live/Index.vue'),
@@ -100,6 +106,12 @@ const mobileRoutes: RouteRecordRaw[] = [
     name: 'mobile-live-room',
     component: () => import('../views/live/Room.vue'),
     meta: { title: '直播间', mobile: true }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'mobile-not-found',
+    component: () => import('../views/NotFound.vue'),
+    meta: { title: '页面未找到 - 哔哩哔哩', mobile: true }
   }
 ]
 

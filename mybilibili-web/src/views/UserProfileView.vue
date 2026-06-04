@@ -49,6 +49,14 @@ const isOwnSpace = computed(() => {
   return currentUserId.value && userId.value && String(currentUserId.value) === String(userId.value)
 })
 
+const profileTabs = computed(() => {
+  const tabs = ['主页', '动态', '投稿', '合集和列表', '收藏', '兴趣画像']
+  if (isOwnSpace.value) {
+    tabs.push('设置')
+  }
+  return tabs
+})
+
 // 跳转到我的头像页面
 const goToAvatar = () => {
   if (isOwnSpace.value) {
@@ -1974,7 +1982,7 @@ onMounted(() => {
         <!-- 左侧选择栏 -->
         <div class="profile-tabs">
           <div
-            v-for="tab in (isOwnSpace ? ['主页', '动态', '投稿', '合集和列表', '收藏', '兴趣画像', '设置'] : ['主页', '动态', '投稿', '合集和列表', '收藏'])"
+            v-for="tab in profileTabs"
             :key="tab"
             :class="['tab-item', { active: activeTab === tab }]"
             @click="handleTabClick(tab)"
@@ -3153,7 +3161,7 @@ onMounted(() => {
 
         <!-- 兴趣画像 -->
         <div v-else-if="activeTab === '兴趣画像'" class="interests-section">
-          <InterestsPanel />
+          <InterestsPanel :user-id="userId" :is-own-space="isOwnSpace" />
         </div>
 
         <!-- 设置页面 -->

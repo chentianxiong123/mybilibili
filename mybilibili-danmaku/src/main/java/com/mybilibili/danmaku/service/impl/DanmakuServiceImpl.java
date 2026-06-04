@@ -11,6 +11,8 @@ import com.mybilibili.danmaku.repository.DanmakuRepository;
 import com.mybilibili.danmaku.service.DanmakuService;
 import com.mybilibili.danmaku.vo.DanmakuVO;
 import com.mybilibili.danmaku.websocket.DanmakuBroadcastService;
+import com.mybilibili.mq.ManuscriptAnalyticsEvent;
+import com.mybilibili.mq.VideoMQProducer;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -43,6 +45,9 @@ public class DanmakuServiceImpl implements DanmakuService {
 
     @Autowired
     private DanmakuBroadcastService broadcastService;
+
+    @Autowired
+    private VideoMQProducer videoMQProducer;
 
     @Override
     public Result<List<DanmakuVO>> getDanmakus(Integer videoId) {
@@ -78,19 +83,15 @@ public class DanmakuServiceImpl implements DanmakuService {
         danmaku.setStatus(0);
         danmaku.setCreateTime(LocalDateTime.now());
 
-        try {
-            Result<VideoVO> videoResult = videoClient.getVideoById(dto.getVideoId());
-            if (videoResult != null && videoResult.getCode() == 200 && videoResult.getData() != null) {
-                VideoVO video = videoResult.getData();
-                if (video.getManuscriptId() != null) {
-                    danmaku.setManuscriptId(video.getManuscriptId());
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        Integer manuscriptOwnerId = resolveManuscript(danmaku, dto.getVideoId());
 
         danmakuRepository.save(danmaku);
+        videoMQProducer.sendManuscriptAnalyticsEvent(ManuscriptAnalyticsEvent.metricIncrement(
+                danmaku.getManuscriptId(),
+                manuscriptOwnerId,
+                ManuscriptAnalyticsEvent.METRIC_DANMAKU,
+                1
+        ));
 
         broadcastService.broadcast(danmaku.getVideoId(), Map.of(
                 "type", "danmaku",
@@ -104,6 +105,27 @@ public class DanmakuServiceImpl implements DanmakuService {
         ));
 
         return Result.<Void>success();
+    }
+
+    private Integer resolveManuscript(Danmaku danmaku, Integer videoId) {
+        Result<VideoVO> videoResult = videoClient.getVideoById(videoId);
+        if (videoResult == null || videoResult.getCode() != 200 || videoResult.getData() == null) {
+            throw new BusinessException("视频不存在");
+        }
+        VideoVO video = videoResult.getData();
+        if (video.getManuscriptId() == null) {
+            throw new BusinessException("视频缺少稿件关联");
+        }
+        danmaku.setManuscriptId(video.getManuscriptId());
+        if (video.getUploader() != null && video.getUploader().getId() != null) {
+            return video.getUploader().getId();
+        }
+        Result<ManuscriptVO> manuscriptResult = videoClient.getManuscriptById(video.getManuscriptId());
+        if (manuscriptResult == null || manuscriptResult.getCode() != 200 || manuscriptResult.getData() == null
+                || manuscriptResult.getData().getUserId() == null) {
+            throw new BusinessException("稿件作者不存在");
+        }
+        return manuscriptResult.getData().getUserId();
     }
 
     @Override

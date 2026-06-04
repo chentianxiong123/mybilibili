@@ -30,8 +30,12 @@ public class ProhibitedWordCacheServiceImpl implements ProhibitedWordCacheServic
 
     @PostConstruct
     public void init() {
-        refreshCache();
-        loadRefreshInterval();
+        try {
+            refreshCache();
+            loadRefreshInterval();
+        } catch (Exception e) {
+            refreshIntervalMs = DEFAULT_REFRESH_INTERVAL;
+        }
     }
 
     @Scheduled(fixedRateString = "#{@prohibitedWordCacheServiceImpl.refreshIntervalMs}")
@@ -69,16 +73,20 @@ public class ProhibitedWordCacheServiceImpl implements ProhibitedWordCacheServic
     @Override
     public void refreshCache() {
         loadRefreshInterval();
-        List<ProhibitedWord> words = prohibitedWordMapper.selectAllEnabled();
-        if (words == null || words.isEmpty()) {
-            redisTemplate.delete(REDIS_SET_KEY);
-            return;
-        }
-        redisTemplate.delete(REDIS_SET_KEY);
-        for (ProhibitedWord pw : words) {
-            if (pw.getWord() != null && !pw.getWord().isEmpty()) {
-                redisTemplate.opsForSet().add(REDIS_SET_KEY, pw.getWord());
+        try {
+            List<ProhibitedWord> words = prohibitedWordMapper.selectAllEnabled();
+            if (words == null || words.isEmpty()) {
+                redisTemplate.delete(REDIS_SET_KEY);
+                return;
             }
+            redisTemplate.delete(REDIS_SET_KEY);
+            for (ProhibitedWord pw : words) {
+                if (pw.getWord() != null && !pw.getWord().isEmpty()) {
+                    redisTemplate.opsForSet().add(REDIS_SET_KEY, pw.getWord());
+                }
+            }
+        } catch (Exception ignored) {
+            redisTemplate.delete(REDIS_SET_KEY);
         }
     }
 

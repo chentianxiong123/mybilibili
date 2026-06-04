@@ -12,6 +12,8 @@ class GatewayRequestPolicyTest {
 
     @Test
     void classifiesPublicAndProtectedPaths() {
+        assertTrue(policy.isPublicPath("/actuator/health"));
+        assertTrue(policy.isPublicPath("/actuator/health/readiness"));
         assertTrue(policy.isPublicPath("/api/user/login"));
         assertTrue(policy.isPublicPath("/api/live/room/list"));
         assertTrue(policy.isPublicPath("/api/live/room/100"));
@@ -23,6 +25,8 @@ class GatewayRequestPolicyTest {
         assertFalse(policy.isPublicPath("/api/search/admin/index/status"));
         assertFalse(policy.isPublicPath("/api/admin/operation-tasks/list"));
         assertFalse(policy.isPublicPath("/api/admin/audit-logs/list"));
+        assertFalse(policy.isPublicPath("/api/creator/stats/overview"));
+        assertFalse(policy.isPublicPath("/actuator/prometheus"));
         assertFalse(policy.isPublicPath(HttpMethod.POST, "/api/category"));
         assertFalse(policy.isPublicPath(HttpMethod.POST, "/api/banner-images/home"));
     }
@@ -45,6 +49,7 @@ class GatewayRequestPolicyTest {
         assertTrue(policy.isSuperAdminPath("/api/admin/register"));
         assertTrue(policy.isSuperAdminPath("/api/admin/roles"));
 
+        assertFalse(policy.isAdminPath("/api/creator/stats/overview"));
         assertFalse(policy.isAdminPath("/api/meeting/my-rooms"));
         assertFalse(policy.isSuperAdminPath("/api/admin/live/rooms"));
     }

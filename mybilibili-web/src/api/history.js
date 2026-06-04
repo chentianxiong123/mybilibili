@@ -1,16 +1,22 @@
 import api from './index.js'
 
+const authRequired = (data) => (
+  localStorage.getItem('token')
+    ? null
+    : Promise.resolve({ code: 401, message: '请先登录', data })
+)
+
 export const historyApi = {
   getHistoryList: (page = 1, size = 10) => {
-    return api.get('/history/list', { params: { page, size } })
+    return authRequired([]) || api.get('/history/list', { params: { page, size } })
   },
 
   clearHistory: () => {
-    return api.delete('/history/clear')
+    return authRequired(null) || api.delete('/history/clear')
   },
 
   deleteHistoryItem: (id) => {
-    return api.delete(`/history/${id}`)
+    return authRequired(null) || api.delete(`/history/${id}`)
   }
 }
 

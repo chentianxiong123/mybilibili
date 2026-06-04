@@ -25,22 +25,22 @@ const handleClick = (tab) => emit('click', tab)
 
 .tab-bar {
   display: flex;
-  overflow-x: auto;
-  white-space: nowrap;
-  -webkit-overflow-scrolling: touch;
-  padding: 0 4px;
-
-  &::-webkit-scrollbar { display: none; }
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
 
   .tab-item {
-    flex: none;
-    padding: 0 16px;
+    flex: 1;
+    text-align: center;
     height: 44px;
     line-height: 44px;
-    font-size: 15px;
+    font-size: 14px;
     color: #757575;
     position: relative;
     cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 
     &.active {
       color: #fb7299;

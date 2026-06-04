@@ -28,12 +28,8 @@ function handleSSEEvent({ event, data }, callbacks) {
 
 function getAuthHeaders() {
   const token = localStorage.getItem('token')
-  const userStr = localStorage.getItem('user')
-  let userId = ''
-  try { userId = userStr ? JSON.parse(userStr).id || '' : '' } catch (e) {}
   return {
-    'Authorization': token ? `Bearer ${token}` : '',
-    'X-User-Id': String(userId)
+    'Authorization': token ? `Bearer ${token}` : ''
   }
 }
 

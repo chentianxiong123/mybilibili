@@ -33,6 +33,12 @@ public class SentinelRuleConfig {
                                 .setMatchStrategy(SentinelGatewayConstants.URL_MATCH_STRATEGY_PREFIX)
                 )));
 
+        definitions.add(new ApiDefinition("creator-api")
+                .setPredicateItems(Set.of(
+                        new ApiPathPredicateItem().setPattern("/api/creator/**")
+                                .setMatchStrategy(SentinelGatewayConstants.URL_MATCH_STRATEGY_PREFIX)
+                )));
+
         definitions.add(new ApiDefinition("user-api")
                 .setPredicateItems(Set.of(
                         new ApiPathPredicateItem().setPattern("/api/user/**")
@@ -71,6 +77,11 @@ public class SentinelRuleConfig {
         rules.add(new GatewayFlowRule("video-api")
                 .setResourceMode(SentinelGatewayConstants.RESOURCE_MODE_CUSTOM_API_NAME)
                 .setCount(200)
+                .setIntervalSec(1));
+
+        rules.add(new GatewayFlowRule("creator-api")
+                .setResourceMode(SentinelGatewayConstants.RESOURCE_MODE_CUSTOM_API_NAME)
+                .setCount(80)
                 .setIntervalSec(1));
 
         rules.add(new GatewayFlowRule("user-api")

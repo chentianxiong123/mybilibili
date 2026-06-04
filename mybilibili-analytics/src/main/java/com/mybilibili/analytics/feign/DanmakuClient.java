@@ -1,4 +1,4 @@
-package com.mybilibili.video.feign;
+package com.mybilibili.analytics.feign;
 
 import com.mybilibili.common.vo.Result;
 import org.springframework.cloud.openfeign.FeignClient;

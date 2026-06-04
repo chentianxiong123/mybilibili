@@ -19,7 +19,7 @@
 
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import * as echarts from 'echarts'
+import echarts from '@/utils/echartsCore'
 
 const props = defineProps({
   xData: { type: Array, default: () => [] },

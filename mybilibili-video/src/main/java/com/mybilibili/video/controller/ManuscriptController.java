@@ -271,22 +271,13 @@ public class ManuscriptController {
             HttpServletRequest request) {
         try {
             Integer userId = JwtUtils.getUserIdFromRequest(request);
-            System.out.println("=== 稿件列表调试 ===");
-            System.out.println("X-User-Id header: " + request.getHeader("X-User-Id"));
-            System.out.println("Authorization header: " + request.getHeader("Authorization"));
-            System.out.println("解析出的用户ID: " + userId);
-            
             if (userId == null) {
                 return Result.error("用户未登录");
             }
             Integer statusCode = convertStatusParam(status);
-            System.out.println("状态参数: " + status + ", 转换后: " + statusCode);
             
             List<ManuscriptVO> manuscripts = manuscriptService.getManuscriptsByUserIdWithPaging(userId, statusCode, page, size);
             Integer total = manuscriptService.countManuscriptsByUserIdAndStatus(userId, statusCode);
-            
-            System.out.println("查询到的稿件数量: " + manuscripts.size());
-            System.out.println("总数量: " + total);
 
             Map<String, Object> result = new HashMap<>();
             result.put("list", manuscripts);
@@ -297,8 +288,6 @@ public class ManuscriptController {
 
             return Result.success("获取成功", result);
         } catch (Exception e) {
-            System.out.println("获取稿件列表异常: " + e.getMessage());
-            e.printStackTrace();
             return Result.error(e.getMessage());
         }
     }
@@ -308,18 +297,12 @@ public class ManuscriptController {
     public Result<Map<String, Integer>> getMyManuscriptStats(HttpServletRequest request) {
         try {
             Integer userId = JwtUtils.getUserIdFromRequest(request);
-            System.out.println("=== 稿件统计调试 ===");
-            System.out.println("解析出的用户ID: " + userId);
-            
             if (userId == null) {
                 return Result.error("用户未登录");
             }
             Map<String, Integer> stats = manuscriptService.getManuscriptStatsByUserId(userId);
-            System.out.println("统计数据: " + stats);
             return Result.success("获取成功", stats);
         } catch (Exception e) {
-            System.out.println("获取稿件统计异常: " + e.getMessage());
-            e.printStackTrace();
             return Result.error(e.getMessage());
         }
     }
@@ -505,11 +488,22 @@ public class ManuscriptController {
             // 不是数字，按字符串处理
         }
         switch (status.toLowerCase()) {
-            case "processing": return Manuscript.STATUS_PENDING_REVIEW;  // 进行中 -> 待审核(0)
-            case "published": return Manuscript.STATUS_PUBLISHED;  // 已通过 -> 已发布(3)
-            case "rejected": return Manuscript.STATUS_REJECTED;  // 未通过 -> 已拒绝(4)
-            case "ready": return Manuscript.STATUS_READY_TO_PUBLISH;  // 待发布 -> 待发布(2)
-            case "unpublished": return Manuscript.STATUS_UNPUBLISHED;  // 已下架 -> -1
+            case "pending":
+            case "reviewing":
+            case "draft":
+                return Manuscript.STATUS_PENDING_REVIEW;
+            case "processing":
+                return Manuscript.STATUS_PROCESSING;
+            case "ready":
+                return Manuscript.STATUS_READY_TO_PUBLISH;
+            case "published":
+                return Manuscript.STATUS_PUBLISHED;
+            case "rejected":
+                return Manuscript.STATUS_REJECTED;
+            case "failed":
+                return Manuscript.STATUS_PROCESS_FAILED;
+            case "unpublished":
+                return Manuscript.STATUS_UNPUBLISHED;
             default: return null;
         }
     }

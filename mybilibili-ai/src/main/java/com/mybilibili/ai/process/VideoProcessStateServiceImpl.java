@@ -4,6 +4,8 @@ import com.mybilibili.ai.mapper.VideoMapper;
 import com.mybilibili.ai.service.VideoProgressSseService;
 import com.mybilibili.ai.websocket.VideoProcessWebSocketHandler;
 import com.mybilibili.common.entity.Video;
+import com.mybilibili.mq.VideoMQProducer;
+import com.mybilibili.mq.VideoProcessAnalyticsEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +17,9 @@ public class VideoProcessStateServiceImpl implements VideoProcessStateService {
 
     @Autowired
     private VideoProgressSseService progressSseService;
+
+    @Autowired
+    private VideoMQProducer videoMQProducer;
 
     @Override
     public void markStepStarted(VideoProcessContext context) {
@@ -83,6 +88,24 @@ public class VideoProcessStateServiceImpl implements VideoProcessStateService {
     }
 
     private void updateVideoState(Integer videoId, Integer status, Integer progress, String stage, String error) {
-        videoMapper.updateProcessState(videoId, status, progress, stage, error);
+        Video previous = videoMapper.selectById(videoId);
+        int updated = videoMapper.updateProcessState(videoId, status, progress, stage, error);
+        if (updated <= 0) {
+            return;
+        }
+        Integer fromStatus = previous != null ? previous.getProcessStatus() : null;
+        Integer manuscriptId = previous != null ? previous.getManuscriptId() : null;
+        VideoProcessAnalyticsEvent event = VideoProcessAnalyticsEvent.of(
+                videoId,
+                manuscriptId,
+                fromStatus,
+                status,
+                stage,
+                progress,
+                error,
+                "SYSTEM",
+                null
+        );
+        videoMQProducer.sendVideoProcessAnalyticsEvent(event);
     }
 }

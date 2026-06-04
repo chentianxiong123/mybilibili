@@ -11,7 +11,7 @@ import org.springframework.context.annotation.ComponentScan;
 @EnableDiscoveryClient
 @EnableFeignClients(basePackages = "com.mybilibili.interaction.feign")
 @MapperScan("com.mybilibili.interaction.mapper")
-@ComponentScan(basePackages = {"com.mybilibili.interaction", "com.mybilibili.common"})
+@ComponentScan(basePackages = {"com.mybilibili.interaction", "com.mybilibili.common", "com.mybilibili.mq"})
 public class InteractionApplication {
     public static void main(String[] args) {
         SpringApplication.run(InteractionApplication.class, args);

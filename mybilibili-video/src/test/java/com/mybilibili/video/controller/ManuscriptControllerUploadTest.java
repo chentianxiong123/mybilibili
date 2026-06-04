@@ -23,6 +23,10 @@ import static org.mockito.Mockito.when;
 
 class ManuscriptControllerUploadTest {
 
+    static {
+        System.setProperty("jwt.secret", "test-jwt-secret-0123456789abcdef0123456789abcdef");
+    }
+
     @Test
     void legacyUploadParsesIndexedVideosDynamically() throws Exception {
         ManuscriptService manuscriptService = mock(ManuscriptService.class);

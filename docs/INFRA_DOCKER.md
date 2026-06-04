@@ -4,6 +4,8 @@
 
 所有持久化目录统一放在 `D:\DockerFiles\mybilibili`。
 
+当前仓库只维护 `mybilibili-infra` 基础设施组。业务服务容器和前端 Nginx 镜像尚未落地，不在本文档承诺范围内。
+
 ## 组件
 
 | 组件 | 镜像 | 端口 | 当前项目用途 |
@@ -28,6 +30,21 @@ docker compose -f scripts/docker-compose-infra.yml up -d
 
 当前代码里的连接地址基本都是 `127.0.0.1` 和固定端口，所以容器端口保持和本地配置一致，业务服务不用改配置即可连接。
 
+`scripts/docker-compose-infra.yml` 会直接读取仓库内的 `scripts/rocketmq/broker.conf` 和根目录 `srs.conf`，不需要先把这两个配置文件复制到持久化目录。
+
+业务微服务仍使用 `scripts/start-all.ps1` / `scripts/start-all.bat` 或 IDE 本地启动。前端仍在各自目录执行 `pnpm install`、`pnpm run dev`。
+
+## FFmpeg / Whisper
+
+本地运行 `mybilibili-ai` 需要宿主机安装 `ffmpeg` 并放入 `PATH`。Whisper 本地模式使用固定目录：
+
+```text
+D:\DockerFiles\mybilibili\whisper\bin\whisper-cli
+D:\DockerFiles\mybilibili\whisper\models\ggml-small.bin
+```
+
+Windows 本地启动使用 Windows 版 `whisper-cli.exe`。也可以改用远程 Whisper/API Provider，此时本地 Whisper 目录不是硬依赖。
+
 ## 切换注意
 
 本机如果已经有 MySQL 或 MongoDB，占用 `3306` / `27017`，需要先停掉本机服务，再启动 compose。
@@ -47,11 +64,5 @@ Get-Content -Raw backups/mysql/mybilibili_before_docker.sql | docker exec -i myb
 ```
 
 MinIO 控制台：`http://127.0.0.1:9001`，账号密码使用启动时注入的 `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`。
-
-建议的分组是：
-
-1. `mybilibili-infra`：基础设施，长期运行。
-2. `mybilibili-apps`：后端微服务，开发时可继续本地跑。
-3. `mybilibili-frontends`：前台、后台、WAP、Nginx。
 
 不要把所有东西塞成一个不可拆的大组，后续调试和迁移会很难收口。

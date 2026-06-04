@@ -1,8 +1,8 @@
-package com.mybilibili.video.controller;
+package com.mybilibili.analytics.controller;
 
 import com.mybilibili.common.utils.JwtUtils;
 import com.mybilibili.common.vo.*;
-import com.mybilibili.video.service.CreatorStatsService;
+import com.mybilibili.analytics.service.CreatorStatsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;

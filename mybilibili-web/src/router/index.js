@@ -56,7 +56,7 @@ const router = createRouter({
       path: '/profile',
       name: 'profile',
       component: () => import('../views/UserProfileView.vue'),
-      meta: { 
+      meta: {
         title: '个人主页 - 哔哩哔哩',
         layout: 'simple'
       },
@@ -83,12 +83,13 @@ const router = createRouter({
         layout: 'simple'
       },
       children: [
-        { path: '', name: 'user-profile-redirect', redirect: '/profile/:id/home' },
+        { path: '', name: 'user-profile-redirect', redirect: to => `/profile/${to.params.id}/home` },
         { path: 'home', name: 'user-profile-home', component: () => import('../views/UserProfileView.vue'), meta: { title: '用户主页 - 哔哩哔哩', layout: 'simple' } },
         { path: 'dynamic', name: 'user-profile-dynamic', component: () => import('../views/UserProfileView.vue'), meta: { title: '动态 - 哔哩哔哩', layout: 'simple' } },
         { path: 'submissions', name: 'user-profile-submissions', component: () => import('../views/UserProfileView.vue'), meta: { title: '投稿 - 哔哩哔哩', layout: 'simple' } },
         { path: 'collections', name: 'user-profile-collections', component: () => import('../views/UserProfileView.vue'), meta: { title: '合集和列表 - 哔哩哔哩', layout: 'simple' } },
         { path: 'favorites', name: 'user-profile-favorites', component: () => import('../views/UserProfileView.vue'), meta: { title: '收藏 - 哔哩哔哩', layout: 'simple' } },
+        { path: 'interests', name: 'user-profile-interests', component: () => import('../views/UserProfileView.vue'), meta: { title: '兴趣画像 - 哔哩哔哩', layout: 'simple' } },
         { path: 'following', name: 'user-profile-following', component: () => import('../views/UserProfileView.vue'), meta: { title: '关注 - 哔哩哔哩', layout: 'simple' } },
         { path: 'followers', name: 'user-profile-followers', component: () => import('../views/UserProfileView.vue'), meta: { title: '粉丝 - 哔哩哔哩', layout: 'simple' } },
         { path: 'search', name: 'user-profile-search', component: () => import('../views/UserProfileView.vue'), meta: { title: '搜索 - 哔哩哔哩', layout: 'simple' } },
@@ -310,7 +311,7 @@ const router = createRouter({
       name: 'not-found',
       component: () => import('../views/NotFoundView.vue'),
       meta: { title: '页面未找到 - 哔哩哔哩', layout: 'simple' }
-    }
+    },
   ],
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {
