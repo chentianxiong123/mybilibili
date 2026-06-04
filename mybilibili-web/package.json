@@ -23,12 +23,10 @@
     "element-plus": "^2.7.5",
     "flv.js": "^1.6.2",
     "hls.js": "^1.5.13",
-    "js-md5": "^0.8.3",
     "mitt": "^3.0.1",
     "pinia": "^2.1.7",
     "sass": "^1.77.5",
     "vue": "^3.4.21",
-    "vue-cookies": "^1.8.4",
     "vue-router": "^4.2.5"
   },
   "devDependencies": {
