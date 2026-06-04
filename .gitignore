@@ -137,5 +137,4 @@ references/
 # *.ico
 # *.svg
 
-# mybilibili-live-desktop source tree (restored 2026-06-04, not versioned in this branch)
-mybilibili-live-desktop/
+# mybilibili-live-desktop source tree is now tracked (no longer excluded).

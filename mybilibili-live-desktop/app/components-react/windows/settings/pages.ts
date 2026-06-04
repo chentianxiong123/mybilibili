@@ -1,0 +1,12 @@
+export { GeneralSettings } from './General';
+export { AppearanceSettings } from './Appearance';
+export { AdvancedSettings } from './Advanced';
+export { Hotkeys } from './Hotkeys';
+export { NotificationsSettings } from './Notifications';
+export { AudioSettings } from './Audio';
+export { VideoSettings } from './Video';
+export { StreamSettings } from './Stream';
+export { OutputSettings } from './Output';
+export { ObsSettings } from './ObsSettings';
+export { SceneCollections } from './SceneCollections';
+export { VirtualWebcamSettings } from './VirtualWebcam';

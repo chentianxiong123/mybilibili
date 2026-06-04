@@ -1,0 +1,57 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "target": "es2015",
+    "lib": [
+      "dom",
+      "es7",
+      "es2017"
+    ],
+    "module": "esnext",
+    "moduleResolution": "node",
+    "isolatedModules": false,
+    "experimentalDecorators": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "removeComments": true,
+    "allowSyntheticDefaultImports": true,
+    "sourceMap": true,
+    "allowJs": false,
+    "strictNullChecks": false,
+    "emitDecoratorMetadata": false,
+    "baseUrl": "./app",
+    "jsx": "preserve",
+    "types": [
+      "node-fetch",
+      "archiver",
+      "classnames",
+      "extract-zip",
+      "fs-extra",
+      "humps",
+      "lodash",
+      "mime",
+      "mkdirp",
+      "node",
+      "overlayscrollbars",
+      "request",
+      "semver",
+      "socket.io-client",
+      "tapable",
+      "uuid",
+      "vue-tsx-support"
+    ]
+  },
+  "include": [
+    "./app/**/*"
+  ],
+  "exclude": [
+    "./app/components-react/**/*",
+    "**/node_modules/@realm/fetch/dist/types/types.d.ts"
+  ],
+  "typedocOptions": {
+    "entryPoints": [
+      "src/index.ts"
+    ],
+    "out": "docs"
+  }
+}
