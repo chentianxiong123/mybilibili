@@ -1,0 +1,526 @@
+@import "./styles/foundation";
+@import "../node_modules/overlayscrollbars/css/OverlayScrollbars.css";
+@import "../node_modules/vue-multiselect/dist/vue-multiselect.min.css";
+@import "./styles/index";
+@import "./styles/checkboxes";
+@import "./styles/tables";
+@import "./styles/buttons";
+@import "./styles/classes";
+@import "./styles/custom-icons";
+@import "./styles/inputs";
+@import "./styles/sl-vue-tree";
+@import "./styles/tooltips";
+@import "./styles/animations";
+@import "./styles/loader.less";
+
+:not(input):not(textarea),
+:not(input):not(textarea)::after,
+:not(input):not(textarea)::before {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.selectable * {
+  user-select: text;
+}
+
+::selection {
+  background: var(--button) !important;
+}
+
+.main {
+  background: var(--background);
+  color: var(--paragraph);
+}
+
+// Layout
+.page-container {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  max-width: 1920px;
+  margin: 0 auto;
+}
+
+// Type
+h1 {
+  .weight(@bold);
+
+  font-family: 'Roboto', sans-serif;
+  font-size: 20px;
+  color: var(--title);
+  margin-bottom: 24px;
+}
+
+h2 {
+  .weight(@medium);
+  .margin-bottom(3);
+
+  font-family: 'Roboto', sans-serif;
+  font-size: 16px;
+  color: var(--title);
+}
+
+h3 {
+  .weight(@medium);
+
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  color: var(--title);
+}
+
+h4 {
+  .weight(@medium);
+  .margin-bottom(2);
+
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  color: var(--title);
+}
+
+label {
+  color: var(--paragraph);
+  line-height: 1.3;
+}
+
+.label--essential {
+  .radius();
+  .weight(@medium);
+  .margin-left();
+
+  background: var(--accent);
+  font-size: 12px;
+  color: var(--action-button-text);
+  padding: 0 4px;
+  line-height: 16px;
+}
+
+.whisper {
+  font-style: italic;
+  opacity: 0.7;
+}
+
+a,
+.link {
+  .weight(@medium);
+
+  color: var(--link);
+  text-decoration: none;
+  align-items: center;
+
+  &:hover {
+    color: var(--link-active);
+
+    .fa,
+    i {
+      color: var(--link-active);
+    }
+  }
+
+  .fa,
+  i {
+    .margin-right();
+
+    font-size: 14px;
+    color: var(--icon);
+  }
+}
+
+.link {
+  display: flex;
+}
+
+.link--pointer {
+  cursor: pointer;
+}
+
+.link--uppercase {
+  .link();
+  .letter-spacing();
+
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.label--icon {
+  margin-right: 4px;
+}
+
+.select {
+  position: relative;
+
+  select {
+    font-size: 14px;
+    margin: 0;
+    padding: 0 32px 0 8px;
+
+    option {
+      color: var(--title);
+    }
+  }
+}
+
+.select-carot {
+  position: absolute;
+  right: 8px;
+  top: 10px;
+  font-size: 10px;
+  color: var(--white);
+}
+
+.select--onboarding {
+  .input-label {
+    display: none;
+  }
+
+  .input-wrapper {
+    width: 100%;
+  }
+
+  .multiselect__input {
+    background: #45535a;
+    border-color: transparent;
+    color: var(--white);
+  }
+
+  .multiselect__content {
+    background: #45535a;
+    border-color: transparent;
+  }
+}
+
+.search-input {
+  position: relative;
+
+  input[type=text] {
+    .radius();
+
+    background: transparent;
+    border: none;
+    padding: 0 32px 0 8px;
+    color: var(--icon);
+
+    &:focus {
+      background: rgba(255, 255, 255, 0.14);
+      outline: none;
+      box-shadow: none;
+    }
+  }
+
+  .fa-search {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 16px;
+  }
+}
+
+.search-input--trans {
+  input[type=text] {
+    border-bottom: 1px solid transparent;
+    border-radius: 0;
+
+    &:focus,
+    &:active {
+      background: transparent;
+      color: var(--white);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    }
+  }
+
+  &:focus,
+  &:active,
+  &:hover {
+    color: var(--white);
+  }
+}
+
+.slide-open {
+  position: relative;
+  display: flex;
+}
+
+.slide-open__menu {
+  position: absolute;
+  background: var(--background);
+  right: calc(~'100% + 20px');
+  align-self: center;
+  display: flex;
+  z-index: 10;
+  top: -6px;
+  .padding-h-sides();
+  .radius();
+  .shadow();
+
+  .button {
+    max-height: 32px;
+    white-space: nowrap;
+  }
+}
+
+.tabs {
+  background: transparent;
+  padding: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  border: 0;
+}
+
+.tab-button {
+  background-color: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  height: 48px;
+  .margin-right(2);
+
+  &:focus {
+    outline: 0;
+  }
+
+  .fa,
+  i {
+    font-size: 14px;
+    vertical-align: middle;
+    color: var(--icon);
+  }
+
+  &:hover {
+    cursor: pointer;
+  }
+
+  &.is-active,
+  &.active {
+    color: var(--link-active);
+    border-bottom-color: var(--link-active);
+
+    .fa,
+    i {
+      color: var(--link-active);
+    }
+  }
+}
+
+.layer-icon {
+  display: inline-block;
+  text-align: left;
+  width: 16px;
+  margin-right: 8px;
+
+  i,
+  .fa {
+    font-size: 12px;
+    font-weight: 700;
+  }
+}
+
+.input {
+  &.disabled {
+    opacity: 0.5;
+
+    &.checkbox input:checked ~ label,
+    &.checkbox input ~ label {
+      &::before {
+        border-color: var(--button);
+        background: transparent;
+      }
+
+      &::after { color: var(--paragraph); }
+    }
+  }
+}
+
+.studio-controls {
+  position: relative;
+}
+
+.studio-controls-panel {
+  .padding-h-sides();
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
+
+.studio-controls-top {
+  .margin-bottom();
+
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 20px;
+}
+
+.studio-controls__label {
+  color: var(--title);
+  margin-bottom: 0;
+}
+
+.studio-controls-selector {
+  .radius();
+
+  background: var(--section);
+  flex-grow: 1;
+}
+
+// Make select boxes look similar to input boxes
+select {
+  .radius();
+
+  height: 34px;
+}
+
+// Scrolls
+.os-scrollbar,
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.os-scrollbar.os-scrollbar-vertical {
+  height: 100%;
+  transition: all 0.2s linear;
+
+  &:hover,
+  &:active {
+    width: 16px;
+  }
+}
+
+.os-scrollbar.os-scrollbar-horizontal {
+  width: 100%;
+
+  &:hover,
+  &:active {
+    height: 16px;
+  }
+}
+
+.os-scrollbar-track,
+::-webkit-scrollbar-track {
+  background: var(--section);
+  border-radius: 0 3px 3px 0;
+}
+
+.os-scrollbar-handle,
+::-webkit-scrollbar-thumb {
+  background-color: var(--solid-input);
+  border: 2px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-radius: 10px;
+
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+// Loader TODO: move off of Beaker
+.s-loader__bg {
+  background: #f6f7f8 !important;
+}
+
+.s-spinner__bar {
+  fill: #00a1d6 !important;
+
+  &.s-spinner--modeswap {
+    fill: var(--section) !important;
+  }
+}
+
+.s-loader__brand {
+  color: #18191c !important;
+}
+
+.s-loader__text {
+  color: #61666d !important;
+}
+
+// Vue transitions
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-fade-enter,
+.slide-fade-leave-to {
+  transform: translateX(20px);
+  opacity: 0;
+}
+
+.fade-enter-active {
+  transition: opacity 0.4s ease;
+}
+
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.sidenav-slide-enter,
+.sidenav-slide-leave-to {
+  transform: translateY(-20px);
+  opacity: 0;
+}
+
+.sidenav-slide-enter-active,
+.sidenav-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+
+.zoom-enter-active, .zoom-leave-active {
+  transition: transform .3s, opacity .5s;
+}
+.zoom-enter {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+.zoom-leave-to {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+
+.checkboxdone-enter-active {transition: width 0.3s;}
+.checkboxdone-enter {width: 0;}
+.checkboxdone-enter-to {width: 16px;}
+
+.v--modal-overlay {
+  background: var(--modal-overlay);
+}
+
+.v--modal {
+  background-color: var(--background);
+  box-shadow: 0 0 0 var(--shadow);
+}
+
+// Toasts
+.toast-alert {
+  background-color: var(--warning) !important;
+}
+
+.toast-prime {
+  background-color: var(--prime) !important;
+}
+
+.toast-busy {
+  background-color: var(--info) !important;
+  margin-top: 250px !important;
+}
+
+.toast-success {
+  background-color: var(--teal) !important;
+}
+
+.toast-success__schedule {
+  padding: 10px 20px !important;
+}
+
+.toast-action {
+  color: var(--white) !important;
+}
