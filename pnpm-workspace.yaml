@@ -1,9 +1,0 @@
-packages:
-  - mybilibili-web
-  - mybilibili-admin-web
-  - mybilibili-wap
-
-onlyBuiltDependencies:
-  - '@parcel/watcher'
-  - esbuild
-  - vue-demi
