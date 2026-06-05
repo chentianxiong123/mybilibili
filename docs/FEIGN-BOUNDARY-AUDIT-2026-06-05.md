@@ -36,8 +36,6 @@
 | `com.mybilibili.user.feign.ManuscriptClient` | `legacy-services/mybilibili-user` | `mybilibili-video-media` | `account-social -> video-media` | keep |
 | `com.mybilibili.message.feign.UserClient` | `legacy-services/mybilibili-message` | `mybilibili-account-social` | `account-social` 内部调用 | local-port, deprecated |
 | `com.mybilibili.search.feign.UserProfileClient` | `legacy-services/mybilibili-search` | `mybilibili-content-interaction` | `search-recommend -> content-interaction` | keep |
-| `com.mybilibili.video.feign.VideoProcessClient` | `legacy-services/mybilibili-video` | `mybilibili-ai` | `video-media -> ai` | keep |
-| `com.mybilibili.video.feign.VideoPipelineClient` | `legacy-services/mybilibili-video` | `mybilibili-ai` | `video-media -> ai` | keep |
 | `com.mybilibili.video.feign.UserClient` | `legacy-services/mybilibili-video` | `mybilibili-account-social` | `video-media -> account-social` | keep |
 | `com.mybilibili.video.feign.MessageClient` | `legacy-services/mybilibili-video` | `mybilibili-account-social` | `video-media -> account-social` | keep |
 

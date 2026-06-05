@@ -18,17 +18,16 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
 import com.mybilibili.mq.ManuscriptAnalyticsEvent;
 import com.mybilibili.mq.VideoMQProducer;
-import com.mybilibili.mq.VideoProcessMessage;
 import com.mybilibili.video.entity.ManuscriptEditVersion;
 import com.mybilibili.video.feign.MessageClient;
 import com.mybilibili.video.feign.UserClient;
-import com.mybilibili.video.feign.VideoPipelineClient;
 import com.mybilibili.video.mapper.CategoryMapper;
 import com.mybilibili.video.mapper.ManuscriptEditVersionMapper;
 import com.mybilibili.video.mapper.ManuscriptMapper;
 import com.mybilibili.video.mapper.TagMapper;
 import com.mybilibili.video.mapper.VideoMapper;
 import com.mybilibili.video.service.ManuscriptService;
+import com.mybilibili.video.service.VideoProcessPort;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -92,7 +91,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     private MessageClient messageClient;
 
     @Autowired
-    private VideoPipelineClient videoPipelineClient;
+    private VideoProcessPort videoProcessPort;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -1007,14 +1006,8 @@ public class ManuscriptServiceImpl implements ManuscriptService {
             updateLatestEditVersionStatus(manuscriptId, ManuscriptEditVersion.STATUS_APPROVED, reviewerId, reason);
             List<Video> videos = videoMapper.selectByManuscriptId(manuscriptId);
             for (Video video : videos) {
-                VideoProcessMessage message = VideoProcessMessage.of(
-                    manuscriptId,
-                    video.getId(),
-                    manuscript.getUserId(),
-                    VideoProcessMessage.PROCESS_TYPE_TRANSCODE
-                );
-                videoMQProducer.sendVideoProcessMessage(message);
-                log.info("审核通过，发送视频转码消息，manuscriptId: {}, videoId: {}", manuscriptId, video.getId());
+                videoProcessPort.triggerAutoProcess(video.getId(), manuscriptId, manuscript.getUserId());
+                log.info("审核通过，提交视频全流程MQ任务，manuscriptId: {}, videoId: {}", manuscriptId, video.getId());
             }
             return true;
         }
@@ -1043,14 +1036,18 @@ public class ManuscriptServiceImpl implements ManuscriptService {
                 "ADMIN_APPROVE_WITH_PROCESS", "ADMIN", reviewerId, reason);
         updateLatestEditVersionStatus(manuscriptId, ManuscriptEditVersion.STATUS_APPROVED, reviewerId, reason);
         
+        if (!autoProcess) {
+            return true;
+        }
+
         List<Video> videos = videoMapper.selectByManuscriptId(manuscriptId);
-        
+
         for (Video video : videos) {
             try {
-                videoPipelineClient.submitPipelineTask(manuscriptId, video.getId(), manuscript.getUserId());
-                log.info("审核通过并提交全流程任务，manuscriptId: {}, videoId: {}", manuscriptId, video.getId());
+                videoProcessPort.triggerAutoProcess(video.getId(), manuscriptId, manuscript.getUserId());
+                log.info("审核通过并提交视频全流程MQ任务，manuscriptId: {}, videoId: {}", manuscriptId, video.getId());
             } catch (Exception e) {
-                log.error("提交全流程任务失败，manuscriptId: {}, videoId: {}", manuscriptId, video.getId(), e);
+                log.error("提交视频全流程MQ任务失败，manuscriptId: {}, videoId: {}", manuscriptId, video.getId(), e);
             }
         }
         return true;
@@ -1257,7 +1254,11 @@ public class ManuscriptServiceImpl implements ManuscriptService {
             return false;
         }
         video.setProcessStatus(Video.PROCESS_STATUS_TRANSCODING);
-        return videoMapper.updateById(video) > 0;
+        boolean updated = videoMapper.updateById(video) > 0;
+        if (updated) {
+            videoProcessPort.triggerAutoProcess(videoId, video.getManuscriptId(), null);
+        }
+        return updated;
     }
 
     @Override

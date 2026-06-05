@@ -8,7 +8,6 @@ import com.mybilibili.mq.VideoMQProducer;
 import com.mybilibili.common.storage.StorageKeys;
 import com.mybilibili.video.feign.MessageClient;
 import com.mybilibili.video.feign.UserClient;
-import com.mybilibili.video.feign.VideoPipelineClient;
 import com.mybilibili.video.entity.ManuscriptEditVersion;
 import com.mybilibili.video.mapper.CategoryMapper;
 import com.mybilibili.video.mapper.ManuscriptEditVersionMapper;
@@ -165,7 +164,7 @@ class ManuscriptServiceImplTest {
         ReflectionTestUtils.setField(service, "storageService", storageService);
         ReflectionTestUtils.setField(service, "videoMQProducer", mock(VideoMQProducer.class));
         ReflectionTestUtils.setField(service, "messageClient", mock(MessageClient.class));
-        ReflectionTestUtils.setField(service, "videoPipelineClient", mock(VideoPipelineClient.class));
+        ReflectionTestUtils.setField(service, "videoProcessPort", mock(VideoProcessPort.class));
         ReflectionTestUtils.setField(service, "redisTemplate", mock(StringRedisTemplate.class));
         return service;
     }

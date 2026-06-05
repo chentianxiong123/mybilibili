@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 @RocketMQMessageListener(
     topic = MQConstants.TOPIC_VIDEO_PROCESS,
     consumerGroup = MQConstants.GROUP_VIDEO_PROCESS,
+    selectorExpression = VideoProcessMessage.PROCESS_TYPE_GENERATE_SUBTITLE + " || " + VideoProcessMessage.PROCESS_TYPE_AI_SUMMARY,
     consumeMode = ConsumeMode.ORDERLY
 )
 public class VideoProcessConsumer implements RocketMQListener<VideoProcessMessage> {
@@ -47,9 +48,16 @@ public class VideoProcessConsumer implements RocketMQListener<VideoProcessMessag
         context.setVideoTitle(videoTitle);
         context.setVideoDescription(video != null ? video.getDescription() : null);
         context.setCurrentStep(VideoProcessStepType.fromMqProcessType(message.getProcessType()));
-        context.setProcessMode(ProcessMode.AUTO_CHAIN);
+        context.setProcessMode(resolveProcessMode(message.getProcessMode()));
         context.setTriggerSource("MQ");
 
         orchestrator.executeStep(context);
+    }
+
+    private ProcessMode resolveProcessMode(String processMode) {
+        if (VideoProcessMessage.PROCESS_MODE_MANUAL_SINGLE.equals(processMode)) {
+            return ProcessMode.MANUAL_SINGLE;
+        }
+        return ProcessMode.AUTO_CHAIN;
     }
 }

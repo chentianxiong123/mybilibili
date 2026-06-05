@@ -18,6 +18,8 @@ public class MQConstants {
 
     public static final String GROUP_VIDEO_PROCESS = "video-process-group";
 
+    public static final String GROUP_VIDEO_MEDIA_PROCESS = "video-media-process-group";
+
     public static final String GROUP_SEARCH_INDEX = "search-index-group";
 
     public static final String GROUP_MESSAGE_NOTIFY = "message-notify-group";

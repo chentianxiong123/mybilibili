@@ -6,8 +6,8 @@ import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.entity.Video;
 import com.mybilibili.common.operation.OperationTaskRecorder;
 import com.mybilibili.video.feign.UserClient;
-import com.mybilibili.video.feign.VideoProcessClient;
 import com.mybilibili.video.service.ManuscriptService;
+import com.mybilibili.video.service.VideoProcessPort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,7 +30,7 @@ public class ManuscriptAdminController {
     private UserClient userClient;
 
     @Autowired
-    private VideoProcessClient videoProcessClient;
+    private VideoProcessPort videoProcessPort;
 
     @Autowired
     private AuditLogRecorder auditLogRecorder;
@@ -209,13 +209,13 @@ public class ManuscriptAdminController {
         try {
             operationTaskRecorder.running(request, videoTaskKey("transcode", videoId), "VIDEO_PROCESS", "手动视频转码",
                     "video", String.valueOf(videoId), 0, "TRANSCODING", "转码任务已触发");
-            Result<Void> result = videoProcessClient.triggerTranscode(videoId, video.getManuscriptId());
+            Result<Void> result = videoProcessPort.triggerTranscode(videoId, video.getManuscriptId());
             operationTaskRecorder.recordResult(request, videoTaskKey("transcode", videoId), "VIDEO_PROCESS", "手动视频转码",
                     "video", String.valueOf(videoId), "TRANSCODING", result);
             auditLogRecorder.record(request, "task", "video_transcode_trigger", "video", String.valueOf(videoId), result);
             return result;
         } catch (Exception e) {
-            Result<Void> result = Result.error("调用转码服务失败: " + e.getMessage());
+            Result<Void> result = Result.error("调用视频媒体处理失败: " + e.getMessage());
             operationTaskRecorder.failed(request, videoTaskKey("transcode", videoId), "VIDEO_PROCESS", "手动视频转码",
                     "video", String.valueOf(videoId), 0, "TRANSCODING", result.getMessage(), e.getMessage());
             auditLogRecorder.record(request, "task", "video_transcode_trigger", "video", String.valueOf(videoId), result);
@@ -237,13 +237,13 @@ public class ManuscriptAdminController {
         try {
             operationTaskRecorder.running(request, videoTaskKey("audio", videoId), "VIDEO_PROCESS", "手动音频提取",
                     "video", String.valueOf(videoId), 0, "AUDIO_EXTRACTING", "音频提取任务已触发");
-            Result<Void> result = videoProcessClient.triggerAudioExtract(videoId, video.getManuscriptId());
+            Result<Void> result = videoProcessPort.triggerAudioExtract(videoId, video.getManuscriptId());
             operationTaskRecorder.recordResult(request, videoTaskKey("audio", videoId), "VIDEO_PROCESS", "手动音频提取",
                     "video", String.valueOf(videoId), "AUDIO_EXTRACTING", result);
             auditLogRecorder.record(request, "task", "video_audio_trigger", "video", String.valueOf(videoId), result);
             return result;
         } catch (Exception e) {
-            Result<Void> result = Result.error("调用音频提取服务失败: " + e.getMessage());
+            Result<Void> result = Result.error("调用视频媒体处理失败: " + e.getMessage());
             operationTaskRecorder.failed(request, videoTaskKey("audio", videoId), "VIDEO_PROCESS", "手动音频提取",
                     "video", String.valueOf(videoId), 0, "AUDIO_EXTRACTING", result.getMessage(), e.getMessage());
             auditLogRecorder.record(request, "task", "video_audio_trigger", "video", String.valueOf(videoId), result);
@@ -265,7 +265,7 @@ public class ManuscriptAdminController {
         try {
             operationTaskRecorder.running(request, videoTaskKey("subtitle", videoId), "VIDEO_PROCESS", "手动字幕生成",
                     "video", String.valueOf(videoId), 0, "SUBTITLE_GENERATING", "字幕生成任务已触发");
-            Result<Void> result = videoProcessClient.triggerSubtitleGenerate(videoId, video.getManuscriptId());
+            Result<Void> result = videoProcessPort.triggerSubtitleGenerate(videoId, video.getManuscriptId());
             operationTaskRecorder.recordResult(request, videoTaskKey("subtitle", videoId), "VIDEO_PROCESS", "手动字幕生成",
                     "video", String.valueOf(videoId), "SUBTITLE_GENERATING", result);
             auditLogRecorder.record(request, "task", "video_subtitle_trigger", "video", String.valueOf(videoId), result);
@@ -293,7 +293,7 @@ public class ManuscriptAdminController {
         try {
             operationTaskRecorder.running(request, videoTaskKey("ai-summary", videoId), "VIDEO_PROCESS", "手动AI总结",
                     "video", String.valueOf(videoId), 0, "AI_SUMMARIZING", "AI总结任务已触发");
-            Result<Void> result = videoProcessClient.triggerAiSummary(videoId, video.getManuscriptId());
+            Result<Void> result = videoProcessPort.triggerAiSummary(videoId, video.getManuscriptId());
             operationTaskRecorder.recordResult(request, videoTaskKey("ai-summary", videoId), "VIDEO_PROCESS", "手动AI总结",
                     "video", String.valueOf(videoId), "AI_SUMMARIZING", result);
             auditLogRecorder.record(request, "task", "video_ai_summary_trigger", "video", String.valueOf(videoId), result);

@@ -33,34 +33,6 @@ public class VideoProcessController {
     @Autowired
     private OperationTaskRecorder operationTaskRecorder;
 
-    @PostMapping("/transcode/{videoId}")
-    @Operation(summary = "手动转码", description = "手动触发视频转码")
-    public Result<Void> transcode(@PathVariable Integer videoId,
-                                   @RequestParam Integer manuscriptId,
-                                   HttpServletRequest request) {
-        operationTaskRecorder.running(request, videoTaskKey("transcode", videoId), "VIDEO_PROCESS", "手动视频转码",
-                "video", String.valueOf(videoId), 0, "TRANSCODING", "视频转码执行中");
-        Result<Void> result = executeWithoutData(videoId, manuscriptId, null, null, VideoProcessStepType.TRANSCODE);
-        operationTaskRecorder.recordResult(request, videoTaskKey("transcode", videoId), "VIDEO_PROCESS", "手动视频转码",
-                "video", String.valueOf(videoId), "TRANSCODING", result);
-        auditLogRecorder.record(request, "video_transcode_execute", "video", String.valueOf(videoId), result);
-        return result;
-    }
-
-    @PostMapping("/audio/{videoId}")
-    @Operation(summary = "手动提取音频", description = "手动触发音频提取")
-    public Result<Void> extractAudio(@PathVariable Integer videoId,
-                                     @RequestParam Integer manuscriptId,
-                                     HttpServletRequest request) {
-        operationTaskRecorder.running(request, videoTaskKey("audio", videoId), "VIDEO_PROCESS", "手动音频提取",
-                "video", String.valueOf(videoId), 0, "AUDIO_EXTRACTING", "音频提取执行中");
-        Result<Void> result = executeWithoutData(videoId, manuscriptId, null, null, VideoProcessStepType.EXTRACT_AUDIO);
-        operationTaskRecorder.recordResult(request, videoTaskKey("audio", videoId), "VIDEO_PROCESS", "手动音频提取",
-                "video", String.valueOf(videoId), "AUDIO_EXTRACTING", result);
-        auditLogRecorder.record(request, "video_audio_execute", "video", String.valueOf(videoId), result);
-        return result;
-    }
-
     @PostMapping("/subtitle/{videoId}")
     @Operation(summary = "手动生成字幕", description = "手动触发字幕生成")
     public Result<Void> generateSubtitle(@PathVariable Integer videoId,
