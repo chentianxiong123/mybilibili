@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@mybilibili-studio/core": ["../../packages/core/src/index.ts"],
+      "@mybilibili-studio/core/*": ["../../packages/core/src/*"],
+      "@mybilibili-studio/ui": ["../../packages/ui/src/index.ts"],
+      "@mybilibili-studio/ui/*": ["../../packages/ui/src/*"]
+    }
+  },
+  "include": ["src", "src/**/*.vue"]
+}
