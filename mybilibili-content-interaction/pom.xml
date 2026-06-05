@@ -82,21 +82,21 @@
                 <directory>src/main/resources</directory>
             </resource>
             <resource>
-                <directory>../mybilibili-comment/src/main/resources</directory>
+                <directory>../legacy-services/mybilibili-comment/src/main/resources</directory>
                 <excludes>
                     <exclude>application*.yml</exclude>
                     <exclude>application*.yaml</exclude>
                 </excludes>
             </resource>
             <resource>
-                <directory>../mybilibili-interaction/src/main/resources</directory>
+                <directory>../legacy-services/mybilibili-interaction/src/main/resources</directory>
                 <excludes>
                     <exclude>application*.yml</exclude>
                     <exclude>application*.yaml</exclude>
                 </excludes>
             </resource>
             <resource>
-                <directory>../mybilibili-danmaku/src/main/resources</directory>
+                <directory>../legacy-services/mybilibili-danmaku/src/main/resources</directory>
                 <excludes>
                     <exclude>application*.yml</exclude>
                     <exclude>application*.yaml</exclude>
@@ -117,9 +117,9 @@
                         </goals>
                         <configuration>
                             <sources>
-                                <source>../mybilibili-comment/src/main/java</source>
-                                <source>../mybilibili-interaction/src/main/java</source>
-                                <source>../mybilibili-danmaku/src/main/java</source>
+                                <source>../legacy-services/mybilibili-comment/src/main/java</source>
+                                <source>../legacy-services/mybilibili-interaction/src/main/java</source>
+                                <source>../legacy-services/mybilibili-danmaku/src/main/java</source>
                             </sources>
                         </configuration>
                     </execution>

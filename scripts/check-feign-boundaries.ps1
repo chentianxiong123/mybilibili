@@ -22,28 +22,70 @@ function Read-Text {
 }
 
 $moduleAggregate = @{
-    "mybilibili-account-social" = "mybilibili-account-social"
-    "mybilibili-user" = "mybilibili-account-social"
-    "mybilibili-message" = "mybilibili-account-social"
+    "mybilibili-account-social" = @{
+        Aggregate = "mybilibili-account-social"
+        SourceRoot = "mybilibili-account-social"
+    }
+    "mybilibili-user" = @{
+        Aggregate = "mybilibili-account-social"
+        SourceRoot = "legacy-services/mybilibili-user"
+    }
+    "mybilibili-message" = @{
+        Aggregate = "mybilibili-account-social"
+        SourceRoot = "legacy-services/mybilibili-message"
+    }
 
-    "mybilibili-video-media" = "mybilibili-video-media"
-    "mybilibili-video" = "mybilibili-video-media"
-    "mybilibili-live" = "mybilibili-video-media"
+    "mybilibili-video-media" = @{
+        Aggregate = "mybilibili-video-media"
+        SourceRoot = "mybilibili-video-media"
+    }
+    "mybilibili-video" = @{
+        Aggregate = "mybilibili-video-media"
+        SourceRoot = "legacy-services/mybilibili-video"
+    }
+    "mybilibili-live" = @{
+        Aggregate = "mybilibili-video-media"
+        SourceRoot = "legacy-services/mybilibili-live"
+    }
 
-    "mybilibili-content-interaction" = "mybilibili-content-interaction"
-    "mybilibili-comment" = "mybilibili-content-interaction"
-    "mybilibili-interaction" = "mybilibili-content-interaction"
-    "mybilibili-danmaku" = "mybilibili-content-interaction"
+    "mybilibili-content-interaction" = @{
+        Aggregate = "mybilibili-content-interaction"
+        SourceRoot = "mybilibili-content-interaction"
+    }
+    "mybilibili-comment" = @{
+        Aggregate = "mybilibili-content-interaction"
+        SourceRoot = "legacy-services/mybilibili-comment"
+    }
+    "mybilibili-interaction" = @{
+        Aggregate = "mybilibili-content-interaction"
+        SourceRoot = "legacy-services/mybilibili-interaction"
+    }
+    "mybilibili-danmaku" = @{
+        Aggregate = "mybilibili-content-interaction"
+        SourceRoot = "legacy-services/mybilibili-danmaku"
+    }
 
-    "mybilibili-search-recommend" = "mybilibili-search-recommend"
-    "mybilibili-search" = "mybilibili-search-recommend"
-    "mybilibili-analytics" = "mybilibili-search-recommend"
+    "mybilibili-search-recommend" = @{
+        Aggregate = "mybilibili-search-recommend"
+        SourceRoot = "mybilibili-search-recommend"
+    }
+    "mybilibili-search" = @{
+        Aggregate = "mybilibili-search-recommend"
+        SourceRoot = "legacy-services/mybilibili-search"
+    }
+    "mybilibili-analytics" = @{
+        Aggregate = "mybilibili-search-recommend"
+        SourceRoot = "legacy-services/mybilibili-analytics"
+    }
 
-    "mybilibili-ai" = "mybilibili-ai"
+    "mybilibili-ai" = @{
+        Aggregate = "mybilibili-ai"
+        SourceRoot = "mybilibili-ai"
+    }
 }
 
 $knownInternalFeign = @{
-    "mybilibili-message/src/main/java/com/mybilibili/message/feign/UserClient.java" = @{
+    "legacy-services/mybilibili-message/src/main/java/com/mybilibili/message/feign/UserClient.java" = @{
         Adapter = "mybilibili-account-social/src/main/java/com/mybilibili/accountsocial/local/MessageUserClientLocalAdapter.java"
         Application = "mybilibili-account-social/src/main/java/com/mybilibili/accountsocial/AccountSocialApplication.java"
         ForbiddenClientRef = "com.mybilibili.message.feign.UserClient.class"
@@ -51,7 +93,7 @@ $knownInternalFeign = @{
         ForbiddenImport = "import com.mybilibili.message.feign.UserClient;"
         AdapterInterfaceName = "UserLookupPort"
     }
-    "mybilibili-user/src/main/java/com/mybilibili/user/feign/UserClient.java" = @{
+    "legacy-services/mybilibili-user/src/main/java/com/mybilibili/user/feign/UserClient.java" = @{
         Adapter = "mybilibili-account-social/src/main/java/com/mybilibili/accountsocial/local/UserSelfClientLocalAdapter.java"
         Application = "mybilibili-account-social/src/main/java/com/mybilibili/accountsocial/AccountSocialApplication.java"
         ForbiddenClientRef = "com.mybilibili.user.feign.UserClient.class"
@@ -59,7 +101,7 @@ $knownInternalFeign = @{
         ForbiddenImport = "import com.mybilibili.user.feign.UserClient;"
         AdapterInterfaceName = "UserLookupPort"
     }
-    "mybilibili-comment/src/main/java/com/mybilibili/comment/feign/LikeClient.java" = @{
+    "legacy-services/mybilibili-comment/src/main/java/com/mybilibili/comment/feign/LikeClient.java" = @{
         Adapter = "mybilibili-content-interaction/src/main/java/com/mybilibili/contentinteraction/local/CommentLikeClientLocalAdapter.java"
         Application = "mybilibili-content-interaction/src/main/java/com/mybilibili/contentinteraction/ContentInteractionApplication.java"
         ForbiddenClientRef = "com.mybilibili.comment.feign.LikeClient.class"
@@ -67,7 +109,7 @@ $knownInternalFeign = @{
         ForbiddenImport = "import com.mybilibili.comment.feign.LikeClient;"
         AdapterInterfaceName = "LikeInteractionPort"
     }
-    "mybilibili-comment/src/main/java/com/mybilibili/comment/feign/DynamicClient.java" = @{
+    "legacy-services/mybilibili-comment/src/main/java/com/mybilibili/comment/feign/DynamicClient.java" = @{
         Adapter = "mybilibili-content-interaction/src/main/java/com/mybilibili/contentinteraction/local/CommentDynamicClientLocalAdapter.java"
         Application = "mybilibili-content-interaction/src/main/java/com/mybilibili/contentinteraction/ContentInteractionApplication.java"
         ForbiddenClientRef = "com.mybilibili.comment.feign.DynamicClient.class"
@@ -81,7 +123,8 @@ $scannedFeignCount = 0
 $internalFeignCount = 0
 
 foreach ($moduleName in ($moduleAggregate.Keys | Sort-Object)) {
-    $sourceRoot = Join-Path (Join-Path $repoRoot $moduleName) "src/main/java"
+    $module = $moduleAggregate[$moduleName]
+    $sourceRoot = Join-Path (Join-Path $repoRoot $module.SourceRoot) "src/main/java"
     if (-not (Test-Path -LiteralPath $sourceRoot)) {
         continue
     }
@@ -102,7 +145,7 @@ foreach ($moduleName in ($moduleAggregate.Keys | Sort-Object)) {
         }
 
         $targetService = $nameMatch.Groups[1].Value
-        $currentAggregate = $moduleAggregate[$moduleName]
+        $currentAggregate = $module.Aggregate
         if ($targetService -eq $currentAggregate) {
             $internalFeignCount++
             if (-not $knownInternalFeign.ContainsKey($relativePath)) {
@@ -118,7 +161,8 @@ foreach ($moduleName in ($moduleAggregate.Keys | Sort-Object)) {
 }
 
 foreach ($moduleName in ($moduleAggregate.Keys | Sort-Object)) {
-    $sourceRoot = Join-Path (Join-Path $repoRoot $moduleName) "src/main/java"
+    $module = $moduleAggregate[$moduleName]
+    $sourceRoot = Join-Path (Join-Path $repoRoot $module.SourceRoot) "src/main/java"
     if (-not (Test-Path -LiteralPath $sourceRoot)) {
         continue
     }

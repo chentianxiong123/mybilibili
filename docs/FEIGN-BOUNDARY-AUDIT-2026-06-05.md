@@ -13,33 +13,33 @@
 
 - 跨聚合服务的 Feign 是真实分布式边界，保留。
 - 同一聚合服务内部的 Feign 不再新增，已本地化的接口先标记废弃。
-- 旧独立模块仍作为源码来源和对照材料，暂不物理删除，但不作为默认调用路径。
+- 旧独立模块已归位到 `legacy-services/` 源码池，暂不物理删除，但不作为默认 Maven module 或调用路径。
 - 后续删除旧模块或旧接口必须按 `.trash/YYYYMMDD-HHMMSS/` 逻辑删除规则执行。
 
 ## 当前清单
 
 | Feign 接口 | 原始消费模块 | 目标运行服务 | 聚合后关系 | 当前动作 |
 | --- | --- | --- | --- | --- |
-| `com.mybilibili.analytics.feign.DanmakuClient` | `mybilibili-analytics` | `mybilibili-content-interaction` | `search-recommend -> content-interaction` | keep |
-| `com.mybilibili.danmaku.feign.VideoClient` | `mybilibili-danmaku` | `mybilibili-video-media` | `content-interaction -> video-media` | keep |
-| `com.mybilibili.comment.feign.UserClient` | `mybilibili-comment` | `mybilibili-account-social` | `content-interaction -> account-social` | keep |
-| `com.mybilibili.comment.feign.MessageClient` | `mybilibili-comment` | `mybilibili-account-social` | `content-interaction -> account-social` | keep |
-| `com.mybilibili.comment.feign.ManuscriptClient` | `mybilibili-comment` | `mybilibili-video-media` | `content-interaction -> video-media` | keep |
-| `com.mybilibili.comment.feign.LikeClient` | `mybilibili-comment` | `mybilibili-content-interaction` | `content-interaction` 内部调用 | local-port, deprecated |
-| `com.mybilibili.comment.feign.DynamicClient` | `mybilibili-comment` | `mybilibili-content-interaction` | `content-interaction` 内部调用 | local-port, deprecated |
-| `com.mybilibili.comment.feign.ContentReviewClient` | `mybilibili-comment` | `mybilibili-ai` | `content-interaction -> ai` | keep |
-| `com.mybilibili.interaction.feign.VideoClient` | `mybilibili-interaction` | `mybilibili-video-media` | `content-interaction -> video-media` | keep |
-| `com.mybilibili.interaction.feign.MessageClient` | `mybilibili-interaction` | `mybilibili-account-social` | `content-interaction -> account-social` | keep |
+| `com.mybilibili.analytics.feign.DanmakuClient` | `legacy-services/mybilibili-analytics` | `mybilibili-content-interaction` | `search-recommend -> content-interaction` | keep |
+| `com.mybilibili.danmaku.feign.VideoClient` | `legacy-services/mybilibili-danmaku` | `mybilibili-video-media` | `content-interaction -> video-media` | keep |
+| `com.mybilibili.comment.feign.UserClient` | `legacy-services/mybilibili-comment` | `mybilibili-account-social` | `content-interaction -> account-social` | keep |
+| `com.mybilibili.comment.feign.MessageClient` | `legacy-services/mybilibili-comment` | `mybilibili-account-social` | `content-interaction -> account-social` | keep |
+| `com.mybilibili.comment.feign.ManuscriptClient` | `legacy-services/mybilibili-comment` | `mybilibili-video-media` | `content-interaction -> video-media` | keep |
+| `com.mybilibili.comment.feign.LikeClient` | `legacy-services/mybilibili-comment` | `mybilibili-content-interaction` | `content-interaction` 内部调用 | local-port, deprecated |
+| `com.mybilibili.comment.feign.DynamicClient` | `legacy-services/mybilibili-comment` | `mybilibili-content-interaction` | `content-interaction` 内部调用 | local-port, deprecated |
+| `com.mybilibili.comment.feign.ContentReviewClient` | `legacy-services/mybilibili-comment` | `mybilibili-ai` | `content-interaction -> ai` | keep |
+| `com.mybilibili.interaction.feign.VideoClient` | `legacy-services/mybilibili-interaction` | `mybilibili-video-media` | `content-interaction -> video-media` | keep |
+| `com.mybilibili.interaction.feign.MessageClient` | `legacy-services/mybilibili-interaction` | `mybilibili-account-social` | `content-interaction -> account-social` | keep |
 | `com.mybilibili.ai.feign.ReportCallbackClient` | `mybilibili-ai` | `mybilibili-content-interaction` | `ai -> content-interaction` | keep |
-| `com.mybilibili.user.feign.UserProfileClient` | `mybilibili-user` | `mybilibili-content-interaction` | `account-social -> content-interaction` | keep |
-| `com.mybilibili.user.feign.UserClient` | `mybilibili-user` | `mybilibili-account-social` | `account-social` 内部调用 | local-port, deprecated |
-| `com.mybilibili.user.feign.ManuscriptClient` | `mybilibili-user` | `mybilibili-video-media` | `account-social -> video-media` | keep |
-| `com.mybilibili.message.feign.UserClient` | `mybilibili-message` | `mybilibili-account-social` | `account-social` 内部调用 | local-port, deprecated |
-| `com.mybilibili.search.feign.UserProfileClient` | `mybilibili-search` | `mybilibili-content-interaction` | `search-recommend -> content-interaction` | keep |
-| `com.mybilibili.video.feign.VideoProcessClient` | `mybilibili-video` | `mybilibili-ai` | `video-media -> ai` | keep |
-| `com.mybilibili.video.feign.VideoPipelineClient` | `mybilibili-video` | `mybilibili-ai` | `video-media -> ai` | keep |
-| `com.mybilibili.video.feign.UserClient` | `mybilibili-video` | `mybilibili-account-social` | `video-media -> account-social` | keep |
-| `com.mybilibili.video.feign.MessageClient` | `mybilibili-video` | `mybilibili-account-social` | `video-media -> account-social` | keep |
+| `com.mybilibili.user.feign.UserProfileClient` | `legacy-services/mybilibili-user` | `mybilibili-content-interaction` | `account-social -> content-interaction` | keep |
+| `com.mybilibili.user.feign.UserClient` | `legacy-services/mybilibili-user` | `mybilibili-account-social` | `account-social` 内部调用 | local-port, deprecated |
+| `com.mybilibili.user.feign.ManuscriptClient` | `legacy-services/mybilibili-user` | `mybilibili-video-media` | `account-social -> video-media` | keep |
+| `com.mybilibili.message.feign.UserClient` | `legacy-services/mybilibili-message` | `mybilibili-account-social` | `account-social` 内部调用 | local-port, deprecated |
+| `com.mybilibili.search.feign.UserProfileClient` | `legacy-services/mybilibili-search` | `mybilibili-content-interaction` | `search-recommend -> content-interaction` | keep |
+| `com.mybilibili.video.feign.VideoProcessClient` | `legacy-services/mybilibili-video` | `mybilibili-ai` | `video-media -> ai` | keep |
+| `com.mybilibili.video.feign.VideoPipelineClient` | `legacy-services/mybilibili-video` | `mybilibili-ai` | `video-media -> ai` | keep |
+| `com.mybilibili.video.feign.UserClient` | `legacy-services/mybilibili-video` | `mybilibili-account-social` | `video-media -> account-social` | keep |
+| `com.mybilibili.video.feign.MessageClient` | `legacy-services/mybilibili-video` | `mybilibili-account-social` | `video-media -> account-social` | keep |
 
 ## 已冻结的内部 Feign
 
