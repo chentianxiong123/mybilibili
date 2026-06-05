@@ -50,6 +50,8 @@ feign:
 
 rocketmq:
   name-server: 127.0.0.1:9876
+  producer:
+    group: search-recommend-producer-group
 
 logging:
   level:

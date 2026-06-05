@@ -64,6 +64,9 @@ logging:
     com.mybilibili: debug
 
 management:
+  health:
+    mail:
+      enabled: false
   endpoints:
     web:
       exposure:
