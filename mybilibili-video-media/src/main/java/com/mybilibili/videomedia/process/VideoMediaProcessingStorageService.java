@@ -1,10 +1,9 @@
-package com.mybilibili.ai.service;
+package com.mybilibili.videomedia.process;
 
-import com.mybilibili.ai.mapper.VideoMapper;
 import com.mybilibili.common.entity.Video;
 import com.mybilibili.common.storage.StorageKeys;
 import com.mybilibili.common.storage.StorageService;
-import lombok.extern.slf4j.Slf4j;
+import com.mybilibili.video.mapper.VideoMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -21,20 +20,19 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Stream;
 
-@Slf4j
 @Service
-public class VideoProcessingStorageService {
+public class VideoMediaProcessingStorageService {
 
     private final StorageService storageService;
     private final VideoMapper videoMapper;
 
-    @Value("${video.processing.work-dir:mybilibili-processing}")
+    @Value("${video.processing.work-dir:${upload.base-path:mybilibili-processing}}")
     private String workDir;
 
     @Value("${minio.bucket-name:mybilibili}")
     private String bucketName;
 
-    public VideoProcessingStorageService(StorageService storageService, VideoMapper videoMapper) {
+    public VideoMediaProcessingStorageService(StorageService storageService, VideoMapper videoMapper) {
         this.storageService = storageService;
         this.videoMapper = videoMapper;
     }
@@ -42,8 +40,7 @@ public class VideoProcessingStorageService {
     public Path materializeSourceVideo(Integer manuscriptId, Integer videoId) throws IOException {
         String key = getSourceObjectKey(videoId);
         String extension = getRequiredExtension(key);
-        Path sourcePath = getSourceVideoPath(manuscriptId, videoId, extension);
-
+        Path sourcePath = getVideoWorkDir(manuscriptId, videoId).resolve("source").resolve("video" + extension);
         if (Files.exists(sourcePath) && Files.size(sourcePath) > 0) {
             return sourcePath;
         }
@@ -52,7 +49,6 @@ public class VideoProcessingStorageService {
         try (InputStream input = storageService.download(key)) {
             Files.copy(input, sourcePath, StandardCopyOption.REPLACE_EXISTING);
         }
-        log.info("[视频处理存储] 源视频已从MinIO拉取: videoId={}, key={}", videoId, key);
         return sourcePath;
     }
 
@@ -64,37 +60,6 @@ public class VideoProcessingStorageService {
         return getVideoWorkDir(manuscriptId, videoId).resolve("audio").resolve("audio.wav");
     }
 
-    public Path materializeAudio(Integer manuscriptId, Integer videoId) throws IOException {
-        Path audioPath = getAudioPath(manuscriptId, videoId);
-        if (Files.exists(audioPath) && Files.size(audioPath) > 0) {
-            return audioPath;
-        }
-
-        String key = StorageKeys.videoAudio(manuscriptId, videoId);
-        if (!storageService.exists(key)) {
-            throw new IOException("音频对象不存在，请先执行视频媒体音频提取: " + key);
-        }
-
-        Files.createDirectories(audioPath.getParent());
-        try (InputStream input = storageService.download(key)) {
-            Files.copy(input, audioPath, StandardCopyOption.REPLACE_EXISTING);
-        }
-        log.info("[视频处理存储] 音频已从MinIO拉取: videoId={}, key={}", videoId, key);
-        return audioPath;
-    }
-
-    public Path getSubtitlePath(Integer manuscriptId, Integer videoId) {
-        return getVideoWorkDir(manuscriptId, videoId).resolve("subtitles").resolve("zh-CN.srt");
-    }
-
-    public Path getSubtitleDir(Integer manuscriptId, Integer videoId) {
-        return getSubtitlePath(manuscriptId, videoId).getParent();
-    }
-
-    public Path getSummaryPath(Integer manuscriptId, Integer videoId) {
-        return getVideoWorkDir(manuscriptId, videoId).resolve("summary").resolve("ai-summary.txt");
-    }
-
     public void recreateDirectory(Path dir) throws IOException {
         deleteDirectory(dir);
         Files.createDirectories(dir);
@@ -103,7 +68,7 @@ public class VideoProcessingStorageService {
     public String uploadHlsDirectory(Integer manuscriptId, Integer videoId, String quality, Path qualityDir) throws IOException {
         Path playlist = qualityDir.resolve("playlist.m3u8");
         if (!Files.exists(playlist)) {
-            throw new IOException("HLS播放列表不存在: " + playlist);
+            throw new IOException("HLS playlist missing: " + playlist);
         }
 
         List<Path> files;
@@ -116,24 +81,11 @@ public class VideoProcessingStorageService {
             String key = StorageKeys.videoHlsObject(manuscriptId, videoId, quality, relative);
             uploadFile(file, key, contentType(file));
         }
-
         return storageService.getPublicUrl(StorageKeys.videoHlsPlaylist(manuscriptId, videoId, quality));
     }
 
     public String uploadAudio(Integer manuscriptId, Integer videoId, Path audioPath) throws IOException {
         return uploadFile(audioPath, StorageKeys.videoAudio(manuscriptId, videoId), "audio/wav");
-    }
-
-    public String uploadSubtitle(Integer manuscriptId, Integer videoId, Path subtitlePath) throws IOException {
-        return uploadFile(subtitlePath, StorageKeys.videoSubtitle(manuscriptId, videoId, "zh-CN"), "application/x-subrip; charset=utf-8");
-    }
-
-    public String uploadSummary(Integer manuscriptId, Integer videoId, Path summaryPath) throws IOException {
-        return uploadFile(summaryPath, StorageKeys.videoSummary(manuscriptId, videoId), "text/plain; charset=utf-8");
-    }
-
-    public String getPublicUrl(String key) {
-        return storageService.getPublicUrl(key);
     }
 
     public void cleanupWorkDir(Integer manuscriptId, Integer videoId) {
@@ -148,12 +100,12 @@ public class VideoProcessingStorageService {
             stream.sorted(Comparator.reverseOrder()).forEach(path -> {
                 try {
                     Files.deleteIfExists(path);
-                } catch (IOException e) {
-                    log.warn("[视频处理存储] 删除临时文件失败: {}", path, e);
+                } catch (IOException ignored) {
+                    // Best effort cleanup.
                 }
             });
-        } catch (IOException e) {
-            log.warn("[视频处理存储] 删除临时目录失败: {}", dir, e);
+        } catch (IOException ignored) {
+            // Best effort cleanup.
         }
     }
 
@@ -161,13 +113,9 @@ public class VideoProcessingStorageService {
         return Path.of(workDir, "manuscripts", String.valueOf(manuscriptId), "videos", String.valueOf(videoId));
     }
 
-    private Path getSourceVideoPath(Integer manuscriptId, Integer videoId, String extension) {
-        return getVideoWorkDir(manuscriptId, videoId).resolve("source").resolve("video" + extension);
-    }
-
     private String uploadFile(Path file, String key, String contentType) throws IOException {
         if (!Files.exists(file) || Files.size(file) == 0) {
-            throw new IOException("待上传文件不存在或为空: " + file);
+            throw new IOException("File missing or empty: " + file);
         }
         try (InputStream input = Files.newInputStream(file)) {
             return storageService.upload(key, input, Files.size(file), contentType);
@@ -176,34 +124,26 @@ public class VideoProcessingStorageService {
 
     private String getSourceObjectKey(Integer videoId) {
         Video video = videoMapper.selectById(videoId);
-        if (video == null) {
-            throw new IllegalStateException("视频不存在: " + videoId);
+        if (video == null || video.getSourceVideoUrl() == null || video.getSourceVideoUrl().isBlank()) {
+            throw new IllegalStateException("Source video missing: " + videoId);
         }
-        String sourceUrl = video.getSourceVideoUrl();
-        if (sourceUrl == null || sourceUrl.isBlank()) {
-            throw new IllegalStateException("源视频地址为空: " + videoId);
-        }
-        return extractObjectKey(sourceUrl);
+        return extractObjectKey(video.getSourceVideoUrl());
     }
 
     private String extractObjectKey(String sourceUrl) {
         if (!sourceUrl.contains("://") && !sourceUrl.startsWith("/")) {
             return sourceUrl;
         }
-        if (sourceUrl.contains("/uploads/")) {
-            throw new IllegalStateException("源视频仍是旧本地uploads地址，不能进入转码: " + sourceUrl);
-        }
-
         URI uri = URI.create(sourceUrl);
         String path = uri.getPath();
         String bucketPrefix = "/" + bucketName + "/";
         int bucketIndex = path.indexOf(bucketPrefix);
         if (bucketIndex < 0) {
-            throw new IllegalStateException("源视频不是当前MinIO bucket地址: " + sourceUrl);
+            throw new IllegalStateException("Source video is not in current bucket: " + sourceUrl);
         }
         String key = path.substring(bucketIndex + bucketPrefix.length());
         if (key.isBlank()) {
-            throw new IllegalStateException("源视频对象Key为空: " + sourceUrl);
+            throw new IllegalStateException("Source object key is blank: " + sourceUrl);
         }
         return URLDecoder.decode(key, StandardCharsets.UTF_8);
     }
@@ -213,7 +153,7 @@ public class VideoProcessingStorageService {
         String fileName = slashIndex >= 0 ? key.substring(slashIndex + 1) : key;
         int dotIndex = fileName.lastIndexOf('.');
         if (dotIndex < 0 || dotIndex == fileName.length() - 1) {
-            throw new IllegalStateException("源视频对象缺少文件扩展名: " + key);
+            throw new IllegalStateException("Source object key has no extension: " + key);
         }
         return fileName.substring(dotIndex).toLowerCase(Locale.ROOT);
     }
@@ -226,17 +166,8 @@ public class VideoProcessingStorageService {
         if (name.endsWith(".ts")) {
             return "video/mp2t";
         }
-        if (name.endsWith(".mp4")) {
-            return "video/mp4";
-        }
         if (name.endsWith(".wav")) {
             return "audio/wav";
-        }
-        if (name.endsWith(".srt")) {
-            return "application/x-subrip; charset=utf-8";
-        }
-        if (name.endsWith(".txt")) {
-            return "text/plain; charset=utf-8";
         }
         return "application/octet-stream";
     }

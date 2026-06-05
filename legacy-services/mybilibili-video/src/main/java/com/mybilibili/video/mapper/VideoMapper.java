@@ -40,6 +40,27 @@ public interface VideoMapper extends BaseMapper<Video> {
     @Update("UPDATE videos SET video_order = #{videoOrder}, title = #{title}, description = #{description}, play_url_hd = #{playUrlHd}, play_url_sd = #{playUrlSd}, play_url_ld = #{playUrlLd}, duration_seconds = #{durationSeconds}, process_progress = #{processProgress}, process_stage = #{processStage}, process_status = #{processStatus}, process_error = #{processError}, source_video_url = #{sourceVideoUrl}, has_subtitle = #{hasSubtitle}, has_summary = #{hasSummary}, updated_at = NOW() WHERE id = #{id}")
     int updateById(Video video);
 
+    @Update("UPDATE videos SET process_status = #{processStatus}, process_progress = #{processProgress}, process_stage = #{processStage}, process_error = #{processError}, updated_at = NOW() WHERE id = #{id}")
+    int updateProcessState(@Param("id") Integer id,
+                           @Param("processStatus") Integer processStatus,
+                           @Param("processProgress") Integer processProgress,
+                           @Param("processStage") String processStage,
+                           @Param("processError") String processError);
+
+    @Update("UPDATE videos SET process_status = #{processStatus}, process_progress = #{processProgress}, process_stage = #{processStage}, process_error = NULL, play_url_hd = #{playUrlHd}, play_url_sd = #{playUrlSd}, play_url_ld = #{playUrlLd}, updated_at = NOW() WHERE id = #{id}")
+    int updateTranscodeResult(@Param("id") Integer id,
+                              @Param("processStatus") Integer processStatus,
+                              @Param("processProgress") Integer processProgress,
+                              @Param("processStage") String processStage,
+                              @Param("playUrlHd") String playUrlHd,
+                              @Param("playUrlSd") String playUrlSd,
+                              @Param("playUrlLd") String playUrlLd);
+
+    @Update("UPDATE videos SET process_status = #{processStatus}, process_error = #{processError}, updated_at = NOW() WHERE id = #{id}")
+    int updateProcessError(@Param("id") Integer id,
+                           @Param("processStatus") Integer processStatus,
+                           @Param("processError") String processError);
+
     @Delete("DELETE FROM videos WHERE id = #{id}")
     int deleteById(Integer id);
 

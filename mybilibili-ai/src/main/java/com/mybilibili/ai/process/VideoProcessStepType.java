@@ -130,10 +130,6 @@ public enum VideoProcessStepType {
 
     public Optional<VideoProcessStepType> next() {
         switch (this) {
-            case TRANSCODE:
-                return Optional.of(EXTRACT_AUDIO);
-            case EXTRACT_AUDIO:
-                return Optional.of(GENERATE_SUBTITLE);
             case GENERATE_SUBTITLE:
                 return Optional.of(AI_SUMMARY);
             default:
