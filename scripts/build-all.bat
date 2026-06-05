@@ -10,12 +10,12 @@ set "REPO_DIR=%SCRIPT_DIR%.."
 
 cd /d "%REPO_DIR%"
 
-echo 正在检查 Feign 边界 ...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%check-feign-boundaries.ps1"
+echo 正在检查架构边界 ...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%check-architecture.ps1"
 
 if %errorlevel% neq 0 (
     echo.
-    echo [错误] Feign 边界检查失败，请先修复内部 Feign 调用
+    echo [错误] 架构边界检查失败，请先修复服务边界配置
     pause
     exit /b 1
 )
