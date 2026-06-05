@@ -18,16 +18,7 @@
         <module>mybilibili-video-media</module>
         <module>mybilibili-content-interaction</module>
         <module>mybilibili-search-recommend</module>
-        <module>mybilibili-user</module>
-        <module>mybilibili-video</module>
-        <module>mybilibili-danmaku</module>
-        <module>mybilibili-search</module>
-        <module>mybilibili-comment</module>
-        <module>mybilibili-interaction</module>
-        <module>mybilibili-message</module>
         <module>mybilibili-ai</module>
-        <module>mybilibili-live</module>
-        <module>mybilibili-analytics</module>
     </modules>
 
     <parent>

@@ -45,6 +45,22 @@ $legacyBackends = @(
     "mybilibili-analytics"
 )
 
+$rootPomPath = "pom.xml"
+$rootPom = Read-Text $rootPomPath
+foreach ($legacyBackend in $legacyBackends) {
+    if ($rootPom.Contains("<module>$legacyBackend</module>")) {
+        Add-Violation "$rootPomPath must not list legacy backend module $legacyBackend."
+    }
+
+    if (Test-Path -LiteralPath (Join-Path $repoRoot $legacyBackend)) {
+        Add-Violation "$legacyBackend must live under legacy-services, not the repository root."
+    }
+
+    if (-not (Test-Path -LiteralPath (Join-Path $repoRoot "legacy-services/$legacyBackend"))) {
+        Add-Violation "legacy-services/$legacyBackend is missing."
+    }
+}
+
 $gatewayConfigPath = "mybilibili-gateway/src/main/resources/application.yml"
 $gatewayConfig = Read-Text $gatewayConfigPath
 $routeMatches = [regex]::Matches($gatewayConfig, "lb://(mybilibili-[A-Za-z0-9-]+)")

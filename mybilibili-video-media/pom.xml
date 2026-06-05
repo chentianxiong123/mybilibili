@@ -82,14 +82,14 @@
                 <directory>src/main/resources</directory>
             </resource>
             <resource>
-                <directory>../mybilibili-video/src/main/resources</directory>
+                <directory>../legacy-services/mybilibili-video/src/main/resources</directory>
                 <excludes>
                     <exclude>application*.yml</exclude>
                     <exclude>application*.yaml</exclude>
                 </excludes>
             </resource>
             <resource>
-                <directory>../mybilibili-live/src/main/resources</directory>
+                <directory>../legacy-services/mybilibili-live/src/main/resources</directory>
                 <excludes>
                     <exclude>application*.yml</exclude>
                     <exclude>application*.yaml</exclude>
@@ -110,8 +110,8 @@
                         </goals>
                         <configuration>
                             <sources>
-                                <source>../mybilibili-video/src/main/java</source>
-                                <source>../mybilibili-live/src/main/java</source>
+                                <source>../legacy-services/mybilibili-video/src/main/java</source>
+                                <source>../legacy-services/mybilibili-live/src/main/java</source>
                             </sources>
                         </configuration>
                     </execution>

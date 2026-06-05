@@ -74,14 +74,14 @@
                 <directory>src/main/resources</directory>
             </resource>
             <resource>
-                <directory>../mybilibili-search/src/main/resources</directory>
+                <directory>../legacy-services/mybilibili-search/src/main/resources</directory>
                 <excludes>
                     <exclude>application*.yml</exclude>
                     <exclude>application*.yaml</exclude>
                 </excludes>
             </resource>
             <resource>
-                <directory>../mybilibili-analytics/src/main/resources</directory>
+                <directory>../legacy-services/mybilibili-analytics/src/main/resources</directory>
                 <excludes>
                     <exclude>application*.yml</exclude>
                     <exclude>application*.yaml</exclude>
@@ -102,8 +102,8 @@
                         </goals>
                         <configuration>
                             <sources>
-                                <source>../mybilibili-search/src/main/java</source>
-                                <source>../mybilibili-analytics/src/main/java</source>
+                                <source>../legacy-services/mybilibili-search/src/main/java</source>
+                                <source>../legacy-services/mybilibili-analytics/src/main/java</source>
                             </sources>
                         </configuration>
                     </execution>
