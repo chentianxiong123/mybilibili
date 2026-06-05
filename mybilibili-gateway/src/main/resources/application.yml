@@ -212,13 +212,21 @@ spring:
           filters:
             - RewritePath=/api/video/manuscript/(?<segment>.*), /manuscript/$\{segment}
 
-        # 视频处理SSE - 转发到 ai 服务
+        # 视频处理SSE - 转发到 video-media 统一进度中心
         - id: video-process-sse
-          uri: lb://mybilibili-ai
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/video/process/sse/**
           filters:
             - StripPrefix=0
+
+        # 视频处理后台看板 - 转发到 video-media 统一进度中心
+        - id: video-process-admin
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/video/process/admin/**
+          filters:
+            - StripPrefix=1
 
         # 用户视频列表接口 - 转发到 ManuscriptController
         - id: video-user-manuscripts
@@ -586,6 +594,14 @@ spring:
             - StripPrefix=1
 
         # ========== AI服务 ==========
+        # 兼容旧后台 API 路径；视频处理看板已经归属 video-media
+        - id: video-process-admin-compat
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/ai/admin/process/**
+          filters:
+            - StripPrefix=1
+
         - id: ai-admin-process
           uri: lb://mybilibili-ai
           predicates:

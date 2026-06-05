@@ -65,6 +65,7 @@ public final class GatewayRequestPolicy {
             "/api/search/admin/",
             "/api/user/admin/",
             "/api/video/admin/",
+            "/api/video/process/admin/",
             "/api/statistics/"
     );
 
@@ -100,6 +101,7 @@ public final class GatewayRequestPolicy {
             new PermissionRule("/api/search/admin/", "search:manage"),
             new PermissionRule("/api/user/admin/", "user:manage"),
             new PermissionRule("/api/video/admin/", "video:manage"),
+            new PermissionRule("/api/video/process/admin/", "video:manage"),
             new PermissionRule("/api/statistics/", "statistics:manage")
     );
 

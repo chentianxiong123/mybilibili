@@ -5,7 +5,6 @@ import com.mybilibili.ai.process.ProcessMode;
 import com.mybilibili.ai.process.VideoProcessContext;
 import com.mybilibili.ai.process.VideoProcessOrchestrator;
 import com.mybilibili.ai.process.VideoProcessStepType;
-import com.mybilibili.ai.service.VideoProgressSseService;
 import com.mybilibili.common.entity.Video;
 import com.mybilibili.mq.MQConstants;
 import com.mybilibili.mq.VideoProcessMessage;
@@ -28,9 +27,6 @@ public class VideoProcessConsumer implements RocketMQListener<VideoProcessMessag
     private VideoMapper videoMapper;
 
     @Autowired
-    private VideoProgressSseService progressSseService;
-
-    @Autowired
     private VideoProcessOrchestrator orchestrator;
 
     @Override
@@ -38,8 +34,6 @@ public class VideoProcessConsumer implements RocketMQListener<VideoProcessMessag
         Integer videoId = message.getVideoId();
         Video video = videoMapper.selectById(videoId);
         String videoTitle = video != null ? video.getTitle() : "未知视频";
-
-        progressSseService.setVideoTitle(videoId, videoTitle);
 
         VideoProcessContext context = new VideoProcessContext();
         context.setVideoId(videoId);

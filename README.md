@@ -67,10 +67,10 @@
 |------|------|------|
 | mybilibili-gateway | 8080 | API 网关，路由转发、JWT 鉴权 |
 | mybilibili-account-social | 8081 | 用户注册/登录、个人信息、关注/粉丝、私信、系统消息、管理员/权限 |
-| mybilibili-video-media | 8082 | 稿件管理、视频上传、分类、轮播图、字幕、直播推流、视频会议、观众连麦 |
+| mybilibili-video-media | 8082 | 稿件管理、视频上传、视频转码(HLS)、音频提取、视频处理进度推送、分类、轮播图、字幕、直播推流、视频会议、观众连麦 |
 | mybilibili-content-interaction | 8085 | 评论/回复、动态评论、弹幕、点赞/投币/收藏/分享、动态、收藏夹、合集、观看历史、内容审核 |
 | mybilibili-search-recommend | 8084 | Elasticsearch 全文搜索、索引管理、推荐、用户画像读取、创作者数据统计 |
-| mybilibili-ai | 8088 | 视频转码(HLS)、AI 字幕生成、AI 摘要、SSE 进度推送、AI 客服对话、AI 内容审核、API 配置管理 |
+| mybilibili-ai | 8088 | AI 字幕生成、AI 摘要、AI 客服对话、AI 内容审核、API 配置管理 |
 | mybilibili-common | - | 公共模块（JWT、VO、工具类） |
 | mybilibili-mq | - | 消息队列公共模块 |
 
@@ -137,7 +137,7 @@
 - MongoDB（AI 字幕存储）
 - SRS（直播推流服务器）
 - Node.js 16+
-- FFmpeg（视频转码）
+- FFmpeg（video-media 视频转码/音频提取）
 - Nginx（可选，生产部署）
 
 ### 1. 启动基础设施

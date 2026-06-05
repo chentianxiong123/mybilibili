@@ -55,4 +55,22 @@ public class VideoMQProducer {
             event
         );
     }
+
+    public void sendVideoProcessProgressEvent(VideoProcessProgressEvent event) {
+        rocketMQTemplate.asyncSend(
+            MQConstants.TOPIC_VIDEO_PROCESS_PROGRESS,
+            event,
+            new org.apache.rocketmq.client.producer.SendCallback() {
+                @Override
+                public void onSuccess(org.apache.rocketmq.client.producer.SendResult sendResult) {
+                    // Progress events are high-frequency; keep success logging quiet.
+                }
+
+                @Override
+                public void onException(Throwable e) {
+                    System.err.println("视频处理进度消息发送失败: " + e.getMessage());
+                }
+            }
+        );
+    }
 }
