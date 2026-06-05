@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 /**
  * Legacy standalone message-service client.
  * <p>
- * In mybilibili-account-social runtime this call is handled by
- * MessageUserClientLocalAdapter and must not be used as a new internal Feign path.
+ * In mybilibili-account-social runtime, message code must use UserLookupPort.
+ * This Feign contract must not be used as a new internal call path.
  */
 @Deprecated(since = "2026-06-05", forRemoval = false)
 @FeignClient(name = "mybilibili-account-social", contextId = "messageUserClient")

@@ -1,13 +1,12 @@
 package com.mybilibili.contentinteraction.local;
 
-import com.mybilibili.comment.feign.DynamicClient;
+import com.mybilibili.comment.service.DynamicInteractionPort;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.interaction.service.DynamicService;
 import org.springframework.stereotype.Component;
 
 @Component
-@SuppressWarnings("deprecation")
-public class CommentDynamicClientLocalAdapter implements DynamicClient {
+public class CommentDynamicClientLocalAdapter implements DynamicInteractionPort {
 
     private final DynamicService dynamicService;
 

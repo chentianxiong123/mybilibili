@@ -2,13 +2,12 @@ package com.mybilibili.accountsocial.local;
 
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.UserVO;
-import com.mybilibili.message.feign.UserClient;
+import com.mybilibili.message.service.UserLookupPort;
 import com.mybilibili.user.service.UserService;
 import org.springframework.stereotype.Component;
 
 @Component
-@SuppressWarnings("deprecation")
-public class MessageUserClientLocalAdapter implements UserClient {
+public class MessageUserClientLocalAdapter implements UserLookupPort {
 
     private final UserService userService;
 

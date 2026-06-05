@@ -1,11 +1,11 @@
 package com.mybilibili.comment.service.impl;
 
-import com.mybilibili.comment.feign.DynamicClient;
-import com.mybilibili.comment.feign.LikeClient;
 import com.mybilibili.comment.feign.MessageClient;
 import com.mybilibili.comment.feign.UserClient;
 import com.mybilibili.comment.mapper.DynamicCommentMapper;
+import com.mybilibili.comment.service.DynamicInteractionPort;
 import com.mybilibili.comment.service.DynamicCommentService;
+import com.mybilibili.comment.service.LikeInteractionPort;
 import com.mybilibili.common.entity.DynamicComment;
 import com.mybilibili.common.vo.DynamicCommentVO;
 import com.mybilibili.common.vo.Result;
@@ -19,20 +19,19 @@ import java.util.List;
 
 @Slf4j
 @Service
-@SuppressWarnings("deprecation")
 public class DynamicCommentServiceImpl implements DynamicCommentService {
 
     @Autowired
     private DynamicCommentMapper dynamicCommentMapper;
 
     @Autowired
-    private LikeClient likeClient;
+    private LikeInteractionPort likeInteractionPort;
 
     @Autowired
     private UserClient userClient;
 
     @Autowired
-    private DynamicClient dynamicClient;
+    private DynamicInteractionPort dynamicInteractionPort;
 
     @Autowired
     private MessageClient messageClient;
@@ -87,7 +86,7 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
 
         if (currentUserId != null) {
             try {
-                Result<Boolean> likeResult = likeClient.isLiked(currentUserId, TARGET_TYPE_DYNAMIC_COMMENT, comment.getId());
+                Result<Boolean> likeResult = likeInteractionPort.isLiked(currentUserId, TARGET_TYPE_DYNAMIC_COMMENT, comment.getId());
                 vo.setLiked(likeResult != null && Boolean.TRUE.equals(likeResult.getData()));
             } catch (Exception e) {
                 vo.setLiked(false);
@@ -136,7 +135,7 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
 
         if (parentId == null) {
             try {
-                dynamicClient.incrementCommentCount(dynamicId, 1);
+                dynamicInteractionPort.incrementCommentCount(dynamicId, 1);
             } catch (Exception e) {
             }
         }
@@ -159,7 +158,7 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
 
         if (delta != 0) {
             try {
-                dynamicClient.incrementCommentCount(comment.getDynamicId(), delta);
+                dynamicInteractionPort.incrementCommentCount(comment.getDynamicId(), delta);
             } catch (Exception e) {
             }
         }
@@ -202,7 +201,7 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
         if (comment == null) {
             return Result.error("评论不存在");
         }
-        Result<?> result = likeClient.like(userId, TARGET_TYPE_DYNAMIC_COMMENT, commentId);
+        Result<?> result = likeInteractionPort.like(userId, TARGET_TYPE_DYNAMIC_COMMENT, commentId);
         if (result == null || result.getCode() != 200) {
             return Result.error(result != null ? result.getMessage() : "点赞失败");
         }
@@ -222,7 +221,7 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
         if (comment == null) {
             return Result.error("评论不存在");
         }
-        Result<?> result = likeClient.unlike(userId, TARGET_TYPE_DYNAMIC_COMMENT, commentId);
+        Result<?> result = likeInteractionPort.unlike(userId, TARGET_TYPE_DYNAMIC_COMMENT, commentId);
         if (result == null || result.getCode() != 200) {
             return Result.error(result != null ? result.getMessage() : "取消点赞失败");
         }
@@ -233,7 +232,7 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
 
     private int getLikeCount(String targetType, Integer targetId) {
         try {
-            Result<Integer> result = likeClient.getLikeCount(targetType, targetId);
+            Result<Integer> result = likeInteractionPort.getLikeCount(targetType, targetId);
             if (result != null && result.getData() != null) {
                 return result.getData();
             }
