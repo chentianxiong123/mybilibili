@@ -14,6 +14,12 @@ public interface VideoMapper extends BaseMapper<Video> {
     @Select("SELECT * FROM videos WHERE manuscript_id = #{manuscriptId} ORDER BY video_order ASC")
     List<Video> selectByManuscriptId(Integer manuscriptId);
 
+    @Select("SELECT * FROM videos ORDER BY id DESC")
+    List<Video> selectAll();
+
+    @Select("SELECT * FROM videos WHERE process_status IN (1, 2, 3, 4) LIMIT 1")
+    Video selectProcessing();
+
     @Select("<script>" +
             "SELECT * FROM videos WHERE 1=1 " +
             "<if test='keyword != null'> AND title LIKE CONCAT('%', #{keyword}, '%') </if>" +

@@ -36,7 +36,7 @@ docker compose -f scripts/docker-compose-infra.yml up -d
 
 ## FFmpeg / Whisper
 
-本地运行 `mybilibili-ai` 需要宿主机安装 `ffmpeg` 并放入 `PATH`。Whisper 本地模式使用固定目录：
+本地运行 `mybilibili-video-media` 需要宿主机安装 `ffmpeg` 并放入 `PATH`，它负责转码和音频提取。`mybilibili-ai` 只负责 Whisper/LLM 等 AI 推理任务。Whisper 本地模式使用固定目录：
 
 ```text
 D:\DockerFiles\mybilibili\whisper\bin\whisper-cli
