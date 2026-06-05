@@ -1,32 +1,53 @@
 {
-  "name": "mybilibili-studio-web",
+  "name": "mybilibili-studio",
   "version": "0.1.0",
   "private": true,
+  "description": "mybilibili Creator Studio - Professional video editing",
   "type": "module",
-  "packageManager": "pnpm@11.5.1",
-  "description": "mybilibili Creator Studio: edit + workflow workspaces, openreel structure + WebAV + vue-flow",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "pnpm --filter @mybilibili-studio/web dev",
+    "build:wasm": "pnpm --filter @mybilibili-studio/core build:wasm",
+    "build": "pnpm --filter @mybilibili-studio/web build",
+    "preview": "pnpm --filter @mybilibili-studio/web preview",
+    "deploy": "pnpm build && pnpm --filter @mybilibili-studio/web deploy",
+    "deploy:preview": "pnpm build && pnpm --filter @mybilibili-studio/web deploy:preview",
+    "test": "pnpm -r test:run",
+    "test:watch": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean",
+    "claude:help": "cat scripts/claude-review.md",
+    "issues": "gh issue list --label needs-claude-review",
+    "prs": "gh pr list --label needs-claude-review"
   },
+  "keywords": [
+    "video-editor",
+    "audio-editor",
+    "browser-based",
+    "webcodecs",
+    "webgpu",
+    "react",
+    "typescript",
+    "open-source",
+    "video-editing",
+    "timeline",
+    "color-grading",
+    "export"
+  ],
+  "author": "Augustus Otu and Contributors",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@11.5.1",
   "dependencies": {
-    "@element-plus/icons-vue": "^2.3.1",
-    "@vue-flow/background": "^1.3.0",
-    "@vue-flow/controls": "^1.1.2",
-    "@vue-flow/core": "^1.41.0",
-    "@vue-flow/minimap": "^1.5.0",
-    "@webav/av-canvas": "^1.2.8",
-    "@webav/av-cliper": "^1.2.8",
-    "element-plus": "^2.7.5",
-    "pinia": "^2.1.7",
-    "vue": "^3.4.21",
-    "vue-router": "^4.2.5"
+    "@ffmpeg/core": "0.12.6",
+    "@ffmpeg/core-mt": "0.12.6",
+    "mediabunny": "^1.25.3"
   },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^4.5.2",
-    "unplugin-auto-import": "^0.17.6",
-    "unplugin-vue-components": "^0.27.0",
-    "vite": "^4.5.3"
-  }
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }

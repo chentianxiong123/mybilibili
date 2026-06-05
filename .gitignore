@@ -24,6 +24,7 @@ logs/
 *.temp
 *.bak
 *.backup
+.trash/
 
 # Maven
 .mvn/
@@ -124,6 +125,7 @@ start-nacos.bat
 
 # Claude Agent worktrees (massive duplicate directories)
 .claude/worktrees/
+.claude/scheduled_tasks.lock
 
 # Reference projects kept outside version control
 references/

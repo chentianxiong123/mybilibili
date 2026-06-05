@@ -1,0 +1,19 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+onlyBuiltDependencies:
+  - esbuild
+  - "@parcel/watcher"
+  - vue-demi
+  - core-js
+  - protobufjs
+  - sharp
+  - workerd
+allowBuilds:
+  esbuild: true
+  "@parcel/watcher": true
+  vue-demi: true
+  core-js: true
+  protobufjs: true
+  sharp: true
+  workerd: true
