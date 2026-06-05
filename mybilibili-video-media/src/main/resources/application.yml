@@ -55,6 +55,8 @@ upload:
 
 rocketmq:
   name-server: 127.0.0.1:9876
+  producer:
+    group: video-media-producer-group
 
 feign:
   client:
