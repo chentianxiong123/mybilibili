@@ -6,6 +6,7 @@ import com.mybilibili.interaction.service.DynamicService;
 import org.springframework.stereotype.Component;
 
 @Component
+@SuppressWarnings("deprecation")
 public class CommentDynamicClientLocalAdapter implements DynamicClient {
 
     private final DynamicService dynamicService;

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+@SuppressWarnings("deprecation")
 public class CommentLikeClientLocalAdapter implements LikeClient {
 
     private final InteractionService interactionService;

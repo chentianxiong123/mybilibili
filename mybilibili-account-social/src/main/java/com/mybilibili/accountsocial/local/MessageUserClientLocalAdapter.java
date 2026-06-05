@@ -7,6 +7,7 @@ import com.mybilibili.user.service.UserService;
 import org.springframework.stereotype.Component;
 
 @Component
+@SuppressWarnings("deprecation")
 public class MessageUserClientLocalAdapter implements UserClient {
 
     private final UserService userService;
