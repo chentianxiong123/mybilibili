@@ -183,7 +183,13 @@ const saveSubtitleSettings = () => {
 }
 
 // 全屏状态
+const isNativeFullscreen = ref(false)
+const isWebFullscreen = ref(false)
 const isFullscreenMode = ref(false)
+
+const updateFullscreenMode = () => {
+  isFullscreenMode.value = isNativeFullscreen.value || isWebFullscreen.value
+}
 
 // 推送设置到字幕组件（考虑全屏缩放）
 const pushSettingsToSubtitle = () => {
@@ -193,6 +199,28 @@ const pushSettingsToSubtitle = () => {
     ...subtitleSettings.value,
     fontSize: Math.round(subtitleSettings.value.fontSize * scale)
   })
+}
+
+const refreshSubtitleLayout = (resetPosition = false) => {
+  nextTick(() => {
+    pushSettingsToSubtitle()
+
+    if (!subtitleDisplayRef.value) return
+
+    if (resetPosition) {
+      subtitleDisplayRef.value.centerSubtitle()
+    } else {
+      subtitleDisplayRef.value.updatePosition()
+    }
+
+    requestAnimationFrame(() => {
+      subtitleDisplayRef.value?.updatePosition()
+    })
+  })
+}
+
+const handleSubtitlePlayerResize = () => {
+  refreshSubtitleLayout(false)
 }
 
 const updateSubtitleSettings = (settings) => {
@@ -1923,17 +1951,15 @@ onMounted(async () => {
       html: '',
       style: {
         position: 'absolute',
-        bottom: '60px',
-        left: '0',
-        right: '0',
-        display: 'flex',
-        justifyContent: 'center',
-        pointerEvents: 'auto',
-        zIndex: 2147483647
+        inset: '0',
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        zIndex: 42
       },
       mounted: function(layer) {
         if (subtitleDisplayRef.value) {
           layer.appendChild(subtitleDisplayRef.value.$el)
+          refreshSubtitleLayout(false)
         }
       }
     },
@@ -1942,11 +1968,10 @@ onMounted(async () => {
       html: '',
       style: {
         position: 'absolute',
-        bottom: '55px',
-        right: '10px',
-        zIndex: 2147483647,
-        pointerEvents: 'auto',
-        overflow: 'visible'
+        inset: '0',
+        zIndex: 100,
+        pointerEvents: 'none',
+        overflow: 'hidden'
       },
       mounted: function(layer) {
         if (subtitleSettingsPanelRef.value) {
@@ -1960,10 +1985,7 @@ onMounted(async () => {
 
   // 播放器准备好后推送字幕设置并更新位置
   art.on('ready', () => {
-    pushSettingsToSubtitle()
-    if (subtitleDisplayRef.value) {
-      subtitleDisplayRef.value.centerSubtitle()
-    }
+    refreshSubtitleLayout(true)
     if (resumeTime.value > 0) {
       setTimeout(() => applyResumeTime(resumeTime.value), 100)
     }
@@ -2011,26 +2033,20 @@ onMounted(async () => {
 
   // 监听全屏事件 - 进入全屏时重置字幕位置并缩放字体
   art.on('fullscreen', (isFullscreen) => {
-    isFullscreenMode.value = isFullscreen
-    if (subtitleDisplayRef.value) {
-      setTimeout(() => {
-        pushSettingsToSubtitle()
-        subtitleDisplayRef.value.centerSubtitle()
-        subtitleDisplayRef.value.updatePosition()
-      }, 100)
-    }
+    isNativeFullscreen.value = isFullscreen
+    updateFullscreenMode()
+    setTimeout(() => refreshSubtitleLayout(true), 100)
   })
 
   // 监听网页全屏事件
   art.on('fullscreenWeb', (isFullscreen) => {
-    isFullscreenMode.value = isFullscreen
-    if (subtitleDisplayRef.value) {
-      setTimeout(() => {
-        pushSettingsToSubtitle()
-        subtitleDisplayRef.value.centerSubtitle()
-        subtitleDisplayRef.value.updatePosition()
-      }, 100)
-    }
+    isWebFullscreen.value = isFullscreen
+    updateFullscreenMode()
+    setTimeout(() => refreshSubtitleLayout(true), 100)
+  })
+
+  art.on('resize', () => {
+    refreshSubtitleLayout(false)
   })
 
   // 组件卸载时清理定时器
@@ -2045,6 +2061,7 @@ onMounted(async () => {
 
   // 添加点击外部区域的事件监听
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('resize', handleSubtitlePlayerResize)
   
   // 添加页面离开时记录浏览历史的监听
   window.addEventListener('beforeunload', recordWatchHistorySync)
@@ -2058,6 +2075,7 @@ onUnmounted(() => {
 
   // 移除页面离开监听
   window.removeEventListener('beforeunload', recordWatchHistorySync)
+  window.removeEventListener('resize', handleSubtitlePlayerResize)
 
   // 移除点击外部区域的事件监听
   document.removeEventListener('click', handleClickOutside)
@@ -3011,15 +3029,18 @@ watch(() => [route.query.p, route.query.t], ([newP, newT]) => {
 .subtitle-settings-panel {
   position: absolute;
   bottom: 50px;
-  right: 0;
+  right: 10px;
   width: 280px;
+  max-width: calc(100% - 20px);
+  max-height: calc(100% - 70px);
   background: rgba(28, 28, 28, 0.95);
   border-radius: 8px;
   padding: 16px;
   z-index: 120;
   color: #fff;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  overflow: visible;
+  overflow: auto;
+  pointer-events: auto;
 }
 
 .subtitle-settings-panel .settings-header {
@@ -3068,6 +3089,7 @@ watch(() => [route.query.p, route.query.t], ([newP, newT]) => {
   background-color: #000;
   min-height: 450px;
   position: relative;
+  overflow: hidden;
 }
 
 /* 右侧弹幕列表 */

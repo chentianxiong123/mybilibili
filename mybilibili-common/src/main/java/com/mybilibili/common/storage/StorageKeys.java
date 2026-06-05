@@ -49,7 +49,7 @@ public final class StorageKeys {
     }
 
     public static String videoSummary(Integer manuscriptId, Integer videoId) {
-        return "manuscripts/%d/videos/%d/summary/summary.txt".formatted(manuscriptId, videoId);
+        return "manuscripts/%d/videos/%d/summary/ai-summary.txt".formatted(manuscriptId, videoId);
     }
 
     public static String bannerImage(String fileName) {
