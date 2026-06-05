@@ -156,8 +156,14 @@ export const manuscriptApi = {
     return api.post('/manuscript/upload-chunk', formData, {
       timeout: 120000,
       onUploadProgress: onProgress ? (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-        onProgress(percentCompleted)
+        const total = progressEvent.total || chunkData.file.size || 0
+        const loaded = Math.min(progressEvent.loaded || 0, total)
+        const percentCompleted = total > 0 ? Math.round((loaded * 100) / total) : 0
+        onProgress({
+          percent: percentCompleted,
+          loaded,
+          total
+        })
         return percentCompleted
       } : undefined
     })

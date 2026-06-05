@@ -162,7 +162,7 @@ class VideoProcessService {
       case 'progress':
         try {
           const parsed = JSON.parse(data)
-          if (parsed.progress >= 100) {
+          if (parsed.done || parsed.type === 'complete' || parsed.eventName === 'complete' || parsed.status === 5) {
             this.forceComplete(taskId)
             onComplete()
           }

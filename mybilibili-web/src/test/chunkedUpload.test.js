@@ -89,6 +89,34 @@ describe('useChunkedManuscriptUpload', () => {
     expect(upload.partProgress.value).toHaveLength(2)
   })
 
+  it('tracks in-flight chunk byte progress before the chunk request completes', async () => {
+    let resolveChunk
+    const api = createMockApi({
+      uploadChunk: vi.fn().mockImplementation((chunkData, onProgress) => {
+        onProgress({ loaded: 24, total: 48, percent: 50 })
+        return new Promise(resolve => {
+          resolveChunk = () => resolve({ code: 200, data: {} })
+        })
+      })
+    })
+    const upload = useChunkedManuscriptUpload({ api, chunkSize: 48, maxConcurrent: 1 })
+
+    const data = createManuscriptData(1, 48)
+    const promise = upload.start(data)
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(upload.uploadedBytes.value).toBe(24)
+    expect(upload.percentage.value).toBe(50)
+
+    resolveChunk()
+    await vi.advanceTimersByTimeAsync(0)
+    await promise
+
+    expect(upload.stage.value).toBe(UPLOAD_STAGES.COMPLETED)
+    expect(upload.uploadedBytes.value).toBe(48)
+    expect(upload.percentage.value).toBe(100)
+  })
+
   it('sets error state when createSession fails', async () => {
     const api = createMockApi({
       createUploadSession: vi.fn().mockResolvedValue({

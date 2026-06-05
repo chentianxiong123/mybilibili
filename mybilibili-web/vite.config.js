@@ -44,7 +44,7 @@ export default defineConfig({
           'vendor-flv': ['flv.js'],
           'vendor-hls': ['hls.js'],
           'vendor-charts': ['echarts'],
-          'vendor-utils': ['axios', 'mitt', 'js-md5']
+          'vendor-utils': ['axios', 'mitt']
         }
       }
     }
