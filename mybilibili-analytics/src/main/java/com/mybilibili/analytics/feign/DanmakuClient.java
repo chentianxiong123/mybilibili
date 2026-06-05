@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.List;
 import java.util.Map;
 
-@FeignClient(name = "mybilibili-danmaku", contextId = "danmakuStats")
+@FeignClient(name = "mybilibili-content-interaction", contextId = "danmakuStats")
 public interface DanmakuClient {
 
     @PostMapping("/danmaku/batch-count")

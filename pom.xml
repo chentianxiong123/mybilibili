@@ -14,6 +14,10 @@
         <module>mybilibili-common</module>
         <module>mybilibili-mq</module>
         <module>mybilibili-gateway</module>
+        <module>mybilibili-account-social</module>
+        <module>mybilibili-video-media</module>
+        <module>mybilibili-content-interaction</module>
+        <module>mybilibili-search-recommend</module>
         <module>mybilibili-user</module>
         <module>mybilibili-video</module>
         <module>mybilibili-danmaku</module>

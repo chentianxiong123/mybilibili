@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-@FeignClient(name = "mybilibili-ai", path = "/ai/review")
+@FeignClient(name = "mybilibili-ai", contextId = "commentContentReviewClient", path = "/ai/review")
 public interface ContentReviewClient {
 
     @PostMapping("/content")

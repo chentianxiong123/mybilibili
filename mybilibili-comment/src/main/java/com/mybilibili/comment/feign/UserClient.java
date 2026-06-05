@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "mybilibili-user", path = "/user")
+@FeignClient(name = "mybilibili-account-social", contextId = "commentUserClient", path = "/user")
 public interface UserClient {
 
     @GetMapping("/{id}")

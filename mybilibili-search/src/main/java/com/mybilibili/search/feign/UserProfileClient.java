@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.Map;
 
-@FeignClient(name = "mybilibili-interaction", path = "/profile")
+@FeignClient(name = "mybilibili-content-interaction", contextId = "searchUserProfileClient", path = "/profile")
 public interface UserProfileClient {
 
     @GetMapping("/{userId}")

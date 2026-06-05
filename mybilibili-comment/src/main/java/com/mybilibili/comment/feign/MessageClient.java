@@ -4,7 +4,7 @@ import com.mybilibili.common.vo.Result;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
-@FeignClient(name = "mybilibili-message", path = "/message")
+@FeignClient(name = "mybilibili-account-social", contextId = "commentMessageClient", path = "/message")
 public interface MessageClient {
 
     @PostMapping("/internal/reply-notify")

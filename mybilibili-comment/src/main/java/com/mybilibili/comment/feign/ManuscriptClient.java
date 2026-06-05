@@ -5,7 +5,7 @@ import com.mybilibili.common.vo.ManuscriptVO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
-@FeignClient(name = "mybilibili-video", contextId = "manuscriptClient")
+@FeignClient(name = "mybilibili-video-media", contextId = "manuscriptClient")
 public interface ManuscriptClient {
 
     @PutMapping("/manuscript/{id}/comment-count")

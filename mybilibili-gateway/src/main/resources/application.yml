@@ -30,14 +30,14 @@ spring:
 
         # 关注列表接口（需要放在 user-service 之前）
         - id: user-following-list
-          uri: lb://mybilibili-user
+          uri: lb://mybilibili-account-social
           predicates:
             - Path=/api/user/{userId}/following
           filters:
             - SetPath=/follow/user/{userId}/following
 
         - id: user-follower-list
-          uri: lb://mybilibili-user
+          uri: lb://mybilibili-account-social
           predicates:
             - Path=/api/user/{userId}/followers
           filters:
@@ -45,7 +45,7 @@ spring:
 
         # 用户管理接口 - 转发到 user 服务（必须放在 /api/user/** 之前）
         - id: user-admin
-          uri: lb://mybilibili-user
+          uri: lb://mybilibili-account-social
           predicates:
             - Path=/api/user/admin/**
           filters:
@@ -53,7 +53,7 @@ spring:
 
         # 用户端接口
         - id: user-service
-          uri: lb://mybilibili-user
+          uri: lb://mybilibili-account-social
           predicates:
             - Path=/api/user/**
           filters:
@@ -61,7 +61,7 @@ spring:
 
         # 内容审核接口 - 转发到 comment 服务（必须放在 /api/admin/** 之前）
         - id: content-review
-          uri: lb://mybilibili-comment
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/admin/content-review/**
           filters:
@@ -69,7 +69,7 @@ spring:
 
         # 举报管理接口 - 转发到 comment 服务（必须放在 /api/admin/** 之前）
         - id: report-admin
-          uri: lb://mybilibili-comment
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/admin/report/**
           filters:
@@ -77,7 +77,7 @@ spring:
 
         # 违禁词管理接口 - 转发到 comment 服务（必须放在 /api/admin/** 之前）
         - id: prohibited-words
-          uri: lb://mybilibili-comment
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/admin/prohibited-words/**
           filters:
@@ -85,7 +85,7 @@ spring:
 
         # 安全设置接口 - 转发到 comment 服务（必须放在 /api/admin/** 之前）
         - id: security-settings
-          uri: lb://mybilibili-comment
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/admin/security-settings/**
           filters:
@@ -94,7 +94,7 @@ spring:
         # ========== 管理端接口 ==========
         # 直播管理（必须放在 /api/admin/** 之前）
         - id: live-admin-service
-          uri: lb://mybilibili-live
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/admin/live/**
           filters:
@@ -102,7 +102,7 @@ spring:
 
         # 会议管理（必须放在 /api/admin/** 之前）
         - id: meeting-admin-service
-          uri: lb://mybilibili-live
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/admin/meeting/**
           filters:
@@ -110,7 +110,7 @@ spring:
 
         # 管理端接口（复用user-service）
         - id: user-service-admin
-          uri: lb://mybilibili-user
+          uri: lb://mybilibili-account-social
           predicates:
             - Path=/api/admin/**
           filters:
@@ -118,7 +118,7 @@ spring:
 
         # 统计接口 - 转发到 video 服务
         - id: statistics-service
-          uri: lb://mybilibili-video
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/statistics/**
           filters:
@@ -126,7 +126,7 @@ spring:
 
         # 稿件管理接口 - 转发到 video 服务（带 api 前缀）
         - id: manuscript-admin
-          uri: lb://mybilibili-video
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/manuscript/admin/**
           filters:
@@ -134,7 +134,7 @@ spring:
 
         # 稿件管理接口 - 转发到 video 服务（不带 api 前缀）
         - id: manuscript-admin-no-api
-          uri: lb://mybilibili-video
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/manuscript/admin/**
           filters:
@@ -142,7 +142,7 @@ spring:
 
         # 视频管理接口 - 转发到 video 服务
         - id: video-admin
-          uri: lb://mybilibili-video
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/video/admin/**
           filters:
@@ -150,7 +150,7 @@ spring:
 
         # 评论管理接口 - 转发到 comment 服务
         - id: comment-admin
-          uri: lb://mybilibili-comment
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/comment/admin/**
           filters:
@@ -158,14 +158,14 @@ spring:
 
         # 关注相关接口（转发到user-service）
         - id: user-follow
-          uri: lb://mybilibili-user
+          uri: lb://mybilibili-account-social
           predicates:
             - Path=/api/follow/{userId}
           filters:
             - StripPrefix=1
 
         - id: user-follow-check
-          uri: lb://mybilibili-user
+          uri: lb://mybilibili-account-social
           predicates:
             - Path=/api/follow/check/{userId}
           filters:
@@ -173,7 +173,7 @@ spring:
 
         # 关注列表简单版接口
         - id: user-following-simple
-          uri: lb://mybilibili-user
+          uri: lb://mybilibili-account-social
           predicates:
             - Path=/api/follow/following/simple
           filters:
@@ -181,7 +181,7 @@ spring:
 
         # 关注列表接口（带用户ID）
         - id: user-following-with-id
-          uri: lb://mybilibili-user
+          uri: lb://mybilibili-account-social
           predicates:
             - Path=/api/follow/user/{id}/following
           filters:
@@ -189,7 +189,7 @@ spring:
 
         # 当前用户粉丝列表接口
         - id: user-me-followers
-          uri: lb://mybilibili-user
+          uri: lb://mybilibili-account-social
           predicates:
             - Path=/api/follow/me/followers
           filters:
@@ -197,7 +197,7 @@ spring:
 
         # 当前用户关注列表接口
         - id: user-me-following
-          uri: lb://mybilibili-user
+          uri: lb://mybilibili-account-social
           predicates:
             - Path=/api/follow/me/following
           filters:
@@ -206,7 +206,7 @@ spring:
         # ========== 视频服务 ==========
         # 稿件详情接口 - 转发到 ManuscriptController
         - id: video-manuscript-detail
-          uri: lb://mybilibili-video
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/video/manuscript/**
           filters:
@@ -222,7 +222,7 @@ spring:
 
         # 用户视频列表接口 - 转发到 ManuscriptController
         - id: video-user-manuscripts
-          uri: lb://mybilibili-video
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/video/user/**
           filters:
@@ -230,14 +230,14 @@ spring:
 
         # 收藏夹列表接口 - 转发到 interaction 服务
         - id: video-favorite-folders
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/video/favorite/folders
           filters:
             - SetPath=/manuscript/favorite/folders
 
         - id: video-favorite-folders-with-id
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/video/favorite/folders/{segment}
           filters:
@@ -246,49 +246,49 @@ spring:
         # ========== 稿件互动相关接口（需要放在 manuscript-service 之前）==========
 
         - id: manuscript-interaction-like
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/manuscript/{id}/like
           filters:
             - SetPath=/manuscript/{id}/like
 
         - id: manuscript-interaction-coin
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/manuscript/{id}/coin
           filters:
             - SetPath=/manuscript/{id}/coin
 
         - id: manuscript-interaction-collect
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/manuscript/{id}/collect
           filters:
             - SetPath=/manuscript/{id}/collect
 
         - id: manuscript-interaction-share
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/manuscript/{id}/share
           filters:
             - SetPath=/manuscript/{id}/share
 
         - id: manuscript-interaction-status
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/manuscript/{id}/status
           filters:
             - SetPath=/manuscript/{id}/status
 
         - id: manuscript-interaction-danmaku
-          uri: lb://mybilibili-danmaku
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/manuscript/{id}/danmaku
           filters:
             - SetPath=/danmaku
 
         - id: manuscript-interaction-danmakus
-          uri: lb://mybilibili-danmaku
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/manuscript/{id}/danmakus
           filters:
@@ -296,14 +296,14 @@ spring:
             - RewritePath=/api/manuscript/(?<segment>.*), /manuscript/$\{segment}
 
         - id: manuscript-favorite-folders
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/manuscript/favorite/folders
           filters:
             - SetPath=/manuscript/favorite/folders
 
         - id: manuscript-favorite-folders-with-id
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/manuscript/{id}/favorite/folders
           filters:
@@ -311,7 +311,7 @@ spring:
 
         # 从收藏夹移除稿件（DELETE），必须在通用路由之前
         - id: manuscript-favorite-folders-remove-video
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/manuscript/favorite/folders/{folderId}/videos/{videoId}
             - Method=DELETE
@@ -319,7 +319,7 @@ spring:
             - StripPrefix=1
 
         - id: manuscript-interaction-favorite
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/manuscript/{id}/favorite/**
           filters:
@@ -327,21 +327,21 @@ spring:
             - SetPath=/manuscript/{id}/favorite/{remaining}
 
         - id: manuscript-user-likes
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/manuscript/user/likes
           filters:
             - SetPath=/manuscript/user/likes
 
         - id: manuscript-user-collections
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/manuscript/user/collections
           filters:
             - SetPath=/manuscript/user/collections
 
         - id: manuscript-favorite-folders-videos
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/manuscript/favorite/folders/{folderId}/videos
           filters:
@@ -351,42 +351,42 @@ spring:
         # ========== 视频互动相关接口（遗留，保持兼容）==========
 
         - id: video-interaction-like
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/video/{id}/like
           filters:
             - SetPath=/manuscript/{id}/like
 
         - id: video-interaction-coin
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/video/{id}/coin
           filters:
             - SetPath=/manuscript/{id}/coin
 
         - id: video-interaction-collect
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/video/{id}/collect
           filters:
             - SetPath=/manuscript/{id}/collect
 
         - id: video-interaction-share
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/video/{id}/share
           filters:
             - SetPath=/manuscript/{id}/share
 
         - id: video-interaction-status
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/video/{id}/status
           filters:
             - SetPath=/manuscript/{id}/status
 
         - id: video-interaction-favorite
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/video/{id}/favorite/**
           filters:
@@ -394,14 +394,14 @@ spring:
             - SetPath=/manuscript/{id}/favorite/{remaining}
 
         - id: video-user-likes
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/video/user/likes
           filters:
             - SetPath=/manuscript/user/likes
 
         - id: video-user-collections
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/video/user/collections
           filters:
@@ -409,7 +409,7 @@ spring:
 
         # 当前用户稿件列表接口
         - id: video-me-list
-          uri: lb://mybilibili-video
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/video/me/list
           filters:
@@ -417,7 +417,7 @@ spring:
 
         # 当前用户稿件统计接口
         - id: video-me-stats
-          uri: lb://mybilibili-video
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/video/me/stats
           filters:
@@ -425,7 +425,7 @@ spring:
 
         # ========== 创作者数据统计 ==========
         - id: creator-stats
-          uri: lb://mybilibili-analytics
+          uri: lb://mybilibili-search-recommend
           predicates:
             - Path=/api/creator/stats/**
           filters:
@@ -433,14 +433,14 @@ spring:
 
         # ========== 默认视频服务路由（放最后）==========
         - id: video-service
-          uri: lb://mybilibili-video
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/video/**
           filters:
             - StripPrefix=1
 
         - id: manuscript-service
-          uri: lb://mybilibili-video
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/manuscript/**
           filters:
@@ -448,7 +448,7 @@ spring:
 
         # ========== 合集服务 ==========
         - id: collection-service
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/collection/**
           filters:
@@ -457,7 +457,7 @@ spring:
         # ========== 评论服务 ==========
         # 稿件评论接口 - 转发到 Comment 服务
         - id: comment-manuscript
-          uri: lb://mybilibili-comment
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/comment/manuscript/{id}
           filters:
@@ -465,7 +465,7 @@ spring:
             - AddRequestParameter=manuscriptId, {id}
 
         - id: comment-service
-          uri: lb://mybilibili-comment
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/comment/**
           filters:
@@ -473,14 +473,14 @@ spring:
 
         # 举报接口
         - id: report-service
-          uri: lb://mybilibili-comment
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/report/**
           filters:
             - StripPrefix=1
 
         - id: creator-comment
-          uri: lb://mybilibili-comment
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/creator/comments/**
           filters:
@@ -488,14 +488,14 @@ spring:
 
         # ========== 弹幕服务 ==========
         - id: danmaku-service
-          uri: lb://mybilibili-danmaku
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/danmaku/**
           filters:
             - StripPrefix=1
 
         - id: creator-danmaku
-          uri: lb://mybilibili-danmaku
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/creator/danmaku/**
           filters:
@@ -503,7 +503,7 @@ spring:
 
         # ========== 搜索服务 ==========
         - id: search-service
-          uri: lb://mybilibili-search
+          uri: lb://mybilibili-search-recommend
           predicates:
             - Path=/api/search/**
           filters:
@@ -511,7 +511,7 @@ spring:
 
         # ========== 消息服务 ==========
         - id: message-service
-          uri: lb://mybilibili-message
+          uri: lb://mybilibili-account-social
           predicates:
             - Path=/api/message/**
           filters:
@@ -519,7 +519,7 @@ spring:
 
         # ========== 互动服务 ==========
         - id: interaction-watch-history
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/watch-history/**
           filters:
@@ -527,7 +527,7 @@ spring:
 
         # ========== 用户画像 ==========
         - id: user-profile-api
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/profile/**
           filters:
@@ -535,14 +535,14 @@ spring:
 
         # 动态评论接口
         - id: dynamic-comment
-          uri: lb://mybilibili-comment
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/dynamic/comment/**
           filters:
             - StripPrefix=1
 
         - id: interaction-dynamic
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/dynamic/**
           filters:
@@ -550,21 +550,21 @@ spring:
 
         # 放行 /dynamic 路径（无 /api 前缀）
         - id: interaction-dynamic-root
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/dynamic/**
           filters:
             - StripPrefix=0
 
         - id: interaction-favorite
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/favorite/**
           filters:
             - StripPrefix=1
 
         - id: interaction-collection
-          uri: lb://mybilibili-interaction
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/collection/**
           filters:
@@ -572,14 +572,14 @@ spring:
 
         # ========== 内容服务（分区、轮播图）- 集成到视频服务 ==========
         - id: content-service
-          uri: lb://mybilibili-video
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/category/**
           filters:
             - StripPrefix=1
 
         - id: content-service-banner
-          uri: lb://mybilibili-video
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/banner-images/**
           filters:
@@ -616,7 +616,7 @@ spring:
 
         # ========== 直播服务 ==========
         - id: live-service
-          uri: lb://mybilibili-live
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/live/**
           filters:
@@ -624,7 +624,7 @@ spring:
 
         # ========== 会议服务 ==========
         - id: meeting-service
-          uri: lb://mybilibili-live
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/meeting/**
           filters:
@@ -632,7 +632,7 @@ spring:
 
         # ========== WebSocket 会议/连麦信令 ==========
         - id: meeting-websocket
-          uri: lb://mybilibili-live
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/ws/meeting
           filters:
@@ -640,7 +640,7 @@ spring:
 
         # ========== WebSocket 通知推送 ==========
         - id: notification-websocket
-          uri: lb://mybilibili-message
+          uri: lb://mybilibili-account-social
           predicates:
             - Path=/ws/notification
           filters:
@@ -648,7 +648,7 @@ spring:
 
         # ========== WebSocket 弹幕实时推送 ==========
         - id: danmaku-websocket
-          uri: lb://mybilibili-danmaku
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/ws/danmaku
           filters:
@@ -656,7 +656,7 @@ spring:
 
         # ========== 字幕服务 ==========
         - id: subtitle-service
-          uri: lb://mybilibili-video
+          uri: lb://mybilibili-video-media
           predicates:
             - Path=/api/subtitle/**
           filters:
@@ -664,7 +664,7 @@ spring:
 
         # ========== 推荐服务 ==========
         - id: recommend-service
-          uri: lb://mybilibili-search
+          uri: lb://mybilibili-search-recommend
           predicates:
             - Path=/api/recommend/**
           filters:
