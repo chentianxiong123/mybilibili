@@ -195,16 +195,15 @@ public class AiController {
     }
 
     private String readSummaryFromStorage(Integer videoId, Integer manuscriptId) {
+        String key = StorageKeys.videoSummary(manuscriptId, videoId);
         try {
-            String key = StorageKeys.videoSummary(manuscriptId, videoId);
             String content;
             try (InputStream input = storageService.download(key)) {
                 content = new String(input.readAllBytes(), StandardCharsets.UTF_8);
             }
             return extractSummaryContent(content);
-
         } catch (Exception e) {
-            System.err.println("读取摘要对象失败: " + e.getMessage());
+            System.err.println("读取摘要对象失败: " + key + ", " + e.getMessage());
             return null;
         }
     }
