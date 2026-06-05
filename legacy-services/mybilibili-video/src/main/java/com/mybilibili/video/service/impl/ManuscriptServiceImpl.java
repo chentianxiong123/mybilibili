@@ -978,12 +978,23 @@ public class ManuscriptServiceImpl implements ManuscriptService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    videoMQProducer.sendManuscriptAnalyticsEvent(event);
+                    publishAnalyticsEventSafely(event);
                 }
             });
             return;
         }
-        videoMQProducer.sendManuscriptAnalyticsEvent(event);
+        publishAnalyticsEventSafely(event);
+    }
+
+    private void publishAnalyticsEventSafely(ManuscriptAnalyticsEvent event) {
+        try {
+            videoMQProducer.sendManuscriptAnalyticsEvent(event);
+        } catch (Exception e) {
+            log.warn("Failed to publish manuscript analytics event: type={}, manuscriptId={}",
+                    event == null ? null : event.getEventType(),
+                    event == null ? null : event.getManuscriptId(),
+                    e);
+        }
     }
 
     @Override
