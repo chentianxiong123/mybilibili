@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication(
         nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class,
         scanBasePackages = {
+        "com.mybilibili.searchrecommend",
         "com.mybilibili.search",
         "com.mybilibili.analytics",
         "com.mybilibili.common",

@@ -10,6 +10,7 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 @SpringBootApplication(
         nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class,
         scanBasePackages = {
+        "com.mybilibili.videomedia",
         "com.mybilibili.video",
         "com.mybilibili.live",
         "com.mybilibili.common",

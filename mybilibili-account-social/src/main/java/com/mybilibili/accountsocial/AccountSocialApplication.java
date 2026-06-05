@@ -10,14 +10,14 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication(
         nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class,
         scanBasePackages = {
+        "com.mybilibili.accountsocial",
         "com.mybilibili.user",
         "com.mybilibili.message",
         "com.mybilibili.common"
 })
-@EnableFeignClients(basePackages = {
-        "com.mybilibili.user.feign",
-        "com.mybilibili.message.feign",
-        "com.mybilibili.common.feign"
+@EnableFeignClients(clients = {
+        com.mybilibili.user.feign.ManuscriptClient.class,
+        com.mybilibili.user.feign.UserProfileClient.class
 })
 @MapperScan({
         "com.mybilibili.user.mapper",
