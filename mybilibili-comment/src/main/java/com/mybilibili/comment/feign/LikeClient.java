@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-@FeignClient(name = "mybilibili-interaction", contextId = "likeClient", path = "/interaction")
+@FeignClient(name = "mybilibili-content-interaction", contextId = "likeClient", path = "/interaction")
 public interface LikeClient {
 
     @PostMapping("/like")

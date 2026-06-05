@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.Map;
 
-@FeignClient(name = "mybilibili-comment", path = "/admin/report")
+@FeignClient(name = "mybilibili-content-interaction", contextId = "aiReportCallbackClient", path = "/admin/report")
 public interface ReportCallbackClient {
 
     @PutMapping("/ai-review-result")

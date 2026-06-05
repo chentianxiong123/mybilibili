@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
-@FeignClient(name = "mybilibili-video", contextId = "videoClient")
+@FeignClient(name = "mybilibili-video-media", contextId = "videoClient")
 public interface VideoClient {
 
     @GetMapping("/video/{id}")

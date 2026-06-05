@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.Map;
 
-@FeignClient(name = "mybilibili-interaction", path = "/profile")
+@FeignClient(name = "mybilibili-content-interaction", contextId = "userProfileClient", path = "/profile")
 public interface UserProfileClient {
 
     @PostMapping("/init/{userId}")

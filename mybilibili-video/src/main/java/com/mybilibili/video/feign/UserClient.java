@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.Map;
 
-@FeignClient(name = "mybilibili-user")
+@FeignClient(name = "mybilibili-account-social", contextId = "videoUserClient")
 public interface UserClient {
 
     @GetMapping("/user/{id}")

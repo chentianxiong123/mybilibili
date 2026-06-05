@@ -6,7 +6,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
-@FeignClient(name = "mybilibili-video")
+@FeignClient(name = "mybilibili-video-media", contextId = "interactionVideoClient")
 public interface VideoClient {
     
     @GetMapping("/video/{id}")

@@ -66,18 +66,15 @@
 | 服务 | 端口 | 说明 |
 |------|------|------|
 | mybilibili-gateway | 8080 | API 网关，路由转发、JWT 鉴权 |
-| mybilibili-user | - | 用户注册/登录、个人信息、关注系统、管理员/权限 |
-| mybilibili-video | - | 稿件管理、视频上传、分类、轮播图、字幕、创作者数据 |
-| mybilibili-comment | - | 评论/回复、动态评论、违禁词过滤、内容审核 |
-| mybilibili-danmaku | - | 弹幕发送与查询 |
-| mybilibili-interaction | - | 点赞/投币/收藏/分享、动态、收藏夹、合集、观看历史 |
-| mybilibili-message | - | 私信、会话、消息通知设置 |
-| mybilibili-search | - | Elasticsearch 全文搜索、索引管理、推荐 |
-| mybilibili-ai | - | 视频转码(HLS)、AI 字幕生成、AI 摘要、SSE 进度推送、AI 客服对话、AI 内容审核、API 配置管理 |
-| mybilibili-live | - | 直播推流(SRS)、视频会议(WebRTC)、观众连麦、WebSocket 信令 |
-| mybilibili-analytics | - | 创作者数据中心、趋势统计、排行 |
+| mybilibili-account-social | 8081 | 用户注册/登录、个人信息、关注/粉丝、私信、系统消息、管理员/权限 |
+| mybilibili-video-media | 8082 | 稿件管理、视频上传、分类、轮播图、字幕、直播推流、视频会议、观众连麦 |
+| mybilibili-content-interaction | 8085 | 评论/回复、动态评论、弹幕、点赞/投币/收藏/分享、动态、收藏夹、合集、观看历史、内容审核 |
+| mybilibili-search-recommend | 8084 | Elasticsearch 全文搜索、索引管理、推荐、用户画像读取、创作者数据统计 |
+| mybilibili-ai | 8088 | 视频转码(HLS)、AI 字幕生成、AI 摘要、SSE 进度推送、AI 客服对话、AI 内容审核、API 配置管理 |
 | mybilibili-common | - | 公共模块（JWT、VO、工具类） |
 | mybilibili-mq | - | 消息队列公共模块 |
+
+旧的 user/video/comment/danmaku/interaction/message/search/live/analytics 模块暂时保留为聚合服务的源码来源和回退参考，不作为默认运行时服务启动。
 
 ### 前端应用
 
@@ -157,17 +154,12 @@ docker compose -f scripts/docker-compose-infra.yml up -d
 
 按以下顺序启动各服务：
 
-1. mybilibili-gateway
-2. mybilibili-user
-3. mybilibili-video
-4. mybilibili-danmaku
-5. mybilibili-search
-6. mybilibili-comment
-7. mybilibili-interaction
-8. mybilibili-message
-9. mybilibili-ai
-10. mybilibili-live
-11. mybilibili-analytics
+1. mybilibili-account-social
+2. mybilibili-video-media
+3. mybilibili-content-interaction
+4. mybilibili-search-recommend
+5. mybilibili-ai
+6. mybilibili-gateway
 
 或使用一键启动脚本：
 
@@ -227,16 +219,20 @@ pnpm run dev
 ```
 mybilibili-cloud/
 ├── mybilibili-gateway/          # API 网关
-├── mybilibili-user/             # 用户服务
-├── mybilibili-video/            # 视频服务
-├── mybilibili-comment/          # 评论服务
-├── mybilibili-danmaku/          # 弹幕服务
-├── mybilibili-interaction/      # 互动服务
-├── mybilibili-message/          # 消息服务
-├── mybilibili-search/           # 搜索服务
+├── mybilibili-account-social/   # 账户与社交聚合服务
+├── mybilibili-video-media/      # 视频与媒体聚合服务
+├── mybilibili-content-interaction/ # 内容互动聚合服务
+├── mybilibili-search-recommend/ # 搜索与推荐聚合服务
 ├── mybilibili-ai/               # AI 服务
-├── mybilibili-live/             # 直播/会议/连麦服务
-├── mybilibili-analytics/        # 创作者数据服务
+├── mybilibili-user/             # 旧用户源码模块
+├── mybilibili-video/            # 旧视频源码模块
+├── mybilibili-comment/          # 旧评论源码模块
+├── mybilibili-danmaku/          # 旧弹幕源码模块
+├── mybilibili-interaction/      # 旧互动源码模块
+├── mybilibili-message/          # 旧消息源码模块
+├── mybilibili-search/           # 旧搜索源码模块
+├── mybilibili-live/             # 旧直播源码模块
+├── mybilibili-analytics/        # 旧统计源码模块
 ├── mybilibili-common/           # 公共模块
 ├── mybilibili-mq/               # 消息队列模块
 ├── mybilibili-web/              # 用户端前端

@@ -6,7 +6,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
-@FeignClient(name = "mybilibili-user", path = "/user")
+@FeignClient(name = "mybilibili-account-social", contextId = "userSelfClient", path = "/user")
 public interface UserClient {
 
     @GetMapping("/{id}")
