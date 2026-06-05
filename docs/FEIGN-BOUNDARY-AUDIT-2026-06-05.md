@@ -58,3 +58,17 @@
 2. 6 服务全链路测试稳定后：禁止新代码注入上述内部 Feign，新增内部调用应直接依赖本地 Service 或明确的本地门面。
 3. CI、Docker、K8s 都不再启动旧独立服务后：把不再需要的旧模块或接口按 `.trash/YYYYMMDD-HHMMSS/` 规则逻辑删除。
 
+## 自动检查
+
+本地检查命令：
+
+```powershell
+.\scripts\check-feign-boundaries.ps1
+```
+
+`scripts/build-all.bat` 已在 Maven 构建前执行该检查。检查规则：
+
+- 新增同聚合服务内部 Feign 直接失败。
+- 当前 4 个历史内部 Feign 必须保持 `@Deprecated`。
+- 当前 4 个历史内部 Feign 必须有对应本地 Adapter。
+- 聚合启动类不得把这些内部 Feign 注册为远程 Feign Client。

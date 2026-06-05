@@ -163,12 +163,15 @@ docker compose -f scripts/docker-compose-infra.yml up -d
 
 或使用一键启动脚本：
 
-```bash
+```powershell
+# Feign 边界检查
+.\scripts\check-feign-boundaries.ps1
+
 # PowerShell
-.\start-all.ps1
+.\scripts\start-all.ps1
 
 # CMD
-.\start-all.bat
+.\scripts\start-all.bat
 ```
 
 ### 3. 启动前端
