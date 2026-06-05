@@ -66,7 +66,7 @@
 .\scripts\check-feign-boundaries.ps1
 ```
 
-`scripts/build-all.bat` 已在 Maven 构建前执行该检查。检查规则：
+`scripts/build-all.bat` 已在 Maven 构建前通过 `scripts/check-architecture.ps1` 执行该检查。检查规则：
 
 - 新增同聚合服务内部 Feign 直接失败。
 - 当前 4 个历史内部 Feign 必须保持 `@Deprecated`。

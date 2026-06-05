@@ -164,8 +164,8 @@ docker compose -f scripts/docker-compose-infra.yml up -d
 或使用一键启动脚本：
 
 ```powershell
-# Feign 边界检查
-.\scripts\check-feign-boundaries.ps1
+# 架构边界检查
+.\scripts\check-architecture.ps1
 
 # PowerShell
 .\scripts\start-all.ps1
