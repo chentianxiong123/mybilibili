@@ -7,6 +7,13 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Legacy standalone comment-service client.
+ * <p>
+ * In mybilibili-content-interaction runtime this call is handled by
+ * CommentLikeClientLocalAdapter and must not be used as a new internal Feign path.
+ */
+@Deprecated(since = "2026-06-05", forRemoval = false)
 @FeignClient(name = "mybilibili-content-interaction", contextId = "likeClient", path = "/interaction")
 public interface LikeClient {
 

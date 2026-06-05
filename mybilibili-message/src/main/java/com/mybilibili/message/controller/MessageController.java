@@ -16,6 +16,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/message")
+@SuppressWarnings("deprecation")
 public class MessageController {
 
     @Autowired

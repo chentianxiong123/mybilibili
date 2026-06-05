@@ -19,6 +19,7 @@ import java.util.List;
 
 @Slf4j
 @Service
+@SuppressWarnings("deprecation")
 public class DynamicCommentServiceImpl implements DynamicCommentService {
 
     @Autowired

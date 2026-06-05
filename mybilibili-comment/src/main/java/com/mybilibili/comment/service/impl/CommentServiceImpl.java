@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@SuppressWarnings("deprecation")
 public class CommentServiceImpl implements CommentService {
 
     @Autowired
