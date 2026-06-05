@@ -4,10 +4,10 @@ import com.mybilibili.common.dto.MessageSettingDTO;
 import com.mybilibili.common.dto.SendMessageDTO;
 import com.mybilibili.common.vo.*;
 import jakarta.validation.Valid;
-import com.mybilibili.message.feign.UserClient;
 import com.mybilibili.message.service.ConversationService;
 import com.mybilibili.message.service.MessageService;
 import com.mybilibili.message.service.MessageSettingService;
+import com.mybilibili.message.service.UserLookupPort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,7 +16,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/message")
-@SuppressWarnings("deprecation")
 public class MessageController {
 
     @Autowired
@@ -29,7 +28,7 @@ public class MessageController {
     private MessageSettingService messageSettingService;
 
     @Autowired
-    private UserClient userClient;
+    private UserLookupPort userLookupPort;
 
     @GetMapping("/conversations")
     public Result<List<ConversationVO>> getConversations(@RequestHeader("X-User-Id") Integer userId) {
@@ -87,7 +86,7 @@ public class MessageController {
         }
         dto.setMessageType(1);
 
-        Result<UserVO> userResult = userClient.getUserById(dto.getReceiverId());
+        Result<UserVO> userResult = userLookupPort.getUserById(dto.getReceiverId());
         if (userResult.getData() == null) {
             return Result.error("接收者不存在");
         }

@@ -48,28 +48,32 @@ $knownInternalFeign = @{
         Application = "mybilibili-account-social/src/main/java/com/mybilibili/accountsocial/AccountSocialApplication.java"
         ForbiddenClientRef = "com.mybilibili.message.feign.UserClient.class"
         ForbiddenBasePackage = "com.mybilibili.message.feign"
-        InterfaceName = "UserClient"
+        ForbiddenImport = "import com.mybilibili.message.feign.UserClient;"
+        AdapterInterfaceName = "UserLookupPort"
     }
     "mybilibili-user/src/main/java/com/mybilibili/user/feign/UserClient.java" = @{
         Adapter = "mybilibili-account-social/src/main/java/com/mybilibili/accountsocial/local/UserSelfClientLocalAdapter.java"
         Application = "mybilibili-account-social/src/main/java/com/mybilibili/accountsocial/AccountSocialApplication.java"
         ForbiddenClientRef = "com.mybilibili.user.feign.UserClient.class"
         ForbiddenBasePackage = "com.mybilibili.user.feign"
-        InterfaceName = "UserClient"
+        ForbiddenImport = "import com.mybilibili.user.feign.UserClient;"
+        AdapterInterfaceName = "UserLookupPort"
     }
     "mybilibili-comment/src/main/java/com/mybilibili/comment/feign/LikeClient.java" = @{
         Adapter = "mybilibili-content-interaction/src/main/java/com/mybilibili/contentinteraction/local/CommentLikeClientLocalAdapter.java"
         Application = "mybilibili-content-interaction/src/main/java/com/mybilibili/contentinteraction/ContentInteractionApplication.java"
         ForbiddenClientRef = "com.mybilibili.comment.feign.LikeClient.class"
         ForbiddenBasePackage = "com.mybilibili.comment.feign"
-        InterfaceName = "LikeClient"
+        ForbiddenImport = "import com.mybilibili.comment.feign.LikeClient;"
+        AdapterInterfaceName = "LikeInteractionPort"
     }
     "mybilibili-comment/src/main/java/com/mybilibili/comment/feign/DynamicClient.java" = @{
         Adapter = "mybilibili-content-interaction/src/main/java/com/mybilibili/contentinteraction/local/CommentDynamicClientLocalAdapter.java"
         Application = "mybilibili-content-interaction/src/main/java/com/mybilibili/contentinteraction/ContentInteractionApplication.java"
         ForbiddenClientRef = "com.mybilibili.comment.feign.DynamicClient.class"
         ForbiddenBasePackage = "com.mybilibili.comment.feign"
-        InterfaceName = "DynamicClient"
+        ForbiddenImport = "import com.mybilibili.comment.feign.DynamicClient;"
+        AdapterInterfaceName = "DynamicInteractionPort"
     }
 }
 
@@ -113,6 +117,25 @@ foreach ($moduleName in ($moduleAggregate.Keys | Sort-Object)) {
     }
 }
 
+foreach ($moduleName in ($moduleAggregate.Keys | Sort-Object)) {
+    $sourceRoot = Join-Path (Join-Path $repoRoot $moduleName) "src/main/java"
+    if (-not (Test-Path -LiteralPath $sourceRoot)) {
+        continue
+    }
+
+    $javaFiles = Get-ChildItem -LiteralPath $sourceRoot -Recurse -Filter *.java -File
+    foreach ($file in $javaFiles) {
+        $content = Get-Content -LiteralPath $file.FullName -Raw
+        $relativePath = Normalize-Path $file.FullName.Substring($repoRoot.Length + 1)
+        foreach ($entry in $knownInternalFeign.GetEnumerator()) {
+            $metadata = $entry.Value
+            if ($relativePath -ne $entry.Key -and $content.Contains($metadata.ForbiddenImport)) {
+                Add-Violation "$relativePath imports legacy internal Feign $($metadata.ForbiddenImport). Use the local port instead."
+            }
+        }
+    }
+}
+
 foreach ($entry in $knownInternalFeign.GetEnumerator()) {
     $interfacePath = $entry.Key
     $metadata = $entry.Value
@@ -137,8 +160,8 @@ foreach ($entry in $knownInternalFeign.GetEnumerator()) {
         if ($adapterContent -notmatch "@Component") {
             Add-Violation "$adapterPath must be a Spring component."
         }
-        if ($adapterContent -notmatch ("implements\s+" + [regex]::Escape($metadata.InterfaceName))) {
-            Add-Violation "$adapterPath must implement $($metadata.InterfaceName)."
+        if ($adapterContent -notmatch ("implements\s+" + [regex]::Escape($metadata.AdapterInterfaceName))) {
+            Add-Violation "$adapterPath must implement $($metadata.AdapterInterfaceName)."
         }
     }
 

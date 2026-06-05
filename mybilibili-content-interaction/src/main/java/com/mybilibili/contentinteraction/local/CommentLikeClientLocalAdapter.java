@@ -1,6 +1,6 @@
 package com.mybilibili.contentinteraction.local;
 
-import com.mybilibili.comment.feign.LikeClient;
+import com.mybilibili.comment.service.LikeInteractionPort;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.interaction.service.InteractionService;
 import org.springframework.stereotype.Component;
@@ -10,8 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-@SuppressWarnings("deprecation")
-public class CommentLikeClientLocalAdapter implements LikeClient {
+public class CommentLikeClientLocalAdapter implements LikeInteractionPort {
 
     private final InteractionService interactionService;
 

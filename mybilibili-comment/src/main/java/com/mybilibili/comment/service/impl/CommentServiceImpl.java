@@ -1,7 +1,6 @@
 package com.mybilibili.comment.service.impl;
 
 import com.mybilibili.comment.feign.ContentReviewClient;
-import com.mybilibili.comment.feign.LikeClient;
 import com.mybilibili.comment.feign.ManuscriptClient;
 import com.mybilibili.comment.feign.MessageClient;
 import com.mybilibili.comment.feign.UserClient;
@@ -10,6 +9,7 @@ import com.mybilibili.comment.mapper.DynamicCommentMapper;
 import com.mybilibili.comment.mapper.ProhibitedWordMapper;
 import com.mybilibili.comment.mapper.ReplyMapper;
 import com.mybilibili.comment.service.CommentService;
+import com.mybilibili.comment.service.LikeInteractionPort;
 import com.mybilibili.comment.service.ProhibitedWordCacheService;
 import com.mybilibili.comment.service.SpamPreventionService;
 import com.mybilibili.common.entity.Comment;
@@ -27,7 +27,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@SuppressWarnings("deprecation")
 public class CommentServiceImpl implements CommentService {
 
     @Autowired
@@ -43,7 +42,7 @@ public class CommentServiceImpl implements CommentService {
     private UserClient userClient;
 
     @Autowired
-    private LikeClient likeClient;
+    private LikeInteractionPort likeInteractionPort;
 
     @Autowired
     private ContentReviewClient contentReviewClient;
@@ -362,7 +361,7 @@ public class CommentServiceImpl implements CommentService {
         if (comment == null) {
             throw new RuntimeException("评论不存在");
         }
-        Result<?> result = likeClient.like(userId, TARGET_TYPE_COMMENT, commentId);
+        Result<?> result = likeInteractionPort.like(userId, TARGET_TYPE_COMMENT, commentId);
         if (result == null || result.getCode() != 200) {
             throw new RuntimeException(result != null ? result.getMessage() : "点赞失败");
         }
@@ -381,7 +380,7 @@ public class CommentServiceImpl implements CommentService {
         if (comment == null) {
             throw new RuntimeException("评论不存在");
         }
-        Result<?> result = likeClient.unlike(userId, TARGET_TYPE_COMMENT, commentId);
+        Result<?> result = likeInteractionPort.unlike(userId, TARGET_TYPE_COMMENT, commentId);
         if (result == null || result.getCode() != 200) {
             throw new RuntimeException(result != null ? result.getMessage() : "取消点赞失败");
         }
@@ -395,7 +394,7 @@ public class CommentServiceImpl implements CommentService {
         if (reply == null) {
             throw new RuntimeException("回复不存在");
         }
-        Result<?> result = likeClient.like(userId, TARGET_TYPE_REPLY, replyId);
+        Result<?> result = likeInteractionPort.like(userId, TARGET_TYPE_REPLY, replyId);
         if (result == null || result.getCode() != 200) {
             throw new RuntimeException(result != null ? result.getMessage() : "点赞失败");
         }
@@ -414,7 +413,7 @@ public class CommentServiceImpl implements CommentService {
         if (reply == null) {
             throw new RuntimeException("回复不存在");
         }
-        Result<?> result = likeClient.unlike(userId, TARGET_TYPE_REPLY, replyId);
+        Result<?> result = likeInteractionPort.unlike(userId, TARGET_TYPE_REPLY, replyId);
         if (result == null || result.getCode() != 200) {
             throw new RuntimeException(result != null ? result.getMessage() : "取消点赞失败");
         }
@@ -428,7 +427,7 @@ public class CommentServiceImpl implements CommentService {
             return new HashMap<>();
         }
         try {
-            Result<Map<Integer, Boolean>> result = likeClient.batchIsLiked(userId, targetType, targetIds);
+            Result<Map<Integer, Boolean>> result = likeInteractionPort.batchIsLiked(userId, targetType, targetIds);
             if (result != null && result.getData() != null) {
                 return result.getData();
             }
@@ -443,7 +442,7 @@ public class CommentServiceImpl implements CommentService {
             return new HashMap<>();
         }
         try {
-            Result<Map<Integer, Integer>> result = likeClient.batchGetLikeCount(targetType, targetIds);
+            Result<Map<Integer, Integer>> result = likeInteractionPort.batchGetLikeCount(targetType, targetIds);
             if (result != null && result.getData() != null) {
                 return result.getData();
             }
@@ -455,7 +454,7 @@ public class CommentServiceImpl implements CommentService {
     @Override
     public int getLikeCount(String targetType, Integer targetId) {
         try {
-            Result<Integer> result = likeClient.getLikeCount(targetType, targetId);
+            Result<Integer> result = likeInteractionPort.getLikeCount(targetType, targetId);
             if (result != null && result.getData() != null) {
                 return result.getData();
             }
@@ -471,7 +470,7 @@ public class CommentServiceImpl implements CommentService {
             return false;
         }
         try {
-            Result<Boolean> result = likeClient.isLiked(userId, targetType, targetId);
+            Result<Boolean> result = likeInteractionPort.isLiked(userId, targetType, targetId);
             if (result != null && result.getData() != null) {
                 return result.getData();
             }
