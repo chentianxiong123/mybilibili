@@ -51,7 +51,6 @@ final class JwtRequestPolicy {
     private static final List<String> ADMIN_PATH_PREFIXES = List.of(
             "/admin/",
             "/ai/admin",
-            "/ai/process/",
             "/comment/admin/",
             "/manuscript/admin/",
             "/message/admin/",
@@ -85,7 +84,6 @@ final class JwtRequestPolicy {
             new PermissionRule("/admin/storage/", "storage:manage"),
             new PermissionRule("/admin/", "admin:manage"),
             new PermissionRule("/ai/admin", "ai:manage"),
-            new PermissionRule("/ai/process/", "ai:manage"),
             new PermissionRule("/comment/admin/", "comment:manage"),
             new PermissionRule("/manuscript/admin/", "review:manage"),
             new PermissionRule("/message/admin/", "message:manage"),
