@@ -125,27 +125,7 @@ public class CommentServiceImpl implements CommentService {
         Map<Integer, Boolean> likeStatusMap = batchIsLiked(userId, TARGET_TYPE_COMMENT, commentIds);
         Map<Integer, Integer> likeCountMap = batchGetLikeCount(TARGET_TYPE_COMMENT, commentIds);
 
-        List<CommentVO> commentVOs = new ArrayList<>();
-        for (Comment comment : comments) {
-            CommentVO commentVO = buildCommentVO(comment, userId, likeStatusMap, likeCountMap);
-
-            List<Reply> replies = replyMapper.selectByCommentId(comment.getId(), 0, 3);
-            List<ReplyVO> replyVOs = new ArrayList<>();
-
-            if (!replies.isEmpty()) {
-                List<Integer> replyIds = replies.stream().map(Reply::getId).collect(Collectors.toList());
-                Map<Integer, Boolean> replyLikeStatusMap = batchIsLiked(userId, TARGET_TYPE_REPLY, replyIds);
-                Map<Integer, Integer> replyLikeCountMap = batchGetLikeCount(TARGET_TYPE_REPLY, replyIds);
-
-                for (Reply reply : replies) {
-                    replyVOs.add(buildReplyVO(reply, userId, replyLikeStatusMap, replyLikeCountMap));
-                }
-            }
-            commentVO.setReplies(replyVOs);
-            commentVOs.add(commentVO);
-        }
-
-        return commentVOs;
+        return buildCommentThreadVOs(comments, userId, likeStatusMap, likeCountMap);
     }
 
     @Override
@@ -201,27 +181,7 @@ public class CommentServiceImpl implements CommentService {
         Map<Integer, Boolean> likeStatusMap = batchIsLiked(userId, TARGET_TYPE_COMMENT, commentIds);
         Map<Integer, Integer> likeCountMap = batchGetLikeCount(TARGET_TYPE_COMMENT, commentIds);
 
-        List<CommentVO> commentVOs = new ArrayList<>();
-        for (Comment comment : comments) {
-            CommentVO commentVO = buildCommentVO(comment, userId, likeStatusMap, likeCountMap);
-
-            List<Reply> replies = replyMapper.selectByCommentId(comment.getId(), 0, 3);
-            List<ReplyVO> replyVOs = new ArrayList<>();
-
-            if (!replies.isEmpty()) {
-                List<Integer> replyIds = replies.stream().map(Reply::getId).collect(Collectors.toList());
-                Map<Integer, Boolean> replyLikeStatusMap = batchIsLiked(userId, TARGET_TYPE_REPLY, replyIds);
-                Map<Integer, Integer> replyLikeCountMap = batchGetLikeCount(TARGET_TYPE_REPLY, replyIds);
-
-                for (Reply reply : replies) {
-                    replyVOs.add(buildReplyVO(reply, userId, replyLikeStatusMap, replyLikeCountMap));
-                }
-            }
-            commentVO.setReplies(replyVOs);
-            commentVOs.add(commentVO);
-        }
-
-        return commentVOs;
+        return buildCommentThreadVOs(comments, userId, likeStatusMap, likeCountMap);
     }
 
     @Override
@@ -304,10 +264,11 @@ public class CommentServiceImpl implements CommentService {
         List<Integer> replyIds = replies.stream().map(Reply::getId).collect(Collectors.toList());
         Map<Integer, Boolean> likeStatusMap = batchIsLiked(userId, TARGET_TYPE_REPLY, replyIds);
         Map<Integer, Integer> likeCountMap = batchGetLikeCount(TARGET_TYPE_REPLY, replyIds);
+        Map<Integer, UserVO> usersById = fetchUsersByIds(extractReplyUserIds(replies));
 
         List<ReplyVO> replyVOs = new ArrayList<>();
         for (Reply reply : replies) {
-            replyVOs.add(buildReplyVO(reply, userId, likeStatusMap, likeCountMap));
+            replyVOs.add(buildReplyVO(reply, userId, likeStatusMap, likeCountMap, usersById));
         }
         return replyVOs;
     }
@@ -456,6 +417,13 @@ public class CommentServiceImpl implements CommentService {
     private CommentVO buildCommentVO(Comment comment, Integer userId,
                                      Map<Integer, Boolean> likeStatusMap,
                                      Map<Integer, Integer> likeCountMap) {
+        return buildCommentVO(comment, userId, likeStatusMap, likeCountMap, Collections.emptyMap());
+    }
+
+    private CommentVO buildCommentVO(Comment comment, Integer userId,
+                                     Map<Integer, Boolean> likeStatusMap,
+                                     Map<Integer, Integer> likeCountMap,
+                                     Map<Integer, UserVO> usersById) {
         CommentVO commentVO = new CommentVO();
         commentVO.setId(comment.getId());
         commentVO.setVideoId(comment.getManuscriptId());
@@ -466,7 +434,7 @@ public class CommentServiceImpl implements CommentService {
         commentVO.setCreateTime(comment.getCreatedAt());
         commentVO.setManuscriptId(comment.getManuscriptId());
 
-        UserVO user = getUserById(comment.getUserId());
+        UserVO user = resolveUser(comment.getUserId(), usersById);
         if (user != null) {
             commentVO.setUserName(user.getNickname());
             commentVO.setUserAvatar(user.getAvatar());
@@ -491,6 +459,13 @@ public class CommentServiceImpl implements CommentService {
     private ReplyVO buildReplyVO(Reply reply, Integer userId,
                                   Map<Integer, Boolean> likeStatusMap,
                                   Map<Integer, Integer> likeCountMap) {
+        return buildReplyVO(reply, userId, likeStatusMap, likeCountMap, Collections.emptyMap());
+    }
+
+    private ReplyVO buildReplyVO(Reply reply, Integer userId,
+                                  Map<Integer, Boolean> likeStatusMap,
+                                  Map<Integer, Integer> likeCountMap,
+                                  Map<Integer, UserVO> usersById) {
         ReplyVO replyVO = new ReplyVO();
         replyVO.setId(reply.getId());
         replyVO.setCommentId(reply.getCommentId());
@@ -499,7 +474,7 @@ public class CommentServiceImpl implements CommentService {
         replyVO.setLikeCount(reply.getLikeCount() != null ? reply.getLikeCount() : 0);
         replyVO.setCreateTime(reply.getCreatedAt());
 
-        UserVO user = getUserById(reply.getUserId());
+        UserVO user = resolveUser(reply.getUserId(), usersById);
         if (user != null) {
             replyVO.setUserName(user.getNickname());
             replyVO.setUserAvatar(user.getAvatar());
@@ -507,7 +482,7 @@ public class CommentServiceImpl implements CommentService {
         }
 
         if (reply.getReplyToUserId() != null) {
-            UserVO targetUser = getUserById(reply.getReplyToUserId());
+            UserVO targetUser = resolveUser(reply.getReplyToUserId(), usersById);
             if (targetUser != null) {
                 replyVO.setReplyToUserName(targetUser.getNickname());
             }
@@ -516,6 +491,95 @@ public class CommentServiceImpl implements CommentService {
         replyVO.setLiked(likeStatusMap.getOrDefault(reply.getId(), false));
 
         return replyVO;
+    }
+
+    private List<CommentVO> buildCommentThreadVOs(List<Comment> comments,
+                                                  Integer userId,
+                                                  Map<Integer, Boolean> commentLikeStatusMap,
+                                                  Map<Integer, Integer> commentLikeCountMap) {
+        Map<Integer, List<Reply>> repliesByCommentId = new HashMap<>();
+        List<Reply> allReplies = new ArrayList<>();
+        LinkedHashSet<Integer> userIds = new LinkedHashSet<>();
+
+        for (Comment comment : comments) {
+            if (comment.getUserId() != null) {
+                userIds.add(comment.getUserId());
+            }
+            List<Reply> replies = replyMapper.selectByCommentId(comment.getId(), 0, 3);
+            repliesByCommentId.put(comment.getId(), replies);
+            allReplies.addAll(replies);
+            userIds.addAll(extractReplyUserIds(replies));
+        }
+
+        List<Integer> replyIds = allReplies.stream().map(Reply::getId).collect(Collectors.toList());
+        Map<Integer, Boolean> replyLikeStatusMap = batchIsLiked(userId, TARGET_TYPE_REPLY, replyIds);
+        Map<Integer, Integer> replyLikeCountMap = batchGetLikeCount(TARGET_TYPE_REPLY, replyIds);
+        Map<Integer, UserVO> usersById = fetchUsersByIds(userIds);
+
+        List<CommentVO> commentVOs = new ArrayList<>();
+        for (Comment comment : comments) {
+            CommentVO commentVO = buildCommentVO(comment, userId, commentLikeStatusMap, commentLikeCountMap, usersById);
+            List<ReplyVO> replyVOs = new ArrayList<>();
+            for (Reply reply : repliesByCommentId.getOrDefault(comment.getId(), Collections.emptyList())) {
+                replyVOs.add(buildReplyVO(reply, userId, replyLikeStatusMap, replyLikeCountMap, usersById));
+            }
+            commentVO.setReplies(replyVOs);
+            commentVOs.add(commentVO);
+        }
+
+        return commentVOs;
+    }
+
+    private Set<Integer> extractReplyUserIds(List<Reply> replies) {
+        LinkedHashSet<Integer> userIds = new LinkedHashSet<>();
+        if (replies == null) {
+            return userIds;
+        }
+        for (Reply reply : replies) {
+            if (reply.getUserId() != null) {
+                userIds.add(reply.getUserId());
+            }
+            if (reply.getReplyToUserId() != null) {
+                userIds.add(reply.getReplyToUserId());
+            }
+        }
+        return userIds;
+    }
+
+    private UserVO resolveUser(Integer userId, Map<Integer, UserVO> usersById) {
+        if (userId == null) {
+            return null;
+        }
+        UserVO user = usersById == null ? null : usersById.get(userId);
+        return user != null ? user : getUserById(userId);
+    }
+
+    private Map<Integer, UserVO> fetchUsersByIds(Collection<Integer> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<Integer> ids = userIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        if (ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        try {
+            Result<List<UserVO>> result = userClient.getUsersByIds(ids);
+            if (result == null || result.getCode() == null || result.getCode() != 200 || result.getData() == null) {
+                return Collections.emptyMap();
+            }
+            Map<Integer, UserVO> usersById = new HashMap<>();
+            for (UserVO user : result.getData()) {
+                if (user != null && user.getId() != null) {
+                    usersById.put(user.getId(), user);
+                }
+            }
+            return usersById;
+        } catch (Exception e) {
+            return Collections.emptyMap();
+        }
     }
 
     private List<String> detectProhibitedWords(String content) {
