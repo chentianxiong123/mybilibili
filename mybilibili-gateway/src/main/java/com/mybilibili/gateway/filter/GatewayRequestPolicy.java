@@ -46,6 +46,8 @@ public final class GatewayRequestPolicy {
             "/api/user/email/verify",
             "/api/user/password/forgot",
             "/api/user/default-avatar",
+            "/api/captcha/new",
+            "/api/captcha/verify",
             "/api/admin/login",
             "/api/live/room/srs/hook",
             "/ws/notification",
