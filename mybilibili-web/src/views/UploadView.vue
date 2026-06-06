@@ -325,7 +325,10 @@ const handleSubmit = () => {
       .then(response => {
         isSubmittingRequest.value = false
         ElMessage.success('投稿成功，已进入审核/处理中队列')
-        router.push('/create-center/content-articles')
+        router.push({
+          path: '/create-center/content-articles',
+          query: { status: 'processing' }
+        })
       })
       .catch(error => {
         console.error('上传错误:', error)

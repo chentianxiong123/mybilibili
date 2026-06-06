@@ -196,10 +196,6 @@ onMounted(() => {
             class="action-badge" 
           />
         </div>
-        <div class="action-item" @click="$router.push('/video-process')">
-          <el-icon :size="24" color="#67c23a"><VideoCamera /></el-icon>
-          <span>视频处理</span>
-        </div>
         <div class="action-item" @click="$router.push('/categories')">
           <el-icon :size="24" color="#f56c6c"><Folder /></el-icon>
           <span>分类管理</span>

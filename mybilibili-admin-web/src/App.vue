@@ -25,7 +25,6 @@ import {
   Tickets,
   User,
   UserFilled,
-  VideoPlay,
   Warning
 } from '@element-plus/icons-vue'
 import { useAdminStore } from './stores/admin'
@@ -74,7 +73,6 @@ const allMenuItems = [
     title: '运营中心',
     children: [
       { path: '/operation-tasks', icon: 'List', title: '任务中心', permission: 'operation:manage' },
-      { path: '/video-process', icon: 'VideoPlay', title: '任务看板', permission: 'ai:manage' },
       { path: '/audit-logs', icon: 'Tickets', title: '审计日志', permission: 'audit:manage' }
     ]
   },
@@ -111,7 +109,6 @@ const activeMenu = computed(() => {
   if (path.startsWith('/manuscripts')) return '/manuscripts'
   if (path.startsWith('/comments')) return '/comments'
   if (path.startsWith('/operation-tasks')) return '/operation-tasks'
-  if (path.startsWith('/video-process')) return '/video-process'
   if (path.startsWith('/audit-logs')) return '/audit-logs'
   if (path.startsWith('/prohibited-words')) return '/prohibited-words'
   if (path.startsWith('/content-review')) return '/content-review'

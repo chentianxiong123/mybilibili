@@ -204,14 +204,6 @@ spring:
           filters:
             - StripPrefix=1
 
-        # 视频处理后台看板 - 转发到 video-media 统一进度中心
-        - id: video-process-admin
-          uri: lb://mybilibili-video-media
-          predicates:
-            - Path=/api/video/process/admin/**
-          filters:
-            - StripPrefix=1
-
         # ========== 稿件互动相关接口（需要放在 manuscript-service 之前）==========
 
         - id: manuscript-interaction-like

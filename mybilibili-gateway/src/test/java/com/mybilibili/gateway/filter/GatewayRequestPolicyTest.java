@@ -40,7 +40,6 @@ class GatewayRequestPolicyTest {
         assertTrue(policy.isAdminPath("/api/admin/live/rooms"));
         assertTrue(policy.isAdminPath("/api/user/admin/list"));
         assertTrue(policy.isAdminPath("/api/video/admin/list"));
-        assertTrue(policy.isAdminPath("/api/video/process/admin/stream"));
         assertTrue(policy.isAdminPath("/api/manuscript/admin/pending"));
         assertTrue(policy.isAdminPath("/api/comment/admin/list"));
         assertTrue(policy.isAdminPath("/api/message/admin/system/broadcast"));
@@ -62,7 +61,6 @@ class GatewayRequestPolicyTest {
     void mapsAdminPathsToPermissionCodes() {
         assertTrue("user:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/user/admin/list")));
         assertTrue("video:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/video/admin/list")));
-        assertTrue("video:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/video/process/admin/stream")));
         assertTrue("review:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/manuscript/admin/pending")));
         assertTrue("comment:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/comment/admin/list")));
         assertTrue("search:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/search/admin/index/status")));
