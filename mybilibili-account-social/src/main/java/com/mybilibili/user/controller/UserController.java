@@ -84,6 +84,12 @@ public class UserController {
         return Result.success(ok);
     }
 
+    @PostMapping("/batch")
+    @Operation(summary = "批量获取用户信息", description = "内部服务批量获取用户基础信息，减少跨服务逐条查询")
+    public Result<List<UserVO>> getUsersByIds(@RequestBody List<Integer> ids) {
+        return userService.getUsersByIds(ids);
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "获取用户信息", description = "根据用户ID获取用户详细信息，包含关注数、粉丝数、稿件统计等")
     public Result<UserVO> getUserById(

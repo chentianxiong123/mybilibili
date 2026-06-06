@@ -415,7 +415,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
             });
         }
         
-        return manuscripts.stream().map(this::convertToVOWithUploader).collect(Collectors.toList());
+        return convertToVOsWithUploaders(manuscripts);
     }
 
     @Override
@@ -425,7 +425,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         if (manuscripts.size() > 20) {
             manuscripts = manuscripts.subList(0, 20);
         }
-        return manuscripts.stream().map(this::convertToVOWithUploader).collect(Collectors.toList());
+        return convertToVOsWithUploaders(manuscripts);
     }
 
     @Override
@@ -438,7 +438,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         Integer total = manuscriptMapper.countByCategoryId(categoryId);
 
         Map<String, Object> result = new HashMap<>();
-        result.put("list", manuscripts.stream().map(this::convertToVOWithUploader).collect(Collectors.toList()));
+        result.put("list", convertToVOsWithUploaders(manuscripts));
         result.put("total", total);
         result.put("page", page);
         result.put("size", size);
@@ -450,7 +450,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     @Override
     public List<ManuscriptVO> getHotManuscripts(Integer userId) {
         List<Manuscript> manuscripts = manuscriptMapper.selectHot(0, 20);
-        return manuscripts.stream().map(this::convertToVOWithUploader).collect(Collectors.toList());
+        return convertToVOsWithUploaders(manuscripts);
     }
 
     private ManuscriptVO convertToVO(Manuscript manuscript) {
@@ -462,30 +462,71 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         return vo;
     }
 
-    private ManuscriptVO convertToVOWithUploader(Manuscript manuscript) {
-        ManuscriptVO vo = convertToVO(manuscript);
-        if (vo != null && vo.getUserId() != null) {
-            try {
-                Result<UserVO> userResult = userClient.getUserById(vo.getUserId());
-                if (userResult != null && userResult.getCode() == 200 && userResult.getData() != null) {
-                    UserVO user = userResult.getData();
-                    ManuscriptVO.UserInfo uploader = new ManuscriptVO.UserInfo();
-                    uploader.setId(user.getId());
-                    uploader.setName(user.getNickname() != null ? user.getNickname() : user.getUsername());
-                    uploader.setAvatar(user.getAvatar());
-                    uploader.setLevel(user.getLevel());
-                    uploader.setBio(user.getSignature());
-                    uploader.setSignature(user.getSignature());
-                    uploader.setFollowerCount(user.getFollowerCount());
-                    uploader.setFollowingCount(user.getFollowingCount());
-                    uploader.setLikedCount(user.getTotalLikeCount());
-                    uploader.setFollowing(user.getFollowingCount() != null && user.getFollowingCount() > 0);
-                    vo.setUploader(uploader);
+    private List<ManuscriptVO> convertToVOsWithUploaders(List<Manuscript> manuscripts) {
+        if (manuscripts == null || manuscripts.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<ManuscriptVO> vos = manuscripts.stream()
+                .map(this::convertToVO)
+                .collect(Collectors.toList());
+
+        LinkedHashSet<Integer> userIds = vos.stream()
+                .filter(Objects::nonNull)
+                .map(ManuscriptVO::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        Map<Integer, UserVO> usersById = fetchUsersByIds(userIds);
+        if (!usersById.isEmpty()) {
+            for (ManuscriptVO vo : vos) {
+                if (vo != null && vo.getUserId() != null) {
+                    attachUploader(vo, usersById.get(vo.getUserId()));
                 }
-            } catch (Exception e) {
             }
         }
-        return vo;
+
+        return vos;
+    }
+
+    private Map<Integer, UserVO> fetchUsersByIds(Set<Integer> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        try {
+            Result<List<UserVO>> result = userClient.getUsersByIds(new ArrayList<>(userIds));
+            if (result == null || result.getCode() == null || result.getCode() != 200 || result.getData() == null) {
+                return Collections.emptyMap();
+            }
+            Map<Integer, UserVO> usersById = new HashMap<>();
+            for (UserVO user : result.getData()) {
+                if (user != null && user.getId() != null) {
+                    usersById.put(user.getId(), user);
+                }
+            }
+            return usersById;
+        } catch (Exception e) {
+            log.warn("批量获取作者信息失败: {}", e.getMessage());
+            return Collections.emptyMap();
+        }
+    }
+
+    private void attachUploader(ManuscriptVO vo, UserVO user) {
+        if (vo == null || user == null) {
+            return;
+        }
+        ManuscriptVO.UserInfo uploader = new ManuscriptVO.UserInfo();
+        uploader.setId(user.getId());
+        uploader.setName(user.getNickname() != null ? user.getNickname() : user.getUsername());
+        uploader.setAvatar(user.getAvatar());
+        uploader.setLevel(user.getLevel());
+        uploader.setBio(user.getSignature());
+        uploader.setSignature(user.getSignature());
+        uploader.setFollowerCount(user.getFollowerCount());
+        uploader.setFollowingCount(user.getFollowingCount());
+        uploader.setLikedCount(user.getTotalLikeCount());
+        uploader.setFollowing(user.getFollowingCount() != null && user.getFollowingCount() > 0);
+        vo.setUploader(uploader);
     }
 
     @Override

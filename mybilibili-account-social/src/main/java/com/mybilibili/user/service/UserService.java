@@ -28,9 +28,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.HttpServletRequest;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import lombok.extern.slf4j.Slf4j;
@@ -237,6 +240,29 @@ public class UserService {
 
         UserVO userVO = getUserVO(user);
         return Result.success(userVO);
+    }
+
+    public Result<List<UserVO>> getUsersByIds(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Result.success(new ArrayList<>());
+        }
+
+        Set<Integer> distinctIds = new LinkedHashSet<>();
+        for (Integer id : ids) {
+            if (id != null) {
+                distinctIds.add(id);
+            }
+        }
+        if (distinctIds.isEmpty()) {
+            return Result.success(new ArrayList<>());
+        }
+
+        List<User> users = userMapper.selectBatchIds(distinctIds);
+        List<UserVO> result = new ArrayList<>();
+        for (User user : users) {
+            result.add(getUserVO(user));
+        }
+        return Result.success(result);
     }
 
     private String getClientIp(HttpServletRequest request) {
