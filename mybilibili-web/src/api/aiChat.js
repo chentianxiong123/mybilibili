@@ -3,6 +3,7 @@
  */
 
 const BASE_URL = window.location.origin
+const CUSTOMER_CONVERSATION_ID = 'customer-service'
 
 function parseSSEEvent(raw) {
   const lines = raw.split('\n')
@@ -28,46 +29,104 @@ function handleSSEEvent({ event, data }, callbacks) {
 
 function getAuthHeaders() {
   const token = localStorage.getItem('token')
+  const user = getCurrentUser()
   return {
-    'Authorization': token ? `Bearer ${token}` : ''
+    'Authorization': token ? `Bearer ${token}` : '',
+    'X-User-Id': user?.id ? String(user.id) : ''
+  }
+}
+
+function getCurrentUser() {
+  try {
+    return JSON.parse(localStorage.getItem('user') || '{}')
+  } catch (e) {
+    return {}
+  }
+}
+
+function normalizeMessage(message) {
+  const role = String(message.role || '').toLowerCase()
+  return {
+    id: message.id || `${role || 'message'}-${message.createdAt || Date.now()}`,
+    role: role === 'user' ? 'user' : role === 'system' ? 'assistant' : 'assistant',
+    content: message.content || '',
+    createdAt: message.createdAt || new Date().toISOString()
   }
 }
 
 export const aiChatApi = {
   getConversations() {
-    return fetch(`${BASE_URL}/api/ai/chat/conversations`, {
+    const user = getCurrentUser()
+    if (!user?.id) {
+      return Promise.resolve({ code: 401, message: '请先登录', data: [] })
+    }
+    return fetch(`${BASE_URL}/api/ai/customer/history/${user.id}`, {
       headers: getAuthHeaders()
-    }).then(r => r.json())
+    })
+      .then(r => r.json())
+      .then(res => {
+        const messages = res.data || []
+        return {
+          code: res.code,
+          message: res.message,
+          data: messages.length > 0 ? [{
+            id: CUSTOMER_CONVERSATION_ID,
+            title: 'AI客服对话',
+            updatedAt: messages[messages.length - 1]?.createdAt
+          }] : []
+        }
+      })
   },
 
   createConversation() {
-    return fetch(`${BASE_URL}/api/ai/chat/conversations`, {
-      method: 'POST',
-      headers: getAuthHeaders()
-    }).then(r => r.json())
+    const user = getCurrentUser()
+    if (!user?.id) {
+      return Promise.resolve({ code: 401, message: '请先登录', data: null })
+    }
+    return Promise.resolve({
+      code: 200,
+      data: {
+        id: CUSTOMER_CONVERSATION_ID,
+        title: 'AI客服对话',
+        createdAt: new Date().toISOString()
+      }
+    })
   },
 
   deleteConversation(id) {
-    return fetch(`${BASE_URL}/api/ai/chat/conversations/${id}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders()
-    }).then(r => r.json())
+    return Promise.resolve({ code: 200, data: null })
   },
 
   getMessages(conversationId) {
-    return fetch(`${BASE_URL}/api/ai/chat/conversations/${conversationId}/messages`, {
+    const user = getCurrentUser()
+    if (!user?.id) {
+      return Promise.resolve({ code: 401, message: '请先登录', data: [] })
+    }
+    return fetch(`${BASE_URL}/api/ai/customer/history/${user.id}`, {
       headers: getAuthHeaders()
-    }).then(r => r.json())
+    })
+      .then(r => r.json())
+      .then(res => ({
+        code: res.code,
+        message: res.message,
+        data: (res.data || []).map(normalizeMessage)
+      }))
   },
 
   sendMessage(conversationId, content, callbacks = {}) {
     const { onStart, onData, onDone, onError } = callbacks
     const controller = new AbortController()
+    const user = getCurrentUser()
 
-    fetch(`${BASE_URL}/api/ai/chat/send`, {
+    if (!user?.id) {
+      if (onError) onError('请先登录')
+      return { abort: () => controller.abort() }
+    }
+
+    fetch(`${BASE_URL}/api/ai/customer/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-      body: JSON.stringify({ conversationId, content }),
+      body: JSON.stringify({ userId: user.id, content }),
       signal: controller.signal
     })
     .then(response => {
