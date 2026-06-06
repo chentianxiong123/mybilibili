@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick, shallowRef } from 'vue'
-import Hls from 'hls.js'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { getBarrages } from '../../api/video'
 
 const props = defineProps({
@@ -22,6 +21,7 @@ let art: any = null
 let artReady = false
 let ArtplayerClass: any = null
 let DanmukuPluginClass: any = null
+let HlsClass: any = null
 
 const isPlaying = ref(false)
 const showCover = ref(true)
@@ -47,8 +47,9 @@ const initPlayer = async () => {
   if (!defaultUrl) return
 
   const qualityOptions = buildQualityOptions()
+  const isHlsVideo = defaultUrl.endsWith('.m3u8') || qualityOptions.some(option => option.url?.endsWith('.m3u8'))
 
-  // Dynamic import Artplayer to keep vendor chunk separate
+  // Dynamic import player libraries only when the video detail page needs them.
   if (!ArtplayerClass) {
     const [Art, Danmuku] = await Promise.all([
       import('artplayer'),
@@ -56,6 +57,10 @@ const initPlayer = async () => {
     ])
     ArtplayerClass = Art.default
     DanmukuPluginClass = Danmuku.default
+  }
+  if (isHlsVideo && !HlsClass) {
+    const Hls = await import('hls.js')
+    HlsClass = Hls.default
   }
 
   // Load barrages
@@ -101,8 +106,8 @@ const initPlayer = async () => {
       m3u8(video: HTMLVideoElement, url: string) {
         if (video.canPlayType('application/x-mpegURL')) {
           video.src = url
-        } else if (Hls.isSupported()) {
-          const hls = new Hls()
+        } else if (HlsClass?.isSupported()) {
+          const hls = new HlsClass()
           hls.loadSource(url)
           hls.attachMedia(video)
         }
