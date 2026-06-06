@@ -2,7 +2,6 @@ package com.mybilibili.ai.controller;
 
 import com.mybilibili.ai.mapper.VideoMapper;
 import com.mybilibili.ai.service.AiSummaryService;
-import com.mybilibili.ai.service.impl.AiTaskService;
 import com.mybilibili.common.entity.Video;
 import com.mybilibili.common.storage.StorageKeys;
 import com.mybilibili.common.storage.StorageService;
@@ -36,17 +35,7 @@ public class AiController {
     private StringRedisTemplate redisTemplate;
 
     @Autowired
-    private AiTaskService aiTaskService;
-
-    @Autowired
     private StorageService storageService;
-
-    @PostMapping("/subtitle/generate")
-    @Operation(summary = "提交字幕生成任务", description = "直接执行字幕生成任务")
-    public Result<String> generateSubtitle(@RequestParam Integer videoId) {
-        aiTaskService.processSubtitleTask(videoId);
-        return Result.success("字幕生成任务已完成");
-    }
 
     @GetMapping("/subtitle/{videoId}")
     @Operation(summary = "获取字幕内容", description = "从Redis获取生成的字幕内容")
@@ -56,13 +45,6 @@ public class AiController {
             return Result.error(404, "字幕尚未生成");
         }
         return Result.success(subtitle);
-    }
-
-    @PostMapping("/summary/generate")
-    @Operation(summary = "提交摘要生成任务", description = "直接执行摘要生成任务")
-    public Result<String> generateSummary(@RequestParam Integer videoId) {
-        aiTaskService.processSummaryTask(videoId);
-        return Result.success("摘要生成任务已完成");
     }
 
     @GetMapping("/summary/{videoId}")
