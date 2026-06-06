@@ -228,8 +228,8 @@ export const videoApi = {
   searchUserVideos: (userId, keyword, sort) => api.get(`/manuscript/user/${userId}/search?keyword=${encodeURIComponent(keyword)}${sort ? `&sort=${sort}` : ''}`),
   // 获取视频列表
   getVideoList: (page, size) => api.get(`/manuscript/list?page=${page}&size=${size}`),
-  // 上传视频
-  uploadVideo: (formData, onProgress) => api.post('/video/upload', formData, {
+  // 上传稿件
+  uploadVideo: (formData, onProgress) => api.post('/manuscript/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     },

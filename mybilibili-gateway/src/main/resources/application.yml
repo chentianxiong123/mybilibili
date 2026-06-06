@@ -196,14 +196,6 @@ spring:
             - StripPrefix=1
 
         # ========== 视频服务 ==========
-        # 稿件详情接口 - 转发到 ManuscriptController
-        - id: video-manuscript-detail
-          uri: lb://mybilibili-video-media
-          predicates:
-            - Path=/api/video/manuscript/**
-          filters:
-            - RewritePath=/api/video/manuscript/(?<segment>.*), /manuscript/$\{segment}
-
         # 视频处理SSE - 转发到 video-media 统一进度中心
         - id: video-process-sse
           uri: lb://mybilibili-video-media
@@ -219,14 +211,6 @@ spring:
             - Path=/api/video/process/admin/**
           filters:
             - StripPrefix=1
-
-        # 用户视频列表接口 - 转发到 ManuscriptController
-        - id: video-user-manuscripts
-          uri: lb://mybilibili-video-media
-          predicates:
-            - Path=/api/video/user/**
-          filters:
-            - RewritePath=/api/video/user/(?<segment>.*), /manuscript/user/$\{segment}
 
         # 收藏夹列表接口 - 转发到 interaction 服务
         - id: video-favorite-folders
@@ -347,22 +331,6 @@ spring:
           filters:
             - StripPrefix=1
             - SetPath=/manuscript/favorite/folders/{folderId}/videos
-
-        # 当前用户稿件列表接口
-        - id: video-me-list
-          uri: lb://mybilibili-video-media
-          predicates:
-            - Path=/api/video/me/list
-          filters:
-            - RewritePath=/api/video/me/list, /manuscript/me/list
-
-        # 当前用户稿件统计接口
-        - id: video-me-stats
-          uri: lb://mybilibili-video-media
-          predicates:
-            - Path=/api/video/me/stats
-          filters:
-            - RewritePath=/api/video/me/stats, /manuscript/me/stats
 
         # ========== 创作者数据统计 ==========
         - id: creator-stats

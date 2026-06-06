@@ -18,7 +18,9 @@ class GatewayRequestPolicyTest {
         assertTrue(policy.isPublicPath("/api/live/room/list"));
         assertTrue(policy.isPublicPath("/api/live/room/100"));
         assertTrue(policy.isPublicPath("/api/search/hot"));
+        assertTrue(policy.isPublicPath("/api/manuscript/100"));
 
+        assertFalse(policy.isPublicPath("/api/video/manuscript/100"));
         assertFalse(policy.isPublicPath("/api/meeting/my-rooms"));
         assertFalse(policy.isPublicPath("/api/live/linkmic/apply/1"));
         assertFalse(policy.isPublicPath("/api/admin/live/rooms"));
