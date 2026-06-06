@@ -60,7 +60,7 @@ export const aiSummaryApi = {
     
     // 构建URL
     const baseURL = window.location.origin
-    const url = `${baseURL}/api/ai-summary/stream/${videoId}`
+    const url = `${baseURL}/api/ai/summary/stream/${videoId}`
     
     // 获取token
     const token = localStorage.getItem('token')
@@ -145,7 +145,7 @@ export const aiSummaryApi = {
    * @returns {Promise}
    */
   getSummary(videoId) {
-    return api.get(`/ai-summary/${videoId}`)
+    return api.get(`/ai/summary/${videoId}`)
   },
 
   /**
@@ -154,7 +154,7 @@ export const aiSummaryApi = {
    * @returns {Promise}
    */
   checkSummary(videoId) {
-    return api.get(`/ai-summary/check/${videoId}`)
+    return api.get(`/ai/summary/check/${videoId}`)
   }
 }
 
