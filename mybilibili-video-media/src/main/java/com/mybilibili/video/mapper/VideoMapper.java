@@ -14,6 +14,13 @@ public interface VideoMapper extends BaseMapper<Video> {
     @Select("SELECT * FROM videos WHERE manuscript_id = #{manuscriptId} ORDER BY video_order ASC")
     List<Video> selectByManuscriptId(Integer manuscriptId);
 
+    @Select("<script>" +
+            "SELECT * FROM videos WHERE manuscript_id IN " +
+            "<foreach collection='manuscriptIds' item='manuscriptId' open='(' separator=',' close=')'>#{manuscriptId}</foreach> " +
+            "ORDER BY manuscript_id ASC, video_order ASC" +
+            "</script>")
+    List<Video> selectByManuscriptIds(@Param("manuscriptIds") List<Integer> manuscriptIds);
+
     @Select("SELECT * FROM videos ORDER BY id DESC")
     List<Video> selectAll();
 
