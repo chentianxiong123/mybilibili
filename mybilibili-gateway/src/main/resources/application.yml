@@ -124,14 +124,6 @@ spring:
           filters:
             - StripPrefix=1
 
-        # 稿件管理接口 - 转发到 video 服务（不带 api 前缀）
-        - id: manuscript-admin-no-api
-          uri: lb://mybilibili-video-media
-          predicates:
-            - Path=/manuscript/admin/**
-          filters:
-            - StripPrefix=1
-
         # 视频管理接口 - 转发到 video 服务
         - id: video-admin
           uri: lb://mybilibili-video-media
@@ -212,21 +204,6 @@ spring:
           filters:
             - StripPrefix=1
 
-        # 收藏夹列表接口 - 转发到 interaction 服务
-        - id: video-favorite-folders
-          uri: lb://mybilibili-content-interaction
-          predicates:
-            - Path=/api/video/favorite/folders
-          filters:
-            - SetPath=/manuscript/favorite/folders
-
-        - id: video-favorite-folders-with-id
-          uri: lb://mybilibili-content-interaction
-          predicates:
-            - Path=/api/video/favorite/folders/{segment}
-          filters:
-            - SetPath=/manuscript/favorite/folders/{segment}
-
         # ========== 稿件互动相关接口（需要放在 manuscript-service 之前）==========
 
         - id: manuscript-interaction-like
@@ -285,6 +262,13 @@ spring:
             - Path=/api/manuscript/favorite/folders
           filters:
             - SetPath=/manuscript/favorite/folders
+
+        - id: manuscript-favorite-folder-by-id
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/manuscript/favorite/folders/{folderId}
+          filters:
+            - SetPath=/manuscript/favorite/folders/{folderId}
 
         - id: manuscript-favorite-folders-with-id
           uri: lb://mybilibili-content-interaction
@@ -364,15 +348,6 @@ spring:
             - StripPrefix=1
 
         # ========== 评论服务 ==========
-        # 稿件评论接口 - 转发到 Comment 服务
-        - id: comment-manuscript
-          uri: lb://mybilibili-content-interaction
-          predicates:
-            - Path=/api/comment/manuscript/{id}
-          filters:
-            - SetPath=/comment/list
-            - AddRequestParameter=manuscriptId, {id}
-
         - id: comment-service
           uri: lb://mybilibili-content-interaction
           predicates:
@@ -469,13 +444,6 @@ spring:
           uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/favorite/**
-          filters:
-            - StripPrefix=1
-
-        - id: interaction-collection
-          uri: lb://mybilibili-content-interaction
-          predicates:
-            - Path=/api/collection/**
           filters:
             - StripPrefix=1
 
