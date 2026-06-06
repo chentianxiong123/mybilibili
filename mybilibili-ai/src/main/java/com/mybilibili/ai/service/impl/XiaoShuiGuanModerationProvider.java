@@ -3,9 +3,8 @@ package com.mybilibili.ai.service.impl;
 import com.mybilibili.ai.service.ModerationProvider;
 import com.mybilibili.ai.service.ModerationProvider.ModerateRequest;
 import com.mybilibili.ai.service.ModerationProvider.ModerationResult;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
-import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
@@ -19,6 +18,7 @@ import java.util.Map;
  * - qwen3guard：弹幕预过滤，拦截 spam/广告/低质量内容
  * - llama-guard：举报内容深度审核，识别辱骂/政治/色情等深层违规
  */
+@Slf4j
 public class XiaoShuiGuanModerationProvider implements ModerationProvider {
 
     private final String baseUrl;
@@ -26,11 +26,11 @@ public class XiaoShuiGuanModerationProvider implements ModerationProvider {
     private final String defaultModel;
     private final RestTemplate restTemplate;
 
-    public XiaoShuiGuanModerationProvider(String baseUrl, String apiKey, String defaultModel) {
+    public XiaoShuiGuanModerationProvider(String baseUrl, String apiKey, String defaultModel, RestTemplate restTemplate) {
         this.baseUrl = baseUrl;
         this.apiKey = apiKey;
         this.defaultModel = defaultModel != null ? defaultModel : "qwen3guard";
-        this.restTemplate = new RestTemplate();
+        this.restTemplate = restTemplate;
     }
 
     @Override
@@ -94,7 +94,7 @@ public class XiaoShuiGuanModerationProvider implements ModerationProvider {
 
             return new ModerationResult(false, "审核服务异常");
         } catch (Exception e) {
-            System.err.println("[小水管] 审核异常: " + e.getMessage());
+            log.warn("[小水管] 审核异常: {}", e.getMessage());
             return new ModerationResult(false, "审核异常: " + e.getMessage());
         }
     }
@@ -163,7 +163,7 @@ public class XiaoShuiGuanModerationProvider implements ModerationProvider {
 
             return new ModerationResult(true, null);
         } catch (Exception e) {
-            System.err.println("[小水管] 解析响应异常: " + e.getMessage());
+            log.warn("[小水管] 解析响应异常: {}", e.getMessage());
             return new ModerationResult(false, "解析响应异常");
         }
     }

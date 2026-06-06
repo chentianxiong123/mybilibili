@@ -80,7 +80,7 @@ public class DynamicSttClient {
     public String transcribeWithApi(String audioPath, String language) {
         SttProvider provider = getProvider();
         if (provider == null) {
-            System.err.println("[DynamicSttClient] 无可用的 STT 提供者");
+            log.warn("[DynamicSttClient] 无可用的 STT 提供者");
             return null;
         }
         Object result = provider.invoke(SttProvider.TranscribeRequest.of(audioPath, language));

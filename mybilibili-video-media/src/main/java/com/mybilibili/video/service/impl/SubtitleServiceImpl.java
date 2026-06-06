@@ -30,17 +30,8 @@ public class SubtitleServiceImpl implements SubtitleService {
 
     @Override
     public Subtitle getSubtitleByVideoIdAndLanguage(Integer videoId, String language) {
-        System.out.println("[SubtitleService] getSubtitleByVideoIdAndLanguage, videoId=" + videoId + ", language=" + language);
         Optional<Subtitle> subtitleOpt = subtitleRepository.findFirstByVideoIdAndLanguage(videoId, language);
-        System.out.println("[SubtitleService] found subtitle: " + subtitleOpt.isPresent());
-        if (subtitleOpt.isPresent()) {
-            Subtitle result = subtitleOpt.get();
-            if (result != null && result.getContent() != null) {
-                System.out.println("[SubtitleService] content size: " + result.getContent().size());
-            }
-            return result;
-        }
-        return null;
+        return subtitleOpt.orElse(null);
     }
 
     @Override

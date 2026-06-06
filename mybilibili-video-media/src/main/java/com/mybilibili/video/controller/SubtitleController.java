@@ -33,13 +33,9 @@ public class SubtitleController {
     public Result<Subtitle> getSubtitle(@PathVariable Integer videoId,
                                         @PathVariable String language) {
         try {
-            System.out.println("[字幕] getSubtitle, videoId=" + videoId + " (type=" + videoId.getClass().getName() + "), language=" + language);
             Subtitle subtitle = subtitleService.getSubtitleByVideoIdAndLanguage(videoId, language);
-            System.out.println("[字幕] getSubtitle result: " + (subtitle != null ? "found, content size=" + (subtitle.getContent() != null ? subtitle.getContent().size() : "null") : "null"));
             return Result.success(subtitle);
         } catch (Exception e) {
-            System.err.println("[字幕] getSubtitle 异常: " + e.getClass().getName() + ": " + e.getMessage());
-            e.printStackTrace();
             return Result.error("获取字幕失败: " + e.getMessage());
         }
     }

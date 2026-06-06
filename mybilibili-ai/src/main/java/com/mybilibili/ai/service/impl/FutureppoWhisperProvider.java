@@ -5,6 +5,7 @@ import com.mybilibili.ai.service.AiApiConfigService;
 import com.mybilibili.ai.service.SttProvider;
 import com.mybilibili.ai.service.SttProvider.TranscribeRequest;
 import com.mybilibili.ai.util.AiUsageLogger;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.core.io.FileSystemResource;
@@ -23,10 +24,15 @@ import java.util.*;
  * 使用 /v1/audio/transcriptions 接口，model=whisper-large-v3。
  * 返回 verbose_json 格式带 segments（start/end/text），转为 SRT。
  */
+@Slf4j
 @Component
 public class FutureppoWhisperProvider implements SttProvider {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
+
+    public FutureppoWhisperProvider(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     @Autowired(required = false)
     private AiApiConfigService aiApiConfigService;
@@ -65,7 +71,7 @@ public class FutureppoWhisperProvider implements SttProvider {
 
             File audioFile = new File(audioPath);
             if (!audioFile.exists()) {
-                System.err.println("[FutureppoWhisper] 音频文件不存在: " + audioPath);
+                log.warn("[FutureppoWhisper] 音频文件不存在: {}", audioPath);
                 return null;
             }
 
@@ -77,7 +83,7 @@ public class FutureppoWhisperProvider implements SttProvider {
                 apiKey = activeConfig.getApiKey() != null ? activeConfig.getApiKey() : "";
                 model = activeConfig.getModel() != null ? activeConfig.getModel() : "whisper-large-v3";
             } else {
-                System.err.println("[FutureppoWhisper] 未找到 TRANSCRIBE 渠道配置");
+                log.warn("[FutureppoWhisper] 未找到 TRANSCRIBE 渠道配置");
                 return null;
             }
 
@@ -127,7 +133,7 @@ public class FutureppoWhisperProvider implements SttProvider {
             }
             return null;
         } catch (Exception e) {
-            System.err.println("[FutureppoWhisper] 转写异常: " + e.getMessage());
+            log.warn("[FutureppoWhisper] 转写异常: {}", e.getMessage());
             if (aiUsageLogger != null) {
                 aiUsageLogger.log("TRANSCRIBE", "whisper-large-v3", null, null, System.currentTimeMillis() - start, false, e.getMessage());
             }

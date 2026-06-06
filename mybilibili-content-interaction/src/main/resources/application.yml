@@ -61,8 +61,8 @@ feign:
 
 logging:
   level:
-    com.mybilibili: debug
-    org.springframework.cloud.openfeign: debug
+    com.mybilibili: info
+    org.springframework.cloud.openfeign: warn
 
 management:
   endpoints:

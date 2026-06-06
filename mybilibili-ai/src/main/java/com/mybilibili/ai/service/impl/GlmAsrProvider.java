@@ -5,6 +5,7 @@ import com.mybilibili.ai.service.AiApiConfigService;
 import com.mybilibili.ai.service.SttProvider;
 import com.mybilibili.ai.service.SttProvider.TranscribeRequest;
 import com.mybilibili.ai.util.AiUsageLogger;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.http.*;
@@ -17,10 +18,15 @@ import java.util.Date;
  * 智谱 ASR (glm-asr) 语音转文字提供者。
  * 使用小水管 API 平台的 /v1/audio/transcriptions 接口。
  */
+@Slf4j
 @Component
 public class GlmAsrProvider implements SttProvider {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
+
+    public GlmAsrProvider(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     @Autowired(required = false)
     private AiApiConfigService aiApiConfigService;
@@ -62,7 +68,7 @@ public class GlmAsrProvider implements SttProvider {
 
             File audioFile = new File(audioPath);
             if (!audioFile.exists()) {
-                System.err.println("[GlmAsr] 音频文件不存在: " + audioPath);
+                log.warn("[GlmAsr] 音频文件不存在: {}", audioPath);
                 return null;
             }
 
@@ -74,7 +80,7 @@ public class GlmAsrProvider implements SttProvider {
                 apiKey = activeConfig.getApiKey() != null ? activeConfig.getApiKey() : "";
                 model = activeConfig.getModel() != null ? activeConfig.getModel() : "glm-asr";
             } else {
-                System.err.println("[GlmAsr] 未找到 TRANSCRIBE 渠道配置");
+                log.warn("[GlmAsr] 未找到 TRANSCRIBE 渠道配置");
                 return null;
             }
 
@@ -112,7 +118,7 @@ public class GlmAsrProvider implements SttProvider {
             }
             return null;
         } catch (Exception e) {
-            System.err.println("[GlmAsr] 转写异常: " + e.getMessage());
+            log.warn("[GlmAsr] 转写异常: {}", e.getMessage());
             if (aiUsageLogger != null) {
                 aiUsageLogger.log("TRANSCRIBE", "glm-asr", null, null, System.currentTimeMillis() - start, false, e.getMessage());
             }

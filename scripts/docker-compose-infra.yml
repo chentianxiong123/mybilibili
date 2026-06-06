@@ -178,31 +178,6 @@ services:
       timeout: 5s
       retries: 30
 
-  sentinel-dashboard:
-    image: bladex/sentinel-dashboard:1.8.6
-    container_name: mybilibili-sentinel
-    restart: unless-stopped
-    mem_limit: 256m
-    cpus: 0.25
-    entrypoint:
-      - sh
-      - -c
-    command:
-      - |
-        mkdir -p /tmp/sentinel-logs
-        exec java -Xms64m -Xmx160m -XX:+UseSerialGC -XX:ActiveProcessorCount=1 \
-          -Djava.security.egd=file:/dev/./urandom \
-          -Dserver.port=8858 \
-          -Dcsp.sentinel.api.port=8719 \
-          -Dcsp.sentinel.dashboard.server=localhost:8858 \
-          -Dcsp.sentinel.log.dir=/tmp/sentinel-logs \
-          -Dproject.name=sentinel-dashboard \
-          -jar app.jar
-    environment:
-      JAVA_OPTS: "-Xms64m -Xmx128m -XX:+UseSerialGC"
-    ports:
-      - "127.0.0.1:8858:8858"
-
   srs:
     image: registry.cn-hangzhou.aliyuncs.com/ossrs/srs:5
     container_name: mybilibili-srs

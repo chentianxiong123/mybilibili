@@ -9,6 +9,7 @@ import com.mybilibili.ai.service.impl.XiaoShuiGuanModerationProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
 
 import jakarta.annotation.PostConstruct;
 import java.util.List;
@@ -27,6 +28,9 @@ public class DynamicModerationClient {
 
     @Autowired
     private AiBindingMapper aiBindingMapper;
+
+    @Autowired
+    private RestTemplate restTemplate;
 
     private ModerationProvider cachedProvider;
 
@@ -66,7 +70,8 @@ public class DynamicModerationClient {
                     new XiaoShuiGuanModerationProvider(
                             config.getBaseUrl(),
                             config.getApiKey(),
-                            config.getModel()
+                            config.getModel(),
+                            restTemplate
                     );
             cachedProvider = provider;
             log.info("内容审核提供者已加载: {} (model={})", config.getName(), config.getModel());

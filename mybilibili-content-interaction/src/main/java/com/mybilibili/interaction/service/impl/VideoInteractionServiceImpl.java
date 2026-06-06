@@ -227,7 +227,6 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
 
     @Override
     public void shareVideo(Integer userId, Integer manuscriptId, String channel, String ipAddress) {
-        System.out.println("[SHARE-SVC] shareVideo entry, userId=" + userId + ", manuscriptId=" + manuscriptId);
         if (manuscriptId == null) {
             throw new BusinessException("稿件不存在");
         }
@@ -238,7 +237,6 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
         share.setChannel(channel != null ? channel : "unknown");
         share.setIpAddress(ipAddress);
         shareMapper.insert(share);
-        System.out.println("[SHARE-SVC] inserted into shares table");
 
         boolean alreadyShared = false;
         if (userId != null) {
@@ -250,7 +248,6 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
             UserInteraction existing = userInteractionMapper.selectOne(wrapper);
             if (existing != null) {
                 alreadyShared = true;
-                System.out.println("[SHARE-SVC] user already shared this manuscript");
             } else {
                 UserInteraction interaction = new UserInteraction();
                 interaction.setUserId(userId);
@@ -258,13 +255,11 @@ public class VideoInteractionServiceImpl implements VideoInteractionService {
                 interaction.setTargetId(manuscriptId);
                 interaction.setInteractionType(InteractionType.SHARE.getCode());
                 userInteractionMapper.insert(interaction);
-                System.out.println("[SHARE-SVC] inserted SHARE into user_interactions");
             }
         }
 
         if (!alreadyShared) {
-            int rows = manuscriptMapper.updateShareCount(manuscriptId, 1);
-            System.out.println("[SHARE-SVC] updateShareCount rows affected=" + rows);
+            manuscriptMapper.updateShareCount(manuscriptId, 1);
             publishMetric(manuscriptId, ManuscriptAnalyticsEvent.METRIC_SHARE, 1);
         }
     }
