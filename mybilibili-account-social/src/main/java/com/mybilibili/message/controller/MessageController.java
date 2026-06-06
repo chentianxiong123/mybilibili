@@ -197,47 +197,6 @@ public class MessageController {
         return Result.success("更新成功", null);
     }
 
-    @PostMapping("/notify/like")
-    public Result<?> sendLikeNotification(
-            @RequestParam Integer senderId,
-            @RequestParam Integer receiverId,
-            @RequestParam Integer videoId,
-            @RequestParam String videoTitle) {
-        messageService.sendLikeNotification(senderId, receiverId, videoId, videoTitle);
-        return Result.success("发送成功", null);
-    }
-
-    @PostMapping("/notify/system")
-    public Result<?> sendSystemNotification(
-            @RequestParam Integer userId,
-            @RequestParam String title,
-            @RequestParam String content) {
-        messageService.sendSystemNotification(userId, title, content);
-        return Result.success("发送成功", null);
-    }
-
-    @PostMapping("/internal/reply-notify")
-    public Result<?> sendReplyNotification(
-            @RequestParam Integer senderId,
-            @RequestParam Integer receiverId,
-            @RequestParam String content,
-            @RequestParam Integer messageType,
-            @RequestParam(required = false) Integer targetId,
-            @RequestParam(required = false) Integer commentId) {
-        messageService.sendReplyNotification(senderId, receiverId, content, messageType, targetId, commentId);
-        return Result.success("发送成功", null);
-    }
-
-    @PostMapping("/internal/comment-like-notify")
-    public Result<?> sendCommentLikeNotification(
-            @RequestParam Integer senderId,
-            @RequestParam Integer receiverId,
-            @RequestParam Integer commentId,
-            @RequestParam String commentContent) {
-        messageService.sendCommentLikeNotification(senderId, receiverId, commentId, commentContent);
-        return Result.success("发送成功", null);
-    }
-
     @PostMapping("/admin/system/broadcast")
     public Result<?> broadcastSystemNotification(@RequestBody Map<String, String> body) {
         String content = body.get("content");
