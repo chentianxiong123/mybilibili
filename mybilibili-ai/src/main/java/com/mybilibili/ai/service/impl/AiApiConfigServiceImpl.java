@@ -101,13 +101,4 @@ public class AiApiConfigServiceImpl implements AiApiConfigService {
                 .collect(Collectors.toMap(AiBinding::getFeature, AiBinding::getApiConfigId));
     }
 
-    @Override
-    public Map<String, Object> getWhisperConfig() {
-        AiBinding binding = aiBindingMapper.selectByFeature("WHISPER");
-        if (binding == null) return null;
-        return Map.of(
-            "apiConfigId", binding.getApiConfigId(),
-            "feature", "WHISPER"
-        );
-    }
 }
