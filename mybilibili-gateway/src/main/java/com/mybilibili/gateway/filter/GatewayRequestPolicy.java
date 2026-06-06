@@ -17,12 +17,11 @@ public final class GatewayRequestPolicy {
             "/api/video/hot",
             "/api/video/list",
             "/api/video/category",
-            "/api/video/manuscript/",
-            "/api/video/user/",
             "/api/manuscript/recommended",
             "/api/manuscript/hot",
             "/api/manuscript/list",
             "/api/manuscript/category",
+            "/api/manuscript/user/",
             "/api/search/",
             "/api/search/hot",
             "/api/category",
@@ -144,6 +143,8 @@ public final class GatewayRequestPolicy {
 
     private static final Pattern PUBLIC_USER_PROFILE =
             Pattern.compile("^/api/user/\\d+$|^/api/user/\\d+/pinned-video$");
+    private static final Pattern PUBLIC_MANUSCRIPT_DETAIL =
+            Pattern.compile("^/api/manuscript/\\d+$");
     private static final Pattern PUBLIC_LIVE_READ =
             Pattern.compile("^/api/live/room/\\d+$");
 
@@ -161,7 +162,9 @@ public final class GatewayRequestPolicy {
         if (!HttpMethod.GET.equals(method)) {
             return false;
         }
-        if (PUBLIC_USER_PROFILE.matcher(path).matches() || PUBLIC_LIVE_READ.matcher(path).matches()) {
+        if (PUBLIC_USER_PROFILE.matcher(path).matches()
+                || PUBLIC_MANUSCRIPT_DETAIL.matcher(path).matches()
+                || PUBLIC_LIVE_READ.matcher(path).matches()) {
             return true;
         }
         return PUBLIC_GET_PATH_PREFIXES.stream().anyMatch(prefix -> matchesPrefix(path, prefix));

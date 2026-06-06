@@ -79,13 +79,13 @@ export const creatorApi = {
 }
 
 export const manuscriptApi = {
-  getMyManuscripts: (params) => api.get(`/video/me/list`, { params }),
+  getMyManuscripts: (params) => api.get(`/manuscript/me/list`, { params }),
   
-  getMyStats: () => api.get(`/video/me/stats`),
+  getMyStats: () => api.get(`/manuscript/me/stats`),
   
-  getUserManuscripts: (userId, params) => api.get(`/video/user/${userId}`, { params }),
+  getUserManuscripts: (userId, params) => api.get(`/manuscript/user/${userId}`, { params }),
   
-  getManuscriptById: (id) => api.get(`/video/manuscript/${id}`),
+  getManuscriptById: (id) => api.get(`/manuscript/${id}`),
 
   getMyManuscriptById: (id) => api.get(`/manuscript/me/${id}`),
   
@@ -116,11 +116,11 @@ export const manuscriptApi = {
     })
   },
   
-  deleteManuscript: (id) => api.delete(`/video/manuscript/${id}`),
+  deleteManuscript: (id) => api.delete(`/manuscript/${id}`),
   
-  unpublishManuscript: (id) => api.post(`/video/manuscript/${id}/unpublish`),
+  unpublishManuscript: (id) => api.post(`/manuscript/${id}/unpublish`),
   
-  publishManuscript: (id) => api.post(`/video/manuscript/${id}/publish`)
+  publishManuscript: (id) => api.post(`/manuscript/${id}/publish`)
 }
 
 export const collectionApi = {
