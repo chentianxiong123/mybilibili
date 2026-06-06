@@ -153,7 +153,7 @@ const handleTabClick = (tab: typeof tabs[0]) => {
 
   &:active {
     transform: scale(0.9);
-    background-color: darken($theme-pink, 5%);
+    background-color: $theme-pink-hover;
   }
 
   svg {
