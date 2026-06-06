@@ -49,6 +49,26 @@ public class VideoMQProducer {
         );
     }
 
+    public void sendManuscriptCommentCountEvent(ManuscriptCommentCountEvent event) {
+        rocketMQTemplate.asyncSend(
+            MQConstants.TOPIC_MANUSCRIPT_COMMENT_COUNT,
+            event,
+            new org.apache.rocketmq.client.producer.SendCallback() {
+                @Override
+                public void onSuccess(org.apache.rocketmq.client.producer.SendResult sendResult) {
+                    // Comment count events are background counters.
+                }
+
+                @Override
+                public void onException(Throwable e) {
+                    System.err.println("稿件评论数事件发送失败: manuscriptId="
+                        + (event == null ? null : event.getManuscriptId())
+                        + ", error=" + e.getMessage());
+                }
+            }
+        );
+    }
+
     public void sendVideoProcessAnalyticsEvent(VideoProcessAnalyticsEvent event) {
         rocketMQTemplate.syncSend(
             MQConstants.TOPIC_VIDEO_PROCESS_ANALYTICS,

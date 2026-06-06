@@ -18,13 +18,9 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
         "com.mybilibili.mq"
 })
 @EnableFeignClients(clients = {
-        com.mybilibili.comment.feign.ContentReviewClient.class,
         com.mybilibili.comment.feign.ManuscriptClient.class,
-        com.mybilibili.comment.feign.MessageClient.class,
         com.mybilibili.comment.feign.UserClient.class,
-        com.mybilibili.danmaku.feign.VideoClient.class,
-        com.mybilibili.interaction.feign.MessageClient.class,
-        com.mybilibili.interaction.feign.VideoClient.class
+        com.mybilibili.danmaku.feign.VideoClient.class
 })
 @MapperScan({
         "com.mybilibili.comment.mapper",

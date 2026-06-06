@@ -69,55 +69,7 @@
     </dependencies>
 
     <build>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-            </resource>
-            <resource>
-                <directory>../legacy-services/mybilibili-search/src/main/resources</directory>
-                <excludes>
-                    <exclude>application*.yml</exclude>
-                    <exclude>application*.yaml</exclude>
-                </excludes>
-            </resource>
-            <resource>
-                <directory>../legacy-services/mybilibili-analytics/src/main/resources</directory>
-                <excludes>
-                    <exclude>application*.yml</exclude>
-                    <exclude>application*.yaml</exclude>
-                </excludes>
-            </resource>
-        </resources>
         <plugins>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.5.0</version>
-                <executions>
-                    <execution>
-                        <id>add-legacy-sources</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>add-source</goal>
-                        </goals>
-                        <configuration>
-                            <sources>
-                                <source>../legacy-services/mybilibili-search/src/main/java</source>
-                                <source>../legacy-services/mybilibili-analytics/src/main/java</source>
-                            </sources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>com/mybilibili/search/SearchApplication.java</exclude>
-                        <exclude>com/mybilibili/analytics/AnalyticsApplication.java</exclude>
-                    </excludes>
-                </configuration>
-            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

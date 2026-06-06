@@ -19,6 +19,14 @@
             <artifactId>mybilibili-common</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.mybilibili</groupId>
+            <artifactId>mybilibili-mq</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
@@ -61,55 +69,7 @@
     </dependencies>
 
     <build>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-            </resource>
-            <resource>
-                <directory>../legacy-services/mybilibili-user/src/main/resources</directory>
-                <excludes>
-                    <exclude>application*.yml</exclude>
-                    <exclude>application*.yaml</exclude>
-                </excludes>
-            </resource>
-            <resource>
-                <directory>../legacy-services/mybilibili-message/src/main/resources</directory>
-                <excludes>
-                    <exclude>application*.yml</exclude>
-                    <exclude>application*.yaml</exclude>
-                </excludes>
-            </resource>
-        </resources>
         <plugins>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.5.0</version>
-                <executions>
-                    <execution>
-                        <id>add-legacy-sources</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>add-source</goal>
-                        </goals>
-                        <configuration>
-                            <sources>
-                                <source>../legacy-services/mybilibili-user/src/main/java</source>
-                                <source>../legacy-services/mybilibili-message/src/main/java</source>
-                            </sources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>com/mybilibili/user/UserApplication.java</exclude>
-                        <exclude>com/mybilibili/message/MessageApplication.java</exclude>
-                    </excludes>
-                </configuration>
-            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
