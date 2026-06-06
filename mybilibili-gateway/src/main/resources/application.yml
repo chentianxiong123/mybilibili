@@ -202,7 +202,7 @@ spring:
           predicates:
             - Path=/api/video/process/sse/**
           filters:
-            - StripPrefix=0
+            - StripPrefix=1
 
         # 视频处理后台看板 - 转发到 video-media 统一进度中心
         - id: video-process-admin
