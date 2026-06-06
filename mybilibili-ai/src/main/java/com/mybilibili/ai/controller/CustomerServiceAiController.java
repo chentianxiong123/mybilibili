@@ -21,6 +21,8 @@ import java.util.Map;
 @Tag(name = "AI客服")
 public class CustomerServiceAiController {
 
+    private static final String TYPE_CUSTOMER_SERVICE = "CUSTOMER_SERVICE";
+
     @Autowired
     private CustomerServiceAiService customerServiceAiService;
 
@@ -77,17 +79,7 @@ public class CustomerServiceAiController {
             @RequestHeader(value = "X-User-Id", required = false) Long headerUserId) {
         Long effectiveUserId = headerUserId != null ? headerUserId : userId;
 
-        // 查该用户最新的客服会话
-        var sessions = aiSessionMapper.selectByTypeAndStatus("CUSTOMER_SERVICE", 0);
-        AiSession latestSession = null;
-        if (sessions != null) {
-            for (AiSession s : sessions) {
-                if (s.getUserId().equals(effectiveUserId)) {
-                    latestSession = s;
-                    break;
-                }
-            }
-        }
+        AiSession latestSession = aiSessionMapper.selectLatestByUserIdAndType(effectiveUserId, TYPE_CUSTOMER_SERVICE);
         if (latestSession == null) {
             return Result.success(Collections.emptyList());
         }

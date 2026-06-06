@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Plus, Delete } from '@element-plus/icons-vue'
+import { ChatDotRound, Plus } from '@element-plus/icons-vue'
 import { aiChatApi } from '../../../api/aiChat.js'
 
 const conversations = ref([])
@@ -9,6 +9,7 @@ const activeConversationId = ref(null)
 const messages = ref([])
 const loading = ref(false)
 const isStreaming = ref(false)
+const isTransferring = ref(false)
 const streamingContent = ref('')
 const messageText = ref('')
 const messageListRef = ref(null)
@@ -64,10 +65,12 @@ const loadConversations = async () => {
     const res = await aiChatApi.getConversations()
     if (res.code === 200) {
       conversations.value = res.data || []
+      return conversations.value
     }
   } catch (e) {
     console.error('加载会话失败:', e)
   }
+  return []
 }
 
 // 加载历史消息
@@ -97,6 +100,28 @@ const switchConversation = (id) => {
   }
 }
 
+const ensureConversation = async () => {
+  if (activeConversationId.value) {
+    return activeConversationId.value
+  }
+
+  const existing = conversations.value[0]
+  if (existing) {
+    activeConversationId.value = existing.id
+    return existing.id
+  }
+
+  const res = await aiChatApi.createConversation()
+  if (res.code === 200 && res.data) {
+    conversations.value = [res.data]
+    activeConversationId.value = res.data.id
+    return res.data.id
+  }
+
+  ElMessage.warning(res.message || '请先登录')
+  return null
+}
+
 // 新建会话
 const handleNewChat = async () => {
   if (isStreaming.value) {
@@ -104,10 +129,15 @@ const handleNewChat = async () => {
     return
   }
   try {
+    if (conversations.value.length > 0) {
+      switchConversation(conversations.value[0].id)
+      return
+    }
+
     const res = await aiChatApi.createConversation()
     if (res.code === 200) {
       const conv = res.data
-      conversations.value.unshift(conv)
+      conversations.value = [conv]
       activeConversationId.value = conv.id
       messages.value = []
       streamingContent.value = ''
@@ -117,28 +147,11 @@ const handleNewChat = async () => {
   }
 }
 
-// 删除会话
-const handleDeleteConversation = async (id, event) => {
-  event.stopPropagation()
-  try {
-    const res = await aiChatApi.deleteConversation(id)
-    if (res.code === 200) {
-      conversations.value = conversations.value.filter(c => c.id !== id)
-      if (activeConversationId.value === id) {
-        activeConversationId.value = null
-        messages.value = []
-      }
-    }
-  } catch (e) {
-    ElMessage.error('删除失败')
-  }
-}
-
 // 发送消息
-const handleSend = () => {
+const handleSend = async () => {
   if (!canSend.value) return
-  if (!activeConversationId.value) {
-    ElMessage.warning('请先创建或选择一个会话')
+  const conversationId = await ensureConversation()
+  if (!conversationId) {
     return
   }
 
@@ -156,7 +169,7 @@ const handleSend = () => {
   })
 
   // SSE 流式调用
-  aiChatApi.sendMessage(activeConversationId.value, content, {
+  aiChatApi.sendMessage(conversationId, content, {
     onStart: (data) => {
       streamingContent.value = ''
     },
@@ -185,12 +198,55 @@ const handleSend = () => {
       loadConversations()
       scrollToBottom()
     },
+    onTransfer: () => {
+      messages.value.push({
+        id: 'system-' + Date.now(),
+        role: 'system',
+        content: '已转人工服务，请稍候',
+        createdAt: new Date().toISOString()
+      })
+      scrollToBottom()
+    },
     onError: (err) => {
       ElMessage.error(err || '回复失败，请重试')
       streamingContent.value = ''
       isStreaming.value = false
     }
   })
+}
+
+const handleTransferHuman = async () => {
+  if (isStreaming.value) {
+    ElMessage.warning('请等待当前回复完成')
+    return
+  }
+
+  const conversationId = await ensureConversation()
+  if (!conversationId) {
+    return
+  }
+
+  isTransferring.value = true
+  try {
+    const res = await aiChatApi.transferToHuman()
+    if (res.code === 200) {
+      messages.value.push({
+        id: 'system-' + Date.now(),
+        role: 'system',
+        content: '已转人工服务，请稍候',
+        createdAt: new Date().toISOString()
+      })
+      await loadConversations()
+      scrollToBottom()
+      ElMessage.success('已转人工服务')
+    } else {
+      ElMessage.warning(res.message || '转人工失败')
+    }
+  } catch (e) {
+    ElMessage.error('转人工失败')
+  } finally {
+    isTransferring.value = false
+  }
 }
 
 const handleKeydown = (e) => {
@@ -210,8 +266,13 @@ const scrollToBottom = () => {
 
 watch(isStreaming, scrollToBottom)
 
-onMounted(() => {
-  loadConversations()
+onMounted(async () => {
+  const list = await loadConversations()
+  if (list.length > 0) {
+    switchConversation(list[0].id)
+  } else {
+    await ensureConversation()
+  }
 })
 </script>
 
@@ -235,14 +296,6 @@ onMounted(() => {
           <div class="conv-info">
             <span class="conv-title">{{ conv.title || 'AI客服对话' }}</span>
           </div>
-          <el-button
-            link
-            type="danger"
-            size="small"
-            :icon="Delete"
-            class="conv-delete"
-            @click="handleDeleteConversation(conv.id, $event)"
-          />
         </div>
         <div v-if="conversations.length === 0" class="empty-conv">
           <span>暂无对话</span>
@@ -260,20 +313,22 @@ onMounted(() => {
         <div
           v-for="msg in displayMessages"
           :key="msg.id"
-          :class="['message-item', { 'message-self': msg.role === 'user' }]"
+          :class="['message-item', { 'message-self': msg.role === 'user' }, { 'message-system': msg.role === 'system' }]"
         >
           <el-avatar
+            v-if="msg.role !== 'system'"
             :size="36"
             :src="msg.role === 'user' ? currentUserAvatar : '/ai-avatar.svg'"
             class="message-avatar"
           />
-          <div class="message-content">
+          <div v-if="msg.role !== 'system'" class="message-content">
             <div :class="['message-bubble', msg.role === 'user' ? 'bubble-user' : 'bubble-ai']">
               <span class="message-text">{{ msg.content }}</span>
               <span v-if="msg.id === 'streaming'" class="streaming-cursor">|</span>
             </div>
             <span v-if="msg.id !== 'streaming'" class="message-time">{{ formatTime(msg.createdAt) }}</span>
           </div>
+          <div v-else class="message-system-content">{{ msg.content }}</div>
         </div>
         <!-- AI输入指示器 -->
         <div v-if="isStreaming && !streamingContent" class="message-item">
@@ -304,14 +359,24 @@ onMounted(() => {
         </div>
         <div class="input-footer">
           <span class="char-count">{{ messageText.length }}/{{ maxLength }}</span>
-          <el-button
-            type="primary"
-            :disabled="!canSend"
-            :loading="isStreaming"
-            @click="handleSend"
-          >
-            发送
-          </el-button>
+          <div class="input-actions">
+            <el-button
+              :icon="ChatDotRound"
+              :disabled="isStreaming"
+              :loading="isTransferring"
+              @click="handleTransferHuman"
+            >
+              转人工
+            </el-button>
+            <el-button
+              type="primary"
+              :disabled="!canSend"
+              :loading="isStreaming"
+              @click="handleSend"
+            >
+              发送
+            </el-button>
+          </div>
         </div>
       </div>
     </div>
@@ -387,15 +452,6 @@ onMounted(() => {
   display: block;
 }
 
-.conv-delete {
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.conv-item:hover .conv-delete {
-  opacity: 1;
-}
-
 .empty-conv {
   text-align: center;
   color: #c0c4cc;
@@ -438,6 +494,19 @@ onMounted(() => {
 
 .message-self .message-content {
   align-items: flex-end;
+}
+
+.message-system {
+  justify-content: center;
+}
+
+.message-system-content {
+  color: #9499a0;
+  background-color: rgba(0, 0, 0, 0.04);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  text-align: center;
 }
 
 .message-avatar {
@@ -533,6 +602,12 @@ onMounted(() => {
 .input-footer {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+}
+
+.input-actions {
+  display: flex;
+  gap: 8px;
   align-items: center;
 }
 
