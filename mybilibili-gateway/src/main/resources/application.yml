@@ -601,13 +601,6 @@ spring:
           filters:
             - StripPrefix=1
 
-        - id: ai-process-service
-          uri: lb://mybilibili-ai
-          predicates:
-            - Path=/api/ai/process/**
-          filters:
-            - StripPrefix=1
-
         - id: ai-summary-service
           uri: lb://mybilibili-ai
           predicates:

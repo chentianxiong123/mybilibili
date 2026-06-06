@@ -57,7 +57,6 @@ public final class GatewayRequestPolicy {
     private static final List<String> ADMIN_PATH_PREFIXES = List.of(
             "/api/admin/",
             "/api/ai/admin",
-            "/api/ai/process/",
             "/api/comment/admin/",
             "/api/manuscript/admin/",
             "/manuscript/admin/",
@@ -93,7 +92,6 @@ public final class GatewayRequestPolicy {
             new PermissionRule("/api/admin/storage/", "storage:manage"),
             new PermissionRule("/api/admin/", "admin:manage"),
             new PermissionRule("/api/ai/admin", "ai:manage"),
-            new PermissionRule("/api/ai/process/", "ai:manage"),
             new PermissionRule("/api/comment/admin/", "comment:manage"),
             new PermissionRule("/api/manuscript/admin/", "review:manage"),
             new PermissionRule("/manuscript/admin/", "review:manage"),
