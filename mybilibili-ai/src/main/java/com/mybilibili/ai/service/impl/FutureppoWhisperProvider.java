@@ -66,6 +66,7 @@ public class FutureppoWhisperProvider implements SttProvider {
 
     public String transcribe(String audioPath, String language) {
         long start = System.currentTimeMillis();
+        String model = null;
         try {
             loadConfig();
 
@@ -77,7 +78,6 @@ public class FutureppoWhisperProvider implements SttProvider {
 
             String baseUrl;
             String apiKey;
-            String model;
             if (activeConfig != null) {
                 baseUrl = activeConfig.getBaseUrl() != null ? activeConfig.getBaseUrl() : "";
                 apiKey = activeConfig.getApiKey() != null ? activeConfig.getApiKey() : "";
@@ -135,7 +135,7 @@ public class FutureppoWhisperProvider implements SttProvider {
         } catch (Exception e) {
             log.warn("[FutureppoWhisper] 转写异常: {}", e.getMessage());
             if (aiUsageLogger != null) {
-                aiUsageLogger.log("TRANSCRIBE", "whisper-large-v3", null, null, System.currentTimeMillis() - start, false, e.getMessage());
+                aiUsageLogger.log("TRANSCRIBE", model, null, null, System.currentTimeMillis() - start, false, e.getMessage());
             }
             return null;
         }

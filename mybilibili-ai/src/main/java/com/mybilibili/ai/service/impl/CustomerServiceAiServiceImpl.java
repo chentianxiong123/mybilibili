@@ -1,6 +1,7 @@
 package com.mybilibili.ai.service.impl;
 
 import com.mybilibili.ai.config.DynamicChatClient;
+import com.mybilibili.ai.entity.AiApiConfig;
 import com.mybilibili.ai.entity.AiSkill;
 import com.mybilibili.ai.entity.AiSession;
 import com.mybilibili.ai.entity.AiChatMessage;
@@ -8,6 +9,7 @@ import com.mybilibili.ai.mapper.AiSessionMapper;
 import com.mybilibili.ai.mapper.AiChatMessageMapper;
 import com.mybilibili.ai.mapper.ManuscriptMapper;
 import com.mybilibili.ai.mapper.VideoMapper;
+import com.mybilibili.ai.service.AiApiConfigService;
 import com.mybilibili.ai.service.AiSkillService;
 import com.mybilibili.ai.service.CustomerServiceAiService;
 import com.mybilibili.ai.service.SkillRoutingService;
@@ -47,6 +49,9 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
     private AiUsageLogger aiUsageLogger;
 
     @Autowired
+    private AiApiConfigService aiApiConfigService;
+
+    @Autowired
     private AiSessionMapper aiSessionMapper;
 
     @Autowired
@@ -65,6 +70,7 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
     public SseEmitter chat(Long userId, String content) {
         // 1. Get ChatClient for CHAT feature
         org.springframework.ai.chat.client.ChatClient client = dynamicChatClient.getClient("CHAT");
+        String model = modelForFeature("CHAT");
         if (client == null) {
             SseEmitter emitter = new SseEmitter(0L);
             try {
@@ -118,7 +124,7 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
                     } catch (Exception ignored) {}
                 },
                 error -> {
-                    aiUsageLogger.log("CHAT", "customer-service", null, null, System.currentTimeMillis() - startTime, false, error.getMessage());
+                    aiUsageLogger.log("CHAT", model, null, null, System.currentTimeMillis() - startTime, false, error.getMessage());
                     try {
                         emitter.send(SseEmitter.event().name("error").data("回复生成失败: " + error.getMessage()));
                         emitter.complete();
@@ -127,7 +133,7 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
                 () -> {
                     try {
                         String reply = fullResp.toString();
-                        aiUsageLogger.log("CHAT", "customer-service", null, null, System.currentTimeMillis() - startTime, true, null);
+                        aiUsageLogger.log("CHAT", model, null, null, System.currentTimeMillis() - startTime, true, null);
 
                         // 检查是否需要转人工
                         if (reply.contains(TRANSFER_MARKER)) {
@@ -272,5 +278,10 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
         }
 
         return prompt.toString();
+    }
+
+    private String modelForFeature(String feature) {
+        AiApiConfig config = aiApiConfigService.getConfigForFeature(feature);
+        return config != null ? config.getModel() : null;
     }
 }
