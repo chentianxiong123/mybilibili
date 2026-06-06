@@ -227,16 +227,6 @@ mybilibili-cloud/
 ├── mybilibili-content-interaction/ # 内容互动聚合服务
 ├── mybilibili-search-recommend/ # 搜索与推荐聚合服务
 ├── mybilibili-ai/               # AI 服务
-├── legacy-services/             # 旧服务源码池，不作为 Maven 运行模块
-│   ├── mybilibili-user/
-│   ├── mybilibili-video/
-│   ├── mybilibili-comment/
-│   ├── mybilibili-danmaku/
-│   ├── mybilibili-interaction/
-│   ├── mybilibili-message/
-│   ├── mybilibili-search/
-│   ├── mybilibili-live/
-│   └── mybilibili-analytics/
 ├── mybilibili-common/           # 公共模块
 ├── mybilibili-mq/               # 消息队列模块
 ├── mybilibili-web/              # 用户端前端
@@ -249,7 +239,7 @@ mybilibili-cloud/
 └── settings.xml                 # Maven 镜像配置
 ```
 
-父 `pom.xml` 默认只构建 6 个后端运行服务及公共模块；`legacy-services/` 下旧源码由聚合服务通过 `build-helper-maven-plugin` 引入，不再单独打包成运行服务。
+父 `pom.xml` 默认只构建 6 个后端运行服务及公共模块。旧独立服务源码已经迁入对应聚合服务模块，旧服务目录不再作为 active source pool 保留。
 
 ## License
 

@@ -13,11 +13,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.mybilibili.accountsocial",
         "com.mybilibili.user",
         "com.mybilibili.message",
-        "com.mybilibili.common"
+        "com.mybilibili.common",
+        "com.mybilibili.mq"
 })
 @EnableFeignClients(clients = {
-        com.mybilibili.user.feign.ManuscriptClient.class,
-        com.mybilibili.user.feign.UserProfileClient.class
+        com.mybilibili.user.feign.ManuscriptClient.class
 })
 @MapperScan({
         "com.mybilibili.user.mapper",

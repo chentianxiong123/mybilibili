@@ -53,12 +53,12 @@ foreach ($legacyBackend in $legacyBackends) {
     }
 
     if (Test-Path -LiteralPath (Join-Path $repoRoot $legacyBackend)) {
-        Add-Violation "$legacyBackend must live under legacy-services, not the repository root."
+        Add-Violation "$legacyBackend must not exist as a root runtime module."
     }
+}
 
-    if (-not (Test-Path -LiteralPath (Join-Path $repoRoot "legacy-services/$legacyBackend"))) {
-        Add-Violation "legacy-services/$legacyBackend is missing."
-    }
+if (Test-Path -LiteralPath (Join-Path $repoRoot "legacy-services")) {
+    Add-Violation "legacy-services must not be used as an active source pool. Move retired services to .trash/."
 }
 
 $gatewayConfigPath = "mybilibili-gateway/src/main/resources/application.yml"
