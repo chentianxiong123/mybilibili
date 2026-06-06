@@ -18,10 +18,11 @@ function parseSSEEvent(raw) {
 }
 
 function handleSSEEvent({ event, data }, callbacks) {
-  const { onStart, onData, onDone, onError } = callbacks
+  const { onStart, onData, onDone, onError, onTransfer } = callbacks
   switch (event) {
     case 'start': if (onStart) onStart(data); break
     case 'data':  if (onData) onData(data); break
+    case 'transfer': if (onTransfer) onTransfer(data); break
     case 'done':  if (onDone) { try { onDone(JSON.parse(data)) } catch (e) { onDone(data) } }; break
     case 'error': if (onError) onError(data); break
   }
@@ -48,7 +49,7 @@ function normalizeMessage(message) {
   const role = String(message.role || '').toLowerCase()
   return {
     id: message.id || `${role || 'message'}-${message.createdAt || Date.now()}`,
-    role: role === 'user' ? 'user' : role === 'system' ? 'assistant' : 'assistant',
+    role: role === 'user' ? 'user' : role === 'system' ? 'system' : 'assistant',
     content: message.content || '',
     createdAt: message.createdAt || new Date().toISOString()
   }
@@ -93,10 +94,6 @@ export const aiChatApi = {
     })
   },
 
-  deleteConversation(id) {
-    return Promise.resolve({ code: 200, data: null })
-  },
-
   getMessages(conversationId) {
     const user = getCurrentUser()
     if (!user?.id) {
@@ -114,7 +111,7 @@ export const aiChatApi = {
   },
 
   sendMessage(conversationId, content, callbacks = {}) {
-    const { onStart, onData, onDone, onError } = callbacks
+    const { onStart, onData, onDone, onError, onTransfer } = callbacks
     const controller = new AbortController()
     const user = getCurrentUser()
 
@@ -143,7 +140,7 @@ export const aiChatApi = {
           buffer = parts.pop() || ''
           parts.forEach(part => {
             const event = parseSSEEvent(part)
-            if (event) handleSSEEvent(event, { onStart, onData, onDone, onError })
+            if (event) handleSSEEvent(event, { onStart, onData, onDone, onError, onTransfer })
           })
           return read()
         }).catch(err => {
@@ -157,5 +154,17 @@ export const aiChatApi = {
     })
 
     return { abort: () => controller.abort() }
+  },
+
+  transferToHuman(reason = '用户主动转人工') {
+    const user = getCurrentUser()
+    if (!user?.id) {
+      return Promise.resolve({ code: 401, message: '请先登录', data: null })
+    }
+    return fetch(`${BASE_URL}/api/ai/customer/transfer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ userId: user.id, reason })
+    }).then(r => r.json())
   }
 }
