@@ -2,6 +2,8 @@ package com.mybilibili.ai.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mybilibili.ai.config.DynamicChatClient;
+import com.mybilibili.ai.entity.AiApiConfig;
+import com.mybilibili.ai.service.AiApiConfigService;
 import com.mybilibili.ai.service.AdminAiService;
 import com.mybilibili.ai.tool.AdminToolService;
 import com.mybilibili.ai.tool.StatsData;
@@ -34,6 +36,9 @@ public class AdminAiServiceImpl implements AdminAiService {
     @Autowired
     private AiUsageLogger aiUsageLogger;
 
+    @Autowired
+    private AiApiConfigService aiApiConfigService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String SYSTEM_PROMPT =
@@ -45,8 +50,10 @@ public class AdminAiServiceImpl implements AdminAiService {
         long startTime = System.currentTimeMillis();
 
         ChatClient client = dynamicChatClient.getClient("ADMIN");
+        String selectedModel = modelForFeature("ADMIN");
         if (client == null) {
             client = dynamicChatClient.getFirstActiveClient();
+            selectedModel = firstActiveModel();
         }
 
         if (client == null) {
@@ -56,6 +63,7 @@ public class AdminAiServiceImpl implements AdminAiService {
             } catch (Exception ignored) {}
             return emitter;
         }
+        final String model = selectedModel;
 
         List<ToolCallback> toolCallbacks = List.of(
             ToolCallbacks.from(adminToolService)
@@ -91,7 +99,7 @@ public class AdminAiServiceImpl implements AdminAiService {
                 }
             },
             error -> {
-                aiUsageLogger.log("ADMIN", null, null, null,
+                aiUsageLogger.log("ADMIN", model, null, null,
                     System.currentTimeMillis() - startTime, false, error.getMessage());
                 completeWithError(emitter, completed, error);
             },
@@ -110,7 +118,7 @@ public class AdminAiServiceImpl implements AdminAiService {
                         emitter.complete();
                     }
 
-                    aiUsageLogger.log("ADMIN", null, null, null,
+                    aiUsageLogger.log("ADMIN", model, null, null,
                         System.currentTimeMillis() - startTime, true, null);
                 } catch (Exception e) {
                     disposeSubscription(subscriptionRef);
@@ -198,5 +206,19 @@ public class AdminAiServiceImpl implements AdminAiService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private String modelForFeature(String feature) {
+        AiApiConfig config = aiApiConfigService.getConfigForFeature(feature);
+        return config != null ? config.getModel() : null;
+    }
+
+    private String firstActiveModel() {
+        for (AiApiConfig config : aiApiConfigService.listAll()) {
+            if (Boolean.TRUE.equals(config.getEnabled())) {
+                return config.getModel();
+            }
+        }
+        return null;
     }
 }
