@@ -627,14 +627,13 @@ const handleTranscode = async (video) => {
   try {
     const res = await manualTranscode(video.id)
     if (res.code === 200 || res.success) {
-      ElMessage.success('转码完成')
+      ElMessage.success(res.message || '转码任务已提交')
     } else {
-      ElMessage.error(res.message || '转码失败')
+      ElMessage.error(res.message || '转码任务提交失败')
     }
   } catch (error) {
-    // timeout or network error — backend may still succeed, refresh to check
+    ElMessage.error('转码任务提交异常: ' + (error.response?.data?.message || error.message || '未知错误'))
   }
-  currentTask.value = { processing: false }
   loadVideos()
   loadStatistics()
   loadQueueInfo()
@@ -655,14 +654,13 @@ const handleExtractAudio = async (video) => {
   try {
     const res = await manualExtractAudio(video.id)
     if (res.code === 200 || res.success) {
-      ElMessage.success('音频提取完成')
+      ElMessage.success(res.message || '音频提取任务已提交')
     } else {
-      ElMessage.error(res.message || '提取音频失败')
+      ElMessage.error(res.message || '音频提取任务提交失败')
     }
   } catch (error) {
-    // timeout or network error — backend may still succeed, refresh to check
+    ElMessage.error('音频提取任务提交异常: ' + (error.response?.data?.message || error.message || '未知错误'))
   }
-  currentTask.value = { processing: false }
   loadVideos()
   loadStatistics()
   loadQueueInfo()
@@ -683,14 +681,13 @@ const handleGenerateSubtitle = async (video) => {
   try {
     const res = await manualGenerateSubtitle(video.id)
     if (res.code === 200 || res.success) {
-      ElMessage.success('字幕生成完成')
+      ElMessage.success(res.message || '字幕生成任务已提交')
     } else {
-      ElMessage.error(res.message || '生成字幕失败')
+      ElMessage.error(res.message || '字幕生成任务提交失败')
     }
   } catch (error) {
-    // timeout or network error — backend may still succeed, refresh to check
+    ElMessage.error('字幕生成任务提交异常: ' + (error.response?.data?.message || error.message || '未知错误'))
   }
-  currentTask.value = { processing: false }
   loadVideos()
   loadStatistics()
   loadQueueInfo()
@@ -711,14 +708,13 @@ const handleAiSummary = async (video) => {
   try {
     const res = await manualAiSummary(video.id)
     if (res.code === 200 || res.success) {
-      ElMessage.success('AI总结完成')
+      ElMessage.success(res.message || 'AI总结任务已提交')
     } else {
-      ElMessage.error(res.message || 'AI总结失败')
+      ElMessage.error(res.message || 'AI总结任务提交失败')
     }
   } catch (error) {
-    // timeout or network error — backend may still succeed, refresh to check
+    ElMessage.error('AI总结任务提交异常: ' + (error.response?.data?.message || error.message || '未知错误'))
   }
-  currentTask.value = { processing: false }
   loadVideos()
   loadStatistics()
   loadQueueInfo()
