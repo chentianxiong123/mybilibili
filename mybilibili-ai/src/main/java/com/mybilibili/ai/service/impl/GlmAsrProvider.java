@@ -1,7 +1,6 @@
 package com.mybilibili.ai.service.impl;
 
 import com.mybilibili.ai.entity.AiApiConfig;
-import com.mybilibili.ai.service.AiApiConfigService;
 import com.mybilibili.ai.service.SttProvider;
 import com.mybilibili.ai.service.SttProvider.TranscribeRequest;
 import com.mybilibili.ai.util.AiUsageLogger;
@@ -29,12 +28,7 @@ public class GlmAsrProvider implements SttProvider {
     }
 
     @Autowired(required = false)
-    private AiApiConfigService aiApiConfigService;
-
-    @Autowired(required = false)
     private AiUsageLogger aiUsageLogger;
-
-    private volatile AiApiConfig activeConfig;
 
     @Override
     public String getName() {
@@ -43,30 +37,21 @@ public class GlmAsrProvider implements SttProvider {
 
     @Override
     public boolean isAvailable() {
-        loadConfig();
-        return activeConfig != null && activeConfig.getEnabled();
-    }
-
-    private void loadConfig() {
-        if (activeConfig != null) return;
-        if (aiApiConfigService == null) return;
-        activeConfig = aiApiConfigService.getConfigForFeature("TRANSCRIBE");
+        return true;
     }
 
     @Override
     public Object invoke(TranscribeRequest request) {
-        return transcribe(request.getAudioPath(), request.getLanguage());
+        return transcribe(request.getConfig(), request.getAudioPath(), request.getLanguage());
     }
 
     /**
      * 调用智谱 ASR API
      */
-    public String transcribe(String audioPath, String language) {
+    public String transcribe(AiApiConfig config, String audioPath, String language) {
         long start = System.currentTimeMillis();
         String model = null;
         try {
-            loadConfig();
-
             File audioFile = new File(audioPath);
             if (!audioFile.exists()) {
                 log.warn("[GlmAsr] 音频文件不存在: {}", audioPath);
@@ -75,10 +60,10 @@ public class GlmAsrProvider implements SttProvider {
 
             String baseUrl;
             String apiKey;
-            if (activeConfig != null) {
-                baseUrl = activeConfig.getBaseUrl() != null ? activeConfig.getBaseUrl() : "";
-                apiKey = activeConfig.getApiKey() != null ? activeConfig.getApiKey() : "";
-                model = activeConfig.getModel() != null ? activeConfig.getModel() : "glm-asr";
+            if (config != null) {
+                baseUrl = config.getBaseUrl() != null ? config.getBaseUrl() : "";
+                apiKey = config.getApiKey() != null ? config.getApiKey() : "";
+                model = config.getModel() != null ? config.getModel() : "glm-asr";
             } else {
                 log.warn("[GlmAsr] 未找到 TRANSCRIBE 渠道配置");
                 return null;
