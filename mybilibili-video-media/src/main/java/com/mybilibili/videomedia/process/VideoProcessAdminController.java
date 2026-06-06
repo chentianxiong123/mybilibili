@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping({"/ai/admin/process", "/video/process/admin"})
+@RequestMapping("/video/process/admin")
 public class VideoProcessAdminController {
 
     private final VideoMapper videoMapper;

@@ -586,14 +586,6 @@ spring:
             - StripPrefix=1
 
         # ========== AI服务 ==========
-        # 兼容旧后台 API 路径；视频处理看板已经归属 video-media
-        - id: video-process-admin-compat
-          uri: lb://mybilibili-video-media
-          predicates:
-            - Path=/api/ai/admin/process/**
-          filters:
-            - StripPrefix=1
-
         - id: ai-admin-process
           uri: lb://mybilibili-ai
           predicates:

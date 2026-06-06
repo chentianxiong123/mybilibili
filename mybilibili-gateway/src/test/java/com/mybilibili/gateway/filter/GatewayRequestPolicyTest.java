@@ -34,7 +34,6 @@ class GatewayRequestPolicyTest {
     @Test
     void classifiesAdminAndSuperAdminPaths() {
         assertTrue(policy.isAdminPath("/api/admin/live/rooms"));
-        assertTrue(policy.isAdminPath("/api/ai/admin/process/stream"));
         assertTrue(policy.isAdminPath("/api/user/admin/list"));
         assertTrue(policy.isAdminPath("/api/video/admin/list"));
         assertTrue(policy.isAdminPath("/api/video/process/admin/stream"));

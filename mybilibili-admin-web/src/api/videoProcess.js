@@ -1,13 +1,13 @@
 import request from './request'
 
 export const getCurrentTask = () => {
-  return request.get('/ai/admin/process/current')
+  return request.get('/video/process/admin/current')
 }
 
 export const getQueueInfo = () => {
-  return request.get('/ai/admin/process/queue')
+  return request.get('/video/process/admin/queue')
 }
 
 export const getStatistics = () => {
-  return request.get('/ai/admin/process/statistics')
+  return request.get('/video/process/admin/statistics')
 }

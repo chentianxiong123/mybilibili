@@ -264,7 +264,7 @@ const paginatedData = computed(() => {
 
 const connectSSE = () => {
   const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:'
-  const eventSource = new EventSource(`${protocol}//${window.location.host}/api/ai/admin/process/stream`)
+  const eventSource = new EventSource(`${protocol}//${window.location.host}/api/video/process/admin/stream`)
 
   eventSource.onopen = () => {
     wsConnected.value = true
