@@ -2,6 +2,8 @@ package com.mybilibili.ai.service.impl;
 
 import org.springframework.ai.chat.client.ChatClient;
 import com.mybilibili.ai.config.DynamicChatClient;
+import com.mybilibili.ai.entity.AiApiConfig;
+import com.mybilibili.ai.service.AiApiConfigService;
 import com.mybilibili.ai.service.AiSummaryService;
 import com.mybilibili.ai.utils.SubtitleTextUtils;
 import com.mybilibili.ai.util.AiUsageLogger;
@@ -22,6 +24,9 @@ public class AiSummaryServiceImpl implements AiSummaryService {
 
     @Autowired
     private DynamicChatClient dynamicChatClient;
+
+    @Autowired
+    private AiApiConfigService aiApiConfigService;
 
     @Autowired
     private AiUsageLogger aiUsageLogger;
@@ -74,6 +79,8 @@ public class AiSummaryServiceImpl implements AiSummaryService {
 
     private String callAiApi(String userPrompt) {
         long start = System.currentTimeMillis();
+        AiApiConfig summaryConfig = aiApiConfigService.getConfigForFeature("SUMMARY");
+        String model = modelOf(summaryConfig);
         try {
             ChatClient client = dynamicChatClient.getClient("SUMMARY");
             if (client == null) {
@@ -88,10 +95,10 @@ public class AiSummaryServiceImpl implements AiSummaryService {
                     .user(userPrompt)
                     .call()
                     .content();
-            aiUsageLogger.log("SUMMARY", "deepseek-r1", null, null, System.currentTimeMillis() - start, true, null);
+            aiUsageLogger.log("SUMMARY", model, null, null, System.currentTimeMillis() - start, true, null);
             return result;
         } catch (Exception e) {
-            aiUsageLogger.log("SUMMARY", "deepseek-r1", null, null, System.currentTimeMillis() - start, false, e.getMessage());
+            aiUsageLogger.log("SUMMARY", model, null, null, System.currentTimeMillis() - start, false, e.getMessage());
             log.error("AI摘要生成失败: {}", e.getMessage(), e);
             return null;
         }
@@ -132,5 +139,9 @@ public class AiSummaryServiceImpl implements AiSummaryService {
             sb.append(c);
         }
         return sb.toString();
+    }
+
+    private String modelOf(AiApiConfig config) {
+        return config != null ? config.getModel() : null;
     }
 }

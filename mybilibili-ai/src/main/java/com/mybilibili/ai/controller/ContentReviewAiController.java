@@ -1,6 +1,8 @@
 package com.mybilibili.ai.controller;
 
 import com.mybilibili.ai.config.DynamicModerationClient;
+import com.mybilibili.ai.entity.AiApiConfig;
+import com.mybilibili.ai.service.AiApiConfigService;
 import com.mybilibili.ai.service.ModerationProvider;
 import com.mybilibili.ai.service.ModerationProvider.ModerateRequest;
 import com.mybilibili.ai.service.ModerationProvider.ModerationResult;
@@ -28,9 +30,10 @@ public class ContentReviewAiController {
     private DynamicModerationClient moderationClient;
 
     @Autowired
-    private AiUsageLogger aiUsageLogger;
+    private AiApiConfigService aiApiConfigService;
 
-    private static final String MODERATION_MODEL = "qwen3guard";
+    @Autowired
+    private AiUsageLogger aiUsageLogger;
 
     @PostMapping("/content")
     @Operation(summary = "内容安全审核", description = "检测文本是否违规，返回违规类型和原因")
@@ -62,11 +65,12 @@ public class ContentReviewAiController {
     }
 
     @PostMapping("/comment")
-    @Operation(summary = "评论预过滤", description = "发评论前先用 qwen3guard 过滤，拦截 spam/广告/低质量")
+    @Operation(summary = "评论预过滤", description = "发评论前使用 REVIEW 渠道过滤，拦截 spam/广告/低质量")
     public Result<Map<String, Object>> moderateComment(@RequestParam String content) {
         ModerationProvider provider = moderationClient.getProvider();
+        String model = reviewModel();
         if (provider == null || !provider.isAvailable()) {
-            aiUsageLogger.log("REVIEW", MODERATION_MODEL, null, null, 0, false, "provider unavailable");
+            aiUsageLogger.log("REVIEW", model, null, null, 0, false, "provider unavailable");
             return Result.success(Map.of("passed", true, "reason", "审核服务不可用"));
         }
 
@@ -75,23 +79,24 @@ public class ContentReviewAiController {
             ModerateRequest request = ModerateRequest.of(content, "COMMENT");
             ModerationProvider.ModerationResult result = (ModerationProvider.ModerationResult) provider.invoke(request);
 
-            aiUsageLogger.log("REVIEW", MODERATION_MODEL, null, null, System.currentTimeMillis() - start, true, null);
+            aiUsageLogger.log("REVIEW", model, null, null, System.currentTimeMillis() - start, true, null);
             return Result.success(Map.of(
                     "passed", result.isPassed(),
                     "reason", result.getReason() != null ? result.getReason() : ""
             ));
         } catch (Exception e) {
-            aiUsageLogger.log("REVIEW", MODERATION_MODEL, null, null, System.currentTimeMillis() - start, false, e.getMessage());
+            aiUsageLogger.log("REVIEW", model, null, null, System.currentTimeMillis() - start, false, e.getMessage());
             throw e;
         }
     }
 
     @PostMapping("/reply")
-    @Operation(summary = "回复预过滤", description = "发回复前用 qwen3guard 过滤")
+    @Operation(summary = "回复预过滤", description = "发回复前使用 REVIEW 渠道过滤")
     public Result<Map<String, Object>> moderateReply(@RequestParam String content) {
         ModerationProvider provider = moderationClient.getProvider();
+        String model = reviewModel();
         if (provider == null || !provider.isAvailable()) {
-            aiUsageLogger.log("REVIEW", MODERATION_MODEL, null, null, 0, false, "provider unavailable");
+            aiUsageLogger.log("REVIEW", model, null, null, 0, false, "provider unavailable");
             return Result.success(Map.of("passed", true, "reason", "审核服务不可用"));
         }
 
@@ -100,23 +105,24 @@ public class ContentReviewAiController {
             ModerateRequest request = ModerateRequest.of(content, "REPLY");
             ModerationProvider.ModerationResult result = (ModerationProvider.ModerationResult) provider.invoke(request);
 
-            aiUsageLogger.log("REVIEW", MODERATION_MODEL, null, null, System.currentTimeMillis() - start, true, null);
+            aiUsageLogger.log("REVIEW", model, null, null, System.currentTimeMillis() - start, true, null);
             return Result.success(Map.of(
                     "passed", result.isPassed(),
                     "reason", result.getReason() != null ? result.getReason() : ""
             ));
         } catch (Exception e) {
-            aiUsageLogger.log("REVIEW", MODERATION_MODEL, null, null, System.currentTimeMillis() - start, false, e.getMessage());
+            aiUsageLogger.log("REVIEW", model, null, null, System.currentTimeMillis() - start, false, e.getMessage());
             throw e;
         }
     }
 
     @PostMapping("/report")
-    @Operation(summary = "举报内容审核", description = "举报内容用 llama-guard 深度审核，识别辱骂/政治/色情等")
+    @Operation(summary = "举报内容审核", description = "举报内容使用 REVIEW 渠道深度审核，识别辱骂/政治/色情等")
     public Result<Map<String, Object>> moderateReport(@RequestParam String content) {
         ModerationProvider provider = moderationClient.getProvider();
+        String model = reviewModel();
         if (provider == null || !provider.isAvailable()) {
-            aiUsageLogger.log("REVIEW", "llama-guard", null, null, 0, false, "provider unavailable");
+            aiUsageLogger.log("REVIEW", model, null, null, 0, false, "provider unavailable");
             return Result.success(Map.of("passed", true, "reason", "审核服务不可用"));
         }
 
@@ -125,15 +131,20 @@ public class ContentReviewAiController {
             ModerateRequest request = ModerateRequest.of(content, "REPORT");
             ModerationProvider.ModerationResult result = (ModerationProvider.ModerationResult) provider.invoke(request);
 
-            aiUsageLogger.log("REVIEW", "llama-guard", null, null, System.currentTimeMillis() - start, true, null);
+            aiUsageLogger.log("REVIEW", model, null, null, System.currentTimeMillis() - start, true, null);
             return Result.success(Map.of(
                     "passed", result.isPassed(),
                     "reason", result.getReason() != null ? result.getReason() : "",
                     "violationTypes", result.getViolationTypes() != null ? result.getViolationTypes() : List.of()
             ));
         } catch (Exception e) {
-            aiUsageLogger.log("REVIEW", "llama-guard", null, null, System.currentTimeMillis() - start, false, e.getMessage());
+            aiUsageLogger.log("REVIEW", model, null, null, System.currentTimeMillis() - start, false, e.getMessage());
             throw e;
         }
+    }
+
+    private String reviewModel() {
+        AiApiConfig config = aiApiConfigService.getConfigForFeature("REVIEW");
+        return config != null ? config.getModel() : null;
     }
 }
