@@ -97,32 +97,28 @@ export const retryManuscript = (manuscriptId) => {
 export const manualTranscode = (videoId) => {
   return request({
     url: `/manuscript/admin/transcode/${videoId}`,
-    method: 'post',
-    timeout: 300000
+    method: 'post'
   })
 }
 
 export const manualExtractAudio = (videoId) => {
   return request({
     url: `/manuscript/admin/extract-audio/${videoId}`,
-    method: 'post',
-    timeout: 120000
+    method: 'post'
   })
 }
 
 export const manualGenerateSubtitle = (videoId) => {
   return request({
     url: `/manuscript/admin/generate-subtitle/${videoId}`,
-    method: 'post',
-    timeout: 300000
+    method: 'post'
   })
 }
 
 export const manualAiSummary = (videoId) => {
   return request({
     url: `/manuscript/admin/ai-summary/${videoId}`,
-    method: 'post',
-    timeout: 300000
+    method: 'post'
   })
 }
 
