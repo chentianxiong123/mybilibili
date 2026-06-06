@@ -534,13 +534,6 @@ spring:
           filters:
             - StripPrefix=1
 
-        - id: ai-summary-service
-          uri: lb://mybilibili-ai
-          predicates:
-            - Path=/api/ai-summary/**
-          filters:
-            - RewritePath=/api/ai-summary/(?<segment>.*), /ai/summary/${segment}
-
         - id: ai-service
           uri: lb://mybilibili-ai
           predicates:
