@@ -7,7 +7,9 @@ import {
   createAiSkill,
   updateAiSkill,
   deleteAiSkill,
-  toggleAiSkill
+  toggleAiSkill,
+  initializeCustomerServiceSkills,
+  testCustomerServiceSkillRoute
 } from '../api/aiSkill'
 
 const loading = ref(false)
@@ -32,6 +34,7 @@ const dialogFormRef = ref(null)
 const previewVisible = ref(false)
 const previewQuestion = ref('')
 const previewResult = ref('')
+const previewLoading = ref(false)
 
 const rules = {
   name: [{ required: true, message: '请输入技能名称', trigger: 'blur' }],
@@ -179,25 +182,45 @@ async function handleToggle(row) {
   }
 }
 
-// 预览技能匹配
-function handlePreview() {
+async function handleInitializeDefaults() {
+  loading.value = true
+  try {
+    const res = await initializeCustomerServiceSkills()
+    if (res.code === 200 || res.success) {
+      ElMessage.success(res.message || '客服技能模板已初始化')
+      activeTypeFilter.value = 'CUSTOMER_SERVICE'
+      await handleTypeFilterChange('CUSTOMER_SERVICE')
+    } else {
+      ElMessage.error(res.message || '初始化失败')
+    }
+  } catch (e) {
+    ElMessage.error(e.response?.data?.message || '初始化失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 使用后端 SkillRoutingService 测试真实客服技能匹配
+async function handlePreview() {
   if (!previewQuestion.value.trim()) {
     ElMessage.warning('请输入要测试的问题')
     return
   }
-  const question = previewQuestion.value.toLowerCase()
-  const matched = filteredData.value.filter(skill => {
-    if (!skill.enabled) return false
-    const desc = (skill.description || '').toLowerCase()
-    const name = (skill.name || '').toLowerCase()
-    // 简单关键词匹配
-    return desc.includes(question) || name.includes(question) ||
-      question.includes(desc) || question.includes(name)
-  })
-  if (matched.length > 0) {
-    previewResult.value = matched.map(s => `✓ ${s.name} (${getTypeLabel(s.type)})\n   描述: ${s.description}`).join('\n\n')
-  } else {
-    previewResult.value = '未找到匹配的技能'
+  previewLoading.value = true
+  try {
+    const res = await testCustomerServiceSkillRoute(previewQuestion.value.trim())
+    if (res.code === 200 || res.success) {
+      const matched = res.data || []
+      previewResult.value = matched.length > 0
+        ? matched.map(s => `✓ ${s.name} (${getTypeLabel(s.type)})\n   描述: ${s.description || '-'}`).join('\n\n')
+        : '未找到匹配的客服技能'
+    } else {
+      previewResult.value = res.message || '测试失败'
+    }
+  } catch (e) {
+    previewResult.value = e.response?.data?.message || '测试失败，请确认 AI 渠道已配置'
+  } finally {
+    previewLoading.value = false
   }
 }
 
@@ -229,7 +252,11 @@ onMounted(loadData)
       </el-button>
       <el-button @click="previewVisible = true">
         <el-icon><Search /></el-icon>
-        测试匹配
+        测试客服路由
+      </el-button>
+      <el-button @click="handleInitializeDefaults">
+        <el-icon><MagicStick /></el-icon>
+        初始化客服模板
       </el-button>
     </div>
 
@@ -321,14 +348,14 @@ onMounted(loadData)
 
     <!-- 预览匹配弹窗 -->
     <el-dialog v-model="previewVisible" title="测试技能匹配" width="500px">
-      <p class="preview-tip">输入一个问题，查看哪个技能会被匹配（基于描述关键词）</p>
+      <p class="preview-tip">输入一个用户问题，调用后端 SkillRoutingService 查看真实客服技能匹配结果</p>
       <el-input
         v-model="previewQuestion"
         type="textarea"
         :rows="3"
         placeholder="如：我的账号被盗了怎么办？"
       />
-      <el-button type="primary" style="margin-top: 12px" @click="handlePreview">测试</el-button>
+      <el-button type="primary" style="margin-top: 12px" :loading="previewLoading" @click="handlePreview">测试</el-button>
       <el-input
         v-model="previewResult"
         type="textarea"
