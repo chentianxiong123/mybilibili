@@ -6,10 +6,15 @@ import com.mybilibili.ai.entity.AiSession;
 import com.mybilibili.ai.entity.AiChatMessage;
 import com.mybilibili.ai.mapper.AiSessionMapper;
 import com.mybilibili.ai.mapper.AiChatMessageMapper;
+import com.mybilibili.ai.mapper.ManuscriptMapper;
+import com.mybilibili.ai.mapper.VideoMapper;
 import com.mybilibili.ai.service.AiSkillService;
 import com.mybilibili.ai.service.CustomerServiceAiService;
 import com.mybilibili.ai.service.SkillRoutingService;
+import com.mybilibili.ai.tool.CustomerServiceReadonlyToolSet;
 import com.mybilibili.ai.util.AiUsageLogger;
+import org.springframework.ai.support.ToolCallbacks;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +35,8 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
     /** Base system prompt for customer service AI */
     public static final String BASE_SYSTEM_PROMPT = "你是哔哩哔哩平台的AI客服助手。请专业、友善地回答用户问题。\n" +
             "回答时保持清晰结构，必要时引导转人工服务。\n" +
+            "你可以使用只读查询工具帮助用户查询其本人可见的稿件状态、视频处理状态、字幕/摘要生成状态和客服会话状态。\n" +
+            "你不能承诺或执行任何写操作，包括审核、发布、下架、重试处理、转码、重新生成字幕或摘要；用户需要这些操作时应转人工服务。\n" +
             "当你判断需要转人工服务时，请在回复末尾添加转人工标记：[TRANSFER_TO_HUMAN]\n" +
             "转人工的条件包括：用户明确要求转人工、涉及复杂投诉、需要人工授权、情绪激动的用户等。";
 
@@ -44,6 +51,12 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
 
     @Autowired
     private AiChatMessageMapper aiChatMessageMapper;
+
+    @Autowired
+    private VideoMapper videoMapper;
+
+    @Autowired
+    private ManuscriptMapper manuscriptMapper;
 
     @Autowired
     private SkillRoutingService skillRoutingService;
@@ -77,6 +90,9 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
 
         // 5. Build system prompt from matched skills or use base prompt only
         String systemPrompt = buildSystemPrompt(matchedSkills);
+        List<ToolCallback> toolCallbacks = List.of(
+                ToolCallbacks.from(new CustomerServiceReadonlyToolSet(userId, videoMapper, manuscriptMapper, aiSessionMapper))
+        );
 
         // 6. 调用 client.prompt().system(SYSTEM_PROMPT).user(content).stream() 返回 SSE
         SseEmitter emitter = new SseEmitter(120000L);
@@ -87,6 +103,7 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
         reactor.core.publisher.Flux<String> flux = client.prompt()
                 .system(systemPrompt)
                 .user(content)
+                .tools(toolCallbacks)
                 .stream()
                 .content();
 
