@@ -14,8 +14,8 @@ import com.mybilibili.common.vo.UserVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class CreatorCommentServiceImpl implements CreatorCommentService {
@@ -36,30 +36,27 @@ public class CreatorCommentServiceImpl implements CreatorCommentService {
     public List<CreatorCommentVO> getCreatorComments(Integer userId, Integer manuscriptId, Integer page, Integer size, String sort, String commentType) {
         int offset = (page - 1) * size;
         List<CreatorCommentVO> result = new ArrayList<>();
+        List<Comment> comments = new ArrayList<>();
+        List<Reply> replies = new ArrayList<>();
 
         if ("reply".equals(commentType)) {
-            // Only replies
-            List<Reply> replies = replyMapper.selectByCreatorId(userId, manuscriptId, offset, size, sort);
-            for (Reply reply : replies) {
-                result.add(buildReplyCommentVO(reply));
-            }
+            replies = replyMapper.selectByCreatorId(userId, manuscriptId, offset, size, sort);
         } else if ("comment".equals(commentType)) {
-            // Only comments
-            List<Comment> comments = commentMapper.selectByCreatorId(userId, manuscriptId, offset, size, sort);
-            for (Comment comment : comments) {
-                result.add(buildCommentVO(comment));
-            }
+            comments = commentMapper.selectByCreatorId(userId, manuscriptId, offset, size, sort);
         } else {
-            // "all" - merge both, sorted by time
-            List<Comment> comments = commentMapper.selectByCreatorId(userId, manuscriptId, offset, size, sort);
-            List<Reply> replies = replyMapper.selectByCreatorId(userId, manuscriptId, offset, size, sort);
-            for (Comment comment : comments) {
-                result.add(buildCommentVO(comment));
-            }
-            for (Reply reply : replies) {
-                result.add(buildReplyCommentVO(reply));
-            }
-            // Sort combined list
+            comments = commentMapper.selectByCreatorId(userId, manuscriptId, offset, size, sort);
+            replies = replyMapper.selectByCreatorId(userId, manuscriptId, offset, size, sort);
+        }
+
+        Map<Integer, UserVO> usersById = fetchUsersByIds(extractUserIds(comments, replies));
+        for (Comment comment : comments) {
+            result.add(buildCommentVO(comment, usersById));
+        }
+        for (Reply reply : replies) {
+            result.add(buildReplyCommentVO(reply, usersById));
+        }
+
+        if (!"reply".equals(commentType) && !"comment".equals(commentType)) {
             result.sort((a, b) -> {
                 if ("likes".equals(sort)) {
                     return Integer.compare(b.getLikeCount() != null ? b.getLikeCount() : 0, a.getLikeCount() != null ? a.getLikeCount() : 0);
@@ -107,6 +104,10 @@ public class CreatorCommentServiceImpl implements CreatorCommentService {
     }
 
     private CreatorCommentVO buildCommentVO(Comment comment) {
+        return buildCommentVO(comment, Collections.emptyMap());
+    }
+
+    private CreatorCommentVO buildCommentVO(Comment comment, Map<Integer, UserVO> usersById) {
         CreatorCommentVO vo = new CreatorCommentVO();
         vo.setId(comment.getId());
         vo.setManuscriptId(comment.getManuscriptId());
@@ -117,7 +118,7 @@ public class CreatorCommentServiceImpl implements CreatorCommentService {
         vo.setCreateTime(comment.getCreatedAt());
         vo.setCommentType("comment");
 
-        UserVO user = getUserById(comment.getUserId());
+        UserVO user = resolveUser(comment.getUserId(), usersById);
         if (user != null) {
             vo.setUserName(user.getNickname());
             vo.setUserAvatar(user.getAvatar());
@@ -126,6 +127,10 @@ public class CreatorCommentServiceImpl implements CreatorCommentService {
     }
 
     private CreatorCommentVO buildReplyCommentVO(Reply reply) {
+        return buildReplyCommentVO(reply, Collections.emptyMap());
+    }
+
+    private CreatorCommentVO buildReplyCommentVO(Reply reply, Map<Integer, UserVO> usersById) {
         CreatorCommentVO vo = new CreatorCommentVO();
         vo.setId(reply.getId());
         vo.setUserId(reply.getUserId());
@@ -141,19 +146,73 @@ public class CreatorCommentServiceImpl implements CreatorCommentService {
             vo.setManuscriptId(parentComment.getManuscriptId());
         }
 
-        UserVO user = getUserById(reply.getUserId());
+        UserVO user = resolveUser(reply.getUserId(), usersById);
         if (user != null) {
             vo.setUserName(user.getNickname());
             vo.setUserAvatar(user.getAvatar());
         }
 
         if (reply.getReplyToUserId() != null) {
-            UserVO replyToUser = getUserById(reply.getReplyToUserId());
+            UserVO replyToUser = resolveUser(reply.getReplyToUserId(), usersById);
             if (replyToUser != null) {
                 vo.setReplyToUserName(replyToUser.getNickname());
             }
         }
         return vo;
+    }
+
+    private Set<Integer> extractUserIds(List<Comment> comments, List<Reply> replies) {
+        LinkedHashSet<Integer> userIds = new LinkedHashSet<>();
+        for (Comment comment : comments) {
+            if (comment.getUserId() != null) {
+                userIds.add(comment.getUserId());
+            }
+        }
+        for (Reply reply : replies) {
+            if (reply.getUserId() != null) {
+                userIds.add(reply.getUserId());
+            }
+            if (reply.getReplyToUserId() != null) {
+                userIds.add(reply.getReplyToUserId());
+            }
+        }
+        return userIds;
+    }
+
+    private Map<Integer, UserVO> fetchUsersByIds(Collection<Integer> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<Integer> ids = userIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        if (ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        try {
+            Result<List<UserVO>> result = userClient.getUsersByIds(ids);
+            if (result == null || result.getCode() == null || result.getCode() != 200 || result.getData() == null) {
+                return Collections.emptyMap();
+            }
+            Map<Integer, UserVO> usersById = new HashMap<>();
+            for (UserVO user : result.getData()) {
+                if (user != null && user.getId() != null) {
+                    usersById.put(user.getId(), user);
+                }
+            }
+            return usersById;
+        } catch (Exception e) {
+            return Collections.emptyMap();
+        }
+    }
+
+    private UserVO resolveUser(Integer userId, Map<Integer, UserVO> usersById) {
+        if (userId == null) {
+            return null;
+        }
+        UserVO user = usersById == null ? null : usersById.get(userId);
+        return user != null ? user : getUserById(userId);
     }
 
     private UserVO getUserById(Integer userId) {
