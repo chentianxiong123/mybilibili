@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
-@RequestMapping("/api/video/process")
+@RequestMapping("/video/process")
 @Tag(name = "视频处理进度", description = "统一视频处理进度实时推送")
 public class VideoProcessProgressController {
 
