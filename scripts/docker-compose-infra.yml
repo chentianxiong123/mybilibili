@@ -53,7 +53,7 @@ services:
     container_name: mybilibili-nacos
     restart: unless-stopped
     mem_limit: 512m
-    cpus: 0.75
+    cpus: 0.50
     environment:
       MODE: standalone
       PREFER_HOST_MODE: hostname
@@ -78,8 +78,8 @@ services:
     image: mongo:6.0
     container_name: mybilibili-mongodb
     restart: unless-stopped
-    mem_limit: 384m
-    cpus: 0.50
+    mem_limit: 320m
+    cpus: 0.35
     command: ["mongod", "--wiredTigerCacheSizeGB", "0.25"]
     ports:
       - "27017:27017"
@@ -103,6 +103,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
       GOMEMLIMIT: 192MiB
+      GOMAXPROCS: "1"
     ports:
       - "127.0.0.1:9000:9000"
       - "127.0.0.1:9001:9001"
@@ -119,10 +120,10 @@ services:
     container_name: mybilibili-rocketmq-namesrv
     restart: unless-stopped
     mem_limit: 256m
-    cpus: 0.35
+    cpus: 0.25
     working_dir: /home/rocketmq/rocketmq-4.9.7/bin
     environment:
-      JAVA_OPT_EXT: "-server -Xms96m -Xmx160m -Xmn48m"
+      JAVA_OPT_EXT: "-server -Xms64m -Xmx128m -Xmn48m -XX:ActiveProcessorCount=1 -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1"
     command: ["sh", "mqnamesrv"]
     ports:
       - "127.0.0.1:9876:9876"
@@ -133,8 +134,8 @@ services:
     image: apache/rocketmq:4.9.7
     container_name: mybilibili-rocketmq-broker
     restart: unless-stopped
-    mem_limit: 384m
-    cpus: 0.75
+    mem_limit: 320m
+    cpus: 0.50
     depends_on:
       - rocketmq-namesrv
     working_dir: /home/rocketmq/rocketmq-4.9.7/bin
@@ -145,7 +146,7 @@ services:
         nohup sh mqbroker -n rocketmq-namesrv:9876 -c /home/rocketmq/conf/broker.conf >/home/rocketmq/logs/broker.stdout 2>&1 &
         tail -f /dev/null
     environment:
-      JAVA_OPT_EXT: "-server -Xms160m -Xmx256m -Xmn96m"
+      JAVA_OPT_EXT: "-server -Xms96m -Xmx160m -Xmn48m -XX:MaxDirectMemorySize=128m -XX:-AlwaysPreTouch -XX:ActiveProcessorCount=1 -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1"
     ports:
       - "127.0.0.1:10911:10911"
     volumes:
@@ -159,12 +160,14 @@ services:
     image: mybilibili-elasticsearch-ik:7.17.18
     container_name: mybilibili-elasticsearch
     restart: unless-stopped
-    mem_limit: 512m
-    cpus: 0.75
+    mem_limit: 768m
+    cpus: 0.50
     environment:
       discovery.type: single-node
       xpack.security.enabled: "false"
-      ES_JAVA_OPTS: "-Xms256m -Xmx256m"
+      xpack.ml.enabled: "false"
+      ingest.geoip.downloader.enabled: "false"
+      ES_JAVA_OPTS: "-Xms384m -Xmx384m -XX:ActiveProcessorCount=1"
     ports:
       - "127.0.0.1:9200:9200"
     volumes:
@@ -180,20 +183,32 @@ services:
     container_name: mybilibili-sentinel
     restart: unless-stopped
     mem_limit: 256m
-    cpus: 0.35
+    cpus: 0.25
+    entrypoint:
+      - sh
+      - -c
+    command:
+      - |
+        mkdir -p /tmp/sentinel-logs
+        exec java -Xms64m -Xmx160m -XX:+UseSerialGC -XX:ActiveProcessorCount=1 \
+          -Djava.security.egd=file:/dev/./urandom \
+          -Dserver.port=8858 \
+          -Dcsp.sentinel.api.port=8719 \
+          -Dcsp.sentinel.dashboard.server=localhost:8858 \
+          -Dcsp.sentinel.log.dir=/tmp/sentinel-logs \
+          -Dproject.name=sentinel-dashboard \
+          -jar app.jar
     environment:
       JAVA_OPTS: "-Xms64m -Xmx128m -XX:+UseSerialGC"
     ports:
       - "127.0.0.1:8858:8858"
-    volumes:
-      - D:/DockerFiles/mybilibili/sentinel/logs:/root/logs
 
   srs:
     image: registry.cn-hangzhou.aliyuncs.com/ossrs/srs:5
     container_name: mybilibili-srs
     restart: unless-stopped
     mem_limit: 128m
-    cpus: 0.25
+    cpus: 0.15
     working_dir: /usr/local/srs
     command: ["./objs/srs", "-c", "conf/srs.conf"]
     ports:
