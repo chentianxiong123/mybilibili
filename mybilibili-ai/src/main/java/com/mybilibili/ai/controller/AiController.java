@@ -1,7 +1,6 @@
 package com.mybilibili.ai.controller;
 
 import com.mybilibili.ai.mapper.VideoMapper;
-import com.mybilibili.ai.service.AiSummaryService;
 import com.mybilibili.common.entity.Video;
 import com.mybilibili.common.storage.StorageKeys;
 import com.mybilibili.common.storage.StorageService;
@@ -27,9 +26,6 @@ public class AiController {
 
     @Autowired
     private VideoMapper videoMapper;
-
-    @Autowired
-    private AiSummaryService aiSummaryService;
 
     @Autowired
     private StringRedisTemplate redisTemplate;
@@ -156,25 +152,6 @@ public class AiController {
 
         } catch (Exception e) {
             return Result.error("检查失败: " + e.getMessage());
-        }
-    }
-
-    @PostMapping("/test-api")
-    @Operation(summary = "测试AI API连接", description = "测试DeepSeek API是否配置正确")
-    public Result<Object> testApiConnection(@RequestBody(required = false) java.util.Map<String, String> request) {
-        String testText = request != null ? request.get("text") : null;
-        AiSummaryService.TestResult testResult = aiSummaryService.testApiConnection(testText);
-
-        java.util.Map<String, Object> data = new java.util.HashMap<>();
-        data.put("success", testResult.isSuccess());
-        data.put("message", testResult.getMessage());
-        data.put("response", testResult.getResponse());
-        data.put("responseTime", testResult.getResponseTime() + "ms");
-
-        if (testResult.isSuccess()) {
-            return Result.success(data);
-        } else {
-            return Result.error(500, testResult.getMessage());
         }
     }
 

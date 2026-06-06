@@ -98,35 +98,6 @@ public class AiSummaryServiceImpl implements AiSummaryService {
     }
 
     @Override
-    public TestResult testApiConnection(String testText) {
-        long startTime = System.currentTimeMillis();
-        try {
-            String prompt = testText != null && !testText.isEmpty() ? testText : "你好，请回复'API测试成功'";
-            ChatClient client = dynamicChatClient.getClient("CHAT");
-            if (client == null) {
-                client = dynamicChatClient.getFirstActiveClient();
-            }
-            if (client == null) {
-                return new TestResult(false, "没有可用的 API 渠道，请先在渠道管理页面配置并启用渠道");
-            }
-            String responseContent = client.prompt()
-                    .user(prompt)
-                    .call()
-                    .content();
-
-            aiUsageLogger.log("TEST", "deepseek-r1", null, null, System.currentTimeMillis() - startTime, responseContent != null, null);
-
-            long responseTime = System.currentTimeMillis() - startTime;
-            return new TestResult(true, "API连接成功", responseContent, responseTime);
-
-        } catch (Exception e) {
-            aiUsageLogger.log("TEST", "deepseek-r1", null, null, System.currentTimeMillis() - startTime, false, e.getMessage());
-            long responseTime = System.currentTimeMillis() - startTime;
-            return new TestResult(false, "API调用异常: " + e.getMessage(), null, responseTime);
-        }
-    }
-
-    @Override
     public boolean saveSummaryToFile(String summary, String filePath, String videoTitle) {
         try {
             File file = new File(filePath);
