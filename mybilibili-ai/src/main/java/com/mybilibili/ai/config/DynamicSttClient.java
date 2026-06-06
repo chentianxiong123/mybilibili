@@ -11,12 +11,10 @@ import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * STT 提供者管理器。
- * 自动扫描所有 SttProvider 实现，按类型匹配 ai_api_configs 表中的渠道配置。
+ * 自动扫描所有 SttProvider 实现，按 TRANSCRIBE 绑定的渠道配置匹配提供者。
  */
 @Slf4j
 @Component
@@ -31,9 +29,6 @@ public class DynamicSttClient {
     @Autowired
     private List<SttProvider> providers;
 
-    /** type → SttProvider 缓存 */
-    private final Map<String, SttProvider> providerCache = new ConcurrentHashMap<>();
-
     @PostConstruct
     public void init() {
         refreshProviders();
@@ -45,11 +40,7 @@ public class DynamicSttClient {
      */
     public SttProvider getProvider() {
         AiApiConfig config = getTranscribeConfig();
-        if (config == null) {
-            return null;
-        }
-        SttProvider provider = findProvider(config);
-        return provider != null && provider.isAvailable() ? provider : null;
+        return getProvider(config);
     }
 
     /**
@@ -58,19 +49,18 @@ public class DynamicSttClient {
     public SttProvider getProviderByChannelId(Long channelId) {
         AiApiConfig config = aiApiConfigMapper.selectById(channelId);
         if (config == null || !config.getEnabled()) return null;
-        SttProvider provider = findProvider(config);
-        return provider != null && provider.isAvailable() ? provider : null;
+        return getProvider(config);
     }
 
     /**
      * 刷新提供者缓存
      */
     public void refreshProviders() {
-        providerCache.clear();
         SttProvider provider = getProvider();
         if (provider != null) {
-            providerCache.put("STT", provider);
             log.info("STT 提供者已加载: {}", provider.getName());
+        } else {
+            log.info("STT 提供者未配置");
         }
     }
 
@@ -78,12 +68,13 @@ public class DynamicSttClient {
      * 通过 API 转写音频，返回纯文本或 SRT 格式
      */
     public String transcribeWithApi(String audioPath, String language) {
-        SttProvider provider = getProvider();
+        AiApiConfig config = getTranscribeConfig();
+        SttProvider provider = getProvider(config);
         if (provider == null) {
             log.warn("[DynamicSttClient] 无可用的 STT 提供者");
             return null;
         }
-        Object result = provider.invoke(SttProvider.TranscribeRequest.of(audioPath, language));
+        Object result = provider.invoke(SttProvider.TranscribeRequest.of(audioPath, language, config));
         return result != null ? result.toString() : null;
     }
 
@@ -128,25 +119,24 @@ public class DynamicSttClient {
         return config;
     }
 
-    private SttProvider findProvider(AiApiConfig config) {
-        if (config == null || config.getName() == null) {
+    private SttProvider getProvider(AiApiConfig config) {
+        if (config == null) {
             return null;
         }
-        String configName = normalize(config.getName());
-        String model = normalize(config.getModel());
-        String combinedConfig = configName + "-" + model;
+        SttProvider provider = findProvider(config);
+        return provider != null && provider.isAvailable() ? provider : null;
+    }
+
+    private SttProvider findProvider(AiApiConfig config) {
+        if (config == null) {
+            return null;
+        }
         for (SttProvider candidate : providers) {
-            String providerName = normalize(candidate.getName());
-            if (combinedConfig.contains(providerName) || providerName.contains(configName)
-                    || providerName.contains(model)) {
+            if (candidate.supports(config)) {
                 return candidate;
             }
         }
         return null;
-    }
-
-    private String normalize(String value) {
-        return value == null ? "" : value.toLowerCase().replace("_", "-").replace(" ", "-");
     }
 
     private String formatSrtTime(double seconds) {

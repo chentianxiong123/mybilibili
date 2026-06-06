@@ -1,6 +1,7 @@
 package com.mybilibili.ai.service.impl;
 
 import com.mybilibili.ai.config.WhisperConfig;
+import com.mybilibili.ai.entity.AiApiConfig;
 import com.mybilibili.ai.service.SttProvider;
 import com.mybilibili.ai.service.SttProvider.TranscribeRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,14 @@ public class WhisperLocalProvider implements SttProvider {
     @Override
     public String getName() {
         return "whisper-local";
+    }
+
+    @Override
+    public boolean supports(AiApiConfig config) {
+        String name = config != null && config.getName() != null ? config.getName().toLowerCase() : "";
+        String model = config != null && config.getModel() != null ? config.getModel().toLowerCase() : "";
+        return (name.contains("whisper") || model.contains("whisper"))
+                && (name.contains("local") || model.contains("local"));
     }
 
     @Override
