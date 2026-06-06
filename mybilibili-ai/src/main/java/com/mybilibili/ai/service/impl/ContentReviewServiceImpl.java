@@ -3,9 +3,9 @@ package com.mybilibili.ai.service.impl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mybilibili.ai.config.DynamicChatClient;
-import com.mybilibili.ai.service.AiConfigService;
 import com.mybilibili.ai.service.ContentReviewService;
 import com.mybilibili.ai.util.AiUsageLogger;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,9 +16,6 @@ public class ContentReviewServiceImpl implements ContentReviewService {
 
     @Autowired
     private DynamicChatClient dynamicChatClient;
-
-    @Autowired
-    private AiConfigService aiConfigService;
 
     @Autowired
     private AiUsageLogger aiUsageLogger;
@@ -39,17 +36,18 @@ public class ContentReviewServiceImpl implements ContentReviewService {
         Map<String, Object> result = new HashMap<>();
         long startTime = System.currentTimeMillis();
         try {
-            String apiKey = aiConfigService.getApiKey();
-            if (apiKey == null || apiKey.isEmpty()) {
+            ChatClient client = dynamicChatClient.getClient("REVIEW");
+            if (client == null) {
                 result.put("status", "FAILED");
-                result.put("verdict", "AI服务未配置API密钥");
+                result.put("verdict", "REVIEW 渠道未配置或已禁用");
                 result.put("riskLevel", null);
+                aiUsageLogger.log("REVIEW", null, null, null, System.currentTimeMillis() - startTime, false, "REVIEW 渠道未配置或已禁用");
                 return result;
             }
 
             String userPrompt = "举报原因：" + reason + "\n\n被举报内容：\n" + content;
 
-            String responseContent = dynamicChatClient.getClient("REVIEW").prompt()
+            String responseContent = client.prompt()
                     .system(SYSTEM_PROMPT)
                     .user(userPrompt)
                     .call()
