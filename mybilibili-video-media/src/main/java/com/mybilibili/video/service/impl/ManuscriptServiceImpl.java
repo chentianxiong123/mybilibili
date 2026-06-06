@@ -362,7 +362,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     @Override
     public List<ManuscriptVO> getManuscriptsByUserId(Integer userId) {
         List<Manuscript> manuscripts = manuscriptMapper.selectByUserId(userId);
-        return manuscripts.stream().map(this::convertToVO).collect(Collectors.toList());
+        return convertToVOs(manuscripts);
     }
 
     @Override
@@ -371,7 +371,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         if (size == null || size < 1) size = 10;
         Integer offset = (page - 1) * size;
         List<Manuscript> manuscripts = manuscriptMapper.selectByUserIdWithPaging(userId, status, offset, size);
-        return manuscripts.stream().map(this::convertToVO).collect(Collectors.toList());
+        return convertToVOs(manuscripts);
     }
 
     @Override
@@ -455,10 +455,14 @@ public class ManuscriptServiceImpl implements ManuscriptService {
 
     private ManuscriptVO convertToVO(Manuscript manuscript) {
         if (manuscript == null) return null;
+        return convertToVO(manuscript, videoMapper.selectByManuscriptId(manuscript.getId()));
+    }
+
+    private ManuscriptVO convertToVO(Manuscript manuscript, List<Video> videos) {
+        if (manuscript == null) return null;
         ManuscriptVO vo = new ManuscriptVO();
         BeanUtils.copyProperties(manuscript, vo);
-        List<Video> videos = videoMapper.selectByManuscriptId(manuscript.getId());
-        vo.setVideos(convertVideosToItems(videos));
+        vo.setVideos(convertVideosToItems(videos == null ? Collections.emptyList() : videos));
         return vo;
     }
 
@@ -467,9 +471,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
             return Collections.emptyList();
         }
 
-        List<ManuscriptVO> vos = manuscripts.stream()
-                .map(this::convertToVO)
-                .collect(Collectors.toList());
+        List<ManuscriptVO> vos = convertToVOs(manuscripts);
 
         LinkedHashSet<Integer> userIds = vos.stream()
                 .filter(Objects::nonNull)
@@ -487,6 +489,41 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         }
 
         return vos;
+    }
+
+    private List<ManuscriptVO> convertToVOs(List<Manuscript> manuscripts) {
+        if (manuscripts == null || manuscripts.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<Integer, List<Video>> videosByManuscriptId = fetchVideosByManuscriptIds(manuscripts);
+        return manuscripts.stream()
+                .map(manuscript -> convertToVO(
+                        manuscript,
+                        videosByManuscriptId.getOrDefault(manuscript.getId(), Collections.emptyList())))
+                .collect(Collectors.toList());
+    }
+
+    private Map<Integer, List<Video>> fetchVideosByManuscriptIds(List<Manuscript> manuscripts) {
+        LinkedHashSet<Integer> manuscriptIds = manuscripts.stream()
+                .filter(Objects::nonNull)
+                .map(Manuscript::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (manuscriptIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<Video> videos = videoMapper.selectByManuscriptIds(new ArrayList<>(manuscriptIds));
+        Map<Integer, List<Video>> videosByManuscriptId = new HashMap<>();
+        for (Video video : videos) {
+            if (video != null && video.getManuscriptId() != null) {
+                videosByManuscriptId
+                        .computeIfAbsent(video.getManuscriptId(), key -> new ArrayList<>())
+                        .add(video);
+            }
+        }
+        return videosByManuscriptId;
     }
 
     private Map<Integer, UserVO> fetchUsersByIds(Set<Integer> userIds) {
@@ -911,25 +948,25 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     @Override
     public List<ManuscriptVO> getPendingManuscripts() {
         List<Manuscript> manuscripts = manuscriptMapper.selectByStatus(Manuscript.STATUS_PENDING_REVIEW);
-        return manuscripts.stream().map(this::convertToVO).collect(Collectors.toList());
+        return convertToVOs(manuscripts);
     }
 
     @Override
     public List<ManuscriptVO> getProcessingManuscripts() {
         List<Manuscript> manuscripts = manuscriptMapper.selectByStatus(Manuscript.STATUS_PROCESSING);
-        return manuscripts.stream().map(this::convertToVO).collect(Collectors.toList());
+        return convertToVOs(manuscripts);
     }
 
     @Override
     public List<ManuscriptVO> getReadyManuscripts() {
         List<Manuscript> manuscripts = manuscriptMapper.selectByStatus(Manuscript.STATUS_READY_TO_PUBLISH);
-        return manuscripts.stream().map(this::convertToVO).collect(Collectors.toList());
+        return convertToVOs(manuscripts);
     }
 
     @Override
     public List<ManuscriptVO> getAllManuscripts() {
         List<Manuscript> manuscripts = manuscriptMapper.selectList(null);
-        return manuscripts.stream().map(this::convertToVO).collect(Collectors.toList());
+        return convertToVOs(manuscripts);
     }
 
     @Override
