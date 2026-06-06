@@ -1215,46 +1215,6 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     }
 
     @Override
-    public boolean manualTranscode(Integer videoId) {
-        Video video = videoMapper.selectById(videoId);
-        if (video == null) {
-            return false;
-        }
-        video.setProcessStatus(Video.PROCESS_STATUS_TRANSCODING);
-        return videoMapper.updateById(video) > 0;
-    }
-
-    @Override
-    public boolean manualExtractAudio(Integer videoId) {
-        Video video = videoMapper.selectById(videoId);
-        if (video == null) {
-            return false;
-        }
-        video.setProcessStatus(Video.PROCESS_STATUS_AUDIO_EXTRACTING);
-        return videoMapper.updateById(video) > 0;
-    }
-
-    @Override
-    public boolean manualGenerateSubtitle(Integer videoId) {
-        Video video = videoMapper.selectById(videoId);
-        if (video == null) {
-            return false;
-        }
-        video.setProcessStatus(Video.PROCESS_STATUS_SUBTITLE_GENERATING);
-        return videoMapper.updateById(video) > 0;
-    }
-
-    @Override
-    public boolean manualAiSummary(Integer videoId) {
-        Video video = videoMapper.selectById(videoId);
-        if (video == null) {
-            return false;
-        }
-        video.setProcessStatus(Video.PROCESS_STATUS_AI_SUMMARIZING);
-        return videoMapper.updateById(video) > 0;
-    }
-
-    @Override
     public boolean manualProcessAll(Integer videoId) {
         Video video = videoMapper.selectById(videoId);
         if (video == null) {
@@ -1276,23 +1236,6 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         }
         video.setProcessStatus(Video.PROCESS_STATUS_PENDING);
         return videoMapper.updateById(video) > 0;
-    }
-
-    @Override
-    public Map<String, Object> getVideoProcessStatus(Integer videoId) {
-        Video video = videoMapper.selectById(videoId);
-        if (video == null) {
-            return null;
-        }
-        Map<String, Object> result = new HashMap<>();
-        result.put("videoId", videoId);
-        result.put("processStatus", video.getProcessStatus());
-        result.put("processError", video.getProcessError());
-        result.put("hasSubtitle", video.getHasSubtitle());
-        result.put("hasSummary", video.getHasSummary());
-        result.put("playUrl", video.getPlayUrlHd());
-        result.put("sourceVideoUrl", video.getSourceVideoUrl());
-        return result;
     }
 
     @Override

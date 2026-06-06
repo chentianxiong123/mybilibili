@@ -42,13 +42,8 @@ public interface ManuscriptService {
     Map<String, Object> getManuscriptStatistics();
     boolean retryManuscript(Integer manuscriptId);
 
-    boolean manualTranscode(Integer videoId);
-    boolean manualExtractAudio(Integer videoId);
-    boolean manualGenerateSubtitle(Integer videoId);
-    boolean manualAiSummary(Integer videoId);
     boolean manualProcessAll(Integer videoId);
     boolean resetVideoStatus(Integer videoId);
-    Map<String, Object> getVideoProcessStatus(Integer videoId);
     Map<String, Object> getVideoSourceUrl(Integer videoId);
     Video getVideoById(Integer videoId);
     void incrementViewCount(Integer manuscriptId);

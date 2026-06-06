@@ -140,31 +140,9 @@ export const resetVideoStatus = (videoId) => {
   })
 }
 
-export const getVideoProcessStatus = (videoId) => {
-  return request({
-    url: `/manuscript/admin/video-status/${videoId}`,
-    method: 'get'
-  })
-}
-
 export const getVideoSourceUrl = (videoId) => {
   return request({
     url: `/manuscript/admin/video-source/${videoId}`,
     method: 'get'
-  })
-}
-
-export const testAiApi = (text) => {
-  return request({
-    url: '/manuscript/admin/test-ai-api',
-    method: 'post',
-    data: { text }
-  })
-}
-
-export const testAiSummary = (videoId) => {
-  return request({
-    url: `/manuscript/admin/test-ai-summary/${videoId}`,
-    method: 'post'
   })
 }
