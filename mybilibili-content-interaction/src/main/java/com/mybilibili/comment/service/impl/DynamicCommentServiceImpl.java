@@ -18,8 +18,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -53,7 +53,6 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
         }
         try {
             Result<UserVO> result = userClient.getUserById(userId);
-            log.info("获取用户信息, userId={}, result={}", userId, result);
             if (result != null && result.getData() != null) {
                 return result.getData();
             }
@@ -64,6 +63,13 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
     }
 
     private DynamicCommentVO buildDynamicCommentVO(DynamicComment comment, Integer currentUserId) {
+        return buildDynamicCommentVO(comment, currentUserId, Collections.emptyMap(), Collections.emptyMap());
+    }
+
+    private DynamicCommentVO buildDynamicCommentVO(DynamicComment comment,
+                                                   Integer currentUserId,
+                                                   Map<Integer, UserVO> usersById,
+                                                   Map<Integer, Boolean> likeStatusMap) {
         DynamicCommentVO vo = new DynamicCommentVO();
         vo.setId(comment.getId());
         vo.setDynamicId(comment.getDynamicId());
@@ -77,7 +83,7 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
         vo.setCreateTime(comment.getCreatedAt());
         vo.setStatus(comment.getStatus());
 
-        UserVO user = getUserById(comment.getUserId());
+        UserVO user = resolveUser(comment.getUserId(), usersById);
         String nickname = user != null ? user.getNickname() : null;
         vo.setUserName(isValidNickname(nickname) ? nickname : "用户" + comment.getUserId());
         if (user != null) {
@@ -86,21 +92,12 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
         }
 
         if (comment.getReplyUserId() != null) {
-            UserVO replyUser = getUserById(comment.getReplyUserId());
+            UserVO replyUser = resolveUser(comment.getReplyUserId(), usersById);
             String replyNickname = replyUser != null ? replyUser.getNickname() : null;
             vo.setReplyToUserName(isValidNickname(replyNickname) ? replyNickname : "用户" + comment.getReplyUserId());
         }
 
-        if (currentUserId != null) {
-            try {
-                Result<Boolean> likeResult = likeInteractionPort.isLiked(currentUserId, TARGET_TYPE_DYNAMIC_COMMENT, comment.getId());
-                vo.setLiked(likeResult != null && Boolean.TRUE.equals(likeResult.getData()));
-            } catch (Exception e) {
-                vo.setLiked(false);
-            }
-        } else {
-            vo.setLiked(false);
-        }
+        vo.setLiked(resolveLiked(comment.getId(), currentUserId, likeStatusMap));
 
         return vo;
     }
@@ -169,13 +166,22 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
     public Result<List<DynamicCommentVO>> getCommentsByDynamicId(Integer dynamicId, Integer page, Integer size, String sort, Integer currentUserId) {
         int offset = (page - 1) * size;
         List<DynamicComment> comments = dynamicCommentMapper.selectByDynamicIdWithSort(dynamicId, offset, size, sort);
+        Map<Integer, List<DynamicComment>> repliesByCommentId = new HashMap<>();
+        List<DynamicComment> allComments = new ArrayList<>(comments);
+        for (DynamicComment comment : comments) {
+            List<DynamicComment> replies = dynamicCommentMapper.selectRepliesByParentId(comment.getId());
+            repliesByCommentId.put(comment.getId(), replies);
+            allComments.addAll(replies);
+        }
+        Map<Integer, UserVO> usersById = fetchUsersByIds(extractUserIds(allComments));
+        Map<Integer, Boolean> likeStatusMap = batchIsLiked(currentUserId, allComments);
+
         List<DynamicCommentVO> voList = new ArrayList<>();
         for (DynamicComment comment : comments) {
-            DynamicCommentVO vo = buildDynamicCommentVO(comment, currentUserId);
-            List<DynamicComment> replies = dynamicCommentMapper.selectRepliesByParentId(comment.getId());
+            DynamicCommentVO vo = buildDynamicCommentVO(comment, currentUserId, usersById, likeStatusMap);
             List<DynamicCommentVO> replyVOs = new ArrayList<>();
-            for (DynamicComment reply : replies) {
-                replyVOs.add(buildDynamicCommentVO(reply, currentUserId));
+            for (DynamicComment reply : repliesByCommentId.getOrDefault(comment.getId(), Collections.emptyList())) {
+                replyVOs.add(buildDynamicCommentVO(reply, currentUserId, usersById, likeStatusMap));
             }
             vo.setReplies(replyVOs);
             vo.setReplyCount(replyVOs.size());
@@ -187,9 +193,11 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
     @Override
     public Result<List<DynamicCommentVO>> getRepliesByCommentId(Integer commentId, Integer currentUserId) {
         List<DynamicComment> replies = dynamicCommentMapper.selectRepliesByParentId(commentId);
+        Map<Integer, UserVO> usersById = fetchUsersByIds(extractUserIds(replies));
+        Map<Integer, Boolean> likeStatusMap = batchIsLiked(currentUserId, replies);
         List<DynamicCommentVO> voList = new ArrayList<>();
         for (DynamicComment reply : replies) {
-            voList.add(buildDynamicCommentVO(reply, currentUserId));
+            voList.add(buildDynamicCommentVO(reply, currentUserId, usersById, likeStatusMap));
         }
         return Result.success("获取成功", voList);
     }
@@ -224,6 +232,97 @@ public class DynamicCommentServiceImpl implements DynamicCommentService {
         int newLikeCount = getLikeCount(TARGET_TYPE_DYNAMIC_COMMENT, commentId);
         dynamicCommentMapper.updateLikeCountDirect(commentId, newLikeCount);
         return Result.success("取消点赞成功", null);
+    }
+
+    private Set<Integer> extractUserIds(List<DynamicComment> comments) {
+        LinkedHashSet<Integer> userIds = new LinkedHashSet<>();
+        if (comments == null) {
+            return userIds;
+        }
+        for (DynamicComment comment : comments) {
+            if (comment.getUserId() != null) {
+                userIds.add(comment.getUserId());
+            }
+            if (comment.getReplyUserId() != null) {
+                userIds.add(comment.getReplyUserId());
+            }
+        }
+        return userIds;
+    }
+
+    private Map<Integer, UserVO> fetchUsersByIds(Collection<Integer> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<Integer> ids = userIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        if (ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        try {
+            Result<List<UserVO>> result = userClient.getUsersByIds(ids);
+            if (result == null || result.getCode() == null || result.getCode() != 200 || result.getData() == null) {
+                return Collections.emptyMap();
+            }
+            Map<Integer, UserVO> usersById = new HashMap<>();
+            for (UserVO user : result.getData()) {
+                if (user != null && user.getId() != null) {
+                    usersById.put(user.getId(), user);
+                }
+            }
+            return usersById;
+        } catch (Exception e) {
+            log.warn("批量获取动态评论用户信息失败: {}", e.getMessage());
+            return Collections.emptyMap();
+        }
+    }
+
+    private Map<Integer, Boolean> batchIsLiked(Integer currentUserId, List<DynamicComment> comments) {
+        if (currentUserId == null || comments == null || comments.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<Integer> ids = comments.stream()
+                .map(DynamicComment::getId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        if (ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        try {
+            Result<Map<Integer, Boolean>> result = likeInteractionPort.batchIsLiked(currentUserId, TARGET_TYPE_DYNAMIC_COMMENT, ids);
+            if (result != null && result.getData() != null) {
+                return result.getData();
+            }
+        } catch (Exception e) {
+            log.warn("批量获取动态评论点赞状态失败: {}", e.getMessage());
+        }
+        return Collections.emptyMap();
+    }
+
+    private UserVO resolveUser(Integer userId, Map<Integer, UserVO> usersById) {
+        if (userId == null) {
+            return null;
+        }
+        UserVO user = usersById == null ? null : usersById.get(userId);
+        return user != null ? user : getUserById(userId);
+    }
+
+    private boolean resolveLiked(Integer commentId, Integer currentUserId, Map<Integer, Boolean> likeStatusMap) {
+        if (currentUserId == null || commentId == null) {
+            return false;
+        }
+        if (likeStatusMap != null && likeStatusMap.containsKey(commentId)) {
+            return Boolean.TRUE.equals(likeStatusMap.get(commentId));
+        }
+        try {
+            Result<Boolean> likeResult = likeInteractionPort.isLiked(currentUserId, TARGET_TYPE_DYNAMIC_COMMENT, commentId);
+            return likeResult != null && Boolean.TRUE.equals(likeResult.getData());
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private int getLikeCount(String targetType, Integer targetId) {
