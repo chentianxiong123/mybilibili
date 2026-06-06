@@ -440,14 +440,6 @@ spring:
           filters:
             - StripPrefix=1
 
-        # 放行 /dynamic 路径（无 /api 前缀）
-        - id: interaction-dynamic-root
-          uri: lb://mybilibili-content-interaction
-          predicates:
-            - Path=/dynamic/**
-          filters:
-            - StripPrefix=0
-
         # ========== 内容服务（分区、轮播图）- 集成到视频服务 ==========
         - id: content-service
           uri: lb://mybilibili-video-media
