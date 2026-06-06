@@ -51,6 +51,14 @@ spring:
           filters:
             - StripPrefix=1
 
+        # 验证码接口
+        - id: captcha-service
+          uri: lb://mybilibili-account-social
+          predicates:
+            - Path=/api/captcha/**
+          filters:
+            - StripPrefix=1
+
         # 内容审核接口 - 转发到 comment 服务（必须放在 /api/admin/** 之前）
         - id: content-review
           uri: lb://mybilibili-content-interaction

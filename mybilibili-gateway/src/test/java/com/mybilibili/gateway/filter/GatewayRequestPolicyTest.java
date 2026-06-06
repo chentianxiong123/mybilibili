@@ -19,6 +19,8 @@ class GatewayRequestPolicyTest {
         assertTrue(policy.isPublicPath("/api/live/room/100"));
         assertTrue(policy.isPublicPath("/api/search/hot"));
         assertTrue(policy.isPublicPath("/api/manuscript/100"));
+        assertTrue(policy.isPublicPath(HttpMethod.POST, "/api/captcha/new"));
+        assertTrue(policy.isPublicPath(HttpMethod.POST, "/api/captcha/verify"));
 
         assertFalse(policy.isPublicPath("/api/video/manuscript/100"));
         assertFalse(policy.isPublicPath("/api/meeting/my-rooms"));

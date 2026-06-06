@@ -50,18 +50,18 @@ export const dynamicApi = {
   },
 
   getComments(dynamicId: number, page = 1, limit = 10) {
-    return api.get(`/dynamic/${dynamicId}/comments`, { params: { page, limit } })
+    return api.get('/dynamic/comment/list', { params: { dynamicId, page, size: limit } })
   },
 
   addComment(dynamicId: number, content: string, parentId?: number | null, replyUserId?: number | null) {
-    const params: any = { content }
+    const params: any = { dynamicId, content }
     if (parentId) params.parentId = parentId
     if (replyUserId) params.replyUserId = replyUserId
-    return api.post(`/dynamic/${dynamicId}/comment`, null, { params })
+    return api.post('/dynamic/comment/add', null, { params })
   },
 
   deleteComment(commentId: number) {
-    return api.delete(`/dynamic/comment/${commentId}`)
+    return api.delete(`/dynamic/comment/delete/${commentId}`)
   },
 
   likeComment(commentId: number) {
