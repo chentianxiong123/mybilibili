@@ -269,16 +269,6 @@ export const commentApi = {
     }
   },
 
-  // 向后兼容：获取视频评论
-  getCommentsByVideoId: (videoId, page, size, sort = 'new') => api.get(`/comment/video/${videoId}?page=${page}&size=${size}&sort=${sort}`),
-
-  // 向后兼容：发表视频评论
-  postVideoComment: (videoId, content) => api.post('/comment/add', `manuscriptId=${videoId}&content=${encodeURIComponent(content)}`, {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
-    }
-  }),
-
   // 回复评论（视频）
   replyComment: (commentId, content, replyToUserId) => api.post('/comment/reply', `commentId=${commentId}&content=${encodeURIComponent(content)}${replyToUserId ? `&replyToUserId=${replyToUserId}` : ''}`, {
     headers: {

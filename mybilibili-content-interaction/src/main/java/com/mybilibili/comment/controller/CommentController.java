@@ -57,23 +57,6 @@ public class CommentController {
         }
     }
 
-    @GetMapping("/video/{id}")
-    @Operation(summary = "获取视频评论", description = "获取视频的评论列表")
-    public Result<List<CommentVO>> getCommentsByVideoId(
-            @PathVariable Integer id,
-            @RequestParam(value = "page", defaultValue = "1") Integer page,
-            @RequestParam(value = "size", defaultValue = "20") Integer size,
-            @RequestParam(value = "sort", defaultValue = "new") String sort,
-            HttpServletRequest request) {
-        try {
-            Integer userId = getUserIdFromRequest(request);
-            List<CommentVO> comments = commentService.getCommentsByManuscriptId(id, page, size, userId, sort);
-            return Result.success("获取成功", comments);
-        } catch (Exception e) {
-            return Result.error(e.getMessage());
-        }
-    }
-
     @DeleteMapping("/{id}")
     @Operation(summary = "删除评论", description = "删除自己的评论")
     @SecurityRequirement(name = "JWT")
