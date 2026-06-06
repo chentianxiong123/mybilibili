@@ -18,7 +18,6 @@ public class VideoProcessProgressSseService {
 
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
     private final Map<String, Integer> emitterVideoIds = new ConcurrentHashMap<>();
-    private final Map<String, SseEmitter> adminEmitters = new ConcurrentHashMap<>();
     private final Map<Integer, VideoProcessProgressEvent> latestEvents = new ConcurrentHashMap<>();
 
     public SseEmitter createEmitter(Integer videoId) {
@@ -42,23 +41,6 @@ public class VideoProcessProgressSseService {
         return emitter;
     }
 
-    public SseEmitter createAdminEmitter(Object snapshot) {
-        String key = "admin-" + System.currentTimeMillis();
-        SseEmitter emitter = new SseEmitter(TIMEOUT_MILLIS);
-        adminEmitters.put(key, emitter);
-
-        emitter.onCompletion(() -> removeAdmin(key));
-        emitter.onTimeout(() -> removeAdmin(key));
-        emitter.onError(e -> removeAdmin(key));
-
-        try {
-            emitter.send(SseEmitter.event().name("snapshot").data(snapshot));
-        } catch (IOException e) {
-            removeAdmin(key);
-        }
-        return emitter;
-    }
-
     public void publish(VideoProcessProgressEvent event) {
         if (event == null || event.getVideoId() == null) {
             return;
@@ -66,7 +48,6 @@ public class VideoProcessProgressSseService {
         latestEvents.put(event.getVideoId(), event);
         String eventName = event.getEventName() == null ? VideoProcessProgressEvent.EVENT_PROGRESS : event.getEventName();
         publishToVideoEmitters(event, eventName);
-        publishToAdminEmitters(event, eventName);
     }
 
     private void publishToVideoEmitters(VideoProcessProgressEvent event, String eventName) {
@@ -84,23 +65,8 @@ public class VideoProcessProgressSseService {
         }
     }
 
-    private void publishToAdminEmitters(VideoProcessProgressEvent event, String eventName) {
-        for (Map.Entry<String, SseEmitter> entry : adminEmitters.entrySet()) {
-            try {
-                entry.getValue().send(SseEmitter.event().name(eventName).data(event));
-            } catch (Exception e) {
-                log.debug("视频处理后台 SSE 推送失败，移除连接: {}", entry.getKey());
-                removeAdmin(entry.getKey());
-            }
-        }
-    }
-
     private void remove(String key) {
         emitters.remove(key);
         emitterVideoIds.remove(key);
-    }
-
-    private void removeAdmin(String key) {
-        adminEmitters.remove(key);
     }
 }

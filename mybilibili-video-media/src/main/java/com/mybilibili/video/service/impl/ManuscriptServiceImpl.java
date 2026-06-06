@@ -247,6 +247,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
                 videoVO.setPlayUrlSd(video.getPlayUrlSd());
                 videoVO.setPlayUrlLd(video.getPlayUrlLd());
                 videoVO.setSourceVideoUrl(video.getSourceVideoUrl());
+                fillVideoProcessFields(videoVO, video);
                 videoVOs.add(videoVO);
             }
             videoVOs.sort((a, b) -> a.getVideoOrder() - b.getVideoOrder());
@@ -939,10 +940,18 @@ public class ManuscriptServiceImpl implements ManuscriptService {
             item.setPlayUrlLd(video.getPlayUrlLd());
             item.setSourceVideoUrl(video.getSourceVideoUrl());
             item.setDurationSeconds(video.getDurationSeconds());
-            item.setProcessStatus(video.getProcessStatus());
+            fillVideoProcessFields(item, video);
             items.add(item);
         }
         return items;
+    }
+
+    private void fillVideoProcessFields(ManuscriptVO.VideoItemVO item, Video video) {
+        item.setStatus(video.getStatus());
+        item.setProcessStatus(video.getProcessStatus());
+        item.setProcessProgress(video.getProcessProgress());
+        item.setProcessStage(video.getProcessStage());
+        item.setProcessError(video.getProcessError());
     }
 
     @Override
@@ -1256,8 +1265,7 @@ public class ManuscriptServiceImpl implements ManuscriptService {
             item.setPlayUrlLd(video.getPlayUrlLd());
             item.setSourceVideoUrl(video.getSourceVideoUrl());
             item.setDurationSeconds(video.getDurationSeconds());
-            item.setStatus(video.getStatus());
-            item.setProcessStatus(video.getProcessStatus());
+            fillVideoProcessFields(item, video);
             return item;
         }).collect(Collectors.toList());
     }

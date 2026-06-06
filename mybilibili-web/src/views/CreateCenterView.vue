@@ -313,6 +313,37 @@
                     </el-tag>
                   </template>
                 </el-table-column>
+                <el-table-column label="处理进度" min-width="280">
+                  <template #default="scope">
+                    <div class="manuscript-process">
+                      <div
+                        v-for="video in getArticleVideos(scope.row)"
+                        :key="video.id || video.videoOrder"
+                        class="process-video-row"
+                      >
+                        <div class="process-video-header">
+                          <span class="process-video-title">{{ getVideoPartTitle(video) }}</span>
+                          <el-tag :type="getVideoProcessTagType(video)" size="small">
+                            {{ getVideoProcessText(video, scope.row.status) }}
+                          </el-tag>
+                        </div>
+                        <el-progress
+                          v-if="shouldShowVideoProgress(video, scope.row.status)"
+                          :percentage="getVideoProcessProgress(video)"
+                          :status="getVideoProgressStatus(video)"
+                          :stroke-width="6"
+                          :show-text="false"
+                        />
+                        <div v-if="video.processError" class="process-error">
+                          {{ video.processError }}
+                        </div>
+                      </div>
+                      <span v-if="getArticleVideos(scope.row).length === 0" class="process-empty">
+                        暂无视频处理信息
+                      </span>
+                    </div>
+                  </template>
+                </el-table-column>
                 <el-table-column prop="viewCount" label="播放量" width="100"></el-table-column>
                 <el-table-column prop="commentCount" label="评论数" width="100"></el-table-column>
                 <el-table-column prop="createdAt" label="创建时间" width="180">
@@ -1803,11 +1834,27 @@ const mainTab = ref('video')
 
 // 状态筛选
 const statusFilter = ref('published') // published: 已通过, processing: 进行中, rejected: 未通过
+const validArticleStatusFilters = new Set(['published', 'processing', 'rejected', 'unpublished'])
+
+watch(
+  () => [route.path, route.query.status],
+  () => {
+    if (route.path !== '/create-center/content-articles') {
+      return
+    }
+    const queryStatus = Array.isArray(route.query.status) ? route.query.status[0] : route.query.status
+    if (validArticleStatusFilters.has(queryStatus) && statusFilter.value !== queryStatus) {
+      statusFilter.value = queryStatus
+    }
+  },
+  { immediate: true }
+)
 
 // 稿件列表数据
 const articles = ref([])
 const articlesLoading = ref(false)
 const totalArticles = ref(0)
+let articleProcessPollingTimer = null
 
 // 稿件统计数据
 const approvedCount = ref(0)
@@ -1852,6 +1899,17 @@ const loadManuscriptCategories = async () => {
 // 获取稿件列表
 const fetchArticles = async () => {
   articlesLoading.value = true
+  await loadArticles(false)
+}
+
+const refreshArticlesSilently = async () => {
+  await loadArticles(true)
+}
+
+const loadArticles = async (silent = false) => {
+  if (!silent) {
+    articlesLoading.value = true
+  }
   try {
     const params = {
       page: currentPage.value,
@@ -1869,12 +1927,47 @@ const fetchArticles = async () => {
       articles.value = response.data.list || []
       totalArticles.value = response.data.total || 0
       console.log('稿件列表:', articles.value)
+      syncArticleProcessPolling()
     }
   } catch (error) {
     console.error('获取稿件列表失败:', error)
-    ElMessage.error('获取稿件列表失败')
+    if (!silent) {
+      ElMessage.error('获取稿件列表失败')
+    }
   } finally {
-    articlesLoading.value = false
+    if (!silent) {
+      articlesLoading.value = false
+    }
+  }
+}
+
+const startArticleProcessPolling = () => {
+  if (articleProcessPollingTimer) {
+    return
+  }
+  articleProcessPollingTimer = window.setInterval(() => {
+    if (currentActive.value === 'content-articles' && mainTab.value === 'video') {
+      refreshArticlesSilently()
+    }
+  }, 5000)
+}
+
+const stopArticleProcessPolling = () => {
+  if (!articleProcessPollingTimer) {
+    return
+  }
+  window.clearInterval(articleProcessPollingTimer)
+  articleProcessPollingTimer = null
+}
+
+const syncArticleProcessPolling = () => {
+  const shouldPoll = currentActive.value === 'content-articles'
+    && mainTab.value === 'video'
+    && articles.value.some(article => article.status === 0 || article.status === 1)
+  if (shouldPoll) {
+    startArticleProcessPolling()
+  } else {
+    stopArticleProcessPolling()
   }
 }
 
@@ -1919,6 +2012,7 @@ watch(currentActive, (newVal) => {
     fetchComments()
     fetchVideoList()
   }
+  syncArticleProcessPolling()
 })
 
 // 监听 mainTab 变化，加载合集数据
@@ -1926,6 +2020,7 @@ watch(mainTab, (newVal) => {
   if (newVal === 'collection') {
     loadUserCollections()
   }
+  syncArticleProcessPolling()
 })
 
 // 获取稿件状态类型
@@ -1951,6 +2046,75 @@ const getArticleStatusText = (status) => {
     '-1': '已下架'
   }
   return statusTextMap[status] || '未知'
+}
+
+const getArticleVideos = (article) => {
+  return Array.isArray(article?.videos)
+    ? [...article.videos].sort((a, b) => (a.videoOrder ?? 0) - (b.videoOrder ?? 0))
+    : []
+}
+
+const getVideoPartTitle = (video) => {
+  const order = (video.videoOrder ?? 0) + 1
+  return `P${order} ${video.title || '未命名视频'}`
+}
+
+const getVideoProcessProgress = (video) => {
+  const value = Number(video?.processProgress)
+  if (!Number.isFinite(value)) {
+    return isVideoProcessDone(video) ? 100 : 0
+  }
+  return Math.min(100, Math.max(0, value))
+}
+
+const isVideoProcessDone = (video) => {
+  return video?.processStatus === 5
+}
+
+const isVideoProcessFailed = (video) => {
+  return [10, 20, 30, 40].includes(video?.processStatus) || !!video?.processError
+}
+
+const getVideoProcessTagType = (video) => {
+  if (isVideoProcessFailed(video)) return 'danger'
+  if (isVideoProcessDone(video)) return 'success'
+  if ([1, 2, 3, 4, 11, 21, 31, 41].includes(video?.processStatus)) return 'warning'
+  return 'info'
+}
+
+const getVideoProcessText = (video, articleStatus) => {
+  const statusMap = {
+    0: '待处理',
+    1: '转码中',
+    2: '抽取音频中',
+    3: '字幕生成中',
+    4: '摘要生成中',
+    5: '处理完成',
+    10: '转码失败',
+    11: '转码完成',
+    20: '音频抽取失败',
+    21: '音频抽取完成',
+    30: '字幕生成失败',
+    31: '字幕生成完成',
+    40: '摘要生成失败',
+    41: '摘要生成完成'
+  }
+  if (video?.processStatus != null) {
+    return statusMap[video.processStatus] || `处理状态 ${video.processStatus}`
+  }
+  if (articleStatus === 0) return '等待审核'
+  if (articleStatus === 1) return '等待处理'
+  return '无处理任务'
+}
+
+const getVideoProgressStatus = (video) => {
+  if (isVideoProcessFailed(video)) return 'exception'
+  if (isVideoProcessDone(video)) return 'success'
+  return undefined
+}
+
+const shouldShowVideoProgress = (video, articleStatus) => {
+  return articleStatus === 1 || video?.processProgress != null || isVideoProcessDone(video) || isVideoProcessFailed(video)
 }
 
 // 编辑稿件
@@ -3756,6 +3920,10 @@ onMounted(() => {
   }
 })
 
+onUnmounted(() => {
+  stopArticleProcessPolling()
+})
+
 watch(currentActive, (newVal) => {
   if (newVal === 'home') {
     loadHomeData()
@@ -4963,6 +5131,46 @@ const searchDanmu = () => {
 .article-list .el-table {
   border-radius: 6px;
   overflow: hidden;
+}
+
+.manuscript-process {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.process-video-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.process-video-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.process-video-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #606266;
+  font-size: 13px;
+}
+
+.process-error {
+  color: #f56c6c;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.process-empty {
+  color: #909399;
+  font-size: 13px;
 }
 
 /* 分页导航栏 */

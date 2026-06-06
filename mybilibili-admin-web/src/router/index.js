@@ -32,12 +32,6 @@ const router = createRouter({
       meta: { title: '稿件管理 - 管理后台', requiresAuth: true, permission: 'review:manage' }
     },
     {
-      path: '/video-process',
-      name: 'videoProcess',
-      component: () => import('../views/VideoProcessView.vue'),
-      meta: { title: '任务看板 - 管理后台', requiresAuth: true, permission: 'ai:manage' }
-    },
-    {
       path: '/operation-tasks',
       name: 'operationTasks',
       component: () => import('../views/OperationTasksView.vue'),
