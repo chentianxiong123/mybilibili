@@ -54,6 +54,10 @@ public class XiaoShuiGuanInitializer {
         AiApiConfig config;
         if (existingConfigs.isEmpty()) {
             String apiKey = resolveApiKey();
+            if (apiKey == null || apiKey.isBlank()) {
+                log.warn("未配置小水管 API key，跳过 REVIEW 渠道自动初始化；可在后台渠道管理中手动配置");
+                return;
+            }
             // 创建新渠道
             config = new AiApiConfig();
             config.setName(PROVIDER_NAME);
@@ -89,9 +93,6 @@ public class XiaoShuiGuanInitializer {
                 System.getProperty("xiaoshuiguan.api-key"),
                 System.getenv("XIAOSHUIGUAN_API_KEY")
         );
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalStateException("小水管 API key is required: set -Dxiaoshuiguan.api-key or XIAOSHUIGUAN_API_KEY");
-        }
         return apiKey;
     }
 
