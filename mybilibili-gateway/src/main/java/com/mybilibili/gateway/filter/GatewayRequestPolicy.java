@@ -28,7 +28,6 @@ public final class GatewayRequestPolicy {
             "/api/category/",
             "/api/category/list",
             "/api/banner-images/",
-            "/api/banner/",
             "/api/recommend/hot",
             "/api/recommend/related/",
             "/api/danmaku/",

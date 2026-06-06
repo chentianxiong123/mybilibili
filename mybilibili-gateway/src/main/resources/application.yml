@@ -448,13 +448,6 @@ spring:
           filters:
             - StripPrefix=0
 
-        - id: interaction-favorite
-          uri: lb://mybilibili-content-interaction
-          predicates:
-            - Path=/api/favorite/**
-          filters:
-            - StripPrefix=1
-
         # ========== 内容服务（分区、轮播图）- 集成到视频服务 ==========
         - id: content-service
           uri: lb://mybilibili-video-media
