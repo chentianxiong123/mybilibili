@@ -37,7 +37,7 @@ function getAuthHeaders() {
 
 export const adminAiApi = {
   sendMessage(content, callbacks = {}) {
-    const { onData, onDone, onError } = callbacks
+    const { onData, onDone, onError, onToolCall } = callbacks
     const controller = new AbortController()
 
     fetch(`${BASE_URL}/api/ai/admin/assistant/send`, {
@@ -60,7 +60,7 @@ export const adminAiApi = {
           buffer = parts.pop() || ''
           parts.forEach(part => {
             const event = parseSSEEvent(part)
-            if (event) handleSSEEvent(event, { onData, onDone, onError })
+            if (event) handleSSEEvent(event, { onData, onDone, onError, onToolCall })
           })
           return read()
         }).catch(err => {
