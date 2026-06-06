@@ -80,7 +80,7 @@ ai:
 
 logging:
   level:
-    com.mybilibili: debug
+    com.mybilibili: info
 
 management:
   endpoints:

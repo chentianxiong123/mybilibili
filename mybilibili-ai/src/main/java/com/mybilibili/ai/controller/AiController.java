@@ -9,6 +9,7 @@ import com.mybilibili.common.storage.StorageService;
 import com.mybilibili.common.vo.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
@@ -19,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
+@Slf4j
 @RestController
 @RequestMapping("/ai")
 @Tag(name = "AI服务", description = "AI字幕生成和摘要服务")
@@ -203,7 +205,7 @@ public class AiController {
             }
             return extractSummaryContent(content);
         } catch (Exception e) {
-            System.err.println("读取摘要对象失败: " + key + ", " + e.getMessage());
+            log.warn("读取摘要对象失败: {}, {}", key, e.getMessage());
             return null;
         }
     }

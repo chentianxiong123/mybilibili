@@ -109,14 +109,10 @@ public class InteractionController {
             @Parameter(description = "稿件ID") @PathVariable Integer id,
             @Parameter(description = "分享渠道") @RequestParam(required = false) String channel,
             @Parameter(description = "用户ID") @RequestHeader(value = "X-User-Id", required = false) Integer userId) {
-        System.out.println("[SHARE] controller called, manuscriptId=" + id + ", userId=" + userId + ", channel=" + channel);
         try {
             videoInteractionService.shareVideo(userId, id, channel, null);
-            System.out.println("[SHARE] shareVideo completed successfully");
             return Result.success("分享成功");
         } catch (Exception e) {
-            System.out.println("[SHARE] shareVideo failed: " + e.getMessage());
-            e.printStackTrace();
             return Result.error(e.getMessage());
         }
     }

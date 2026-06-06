@@ -3,6 +3,7 @@ package com.mybilibili.ai.service.impl;
 import com.mybilibili.ai.entity.AiApiConfig;
 import com.mybilibili.ai.service.SttProvider;
 import com.mybilibili.ai.service.SttProvider.TranscribeRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
@@ -15,6 +16,7 @@ import java.util.Map;
  * 通过 ai_api_configs 表中 type='STT' 的渠道配置，
  * 调用第三方 Whisper API（如 Groq、OpenAI 等兼容接口）。
  */
+@Slf4j
 @Component
 public class WhisperApiProvider implements SttProvider {
 
@@ -43,7 +45,7 @@ public class WhisperApiProvider implements SttProvider {
         try {
             java.io.File audioFile = new java.io.File(audioPath);
             if (!audioFile.exists()) {
-                System.err.println("[WhisperApi] 音频文件不存在: " + audioPath);
+                log.warn("[WhisperApi] 音频文件不存在: {}", audioPath);
                 return null;
             }
 
@@ -75,7 +77,7 @@ public class WhisperApiProvider implements SttProvider {
             }
             return null;
         } catch (Exception e) {
-            System.err.println("[WhisperApi] 转写异常: " + e.getMessage());
+            log.warn("[WhisperApi] 转写异常: {}", e.getMessage());
             return null;
         }
     }
