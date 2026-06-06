@@ -2,7 +2,6 @@ package com.mybilibili.ai.service.impl;
 
 import org.springframework.ai.chat.client.ChatClient;
 import com.mybilibili.ai.config.DynamicChatClient;
-import com.mybilibili.ai.service.AiConfigService;
 import com.mybilibili.ai.service.AiSummaryService;
 import com.mybilibili.ai.utils.SubtitleTextUtils;
 import com.mybilibili.ai.util.AiUsageLogger;
@@ -23,9 +22,6 @@ public class AiSummaryServiceImpl implements AiSummaryService {
 
     @Autowired
     private DynamicChatClient dynamicChatClient;
-
-    @Autowired
-    private AiConfigService aiConfigService;
 
     @Autowired
     private AiUsageLogger aiUsageLogger;
@@ -79,7 +75,15 @@ public class AiSummaryServiceImpl implements AiSummaryService {
     private String callAiApi(String userPrompt) {
         long start = System.currentTimeMillis();
         try {
-            String result = dynamicChatClient.getClient("SUMMARY").prompt()
+            ChatClient client = dynamicChatClient.getClient("SUMMARY");
+            if (client == null) {
+                String message = "SUMMARY 渠道未配置或已禁用";
+                aiUsageLogger.log("SUMMARY", null, null, null, System.currentTimeMillis() - start, false, message);
+                log.warn("AI摘要生成中止：{}", message);
+                return null;
+            }
+
+            String result = client.prompt()
                     .system(SYSTEM_PROMPT)
                     .user(userPrompt)
                     .call()
@@ -97,14 +101,14 @@ public class AiSummaryServiceImpl implements AiSummaryService {
     public TestResult testApiConnection(String testText) {
         long startTime = System.currentTimeMillis();
         try {
-            String apiKey = aiConfigService.getApiKey();
-            if (apiKey == null || apiKey.isEmpty()) {
-                return new TestResult(false, "API密钥未配置，请在API管理页面配置密钥");
-            }
-
             String prompt = testText != null && !testText.isEmpty() ? testText : "你好，请回复'API测试成功'";
             ChatClient client = dynamicChatClient.getClient("CHAT");
-            if (client == null) client = dynamicChatClient.getFirstActiveClient();
+            if (client == null) {
+                client = dynamicChatClient.getFirstActiveClient();
+            }
+            if (client == null) {
+                return new TestResult(false, "没有可用的 API 渠道，请先在渠道管理页面配置并启用渠道");
+            }
             String responseContent = client.prompt()
                     .user(prompt)
                     .call()
