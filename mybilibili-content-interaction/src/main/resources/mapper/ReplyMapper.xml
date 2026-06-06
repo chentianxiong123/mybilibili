@@ -10,6 +10,25 @@
         LIMIT #{offset}, #{size}
     </select>
 
+    <select id="selectPreviewByCommentIds" resultType="com.mybilibili.common.entity.Reply">
+        SELECT r.* FROM replies r
+        WHERE r.status = 'NORMAL'
+        AND r.comment_id IN
+        <foreach collection="commentIds" item="commentId" open="(" separator="," close=")">
+            #{commentId}
+        </foreach>
+        AND (
+            SELECT COUNT(*) FROM replies r2
+            WHERE r2.comment_id = r.comment_id
+            AND r2.status = 'NORMAL'
+            AND (
+                r2.created_at &lt; r.created_at
+                OR (r2.created_at = r.created_at AND r2.id &lt;= r.id)
+            )
+        ) &lt;= #{limitPerComment}
+        ORDER BY r.comment_id ASC, r.created_at ASC, r.id ASC
+    </select>
+
     <select id="countByCommentId" resultType="int">
         SELECT COUNT(*) FROM replies
         WHERE comment_id = #{commentId}

@@ -1,7 +1,6 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import { ArrowLeft, ArrowRight, View, Star } from '@element-plus/icons-vue'
-import { videoApi, commentApi } from '../api/index.js'
 import { manuscriptApi } from '../api/manuscript.js'
 import { recommendApi } from '../api/recommend.js'
 import { getHomeBanners } from '../api/banner.js'
@@ -153,32 +152,6 @@ const fetchVideoList = async () => {
       }
 
       videoList.value = uniqueItems
-
-      // 为每个视频获取实际的评论数量
-      for (const video of videoList.value) {
-        try {
-          console.log(`获取视频 ${video.id} 的评论数量，manuscriptId: ${video.manuscriptId}`)
-          const commentResponse = await commentApi.getCommentsByVideoId(video.manuscriptId, 1, 10)
-          console.log(`评论响应:`, commentResponse)
-          if (commentResponse.code === 200 && commentResponse.data) {
-            // 计算评论数量（包含回复数）
-            let totalComments = commentResponse.data.length
-            commentResponse.data.forEach(comment => {
-              totalComments += (comment.replies || []).length
-            })
-            video.commentCount = totalComments
-            console.log(`视频 ${video.id} 的评论数量: ${totalComments}`)
-          } else {
-            console.log(`评论响应不符合预期:`, commentResponse)
-          }
-        } catch (error) {
-          console.error(`获取视频 ${video.id} 的评论数量失败:`, error)
-          if (error.response) {
-            console.error(`响应状态:`, error.response.status)
-            console.error(`响应数据:`, error.response.data)
-          }
-        }
-      }
 
       // 标记视频列表已经加载过
       hasLoadedVideos.value = true

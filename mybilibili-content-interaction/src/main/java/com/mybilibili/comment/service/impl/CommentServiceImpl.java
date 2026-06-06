@@ -498,18 +498,20 @@ public class CommentServiceImpl implements CommentService {
                                                   Map<Integer, Boolean> commentLikeStatusMap,
                                                   Map<Integer, Integer> commentLikeCountMap) {
         Map<Integer, List<Reply>> repliesByCommentId = new HashMap<>();
-        List<Reply> allReplies = new ArrayList<>();
         LinkedHashSet<Integer> userIds = new LinkedHashSet<>();
 
         for (Comment comment : comments) {
             if (comment.getUserId() != null) {
                 userIds.add(comment.getUserId());
             }
-            List<Reply> replies = replyMapper.selectByCommentId(comment.getId(), 0, 3);
-            repliesByCommentId.put(comment.getId(), replies);
-            allReplies.addAll(replies);
-            userIds.addAll(extractReplyUserIds(replies));
         }
+
+        List<Integer> commentIds = comments.stream().map(Comment::getId).collect(Collectors.toList());
+        List<Reply> allReplies = replyMapper.selectPreviewByCommentIds(commentIds, 3);
+        for (Reply reply : allReplies) {
+            repliesByCommentId.computeIfAbsent(reply.getCommentId(), ignored -> new ArrayList<>()).add(reply);
+        }
+        userIds.addAll(extractReplyUserIds(allReplies));
 
         List<Integer> replyIds = allReplies.stream().map(Reply::getId).collect(Collectors.toList());
         Map<Integer, Boolean> replyLikeStatusMap = batchIsLiked(userId, TARGET_TYPE_REPLY, replyIds);

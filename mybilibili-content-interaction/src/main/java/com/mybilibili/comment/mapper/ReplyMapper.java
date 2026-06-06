@@ -13,6 +13,9 @@ public interface ReplyMapper extends BaseMapper<Reply> {
 
     List<Reply> selectByCommentId(Integer commentId, int offset, int size);
 
+    List<Reply> selectPreviewByCommentIds(@Param("commentIds") List<Integer> commentIds,
+                                          @Param("limitPerComment") int limitPerComment);
+
     int updateLikeCountDirect(@Param("id") Integer id, @Param("count") int count);
 
     int countByCommentId(Integer commentId);
