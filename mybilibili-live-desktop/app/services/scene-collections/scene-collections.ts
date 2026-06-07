@@ -628,7 +628,7 @@ export class SceneCollectionsService extends Service implements ISceneCollection
 
     remote.dialog
       .showMessageBox(Utils.getMainWindow(), {
-        title: 'mybilibili Live Desktop',
+        title: 'mybilibili 直播工作台',
         message: $t('Failed to load scene collection.  A new one will be created instead.'),
       })
       .then(() => (this.collectionErrorOpen = false));

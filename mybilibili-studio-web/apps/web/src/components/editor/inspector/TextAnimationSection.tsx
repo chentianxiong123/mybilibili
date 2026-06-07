@@ -73,7 +73,7 @@ const PresetSelector: React.FC<{
   onChange: (preset: TextAnimationPreset) => void;
 }> = ({ value, onChange }) => (
   <div className="space-y-2">
-    <span className="text-[10px] text-text-secondary">Animation Preset</span>
+    <span className="text-[10px] text-text-secondary">动画预设</span>
     <Select value={value} onValueChange={(v) => onChange(v as TextAnimationPreset)}>
       <SelectTrigger className="w-full bg-background-tertiary border-border text-text-primary">
         <SelectValue />
@@ -105,7 +105,7 @@ const EasingSelector: React.FC<{
 
   return (
     <div className="space-y-1">
-      <span className="text-[10px] text-text-secondary">Easing</span>
+      <span className="text-[10px] text-text-secondary">缓动</span>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="w-full bg-background-tertiary border-border text-text-primary text-[10px]">
           <SelectValue />
@@ -187,7 +187,7 @@ export const TextAnimationSection: React.FC<TextAnimationSectionProps> = ({
     return (
       <div className="p-4 text-center">
         <Type size={24} className="mx-auto mb-2 text-text-muted" />
-        <p className="text-[10px] text-text-muted">No text clip selected</p>
+        <p className="text-[10px] text-text-muted">未选择文字片段</p>
       </div>
     );
   }

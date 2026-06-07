@@ -196,7 +196,7 @@ export const RecipesTab: React.FC = () => {
           <Sparkles size={24} />
         </div>
         <div>
-          <p className="text-sm font-semibold text-text-primary">Select a clip first</p>
+          <p className="text-sm font-semibold text-text-primary">请先选择一个片段</p>
           <p className="mt-1.5 text-xs text-text-muted max-w-[240px] leading-relaxed mx-auto">
             Choose a video or image in the timeline to apply clip-scoped recipes, looks, and caption treatments.
           </p>
@@ -211,7 +211,7 @@ export const RecipesTab: React.FC = () => {
       <div className="p-4 border-b border-border bg-background-secondary/80 backdrop-blur sticky top-0 z-10 space-y-3">
         <div className="flex items-center gap-3 bg-background-tertiary rounded-xl p-2 pr-3 border border-border">
           <div className="w-10 h-10 rounded-lg bg-background-elevated flex items-center justify-center border border-border shrink-0">
-            {selectedTargetType === 'video' ? <span className="text-primary/70 text-[10px]">VIDEO</span> : <span className="text-primary/70 text-[10px]">IMAGE</span>}
+            {selectedTargetType === 'video' ? <span className="text-primary/70 text-[10px]">视频</span> : <span className="text-primary/70 text-[10px]">图片</span>}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-text-primary truncate" title={selectedMedia?.name || selectedClip.id}>
@@ -230,7 +230,7 @@ export const RecipesTab: React.FC = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search recipes..."
+            placeholder="搜索配方..."
             className="w-full h-9 pl-9 pr-3 rounded-lg border border-border bg-background-tertiary text-xs text-text-primary placeholder:text-text-muted outline-none focus:border-primary/50 transition-colors"
           />
         </div>
@@ -267,8 +267,8 @@ export const RecipesTab: React.FC = () => {
       <div className="flex-1 p-4 space-y-3">
         {filteredTemplates.length === 0 ? (
           <div className="py-12 text-center">
-            <p className="text-text-secondary text-sm font-medium">No recipes match</p>
-            <p className="mt-2 text-xs text-text-muted">Try a different search or category.</p>
+            <p className="text-text-secondary text-sm font-medium">没有匹配的配方</p>
+            <p className="mt-2 text-xs text-text-muted">换个关键词或分类试试。</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3">

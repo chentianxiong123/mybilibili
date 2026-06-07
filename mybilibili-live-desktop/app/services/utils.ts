@@ -323,13 +323,5 @@ export function getAppPath() {
  * @param mediaPath The path structure to retrieve the image from the media folders
  */
 export function $i(mediaPath: string) {
-  try {
-    const localMediaPath = require(`../../media/${mediaPath}`);
-
-    if (!fs.existsSync(path.resolve(getAppPath(), localMediaPath))) throw new Error('Missing media');
-
-    return localMediaPath;
-  } catch (e: unknown) {
-    return '';
-  }
+  return path.join('media', mediaPath).replace(/\\/g, '/');
 }

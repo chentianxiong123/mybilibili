@@ -22,9 +22,19 @@ type FFmpegInstance = {
   terminate(): void;
 };
 
+const trimUrl = (value: string | undefined) => (value ?? "").trim().replace(/\/+$/, "");
+
+const readGlobalVidstabUrl = (key: string): string | undefined => {
+  const config = (globalThis as typeof globalThis & {
+    __MYBILIBILI_STUDIO_CONFIG__?: Record<string, string | undefined>;
+  }).__MYBILIBILI_STUDIO_CONFIG__;
+
+  return config?.[key];
+};
+
 const VIDSTAB_CORE_CDN = {
-  mt: "https://mediashares.openreel.video/ffmpeg-vidstab/mt",
-  st: "https://mediashares.openreel.video/ffmpeg-vidstab/st",
+  mt: trimUrl(readGlobalVidstabUrl("VIDSTAB_MT_URL")),
+  st: trimUrl(readGlobalVidstabUrl("VIDSTAB_ST_URL")),
 };
 
 export type VidstabProgress = {
@@ -59,6 +69,11 @@ export class VidstabEngine {
         typeof crossOriginIsolated !== "undefined" && crossOriginIsolated;
 
       const baseURL = useMultiThread ? VIDSTAB_CORE_CDN.mt : VIDSTAB_CORE_CDN.st;
+      if (!baseURL) {
+        throw new Error(
+          "视频防抖资源未配置。请设置 window.__MYBILIBILI_STUDIO_CONFIG__.VIDSTAB_MT_URL 和 VIDSTAB_ST_URL。",
+        );
+      }
 
       if (useMultiThread) {
         const [coreURL, wasmURL, workerURL] = await Promise.all([

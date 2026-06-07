@@ -1,5 +1,5 @@
 /**
- * OpenReel Service Worker
+ * mybilibili Studio Service Worker
  *
  * Handles offline functionality by caching application assets.
  * Implements a cache-first strategy for static assets and network-first for API calls.
@@ -10,9 +10,11 @@
  * - 35.4: Inform user that AI requires internet connectivity
  */
 
-const CACHE_NAME = "openreel-v1";
-const STATIC_CACHE_NAME = "openreel-static-v1";
-const DYNAMIC_CACHE_NAME = "openreel-dynamic-v1";
+const CACHE_PREFIX = "mybilibili-studio-";
+const LEGACY_CACHE_PREFIX = "openreel-";
+const CACHE_NAME = `${CACHE_PREFIX}v1`;
+const STATIC_CACHE_NAME = `${CACHE_PREFIX}static-v1`;
+const DYNAMIC_CACHE_NAME = `${CACHE_PREFIX}dynamic-v1`;
 
 /**
  * Static assets to cache on install
@@ -111,7 +113,7 @@ self.addEventListener("activate", (event) => {
             .filter((name) => {
               // Delete old versions of our caches
               return (
-                name.startsWith("openreel-") &&
+                (name.startsWith(CACHE_PREFIX) || name.startsWith(LEGACY_CACHE_PREFIX)) &&
                 name !== STATIC_CACHE_NAME &&
                 name !== DYNAMIC_CACHE_NAME
               );
@@ -156,11 +158,11 @@ self.addEventListener("fetch", (event) => {
           JSON.stringify({
             error: "AI_OFFLINE",
             message:
-              "AI features require an internet connection. Please connect to the internet to use this feature.",
+              "AI 功能需要联网。请连接网络后再使用。",
           }),
           {
             status: 503,
-            statusText: "Service Unavailable",
+            statusText: "服务不可用",
             headers: {
               "Content-Type": "application/json",
             },
@@ -287,7 +289,7 @@ async function getCacheStatus() {
   let totalEntries = 0;
 
   for (const name of cacheNames) {
-    if (name.startsWith("openreel-")) {
+    if (name.startsWith(CACHE_PREFIX)) {
       const cache = await caches.open(name);
       const keys = await cache.keys();
       totalEntries += keys.length;
@@ -295,20 +297,20 @@ async function getCacheStatus() {
   }
 
   return {
-    cacheNames: cacheNames.filter((n) => n.startsWith("openreel-")),
+    cacheNames: cacheNames.filter((n) => n.startsWith(CACHE_PREFIX)),
     totalEntries,
     version: CACHE_NAME,
   };
 }
 
 /**
- * Clear all OpenReel caches
+ * Clear all mybilibili Studio caches
  */
 async function clearAllCaches() {
   const cacheNames = await caches.keys();
   await Promise.all(
     cacheNames
-      .filter((name) => name.startsWith("openreel-"))
+      .filter((name) => name.startsWith(CACHE_PREFIX) || name.startsWith(LEGACY_CACHE_PREFIX))
       .map((name) => caches.delete(name))
   );
 }

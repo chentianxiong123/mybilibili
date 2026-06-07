@@ -46,7 +46,7 @@ const MasterChannel: React.FC<{
 
   return (
     <div className="flex flex-col items-center gap-2 p-3 bg-gray-900 rounded-lg min-w-[100px] border border-gray-700">
-      <div className="text-xs text-gray-300 font-bold">MASTER</div>
+      <div className="text-xs text-gray-300 font-bold">主控</div>
 
       {/* Stereo level meter */}
       <div className="flex gap-1 h-32 w-6">
@@ -103,7 +103,7 @@ const MasterChannel: React.FC<{
  [&::-moz-range-thumb]:rounded
  [&::-moz-range-thumb]:cursor-pointer
  [&::-moz-range-thumb]:border-0"
-          aria-label="Master volume fader"
+          aria-label="主控音量推子"
         />
       </div>
     </div>
@@ -300,16 +300,16 @@ export const AudioMixer: React.FC<AudioMixerProps> = ({
       className="bg-gray-900 border-t border-gray-700 p-4"
       data-testid="audio-mixer"
       role="region"
-      aria-label="Audio Mixing Console"
+      aria-label="音频混音台"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-white">Audio Mixer</h2>
+        <h2 className="text-lg font-semibold text-white">音频混音台</h2>
         {onClose && (
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors"
-            aria-label="Close mixer"
+            aria-label="关闭混音台"
           >
             ✕
           </button>
@@ -333,8 +333,7 @@ export const AudioMixer: React.FC<AudioMixerProps> = ({
           ))
         ) : (
           <div className="text-gray-500 text-sm py-8 px-4">
-            No audio tracks in timeline. Add audio or video tracks to see
-            channel strips.
+            时间线中暂无音频轨道。添加音频或视频轨道后即可查看通道条。
           </div>
         )}
 
@@ -355,13 +354,13 @@ export const AudioMixer: React.FC<AudioMixerProps> = ({
       {/* Status bar */}
       <div className="mt-3 pt-3 border-t border-gray-800 flex items-center justify-between text-xs text-gray-500">
         <span>
-          {channels.length} channel{channels.length !== 1 ? "s" : ""}
+          {channels.length} 个通道
           {hasSoloedTracks && (
-            <span className="ml-2 text-yellow-500">• Solo active</span>
+            <span className="ml-2 text-yellow-500">• 独奏启用</span>
           )}
         </span>
         <span>
-          Sample Rate: {project.settings.sampleRate}Hz | Channels:{" "}
+          采样率：{project.settings.sampleRate}Hz | 声道：{" "}
           {project.settings.channels}
         </span>
       </div>

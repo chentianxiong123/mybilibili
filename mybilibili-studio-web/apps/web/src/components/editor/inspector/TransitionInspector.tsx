@@ -35,7 +35,7 @@ const DirectionSelector: React.FC<{
 
   return (
     <div className="space-y-1">
-      <span className="text-[10px] text-text-secondary">Direction</span>
+      <span className="text-[10px] text-text-secondary">方向</span>
       <div className="grid grid-cols-4 gap-1">
         {options.map((dir) => (
           <button
@@ -437,14 +437,14 @@ export const TransitionInspector: React.FC<TransitionInspectorProps> = ({
       {/* Clip Info */}
       <div className="flex items-center gap-2 p-2 bg-background-tertiary rounded-lg border border-border">
         <div className="flex-1 text-center">
-          <p className="text-[9px] text-text-muted">From</p>
+          <p className="text-[9px] text-text-muted">起点</p>
           <p className="text-[10px] text-text-primary truncate">
             {clipA.id.substring(0, 12)}...
           </p>
         </div>
         <ArrowRight size={14} className="text-text-muted" />
         <div className="flex-1 text-center">
-          <p className="text-[9px] text-text-muted">To</p>
+          <p className="text-[9px] text-text-muted">终点</p>
           <p className="text-[10px] text-text-primary truncate">
             {clipB.id.substring(0, 12)}...
           </p>

@@ -45,7 +45,7 @@ export class ErrorBoundary extends React.Component<
             Something went wrong
           </div>
           <div className="text-text-muted text-xs mb-4 max-w-xs">
-            {this.state.error?.message || "An unexpected error occurred"}
+            {this.state.error?.message || "发生未知错误"}
           </div>
           <button
             onClick={this.handleRetry}

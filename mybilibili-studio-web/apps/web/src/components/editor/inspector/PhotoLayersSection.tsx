@@ -46,7 +46,7 @@ const BlendModeSelector: React.FC<{
 
   return (
     <div className="flex items-center justify-between">
-      <span className="text-[10px] text-text-secondary">Blend Mode</span>
+      <span className="text-[10px] text-text-secondary">混合模式</span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="flex items-center gap-1 px-2 py-1 text-[10px] bg-background-tertiary border border-border rounded hover:border-primary transition-colors">
@@ -258,7 +258,7 @@ export const PhotoLayersSection: React.FC<PhotoLayersSectionProps> = ({
     return (
       <div className="p-4 text-center">
         <Layers size={24} className="mx-auto mb-2 text-text-muted" />
-        <p className="text-[10px] text-text-muted">No layers</p>
+        <p className="text-[10px] text-text-muted">暂无图层</p>
         <button
           onClick={onAddLayer}
           className="mt-2 px-3 py-1.5 text-[10px] bg-primary text-white rounded hover:bg-primary/90 transition-colors"
@@ -279,7 +279,7 @@ export const PhotoLayersSection: React.FC<PhotoLayersSectionProps> = ({
         <button
           onClick={onAddLayer}
           className="p-1 text-text-muted hover:text-text-primary transition-colors"
-          title="Add new layer"
+          title="添加新图层"
         >
           <Plus size={14} />
         </button>
@@ -334,19 +334,19 @@ export const PhotoLayersSection: React.FC<PhotoLayersSectionProps> = ({
             <button
               onClick={() => onDuplicateLayer(selectedLayer.id)}
               className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-[10px] bg-background-tertiary border border-border rounded hover:border-primary transition-colors"
-              title="Duplicate layer"
+              title="复制图层"
             >
               <Copy size={12} />
-              <span>Duplicate</span>
+              <span>复制</span>
             </button>
             <button
               onClick={() => onDeleteLayer(selectedLayer.id)}
               className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-[10px] bg-background-tertiary border border-border rounded hover:border-error text-error transition-colors"
-              title="Delete layer"
+              title="删除图层"
               disabled={layers.length <= 1}
             >
               <Trash2 size={12} />
-              <span>Delete</span>
+              <span>删除</span>
             </button>
           </div>
         </div>

@@ -7,7 +7,7 @@ export default function Loader(p: { className?: string }) {
     <div className={cx('s-loader', p.className)}>
       <div className="s-loader__bg">
         <div className="s-loader__inner">
-          <div className="s-loader__brand">mybilibili Live Desktop</div>
+          <div className="s-loader__brand">mybilibili 直播工作台</div>
           <Spinner />
           <div className="s-loader__text">正在初始化直播工作台</div>
         </div>

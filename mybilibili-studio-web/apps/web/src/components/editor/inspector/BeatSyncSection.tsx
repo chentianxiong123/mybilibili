@@ -71,7 +71,7 @@ export const BeatSyncSection: React.FC<BeatSyncSectionProps> = ({ clipId }) => {
     return (
       <div className="text-center py-4">
         <Music size={24} className="mx-auto text-text-muted mb-2" />
-        <p className="text-[10px] text-text-muted">No clip selected</p>
+        <p className="text-[10px] text-text-muted">未选择片段</p>
       </div>
     );
   }
@@ -82,7 +82,7 @@ export const BeatSyncSection: React.FC<BeatSyncSectionProps> = ({ clipId }) => {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Music size={14} className="text-primary" />
-        <span className="text-xs font-medium text-text-primary">Beat Sync</span>
+        <span className="text-xs font-medium text-text-primary">节拍同步</span>
       </div>
 
       {hasAudio ? (

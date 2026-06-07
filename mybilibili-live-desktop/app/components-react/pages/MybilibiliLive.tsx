@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import cx from 'classnames';
 import { Services } from 'components-react/service-provider';
 import { useVuex } from 'components-react/hooks';
+import { EStreamingState } from 'services/streaming';
 import styles from './MybilibiliLive.m.less';
 
 const maskKey = (key?: string) => {
@@ -36,7 +37,7 @@ function Field(p: { label: string; children: React.ReactNode; className?: string
 }
 
 export default function MybilibiliLivePage(p: { className?: string }) {
-  const { MybilibiliLiveService } = Services;
+  const { MybilibiliLiveService, StreamingService } = Services;
   const {
     baseUrl,
     token,
@@ -44,6 +45,7 @@ export default function MybilibiliLivePage(p: { className?: string }) {
     room,
     rtmpUrl,
     lastError,
+    obsStreamingStatus,
   } = useVuex(() => ({
     baseUrl: MybilibiliLiveService.state.baseUrl,
     token: MybilibiliLiveService.state.token,
@@ -51,6 +53,7 @@ export default function MybilibiliLivePage(p: { className?: string }) {
     room: MybilibiliLiveService.state.room,
     rtmpUrl: MybilibiliLiveService.state.rtmpUrl,
     lastError: MybilibiliLiveService.state.lastError,
+    obsStreamingStatus: StreamingService.state.streamingStatus,
   }));
 
   const [draftBaseUrl, setDraftBaseUrl] = useState(baseUrl);
@@ -65,7 +68,10 @@ export default function MybilibiliLivePage(p: { className?: string }) {
   const roomName = room?.roomName || '我的直播间';
   const roomCategory = room?.category || '未设置';
   const roomStatus = room?.status || '未加载';
-  const isStreaming = useMemo(() => roomStatus === 'live', [roomStatus]);
+  const isObsStreaming = useMemo(
+    () => obsStreamingStatus !== EStreamingState.Offline,
+    [obsStreamingStatus],
+  );
   const streamKey = room?.streamKey || '';
   const isLoggedIn = Boolean(token);
   const accountName = user?.nickname || user?.username || (isLoggedIn ? '已登录账号' : '未登录');
@@ -117,8 +123,13 @@ export default function MybilibiliLivePage(p: { className?: string }) {
     });
   }
 
+  async function startStreaming() {
+    await MybilibiliLiveService.actions.return.applyStreamSettings();
+    await StreamingService.actions.return.startStreaming();
+  }
+
   async function stopStreaming() {
-    await MybilibiliLiveService.actions.return.updateRoomStatus('offline');
+    await StreamingService.actions.return.stopStreaming();
   }
 
   async function copyText(text: string, label: string) {
@@ -137,27 +148,23 @@ export default function MybilibiliLivePage(p: { className?: string }) {
         <div className={styles.headerMain}>
           <div className={styles.titleRow}>
             <h1>直播控制台</h1>
-            <span className={cx(styles.liveChip, isStreaming && styles.liveChipOn)}>
-              {statusLabel(roomStatus)}
+            <span className={cx(styles.liveChip, isObsStreaming && styles.liveChipOn)}>
+              OBS：{statusLabel(obsStreamingStatus)}
             </span>
           </div>
           <div className={styles.roomLine}>
             <span className={styles.roomPill}>{roomName}</span>
             <span>账号：{accountName}</span>
             <span>{roomCategory}</span>
-            <span>房间状态：{roomStatus}</span>
+            <span>平台状态：{statusLabel(roomStatus)}</span>
           </div>
         </div>
         <div className={styles.headerActions}>
-          {!isStreaming ? (
+          {!isObsStreaming ? (
             <button
               className={styles.dangerButton}
-              onClick={() =>
-                run('房间已标记为直播中', () =>
-                  MybilibiliLiveService.actions.return.updateRoomStatus('live'),
-                )
-              }
-              disabled={busy || !room}
+              onClick={() => run('OBS 开播请求已发送', startStreaming)}
+              disabled={busy || !room || !streamKey}
             >
               开始直播
             </button>
@@ -190,8 +197,8 @@ export default function MybilibiliLivePage(p: { className?: string }) {
                 <strong>直播间封面</strong>
               </div>
             )}
-            <span className={cx(styles.coverBadge, isStreaming && styles.coverBadgeLive)}>
-              {isStreaming ? 'LIVE' : 'OFFLINE'}
+            <span className={cx(styles.coverBadge, isObsStreaming && styles.coverBadgeLive)}>
+              {isObsStreaming ? '直播中' : '未开播'}
             </span>
           </div>
         </div>
@@ -201,15 +208,15 @@ export default function MybilibiliLivePage(p: { className?: string }) {
             <strong>{room ? '已加载' : '未加载'}</strong>
           </div>
           <div className={styles.metricItem}>
-            <span>状态</span>
-            <strong>{roomStatus}</strong>
+            <span>平台</span>
+            <strong>{statusLabel(roomStatus)}</strong>
           </div>
           <div className={styles.metricItem}>
-            <span>RTMP</span>
-            <strong>{rtmpUrl ? '已生成' : '待加载'}</strong>
+            <span>OBS</span>
+            <strong>{statusLabel(obsStreamingStatus)}</strong>
           </div>
           <div className={styles.metricItem}>
-            <span>Stream Key</span>
+            <span>流密钥</span>
             <strong>{streamKey ? '已就绪' : '待加载'}</strong>
           </div>
         </div>
@@ -221,7 +228,7 @@ export default function MybilibiliLivePage(p: { className?: string }) {
             <div className={styles.panelHeader}>
               <div>
                 <h2>站点登录</h2>
-                <span>连接你的 mybilibili Gateway</span>
+                <span>连接 mybilibili 网关服务</span>
               </div>
               <button
                 className={styles.primaryButton}
@@ -236,7 +243,7 @@ export default function MybilibiliLivePage(p: { className?: string }) {
               </button>
             </div>
             <div className={styles.formGrid}>
-              <Field label="Gateway API">
+              <Field label="网关接口">
                 <input
                   value={draftBaseUrl}
                   onChange={event => setDraftBaseUrl(event.target.value)}
@@ -273,7 +280,7 @@ export default function MybilibiliLivePage(p: { className?: string }) {
                 登录并加载房间
               </button>
               <button className={styles.secondaryButton} onClick={saveConnection} disabled={busy}>
-                保存 Gateway
+                保存网关
               </button>
               <button
                 className={styles.secondaryButton}
@@ -386,22 +393,25 @@ export default function MybilibiliLivePage(p: { className?: string }) {
           <section className={styles.sidePanel}>
             <div className={styles.sideHeader}>
               <h2>推流状态</h2>
-              <span className={cx(styles.dot, isStreaming && styles.dotLive)} />
+              <span className={cx(styles.dot, isObsStreaming && styles.dotLive)} />
             </div>
             <dl className={styles.statusList}>
               <div>
                 <dt>OBS 状态</dt>
-                <dd>{statusLabel(roomStatus)}</dd>
+                <dd>{statusLabel(obsStreamingStatus)}</dd>
               </div>
               <div>
                 <dt>平台状态</dt>
-                <dd>{roomStatus}</dd>
+                <dd>{statusLabel(roomStatus)}</dd>
               </div>
               <div>
                 <dt>推流地址</dt>
                 <dd>{rtmpUrl ? '已配置' : '未配置'}</dd>
               </div>
             </dl>
+            <p className={styles.diagnosticHint}>
+              平台状态应由 RTMP 服务回调更新；下面按钮只用于本地调试状态修正。
+            </p>
             <div className={styles.actionRow}>
               <button
                 className={styles.secondaryButton}
@@ -412,7 +422,7 @@ export default function MybilibiliLivePage(p: { className?: string }) {
                 }
                 disabled={busy || !room}
               >
-                标记直播
+                诊断标记直播
               </button>
               <button
                 className={styles.secondaryButton}
@@ -423,7 +433,7 @@ export default function MybilibiliLivePage(p: { className?: string }) {
                 }
                 disabled={busy || !room}
               >
-                标记下播
+                诊断标记下播
               </button>
             </div>
           </section>

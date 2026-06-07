@@ -82,7 +82,7 @@ export const BlendingSection: React.FC<BlendingSectionProps> = ({ clipId }) => {
   return (
     <div className="space-y-3">
       <div className="space-y-1">
-          <span className="text-[10px] text-text-secondary">Blend Mode</span>
+          <span className="text-[10px] text-text-secondary">混合模式</span>
           <Select
             value={blendMode}
             onValueChange={(v) => handleBlendModeChange(v as BlendMode)}
@@ -127,7 +127,7 @@ export const BlendingSection: React.FC<BlendingSectionProps> = ({ clipId }) => {
       {blendMode !== "normal" && (
         <div className="p-2 bg-primary/5 border border-primary/20 rounded-lg">
           <p className="text-[9px] text-text-muted">
-            <span className="text-primary font-medium">Tip:</span> Blend modes
+            <span className="text-primary font-medium">提示：</span> 混合模式
             affect how this layer combines with layers below it. Experiment with
             different modes for creative effects.
           </p>

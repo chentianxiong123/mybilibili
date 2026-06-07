@@ -10,9 +10,9 @@
   },
   "aliases": {
     "components": "@/components",
-    "ui": "@openreel/ui/components",
-    "utils": "@openreel/ui/lib/utils",
-    "hooks": "@openreel/ui/hooks",
-    "lib": "@openreel/ui/lib"
+    "ui": "@mybilibili-studio/ui/components",
+    "utils": "@mybilibili-studio/ui/lib/utils",
+    "hooks": "@mybilibili-studio/ui/hooks",
+    "lib": "@mybilibili-studio/ui/lib"
   }
 }

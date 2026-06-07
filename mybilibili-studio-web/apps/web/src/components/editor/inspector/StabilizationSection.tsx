@@ -165,7 +165,7 @@ export const StabilizationSection: React.FC<StabilizationSectionProps> = ({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label className="text-xs text-muted-foreground">Strength</Label>
+          <Label className="text-xs text-muted-foreground">强度</Label>
           <span className="text-xs text-muted-foreground">
             {stabilization.strength}%
           </span>

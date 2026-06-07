@@ -169,7 +169,7 @@ export const MotionTrackingSection: React.FC<MotionTrackingSectionProps> = ({
             </label>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-0.5">
-                <label className="text-[9px] text-text-muted">X Position</label>
+                <label className="text-[9px] text-text-muted">X 位置</label>
                 <input
                   type="number"
                   value={region.x}
@@ -180,7 +180,7 @@ export const MotionTrackingSection: React.FC<MotionTrackingSectionProps> = ({
                 />
               </div>
               <div className="space-y-0.5">
-                <label className="text-[9px] text-text-muted">Y Position</label>
+                <label className="text-[9px] text-text-muted">Y 位置</label>
                 <input
                   type="number"
                   value={region.y}
@@ -191,7 +191,7 @@ export const MotionTrackingSection: React.FC<MotionTrackingSectionProps> = ({
                 />
               </div>
               <div className="space-y-0.5">
-                <label className="text-[9px] text-text-muted">Width</label>
+                <label className="text-[9px] text-text-muted">宽度</label>
                 <input
                   type="number"
                   value={region.width}
@@ -202,7 +202,7 @@ export const MotionTrackingSection: React.FC<MotionTrackingSectionProps> = ({
                 />
               </div>
               <div className="space-y-0.5">
-                <label className="text-[9px] text-text-muted">Height</label>
+                <label className="text-[9px] text-text-muted">高度</label>
                 <input
                   type="number"
                   value={region.height}
@@ -338,7 +338,7 @@ export const MotionTrackingSection: React.FC<MotionTrackingSectionProps> = ({
             <button
               onClick={handleCancelTracking}
               className="p-1.5 text-text-muted hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
-              title="Cancel Tracking"
+              title="取消跟踪"
             >
               <X size={14} />
             </button>
@@ -346,7 +346,7 @@ export const MotionTrackingSection: React.FC<MotionTrackingSectionProps> = ({
 
           <div className="space-y-1">
             <div className="flex items-center justify-between text-[10px]">
-              <span className="text-text-muted">Analyzing frames...</span>
+              <span className="text-text-muted">正在分析帧...</span>
               <span className="font-mono text-text-primary">
                 {Math.round(state.progress)}%
               </span>
@@ -403,7 +403,7 @@ export const MotionTrackingSection: React.FC<MotionTrackingSectionProps> = ({
             </label>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-0.5">
-                <label className="text-[9px] text-text-muted">X Offset</label>
+                <label className="text-[9px] text-text-muted">X 偏移</label>
                 <input
                   type="number"
                   value={offsetX}
@@ -414,7 +414,7 @@ export const MotionTrackingSection: React.FC<MotionTrackingSectionProps> = ({
                 />
               </div>
               <div className="space-y-0.5">
-                <label className="text-[9px] text-text-muted">Y Offset</label>
+                <label className="text-[9px] text-text-muted">Y 偏移</label>
                 <input
                   type="number"
                   value={offsetY}
@@ -449,7 +449,7 @@ export const MotionTrackingSection: React.FC<MotionTrackingSectionProps> = ({
                   className="flex items-center gap-1 cursor-pointer"
                 >
                   <Maximize2 size={10} className="text-text-muted" />
-                  <span className="text-[10px] text-text-secondary">Scale</span>
+                  <span className="text-[10px] text-text-secondary">缩放</span>
                 </Label>
               </div>
               <div className="flex items-center gap-2 p-2 bg-background-tertiary rounded-lg">

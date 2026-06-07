@@ -125,7 +125,7 @@ export const ParticleEffectsSection: React.FC<ParticleEffectsSectionProps> = ({
       <div className="flex gap-2">
         <Select value={selectedPreset} onValueChange={setSelectedPreset}>
           <SelectTrigger className="flex-1 h-8 text-xs min-w-0 [&>span]:truncate">
-            <SelectValue placeholder="Select effect preset..." />
+            <SelectValue placeholder="选择效果预设..." />
           </SelectTrigger>
           <SelectContent>
             {Object.entries(groupedPresets).map(([type, presets]) => (
@@ -157,8 +157,8 @@ export const ParticleEffectsSection: React.FC<ParticleEffectsSectionProps> = ({
       {effects.length === 0 ? (
         <div className="text-center py-6 text-text-muted text-xs">
           <Sparkles size={24} className="mx-auto mb-2 opacity-50" />
-          <p>No particle effects added</p>
-          <p className="mt-1 text-[10px]">Select a preset above to add effects</p>
+          <p>尚未添加粒子效果</p>
+          <p className="mt-1 text-[10px]">选择上方预设即可添加效果</p>
         </div>
       ) : (
         <ScrollArea className="max-h-[400px]">
@@ -190,7 +190,7 @@ export const ParticleEffectsSection: React.FC<ParticleEffectsSectionProps> = ({
                       <button
                         onClick={() => onPreviewEffect(effect.id)}
                         className="p-1 rounded hover:bg-background-elevated text-text-muted hover:text-primary transition-colors"
-                        title="Preview effect"
+                        title="预览效果"
                       >
                         <Play size={12} />
                       </button>
@@ -211,7 +211,7 @@ export const ParticleEffectsSection: React.FC<ParticleEffectsSectionProps> = ({
                     <button
                       onClick={() => onRemoveEffect(effect.id)}
                       className="p-1 rounded hover:bg-red-500/20 text-text-muted hover:text-red-400 transition-colors"
-                      title="Remove effect"
+                      title="移除效果"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -398,10 +398,10 @@ export const ParticleEffectsSection: React.FC<ParticleEffectsSectionProps> = ({
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="normal">Normal</SelectItem>
-                                <SelectItem value="add">Additive</SelectItem>
-                                <SelectItem value="multiply">Multiply</SelectItem>
-                                <SelectItem value="screen">Screen</SelectItem>
+                                <SelectItem value="normal">正常</SelectItem>
+                                <SelectItem value="add">叠加</SelectItem>
+                                <SelectItem value="multiply">正片叠底</SelectItem>
+                                <SelectItem value="screen">滤色</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -505,7 +505,7 @@ const ColorSwatch: React.FC<ColorSwatchProps> = ({ color, onChange, onRemove }) 
                   setIsOpen(false);
                 }}
                 className="p-1.5 rounded hover:bg-red-500/20 text-text-muted hover:text-red-400 transition-colors"
-                title="Remove color"
+                title="移除颜色"
               >
                 <Trash2 size={12} />
               </button>

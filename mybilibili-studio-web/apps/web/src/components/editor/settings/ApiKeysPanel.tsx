@@ -293,7 +293,7 @@ export const ApiKeysPanel: React.FC = () => {
                   <button
                     onClick={() => handleDeleteKey(stored.id)}
                     className="p-1.5 rounded hover:bg-error/10 text-text-muted hover:text-error transition-colors"
-                    title="Delete key"
+                    title="删除密钥"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -327,15 +327,14 @@ export const ApiKeysPanel: React.FC = () => {
           <div className="flex items-center gap-2 mb-3">
             <Plus size={14} className="text-primary" />
             <span className="text-sm font-medium text-text-primary">
-              Add{" "}
-              {SERVICE_REGISTRY.find((s) => s.id === addingService)?.label} Key
+              添加 {SERVICE_REGISTRY.find((s) => s.id === addingService)?.label} 密钥
             </span>
           </div>
           <Input
             type="password"
             value={newKeyValue}
             onChange={(e) => setNewKeyValue(e.target.value)}
-            placeholder="Paste your API key here"
+            placeholder="在这里粘贴 API 密钥"
             autoFocus
             className="mb-3 font-mono text-xs"
           />
@@ -348,21 +347,21 @@ export const ApiKeysPanel: React.FC = () => {
                 setNewKeyValue("");
               }}
             >
-              Cancel
+              取消
             </Button>
             <Button
               size="sm"
               onClick={() => handleSaveKey(addingService)}
               disabled={!newKeyValue.trim()}
             >
-              Save Key
+              保存密钥
             </Button>
           </div>
         </div>
       ) : availableServices.length > 0 ? (
         <div>
           <h4 className="text-sm font-medium text-text-secondary mb-3">
-            Add API Key
+            添加 API 密钥
           </h4>
           <div className="grid gap-2">
             {availableServices.map((service) => (

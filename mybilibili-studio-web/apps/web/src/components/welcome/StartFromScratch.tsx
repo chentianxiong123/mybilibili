@@ -28,7 +28,7 @@ interface PresetGroup {
 
 const PRESET_GROUPS: PresetGroup[] = [
   {
-    platform: "Vertical (9:16)",
+    platform: "竖屏 (9:16)",
     presets: [
       "tiktok",
       "instagram-reels",
@@ -37,24 +37,24 @@ const PRESET_GROUPS: PresetGroup[] = [
     ],
   },
   {
-    platform: "Square (1:1)",
+    platform: "方形 (1:1)",
     presets: ["instagram-post", "facebook"],
   },
   {
-    platform: "Horizontal (16:9)",
+    platform: "横屏 (16:9)",
     presets: ["youtube-video", "twitter", "linkedin"],
   },
   {
-    platform: "Other",
+    platform: "其他",
     presets: ["pinterest", "custom"],
   },
 ];
 
 const PRESET_ICONS: Record<string, React.ElementType> = {
-  "Vertical (9:16)": Smartphone,
-  "Square (1:1)": Square,
-  "Horizontal (16:9)": Monitor,
-  Other: Square,
+  "竖屏 (9:16)": Smartphone,
+  "方形 (1:1)": Square,
+  "横屏 (16:9)": Monitor,
+  其他: Square,
 };
 
 export const StartFromScratch: React.FC<StartFromScratchProps> = ({
@@ -75,7 +75,7 @@ export const StartFromScratch: React.FC<StartFromScratchProps> = ({
     setIsCreating(true);
 
     const settings = createProjectSettingsFromPreset(preset);
-    createNewProject(projectName.trim() || `${info?.name || "New"} Project`);
+    createNewProject(projectName.trim() || `${info?.name || "新建"}项目`);
     await updateSettings(settings);
 
     track(AnalyticsEvents.PROJECT_CREATED, {
@@ -105,20 +105,20 @@ export const StartFromScratch: React.FC<StartFromScratchProps> = ({
     <div className="space-y-6">
       <div>
         <Label className="text-sm font-medium text-text-primary mb-2 block">
-          Project Name
+          项目名称
         </Label>
         <Input
           type="text"
           value={projectName}
           onChange={(e) => setProjectName(e.target.value)}
-          placeholder="My Awesome Video"
+          placeholder="我的新视频"
           className="max-w-md bg-background-tertiary border-border text-text-primary"
         />
       </div>
 
       <div>
         <h3 className="text-sm font-medium text-text-primary mb-4">
-          Select Format
+          选择画幅
         </h3>
 
         <div className="grid md:grid-cols-2 gap-6">
@@ -183,18 +183,17 @@ export const StartFromScratch: React.FC<StartFromScratchProps> = ({
         <Info size={16} className="text-primary flex-shrink-0 mt-0.5" />
         <div>
           <p className="text-sm font-medium text-text-primary">
-            {info?.name || selectedPreset} Format
+            {info?.name || selectedPreset} 画幅
           </p>
           <p className="text-xs text-text-muted mt-1">
             {preset.width}×{preset.height}px • {preset.frameRate || 30}fps
-            {preset.maxDuration && ` • Max ${preset.maxDuration}s`}
+            {preset.maxDuration && ` • 最长 ${preset.maxDuration}s`}
             {preset.recommendedDuration &&
-              ` • Recommended ${preset.recommendedDuration}s`}
+              ` • 推荐 ${preset.recommendedDuration}s`}
           </p>
           {preset.safeZone && (
             <p className="text-xs text-text-muted mt-0.5">
-              Safe zone: {preset.safeZone.top}px top, {preset.safeZone.bottom}px
-              bottom
+              安全区：上 {preset.safeZone.top}px，下 {preset.safeZone.bottom}px
             </p>
           )}
         </div>
@@ -209,11 +208,11 @@ export const StartFromScratch: React.FC<StartFromScratchProps> = ({
           {isCreating ? (
             <>
               <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-              Creating...
+              创建中...
             </>
           ) : (
             <>
-              Create Project
+              创建项目
               <ChevronRight size={16} />
             </>
           )}

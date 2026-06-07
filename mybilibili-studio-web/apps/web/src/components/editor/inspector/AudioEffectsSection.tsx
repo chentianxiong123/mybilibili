@@ -402,7 +402,7 @@ export const AudioEffectsSection: React.FC<AudioEffectsSectionProps> = ({
       </div>
 
       <SubSection
-        title="Equalizer"
+        title="均衡器"
         enabled={eqEnabled}
         onToggle={handleEqToggle}
         defaultOpen
@@ -420,7 +420,7 @@ export const AudioEffectsSection: React.FC<AudioEffectsSectionProps> = ({
       </SubSection>
 
       <SubSection
-        title="Compressor"
+        title="压缩器"
         enabled={compressorEnabled}
         onToggle={handleCompressorToggle}
       >
@@ -463,7 +463,7 @@ export const AudioEffectsSection: React.FC<AudioEffectsSectionProps> = ({
       </SubSection>
 
       <SubSection
-        title="Reverb"
+        title="混响"
         enabled={reverbEnabled}
         onToggle={handleReverbToggle}
       >
@@ -496,7 +496,7 @@ export const AudioEffectsSection: React.FC<AudioEffectsSectionProps> = ({
       </SubSection>
 
       <SubSection
-        title="Delay"
+        title="延迟"
         enabled={delayEnabled}
         onToggle={handleDelayToggle}
       >

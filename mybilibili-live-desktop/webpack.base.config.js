@@ -64,6 +64,7 @@ module.exports = {
   externals: {
     'font-manager': 'require("font-manager")',
     'color-picker': 'require("color-picker")',
+    'obs-studio-node': 'require("obs-studio-node")',
     '@electron/remote': 'require("@electron/remote")',
     realm: 'require("realm")',
 
@@ -108,6 +109,7 @@ module.exports = {
           loader: 'ts-loader',
           options: {
             reportFiles: tsFiles,
+            transpileOnly: true,
           },
         },
       },
@@ -123,6 +125,7 @@ module.exports = {
             loader: 'ts-loader',
             options: {
               reportFiles: tsxFiles,
+              transpileOnly: true,
             },
           },
         ],
@@ -142,6 +145,7 @@ module.exports = {
               reportFiles: ['app/components-react/**/*'],
               configFile: 'app/components-react/tsconfig.json',
               instance: 'react-tsx',
+              transpileOnly: true,
               compilerOptions: {
                 jsx: 'react',
               },

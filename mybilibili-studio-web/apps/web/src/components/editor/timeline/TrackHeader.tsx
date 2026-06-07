@@ -185,7 +185,7 @@ export const TrackHeader: React.FC<TrackHeaderProps> = ({
             <button
               onClick={(e) => { e.stopPropagation(); handleRemoveTrack(); }}
               className="w-[22px] h-[22px] grid place-items-center rounded transition-colors text-fg-muted hover:bg-hover hover:text-status-error"
-              title="Delete track"
+              title="删除轨道"
             >
               <Trash2 size={12} />
             </button>

@@ -96,14 +96,14 @@ export const TEMPLATE_CATEGORIES: Array<{
   name: string;
   icon: string;
 }> = [
-  { id: "social-media", name: "Social Media", icon: "share" },
-  { id: "youtube", name: "YouTube", icon: "youtube" },
-  { id: "tiktok", name: "TikTok", icon: "smartphone" },
-  { id: "instagram", name: "Instagram", icon: "instagram" },
-  { id: "business", name: "Business", icon: "briefcase" },
-  { id: "personal", name: "Personal", icon: "user" },
-  { id: "slideshow", name: "Slideshow", icon: "images" },
-  { id: "intro-outro", name: "Intro/Outro", icon: "play" },
-  { id: "lower-third", name: "Lower Third", icon: "subtitles" },
-  { id: "custom", name: "Custom", icon: "folder" },
+  { id: "social-media", name: "社交内容", icon: "share" },
+  { id: "youtube", name: "横屏投稿", icon: "youtube" },
+  { id: "tiktok", name: "竖屏短视频", icon: "smartphone" },
+  { id: "instagram", name: "图文短片", icon: "instagram" },
+  { id: "business", name: "商业展示", icon: "briefcase" },
+  { id: "personal", name: "个人创作", icon: "user" },
+  { id: "slideshow", name: "幻灯片", icon: "images" },
+  { id: "intro-outro", name: "片头片尾", icon: "play" },
+  { id: "lower-third", name: "字幕条", icon: "subtitles" },
+  { id: "custom", name: "自定义", icon: "folder" },
 ];

@@ -305,7 +305,7 @@ export const EmphasisAnimationSection: React.FC<
 
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-text-secondary">Speed</span>
+                <span className="text-[10px] text-text-secondary">速度</span>
                 <span className="text-[10px] font-mono text-text-primary bg-background-tertiary px-1.5 py-0.5 rounded border border-border">
                   {currentAnimation.speed.toFixed(1)}x
                 </span>
@@ -369,7 +369,7 @@ export const EmphasisAnimationSection: React.FC<
           <div className="pt-3 border-t border-border space-y-3">
             <div className="flex items-center gap-2 text-primary">
               <Clock size={12} />
-              <span className="text-[10px] font-medium">Timing</span>
+              <span className="text-[10px] font-medium">时间</span>
               <span className="text-[9px] text-text-muted ml-auto">
                 Clip: {formatTime(clipDuration)}
               </span>

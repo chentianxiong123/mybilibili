@@ -1,5 +1,5 @@
 /**
- * mybilibili Live Desktop keeps local OBS control plus mybilibili live-room integration.
+ * mybilibili 直播工作台 keeps local OBS control plus mybilibili live-room integration.
  * Only local OBS control and mybilibili live-room integration are registered.
  */
 
@@ -25,10 +25,11 @@ export { Scene, SceneItem, SceneItemFolder, ScenesService } from 'services/scene
 export { ScenesTransitionsService } from 'services/scenes-transitions';
 export { GlobalSelection, Selection, SelectionService } from 'services/selection';
 export { SettingsService } from 'services/settings';
+export { EncoderQueryService, OutputSettingsService } from 'services/settings/output';
 export { StreamSettingsService } from 'services/settings/streaming';
 export { SettingsManagerService } from 'services/settings-manager';
 export { SideNavService } from 'services/side-nav';
-export { StreamingService } from 'services/streaming';
+export { LiveOutputRuntimeService, StreamingService } from 'services/streaming';
 export { VideoSettingsService } from 'services/settings-v2/video';
 export { SignalsService } from 'services/signals-manager';
 export { UsageStatisticsService } from 'services/usage-statistics';

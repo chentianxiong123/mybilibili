@@ -363,7 +363,7 @@ const KeyframeItem: React.FC<{
       <button
         onClick={onDelete}
         className="p-1 hover:bg-red-500/20 rounded transition-colors text-text-muted hover:text-red-400"
-        title="Delete keyframe"
+        title="删除关键帧"
       >
         <Trash2 size={12} />
       </button>

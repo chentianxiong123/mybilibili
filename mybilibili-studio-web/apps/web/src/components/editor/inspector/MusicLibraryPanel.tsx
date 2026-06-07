@@ -84,7 +84,7 @@ const SoundCard: React.FC<SoundCardProps> = ({
         <button
           onClick={onAdd}
           className="p-1.5 rounded-md bg-primary/20 hover:bg-primary text-primary hover:text-white transition-colors"
-          title="Add to timeline"
+          title="添加到时间线"
         >
           <Plus size={14} />
         </button>
@@ -241,7 +241,7 @@ export const MusicLibraryPanel: React.FC = () => {
           <span className="text-[11px] font-medium text-text-primary">
             Music & SFX
           </span>
-          <p className="text-[9px] text-text-muted">Royalty-free sounds</p>
+          <p className="text-[9px] text-text-muted">免版权声音</p>
         </div>
       </div>
 
@@ -277,7 +277,7 @@ export const MusicLibraryPanel: React.FC = () => {
         />
         <Input
           type="text"
-          placeholder="Search sounds..."
+          placeholder="搜索声音..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-8 text-[10px] bg-background-secondary border-border h-8"
@@ -365,7 +365,7 @@ export const MusicLibraryPanel: React.FC = () => {
               size={24}
               className="mx-auto mb-2 text-text-muted opacity-50"
             />
-            <p className="text-[10px] text-text-muted">No sounds found</p>
+            <p className="text-[10px] text-text-muted">未找到声音</p>
             <p className="text-[9px] text-text-muted mt-1">
               Try adjusting filters
             </p>

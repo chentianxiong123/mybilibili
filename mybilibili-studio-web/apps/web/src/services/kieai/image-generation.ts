@@ -158,7 +158,7 @@ export async function pollTask(
 
     if (record.state === "success") return record;
     if (record.state === "fail") {
-      throw new KieAIError(record.failCode ?? 500, record.failMsg ?? "Generation failed");
+      throw new KieAIError(record.failCode ?? 500, record.failMsg ?? "生成失败");
     }
 
     // Wait before next poll

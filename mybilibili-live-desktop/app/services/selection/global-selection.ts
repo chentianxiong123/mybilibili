@@ -64,7 +64,7 @@ export class GlobalSelection extends Selection {
 
     remote.dialog
       .showMessageBox(Utils.getMainWindow(), {
-        title: 'mybilibili Live Desktop',
+        title: 'mybilibili 直播工作台',
         message,
         type: 'warning',
         buttons: [$t('Cancel'), $t('OK')],

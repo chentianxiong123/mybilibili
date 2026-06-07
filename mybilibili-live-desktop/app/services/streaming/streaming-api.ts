@@ -89,8 +89,8 @@ export interface IStreamingServiceApi {
   recordingStatusChange: Observable<ERecordingState>;
   replayBufferStatusChange: Observable<EReplayBufferState>;
   streamingStateChange: Observable<void>;
-  startStreaming(): void;
-  stopStreaming(): void;
+  startStreaming(): Promise<void>;
+  stopStreaming(): Promise<void>;
   toggleStreaming(): Promise<void>;
   startRecording(): void;
   stopRecording(): void;

@@ -1,7 +1,7 @@
 {
-  "name": "OpenReel",
-  "short_name": "OpenReel",
-  "description": "Professional browser-based video, audio, and photo editing application",
+  "name": "mybilibili Studio",
+  "short_name": "工作室",
+  "description": "浏览器内的视频、音频与图片剪辑工具",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",

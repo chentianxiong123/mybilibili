@@ -341,7 +341,7 @@ import { useProjectStore } from "../../stores/project-store";
 import { useUIStore } from "../../stores/ui-store";
 import { useThemeStore } from "../../stores/theme-store";
 import { useSettingsStore } from "../../stores/settings-store";
-import { useRouter } from "../../hooks/use-router";
+import { navigateToRoute } from "../../hooks/use-router";
 import { toast } from "../../stores/notification-store";
 
 // React components that we wrap inside our ReactAdapter
@@ -378,8 +378,7 @@ const projectState = useZustandStore<any>(projectStore);
 const uiState = useZustandStore<any>(uiStore);
 const themeState = useZustandStore<any>(themeStore);
 
-// Routers and actions
-const { navigate } = useRouter();
+// Router actions
 const openSettings = settingsStore.getState().openSettings;
 
 // State management
@@ -428,7 +427,7 @@ const blurInput = (e: Event) => {
 };
 
 const navigateToWelcome = () => {
-  navigate("welcome");
+  navigateToRoute("welcome");
 };
 
 const handleUndo = () => {

@@ -185,7 +185,7 @@ const ToastItem = React.forwardRef<HTMLDivElement, ToastItemProps>(
                   : "hover:bg-black/5 text-zinc-400 hover:text-zinc-600"
               }
             `}
-            aria-label="Dismiss notification"
+            aria-label="关闭通知"
           >
             <X size={16} />
           </motion.button>
@@ -215,7 +215,7 @@ export const ToastContainer: React.FC = () => {
     <div
       className="fixed top-4 right-4 z-[9999] flex flex-col gap-3"
       role="region"
-      aria-label="Notifications"
+      aria-label="通知"
     >
       <AnimatePresence mode="popLayout">
         {notifications.map((notification) => (

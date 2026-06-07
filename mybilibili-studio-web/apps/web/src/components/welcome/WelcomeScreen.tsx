@@ -32,8 +32,8 @@ const FORMAT_OPTIONS: FormatOption[] = [
   {
     id: "vertical",
     preset: "tiktok",
-    label: "Vertical",
-    description: "TikTok, Reels, Shorts",
+    label: "竖屏",
+    description: "短视频、竖版内容",
     dimensions: "1080 × 1920",
     icon: Smartphone,
     gradient: "from-violet-500/20 to-fuchsia-500/20",
@@ -41,8 +41,8 @@ const FORMAT_OPTIONS: FormatOption[] = [
   {
     id: "horizontal",
     preset: "youtube-video",
-    label: "Horizontal",
-    description: "YouTube, Vimeo, Web",
+    label: "横屏",
+    description: "投稿视频、网页视频",
     dimensions: "1920 × 1080",
     icon: Monitor,
     gradient: "from-blue-500/20 to-cyan-500/20",
@@ -50,15 +50,15 @@ const FORMAT_OPTIONS: FormatOption[] = [
   {
     id: "square",
     preset: "instagram-post",
-    label: "Square",
-    description: "Instagram, Facebook",
+    label: "方形",
+    description: "社交平台方形内容",
     dimensions: "1080 × 1080",
     icon: Square,
     gradient: "from-orange-500/20 to-rose-500/20",
   },
 ];
 
-const OpenReelLogo: React.FC<{ className?: string }> = ({ className = "" }) => (
+const StudioLogo: React.FC<{ className?: string }> = ({ className = "" }) => (
   <svg
     viewBox="0 0 490 490"
     fill="none"
@@ -150,7 +150,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
   const handleCreateProject = useCallback(
     (option: FormatOption) => {
       const preset = SOCIAL_MEDIA_PRESETS[option.preset];
-      createNewProject(`New ${option.label} Video`, {
+      createNewProject(`新建${option.label}项目`, {
         width: preset.width,
         height: preset.height,
         frameRate: preset.frameRate,
@@ -205,9 +205,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
             onClick={() => setViewMode("home")}
           >
             <ArrowRight className="rotate-180" size={16} />
-            Back
+            返回
           </Button>
-          <h2 className="text-sm font-medium text-text-primary">Templates</h2>
+          <h2 className="text-sm font-medium text-text-primary">模板</h2>
           <div className="w-16" />
         </header>
         <div className="flex-1 overflow-y-auto p-6">
@@ -227,10 +227,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
             onClick={() => setViewMode("home")}
           >
             <ArrowRight className="rotate-180" size={16} />
-            Back
+            返回
           </Button>
           <h2 className="text-sm font-medium text-text-primary">
-            Recent Projects
+            最近项目
           </h2>
           <div className="w-16" />
         </header>
@@ -251,21 +251,21 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
           <div className="flex flex-col items-center text-center mb-12">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 text-primary">
-                <OpenReelLogo className="w-full h-full" />
+                <StudioLogo className="w-full h-full" />
               </div>
               <span className="text-xl font-semibold text-text-primary tracking-tight">
-                Open Reel Video
+                mybilibili 剪辑工作室
               </span>
             </div>
 
             <h1 className="text-4xl sm:text-5xl font-bold text-text-primary tracking-tight mb-3">
-              From idea to export.
+              导入、剪辑、导出
             </h1>
             <p className="text-xl text-text-secondary mb-8">
-              In your browser.
+              在浏览器里完成创作。
             </p>
             <p className="text-base text-text-muted max-w-md">
-              Pick a format and start creating. You can change this anytime.
+              选择画布比例后开始剪辑，进入编辑器后仍可调整。
             </p>
           </div>
 
@@ -328,7 +328,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
                     transition-all duration-200
                   `}
                   >
-                    Start creating
+                    开始创建
                     <ArrowRight size={14} />
                   </div>
                 </button>
@@ -343,7 +343,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
               className="rounded-xl"
             >
               <Layers size={16} />
-              Browse templates
+              浏览模板
             </Button>
             <Button
               variant="outline"
@@ -351,7 +351,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
               className="rounded-xl"
             >
               <Clock size={16} />
-              Recent projects
+              最近项目
             </Button>
             <Button
               variant="outline"
@@ -359,7 +359,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
               className="rounded-xl"
             >
               <FolderOpen size={16} />
-              Open editor
+              打开编辑器
             </Button>
           </div>
         </div>
@@ -375,18 +375,18 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
               htmlFor="skip-welcome"
               className="text-xs text-text-muted cursor-pointer"
             >
-              Skip on startup
+              启动时跳过
             </Label>
           </div>
 
           <span className="text-text-muted/30">·</span>
 
           <p className="text-xs text-text-muted/60">
-            Press{" "}
+            按{" "}
             <kbd className="px-1.5 py-0.5 bg-background-tertiary border border-border rounded text-text-muted font-mono text-[10px]">
               Esc
             </kbd>{" "}
-            to skip
+            跳过
           </p>
         </div>
       </div>

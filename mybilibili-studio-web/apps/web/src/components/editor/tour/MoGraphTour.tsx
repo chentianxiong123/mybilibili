@@ -213,7 +213,7 @@ export const MoGraphTour: React.FC = () => {
               <div className="bg-purple-500/10 rounded-lg p-3 mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Lightbulb size={14} className="text-purple-400" />
-                  <span className="text-purple-400 text-xs font-medium">Pro Tips</span>
+                  <span className="text-purple-400 text-xs font-medium">进阶提示</span>
                 </div>
                 <ul className="space-y-1.5">
                   {step.tips.map((tip, i) => (

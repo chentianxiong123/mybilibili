@@ -371,7 +371,7 @@ export const KeyframeEditorPanel: React.FC<KeyframeEditorPanelProps> = ({
   if (!clip) {
     return (
       <div className="h-full flex items-center justify-center text-text-muted">
-        <p className="text-sm">Select a clip with keyframes to edit</p>
+        <p className="text-sm">选择带关键帧的片段后编辑</p>
       </div>
     );
   }
@@ -379,7 +379,7 @@ export const KeyframeEditorPanel: React.FC<KeyframeEditorPanelProps> = ({
   return (
     <div className="h-full flex flex-col bg-background-secondary border-l border-border">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <h3 className="text-sm font-semibold text-text-primary">Keyframe Editor</h3>
+        <h3 className="text-sm font-semibold text-text-primary">关键帧编辑器</h3>
         <button
           onClick={onClose}
           className="p-1 rounded hover:bg-background-elevated text-text-muted hover:text-text-primary transition-colors"
@@ -391,7 +391,7 @@ export const KeyframeEditorPanel: React.FC<KeyframeEditorPanelProps> = ({
       <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-background-tertiary">
         <Select value={activeProperty || ""} onValueChange={setActiveProperty}>
           <SelectTrigger className="w-[180px] h-8">
-            <SelectValue placeholder="Select property" />
+            <SelectValue placeholder="选择属性" />
           </SelectTrigger>
           <SelectContent>
             {propertyGroups.map((group) => (
@@ -418,7 +418,7 @@ export const KeyframeEditorPanel: React.FC<KeyframeEditorPanelProps> = ({
           className="h-8 px-2"
         >
           <Copy size={14} className="mr-1" />
-          Copy
+          复制
         </Button>
         <Button
           variant="ghost"
@@ -428,7 +428,7 @@ export const KeyframeEditorPanel: React.FC<KeyframeEditorPanelProps> = ({
           className="h-8 px-2"
         >
           <Clipboard size={14} className="mr-1" />
-          Paste
+          粘贴
         </Button>
         <Button
           variant="ghost"
@@ -438,7 +438,7 @@ export const KeyframeEditorPanel: React.FC<KeyframeEditorPanelProps> = ({
           className="h-8 px-2 text-red-400 hover:text-red-300"
         >
           <Trash2 size={14} className="mr-1" />
-          Delete
+          删除
         </Button>
       </div>
 
@@ -458,14 +458,14 @@ export const KeyframeEditorPanel: React.FC<KeyframeEditorPanelProps> = ({
       <div className="px-4 py-3 border-t border-border bg-background-tertiary">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-text-muted">Easing:</span>
+            <span className="text-xs text-text-muted">缓动：</span>
             <Select
               value={selectedKeyframeIds.length > 0 ? undefined : ""}
               onValueChange={handleEasingChange}
               disabled={selectedKeyframeIds.length === 0}
             >
               <SelectTrigger className="w-[160px] h-7 text-xs">
-                <SelectValue placeholder="Select easing" />
+                <SelectValue placeholder="选择缓动" />
               </SelectTrigger>
               <SelectContent>
                 {EASING_PRESETS.map((preset) => (
@@ -480,7 +480,7 @@ export const KeyframeEditorPanel: React.FC<KeyframeEditorPanelProps> = ({
           <div className="flex-1" />
 
           <span className="text-xs text-text-muted">
-            {selectedKeyframeIds.length} keyframe{selectedKeyframeIds.length !== 1 ? "s" : ""} selected
+            已选择 {selectedKeyframeIds.length} 个关键帧
           </span>
         </div>
       </div>
@@ -491,9 +491,9 @@ export const KeyframeEditorPanel: React.FC<KeyframeEditorPanelProps> = ({
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-text-muted">
-                  <th className="text-left py-1 px-2">Time</th>
-                  <th className="text-left py-1 px-2">Value</th>
-                  <th className="text-left py-1 px-2">Easing</th>
+                  <th className="text-left py-1 px-2">时间</th>
+                  <th className="text-left py-1 px-2">数值</th>
+                  <th className="text-left py-1 px-2">缓动</th>
                 </tr>
               </thead>
               <tbody>

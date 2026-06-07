@@ -230,7 +230,7 @@ export const Toolbar: React.FC = () => {
       }
 
       if (finalResult?.success) {
-        setExportState((prev) => ({ ...prev, complete: true, phase: "Saved!" }));
+        setExportState((prev) => ({ ...prev, complete: true, phase: "已保存" }));
         track(AnalyticsEvents.PROJECT_EXPORTED, {
           format: videoSettings.format ?? "mp4",
           codec: videoSettings.codec ?? "h264",
@@ -240,7 +240,7 @@ export const Toolbar: React.FC = () => {
           duration: project.timeline?.duration ?? 0,
         });
       } else {
-        throw new Error(finalResult?.error?.message || "Export failed");
+        throw new Error(finalResult?.error?.message || "导出失败");
       }
     },
     [project, track],
@@ -382,14 +382,14 @@ export const Toolbar: React.FC = () => {
               document.body.removeChild(a);
               URL.revokeObjectURL(url);
             }
-            setExportState((prev) => ({ ...prev, complete: true, phase: "Saved!" }));
+            setExportState((prev) => ({ ...prev, complete: true, phase: "已保存" }));
             track(AnalyticsEvents.PROJECT_EXPORTED, {
               format: "wav",
               duration: project.timeline?.duration ?? 0,
             });
           } else {
             try { await writable.abort(); } catch {}
-            throw new Error(finalResult?.error?.message || "Export failed");
+            throw new Error(finalResult?.error?.message || "导出失败");
           }
         } else {
           const base = {
@@ -435,7 +435,7 @@ export const Toolbar: React.FC = () => {
         setExportState((prev) => ({
           ...prev,
           isExporting: false,
-          error: error instanceof Error ? error.message : "Export failed",
+          error: error instanceof Error ? error.message : "导出失败",
         }));
       }
     },
@@ -505,7 +505,7 @@ export const Toolbar: React.FC = () => {
         setExportState((prev) => ({
           ...prev,
           isExporting: false,
-          error: error instanceof Error ? error.message : "Export failed",
+          error: error instanceof Error ? error.message : "导出失败",
         }));
       }
     },
@@ -633,7 +633,7 @@ export const Toolbar: React.FC = () => {
         <button
           onClick={() => navigate("welcome")}
           className="flex items-center gap-1.5 pr-1.5"
-          title="Back to home"
+          title="返回首页"
         >
           <span className="w-[11px] h-[11px] rounded-full bg-[oklch(0.7_0.18_25)]" />
           <span className="w-[11px] h-[11px] rounded-full bg-[oklch(0.78_0.14_80)]" />
@@ -643,7 +643,7 @@ export const Toolbar: React.FC = () => {
         <span className="text-[11px] text-fg-3 flex items-center gap-1.5">
           <span className="w-[5px] h-[5px] rounded-full bg-accent" />
           {exportState.isExporting
-            ? `Exporting… ${Math.round(exportState.progress)}%`
+            ? `导出中... ${Math.round(exportState.progress)}%`
             : `Auto saved: ${autosaveLabel}`}
         </span>
       </div>
@@ -726,7 +726,7 @@ export const Toolbar: React.FC = () => {
               <History size={14} />
             </button>
           </TooltipTrigger>
-          <TooltipContent>Action history</TooltipContent>
+          <TooltipContent>操作历史</TooltipContent>
         </Tooltip>
 
         {/* Keyframe editor (moved here from old toolbar) */}
@@ -743,7 +743,7 @@ export const Toolbar: React.FC = () => {
               <Diamond size={14} />
             </button>
           </TooltipTrigger>
-          <TooltipContent>Keyframe editor</TooltipContent>
+          <TooltipContent>关键帧编辑器</TooltipContent>
         </Tooltip>
 
         {/* Audio mixer (moved) */}
@@ -760,7 +760,7 @@ export const Toolbar: React.FC = () => {
               <Music size={14} />
             </button>
           </TooltipTrigger>
-          <TooltipContent>Audio mixer</TooltipContent>
+          <TooltipContent>音频混音器</TooltipContent>
         </Tooltip>
 
         {/* Comments placeholder (matches mockup) */}
@@ -773,7 +773,7 @@ export const Toolbar: React.FC = () => {
               <MessageSquare size={14} />
             </button>
           </TooltipTrigger>
-          <TooltipContent>Project JSON / Comments</TooltipContent>
+          <TooltipContent>项目 JSON / 评论</TooltipContent>
         </Tooltip>
 
         <div className="w-px h-4 bg-border mx-1" />
@@ -790,37 +790,37 @@ export const Toolbar: React.FC = () => {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem onClick={toggleTheme} className="gap-2">
               {themeMode === "light" ? <Sun size={14} /> : themeMode === "dark" ? <Moon size={14} /> : <SunMoon size={14} />}
-              <span className="flex-1">Theme: {themeMode}</span>
+              <span className="flex-1">主题：{themeMode}</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => openSettings()} className="gap-2">
               <Settings size={14} />
-              <span>Settings & API keys</span>
+              <span>设置与 API 密钥</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setIsRecorderOpen(true)} className="gap-2">
               <Circle size={14} className="fill-current text-status-error" />
-              <span>Screen recorder</span>
+              <span>屏幕录制</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleStartTour} className="gap-2">
               <Play size={14} />
-              <span>Editor tour</span>
+              <span>编辑器引导</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleStartMoGraphTour} className="gap-2">
               <Sparkles size={14} className="text-purple-400" />
-              <span>Animation & effects tour</span>
+              <span>动画与效果引导</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="gap-2 text-fg-muted">
               <HelpCircle size={14} />
-              <span>Help & shortcuts (press ?)</span>
+              <span>帮助与快捷键（按 ?）</span>
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2 text-fg-muted">
               <FileCode size={14} />
-              <span>Project JSON</span>
+              <span>项目 JSON</span>
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2 text-fg-muted">
               <Command size={14} />
-              <span>⌘K to search</span>
+              <span>按 ⌘K 搜索</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -850,7 +850,7 @@ export const Toolbar: React.FC = () => {
         ) : exportState.complete ? (
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-accent-soft text-accent text-[12.5px]">
             <Check size={13} />
-            <span className="font-medium">Saved!</span>
+            <span className="font-medium">已保存</span>
           </div>
         ) : (
           <DropdownMenu open={isExportOpen} onOpenChange={setIsExportOpen}>
@@ -859,7 +859,7 @@ export const Toolbar: React.FC = () => {
                 className="relative inline-flex items-center gap-1.5 px-3.5 py-[5px] rounded-md bg-accent text-accent-fg font-semibold text-[12.5px] shadow-glow hover:bg-accent-strong transition-colors"
               >
                 <Upload size={13} />
-                <span>Export</span>
+                <span>导出</span>
                 <ChevronDown size={12} className={`transition-transform ${isExportOpen ? "rotate-180" : ""}`} />
               </button>
             </DropdownMenuTrigger>
@@ -965,7 +965,7 @@ export const Toolbar: React.FC = () => {
           />
           <div className="fixed top-topbar right-0 bottom-0 w-80 bg-bg-1 border-l border-border z-50 shadow-lg animate-in slide-in-from-right duration-200">
             <div className="flex items-center justify-between p-3 border-b border-border">
-              <span className="text-sm font-medium text-fg">Action history</span>
+              <span className="text-sm font-medium text-fg">操作历史</span>
               <button
                 onClick={() => setIsHistoryOpen(false)}
                 className="p-1.5 rounded hover:bg-hover text-fg-3 hover:text-fg transition-colors"

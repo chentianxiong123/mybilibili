@@ -64,7 +64,7 @@ export const BehindSubjectSection: React.FC<BehindSubjectSectionProps> = ({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-[11px] text-text-primary">Place Behind Subject</p>
+          <p className="text-[11px] text-text-primary">置于主体后方</p>
           <p className="text-[9px] text-text-muted">
             Text appears behind people in the video
           </p>
@@ -76,7 +76,7 @@ export const BehindSubjectSection: React.FC<BehindSubjectSectionProps> = ({
         )}
       </div>
       {isLoading && (
-        <p className="text-[9px] text-text-muted">Loading AI model...</p>
+        <p className="text-[9px] text-text-muted">正在加载 AI 模型...</p>
       )}
       {error && (
         <p className="text-[9px] text-red-400">{error}</p>

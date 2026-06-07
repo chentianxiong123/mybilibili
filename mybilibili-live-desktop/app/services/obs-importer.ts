@@ -4,6 +4,6 @@ export class ObsImporterService extends StatefulService<{ progress: number; tota
   static initialState = { progress: 0, total: 0 };
 
   async import() {
-    throw new Error('旧 OBS 导入器已从 mybilibili Live Desktop 中移除。');
+    throw new Error('旧 OBS 导入器已从 mybilibili 直播工作台中移除。');
   }
 }

@@ -129,14 +129,14 @@ export const HistoryPanel: React.FC = () => {
       <div className="flex items-center justify-between p-3 border-b border-border">
         <div className="flex items-center gap-2">
           <History size={14} className="text-primary" />
-          <span className="text-sm font-medium text-text-primary">History</span>
+          <span className="text-sm font-medium text-text-primary">历史记录</span>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={handleUndo}
             disabled={!canUndo()}
             className="p-1.5 rounded hover:bg-background-tertiary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            title={`Undo (${undoCount})`}
+            title={`撤销 (${undoCount})`}
           >
             <Undo2 size={14} />
           </button>
@@ -144,7 +144,7 @@ export const HistoryPanel: React.FC = () => {
             onClick={handleRedo}
             disabled={!canRedo()}
             className="p-1.5 rounded hover:bg-background-tertiary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            title={`Redo (${redoCount})`}
+            title={`重做 (${redoCount})`}
           >
             <Redo2 size={14} />
           </button>
@@ -163,7 +163,7 @@ export const HistoryPanel: React.FC = () => {
           )}
           <Bookmark size={12} className="text-yellow-500" />
           <span className="text-xs text-text-secondary">
-            Snapshots ({snapshots.length})
+            快照 ({snapshots.length})
           </span>
         </button>
 
@@ -171,7 +171,7 @@ export const HistoryPanel: React.FC = () => {
           <div className="px-2 pb-2">
             {snapshots.length === 0 && !isCreatingSnapshot && (
               <p className="text-[10px] text-text-muted py-2 text-center">
-                No snapshots saved
+                暂无快照
               </p>
             )}
 
@@ -208,7 +208,7 @@ export const HistoryPanel: React.FC = () => {
                     if (e.key === "Enter") handleCreateSnapshot();
                     if (e.key === "Escape") setIsCreatingSnapshot(false);
                   }}
-                  placeholder="Snapshot name..."
+                  placeholder="快照名称..."
                   className="flex-1 h-7 text-xs bg-background-tertiary border-border text-text-primary"
                   autoFocus
                 />
@@ -216,7 +216,7 @@ export const HistoryPanel: React.FC = () => {
                   onClick={handleCreateSnapshot}
                   className="px-2 py-1 bg-primary text-white rounded text-xs hover:bg-primary/80 transition-colors"
                 >
-                  Save
+                  保存
                 </button>
               </div>
             ) : (
@@ -225,7 +225,7 @@ export const HistoryPanel: React.FC = () => {
                 className="w-full flex items-center justify-center gap-1 p-2 rounded border border-dashed border-border hover:border-primary hover:text-primary transition-colors"
               >
                 <BookmarkPlus size={12} />
-                <span className="text-[10px]">Create Snapshot</span>
+                <span className="text-[10px]">创建快照</span>
               </button>
             )}
           </div>
@@ -236,7 +236,7 @@ export const HistoryPanel: React.FC = () => {
         {combinedHistory.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-text-muted">
             <History size={24} className="mb-2 opacity-30" />
-            <p className="text-xs">No actions yet</p>
+            <p className="text-xs">暂无操作记录</p>
           </div>
         ) : (
           <div className="p-2 space-y-0.5">

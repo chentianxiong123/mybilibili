@@ -36,7 +36,7 @@ export const SettingsDialog: React.FC = () => {
           </DialogDescription>
         </DialogHeader>
 
-        <div role="tablist" aria-label="Settings" className="flex gap-1 p-1 bg-muted rounded-md">
+        <div role="tablist" aria-label="设置" className="flex gap-1 p-1 bg-muted rounded-md">
           {TABS.map((tab) => (
             <button
               key={tab.id}

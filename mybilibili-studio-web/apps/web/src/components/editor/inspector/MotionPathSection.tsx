@@ -175,7 +175,7 @@ export const MotionPathSection: React.FC<MotionPathSectionProps> = ({
         <>
           <div className="p-3 bg-background-tertiary rounded-lg space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-text-secondary">Show Path</span>
+              <span className="text-[10px] text-text-secondary">显示路径</span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleShowPathToggle(!showPath)}
@@ -201,7 +201,7 @@ export const MotionPathSection: React.FC<MotionPathSectionProps> = ({
             </div>
 
             <div className="space-y-1">
-              <span className="text-[10px] text-text-secondary">Path Type</span>
+              <span className="text-[10px] text-text-secondary">路径类型</span>
               <div className="grid grid-cols-3 gap-1">
                 {(["linear", "bezier", "catmull-rom"] as const).map((type) => (
                   <button
@@ -233,14 +233,14 @@ export const MotionPathSection: React.FC<MotionPathSectionProps> = ({
               <button
                 onClick={handleAddPoint}
                 className="p-1.5 rounded bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
-                title="Add point"
+                title="添加点"
               >
                 <Plus size={12} />
               </button>
               <button
                 onClick={handleClearPath}
                 className="p-1.5 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-                title="Clear path"
+                title="清空路径"
               >
                 <Trash2 size={12} />
               </button>
@@ -263,7 +263,7 @@ export const MotionPathSection: React.FC<MotionPathSectionProps> = ({
           {isEditing && (
             <div className="p-2 bg-primary/10 border border-primary/30 rounded-lg">
               <p className="text-[9px] text-primary">
-                <span className="font-medium">Editing:</span> Click on the path
+                <span className="font-medium">编辑：</span> 点击路径
                 to add points. Drag points to move them. Right-click to remove.
                 Drag handles to adjust curves.
               </p>
@@ -272,7 +272,7 @@ export const MotionPathSection: React.FC<MotionPathSectionProps> = ({
 
           <div className="p-2 bg-background-tertiary/50 border border-border rounded-lg">
             <p className="text-[9px] text-text-muted">
-              <span className="text-text-secondary font-medium">Tip:</span>{" "}
+              <span className="text-text-secondary font-medium">提示：</span>{" "}
               Motion paths animate the clip's position along a curved path over
               time. Use bezier handles for smooth curves.
             </p>

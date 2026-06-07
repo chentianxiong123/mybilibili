@@ -129,7 +129,7 @@ export const MasterPasswordDialog: React.FC<MasterPasswordDialogProps> = ({
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter current password"
+                  placeholder="输入当前密码"
                   autoFocus
                   className="pr-10"
                 />
@@ -214,7 +214,7 @@ export const MasterPasswordDialog: React.FC<MasterPasswordDialogProps> = ({
                     type={showNewPassword ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Repeat new password"
+                    placeholder="再次输入新密码"
                   />
                 </div>
               )}
@@ -232,9 +232,8 @@ export const MasterPasswordDialog: React.FC<MasterPasswordDialogProps> = ({
             <div className="flex items-start gap-2 text-xs text-text-muted bg-background-secondary px-3 py-2 rounded-lg">
               <ShieldCheck size={14} className="mt-0.5 shrink-0 text-primary" />
               <span>
-                Your password is used to derive an encryption key via PBKDF2
-                (100k iterations). API keys are encrypted with AES-256-GCM.
-                If you forget this password, stored keys cannot be recovered.
+                你的密码会通过 PBKDF2 派生出加密密钥（10 万次迭代）。API 密钥会使用 AES-256-GCM 加密。
+                如果忘记此密码，已保存的密钥无法恢复。
               </span>
             </div>
           )}
@@ -246,16 +245,16 @@ export const MasterPasswordDialog: React.FC<MasterPasswordDialogProps> = ({
               onClick={handleClose}
               disabled={loading}
             >
-              Cancel
+              取消
             </Button>
             <Button type="submit" disabled={loading}>
               {loading
-                ? "Processing..."
+                ? "处理中..."
                 : mode === "setup"
-                  ? "Set Password"
+                  ? "设置密码"
                   : mode === "unlock"
-                    ? "Unlock"
-                    : "Change Password"}
+                    ? "解锁"
+                    : "修改密码"}
             </Button>
           </DialogFooter>
         </form>

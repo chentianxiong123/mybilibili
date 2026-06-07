@@ -64,7 +64,7 @@ export class TranscriptionService {
       onProgress?.({
         phase: "extracting",
         progress: 0,
-        message: "Extracting audio from video...",
+        message: "正在从视频中提取音频...",
       });
 
       const audioBlob = await this.extractAudioFromClip(clip, mediaItem);
@@ -72,7 +72,7 @@ export class TranscriptionService {
       onProgress?.({
         phase: "uploading",
         progress: 25,
-        message: "Uploading audio for transcription...",
+        message: "正在上传音频并准备转写...",
       });
 
       const whisperResponse = await this.sendToWhisper(audioBlob, onProgress);
@@ -80,7 +80,7 @@ export class TranscriptionService {
       onProgress?.({
         phase: "processing",
         progress: 90,
-        message: "Processing transcription...",
+        message: "正在处理转写结果...",
       });
 
       const subtitles = this.convertToSubtitles(whisperResponse, clip);
@@ -88,7 +88,7 @@ export class TranscriptionService {
       onProgress?.({
         phase: "complete",
         progress: 100,
-        message: `Generated ${subtitles.length} subtitles`,
+        message: `已生成 ${subtitles.length} 条字幕`,
       });
 
       return subtitles;
@@ -97,7 +97,7 @@ export class TranscriptionService {
         phase: "error",
         progress: 0,
         message:
-          error instanceof Error ? error.message : "Transcription failed",
+          error instanceof Error ? error.message : "字幕转写失败",
       });
       throw error;
     }
@@ -221,7 +221,7 @@ export class TranscriptionService {
     onProgress?.({
       phase: "transcribing",
       progress: 30,
-      message: "Uploading audio...",
+      message: "正在上传音频...",
     });
 
     const response = await fetch(this.config.apiEndpoint, {
@@ -232,12 +232,12 @@ export class TranscriptionService {
     if (!response.ok) {
       if (response.status === 429) {
         throw new Error(
-          "Rate limit reached. Please wait a minute before transcribing more audio. This free service is limited to 10 requests per minute.",
+          "转写请求过于频繁。请等待 1 分钟后再继续，该免费服务每分钟最多 10 次请求。",
         );
       }
       const errorText = await response.text();
       throw new Error(
-        `Transcription failed: ${response.status} - ${errorText}`,
+        `字幕转写失败：${response.status} - ${errorText}`,
       );
     }
 
@@ -266,7 +266,7 @@ export class TranscriptionService {
       const response = await fetch(pollUrl);
       if (!response.ok) {
         if (response.status === 404) {
-          throw new Error("Transcription job not found");
+          throw new Error("找不到字幕转写任务");
         }
         continue;
       }
@@ -279,8 +279,8 @@ export class TranscriptionService {
           phase: "transcribing",
           progress,
           message: this.config.targetLanguage
-            ? `Transcribing and translating to ${this.config.targetLanguage}...`
-            : "Transcribing audio...",
+            ? `正在转写并翻译为 ${this.config.targetLanguage}...`
+            : "正在转写音频...",
         });
         continue;
       }
@@ -290,11 +290,11 @@ export class TranscriptionService {
       }
 
       if (job.status === "failed") {
-        throw new Error(job.error || "Transcription failed on server");
+        throw new Error(job.error || "服务器端字幕转写失败");
       }
     }
 
-    throw new Error("Transcription timed out after 6 minutes");
+    throw new Error("字幕转写超过 6 分钟仍未完成");
   }
 
   private convertToSubtitles(

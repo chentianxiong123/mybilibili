@@ -281,7 +281,7 @@ export function getCodecRecommendations(
       codec: "h264",
       label: "H.264 (MP4)",
       recommended: true,
-      reason: hasHw ? "Hardware accelerated" : "Fast software encoding",
+      reason: hasHw ? "支持硬件加速" : "软件编码速度较快",
       speedRating: hasHw ? "fast" : "medium",
       qualityRating: "good",
     });
@@ -294,8 +294,8 @@ export function getCodecRecommendations(
       label: "H.265/HEVC (MP4)",
       recommended: hasHw && !is4K,
       reason: hasHw
-        ? "Hardware accelerated, better compression"
-        : "Better compression, slower encoding",
+        ? "支持硬件加速，压缩率更高"
+        : "压缩率更高，但编码较慢",
       speedRating: hasHw ? "medium" : "slow",
       qualityRating: "better",
     });
@@ -306,7 +306,7 @@ export function getCodecRecommendations(
       codec: "vp9",
       label: "VP9 (WebM)",
       recommended: false,
-      reason: "Good for web, software encoding only",
+      reason: "适合网页播放，仅支持软件编码",
       speedRating: "slow",
       qualityRating: "better",
     });
@@ -319,8 +319,8 @@ export function getCodecRecommendations(
       label: "AV1 (MP4/WebM)",
       recommended: hasHw && profile.overallTier === "high",
       reason: hasHw
-        ? "Best compression, hardware accelerated"
-        : "Best compression, very slow encoding",
+        ? "压缩率最佳，支持硬件加速"
+        : "压缩率最佳，但编码非常慢",
       speedRating: hasHw ? "medium" : "very-slow",
       qualityRating: "best",
     });

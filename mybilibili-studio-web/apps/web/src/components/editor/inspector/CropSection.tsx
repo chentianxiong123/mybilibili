@@ -40,13 +40,13 @@ export const CropSection: React.FC<CropSectionProps> = ({ clip }) => {
         <>
           <div className="text-[9px] text-text-muted space-y-0.5 p-2 bg-background-tertiary rounded border border-border">
             <div className="flex justify-between">
-              <span>Crop Region:</span>
+              <span>裁剪区域：</span>
               <span>
                 {Math.round(crop.width * 100)}% × {Math.round(crop.height * 100)}%
               </span>
             </div>
             <div className="flex justify-between">
-              <span>Position:</span>
+              <span>位置：</span>
               <span>
                 ({Math.round(crop.x * 100)}%, {Math.round(crop.y * 100)}%)
               </span>

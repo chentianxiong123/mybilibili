@@ -15,6 +15,7 @@ if (pjson.name === 'slobs-client-ipc') {
   process.env.SLOBS_IPC = true;
 }
 process.env.SLOBS_VERSION = pjson.version;
+const isDevMode = process.env.NODE_ENV !== 'production';
 
 ////////////////////////////////////////////////////////////////////////////////
 // Modules and other Requires
@@ -200,7 +201,7 @@ app.on('ready', () => {
       if (e.code === 'EROFS') {
         dialog.showErrorBox(
           'mybilibili Live Desktop',
-          'Please run mybilibili Live Desktop from your Applications folder. mybilibili Live Desktop cannot run directly from this disk image.',
+          '请从“应用程序”文件夹启动 mybilibili Live Desktop，不能直接从磁盘镜像运行。',
         );
         app.exit();
       }

@@ -69,7 +69,7 @@ const TextPlaceholderInput: React.FC<PlaceholderInputProps> = ({
           <button
             onClick={onClear}
             className="p-1 text-text-muted hover:text-text-primary"
-            title="Reset to default"
+            title="恢复默认值"
           >
             <Undo2 size={10} />
           </button>
@@ -156,7 +156,7 @@ const MediaPlaceholderInput: React.FC<PlaceholderInputProps> = ({
           <button
             onClick={onClear}
             className="p-1 text-text-muted hover:text-text-primary"
-            title="Reset"
+            title="重置"
           >
             <Undo2 size={10} />
           </button>
@@ -170,9 +170,9 @@ const MediaPlaceholderInput: React.FC<PlaceholderInputProps> = ({
       {availableMedia.length === 0 ? (
         <div className="p-4 border border-dashed border-border rounded-lg text-center">
           <Upload size={16} className="mx-auto mb-2 text-text-muted" />
-          <p className="text-[10px] text-text-muted">No media available</p>
+          <p className="text-[10px] text-text-muted">暂无可用媒体</p>
           <p className="text-[9px] text-text-muted mt-1">
-            Import media to use here
+            导入媒体后可在此使用
           </p>
         </div>
       ) : (
@@ -258,7 +258,7 @@ const SubtitlePlaceholderInput: React.FC<PlaceholderInputProps> = ({
           <button
             onClick={onClear}
             className="p-1 text-text-muted hover:text-text-primary"
-            title="Reset to default"
+            title="恢复默认值"
           >
             <Undo2 size={10} />
           </button>

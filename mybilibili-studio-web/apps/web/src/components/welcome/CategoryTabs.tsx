@@ -45,13 +45,13 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   all: LayoutGrid,
 };
 
-const PLATFORMS = ["TikTok", "Instagram", "YouTube", "General"];
+const PLATFORMS = ["竖屏", "方形", "横屏", "通用"];
 
 const PLATFORM_CATEGORIES: Record<string, SocialMediaCategory[]> = {
-  TikTok: ["tiktok"],
-  Instagram: ["instagram-reels", "instagram-stories", "instagram-post"],
-  YouTube: ["youtube-shorts", "youtube-video"],
-  General: ["intro", "outro", "promo", "lower-third", "slideshow", "custom"],
+  竖屏: ["tiktok", "instagram-reels", "instagram-stories", "youtube-shorts", "pinterest"],
+  方形: ["instagram-post", "facebook"],
+  横屏: ["youtube-video", "twitter", "linkedin"],
+  通用: ["intro", "outro", "promo", "lower-third", "slideshow", "custom"],
 };
 
 export const CategoryTabs: React.FC<CategoryTabsProps> = ({
@@ -90,7 +90,7 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
           }`}
         >
           <LayoutGrid size={14} />
-          All
+          全部
           <span
             className={`text-xs ${selectedCategory === "all" ? "text-black/60" : "text-text-muted"}`}
           >

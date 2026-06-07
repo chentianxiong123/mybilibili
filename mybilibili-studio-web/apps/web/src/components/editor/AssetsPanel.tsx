@@ -70,43 +70,43 @@ const ASSETS_TABS: ReadonlyArray<{
 }> = [
   {
     value: "media",
-    label: "Media",
-    description: "Import footage, audio, and stills.",
+    label: "媒体",
+    description: "导入视频、音频和图片素材。",
   },
   {
     value: "text",
-    label: "Text",
-    description: "Add title presets and caption elements.",
+    label: "文字",
+    description: "添加标题预设和字幕元素。",
   },
   {
     value: "graphics",
-    label: "Graphics",
-    description: "Create shapes, arrows, and SVG overlays.",
+    label: "图形",
+    description: "创建形状、箭头和 SVG 叠加层。",
   },
   {
     value: "effects",
-    label: "Effects",
-    description: "Drag effects onto a clip to apply them.",
+    label: "效果",
+    description: "将效果拖到片段上即可应用。",
   },
   {
     value: "transitions",
-    label: "Transitions",
-    description: "Drag transitions onto a clip's edge.",
+    label: "转场",
+    description: "将转场拖到片段边缘即可应用。",
   },
   {
     value: "ai",
-    label: "AI Generate",
-    description: "Generate clips, captions, and assisted edits.",
+    label: "AI 生成",
+    description: "生成片段、字幕和辅助剪辑内容。",
   },
   {
     value: "recipes",
-    label: "Recipes",
-    description: "Apply clip-scoped looks, overlays, and text stacks.",
+    label: "方案",
+    description: "应用片段级外观、叠加层和文字组合。",
   },
   {
     value: "templates",
-    label: "Project Templates",
-    description: "Load full-project starter layouts and presets.",
+    label: "项目模板",
+    description: "加载完整项目起始布局和预设。",
   },
 ] as const;
 
@@ -201,27 +201,27 @@ const MediaThumbnail: React.FC<{
       {item.kieaiError ? (
         <button
           onClick={(e) => { e.stopPropagation(); onRetryKieAI?.(); }}
-          title="Generation failed — click to retry"
+          title="生成失败，点击重试"
           className="p-2 bg-red-500/20 rounded-full hover:bg-red-500/40 backdrop-blur-sm transition-colors"
         >
           <RefreshCw size={14} className="text-red-400" />
         </button>
       ) : item.isPending ? (
-        <div title="KieAI generation in progress…" className="p-2">
+        <div title="KieAI 正在生成..." className="p-2">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" />
         </div>
       ) : item.isPlaceholder ? (
         <>
           <button
             onClick={(e) => { e.stopPropagation(); onReplace(); }}
-            title="Replace asset"
+            title="替换素材"
             className="p-2 bg-yellow-500/20 rounded-full hover:bg-yellow-500/40 backdrop-blur-sm transition-colors"
           >
             <RefreshCw size={14} className="text-yellow-500" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            title="Delete"
+            title="删除"
             className="p-2 bg-red-500/20 rounded-full hover:bg-red-500/40 backdrop-blur-sm transition-colors"
           >
             <Trash2 size={14} className="text-red-400" />
@@ -232,7 +232,7 @@ const MediaThumbnail: React.FC<{
           {item.type === "image" && onKieAI && (
             <button
               onClick={(e) => { e.stopPropagation(); onKieAI(); }}
-              title="Create with KieAI"
+              title="用 KieAI 创建"
               className="p-2 bg-purple-500/20 rounded-full hover:bg-purple-500/40 backdrop-blur-sm transition-colors"
             >
               <Sparkles size={14} className="text-purple-300" />
@@ -240,14 +240,14 @@ const MediaThumbnail: React.FC<{
           )}
           <button
             onClick={(e) => { e.stopPropagation(); onAddToTimeline(); }}
-            title="Add to timeline"
+            title="添加到时间线"
             className="p-2 bg-primary/20 rounded-full hover:bg-primary/40 backdrop-blur-sm transition-colors"
           >
             <Plus size={14} className="text-primary" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            title="Delete"
+            title="删除"
             className="p-2 bg-red-500/20 rounded-full hover:bg-red-500/40 backdrop-blur-sm transition-colors"
           >
             <Trash2 size={14} className="text-red-400" />
@@ -320,27 +320,27 @@ const MediaThumbnail: React.FC<{
             {item.kieaiError ? (
               <button
                 onClick={(e) => { e.stopPropagation(); onRetryKieAI?.(); }}
-                title="Retry generation"
+                title="重试生成"
                 className="p-1 bg-red-500/20 rounded hover:bg-red-500/40 transition-colors"
               >
                 <RefreshCw size={12} className="text-red-400" />
               </button>
             ) : item.isPending ? (
-              <div className="p-1" title="Generating…">
+              <div className="p-1" title="正在生成...">
                 <div className="h-3 w-3 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" />
               </div>
             ) : item.isPlaceholder ? (
               <>
                 <button
                   onClick={(e) => { e.stopPropagation(); onReplace(); }}
-                  title="Replace asset"
+                  title="替换素材"
                   className="p-1 bg-yellow-500/20 rounded hover:bg-yellow-500/40 transition-colors"
                 >
                   <RefreshCw size={12} className="text-yellow-500" />
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                  title="Delete"
+                  title="删除"
                   className="p-1 bg-red-500/20 rounded hover:bg-red-500/40 transition-colors"
                 >
                   <Trash2 size={12} className="text-red-400" />
@@ -351,7 +351,7 @@ const MediaThumbnail: React.FC<{
                 {item.type === "image" && onKieAI && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onKieAI(); }}
-                    title="Create with KieAI"
+                    title="用 KieAI 创建"
                     className="p-1 bg-purple-500/20 rounded hover:bg-purple-500/40 transition-colors"
                   >
                     <Sparkles size={12} className="text-purple-300" />
@@ -359,14 +359,14 @@ const MediaThumbnail: React.FC<{
                 )}
                 <button
                   onClick={(e) => { e.stopPropagation(); onAddToTimeline(); }}
-                  title="Add to timeline"
+                  title="添加到时间线"
                   className="p-1 bg-primary/20 rounded hover:bg-primary/40 transition-colors"
                 >
                   <Plus size={12} className="text-primary" />
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                  title="Delete"
+                  title="删除"
                   className="p-1 bg-red-500/20 rounded hover:bg-red-500/40 transition-colors"
                 >
                   <Trash2 size={12} className="text-red-400" />
@@ -587,7 +587,7 @@ export const AssetsPanel: React.FC = () => {
 
   const setActiveTab = useCallback((tab: AssetsTab) => {
     if (activeTab === "ai" && tab !== "ai" && ttsHasUnsaved) {
-      toast.warning("Unsaved audio discarded", "Save to media or download next time to keep it.");
+      toast.warning("未保存音频已丢弃", "下次请先保存到素材库或下载。");
     }
     setActiveTabRaw(tab);
   }, [activeTab, ttsHasUnsaved]);
@@ -763,7 +763,7 @@ export const AssetsPanel: React.FC = () => {
 
   const handleRelinkFromFolder = useCallback(async () => {
     if (!("showDirectoryPicker" in window)) {
-      toast.error("Folder picker not supported", "Please relink assets individually using the refresh button on each missing asset.");
+      toast.error("不支持选择文件夹", "请使用每个缺失素材上的刷新按钮逐个重新关联。");
       return;
     }
     let dirHandle: FileSystemDirectoryHandle;
@@ -817,7 +817,7 @@ export const AssetsPanel: React.FC = () => {
     if (linked > 0) {
       toast.success(`Relinked ${linked} of ${placeholders.length} asset${placeholders.length !== 1 ? "s" : ""}`);
     } else {
-      toast.error("No matches found", "None of the files in the selected folder matched the missing assets by filename.");
+      toast.error("未找到匹配文件", "所选文件夹中没有文件名匹配缺失素材。");
     }
   }, [replaceMediaAsset]);
 
@@ -930,7 +930,7 @@ export const AssetsPanel: React.FC = () => {
     try {
       const blob = await loadMediaBlob(item.id);
       if (!blob) {
-        toast.error("Asset not found", "Cannot load the image data for this asset.");
+        toast.error("素材不存在", "无法加载该素材的图片数据。");
         return;
       }
       const mimeType = blob.type || (item.name.match(/\.png$/i) ? "image/png" : "image/jpeg");
@@ -938,7 +938,7 @@ export const AssetsPanel: React.FC = () => {
       setKieaiDialog({ file, previewUrl: item.thumbnailUrl });
     } catch (err) {
       console.error("[KieAI] Failed to load media blob:", err);
-      toast.error("Failed to open KieAI", err instanceof Error ? err.message : "Unknown error");
+      toast.error("打开 KieAI 失败", err instanceof Error ? err.message : "未知错误");
     }
   }, []);
 
@@ -961,15 +961,15 @@ export const AssetsPanel: React.FC = () => {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search media"
+                  placeholder="搜索媒体"
                   className="pl-9 text-xs bg-background-tertiary border-border text-text-primary h-9"
                 />
               </div>
               <div className="flex items-center bg-background-tertiary border border-border rounded-lg p-0.5">
                 {([
-                  { mode: "large" as const, icon: LayoutGrid, title: "Large icons" },
-                  { mode: "small" as const, icon: Grid2x2, title: "Small icons" },
-                  { mode: "list" as const, icon: List, title: "List view" },
+                  { mode: "large" as const, icon: LayoutGrid, title: "大图标" },
+                  { mode: "small" as const, icon: Grid2x2, title: "小图标" },
+                  { mode: "list" as const, icon: List, title: "列表视图" },
                 ]).map(({ mode, icon: ViewIcon, title }) => (
                   <button
                     key={mode}
@@ -999,7 +999,7 @@ export const AssetsPanel: React.FC = () => {
                 >
                   <div className="flex items-center gap-2">
                     <AlertTriangle size={14} />
-                    <span>Show Only Missing Assets</span>
+                    <span>仅显示缺失素材</span>
                   </div>
                   <div className="px-2 py-0.5 rounded-full bg-yellow-500 text-black text-[10px] font-bold">
                     {missingAssetsCount}
@@ -1010,7 +1010,7 @@ export const AssetsPanel: React.FC = () => {
                   className="w-full px-3 py-2 rounded-lg border border-yellow-500/40 bg-yellow-500/5 text-yellow-500 text-xs font-medium transition-all hover:bg-yellow-500/15 flex items-center gap-2"
                 >
                   <RefreshCw size={14} />
-                  <span>Relink from Folder…</span>
+                  <span>从文件夹重新关联...</span>
                 </button>
               </div>
             )}
@@ -1055,7 +1055,7 @@ export const AssetsPanel: React.FC = () => {
                         <div className="w-12 h-8 rounded bg-background-tertiary flex items-center justify-center flex-shrink-0">
                           <Upload size={14} className="text-text-muted group-hover:text-text-secondary transition-colors" />
                         </div>
-                        <span className="text-[11px] text-text-muted group-hover:text-text-secondary transition-colors font-medium">Add media</span>
+                        <span className="text-[11px] text-text-muted group-hover:text-text-secondary transition-colors font-medium">添加媒体</span>
                       </button>
                     ) : (
                       <div className="flex flex-col">
@@ -1065,7 +1065,7 @@ export const AssetsPanel: React.FC = () => {
                         >
                           <div className="flex flex-col items-center gap-1.5">
                             <Upload size={mediaViewMode === "small" ? 16 : 20} className="text-text-muted group-hover:text-text-secondary transition-colors" />
-                            <span className="text-[10px] text-text-muted group-hover:text-text-secondary transition-colors">Add media</span>
+                            <span className="text-[10px] text-text-muted group-hover:text-text-secondary transition-colors">添加媒体</span>
                           </div>
                         </button>
                       </div>
@@ -1148,24 +1148,24 @@ export const AssetsPanel: React.FC = () => {
                       {
                         type: "rectangle" as ShapeType,
                         icon: Square,
-                        label: "Rectangle",
+                        label: "矩形",
                       },
-                      { type: "circle" as ShapeType, icon: Circle, label: "Circle" },
+                      { type: "circle" as ShapeType, icon: Circle, label: "圆形" },
                       {
                         type: "triangle" as ShapeType,
                         icon: Triangle,
-                        label: "Triangle",
+                        label: "三角形",
                       },
-                      { type: "star" as ShapeType, icon: Star, label: "Star" },
+                      { type: "star" as ShapeType, icon: Star, label: "星形" },
                       {
                         type: "arrow" as ShapeType,
                         icon: ArrowRight,
-                        label: "Arrow",
+                        label: "箭头",
                       },
                       {
                         type: "polygon" as ShapeType,
                         icon: Hexagon,
-                        label: "Polygon",
+                        label: "多边形",
                       },
                     ].map((shape) => (
                       <button
@@ -1207,12 +1207,12 @@ export const AssetsPanel: React.FC = () => {
                   </h4>
                   <div className="grid grid-cols-3 gap-2">
                     {([
-                      { type: "mesh-cube" as ShapeType, label: "Cube", icon: "□" },
-                      { type: "mesh-sphere" as ShapeType, label: "Sphere", icon: "○" },
-                      { type: "mesh-torus" as ShapeType, label: "Torus", icon: "◯" },
-                      { type: "mesh-cone" as ShapeType, label: "Cone", icon: "△" },
-                      { type: "mesh-cylinder" as ShapeType, label: "Cylinder", icon: "▯" },
-                      { type: "mesh-icosahedron" as ShapeType, label: "Icosahedron", icon: "◆" },
+                      { type: "mesh-cube" as ShapeType, label: "立方体", icon: "□" },
+                      { type: "mesh-sphere" as ShapeType, label: "球体", icon: "○" },
+                      { type: "mesh-torus" as ShapeType, label: "圆环", icon: "◯" },
+                      { type: "mesh-cone" as ShapeType, label: "圆锥", icon: "△" },
+                      { type: "mesh-cylinder" as ShapeType, label: "圆柱", icon: "▯" },
+                      { type: "mesh-icosahedron" as ShapeType, label: "二十面体", icon: "◆" },
                     ]).map((mesh) => (
                       <button
                         key={mesh.type}
@@ -1374,7 +1374,7 @@ export const AssetsPanel: React.FC = () => {
                         !tracksBefore.some((bt) => bt.id === t.id),
                     );
                     if (newTextTrack) {
-                      createTextClip(newTextTrack.id, 0, "New Title");
+                      createTextClip(newTextTrack.id, 0, "新标题");
                     }
                   }}
                   className="w-full py-4 bg-background-tertiary rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-center"
@@ -1389,8 +1389,8 @@ export const AssetsPanel: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     {
-                      name: "Heading",
-                      text: "Heading",
+                      name: "标题",
+                      text: "标题",
                       style: {
                         fontSize: 72,
                         fontWeight: 700 as const,
@@ -1399,8 +1399,8 @@ export const AssetsPanel: React.FC = () => {
                       },
                     },
                     {
-                      name: "Subtitle",
-                      text: "Subtitle text",
+                      name: "副标题",
+                      text: "副标题文字",
                       style: {
                         fontSize: 36,
                         fontWeight: 400 as const,
@@ -1409,8 +1409,8 @@ export const AssetsPanel: React.FC = () => {
                       },
                     },
                     {
-                      name: "Lower Third",
-                      text: "Name Here",
+                      name: "下三分之一标题",
+                      text: "姓名",
                       style: {
                         fontSize: 32,
                         fontWeight: 600 as const,
@@ -1420,8 +1420,8 @@ export const AssetsPanel: React.FC = () => {
                       },
                     },
                     {
-                      name: "Caption",
-                      text: "Caption text here",
+                      name: "字幕",
+                      text: "字幕文字",
                       style: {
                         fontSize: 24,
                         fontWeight: 400 as const,
@@ -1542,7 +1542,7 @@ export const AssetsPanel: React.FC = () => {
       {/* ── Body: section content fills the remaining space ──── */}
       <div className="flex-1 flex flex-col min-w-0 h-full bg-bg-1 relative">
         {isImporting && (
-          <LoadingIndicator message={importProgress || "Importing media..."} />
+          <LoadingIndicator message={importProgress || "正在导入媒体..."} />
         )}
 
         {/* Lightweight panel sub-header (active tab description) */}
@@ -1553,11 +1553,11 @@ export const AssetsPanel: React.FC = () => {
           {activeTab === "media" && (
             <button
               onClick={triggerFileInput}
-              title="Import media"
+              title="导入媒体"
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-accent text-accent-fg font-semibold text-[11.5px] hover:bg-accent-strong transition-colors"
             >
               <Plus size={12} />
-              <span>Import</span>
+              <span>导入</span>
             </button>
           )}
         </div>
