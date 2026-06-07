@@ -81,7 +81,7 @@ const AngleCard: React.FC<{
         </button>
       </div>
       <div className="mt-1 flex items-center gap-1">
-        <span className="text-[8px] text-text-muted">Offset:</span>
+        <span className="text-[8px] text-text-muted">偏移：</span>
         <input
           type="number"
           value={angle.offset.toFixed(2)}
@@ -90,7 +90,7 @@ const AngleCard: React.FC<{
           className="w-16 px-1 py-0.5 text-[8px] bg-background-secondary rounded border border-border focus:border-primary focus:outline-none"
           step="0.1"
         />
-        <span className="text-[8px] text-text-muted">sec</span>
+        <span className="text-[8px] text-text-muted">秒</span>
       </div>
     </div>
   );
@@ -322,10 +322,10 @@ export const MultiCameraPanel: React.FC<MultiCameraPanelProps> = () => {
         <Video size={16} className="text-primary" />
         <div className="flex-1">
           <span className="text-[11px] font-medium text-text-primary">
-            Multi-Camera Editing
+            多机位剪辑
           </span>
           <p className="text-[9px] text-text-muted">
-            Sync and switch between camera angles
+            同步并切换多个机位角度
           </p>
         </div>
       </div>
@@ -333,7 +333,7 @@ export const MultiCameraPanel: React.FC<MultiCameraPanelProps> = () => {
       {groups.length > 0 && (
         <div className="space-y-2">
           <span className="text-[10px] font-medium text-text-secondary">
-            Camera Groups
+            机位组
           </span>
           {groups.map((group) => (
             <GroupSection

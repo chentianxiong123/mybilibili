@@ -158,7 +158,7 @@ export const SVGSection: React.FC<SVGSectionProps> = ({ clipId }) => {
     <div className="space-y-4">
       <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-text-secondary">Mode</span>
+            <span className="text-[10px] text-text-secondary">模式</span>
             <div className="flex gap-1">
               {(["none", "tint", "replace"] as const).map((mode) => (
                 <button

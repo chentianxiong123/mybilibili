@@ -29,8 +29,6 @@ import { Flux2Form } from "./forms/Flux2Form";
 import { GrokForm } from "./forms/GrokForm";
 import { QwenForm } from "./forms/QwenForm";
 
-// ─── Default inputs per model ────────────────────────────────────────────────
-
 function defaultSeedream(): SeedreamInput {
   return { prompt: "", image_urls: [], aspect_ratio: "1:1", quality: "basic" };
 }
@@ -50,9 +48,16 @@ function defaultQwen(imageUrl: string): QwenInput {
   return { prompt: "", image_url: imageUrl, strength: 0.8, output_format: "png", acceleration: "regular" };
 }
 
-// ─── Step types ───────────────────────────────────────────────────────────────
-
 type Step = "pick" | "form" | "submitting" | "error";
+
+const MODEL_LABELS: Record<ImageModelId, string> = {
+  [IMAGE_MODELS.SEEDREAM]: "Seedream 5 Lite",
+  [IMAGE_MODELS.Z_IMAGE]: "Z-Image",
+  [IMAGE_MODELS.NANO_BANANA2]: "Nano Banana 2",
+  [IMAGE_MODELS.FLUX2]: "Flux 2 Pro",
+  [IMAGE_MODELS.GROK]: "Grok Imagine",
+  [IMAGE_MODELS.QWEN]: "Qwen",
+};
 
 interface Props {
   open: boolean;
@@ -128,9 +133,7 @@ export function KieAIImageDialog({ open, onClose, sourceFile, previewUrl }: Prop
           uploaded.downloadUrl ||
           (uploaded as unknown as Record<string, string>)["url"] ||
           "";
-        if (!uploadedUrl) {
-          throw new Error("Upload succeeded but returned no file URL. Check console for response.");
-        }
+        if (!uploadedUrl) throw new Error("素材上传成功，但接口没有返回文件地址。请检查控制台响应。");
       }
 
       if (ac.signal.aborted) return;
@@ -157,7 +160,7 @@ export function KieAIImageDialog({ open, onClose, sourceFile, previewUrl }: Prop
           input = { ...qwen, image_url: uploadedUrl };
           break;
         default:
-          throw new Error("Unknown model");
+          throw new Error("未知模型");
       }
 
       console.log("[KieAI] createTask payload:", { model: selectedModel, input });
@@ -214,21 +217,17 @@ export function KieAIImageDialog({ open, onClose, sourceFile, previewUrl }: Prop
     }
   }, [selectedModel, project, sourceFile, previewUrl, seedream, zimage, nanoBanana2, flux2, grok, qwen, addPlaceholderMedia, addTask, handleClose]);
 
-  // ─── Derived display ──────────────────────────────────────────────────────
-
-  const modelLabel = selectedModel
-    ? selectedModel.split("/")[0].replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-    : "";
+  const modelLabel = selectedModel ? MODEL_LABELS[selectedModel] : "";
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {step === "pick" && "Create with KieAI"}
+            {step === "pick" && "使用 KieAI 生成图片"}
             {step === "form" && `${modelLabel}`}
-            {step === "submitting" && "Submitting…"}
-            {step === "error" && "Submission Failed"}
+            {step === "submitting" && "提交中..."}
+            {step === "error" && "提交失败"}
           </DialogTitle>
         </DialogHeader>
 
@@ -239,7 +238,7 @@ export function KieAIImageDialog({ open, onClose, sourceFile, previewUrl }: Prop
               {previewUrl ? (
                 <img
                   src={previewUrl}
-                  alt="Source"
+                  alt="源图片"
                   className="h-10 w-10 rounded object-cover flex-shrink-0"
                 />
               ) : (
@@ -251,7 +250,7 @@ export function KieAIImageDialog({ open, onClose, sourceFile, previewUrl }: Prop
               )}
               <div className="min-w-0">
                 <p className="truncate text-xs font-medium text-text-primary">{sourceFile.name}</p>
-                <p className="text-[10px] text-text-muted">Source image</p>
+                <p className="text-[10px] text-text-muted">源图片</p>
               </div>
             </div>
           )}
@@ -280,9 +279,9 @@ export function KieAIImageDialog({ open, onClose, sourceFile, previewUrl }: Prop
           {step === "submitting" && (
             <div className="space-y-4 py-4 text-center">
               <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-border border-t-primary" />
-              <p className="text-sm text-text-secondary">Uploading & submitting task…</p>
+              <p className="text-sm text-text-secondary">正在上传素材并提交任务...</p>
               <Button variant="outline" size="sm" onClick={() => { abortRef.current?.abort(); handleClose(); }}>
-                Cancel
+                取消
               </Button>
             </div>
           )}
@@ -294,10 +293,10 @@ export function KieAIImageDialog({ open, onClose, sourceFile, previewUrl }: Prop
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={handleClose}>
-                  Close
+                  关闭
                 </Button>
                 <Button className="flex-1" onClick={() => setStep("form")}>
-                  Try Again
+                  重试
                 </Button>
               </div>
             </div>
@@ -310,7 +309,7 @@ export function KieAIImageDialog({ open, onClose, sourceFile, previewUrl }: Prop
               onClick={handleBack}
               className="text-xs text-text-muted hover:text-text-primary transition-colors"
             >
-              ← Back to model selection
+              返回模型选择
             </button>
           </div>
         )}

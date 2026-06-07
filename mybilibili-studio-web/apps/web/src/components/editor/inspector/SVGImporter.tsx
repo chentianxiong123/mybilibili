@@ -201,7 +201,7 @@ export const SVGImporter: React.FC<SVGImporterProps> = ({
           {/* Status text */}
           <div className="text-center">
             {status === "loading" ? (
-              <p className="text-[10px] text-text-secondary">Importing...</p>
+              <p className="text-[10px] text-text-secondary">正在导入...</p>
             ) : status === "success" ? (
               <p className="text-[10px] text-green-500">
                 SVG imported successfully
@@ -248,7 +248,7 @@ export const SVGImporter: React.FC<SVGImporterProps> = ({
       {/* Supported formats info */}
       <div className="flex items-center gap-2 text-[9px] text-text-muted">
         <FileImage size={12} />
-        <span>Supported format: SVG (.svg)</span>
+        <span>支持格式：SVG (.svg)</span>
       </div>
     </div>
   );

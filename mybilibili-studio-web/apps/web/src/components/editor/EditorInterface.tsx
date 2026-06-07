@@ -479,7 +479,7 @@ export const EditorInterface: React.FC = () => {
         >
           {panels.audioMixer?.visible && (
             <div className="shrink-0 border-b border-border">
-              <PanelErrorBoundary name="Audio Mixer">
+              <PanelErrorBoundary name="音频混音器">
                 <AudioMixer
                   visible
                   onClose={() => setPanelVisible("audioMixer", false)}
@@ -490,14 +490,14 @@ export const EditorInterface: React.FC = () => {
 
           <div className="flex-1 min-h-0 flex">
             <div className="flex-1 min-w-0 min-h-0">
-              <PanelErrorBoundary name="Timeline">
+              <PanelErrorBoundary name="时间线">
                 <Timeline />
               </PanelErrorBoundary>
             </div>
 
             {keyframeEditorOpen && (
               <div className="shrink-0 min-w-0 border-l border-border">
-                <PanelErrorBoundary name="Keyframe Editor">
+                <PanelErrorBoundary name="关键帧编辑器">
                   <KeyframeEditorPanel
                     clip={selectedClip}
                     onClose={() => setKeyframeEditorOpen(false)}

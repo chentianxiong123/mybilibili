@@ -787,7 +787,7 @@ export const NoiseReductionSection: React.FC<NoiseReductionSectionProps> = ({
             <div className="space-y-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-3">
               <div className="flex items-center gap-2 text-primary">
                 <Wand2 size={12} />
-                <span className="text-[10px] font-medium">Recommendation ready</span>
+                <span className="text-[10px] font-medium">建议已生成</span>
               </div>
               <p className="text-[9px] leading-relaxed text-text-secondary">
                 Detected noise best matches {recommendationPreset.label.toLowerCase()}.

@@ -75,7 +75,7 @@ const PresetCard: React.FC<PresetCardProps> = ({
       {isHovered && !isApplied && (
         <div className="absolute inset-0 flex items-center justify-center bg-background-tertiary/80 rounded-lg">
           <span className="text-[10px] text-primary font-medium">
-            Click to Apply
+            点击应用
           </span>
         </div>
       )}
@@ -120,7 +120,7 @@ export const FilterPresetsPanel: React.FC<FilterPresetsPanelProps> = ({
       });
 
       setAppliedPresetId(preset.id);
-      toast.success("Filter Applied", `${preset.name} preset applied`);
+      toast.success("滤镜已应用", `已应用 ${preset.name} 预设`);
     },
     [targetClipId, addVideoEffect, getVideoEffects, removeVideoEffect],
   );
@@ -134,7 +134,7 @@ export const FilterPresetsPanel: React.FC<FilterPresetsPanelProps> = ({
     });
 
     setAppliedPresetId(null);
-    toast.info("Effects Cleared");
+    toast.info("效果已清除");
   }, [targetClipId, getVideoEffects, removeVideoEffect]);
 
   if (!targetClipId) {
@@ -142,7 +142,7 @@ export const FilterPresetsPanel: React.FC<FilterPresetsPanelProps> = ({
       <div className="p-4 text-center">
         <Palette size={24} className="mx-auto mb-2 text-text-muted" />
         <p className="text-[10px] text-text-muted">
-          Select a video clip to apply filters
+          请选择视频片段以应用滤镜
         </p>
       </div>
     );
@@ -154,9 +154,9 @@ export const FilterPresetsPanel: React.FC<FilterPresetsPanelProps> = ({
         <Palette size={16} className="text-primary" />
         <div>
           <span className="text-[11px] font-medium text-text-primary">
-            Filter Presets
+            滤镜预设
           </span>
-          <p className="text-[9px] text-text-muted">One-click color grades</p>
+          <p className="text-[9px] text-text-muted">一键应用调色风格</p>
         </div>
       </div>
 
@@ -194,7 +194,7 @@ export const FilterPresetsPanel: React.FC<FilterPresetsPanelProps> = ({
       {appliedPresetId && (
         <div className="space-y-3 p-3 bg-background-tertiary rounded-lg">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-text-secondary">Intensity</span>
+            <span className="text-[10px] text-text-secondary">强度</span>
             <span className="text-[10px] font-mono text-text-primary">
               {intensityValue}%
             </span>

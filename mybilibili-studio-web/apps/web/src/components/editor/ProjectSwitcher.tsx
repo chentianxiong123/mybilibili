@@ -175,7 +175,7 @@ export const ProjectSwitcher: React.FC = () => {
                 <button
                   onClick={() => setIsEditing(true)}
                   className="p-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-background-tertiary transition-colors opacity-0 group-hover:opacity-100"
-                  title="Rename project"
+                  title="重命名项目"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
@@ -192,8 +192,8 @@ export const ProjectSwitcher: React.FC = () => {
                 <Plus className="w-4 h-4" />
               </div>
               <div className="flex-1">
-                <div className="text-sm font-medium text-text-primary">New Project</div>
-                <div className="text-xs text-text-muted">Start fresh with a new canvas</div>
+                <div className="text-sm font-medium text-text-primary">新建项目</div>
+                <div className="text-xs text-text-muted">使用新画布重新开始</div>
               </div>
             </button>
           </div>
@@ -203,7 +203,7 @@ export const ProjectSwitcher: React.FC = () => {
               <div className="px-3 py-2 border-t border-border">
                 <div className="text-xs font-medium text-text-muted uppercase tracking-wider flex items-center gap-2">
                   <Clock className="w-3 h-3" />
-                  Recent Projects
+                  最近项目
                 </div>
               </div>
               <div className="max-h-64 overflow-y-auto px-2 pb-2">

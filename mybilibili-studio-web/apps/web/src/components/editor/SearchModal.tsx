@@ -425,8 +425,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             onChange={(e) => setQuery(e.target.value)}
             placeholder={
               selectedClipType
-                ? `Search effects for ${selectedClipType} clip...`
-                : "Search all effects and tools..."
+                ? `搜索 ${selectedClipType} 片段可用效果...`
+                : "搜索全部效果和工具..."
             }
             className="flex-1 bg-transparent border-0 text-text-primary focus-visible:ring-0"
           />
@@ -466,9 +466,9 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 size={32}
                 className="mx-auto mb-3 text-text-muted opacity-50"
               />
-              <p className="text-sm text-text-muted">No effects found</p>
+              <p className="text-sm text-text-muted">未找到效果</p>
               <p className="text-xs text-text-muted mt-1">
-                Try a different search term or category
+                换个关键词或分类试试
               </p>
             </div>
           ) : (
@@ -514,7 +514,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                       </p>
                     </div>
                     <div className="text-[10px] text-text-muted">
-                      ↵ to select
+                      ↵ 选择
                     </div>
                   </button>
                 );
@@ -525,13 +525,12 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
         <div className="px-4 py-2 border-t border-border bg-background-tertiary/50 flex items-center justify-between">
           <div className="text-[10px] text-text-muted">
-            {filteredEffects.length} effect
-            {filteredEffects.length !== 1 ? "s" : ""} available
+            可用效果：{filteredEffects.length}
           </div>
           <div className="flex items-center gap-3 text-[10px] text-text-muted">
-            <span>↑↓ Navigate</span>
-            <span>↵ Select</span>
-            <span>ESC Close</span>
+            <span>↑↓ 导航</span>
+            <span>↵ 选择</span>
+            <span>ESC 关闭</span>
           </div>
         </div>
       </DialogContent>

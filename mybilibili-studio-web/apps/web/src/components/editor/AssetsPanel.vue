@@ -48,7 +48,7 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Search media"
+              placeholder="搜索媒体"
               class="w-full pl-8 pr-3 py-1.5 text-xs bg-background-tertiary border border-border rounded-md text-text-primary h-8 focus:outline-none focus:border-primary/50"
             />
           </div>
@@ -83,7 +83,7 @@
           >
             <div class="flex items-center gap-1.5">
               <AlertTriangleIcon :size="13" />
-              <span>Show Only Missing Assets</span>
+              <span>仅显示缺失素材</span>
             </div>
             <div class="px-1.5 py-0.5 rounded-full bg-yellow-500 text-black text-[10px] font-bold">
               {{ missingAssetsCount }}
@@ -94,7 +94,7 @@
             class="w-full px-3 py-1.5 rounded-lg border border-yellow-500/40 bg-yellow-500/5 text-yellow-500 text-[11px] font-medium transition-all hover:bg-yellow-500/15 flex items-center gap-1.5"
           >
             <RefreshCwIcon :size="13" />
-            <span>Relink from Folder…</span>
+            <span>从文件夹重新关联...</span>
           </button>
         </div>
 
@@ -111,13 +111,13 @@
               <div class="w-14 h-14 rounded-xl bg-background-tertiary border border-border flex items-center justify-center mb-3 shadow-inner">
                 <UploadIcon :size="22" class="text-text-muted" />
               </div>
-              <p class="text-xs text-text-secondary mb-1.5 font-medium">No media imported</p>
-              <p class="text-[10px] text-text-muted mb-4">Drag files here or click to import</p>
+              <p class="text-xs text-text-secondary mb-1.5 font-medium">尚未导入媒体</p>
+              <p class="text-[10px] text-text-muted mb-4">拖拽文件到此处，或点击导入</p>
               <button
                 @click="triggerFileInput"
                 class="px-3 py-1.5 bg-background-elevated hover:bg-background-tertiary border border-border text-text-primary text-[11px] font-medium rounded-md transition-all hover:border-primary/50"
               >
-                Import Media
+                导入媒体
               </button>
             </div>
           </template>
@@ -167,13 +167,13 @@
 
                     <!-- Badges -->
                     <div v-if="item.kieaiError" class="absolute top-1 left-1 px-1 py-0.5 bg-red-500 rounded text-[7px] text-white font-bold flex items-center gap-0.5">
-                      <AlertTriangleIcon :size="7" /> Failed
+                      <AlertTriangleIcon :size="7" /> 失败
                     </div>
                     <div v-else-if="item.isPending" class="absolute top-1 left-1 px-1 py-0.5 bg-purple-500 rounded text-[7px] text-white font-bold flex items-center gap-0.5">
                       <div class="h-1.5 w-1.5 animate-spin rounded-full border border-white border-t-transparent" /> AI
                     </div>
                     <div v-else-if="item.isPlaceholder" class="absolute top-1 left-1 px-1 py-0.5 bg-yellow-500 rounded text-[7px] text-black font-bold flex items-center gap-0.5">
-                      <AlertTriangleIcon :size="8" /> Missing
+                      <AlertTriangleIcon :size="8" /> 缺失
                     </div>
 
                     <!-- Duration badge -->
@@ -200,14 +200,14 @@
                       <button
                         v-if="item.type === 'image' && !item.isPending && !item.kieaiError"
                         @click.stop="handleOpenKieAI(item)"
-                        title="Create with KieAI"
+                        title="用 KieAI 创建"
                         class="p-1.5 bg-purple-500/20 rounded-full hover:bg-purple-500/40 backdrop-blur-sm transition-colors"
                       >
                         <SparklesIcon :size="12" class="text-purple-300" />
                       </button>
                       <button
                         @click.stop="handleAddToTimeline(item)"
-                        title="Add to timeline"
+                        title="添加到时间线"
                         class="p-1.5 bg-primary/20 rounded-full hover:bg-primary/40 backdrop-blur-sm transition-colors"
                       >
                         <PlusIcon :size="12" class="text-primary" />
@@ -215,7 +215,7 @@
                       <button
                         v-if="item.kieaiError"
                         @click.stop="handleRetryKieAI(item)"
-                        title="Retry generation"
+                        title="重试生成"
                         class="p-1.5 bg-red-500/20 rounded-full hover:bg-red-500/40 backdrop-blur-sm transition-colors"
                       >
                         <RefreshCwIcon :size="12" class="text-red-400" />
@@ -223,21 +223,21 @@
                       <button
                         v-else-if="item.isPending"
                         class="p-1.5"
-                        title="Generating…"
+                        title="正在生成..."
                       >
                         <div class="h-4 w-4 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" />
                       </button>
                       <button
                         v-else-if="item.isPlaceholder"
                         @click.stop="handleReplaceAsset(item.id)"
-                        title="Replace asset"
+                        title="替换素材"
                         class="p-1.5 bg-yellow-500/20 rounded-full hover:bg-yellow-500/40 backdrop-blur-sm transition-colors"
                       >
                         <RefreshCwIcon :size="12" class="text-yellow-500" />
                       </button>
                       <button
                         @click.stop="handleDeleteItem(item.id)"
-                        title="Delete"
+                        title="删除"
                         class="p-1.5 bg-red-500/20 rounded-full hover:bg-red-500/40 backdrop-blur-sm transition-colors"
                       >
                         <Trash2Icon :size="12" class="text-red-400" />
@@ -312,22 +312,22 @@
 
                   <!-- Hover actions for list -->
                   <div v-if="hoveredItemId === item.id" class="flex items-center gap-0.5 flex-shrink-0">
-                    <button v-if="item.type === 'image' && !item.isPending && !item.kieaiError" @click.stop="handleOpenKieAI(item)" title="Create with KieAI" class="p-1 bg-purple-500/20 rounded hover:bg-purple-500/40 transition-colors">
+                    <button v-if="item.type === 'image' && !item.isPending && !item.kieaiError" @click.stop="handleOpenKieAI(item)" title="用 KieAI 创建" class="p-1 bg-purple-500/20 rounded hover:bg-purple-500/40 transition-colors">
                       <SparklesIcon :size="10" class="text-purple-300" />
                     </button>
-                    <button @click.stop="handleAddToTimeline(item)" title="Add to timeline" class="p-1 bg-primary/20 rounded hover:bg-primary/40 transition-colors">
+                    <button @click.stop="handleAddToTimeline(item)" title="添加到时间线" class="p-1 bg-primary/20 rounded hover:bg-primary/40 transition-colors">
                       <PlusIcon :size="10" class="text-primary" />
                     </button>
-                    <button v-if="item.kieaiError" @click.stop="handleRetryKieAI(item)" title="Retry generation" class="p-1 bg-red-500/20 rounded hover:bg-red-500/40 transition-colors">
+                    <button v-if="item.kieaiError" @click.stop="handleRetryKieAI(item)" title="重试生成" class="p-1 bg-red-500/20 rounded hover:bg-red-500/40 transition-colors">
                       <RefreshCwIcon :size="10" class="text-red-400" />
                     </button>
-                    <button v-else-if="item.isPending" class="p-1" title="Generating…">
+                    <button v-else-if="item.isPending" class="p-1" title="正在生成...">
                       <div class="h-2.5 w-2.5 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" />
                     </button>
-                    <button v-else-if="item.isPlaceholder" @click.stop="handleReplaceAsset(item.id)" title="Replace asset" class="p-1 bg-yellow-500/20 rounded hover:bg-yellow-500/40 transition-colors">
+                    <button v-else-if="item.isPlaceholder" @click.stop="handleReplaceAsset(item.id)" title="替换素材" class="p-1 bg-yellow-500/20 rounded hover:bg-yellow-500/40 transition-colors">
                       <RefreshCwIcon :size="10" class="text-yellow-500" />
                     </button>
-                    <button @click.stop="handleDeleteItem(item.id)" title="Delete" class="p-1 bg-red-500/20 rounded hover:bg-red-500/40 transition-colors">
+                    <button @click.stop="handleDeleteItem(item.id)" title="删除" class="p-1 bg-red-500/20 rounded hover:bg-red-500/40 transition-colors">
                       <Trash2Icon :size="10" class="text-red-400" />
                     </button>
                   </div>
@@ -336,7 +336,7 @@
                 </div>
               </template>
 
-              <!-- Add media button -->
+              <!-- 添加媒体按钮 -->
               <template v-if="mediaViewMode === 'list'">
                 <button
                   @click="triggerFileInput"
@@ -345,7 +345,7 @@
                   <div class="w-9 h-6 rounded bg-background-tertiary flex items-center justify-center flex-shrink-0">
                     <UploadIcon :size="12" class="text-text-muted group-hover:text-text-secondary transition-colors" />
                   </div>
-                  <span class="text-[10px] text-text-muted group-hover:text-text-secondary transition-colors font-medium">Add media</span>
+                  <span class="text-[10px] text-text-muted group-hover:text-text-secondary transition-colors font-medium">添加媒体</span>
                 </button>
               </template>
               <template v-else>
@@ -356,7 +356,7 @@
                   >
                     <div class="flex flex-col items-center gap-1">
                       <UploadIcon :size="mediaViewMode === 'small' ? 14 : 18" class="text-text-muted group-hover:text-text-secondary transition-colors" />
-                      <span class="text-[9px] text-text-muted group-hover:text-text-secondary transition-colors">Add media</span>
+                      <span class="text-[9px] text-text-muted group-hover:text-text-secondary transition-colors">添加媒体</span>
                     </div>
                   </button>
                 </div>
@@ -589,7 +589,7 @@ const ttsHasUnsaved = computed(() => {
 
 watch(activeTab, (tab) => {
   if (tab === "ai" && ttsHasUnsaved.value) {
-    toast.warning("Unsaved audio discarded", "Save to media or download next time to keep it.");
+    toast.warning("未保存音频已丢弃", "下次请先保存到素材库或下载。");
   }
 });
 
@@ -597,20 +597,20 @@ watch(activeTab, (tab) => {
 type AssetsTab = "media" | "text" | "graphics" | "effects" | "transitions" | "ai" | "recipes" | "templates";
 
 const assetsTabs = [
-  { value: "media" as AssetsTab, label: "Media", description: "Import footage, audio, and stills.", icon: Video },
-  { value: "text" as AssetsTab, label: "Text", description: "Add title presets and caption elements.", icon: Type },
-  { value: "graphics" as AssetsTab, label: "Graphics", description: "Create shapes, arrows, and SVG overlays.", icon: Shapes },
-  { value: "effects" as AssetsTab, label: "Effects", description: "Drag effects onto a clip to apply them.", icon: Zap },
-  { value: "transitions" as AssetsTab, label: "Transitions", description: "Drag transitions onto a clip's edge.", icon: Shuffle },
-  { value: "ai" as AssetsTab, label: "AI Generate", description: "Generate clips, captions, and assisted edits.", icon: SparklesIcon },
-  { value: "recipes" as AssetsTab, label: "Recipes", description: "Apply clip-scoped looks, overlays, and text stacks.", icon: Wand2 },
-  { value: "templates" as AssetsTab, label: "Templates", description: "Load full-project starter layouts and presets.", icon: LayoutTemplate },
+  { value: "media" as AssetsTab, label: "媒体", description: "导入视频、音频和图片素材。", icon: Video },
+  { value: "text" as AssetsTab, label: "文字", description: "添加标题预设和字幕元素。", icon: Type },
+  { value: "graphics" as AssetsTab, label: "图形", description: "创建形状、箭头和 SVG 叠加层。", icon: Shapes },
+  { value: "effects" as AssetsTab, label: "效果", description: "将效果拖到片段上即可应用。", icon: Zap },
+  { value: "transitions" as AssetsTab, label: "转场", description: "将转场拖到片段边缘即可应用。", icon: Shuffle },
+  { value: "ai" as AssetsTab, label: "AI 生成", description: "生成片段、字幕和辅助剪辑内容。", icon: SparklesIcon },
+  { value: "recipes" as AssetsTab, label: "方案", description: "应用片段级外观、叠加层和文字组合。", icon: Wand2 },
+  { value: "templates" as AssetsTab, label: "项目模板", description: "加载完整项目起始布局和预设。", icon: LayoutTemplate },
 ];
 
 const viewModes = [
-  { key: "large" as MediaViewMode, icon: LayoutGrid, title: "Large icons" },
-  { key: "small" as MediaViewMode, icon: Grid2x2, title: "Small icons" },
-  { key: "list" as MediaViewMode, icon: List, title: "List view" },
+  { key: "large" as MediaViewMode, icon: LayoutGrid, title: "大图标" },
+  { key: "small" as MediaViewMode, icon: Grid2x2, title: "小图标" },
+  { key: "list" as MediaViewMode, icon: List, title: "列表视图" },
 ];
 
 type MediaViewMode = "large" | "small" | "list";
@@ -618,12 +618,12 @@ type MediaViewMode = "large" | "small" | "list";
 const backgroundCategories = ["all", "solid", "gradient", "mesh", "pattern"] as const;
 
 const shapePresets = [
-  { type: "rectangle" as ShapeType, icon: Square, label: "Rectangle" },
-  { type: "circle" as ShapeType, icon: Circle, label: "Circle" },
-  { type: "triangle" as ShapeType, icon: Triangle, label: "Triangle" },
-  { type: "star" as ShapeType, icon: Star, label: "Star" },
-  { type: "arrow" as ShapeType, icon: ArrowRight, label: "Arrow" },
-  { type: "polygon" as ShapeType, icon: Hexagon, label: "Polygon" },
+  { type: "rectangle" as ShapeType, icon: Square, label: "矩形" },
+  { type: "circle" as ShapeType, icon: Circle, label: "圆形" },
+  { type: "triangle" as ShapeType, icon: Triangle, label: "三角形" },
+  { type: "star" as ShapeType, icon: Star, label: "星形" },
+  { type: "arrow" as ShapeType, icon: ArrowRight, label: "箭头" },
+  { type: "polygon" as ShapeType, icon: Hexagon, label: "多边形" },
 ];
 
 // --- Helpers ---
@@ -687,7 +687,7 @@ function getTabComponent(tab: AssetsTab) {
 // --- Actions ---
 function setActiveTab(tab: AssetsTab) {
   if (activeTab.value === "ai" && tab !== "ai" && ttsHasUnsaved.value) {
-    toast.warning("Unsaved audio discarded", "Save to media or download next time to keep it.");
+    toast.warning("未保存音频已丢弃", "下次请先保存到素材库或下载。");
   }
   activeTab.value = tab;
 }
@@ -709,7 +709,7 @@ async function handleFileImport(files: FileList | null) {
   try {
     for (let i = 0; i < fileArray.length; i++) {
       const file = fileArray[i];
-      importProgress.value = `Importing ${file.name} (${i + 1}/${fileArray.length})...`;
+      importProgress.value = `正在导入 ${file.name} (${i + 1}/${fileArray.length})...`;
       await projectStore.getState().importMedia(file);
     }
   } catch (error) {
@@ -770,7 +770,7 @@ async function handleReplaceAsset(itemId: string) {
     const file = (e.target as HTMLInputElement).files?.[0];
     if (file) {
       isImporting.value = true;
-      importProgress.value = "Replacing asset...";
+      importProgress.value = "正在替换素材...";
       try {
         await projectStore.getState().replaceMediaAsset(itemId, file);
       } catch (err) {
@@ -786,7 +786,7 @@ async function handleReplaceAsset(itemId: string) {
 
 async function handleRelinkFromFolder() {
   if (!("showDirectoryPicker" in window)) {
-    toast.error("Folder picker not supported", "Please relink assets individually using the refresh button on each missing asset.");
+    toast.error("不支持选择文件夹", "请使用每个缺失素材上的刷新按钮逐个重新关联。");
     return;
   }
   let dirHandle: FileSystemDirectoryHandle;
@@ -817,7 +817,7 @@ async function handleRelinkFromFolder() {
     const key = item.sourceFile ? `${item.sourceFile.name.toLowerCase()}:${item.sourceFile.size}` : null;
     const entry = key ? fileMap.get(key) : null;
     if (entry) {
-      importProgress.value = `Relinking ${item.name}…`;
+      importProgress.value = `正在重新关联 ${item.name}...`;
       try {
         try { await saveFileHandle(entry.file.name, entry.file.size, entry.handle); } catch { /* best-effort */ }
         await projectStore.getState().replaceMediaAsset(item.id, entry.file, dirHandle.name);
@@ -831,9 +831,9 @@ async function handleRelinkFromFolder() {
   importProgress.value = "";
 
   if (linked > 0) {
-    toast.success(`Relinked ${linked} of ${placeholders.length} asset${placeholders.length !== 1 ? "s" : ""}`);
+    toast.success(`已重新关联 ${linked}/${placeholders.length} 个素材`);
   } else {
-    toast.error("No matches found", "None of the files in the selected folder matched the missing assets by filename.");
+    toast.error("未找到匹配文件", "所选文件夹中没有文件名匹配缺失素材。");
   }
 }
 
@@ -925,7 +925,7 @@ async function handleOpenKieAI(item: MediaItem) {
   try {
     const blob = await loadMediaBlob(item.id);
     if (!blob) {
-      toast.error("Asset not found", "Cannot load the image data for this asset.");
+      toast.error("素材不存在", "无法加载该素材的图片数据。");
       return;
     }
     const mimeType = blob.type || (item.name.match(/\.png$/i) ? "image/png" : "image/jpeg");
@@ -933,7 +933,7 @@ async function handleOpenKieAI(item: MediaItem) {
     kieaiDialog.value = { file, previewUrl: item.thumbnailUrl };
   } catch (err) {
     console.error("[KieAI] Failed to load media blob:", err);
-    toast.error("Failed to open KieAI", err instanceof Error ? err.message : "Unknown error");
+    toast.error("打开 KieAI 失败", err instanceof Error ? err.message : "未知错误");
   }
 }
 

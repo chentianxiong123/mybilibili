@@ -240,7 +240,7 @@ export const StickerPickerPanel: React.FC = () => {
                 size={24}
                 className="mx-auto mb-2 text-text-muted opacity-50"
               />
-              <p className="text-[10px] text-text-muted">No emojis found</p>
+              <p className="text-[10px] text-text-muted">未找到表情</p>
             </div>
           ) : (
             currentEmojis.map((emoji) => (
@@ -262,7 +262,7 @@ export const StickerPickerPanel: React.FC = () => {
                 size={24}
                 className="mx-auto mb-2 text-text-muted opacity-50"
               />
-              <p className="text-[10px] text-text-muted">No stickers yet</p>
+              <p className="text-[10px] text-text-muted">暂无贴纸</p>
               <p className="text-[9px] text-text-muted mt-1">
                 Import custom stickers below
               </p>
@@ -301,7 +301,7 @@ export const StickerPickerPanel: React.FC = () => {
           className="w-full flex items-center justify-center gap-2 py-2 text-[10px] text-text-secondary hover:text-text-primary bg-background-tertiary rounded-lg transition-colors"
         >
           <Plus size={12} />
-          <span>Import Custom Sticker</span>
+          <span>导入自定义贴纸</span>
         </button>
       </div>
 

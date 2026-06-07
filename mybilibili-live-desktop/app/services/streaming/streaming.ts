@@ -1,5 +1,6 @@
 import { Subject } from 'rxjs';
 import { mutation, StatefulService } from 'services/core/stateful-service';
+import { Inject } from 'services/core/injector';
 import {
   ERecordingState,
   EReplayBufferState,
@@ -8,6 +9,7 @@ import {
   IStreamingServiceState,
 } from './streaming-api';
 import { StreamingServiceViews, StreamInfoView } from './streaming-view';
+import { LiveOutputRuntimeService } from './live-output-runtime';
 
 type TDisplayType = 'horizontal' | 'vertical';
 
@@ -29,6 +31,8 @@ function emptyStatus() {
 export class StreamingService
   extends StatefulService<IStreamingServiceState>
   implements IStreamingServiceApi {
+  @Inject() private liveOutputRuntimeService: LiveOutputRuntimeService;
+
   static initialState: IStreamingServiceState = {
     status: {
       horizontal: emptyStatus(),
@@ -99,16 +103,36 @@ export class StreamingService
     return null;
   }
 
-  startStreaming() {
-    this.setStreamingStatus(EStreamingState.Live);
+  async startStreaming() {
+    if (this.isStreaming) {
+      throw new Error('直播输出已经在运行');
+    }
+
+    this.setStreamingStatus(EStreamingState.Starting);
+    try {
+      await this.liveOutputRuntimeService.start();
+      this.setStreamingStatus(EStreamingState.Live);
+    } catch (error: unknown) {
+      this.setStreamingStatus(EStreamingState.Offline);
+      throw error;
+    }
   }
 
-  stopStreaming() {
-    this.setStreamingStatus(EStreamingState.Offline);
+  async stopStreaming() {
+    if (!this.isStreaming) {
+      throw new Error('直播输出未运行');
+    }
+
+    this.setStreamingStatus(EStreamingState.Ending);
+    try {
+      await this.liveOutputRuntimeService.stop();
+    } finally {
+      this.setStreamingStatus(EStreamingState.Offline);
+    }
   }
 
   async toggleStreaming() {
-    this.isStreaming ? this.stopStreaming() : this.startStreaming();
+    this.isStreaming ? await this.stopStreaming() : await this.startStreaming();
   }
 
   startRecording() {
@@ -144,7 +168,7 @@ export class StreamingService
   }
 
   getStreamingInstance() {
-    return null;
+    return this.liveOutputRuntimeService.instance;
   }
 
   getRecordingInstance() {

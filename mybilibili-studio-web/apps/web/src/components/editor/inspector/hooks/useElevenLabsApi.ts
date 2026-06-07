@@ -3,7 +3,10 @@ import type { TtsProvider } from "../../../../stores/settings-store";
 import { useSettingsStore } from "../../../../stores/settings-store";
 import { isSessionUnlocked, getSecret } from "../../../../services/secure-storage";
 import { apiFetch } from "../../../../services/api-proxy";
-import { OPENREEL_TTS_URL } from "../../../../config/api-endpoints";
+import {
+  STUDIO_TTS_URL,
+  requireStudioEndpoint,
+} from "../../../../config/api-endpoints";
 import type { ElevenLabsVoice, ElevenLabsModel } from "../tts-types";
 import { FALLBACK_MODELS, ENHANCE_SYSTEM_PROMPT } from "../tts-constants";
 
@@ -150,7 +153,7 @@ export function useElevenLabsApi(options: UseElevenLabsApiOptions): UseElevenLab
   }, [provider]);
 
   const generateWithPiper = useCallback(async (inputText: string, voice: string, spd: number, signal?: AbortSignal): Promise<Blob> => {
-    const response = await fetch(`${OPENREEL_TTS_URL}/tts`, {
+      const response = await fetch(`${requireStudioEndpoint(STUDIO_TTS_URL, "剪辑语音服务")}/tts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: inputText, voice, speed: spd }),

@@ -5,18 +5,27 @@
  * swapped for different environments or self-hosted instances.
  */
 
-const isDev = import.meta.env.DEV;
+const trimUrl = (value: string | undefined) => (value ?? "").trim().replace(/\/+$/, "");
 
-/** OpenReel cloud services */
-export const OPENREEL_CLOUD_URL = isDev
-  ? "http://localhost:8787"
-  : "https://openreel-cloud.niiyeboah1996.workers.dev";
+/** Studio cloud services. Must be configured explicitly. */
+export const STUDIO_CLOUD_URL = trimUrl(import.meta.env.VITE_MYBILIBILI_STUDIO_CLOUD_URL);
 
-/** OpenReel transcription / TTS service */
-export const OPENREEL_TTS_URL = "https://transcribe.openreel.video";
+/** Local/self-hosted TTS service. */
+export const STUDIO_TTS_URL = trimUrl(import.meta.env.VITE_MYBILIBILI_STUDIO_TTS_URL);
 
-/** OpenReel transcription service (GPU) */
-export const OPENREEL_TRANSCRIBE_URL = "https://cloud.openreel.video";
+/** Local/self-hosted transcription service. */
+export const STUDIO_TRANSCRIBE_URL = trimUrl(
+  import.meta.env.VITE_MYBILIBILI_STUDIO_TRANSCRIBE_URL,
+);
+
+export function requireStudioEndpoint(url: string, serviceName: string): string {
+  if (!url) {
+    throw new Error(
+      `${serviceName}接口未配置。请设置对应的 VITE_MYBILIBILI_STUDIO_*_URL 环境变量。`,
+    );
+  }
+  return url;
+}
 
 /**
  * Third-party API base URLs.

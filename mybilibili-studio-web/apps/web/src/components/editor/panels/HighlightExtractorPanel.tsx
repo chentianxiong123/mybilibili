@@ -7,7 +7,10 @@ import {
   initializeTranscriptionService,
   type TranscriptWord,
 } from "@mybilibili-studio/core";
-import { OPENREEL_TRANSCRIBE_URL } from "../../../config/api-endpoints";
+import {
+  STUDIO_TRANSCRIBE_URL,
+  requireStudioEndpoint,
+} from "../../../config/api-endpoints";
 import {
   extractHighlights,
   type HighlightResult,
@@ -62,7 +65,10 @@ export const HighlightExtractorPanel: React.FC<HighlightExtractorPanelProps> = (
       setProgress(5);
 
       const transcriptionService = getTranscriptionService() || initializeTranscriptionService({
-        apiEndpoint: `${OPENREEL_TRANSCRIBE_URL}/transcribe`,
+        apiEndpoint: `${requireStudioEndpoint(
+          STUDIO_TRANSCRIBE_URL,
+          "剪辑转写服务",
+        )}/transcribe`,
       });
       const subtitles = await transcriptionService.transcribeClip(
         clip,
@@ -137,7 +143,7 @@ export const HighlightExtractorPanel: React.FC<HighlightExtractorPanelProps> = (
     <div className="space-y-3">
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <label className="text-[10px] text-text-secondary">Clips</label>
+          <label className="text-[10px] text-text-secondary">片段数</label>
           <input
             type="number"
             min={1}
@@ -148,7 +154,7 @@ export const HighlightExtractorPanel: React.FC<HighlightExtractorPanelProps> = (
             }
             className="w-12 px-1 py-0.5 text-[10px] bg-background-secondary border border-border rounded text-text-primary"
           />
-          <label className="text-[10px] text-text-secondary">Max</label>
+          <label className="text-[10px] text-text-secondary">最长</label>
           <input
             type="number"
             min={1}
@@ -159,7 +165,7 @@ export const HighlightExtractorPanel: React.FC<HighlightExtractorPanelProps> = (
             }
             className="w-12 px-1 py-0.5 text-[10px] bg-background-secondary border border-border rounded text-text-primary"
           />
-          <span className="text-[10px] text-text-muted">s</span>
+          <span className="text-[10px] text-text-muted">秒</span>
         </div>
 
         <button

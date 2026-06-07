@@ -527,7 +527,7 @@ export const MotionPresetsPanel: React.FC<MotionPresetsPanelProps> = ({
     return (
       <div className="p-4 text-center">
         <Zap size={24} className="mx-auto mb-2 text-text-muted" />
-        <p className="text-[10px] text-text-muted">Clip not found</p>
+        <p className="text-[10px] text-text-muted">未找到片段</p>
       </div>
     );
   }

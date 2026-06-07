@@ -66,7 +66,7 @@ export const SharePage: React.FC<SharePageProps> = ({ shareId }) => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 size={48} className="text-primary animate-spin mx-auto" />
-          <p className="text-text-muted">Loading video...</p>
+          <p className="text-text-muted">正在加载视频...</p>
         </div>
       </div>
     );
@@ -81,10 +81,10 @@ export const SharePage: React.FC<SharePageProps> = ({ shareId }) => {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-text-primary">
-              Video Not Found
+              未找到视频
             </h1>
             <p className="text-text-muted mt-2">
-              This video doesn't exist or the link is invalid.
+              该视频不存在，或分享链接无效。
             </p>
           </div>
           <button
@@ -92,7 +92,7 @@ export const SharePage: React.FC<SharePageProps> = ({ shareId }) => {
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-lg transition-colors"
           >
             <ExternalLink size={18} />
-            Create Your Own Video
+            创建我的视频
           </button>
         </div>
       </div>
@@ -108,11 +108,10 @@ export const SharePage: React.FC<SharePageProps> = ({ shareId }) => {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-text-primary">
-              Link Expired
+              链接已过期
             </h1>
             <p className="text-text-muted mt-2">
-              This share link has expired. Share links are only valid for 24
-              hours.
+              该分享链接已过期。分享链接仅 24 小时内有效。
             </p>
           </div>
           <button
@@ -120,7 +119,7 @@ export const SharePage: React.FC<SharePageProps> = ({ shareId }) => {
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-lg transition-colors"
           >
             <ExternalLink size={18} />
-            Create Your Own Video
+            创建我的视频
           </button>
         </div>
       </div>
@@ -135,16 +134,16 @@ export const SharePage: React.FC<SharePageProps> = ({ shareId }) => {
             <AlertCircle size={40} className="text-error" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-text-primary">Error</h1>
+            <h1 className="text-2xl font-bold text-text-primary">出错了</h1>
             <p className="text-text-muted mt-2">
-              {error || "Something went wrong"}
+              {error || "发生未知错误"}
             </p>
           </div>
           <button
             onClick={() => window.location.reload()}
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-lg transition-colors"
           >
-            Try Again
+            重试
           </button>
         </div>
       </div>
@@ -156,7 +155,7 @@ export const SharePage: React.FC<SharePageProps> = ({ shareId }) => {
       <div className="max-w-4xl mx-auto px-6 py-12 space-y-8">
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold text-text-primary">
-            {shareInfo?.filename || "Shared Video"}
+            {shareInfo?.filename || "分享视频"}
           </h1>
           {shareInfo && (
             <div className="flex items-center justify-center gap-4 text-sm text-text-muted">

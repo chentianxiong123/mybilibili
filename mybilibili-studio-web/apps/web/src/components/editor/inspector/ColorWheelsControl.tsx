@@ -46,7 +46,7 @@ const LGGSlider: React.FC<{
         <span
           className="text-[10px] font-mono text-text-primary cursor-pointer hover:text-accent"
           onDoubleClick={handleDoubleClick}
-          title="Double-click to reset"
+          title="双击重置"
         >
           {value.toFixed(2)}
         </span>
@@ -179,7 +179,7 @@ const ColorWheel: React.FC<ColorWheelProps> = ({
         }}
         onMouseDown={handleMouseDown}
         onDoubleClick={handleDoubleClick}
-        title="Drag to adjust color. Double-click to reset."
+        title="拖动调整颜色，双击重置。"
       >
         {/* Center gradient overlay for saturation falloff */}
         <div

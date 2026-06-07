@@ -151,8 +151,8 @@ export const Transform3DSection: React.FC<Transform3DSectionProps> = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-background-secondary border-border">
-              <SelectItem value="flat">Flat</SelectItem>
-              <SelectItem value="preserve-3d">Preserve 3D</SelectItem>
+              <SelectItem value="flat">平面</SelectItem>
+              <SelectItem value="preserve-3d">保留 3D</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-[9px] text-text-muted">
@@ -166,7 +166,7 @@ export const Transform3DSection: React.FC<Transform3DSectionProps> = ({
       {(rotate3d.x !== 0 || rotate3d.y !== 0 || rotate3d.z !== 0) && (
         <div className="p-2 bg-primary/5 border border-primary/20 rounded-lg">
           <p className="text-[9px] text-text-muted">
-            <span className="text-primary font-medium">Tip:</span> 3D rotations
+            <span className="text-primary font-medium">提示：</span> 3D 旋转
             allow you to rotate layers along X, Y, and Z axes for depth effects.
             Adjust perspective to control the 3D depth perception.
           </p>

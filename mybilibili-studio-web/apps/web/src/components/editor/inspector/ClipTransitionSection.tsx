@@ -1183,7 +1183,7 @@ export const ClipTransitionSection: React.FC<ClipTransitionSectionProps> = ({
         {entryPreset !== "none" && (
           <div className="flex gap-2 mt-2">
             <div className="flex-1">
-              <label className="text-[9px] text-text-muted">Duration</label>
+              <label className="text-[9px] text-text-muted">时长</label>
               <input
                 type="number"
                 step="0.1"
@@ -1197,7 +1197,7 @@ export const ClipTransitionSection: React.FC<ClipTransitionSectionProps> = ({
               />
             </div>
             <div className="flex-1">
-              <label className="text-[9px] text-text-muted">Easing</label>
+              <label className="text-[9px] text-text-muted">缓动</label>
               <Select value={entryEasing} onValueChange={(v) => setEntryEasing(v as EasingType)}>
                 <SelectTrigger className="w-full bg-background-tertiary border-border text-text-primary text-[10px] h-7">
                   <SelectValue />
@@ -1239,7 +1239,7 @@ export const ClipTransitionSection: React.FC<ClipTransitionSectionProps> = ({
         {exitPreset !== "none" && (
           <div className="flex gap-2 mt-2">
             <div className="flex-1">
-              <label className="text-[9px] text-text-muted">Duration</label>
+              <label className="text-[9px] text-text-muted">时长</label>
               <input
                 type="number"
                 step="0.1"
@@ -1253,7 +1253,7 @@ export const ClipTransitionSection: React.FC<ClipTransitionSectionProps> = ({
               />
             </div>
             <div className="flex-1">
-              <label className="text-[9px] text-text-muted">Easing</label>
+              <label className="text-[9px] text-text-muted">缓动</label>
               <Select value={exitEasing} onValueChange={(v) => setExitEasing(v as EasingType)}>
                 <SelectTrigger className="w-full bg-background-tertiary border-border text-text-primary text-[10px] h-7">
                   <SelectValue />

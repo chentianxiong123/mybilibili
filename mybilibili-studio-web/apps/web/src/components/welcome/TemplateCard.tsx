@@ -123,7 +123,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
         {template.featured && (
           <div className="absolute top-2 left-2 px-2 py-0.5 bg-amber-500 text-black text-[10px] font-semibold rounded-full flex items-center gap-1">
             <Star size={10} fill="currentColor" />
-            Featured
+            推荐
           </div>
         )}
 
@@ -146,7 +146,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
             <Layers size={11} />
-            <span>{template.placeholders.length} editable</span>
+            <span>{template.placeholders.length} 项可编辑</span>
           </div>
         </div>
 

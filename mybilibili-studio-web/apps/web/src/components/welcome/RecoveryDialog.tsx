@@ -140,7 +140,7 @@ export const RecoveryDialog: React.FC<RecoveryDialogProps> = ({
                     className={`w-4 h-4 transition-transform duration-200 ${showOlderSaves ? "rotate-180" : ""}`}
                   />
                   <span>
-                    {olderSaves.length} older {olderSaves.length === 1 ? "save" : "saves"} available
+                    有 {olderSaves.length} 个更早的保存可用
                   </span>
                 </CollapsibleTrigger>
                 {onClearAll && (
@@ -148,7 +148,7 @@ export const RecoveryDialog: React.FC<RecoveryDialogProps> = ({
                     onClick={handleClearAll}
                     disabled={isClearing}
                     className="p-1.5 rounded-lg text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                    title="Clear all saved projects"
+                    title="清除所有已保存项目"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

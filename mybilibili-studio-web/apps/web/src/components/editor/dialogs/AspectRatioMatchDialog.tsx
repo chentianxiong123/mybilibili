@@ -40,9 +40,9 @@ export const AspectRatioMatchDialog: React.FC<AspectRatioMatchDialogProps> = ({
               <Maximize2 size={20} className="text-primary" />
             </div>
             <div>
-              <DialogTitle>Match Video Dimensions?</DialogTitle>
+              <DialogTitle>匹配视频尺寸？</DialogTitle>
               <DialogDescription className="mt-1">
-                The video you're adding has different dimensions than your current project settings.
+                当前添加的视频尺寸与项目设置不同。
               </DialogDescription>
             </div>
           </div>
@@ -53,13 +53,13 @@ export const AspectRatioMatchDialog: React.FC<AspectRatioMatchDialogProps> = ({
             <div className="flex items-center justify-between p-3 rounded-lg bg-background-tertiary">
               <div>
                 <div className="text-xs text-text-tertiary mb-1">
-                  Video Dimensions
+                  视频尺寸
                 </div>
                 <div className="text-sm font-medium text-text-primary">
                   {videoWidth} × {videoHeight}
                 </div>
                 <div className="text-xs text-text-tertiary mt-0.5">
-                  Aspect Ratio: {videoAspect}
+                  画幅比例：{videoAspect}
                 </div>
               </div>
             </div>
@@ -67,31 +67,29 @@ export const AspectRatioMatchDialog: React.FC<AspectRatioMatchDialogProps> = ({
             <div className="flex items-center justify-between p-3 rounded-lg bg-background-tertiary/50 border border-border/50">
               <div>
                 <div className="text-xs text-text-tertiary mb-1">
-                  Current Project
+                  当前项目
                 </div>
                 <div className="text-sm font-medium text-text-primary">
                   {currentWidth} × {currentHeight}
                 </div>
                 <div className="text-xs text-text-tertiary mt-0.5">
-                  Aspect Ratio: {currentAspect}
+                  画幅比例：{currentAspect}
                 </div>
               </div>
             </div>
           </div>
 
           <p className="text-xs text-text-tertiary">
-            Match the project dimensions to this video for a clean fit, or keep
-            the current canvas — your video will be placed at its original size
-            so you can resize it freely.
+            可以将项目尺寸匹配到该视频以获得干净画布，也可以保留当前画布，视频会按原始尺寸放入后自行调整。
           </p>
         </div>
 
         <div className="flex gap-3">
           <Button variant="outline" className="flex-1" onClick={onCancel}>
-            Keep Current
+            保持当前
           </Button>
           <Button className="flex-1" onClick={onConfirm}>
-            Match Video
+            匹配视频
           </Button>
         </div>
       </DialogContent>

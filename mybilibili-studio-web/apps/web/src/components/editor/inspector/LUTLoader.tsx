@@ -18,7 +18,7 @@ const IntensitySlider: React.FC<{
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-text-secondary">Intensity</span>
+        <span className="text-[10px] text-text-secondary">强度</span>
         <span className="text-[10px] font-mono text-text-primary">
           {percentage}%
         </span>
@@ -303,7 +303,7 @@ export const LUTLoader: React.FC<LUTLoaderProps> = ({
             <button
               onClick={handleRemoveLUT}
               className="p-1 text-text-muted hover:text-text-primary transition-colors"
-              title="Remove LUT"
+              title="移除 LUT"
             >
               <X size={14} />
             </button>

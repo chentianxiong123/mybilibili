@@ -74,7 +74,7 @@ export const AiTab: React.FC<AiTabProps> = ({
       {clipType === "video" && (
         <>
           <InspectorSection
-            title="AI Auto-Captions"
+            title="AI 自动字幕"
             sectionId="auto-captions"
             defaultOpen={false}
           >
@@ -88,7 +88,7 @@ export const AiTab: React.FC<AiTabProps> = ({
               />
               <div>
                 <label className="text-[10px] text-text-secondary block mb-1">
-                  Animation Style
+                  字幕动画
                 </label>
                 <Select
                   value={defaultAnimationStyle}
@@ -112,7 +112,7 @@ export const AiTab: React.FC<AiTabProps> = ({
 
               <div>
                 <label className="text-[10px] text-text-secondary block mb-1">
-                  Target Language
+                  目标语言
                 </label>
                 <Select
                   value={targetLanguage}
@@ -120,28 +120,28 @@ export const AiTab: React.FC<AiTabProps> = ({
                   disabled={isTranscribing}
                 >
                   <SelectTrigger className="w-full bg-background-secondary border-border text-text-primary text-[11px]">
-                    <SelectValue placeholder="Original (no translation)" />
+                    <SelectValue placeholder="原文（不翻译）" />
                   </SelectTrigger>
                   <SelectContent className="bg-background-secondary border-border">
-                    <SelectItem value="none">Original (no translation)</SelectItem>
+                    <SelectItem value="none">原文（不翻译）</SelectItem>
                     <SelectGroup>
-                      <SelectLabel className="text-[10px]">Translate to</SelectLabel>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="es">Spanish</SelectItem>
-                      <SelectItem value="fr">French</SelectItem>
-                      <SelectItem value="de">German</SelectItem>
-                      <SelectItem value="pt">Portuguese</SelectItem>
-                      <SelectItem value="it">Italian</SelectItem>
-                      <SelectItem value="nl">Dutch</SelectItem>
-                      <SelectItem value="ru">Russian</SelectItem>
-                      <SelectItem value="zh">Chinese</SelectItem>
-                      <SelectItem value="ja">Japanese</SelectItem>
-                      <SelectItem value="ko">Korean</SelectItem>
-                      <SelectItem value="ar">Arabic</SelectItem>
-                      <SelectItem value="hi">Hindi</SelectItem>
-                      <SelectItem value="tr">Turkish</SelectItem>
-                      <SelectItem value="pl">Polish</SelectItem>
-                      <SelectItem value="sv">Swedish</SelectItem>
+                      <SelectLabel className="text-[10px]">翻译为</SelectLabel>
+                      <SelectItem value="en">英语</SelectItem>
+                      <SelectItem value="es">西班牙语</SelectItem>
+                      <SelectItem value="fr">法语</SelectItem>
+                      <SelectItem value="de">德语</SelectItem>
+                      <SelectItem value="pt">葡萄牙语</SelectItem>
+                      <SelectItem value="it">意大利语</SelectItem>
+                      <SelectItem value="nl">荷兰语</SelectItem>
+                      <SelectItem value="ru">俄语</SelectItem>
+                      <SelectItem value="zh">中文</SelectItem>
+                      <SelectItem value="ja">日语</SelectItem>
+                      <SelectItem value="ko">韩语</SelectItem>
+                      <SelectItem value="ar">阿拉伯语</SelectItem>
+                      <SelectItem value="hi">印地语</SelectItem>
+                      <SelectItem value="tr">土耳其语</SelectItem>
+                      <SelectItem value="pl">波兰语</SelectItem>
+                      <SelectItem value="sv">瑞典语</SelectItem>
                     </SelectGroup>
                   </SelectContent>
                 </Select>
@@ -178,7 +178,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                   className="w-full py-2 bg-primary hover:bg-primary/80 text-black rounded-lg text-[11px] font-medium transition-all flex items-center justify-center gap-2"
                 >
                   <Captions size={14} />
-                  Generate Captions
+                  生成字幕
                 </button>
               )}
               <button
@@ -187,7 +187,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                 className="w-full py-2 bg-background-tertiary hover:bg-background-tertiary/80 border border-border text-text-primary rounded-lg text-[11px] font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 <Upload size={13} />
-                Import SRT File
+                导入 SRT 文件
               </button>
             </div>
           </InspectorSection>
@@ -196,7 +196,7 @@ export const AiTab: React.FC<AiTabProps> = ({
 
       {clipType === "video" && (
         <InspectorSection
-          title="Auto Reframe"
+          title="自动重构画面"
           sectionId="auto-reframe"
           defaultOpen={false}
         >
@@ -206,7 +206,7 @@ export const AiTab: React.FC<AiTabProps> = ({
 
       {showAudioEffects && (
         <InspectorSection
-          title="Beat-Synced Auto-Edit"
+          title="节拍自动剪辑"
           sectionId="auto-edit"
           defaultOpen={false}
         >
@@ -216,7 +216,7 @@ export const AiTab: React.FC<AiTabProps> = ({
 
       {showAudioEffects && (
         <InspectorSection
-          title="AI Highlights"
+          title="AI 高光片段"
           sectionId="ai-highlights"
           defaultOpen={false}
         >
@@ -228,7 +228,7 @@ export const AiTab: React.FC<AiTabProps> = ({
         <div className="border border-primary/30 bg-primary/5 rounded-xl p-4 relative overflow-hidden">
           <div className="flex items-center gap-2 text-primary mb-3">
             <Zap size={14} />
-            <span className="text-xs font-bold">Quick Actions</span>
+            <span className="text-xs font-bold">快捷操作</span>
           </div>
           <div className="space-y-2">
             {showVideoControls && (
@@ -241,7 +241,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                     : "bg-background-tertiary hover:bg-primary hover:text-white border-border hover:border-primary"
                 }`}
               >
-                Remove Background
+                移除背景
               </button>
             )}
             {showAudioEffects && (
@@ -259,12 +259,12 @@ export const AiTab: React.FC<AiTabProps> = ({
                 {isEnhancingAudio ? (
                   <>
                     <Loader2 size={12} className="animate-spin" />
-                    Cleaning up...
+                    正在降噪...
                   </>
                 ) : audioEnhanced ? (
-                  "✓ Noise Reduced"
+                  "✓ 已降噪"
                 ) : (
-                  "Quick Dialogue Cleanup"
+                  "快速人声清理"
                 )}
               </button>
             )}
@@ -278,7 +278,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                     : "bg-background-tertiary hover:bg-primary hover:text-white border-border hover:border-primary"
                 }`}
               >
-                {isApplyingSelectedClipEffect ? "Applying..." : "Auto-Color"}
+                {isApplyingSelectedClipEffect ? "正在应用..." : "自动调色"}
               </button>
             )}
           </div>

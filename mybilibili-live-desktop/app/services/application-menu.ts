@@ -35,7 +35,7 @@ export class ApplicationMenuService extends Service {
     // TODO: i18n
     return remote.Menu.buildFromTemplate([
       {
-        label: 'mybilibili Live Desktop',
+        label: 'mybilibili 直播工作台',
         submenu: [
           { role: 'about' },
           {

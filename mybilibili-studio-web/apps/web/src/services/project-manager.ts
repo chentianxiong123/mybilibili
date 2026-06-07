@@ -274,11 +274,11 @@ class ProjectManager {
     try {
       const win = window as WindowWithFilePicker;
       const handle = await win.showSaveFilePicker!({
-        suggestedName: `${project.name}.oreel`,
+        suggestedName: `${project.name}.mbstudio`,
         types: [
           {
-            description: "OpenReel Project",
-            accept: { "application/json": [".oreel", ".json"] },
+            description: "mybilibili Studio Project",
+            accept: { "application/json": [".mbstudio"] },
           },
         ],
       });
@@ -324,7 +324,7 @@ class ProjectManager {
 
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${project.name}.oreel`;
+      a.download = `${project.name}.mbstudio`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -345,8 +345,8 @@ class ProjectManager {
         const [handle] = await win.showOpenFilePicker!({
           types: [
             {
-              description: "OpenReel Project",
-              accept: { "application/json": [".oreel", ".json"] },
+              description: "mybilibili Studio Project",
+              accept: { "application/json": [".mbstudio"] },
             },
           ],
           multiple: false,
@@ -377,7 +377,7 @@ class ProjectManager {
     return new Promise((resolve) => {
       const input = document.createElement("input");
       input.type = "file";
-      input.accept = ".oreel,.json";
+      input.accept = ".mbstudio";
 
       input.onchange = async () => {
         const file = input.files?.[0];

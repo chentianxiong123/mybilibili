@@ -287,12 +287,12 @@ export function getAnimationStyleDisplayName(
   style: CaptionAnimationStyle,
 ): string {
   const names: Record<CaptionAnimationStyle, string> = {
-    none: "Static",
-    "word-highlight": "Word Highlight",
-    "word-by-word": "Word by Word",
-    karaoke: "Karaoke",
-    bounce: "Bounce",
-    typewriter: "Typewriter",
+    none: "静态",
+    "word-highlight": "词语高亮",
+    "word-by-word": "逐词显示",
+    karaoke: "卡拉 OK",
+    bounce: "弹跳",
+    typewriter: "打字机",
   };
   return names[style];
 }

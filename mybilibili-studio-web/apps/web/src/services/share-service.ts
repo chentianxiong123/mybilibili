@@ -1,4 +1,4 @@
-import { OPENREEL_CLOUD_URL } from "../config/api-endpoints";
+import { STUDIO_CLOUD_URL, requireStudioEndpoint } from "../config/api-endpoints";
 
 export interface ShareResult {
   shareId: string;
@@ -25,6 +25,7 @@ export async function uploadForSharing(
   filename: string,
   onProgress?: UploadProgressCallback,
 ): Promise<ShareResult> {
+  const cloudUrl = requireStudioEndpoint(STUDIO_CLOUD_URL, "剪辑分享服务");
   const formData = new FormData();
   formData.append("file", blob, filename);
 
@@ -68,14 +69,15 @@ export async function uploadForSharing(
       reject(new Error("Upload was cancelled"));
     });
 
-    xhr.open("POST", `${OPENREEL_CLOUD_URL}/shares`);
+    xhr.open("POST", `${cloudUrl}/shares`);
     xhr.send(formData);
   });
 }
 
 export async function getShareInfo(shareId: string): Promise<ShareInfo | null> {
+  const cloudUrl = requireStudioEndpoint(STUDIO_CLOUD_URL, "剪辑分享服务");
   try {
-    const response = await fetch(`${OPENREEL_CLOUD_URL}/shares/${shareId}`);
+    const response = await fetch(`${cloudUrl}/shares/${shareId}`);
 
     if (response.status === 404) {
       return null;
@@ -99,7 +101,8 @@ export async function getShareInfo(shareId: string): Promise<ShareInfo | null> {
 }
 
 export function getShareDownloadUrl(shareId: string): string {
-  return `${OPENREEL_CLOUD_URL}/shares/${shareId}/download`;
+  const cloudUrl = requireStudioEndpoint(STUDIO_CLOUD_URL, "剪辑分享服务");
+  return `${cloudUrl}/shares/${shareId}/download`;
 }
 
 export function getSharePageUrl(shareId: string): string {
@@ -133,8 +136,9 @@ export function isShareExpired(expiresAt: number): boolean {
 }
 
 export async function checkShareHealth(): Promise<boolean> {
+  const cloudUrl = requireStudioEndpoint(STUDIO_CLOUD_URL, "剪辑分享服务");
   try {
-    const response = await fetch(`${OPENREEL_CLOUD_URL}/health`);
+    const response = await fetch(`${cloudUrl}/health`);
     return response.ok;
   } catch {
     return false;

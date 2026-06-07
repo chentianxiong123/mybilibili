@@ -2429,7 +2429,7 @@ export const Preview: React.FC = () => {
         ctx.font = "24px Inter, sans-serif";
         ctx.textAlign = "center";
         ctx.fillText(
-          "Import media to get started",
+            "导入媒体后开始剪辑",
           canvas.width / 2,
           canvas.height / 2,
         );
@@ -6111,9 +6111,9 @@ export const Preview: React.FC = () => {
       {/* ── Panel bar header (mockup: 'Player') ───────────────── */}
       {!isMaximized && !isFullscreen && (
         <div className="flex items-center px-3.5 py-2 border-b border-border bg-bg-1 gap-2.5 min-h-[38px] shrink-0">
-          <h2 className="text-[13px] font-semibold tracking-tight text-fg m-0">Player</h2>
+          <h2 className="text-[13px] font-semibold tracking-tight text-fg m-0">播放器</h2>
           <div className="ml-auto flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent" title="Live preview" />
+            <span className="w-1.5 h-1.5 rounded-full bg-accent" title="实时预览" />
           </div>
         </div>
       )}
@@ -6223,10 +6223,10 @@ export const Preview: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-text-primary">
-                      Exporting Video
+                      正在导出视频
                     </h3>
                     <p className="text-xs text-text-muted">
-                      {exportState.phase || "Preparing..."}
+                      {exportState.phase || "正在准备..."}
                     </p>
                   </div>
                 </div>
@@ -6234,7 +6234,7 @@ export const Preview: React.FC = () => {
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] text-text-secondary">
-                      Export Progress
+                      导出进度
                     </span>
                     <span className="text-[10px] text-text-muted font-mono">
                       {Math.round(exportState.progress)}%
@@ -6249,7 +6249,7 @@ export const Preview: React.FC = () => {
                 </div>
 
                 <p className="text-[10px] text-text-muted text-center">
-                  Please wait while your video is being exported...
+                  视频正在导出，请稍候...
                 </p>
               </div>
             </div>
@@ -6273,7 +6273,7 @@ export const Preview: React.FC = () => {
               <div
                 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-primary/80 rounded-full flex items-center justify-center cursor-move pointer-events-auto hover:bg-primary transition-colors"
                 onMouseDown={handleClipMouseDown}
-                title="Drag to move"
+                title="拖动移动"
               >
                 <Move size={14} className="text-white" />
               </div>
@@ -6287,10 +6287,10 @@ export const Preview: React.FC = () => {
                 }`}
                 onClick={() => setLockAspectRatio(!lockAspectRatio)}
                 title={
-                  lockAspectRatio ? "Unlock aspect ratio" : "Lock aspect ratio"
+                  lockAspectRatio ? "解锁宽高比" : "锁定宽高比"
                 }
               >
-                {lockAspectRatio ? "🔒 Locked" : "🔓 Free"}
+                {lockAspectRatio ? "🔒 已锁定" : "🔓 自由缩放"}
               </button>
 
               {/* Corner resize handles */}
@@ -6349,7 +6349,7 @@ export const Preview: React.FC = () => {
               <div
                 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-cyan-500/80 rounded-full flex items-center justify-center cursor-move pointer-events-auto hover:bg-cyan-500 transition-colors"
                 onMouseDown={handleTextClipMouseDown}
-                title="Drag to move text"
+                title="拖动移动文字"
               >
                 <Move size={14} className="text-white" />
               </div>
@@ -6363,10 +6363,10 @@ export const Preview: React.FC = () => {
                 }`}
                 onClick={() => setLockAspectRatio(!lockAspectRatio)}
                 title={
-                  lockAspectRatio ? "Unlock aspect ratio" : "Lock aspect ratio"
+                  lockAspectRatio ? "解锁宽高比" : "锁定宽高比"
                 }
               >
-                {lockAspectRatio ? "🔒 Locked" : "🔓 Free"}
+                {lockAspectRatio ? "🔒 已锁定" : "🔓 自由缩放"}
               </button>
 
               {/* Corner resize handles */}
@@ -6426,7 +6426,7 @@ export const Preview: React.FC = () => {
               <div
                 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-green-500/80 rounded-full flex items-center justify-center cursor-move pointer-events-auto hover:bg-green-500 transition-colors"
                 onMouseDown={handleShapeClipMouseDown}
-                title="Drag to move shape"
+                title="拖动移动图形"
               >
                 <Move size={14} className="text-white" />
               </div>
@@ -6440,10 +6440,10 @@ export const Preview: React.FC = () => {
                 }`}
                 onClick={() => setLockAspectRatio(!lockAspectRatio)}
                 title={
-                  lockAspectRatio ? "Unlock aspect ratio" : "Lock aspect ratio"
+                  lockAspectRatio ? "解锁宽高比" : "锁定宽高比"
                 }
               >
-                {lockAspectRatio ? "🔒 Locked" : "🔓 Free"}
+                {lockAspectRatio ? "🔒 已锁定" : "🔓 自由缩放"}
               </button>
 
               {/* Corner resize handles */}
@@ -6498,7 +6498,7 @@ export const Preview: React.FC = () => {
               {/* Selection border - yellow/orange for subtitles */}
               <div className="absolute inset-0 border-2 border-yellow-500 rounded-lg pointer-events-none animate-pulse" />
               <div className="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-yellow-500 rounded text-[10px] font-medium text-black whitespace-nowrap">
-                Subtitle Selected - Edit in Inspector
+                已选中文字幕，请在检查器中编辑
               </div>
             </div>
           )}
@@ -6527,7 +6527,7 @@ export const Preview: React.FC = () => {
                     aria-hidden="true"
                     className="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-black/70 rounded text-[10px] text-white whitespace-nowrap"
                   >
-                    Click to select
+                    点击选择
                   </div>
                 </div>
               );
@@ -6572,7 +6572,7 @@ export const Preview: React.FC = () => {
                   ? "bg-green-500/20 text-green-400"
                   : "bg-gray-500/20 text-gray-400"
               }`}
-              title={`Rendering with ${rendererType.toUpperCase()}`}
+              title={`使用 ${rendererType.toUpperCase()} 渲染`}
             >
               {rendererType.toUpperCase()}
             </span>
@@ -6582,7 +6582,7 @@ export const Preview: React.FC = () => {
         <div className="flex items-center gap-1 mx-auto">
           <button
             onClick={handleSkipBack}
-            title="Skip back 5s"
+            title="后退 5 秒"
             className="w-7 h-7 grid place-items-center rounded-md text-fg-2 hover:bg-hover hover:text-fg transition-colors"
           >
             <SkipBack size={13} />
@@ -6592,7 +6592,7 @@ export const Preview: React.FC = () => {
               togglePlayback();
             }}
             disabled={Boolean(playbackLockedReason)}
-            title={playbackLockedReason ?? (isPlaying ? "Pause" : "Play")}
+            title={playbackLockedReason ?? (isPlaying ? "暂停" : "播放")}
             className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
               playbackLockedReason
                 ? "bg-bg-2 text-fg-muted cursor-not-allowed"
@@ -6609,7 +6609,7 @@ export const Preview: React.FC = () => {
           </button>
           <button
             onClick={handleSkipForward}
-            title="Skip forward 5s"
+            title="前进 5 秒"
             className="w-7 h-7 grid place-items-center rounded-md text-fg-2 hover:bg-hover hover:text-fg transition-colors"
           >
             <SkipForward size={13} />
@@ -6624,7 +6624,7 @@ export const Preview: React.FC = () => {
                 ? "text-status-error"
                 : "text-fg-2 hover:text-fg hover:bg-hover"
             }`}
-            title={isMuted ? "Unmute" : "Mute"}
+            title={isMuted ? "取消静音" : "静音"}
           >
             {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
           </button>
@@ -6634,7 +6634,7 @@ export const Preview: React.FC = () => {
             <button
               onClick={() => setShowZoomMenu(!showZoomMenu)}
               className="px-2 py-0.5 rounded border border-border text-[10.5px] font-medium text-fg-2 hover:bg-hover hover:text-fg transition-colors"
-              title="Preview Zoom"
+              title="预览缩放"
             >
               <div className="flex items-center gap-1">
                 <ZoomIn size={11} />
@@ -6671,7 +6671,7 @@ export const Preview: React.FC = () => {
 
           <button
             onClick={handleFullscreen}
-            title={isFullscreen ? "Exit Full Screen" : "Full Screen"}
+            title={isFullscreen ? "退出全屏" : "全屏"}
             className={`w-7 h-7 grid place-items-center rounded-md transition-colors ${
               isFullscreen
                 ? "bg-accent-soft text-accent"
@@ -6682,7 +6682,7 @@ export const Preview: React.FC = () => {
           </button>
           <button
             onClick={handleMaximize}
-            title={isMaximized ? "Restore Size" : "Maximize Preview"}
+            title={isMaximized ? "恢复大小" : "最大化预览"}
             className={`w-7 h-7 grid place-items-center rounded-md transition-colors ${
               isMaximized
                 ? "bg-accent-soft text-accent"

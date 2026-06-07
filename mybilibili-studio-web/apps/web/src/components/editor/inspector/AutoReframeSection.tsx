@@ -272,7 +272,7 @@ export const AutoReframeSection: React.FC<AutoReframeSectionProps> = ({
 
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-[10px] text-text-secondary">Smoothing</label>
+            <label className="text-[10px] text-text-secondary">平滑</label>
             <span className="text-[10px] text-text-muted font-mono">
               {Math.round(reframeSettings.smoothing * 100)}%
             </span>

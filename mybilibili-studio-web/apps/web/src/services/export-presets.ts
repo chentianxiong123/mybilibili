@@ -13,7 +13,7 @@ const SOCIAL_MEDIA_PRESETS: PlatformExportPreset[] = [
   {
     id: "youtube-4k",
     name: "YouTube 4K",
-    description: "Best quality for YouTube 4K - 50Mbps",
+    description: "YouTube 4K 最高质量，50Mbps",
     platform: "YouTube",
     category: "social",
     aspectRatio: "16:9",
@@ -40,7 +40,7 @@ const SOCIAL_MEDIA_PRESETS: PlatformExportPreset[] = [
   {
     id: "youtube-4k-60",
     name: "YouTube 4K 60fps",
-    description: "4K 60fps for gaming/motion - 65Mbps",
+    description: "适合游戏和运动画面的 4K 60 帧，65Mbps",
     platform: "YouTube",
     category: "social",
     aspectRatio: "16:9",
@@ -65,8 +65,8 @@ const SOCIAL_MEDIA_PRESETS: PlatformExportPreset[] = [
   },
   {
     id: "youtube-1080p",
-    name: "YouTube 1080p HD",
-    description: "Standard HD quality for YouTube",
+    name: "YouTube 1080p 高清",
+    description: "YouTube 标准高清质量",
     platform: "YouTube",
     category: "social",
     aspectRatio: "16:9",
@@ -91,8 +91,8 @@ const SOCIAL_MEDIA_PRESETS: PlatformExportPreset[] = [
   },
   {
     id: "youtube-shorts",
-    name: "YouTube Shorts",
-    description: "Vertical format for YouTube Shorts (60s max)",
+    name: "YouTube 竖屏短视频",
+    description: "YouTube Shorts 竖屏格式，最长 60 秒",
     platform: "YouTube",
     category: "social",
     aspectRatio: "9:16",
@@ -119,7 +119,7 @@ const SOCIAL_MEDIA_PRESETS: PlatformExportPreset[] = [
   {
     id: "tiktok",
     name: "TikTok",
-    description: "Optimized for TikTok (3min max)",
+    description: "适合 TikTok 的竖屏格式，最长 3 分钟",
     platform: "TikTok",
     category: "social",
     aspectRatio: "9:16",
@@ -147,8 +147,8 @@ const SOCIAL_MEDIA_PRESETS: PlatformExportPreset[] = [
   },
   {
     id: "instagram-reels",
-    name: "Instagram Reels",
-    description: "Vertical format for Reels (90s max)",
+    name: "Instagram 竖屏短视频",
+    description: "Reels 竖屏格式，最长 90 秒",
     platform: "Instagram",
     category: "social",
     aspectRatio: "9:16",
@@ -174,8 +174,8 @@ const SOCIAL_MEDIA_PRESETS: PlatformExportPreset[] = [
   },
   {
     id: "instagram-feed",
-    name: "Instagram Feed Video",
-    description: "Square format for feed posts (60s max)",
+    name: "Instagram 方形视频",
+    description: "动态帖子方形格式，最长 60 秒",
     platform: "Instagram",
     category: "social",
     aspectRatio: "1:1",
@@ -201,8 +201,8 @@ const SOCIAL_MEDIA_PRESETS: PlatformExportPreset[] = [
   },
   {
     id: "instagram-story",
-    name: "Instagram Story",
-    description: "Vertical format for Stories (15s per clip)",
+    name: "Instagram 限时动态",
+    description: "Story 竖屏格式，每段最长 15 秒",
     platform: "Instagram",
     category: "social",
     aspectRatio: "9:16",
@@ -229,7 +229,7 @@ const SOCIAL_MEDIA_PRESETS: PlatformExportPreset[] = [
   {
     id: "twitter",
     name: "Twitter/X",
-    description: "Optimized for Twitter (2min 20s max)",
+    description: "适合 Twitter/X，最长 2 分 20 秒",
     platform: "Twitter",
     category: "social",
     aspectRatio: "16:9",
@@ -256,8 +256,8 @@ const SOCIAL_MEDIA_PRESETS: PlatformExportPreset[] = [
   },
   {
     id: "facebook-feed",
-    name: "Facebook Feed",
-    description: "Standard format for Facebook feed",
+    name: "Facebook 动态视频",
+    description: "Facebook 动态标准格式",
     platform: "Facebook",
     category: "social",
     aspectRatio: "16:9",
@@ -283,7 +283,7 @@ const SOCIAL_MEDIA_PRESETS: PlatformExportPreset[] = [
   {
     id: "linkedin",
     name: "LinkedIn",
-    description: "Professional format for LinkedIn (10min max)",
+    description: "适合 LinkedIn 的横屏格式，最长 10 分钟",
     platform: "LinkedIn",
     category: "social",
     aspectRatio: "16:9",
@@ -313,9 +313,9 @@ const SOCIAL_MEDIA_PRESETS: PlatformExportPreset[] = [
 const BROADCAST_PRESETS: PlatformExportPreset[] = [
   {
     id: "broadcast-4k-master",
-    name: "4K Master Quality",
-    description: "Maximum quality 4K - 80Mbps H.265",
-    platform: "Broadcast",
+    name: "4K 母版质量",
+    description: "最高质量 4K，80Mbps H.265",
+    platform: "广播",
     category: "broadcast",
     aspectRatio: "16:9",
     recommended: true,
@@ -341,8 +341,8 @@ const BROADCAST_PRESETS: PlatformExportPreset[] = [
   {
     id: "broadcast-4k-prores-hq",
     name: "4K ProRes HQ",
-    description: "Professional ProRes for editing/mastering",
-    platform: "Broadcast",
+    description: "适合剪辑和母版制作的 ProRes",
+    platform: "广播",
     category: "broadcast",
     aspectRatio: "16:9",
     settings: {
@@ -368,8 +368,8 @@ const BROADCAST_PRESETS: PlatformExportPreset[] = [
   {
     id: "broadcast-4k-prores-4444",
     name: "4K ProRes 4444",
-    description: "Highest quality ProRes with alpha support",
-    platform: "Broadcast",
+    description: "支持 Alpha 通道的最高质量 ProRes",
+    platform: "广播",
     category: "broadcast",
     aspectRatio: "16:9",
     settings: {
@@ -394,9 +394,9 @@ const BROADCAST_PRESETS: PlatformExportPreset[] = [
   },
   {
     id: "broadcast-4k-60",
-    name: "4K 60fps High Motion",
-    description: "4K at 60fps for sports/gaming - 65Mbps",
-    platform: "Broadcast",
+    name: "4K 60 帧高速运动",
+    description: "适合运动和游戏的 4K 60 帧，65Mbps",
+    platform: "广播",
     category: "broadcast",
     aspectRatio: "16:9",
     settings: {
@@ -420,9 +420,9 @@ const BROADCAST_PRESETS: PlatformExportPreset[] = [
   },
   {
     id: "broadcast-4k",
-    name: "Broadcast 4K UHD",
-    description: "4K broadcast quality - 50Mbps",
-    platform: "Broadcast",
+    name: "广播 4K 超高清",
+    description: "4K 广播质量，50Mbps",
+    platform: "广播",
     category: "broadcast",
     aspectRatio: "16:9",
     settings: {
@@ -446,9 +446,9 @@ const BROADCAST_PRESETS: PlatformExportPreset[] = [
   },
   {
     id: "broadcast-1080p-high",
-    name: "1080p High Quality",
-    description: "High bitrate 1080p - 20Mbps",
-    platform: "Broadcast",
+    name: "1080p 高质量",
+    description: "高码率 1080p，20Mbps",
+    platform: "广播",
     category: "broadcast",
     aspectRatio: "16:9",
     settings: {
@@ -473,8 +473,8 @@ const BROADCAST_PRESETS: PlatformExportPreset[] = [
   {
     id: "broadcast-1080p-prores",
     name: "1080p ProRes HQ",
-    description: "ProRes HQ for 1080p editing",
-    platform: "Broadcast",
+    description: "适合 1080p 剪辑的 ProRes HQ",
+    platform: "广播",
     category: "broadcast",
     aspectRatio: "16:9",
     settings: {
@@ -499,9 +499,9 @@ const BROADCAST_PRESETS: PlatformExportPreset[] = [
   },
   {
     id: "broadcast-hd",
-    name: "Broadcast HD 1080p",
-    description: "Standard broadcast quality",
-    platform: "Broadcast",
+    name: "广播高清 1080p",
+    description: "标准广播质量",
+    platform: "广播",
     category: "broadcast",
     aspectRatio: "16:9",
     settings: {
@@ -528,9 +528,9 @@ const BROADCAST_PRESETS: PlatformExportPreset[] = [
 const WEB_PRESETS: PlatformExportPreset[] = [
   {
     id: "web-hd",
-    name: "Web HD",
-    description: "Balanced quality for web embedding",
-    platform: "Web",
+    name: "网页高清",
+    description: "适合网页嵌入的均衡质量",
+    platform: "网页",
     category: "web",
     aspectRatio: "16:9",
     recommended: true,
@@ -555,9 +555,9 @@ const WEB_PRESETS: PlatformExportPreset[] = [
   },
   {
     id: "web-small",
-    name: "Web Optimized",
-    description: "Smaller file size for faster loading",
-    platform: "Web",
+    name: "网页优化",
+    description: "更小文件体积，加载更快",
+    platform: "网页",
     category: "web",
     aspectRatio: "16:9",
     settings: {
@@ -582,8 +582,8 @@ const WEB_PRESETS: PlatformExportPreset[] = [
   {
     id: "webm-vp9",
     name: "WebM VP9",
-    description: "Modern web format with VP9 codec (720p recommended)",
-    platform: "Web",
+    description: "使用 VP9 编码的现代网页格式，推荐 720p",
+    platform: "网页",
     category: "web",
     aspectRatio: "16:9",
     settings: {
@@ -610,9 +610,9 @@ const WEB_PRESETS: PlatformExportPreset[] = [
 const ARCHIVE_PRESETS: PlatformExportPreset[] = [
   {
     id: "archive-4k-prores",
-    name: "Archive 4K ProRes",
-    description: "Lossless 4K ProRes for long-term archival",
-    platform: "Archive",
+    name: "归档 4K ProRes",
+    description: "适合长期归档的无损 4K ProRes",
+    platform: "归档",
     category: "archive",
     aspectRatio: "16:9",
     recommended: true,
@@ -638,9 +638,9 @@ const ARCHIVE_PRESETS: PlatformExportPreset[] = [
   },
   {
     id: "archive-master",
-    name: "Archive Master H.265",
-    description: "High quality 4K H.265 - 80Mbps",
-    platform: "Archive",
+    name: "归档母版 H.265",
+    description: "高质量 4K H.265，80Mbps",
+    platform: "归档",
     category: "archive",
     aspectRatio: "16:9",
     settings: {
@@ -664,9 +664,9 @@ const ARCHIVE_PRESETS: PlatformExportPreset[] = [
   },
   {
     id: "archive-1080p-prores",
-    name: "Archive 1080p ProRes",
-    description: "ProRes HQ for 1080p archival",
-    platform: "Archive",
+    name: "归档 1080p ProRes",
+    description: "适合 1080p 归档的 ProRes HQ",
+    platform: "归档",
     category: "archive",
     aspectRatio: "16:9",
     settings: {
@@ -691,9 +691,9 @@ const ARCHIVE_PRESETS: PlatformExportPreset[] = [
   },
   {
     id: "archive-proxy",
-    name: "Archive Proxy",
-    description: "Lower quality proxy for editing",
-    platform: "Archive",
+    name: "归档代理文件",
+    description: "适合剪辑代理的低质量文件",
+    platform: "归档",
     category: "archive",
     aspectRatio: "16:9",
     settings: {
@@ -720,9 +720,9 @@ const ARCHIVE_PRESETS: PlatformExportPreset[] = [
 const AUDIO_PRESETS: PlatformExportPreset[] = [
   {
     id: "audio-mp3-320",
-    name: "MP3 High Quality",
-    description: "320kbps MP3 for music",
-    platform: "Audio",
+    name: "MP3 高质量",
+    description: "适合音乐的 320kbps MP3",
+    platform: "音频",
     category: "custom",
     settings: {
       format: "mp3",
@@ -734,9 +734,9 @@ const AUDIO_PRESETS: PlatformExportPreset[] = [
   },
   {
     id: "audio-wav",
-    name: "WAV Lossless",
-    description: "Uncompressed WAV audio",
-    platform: "Audio",
+    name: "WAV 无损",
+    description: "未压缩 WAV 音频",
+    platform: "音频",
     category: "archive",
     settings: {
       format: "wav",
@@ -748,9 +748,9 @@ const AUDIO_PRESETS: PlatformExportPreset[] = [
   },
   {
     id: "audio-aac",
-    name: "AAC High Quality",
-    description: "256kbps AAC for compatibility",
-    platform: "Audio",
+    name: "AAC 高质量",
+    description: "兼容性较好的 256kbps AAC",
+    platform: "音频",
     category: "custom",
     settings: {
       format: "aac",
@@ -881,7 +881,7 @@ class ExportPresetsManager {
     return this.addCustomPreset({
       ...preset,
       name: newName,
-      platform: "Custom",
+      platform: "自定义",
     });
   }
 

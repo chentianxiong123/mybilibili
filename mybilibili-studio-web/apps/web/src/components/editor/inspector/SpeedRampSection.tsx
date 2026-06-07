@@ -605,7 +605,7 @@ export const SpeedRampSection: React.FC<SpeedRampSectionProps> = ({ clip }) => {
         className="w-full flex items-center gap-2 py-2 text-[10px] text-text-secondary hover:text-text-primary transition-colors"
       >
         {showCurve ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        <span className="font-medium">Speed Ramping</span>
+        <span className="font-medium">速度曲线</span>
         {keyframes.length > 0 && (
           <span className="ml-auto text-[9px] text-primary">
             {keyframes.length} keyframes
@@ -656,7 +656,7 @@ export const SpeedRampSection: React.FC<SpeedRampSectionProps> = ({ clip }) => {
         className="w-full flex items-center gap-2 py-2 text-[10px] text-text-secondary hover:text-text-primary transition-colors"
       >
         {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        <span className="font-medium">Freeze Frames</span>
+        <span className="font-medium">冻结帧</span>
         {freezeFrames.length > 0 && (
           <span className="ml-auto text-[9px] text-primary">
             {freezeFrames.length} freeze
@@ -685,7 +685,7 @@ export const SpeedRampSection: React.FC<SpeedRampSectionProps> = ({ clip }) => {
                   <span className="text-text-secondary">
                     {ff.startTime.toFixed(2)}s
                   </span>
-                  <span className="text-text-muted">for</span>
+                  <span className="text-text-muted">持续</span>
                   <span className="text-primary font-mono">
                     {ff.duration.toFixed(1)}s
                   </span>

@@ -225,13 +225,13 @@ document.addEventListener('contextmenu', () => {
 export const apiInitErrorResultToMessage = (resultCode: obs.EVideoCodes) => {
   switch (resultCode) {
     case obs.EVideoCodes.NotSupported: {
-      return 'mybilibili Live Desktop 初始化失败。请检查显卡驱动是否正常，或当前系统是否支持 OBS 本机采集与编码。';
+      return 'mybilibili 直播工作台初始化失败。请检查显卡驱动是否正常，或当前系统是否支持 OBS 本机采集与编码。';
     }
     case obs.EVideoCodes.ModuleNotFound: {
-      return '当前系统未找到 DirectX。请安装或修复 DirectX 后重新启动 mybilibili Live Desktop。';
+      return '当前系统未找到 DirectX。请安装或修复 DirectX 后重新启动 mybilibili 直播工作台。';
     }
     default: {
-      return 'mybilibili Live Desktop 初始化时遇到未知错误。';
+      return 'mybilibili 直播工作台初始化时遇到未知错误。';
     }
   }
 };

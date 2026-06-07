@@ -3,6 +3,7 @@ import {
   type TranscriptWord,
   type AudioSegmentMetrics,
 } from "@mybilibili-studio/core";
+import { STUDIO_CLOUD_URL, requireStudioEndpoint } from "../config/api-endpoints";
 
 export interface HighlightResult {
   start: number;
@@ -28,8 +29,6 @@ const DEFAULT_PREFERENCES: HighlightPreferences = {
 
 type ProgressCallback = (phase: string, progress: number, message: string) => void;
 
-const API_BASE = import.meta.env.VITE_CLOUD_API_URL || "https://openreel-cloud.niiyeboah1996.workers.dev";
-
 export async function extractHighlights(
   audioBuffer: AudioBuffer,
   transcript: TranscriptWord[],
@@ -38,10 +37,10 @@ export async function extractHighlights(
 ): Promise<HighlightResult[]> {
   const prefs = { ...DEFAULT_PREFERENCES, ...preferences };
 
-  onProgress?.("analyze", 10, "Analyzing audio energy...");
+  onProgress?.("analyze", 10, "正在分析音频能量...");
   const analysis = analyzeAudioForHighlights(audioBuffer, transcript);
 
-  onProgress?.("analyze", 30, "Preparing data for AI...");
+  onProgress?.("analyze", 30, "正在准备 AI 分析数据...");
   const energyData = analysis.segments
     .filter((seg) => !seg.isSilence)
     .map((seg: AudioSegmentMetrics) => ({
@@ -51,9 +50,10 @@ export async function extractHighlights(
       peakDb: seg.peakDb,
     }));
 
-  onProgress?.("ai", 40, "Sending to AI for highlight detection...");
+  onProgress?.("ai", 40, "正在发送给 AI 识别高光片段...");
+  const apiBase = requireStudioEndpoint(STUDIO_CLOUD_URL, "剪辑高光服务");
 
-  const response = await fetch(`${API_BASE}/highlights`, {
+  const response = await fetch(`${apiBase}/highlights`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -73,10 +73,10 @@ export async function extractHighlights(
     throw new Error((errorData as { error?: string }).error || `API error: ${response.status}`);
   }
 
-  onProgress?.("ai", 80, "Processing AI response...");
+  onProgress?.("ai", 80, "正在处理 AI 返回结果...");
   const data = (await response.json()) as { highlights: HighlightResult[] };
 
-  onProgress?.("done", 100, "Highlights ready");
+  onProgress?.("done", 100, "高光片段已就绪");
   return data.highlights;
 }
 

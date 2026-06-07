@@ -13,7 +13,10 @@ import {
   CAPTION_ANIMATION_STYLES,
   getAnimationStyleDisplayName,
 } from "@mybilibili-studio/core";
-import { OPENREEL_TRANSCRIBE_URL } from "../../config/api-endpoints";
+import {
+  STUDIO_TRANSCRIBE_URL,
+  requireStudioEndpoint,
+} from "../../config/api-endpoints";
 import { mergeEditingTemplateControlValues } from "./panels/EditingTemplateControls";
 import {
   getAudioBridgeEffects,
@@ -65,12 +68,18 @@ const Section = InspectorSection;
 
 const EmptyState: React.FC = () => (
   <div className="flex-1 flex flex-col items-center justify-center p-8 text-center opacity-50">
-    <p className="text-sm text-text-secondary mb-2">No selection</p>
+    <p className="text-sm text-text-secondary mb-2">未选择素材</p>
     <p className="text-xs text-text-muted">
-      Select a clip to view its properties
+      选择时间线片段后查看属性
     </p>
   </div>
 );
+
+const SUBTITLE_POSITION_LABELS = {
+  top: "顶部",
+  center: "居中",
+  bottom: "底部",
+} as const;
 
 export const InspectorPanel: React.FC = () => {
   // Stores
@@ -474,7 +483,7 @@ export const InspectorPanel: React.FC = () => {
 
     const mediaItem = getMediaItem(selectedClip.mediaId);
     if (!mediaItem) {
-      console.error("[Subtitles] No media item found for clip");
+      console.error("[字幕] 找不到片段对应的媒体素材");
       return;
     }
 
@@ -487,7 +496,10 @@ export const InspectorPanel: React.FC = () => {
 
     try {
       const transcriptionService = initializeTranscriptionService({
-        apiEndpoint: `${OPENREEL_TRANSCRIBE_URL}/transcribe`,
+        apiEndpoint: `${requireStudioEndpoint(
+          STUDIO_TRANSCRIBE_URL,
+          "剪辑转写服务",
+        )}/transcribe`,
         targetLanguage: targetLanguage !== "none" ? targetLanguage : undefined,
       });
 
@@ -520,12 +532,12 @@ export const InspectorPanel: React.FC = () => {
         setIsTranscribing(false);
       }, 2000);
     } catch (error) {
-      console.error("[Subtitles] Transcription failed:", error);
+      console.error("[字幕] 转写失败:", error);
       setTranscriptionProgress({
         phase: "error",
         progress: 0,
         message:
-          error instanceof Error ? error.message : "Transcription failed",
+          error instanceof Error ? error.message : "字幕转写失败",
       });
       setTimeout(() => {
         setTranscriptionProgress(null);
@@ -554,11 +566,11 @@ export const InspectorPanel: React.FC = () => {
         if (result.success) {
           if (result.errors.length > 0) {
             toast.warning(
-              "SRT imported with warnings",
+              "SRT 导入完成但有警告",
               `${result.errors.length} subtitle segment(s) were skipped.`,
             );
           } else {
-            toast.success("SRT imported", "Subtitles were added to the Captions track.");
+            toast.success("SRT 导入完成", "字幕已添加到字幕轨道。");
           }
         } else {
           toast.error("SRT import failed", result.errors[0] || "No valid subtitles found.");
@@ -579,7 +591,7 @@ export const InspectorPanel: React.FC = () => {
 
       const result = await registerCustomFont(file);
       if (!result.success) {
-        toast.error("Font upload failed", result.error ?? "Unknown error.");
+        toast.error("字体上传失败", result.error ?? "未知错误。");
       } else {
         updateSubtitle(selectedSubtitle.id, {
           style: {
@@ -946,7 +958,7 @@ export const InspectorPanel: React.FC = () => {
             <div className="mb-4 p-3 bg-primary/10 rounded-lg border border-primary/30">
               <div className="flex items-center gap-2 mb-1">
                 <Captions size={14} className="text-primary" />
-                <span className="text-xs font-bold text-primary">Subtitle</span>
+                <span className="text-xs font-bold text-primary">字幕</span>
               </div>
               <p className="text-[10px] text-text-muted">
                 {selectedSubtitle.startTime.toFixed(2)}s -{" "}
@@ -955,7 +967,7 @@ export const InspectorPanel: React.FC = () => {
             </div>
 
             {/* Subtitle Text Editor */}
-            <Section title="Text Content">
+            <Section title="文本内容">
               <div className="space-y-3">
                 <textarea
                   value={selectedSubtitle.text}
@@ -965,17 +977,17 @@ export const InspectorPanel: React.FC = () => {
                     })
                   }
                   className="w-full h-24 px-3 py-2 bg-background-tertiary border border-border rounded-lg text-xs text-text-primary resize-none focus:outline-none focus:border-primary"
-                  placeholder="Enter subtitle text..."
+                  placeholder="输入字幕内容..."
                 />
               </div>
             </Section>
 
             {/* Subtitle Timing */}
-            <Section title="Timing">
+            <Section title="时间">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-text-secondary">
-                    Start Time
+                    开始时间
                   </span>
                   <Input
                     type="number"
@@ -991,7 +1003,7 @@ export const InspectorPanel: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-text-secondary">
-                    End Time
+                    结束时间
                   </span>
                   <Input
                     type="number"
@@ -1009,7 +1021,7 @@ export const InspectorPanel: React.FC = () => {
             </Section>
 
             {/* Subtitle Position */}
-            <Section title="Position">
+            <Section title="位置">
               <div className="grid grid-cols-3 gap-2">
                 {(["top", "center", "bottom"] as const).map((pos) => (
                   <button
@@ -1022,23 +1034,23 @@ export const InspectorPanel: React.FC = () => {
                         } as typeof selectedSubtitle.style,
                       })
                     }
-                    className={`py-1.5 rounded text-[10px] capitalize transition-colors ${
+                    className={`py-1.5 rounded text-[10px] transition-colors ${
                       (selectedSubtitle.style?.position || "bottom") === pos
                         ? "bg-primary text-white"
                         : "bg-background-tertiary border border-border text-text-secondary hover:text-text-primary"
                     }`}
                   >
-                    {pos}
+                    {SUBTITLE_POSITION_LABELS[pos]}
                   </button>
                 ))}
               </div>
             </Section>
 
             {/* Subtitle Animation Style */}
-            <Section title="Animation">
+            <Section title="动画">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-text-secondary">Style</span>
+                  <span className="text-[10px] text-text-secondary">样式</span>
                   <Select
                     value={selectedSubtitle.animationStyle || "none"}
                     onValueChange={(v) =>
@@ -1061,25 +1073,24 @@ export const InspectorPanel: React.FC = () => {
                 </div>
                 <p className="text-[9px] text-text-muted">
                   {selectedSubtitle.animationStyle === "karaoke" &&
-                    "Words fill with color as they're spoken"}
+                    "按朗读进度填充文字颜色"}
                   {selectedSubtitle.animationStyle === "word-highlight" &&
-                    "Current word is highlighted and scaled"}
+                    "当前词会高亮并轻微放大"}
                   {selectedSubtitle.animationStyle === "word-by-word" &&
-                    "Shows one word at a time"}
+                    "逐词显示字幕"}
                   {selectedSubtitle.animationStyle === "bounce" &&
-                    "Words bounce in as they appear"}
+                    "词语出现时带弹跳动效"}
                   {selectedSubtitle.animationStyle === "typewriter" &&
-                    "Words appear progressively like typing"}
+                    "像打字一样逐步出现"}
                   {(!selectedSubtitle.animationStyle ||
                     selectedSubtitle.animationStyle === "none") &&
-                    "Static text, no animation"}
+                    "静态文本，无动画"}
                 </p>
                 {selectedSubtitle.animationStyle &&
                   selectedSubtitle.animationStyle !== "none" &&
                   !selectedSubtitle.words?.length && (
                     <p className="text-[9px] text-amber-400 bg-amber-400/10 p-2 rounded">
-                      ⚠️ No word-level timing data. Re-generate captions to
-                      enable animation.
+                      缺少词级时间轴数据。请重新生成字幕后再启用动画。
                     </p>
                   )}
                 {selectedSubtitle.animationStyle &&
@@ -1089,7 +1100,7 @@ export const InspectorPanel: React.FC = () => {
                     <div className="pt-2 border-t border-border space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] text-text-secondary">
-                          Highlight Color
+                          高亮颜色
                         </span>
                         <div className="flex items-center gap-2">
                           <input
@@ -1149,7 +1160,7 @@ export const InspectorPanel: React.FC = () => {
             </Section>
 
             {/* Subtitle Font Settings */}
-            <Section title="Font">
+            <Section title="字体">
               <div className="space-y-3">
                 <input
                   ref={subtitleFontInputRef}
@@ -1160,7 +1171,7 @@ export const InspectorPanel: React.FC = () => {
                 />
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-text-secondary">
-                    Font Family
+                    字体
                   </span>
                   <Select
                     value={selectedSubtitle.style?.fontFamily || "Inter"}
@@ -1192,7 +1203,7 @@ export const InspectorPanel: React.FC = () => {
                       {customFonts.length > 0 && (
                         <SelectGroup>
                           <SelectLabel className="text-text-muted text-[10px] font-medium">
-                            Custom Uploads
+                            自定义上传
                           </SelectLabel>
                           {customFonts.map((font) => (
                             <SelectItem key={font} value={font} style={{ fontFamily: font }}>
@@ -1209,11 +1220,11 @@ export const InspectorPanel: React.FC = () => {
                   className="w-full py-1.5 px-2 bg-background-secondary border border-border rounded text-[10px] text-text-secondary hover:text-text-primary transition-colors flex items-center justify-center gap-1.5"
                 >
                   <Upload size={11} />
-                  Upload Custom Font
+                  上传自定义字体
                 </button>
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-text-secondary">
-                    Font Size
+                    字号
                   </span>
                   <Input
                     type="number"
@@ -1235,11 +1246,11 @@ export const InspectorPanel: React.FC = () => {
             </Section>
 
             {/* Subtitle Colors */}
-            <Section title="Colors">
+            <Section title="颜色">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-text-secondary">
-                    Text Color
+                    文字颜色
                   </span>
                   <div className="flex items-center gap-2">
                     <input
@@ -1262,7 +1273,7 @@ export const InspectorPanel: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-text-secondary">
-                    Background
+                    背景
                   </span>
                   <div className="flex items-center gap-2">
                     <input
@@ -1315,7 +1326,7 @@ export const InspectorPanel: React.FC = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-background-secondary border-border">
-                        <SelectItem value="0">None</SelectItem>
+                        <SelectItem value="0">无</SelectItem>
                         <SelectItem value="0.5">50%</SelectItem>
                         <SelectItem value="0.7">70%</SelectItem>
                         <SelectItem value="1">100%</SelectItem>
@@ -1335,7 +1346,7 @@ export const InspectorPanel: React.FC = () => {
                 }}
                 className="w-full py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 rounded-lg text-[10px] transition-all"
               >
-                Delete Subtitle
+                删除字幕
               </button>
             </div>
           </>

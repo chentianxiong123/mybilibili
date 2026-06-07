@@ -1,5 +1,5 @@
 import { getResource } from '../services/core';
-import { AppServices } from '../app-services';
+import * as AppServices from '../app-services';
 
 // maps a dictionary of classes to a dictionary of types
 type TInstances<T extends { [key: string]: new (...args: any) => any }> = {

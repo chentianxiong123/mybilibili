@@ -75,6 +75,12 @@ function buildHash(route: AppRoute, params?: RouteParams): string {
   return hash;
 }
 
+export function navigateToRoute(route: AppRoute, params?: RouteParams) {
+  if (typeof window !== "undefined") {
+    window.location.hash = buildHash(route, params);
+  }
+}
+
 export function useRouter() {
   const [state, setState] = useState<RouterState>(() => {
     if (typeof window !== "undefined") {
@@ -93,8 +99,7 @@ export function useRouter() {
   }, []);
 
   const navigate = useCallback((route: AppRoute, params?: RouteParams) => {
-    const hash = buildHash(route, params);
-    window.location.hash = hash;
+    navigateToRoute(route, params);
   }, []);
 
   const updateParams = useCallback(

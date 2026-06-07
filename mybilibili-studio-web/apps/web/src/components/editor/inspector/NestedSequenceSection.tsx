@@ -353,7 +353,7 @@ export const NestedSequenceSection: React.FC<NestedSequenceSectionProps> = ({
                                 handleStartRename(compound);
                               }}
                               className="p-1.5 bg-background-secondary rounded text-text-muted hover:text-text-primary transition-colors"
-                              title="Rename"
+                              title="重命名"
                             >
                               <Edit3 size={10} />
                             </button>
@@ -363,7 +363,7 @@ export const NestedSequenceSection: React.FC<NestedSequenceSectionProps> = ({
                                 handleDuplicate(compound.id);
                               }}
                               className="p-1.5 bg-background-secondary rounded text-text-muted hover:text-text-primary transition-colors"
-                              title="Duplicate"
+                              title="复制"
                             >
                               <Copy size={10} />
                             </button>

@@ -4,7 +4,7 @@ import Loader from './pages/Loader';
 import Display from './shared/Display';
 
 function Main() {
-  return <MybilibiliLive />;
+  return React.createElement(MybilibiliLive);
 }
 
 function Blank() {
@@ -12,9 +12,10 @@ function Blank() {
 }
 
 function TitleBar(props: { windowId?: string }) {
-  return (
-    <div
-      style={{
+  return React.createElement(
+    'div',
+    {
+      style: {
         height: 32,
         display: 'flex',
         alignItems: 'center',
@@ -23,15 +24,14 @@ function TitleBar(props: { windowId?: string }) {
         color: '#18191c',
         background: '#ffffff',
         WebkitAppRegion: 'drag',
-      }}
-    >
-      mybilibili Live Desktop{props.windowId ? ` - ${props.windowId}` : ''}
-    </div>
+      },
+    },
+    `mybilibili 直播工作台${props.windowId ? ` - ${props.windowId}` : ''}`,
   );
 }
 
 function Placeholder() {
-  return <div />;
+  return React.createElement('div');
 }
 
 export const components = {

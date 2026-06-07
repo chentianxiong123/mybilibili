@@ -331,7 +331,7 @@ export const TemplatesBrowserPanel: React.FC<TemplatesBrowserPanelProps> = ({
           className="flex items-center gap-1.5 text-[10px] text-text-muted hover:text-text-primary transition-colors"
         >
           <ChevronLeft size={12} />
-          <span>Back to Templates</span>
+          <span>返回模板</span>
         </button>
 
         <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg border border-primary/30">
@@ -442,7 +442,7 @@ export const TemplatesBrowserPanel: React.FC<TemplatesBrowserPanelProps> = ({
           className="w-full flex items-center justify-center gap-2 py-2 text-[10px] text-text-secondary hover:text-text-primary bg-background-tertiary rounded-lg transition-colors"
         >
           <Plus size={12} />
-          <span>Save Current Project as Template</span>
+          <span>将当前项目保存为模板</span>
         </button>
       </div>
 

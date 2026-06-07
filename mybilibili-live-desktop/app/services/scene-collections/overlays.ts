@@ -89,7 +89,7 @@ export class OverlaysPersistenceService extends Service {
     const configPath = path.join(assetsPath, 'config.json');
     fs.writeFileSync(configPath, config);
 
-    throw new Error('Overlay export has been removed from mybilibili Live Desktop.');
+    throw new Error('叠加层导出已从 mybilibili 直播工作台中移除。');
   }
 
   ensureOverlaysDirectory() {

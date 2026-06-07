@@ -118,7 +118,7 @@ const CloneSourceIndicator: React.FC<{
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Target size={14} className="text-primary" />
-          <span className="text-[10px] text-text-primary">Clone Source</span>
+          <span className="text-[10px] text-text-primary">克隆来源</span>
         </div>
         <button
           onClick={onClear}

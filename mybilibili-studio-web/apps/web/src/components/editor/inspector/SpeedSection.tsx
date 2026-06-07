@@ -175,7 +175,7 @@ export const SpeedSection: React.FC<SpeedSectionProps> = ({ clip }) => {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-xs text-text-tertiary">Custom Speed</Label>
+        <Label className="text-xs text-text-tertiary">自定义速度</Label>
         <div className="flex gap-2">
           <Input
             type="number"
@@ -260,7 +260,7 @@ export const SpeedSection: React.FC<SpeedSectionProps> = ({ clip }) => {
           </div>
           {clip.smoothSlowMo && (
             <div className="space-y-1">
-              <Label className="text-xs text-text-tertiary">Quality</Label>
+              <Label className="text-xs text-text-tertiary">质量</Label>
               <Select
                 value={clip.interpolationQuality ?? "medium"}
                 onValueChange={(value: "low" | "medium" | "high") => {
@@ -285,9 +285,9 @@ export const SpeedSection: React.FC<SpeedSectionProps> = ({ clip }) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">Low (faster)</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High (slower)</SelectItem>
+                  <SelectItem value="low">低（更快）</SelectItem>
+                  <SelectItem value="medium">中</SelectItem>
+                  <SelectItem value="high">高（更慢）</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-[10px] text-text-tertiary">

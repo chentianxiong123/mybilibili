@@ -186,7 +186,7 @@ export const ScriptViewDialog: React.FC<ScriptViewDialogProps> = ({
         if (missingCount > 0) {
           toast.warning(
             `${missingCount} asset${missingCount !== 1 ? "s" : ""} need relinking`,
-            "Go to Assets panel → click \"Relink from Folder\" to restore missing media.",
+            "前往素材面板，点击“从文件夹重新关联”恢复缺失媒体。",
           );
         }
       }

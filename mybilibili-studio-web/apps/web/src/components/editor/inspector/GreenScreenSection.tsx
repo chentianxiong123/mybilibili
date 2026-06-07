@@ -18,7 +18,7 @@ const ColorPreview: React.FC<{ color: RGB; onClick?: () => void }> = ({
     style={{
       backgroundColor: `rgb(${Math.round(color.r * 255)}, ${Math.round(color.g * 255)}, ${Math.round(color.b * 255)})`,
     }}
-    title="Click to pick color from video"
+    title="点击从视频中取色"
   />
 );
 
@@ -258,7 +258,7 @@ export const GreenScreenSection: React.FC<GreenScreenSectionProps> = ({
                       ? "bg-primary text-white"
                       : "bg-background-tertiary text-text-muted hover:text-text-primary"
                   }`}
-                  title="Pick color from video"
+                  title="从视频中取色"
                 >
                   <Pipette size={12} />
                 </button>

@@ -66,7 +66,7 @@ const StrokeStyleSelector: React.FC<{
 
   return (
     <div className="flex items-center justify-between">
-      <span className="text-[10px] text-text-secondary">Style</span>
+      <span className="text-[10px] text-text-secondary">样式</span>
       <div className="flex gap-1">
         {styles.map((style, index) => (
           <button
@@ -110,7 +110,7 @@ const ShapeTypeDisplay: React.FC<{
         <span className="text-[10px] font-medium text-text-primary capitalize">
           {shapeType}
         </span>
-        <p className="text-[9px] text-text-muted">Shape clip</p>
+        <p className="text-[9px] text-text-muted">图形片段</p>
       </div>
     </div>
   );
@@ -159,7 +159,7 @@ export const ShapeSection: React.FC<ShapeSectionProps> = ({ clipId }) => {
     return (
       <div className="p-4 text-center">
         <Square size={24} className="mx-auto mb-2 text-text-muted" />
-        <p className="text-[10px] text-text-muted">No shape clip selected</p>
+        <p className="text-[10px] text-text-muted">未选择图形片段</p>
       </div>
     );
   }
