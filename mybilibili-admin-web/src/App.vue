@@ -73,6 +73,7 @@ const allMenuItems = [
     title: '运营中心',
     children: [
       { path: '/operation-tasks', icon: 'List', title: '任务中心', permission: 'operation:manage' },
+      { path: '/support-tickets', icon: 'Message', title: '工单中心', permission: 'ai:manage' },
       { path: '/audit-logs', icon: 'Tickets', title: '审计日志', permission: 'audit:manage' }
     ]
   },
@@ -83,7 +84,6 @@ const allMenuItems = [
   { path: '/index-manager', icon: 'DataLine', title: '索引管理', permission: 'search:manage' },
   { path: '/ai-usage', icon: 'DataAnalysis', title: 'AI 用量统计', permission: 'ai:manage' },
   { path: '/ai-skills', icon: 'Cpu', title: 'AI 技能管理', permission: 'ai:manage' },
-  { path: '/ai-feedback', icon: 'Message', title: 'AI 反馈管理', permission: 'ai:manage' },
   { path: '/api-management', icon: 'Setting', title: 'AI 渠道管理', permission: 'ai:manage' },
   { path: '/live-rooms', icon: 'Connection', title: '直播管理', permission: 'live:manage' },
   { path: '/meeting-admin', icon: 'Monitor', title: '会议管理', permission: 'meeting:manage' },
@@ -119,7 +119,7 @@ const activeMenu = computed(() => {
   if (path.startsWith('/api-management')) return '/api-management'
   if (path.startsWith('/ai-skills')) return '/ai-skills'
   if (path.startsWith('/ai-usage')) return '/ai-usage'
-  if (path.startsWith('/ai-feedback')) return '/ai-feedback'
+  if (path.startsWith('/support-tickets')) return '/support-tickets'
   if (path.startsWith('/live-rooms')) return '/live-rooms'
   if (path.startsWith('/meeting-admin')) return '/meeting-admin'
   if (path.startsWith('/login-logs')) return '/login-logs'

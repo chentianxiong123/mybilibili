@@ -107,8 +107,17 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Geist", "-apple-system", "BlinkMacSystemFont", "system-ui", "sans-serif"],
-        mono: ["Geist Mono", "monospace"],
+        sans: [
+          "Microsoft YaHei UI",
+          "Microsoft YaHei",
+          "PingFang SC",
+          "Hiragino Sans GB",
+          "Noto Sans CJK SC",
+          "Segoe UI",
+          "system-ui",
+          "sans-serif",
+        ],
+        mono: ["Consolas", "SFMono-Regular", "Menlo", "monospace"],
       },
       boxShadow: {
         sm: "var(--shadow-sm)",

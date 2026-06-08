@@ -8,19 +8,23 @@ import lombok.Data;
 import java.util.Date;
 
 @Data
-@TableName("ai_feedback")
-public class AiFeedback {
+@TableName("support_tickets")
+public class SupportTicket {
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long sessionId;
+    private String ticketNo;
     private Long userId;
-    private Long skillId;
-    private String question;
-    private String answer;
-    private Integer rating; // 1-5
-    private String feedbackText;
+    private Long sessionId;
+    private String source;
+    private String category;
+    private String priority;
+    private String status;
+    private String title;
+    private String content;
+    private String entryReply;
     private String adminReply;
-    private String status; // PENDING / PROCESSED
+    private Long assigneeAdminId;
+    private Date processedAt;
     private Date createdAt;
     private Date updatedAt;
 }

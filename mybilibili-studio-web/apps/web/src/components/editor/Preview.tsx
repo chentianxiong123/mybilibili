@@ -6111,7 +6111,7 @@ export const Preview: React.FC = () => {
       {/* ── Panel bar header (mockup: 'Player') ───────────────── */}
       {!isMaximized && !isFullscreen && (
         <div className="flex items-center px-3.5 py-2 border-b border-border bg-bg-1 gap-2.5 min-h-[38px] shrink-0">
-          <h2 className="text-[13px] font-semibold tracking-tight text-fg m-0">播放器</h2>
+          <h2 className="text-[13px] font-semibold text-fg m-0">播放器</h2>
           <div className="ml-auto flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-accent" title="实时预览" />
           </div>
@@ -6559,7 +6559,7 @@ export const Preview: React.FC = () => {
         {/* Controls row */}
         <div className="h-12 px-4 flex items-center gap-3">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[11px] tabular-nums tracking-tight">
+          <span className="font-mono text-[11px] tabular-nums">
             <span className="text-accent font-semibold">{formatTime(playheadPosition)}</span>
             <span className="text-fg-3 mx-1">/</span>
             <span className="text-fg-3">{formatTime(project.timeline.duration || 0)}</span>

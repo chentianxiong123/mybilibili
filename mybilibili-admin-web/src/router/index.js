@@ -114,10 +114,10 @@ const router = createRouter({
       meta: { title: 'AI 技能管理 - 管理后台', requiresAuth: true, permission: 'ai:manage' }
     },
     {
-      path: '/ai-feedback',
-      name: 'aiFeedback',
-      component: () => import('../views/AiFeedbackView.vue'),
-      meta: { title: 'AI 反馈管理 - 管理后台', requiresAuth: true, permission: 'ai:manage' }
+      path: '/support-tickets',
+      name: 'supportTickets',
+      component: () => import('../views/SupportTicketsView.vue'),
+      meta: { title: '工单中心 - 管理后台', requiresAuth: true, permission: 'ai:manage' }
     },
     {
       path: '/live-rooms',

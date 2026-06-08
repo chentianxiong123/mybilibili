@@ -19,4 +19,6 @@ public interface SubtitleRepository extends MongoRepository<Subtitle, String> {
     List<Subtitle> findByVideoIdAndStatus(Integer videoId, Integer status);
 
     List<Subtitle> findByUploadedBy(Integer uploadedBy);
+
+    List<Subtitle> findByStatus(Integer status);
 }

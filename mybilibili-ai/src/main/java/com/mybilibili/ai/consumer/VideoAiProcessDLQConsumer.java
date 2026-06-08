@@ -3,6 +3,7 @@ package com.mybilibili.ai.consumer;
 import com.mybilibili.ai.mapper.VideoMapper;
 import com.mybilibili.ai.process.VideoProcessStepType;
 import com.mybilibili.common.entity.Video;
+import com.mybilibili.mq.MQConstants;
 import com.mybilibili.mq.VideoMQProducer;
 import com.mybilibili.mq.VideoProcessAnalyticsEvent;
 import com.mybilibili.mq.VideoProcessMessage;
@@ -14,10 +15,10 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RocketMQMessageListener(
-    topic = "%DLQ%video-process-group",
-    consumerGroup = "video-process-dlq-group"
+    topic = "%DLQ%" + MQConstants.GROUP_VIDEO_AI_PROCESS,
+    consumerGroup = "video-ai-process-dlq-group"
 )
-public class VideoProcessDLQConsumer implements RocketMQListener<VideoProcessMessage> {
+public class VideoAiProcessDLQConsumer implements RocketMQListener<VideoProcessMessage> {
 
     @Autowired
     private VideoMapper videoMapper;

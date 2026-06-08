@@ -649,7 +649,7 @@ export const Toolbar: React.FC = () => {
       </div>
 
       {/* ─── Center: project name ────────────────────────────── */}
-      <div className="flex items-center gap-1.5 text-[12.5px] font-medium tracking-tight">
+      <div className="flex items-center gap-1.5 text-[12.5px] font-medium">
         <input
           value={projectNameDraft}
           onChange={(e) => setProjectNameDraft(e.target.value)}
@@ -664,7 +664,7 @@ export const Toolbar: React.FC = () => {
           }}
           size={Math.max(projectNameDraft.length, 6)}
           spellCheck={false}
-          className="bg-transparent border-0 text-center font-medium text-[12.5px] tracking-tight text-fg px-2 py-0.5 rounded min-w-[60px] focus:bg-bg-2 focus:outline-none"
+          className="bg-transparent border-0 text-center font-medium text-[12.5px] text-fg px-2 py-0.5 rounded min-w-[60px] focus:bg-bg-2 focus:outline-none"
         />
         <ProjectSwitcher />
       </div>

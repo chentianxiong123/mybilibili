@@ -97,7 +97,7 @@ export default function MybilibiliLivePage(p: { className?: string }) {
 
   function saveConnection() {
     MybilibiliLiveService.actions.setConnection(draftBaseUrl);
-    setMessage('Gateway 地址已保存');
+    setMessage('网关地址已保存');
   }
 
   async function loginToSite() {
@@ -149,7 +149,7 @@ export default function MybilibiliLivePage(p: { className?: string }) {
           <div className={styles.titleRow}>
             <h1>直播控制台</h1>
             <span className={cx(styles.liveChip, isObsStreaming && styles.liveChipOn)}>
-              OBS：{statusLabel(obsStreamingStatus)}
+              本机推流：{statusLabel(obsStreamingStatus)}
             </span>
           </div>
           <div className={styles.roomLine}>
@@ -163,7 +163,7 @@ export default function MybilibiliLivePage(p: { className?: string }) {
           {!isObsStreaming ? (
             <button
               className={styles.dangerButton}
-              onClick={() => run('OBS 开播请求已发送', startStreaming)}
+              onClick={() => run('开播请求已发送', startStreaming)}
               disabled={busy || !room || !streamKey}
             >
               开始直播
@@ -212,7 +212,7 @@ export default function MybilibiliLivePage(p: { className?: string }) {
             <strong>{statusLabel(roomStatus)}</strong>
           </div>
           <div className={styles.metricItem}>
-            <span>OBS</span>
+            <span>本机</span>
             <strong>{statusLabel(obsStreamingStatus)}</strong>
           </div>
           <div className={styles.metricItem}>
@@ -243,7 +243,7 @@ export default function MybilibiliLivePage(p: { className?: string }) {
               </button>
             </div>
             <div className={styles.formGrid}>
-              <Field label="网关接口">
+              <Field label="网关地址">
                 <input
                   value={draftBaseUrl}
                   onChange={event => setDraftBaseUrl(event.target.value)}
@@ -313,19 +313,19 @@ export default function MybilibiliLivePage(p: { className?: string }) {
           <section className={styles.panel}>
             <div className={styles.panelHeader}>
               <div>
-                <h2>OBS 推流</h2>
-                <span>写入自定义 RTMP 配置</span>
+                <h2>推流配置</h2>
+                <span>写入平台推流地址和密钥</span>
               </div>
               <button
                 className={styles.primaryButton}
                 onClick={() =>
-                  run('OBS 推流配置已写入', () =>
+                  run('推流配置已写入', () =>
                     MybilibiliLiveService.actions.return.applyStreamSettings(),
                   )
                 }
                 disabled={busy || !room}
               >
-                写入 OBS
+                写入配置
               </button>
             </div>
             <div className={styles.streamRows}>
@@ -377,7 +377,7 @@ export default function MybilibiliLivePage(p: { className?: string }) {
                   disabled={!room}
                 />
               </Field>
-              <Field label="封面 URL" className={styles.fullField}>
+              <Field label="封面地址" className={styles.fullField}>
                 <input
                   value={draftCoverUrl}
                   onChange={event => setDraftCoverUrl(event.target.value)}
@@ -397,7 +397,7 @@ export default function MybilibiliLivePage(p: { className?: string }) {
             </div>
             <dl className={styles.statusList}>
               <div>
-                <dt>OBS 状态</dt>
+                <dt>本机状态</dt>
                 <dd>{statusLabel(obsStreamingStatus)}</dd>
               </div>
               <div>
@@ -410,9 +410,9 @@ export default function MybilibiliLivePage(p: { className?: string }) {
               </div>
             </dl>
             <p className={styles.diagnosticHint}>
-              平台状态应由 RTMP 服务回调更新；下面按钮只用于本地调试状态修正。
+              平台状态应由推流服务回调更新；下面按钮只用于本地调试状态修正。
             </p>
-            <div className={styles.actionRow}>
+            <div className={cx(styles.actionRow, styles.diagnosticActions)}>
               <button
                 className={styles.secondaryButton}
                 onClick={() =>

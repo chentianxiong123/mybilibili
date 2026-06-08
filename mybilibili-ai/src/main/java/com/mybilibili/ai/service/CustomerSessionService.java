@@ -11,7 +11,7 @@ public interface CustomerSessionService {
     // 客服发送消息（人工回复）
     void sendHumanReply(Long sessionId, Long adminId, String content);
     // 将会话标记为已处理
-    void markProcessed(Long sessionId);
+    void markProcessed(Long sessionId, Long adminId);
     // 获取当前排队等待人工的会话数
     long countPending();
 }

@@ -5,6 +5,7 @@ import com.mybilibili.ai.entity.AiSession;
 import com.mybilibili.ai.mapper.AiChatMessageMapper;
 import com.mybilibili.ai.mapper.AiSessionMapper;
 import com.mybilibili.ai.service.CustomerSessionService;
+import com.mybilibili.ai.service.SupportTicketService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,9 @@ public class CustomerSessionServiceImpl implements CustomerSessionService {
 
     @Autowired
     private AiChatMessageMapper aiChatMessageMapper;
+
+    @Autowired
+    private SupportTicketService supportTicketService;
 
     @Override
     public List<Map<String, Object>> listPendingSessions() {
@@ -90,12 +94,13 @@ public class CustomerSessionServiceImpl implements CustomerSessionService {
 
     @Override
     @Transactional
-    public void markProcessed(Long sessionId) {
+    public void markProcessed(Long sessionId, Long adminId) {
         AiSession session = aiSessionMapper.selectById(sessionId);
         if (session != null) {
             session.setStatus(STATUS_PROCESSED);
             session.setUpdatedAt(new Date());
             aiSessionMapper.updateById(session);
+            supportTicketService.processBySession(sessionId, adminId, "人工客服会话已处理");
         }
     }
 

@@ -1,5 +1,11 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import {
+  clearAuthSession,
+  getRefreshToken,
+  getToken,
+  setAuthSession
+} from '../utils/auth.js'
 
 // 创建axios实例
 const api = axios.create({
@@ -15,9 +21,10 @@ const api = axios.create({
 api.interceptors.request.use(
   config => {
     // 从localStorage获取token
-    const token = localStorage.getItem('token')
+    const token = getToken()
     // 对图片请求不添加Authorization头
-    const isImageRequest = config.url.includes('/covers/') || config.url.includes('/images/') || config.url.match(/\.(jpg|jpeg|png|gif|mp4)$/i)
+    const url = config.url || ''
+    const isImageRequest = url.includes('/covers/') || url.includes('/images/') || url.match(/\.(jpg|jpeg|png|gif|mp4)$/i)
     if (token && !isImageRequest) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -50,14 +57,13 @@ api.interceptors.response.use(
   },
   error => {
     const originalRequest = error.config
+    const hasToken = Boolean(getToken())
 
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
-      const refreshToken = localStorage.getItem('refreshToken')
+      const refreshToken = getRefreshToken()
 
       if (!refreshToken || originalRequest.url === '/user/token/refresh') {
-        localStorage.removeItem('token')
-        localStorage.removeItem('refreshToken')
-        localStorage.removeItem('user')
+        clearAuthSession()
         return Promise.reject(error)
       }
 
@@ -78,23 +84,18 @@ api.interceptors.response.use(
           .then(res => {
             if (res.code === 200 && res.data) {
               const { token, refreshToken: newRefreshToken } = res.data
-              localStorage.setItem('token', token)
-              localStorage.setItem('refreshToken', newRefreshToken)
+              setAuthSession({ token, refreshToken: newRefreshToken || refreshToken })
               originalRequest.headers.Authorization = `Bearer ${token}`
               processQueue(null, token)
               resolve(api(originalRequest))
             } else {
-              localStorage.removeItem('token')
-              localStorage.removeItem('refreshToken')
-              localStorage.removeItem('user')
+              clearAuthSession()
               processQueue(new Error('refresh failed'), null)
               reject(error)
             }
           })
           .catch(err => {
-            localStorage.removeItem('token')
-            localStorage.removeItem('refreshToken')
-            localStorage.removeItem('user')
+            clearAuthSession()
             processQueue(err, null)
             reject(err)
           })
@@ -108,9 +109,7 @@ api.interceptors.response.use(
       switch (error.response.status) {
         case 401:
           if (hasToken) {
-            localStorage.removeItem('token')
-            localStorage.removeItem('refreshToken')
-            localStorage.removeItem('user')
+            clearAuthSession()
           }
           break
         case 403:
@@ -316,7 +315,7 @@ export const commentApi = {
 
 // 稿件互动相关API
 const requireAuthResult = (data) => (
-  localStorage.getItem('token')
+  getToken()
     ? null
     : Promise.resolve({ code: 401, message: '请先登录', data })
 )
@@ -412,7 +411,7 @@ function decodeJwtPayload(token) {
 }
 
 function getAccessTokenRemainingMs() {
-  const token = localStorage.getItem('token')
+  const token = getToken()
   if (!token) return -1
   const payload = decodeJwtPayload(token)
   if (!payload || !payload.exp) return -1
@@ -420,7 +419,7 @@ function getAccessTokenRemainingMs() {
 }
 
 async function silentRefreshOnce() {
-  const refreshToken = localStorage.getItem('refreshToken')
+  const refreshToken = getRefreshToken()
   if (!refreshToken) {
     stopSilentRefresh()
     return false
@@ -429,16 +428,14 @@ async function silentRefreshOnce() {
     // 直接走原始 axios（绕开拦截器，避免 401 触发递归 refresh）
     const res = await api.post('/user/token/refresh', { refreshToken })
     if (res && res.code === 200 && res.data && res.data.token) {
-      localStorage.setItem('token', res.data.token)
-      if (res.data.refreshToken) {
-        localStorage.setItem('refreshToken', res.data.refreshToken)
-      }
+      setAuthSession({
+        token: res.data.token,
+        refreshToken: res.data.refreshToken || refreshToken
+      })
       return true
     }
     // 失败：清态并停止
-    localStorage.removeItem('token')
-    localStorage.removeItem('refreshToken')
-    localStorage.removeItem('user')
+    clearAuthSession()
     stopSilentRefresh()
     return false
   } catch (e) {
@@ -452,7 +449,7 @@ let silentRefreshTimer = null
 export function startSilentRefresh() {
   if (silentRefreshTimer) return
   silentRefreshTimer = setInterval(async () => {
-    if (!localStorage.getItem('refreshToken')) {
+    if (!getRefreshToken()) {
       stopSilentRefresh()
       return
     }

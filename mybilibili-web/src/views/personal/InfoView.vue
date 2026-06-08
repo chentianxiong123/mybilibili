@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { Calendar } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { userApi } from '../../api/index.js'
+import { setAuthSession } from '../../utils/auth.js'
 
 const router = useRouter()
 
@@ -117,7 +118,7 @@ const saveChanges = async () => {
           gender: updatedGender,
           birthday: formData.value.birthday
         }
-        localStorage.setItem('user', JSON.stringify(currentUser.value))
+        setAuthSession({ user: currentUser.value })
       }
 
       // 更新原始数据

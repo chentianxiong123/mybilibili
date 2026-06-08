@@ -95,11 +95,11 @@ function getRecommendedPresetsForAspectRatio(
 function getAspectRatioLabel(aspectType: AspectRatioType): string {
   switch (aspectType) {
     case "vertical":
-      return "Vertical (TikTok, Reels, Shorts)";
+      return "竖屏短视频";
     case "square":
-      return "Square (Instagram Feed)";
+      return "方形内容";
     case "horizontal":
-      return "Horizontal (YouTube, Twitter)";
+      return "横屏视频";
   }
 }
 
@@ -278,7 +278,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
           <div className="flex items-center gap-3">
             <Download size={20} className="text-primary" />
             <DialogTitle className="text-lg font-bold text-text-primary">
-              Export Video
+              导出视频
             </DialogTitle>
           </div>
         </DialogHeader>
@@ -377,7 +377,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
                           </span>
                           <span>
                             {(preset.settings as VideoExportSettings).frameRate}
-                            fps
+                            帧/秒
                           </span>
                           <span>{preset.aspectRatio}</span>
                         </div>
@@ -398,7 +398,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-text-secondary mb-2">
-                    Format
+                    封装格式
                   </label>
                   <Select
                     value={customSettings.format}
@@ -422,7 +422,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
 
                 <div>
                   <label className="block text-xs font-medium text-text-secondary mb-2">
-                    Codec
+                    编码格式
                   </label>
                   <Select
                     value={customSettings.codec}
@@ -631,7 +631,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
                     <div className="flex items-center gap-2">
                       <Zap size={14} className="text-primary" />
                       <Label htmlFor="upscaling-switch" className="text-xs font-medium text-text-secondary">
-                        Enhance Quality (Upscaling)
+                        超分增强
                       </Label>
                     </div>
                     <Switch
@@ -653,7 +653,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
                     <div className="space-y-3 pl-6">
                       <div>
                         <label className="block text-[10px] text-text-muted mb-1.5">
-                          Quality Mode
+                          处理模式
                         </label>
                         <div className="flex gap-2">
                           {(["fast", "balanced", "quality"] as const).map(
@@ -676,7 +676,11 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
                                     : "border-border text-text-secondary hover:border-primary/50"
                                 }`}
                               >
-                                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                                {{
+                                  fast: "快速",
+                                  balanced: "均衡",
+                                  quality: "高质量",
+                                }[mode]}
                               </button>
                             ),
                           )}

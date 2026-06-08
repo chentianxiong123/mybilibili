@@ -17,11 +17,11 @@ import org.springframework.stereotype.Component;
 @Component
 @RocketMQMessageListener(
     topic = MQConstants.TOPIC_VIDEO_PROCESS,
-    consumerGroup = MQConstants.GROUP_VIDEO_PROCESS,
+    consumerGroup = MQConstants.GROUP_VIDEO_AI_PROCESS,
     selectorExpression = VideoProcessMessage.PROCESS_TYPE_GENERATE_SUBTITLE + " || " + VideoProcessMessage.PROCESS_TYPE_AI_SUMMARY,
     consumeMode = ConsumeMode.ORDERLY
 )
-public class VideoProcessConsumer implements RocketMQListener<VideoProcessMessage> {
+public class VideoAiProcessConsumer implements RocketMQListener<VideoProcessMessage> {
 
     @Autowired
     private VideoMapper videoMapper;

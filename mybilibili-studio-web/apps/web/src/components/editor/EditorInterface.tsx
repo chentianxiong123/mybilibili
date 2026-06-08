@@ -81,7 +81,7 @@ const useAutoSave = () => {
 const useEngineInitialization = () => {
   const { initialize, initialized, initializing, initError } = useEngineStore();
   const [bridgesReady, setBridgesReady] = useState(false);
-  const [initStatus, setInitStatus] = useState("Starting...");
+  const [initStatus, setInitStatus] = useState("正在启动...");
   const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -91,7 +91,7 @@ const useEngineInitialization = () => {
       try {
         const currentState = useEngineStore.getState();
         if (!currentState.initialized && !currentState.initializing) {
-          setInitStatus("Initializing video engine...");
+          setInitStatus("正在初始化视频引擎...");
           await initialize();
         } else if (currentState.initializing) {
           await new Promise<void>((resolve) => {
@@ -109,23 +109,23 @@ const useEngineInitialization = () => {
         const engineState = useEngineStore.getState();
         if (!engineState.initialized) {
           throw new Error(
-            engineState.initError || "Engine initialization failed",
+            engineState.initError || "编辑器初始化失败",
           );
         }
 
-        setInitStatus("Initializing media bridge...");
+        setInitStatus("正在初始化素材桥接...");
         await initializeMediaBridge();
         if (!isMounted) return;
 
-        setInitStatus("Initializing playback bridge...");
+        setInitStatus("正在初始化播放桥接...");
         await initializePlaybackBridge();
         if (!isMounted) return;
 
-        setInitStatus("Initializing render bridge...");
+        setInitStatus("正在初始化渲染桥接...");
         await initializeRenderBridge();
         if (!isMounted) return;
 
-        setInitStatus("Initializing effects bridge...");
+        setInitStatus("正在初始化特效桥接...");
         const projectState = useProjectStore.getState();
         const { width, height } = projectState.project.settings;
         try {
@@ -138,7 +138,7 @@ const useEngineInitialization = () => {
         }
         if (!isMounted) return;
 
-        setInitStatus("Initializing transition bridge...");
+        setInitStatus("正在初始化转场桥接...");
         try {
           initializeTransitionBridge(width, height);
         } catch (transitionError) {
@@ -154,10 +154,10 @@ const useEngineInitialization = () => {
         console.error("Failed to initialize engines/bridges:", error);
         if (isMounted) {
           setLocalError(
-            error instanceof Error ? error.message : "Unknown error",
+            error instanceof Error ? error.message : "未知错误",
           );
           setInitStatus(
-            `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+            `错误：${error instanceof Error ? error.message : "未知错误"}`,
           );
         }
       }
@@ -393,7 +393,7 @@ export const EditorInterface: React.FC = () => {
       <div className="w-full h-full bg-bg flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-fg-2 text-sm">Initializing editor…</p>
+          <p className="text-fg-2 text-sm">正在初始化编辑器...</p>
           <p className="text-fg-muted text-xs mt-2">{initStatus}</p>
           {initError && (
             <p className="text-status-error text-xs mt-2">{initError}</p>
@@ -432,7 +432,7 @@ export const EditorInterface: React.FC = () => {
           className="bg-bg-1 min-w-0 min-h-0 overflow-hidden"
           style={{ gridArea: "media" }}
         >
-          <PanelErrorBoundary name="Media">
+          <PanelErrorBoundary name="素材区">
             <VueAdapter component={AssetsPanelVue} />
           </PanelErrorBoundary>
         </div>
@@ -447,7 +447,7 @@ export const EditorInterface: React.FC = () => {
           className="bg-stage-bg min-w-0 min-h-0 overflow-hidden"
           style={{ gridArea: "stage" }}
         >
-          <PanelErrorBoundary name="Stage">
+          <PanelErrorBoundary name="预览区">
             <Preview />
           </PanelErrorBoundary>
         </div>
@@ -462,7 +462,7 @@ export const EditorInterface: React.FC = () => {
           className="bg-bg-1 min-w-0 min-h-0 overflow-hidden"
           style={{ gridArea: "inspector" }}
         >
-          <PanelErrorBoundary name="Inspector">
+          <PanelErrorBoundary name="属性面板">
             <InspectorPanel />
           </PanelErrorBoundary>
         </div>

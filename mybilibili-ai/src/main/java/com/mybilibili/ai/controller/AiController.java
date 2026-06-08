@@ -33,23 +33,27 @@ public class AiController {
     @Autowired
     private StorageService storageService;
 
-    @GetMapping("/subtitle/{videoId}")
-    @Operation(summary = "获取字幕内容", description = "从Redis获取生成的字幕内容")
-    public Result<String> getSubtitle(@PathVariable Integer videoId) {
-        String subtitle = redisTemplate.opsForValue().get("subtitle:" + videoId);
-        if (subtitle == null) {
-            return Result.error(404, "字幕尚未生成");
-        }
-        return Result.success(subtitle);
-    }
-
     @GetMapping("/summary/{videoId}")
-    @Operation(summary = "获取摘要内容", description = "从Redis获取生成的摘要内容")
+    @Operation(summary = "获取摘要内容", description = "从缓存或对象存储获取生成的摘要内容")
     public Result<String> getSummary(@PathVariable Integer videoId) {
         String summary = redisTemplate.opsForValue().get("summary:" + videoId);
-        if (summary == null) {
+        if (summary != null && !summary.isBlank()) {
+            return Result.success(summary);
+        }
+
+        Video video = videoMapper.selectById(videoId);
+        if (video == null) {
+            return Result.error("视频不存在");
+        }
+        if (video.getHasSummary() == null || video.getHasSummary() != 1) {
             return Result.error(404, "摘要尚未生成");
         }
+
+        summary = readSummaryFromStorage(videoId, video.getManuscriptId());
+        if (summary == null || summary.isBlank()) {
+            return Result.error(404, "摘要文件不存在或为空");
+        }
+        redisTemplate.opsForValue().set("summary:" + videoId, summary);
         return Result.success(summary);
     }
 

@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/ai/usage")
+@RequestMapping("/ai/admin/usage")
 public class AiUsageController {
 
     @Autowired
