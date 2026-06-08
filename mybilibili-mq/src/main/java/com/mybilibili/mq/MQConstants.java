@@ -26,6 +26,8 @@ public class MQConstants {
 
     public static final String TOPIC_VIDEO_PROCESS_PROGRESS = "video-process-progress-topic";
 
+    public static final String TOPIC_STUDIO_EXPORT = "studio-export-topic";
+
     public static final String GROUP_VIDEO_MEDIA_PROCESS = "video-media-process-group";
 
     public static final String GROUP_VIDEO_AI_PROCESS = "video-ai-process-group";
@@ -47,6 +49,8 @@ public class MQConstants {
     public static final String GROUP_VIDEO_PROCESS_ANALYTICS = "video-process-analytics-group";
 
     public static final String GROUP_VIDEO_PROCESS_PROGRESS = "video-process-progress-group";
+
+    public static final String GROUP_STUDIO_EXPORT = "studio-export-group";
 
     public static final String TOPIC_CONTENT_REVIEW = "content-review-topic";
 
