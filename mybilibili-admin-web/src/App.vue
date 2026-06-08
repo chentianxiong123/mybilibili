@@ -36,6 +36,7 @@ const route = useRoute()
 const router = useRouter()
 const adminStore = useAdminStore()
 const isSuperAdmin = computed(() => adminStore.role === '超级管理员')
+const canUseAdminAssistant = computed(() => adminStore.hasPermission('ai:manage'))
 const isCollapse = ref(false)
 const showAiAssistant = ref(false)
 
@@ -65,13 +66,10 @@ const iconMap = {
 }
 
 const allMenuItems = [
-  { path: '/dashboard', icon: 'DataBoard', title: '数据概览', permission: 'statistics:manage' },
-  { path: '/users', icon: 'User', title: '用户管理', permission: 'user:manage' },
-  { path: '/manuscripts', icon: 'Document', title: '稿件管理', permission: 'review:manage' },
   {
     type: 'group',
     icon: 'Operation',
-    title: '运营中心',
+    title: '运营板块',
     children: [
       { path: '/operation-tasks', icon: 'List', title: '任务中心', permission: 'operation:manage' },
       { path: '/support-tickets', icon: 'Message', title: '工单中心', permission: 'operation:manage' },
@@ -80,18 +78,50 @@ const allMenuItems = [
       { path: '/audit-logs', icon: 'Tickets', title: '审计日志', permission: 'audit:manage' }
     ]
   },
-  { path: '/prohibited-words', icon: 'Warning', title: '违禁词与安全设置', permission: 'comment:manage' },
-  { path: '/content-review', icon: 'DocumentChecked', title: '内容审核中心', permission: 'review:manage' },
-  { path: '/categories', icon: 'Folder', title: '分类管理', permission: 'category:manage' },
-  { path: '/banner-images', icon: 'Picture', title: '图片管理', permission: 'banner:manage' },
-  { path: '/ai-usage', icon: 'DataAnalysis', title: 'AI 用量统计', permission: 'ai:manage' },
-  { path: '/ai-skills', icon: 'Cpu', title: 'AI 技能管理', permission: 'ai:manage' },
-  { path: '/api-management', icon: 'Setting', title: 'AI 渠道管理', permission: 'ai:manage' },
-  { path: '/live-rooms', icon: 'Connection', title: '直播管理', permission: 'live:manage' },
-  { path: '/meeting-admin', icon: 'Monitor', title: '会议管理', permission: 'meeting:manage' },
-  { path: '/customer-chat', icon: 'Headset', title: '客服会话', permission: 'ai:manage' },
-  { path: '/login-logs', icon: 'List', title: '登录日志', permission: 'security:manage' },
-  { path: '/admins', icon: 'Lock', title: '管理员与角色权限', permission: 'role:manage', superAdminOnly: true }
+  {
+    type: 'group',
+    icon: 'DocumentChecked',
+    title: '审核治理',
+    children: [
+      { path: '/manuscripts', icon: 'Document', title: '稿件管理', permission: 'review:manage' },
+      { path: '/content-review', icon: 'DocumentChecked', title: '内容审核中心', permission: 'review:manage' },
+      { path: '/prohibited-words', icon: 'Warning', title: '违禁词与安全设置', permission: 'comment:manage' }
+    ]
+  },
+  {
+    type: 'group',
+    icon: 'Cpu',
+    title: 'AI 管理',
+    children: [
+      { path: '/ai-usage', icon: 'DataAnalysis', title: 'AI 用量统计', permission: 'ai:manage' },
+      { path: '/ai-skills', icon: 'Cpu', title: 'AI 技能管理', permission: 'ai:manage' },
+      { path: '/api-management', icon: 'Setting', title: 'AI 渠道管理', permission: 'ai:manage' },
+      { path: '/customer-chat', icon: 'Headset', title: '客服会话', permission: 'ai:manage' }
+    ]
+  },
+  {
+    type: 'group',
+    icon: 'VideoPlay',
+    title: '媒体管理',
+    children: [
+      { path: '/categories', icon: 'Folder', title: '分类管理', permission: 'category:manage' },
+      { path: '/banner-images', icon: 'Picture', title: '图片管理', permission: 'banner:manage' },
+      { path: '/subtitles', icon: 'Tickets', title: '字幕管理', permission: 'video:manage' },
+      { path: '/live-rooms', icon: 'Connection', title: '直播管理', permission: 'live:manage' },
+      { path: '/meeting-admin', icon: 'Monitor', title: '会议管理', permission: 'meeting:manage' }
+    ]
+  },
+  {
+    type: 'group',
+    icon: 'Lock',
+    title: '系统管理',
+    children: [
+      { path: '/dashboard', icon: 'DataBoard', title: '数据概览', permission: 'statistics:manage' },
+      { path: '/users', icon: 'User', title: '用户管理', permission: 'user:manage' },
+      { path: '/login-logs', icon: 'List', title: '登录日志', permission: 'security:manage' },
+      { path: '/admins', icon: 'Lock', title: '管理员与角色权限', permission: 'role:manage', superAdminOnly: true }
+    ]
+  }
 ]
 
 const filterMenuNode = (node) => {
@@ -217,8 +247,8 @@ const handleCommand = (command) => {
       </el-container>
     </el-container>
 
-    <AdminAiFloatingButton v-model:visible="showAiAssistant" />
-    <AdminAiChatPanel v-model:visible="showAiAssistant" />
+    <AdminAiFloatingButton v-if="canUseAdminAssistant" v-model:visible="showAiAssistant" />
+    <AdminAiChatPanel v-if="canUseAdminAssistant" v-model:visible="showAiAssistant" />
   </div>
 
   <!-- 登录页面 -->

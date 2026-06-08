@@ -1,17 +1,17 @@
 <script setup>
 import { ChatDotRound } from '@element-plus/icons-vue'
 
-defineProps({
+const props = defineProps({
   visible: {
     type: Boolean,
     default: false
   }
 })
 
-const emit = defineEmits(['toggle'])
+const emit = defineEmits(['update:visible'])
 
 const handleClick = () => {
-  emit('toggle')
+  emit('update:visible', !props.visible)
 }
 </script>
 
@@ -20,7 +20,7 @@ const handleClick = () => {
     class="floating-button"
     :class="{ active: visible }"
     @click="handleClick"
-    aria-label="AI Chat"
+    aria-label="打开管理助手"
   >
     <el-icon :size="24"><ChatDotRound /></el-icon>
   </button>

@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { firstAllowedPathByPermissions } from './permissionRoutes'
 
 const router = createRouter({
   history: createWebHistory('/admin/'),
@@ -142,6 +143,12 @@ const router = createRouter({
       name: 'loginLogs',
       component: () => import('../views/LoginLogsView.vue'),
       meta: { title: '登录日志 - 管理后台', requiresAuth: true, permission: 'security:manage' }
+    },
+    {
+      path: '/no-permission',
+      name: 'noPermission',
+      component: () => import('../views/NoPermissionView.vue'),
+      meta: { title: '暂无权限 - 管理后台', requiresAuth: true }
     }
   ]
 })
@@ -161,12 +168,10 @@ const hasPermission = (permission) => {
   return getAdminPermissions().includes(permission)
 }
 
-const clearAdminSession = () => {
-  localStorage.removeItem('admin_token')
-  localStorage.removeItem('admin_user')
-  localStorage.removeItem('admin_role')
-  localStorage.removeItem('admin_permissions')
-  localStorage.removeItem('admin_id')
+const firstAllowedPath = () => {
+  const role = localStorage.getItem('admin_role')
+  const permissions = getAdminPermissions()
+  return firstAllowedPathByPermissions(role, permissions)
 }
 
 // 路由守卫
@@ -177,18 +182,14 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !token) {
     next('/login')
   } else if (to.path === '/login' && token) {
-    next('/dashboard')
+    next(firstAllowedPath())
+  } else if (to.path === '/' && token) {
+    next(firstAllowedPath())
   } else if (to.meta.superAdminOnly && role !== '超级管理员') {
-    next('/dashboard')
+    next(firstAllowedPath())
   } else if (to.meta.requiresAuth && !hasPermission(to.meta.permission)) {
-    if (getAdminPermissions().length === 0) {
-      clearAdminSession()
-      next('/login')
-      return
-    }
-    const fallback = router.getRoutes()
-      .find(route => route.meta.requiresAuth && !route.meta.superAdminOnly && hasPermission(route.meta.permission))
-    next(fallback && fallback.path !== to.path ? fallback.path : '/login')
+    const fallback = firstAllowedPath()
+    next(fallback !== to.path ? fallback : '/no-permission')
   } else {
     next()
   }
