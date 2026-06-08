@@ -48,6 +48,13 @@ export interface MediaItem {
   readonly kieaiError?: boolean;
   /** KieAI task ID used to poll for completion */
   readonly kieaiTaskId?: string;
+  /** Object storage key used by cloud export workers */
+  readonly cloudObjectKey?: string;
+  /** Public or gateway-accessible object URL used for remote rendering */
+  readonly cloudUrl?: string;
+  readonly cloudContentType?: string;
+  readonly cloudUploadedAt?: number;
+  readonly cloudUploadError?: string;
 }
 
 /** Thumbnail for filmstrip display in timeline */

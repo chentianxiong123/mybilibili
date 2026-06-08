@@ -72,6 +72,7 @@ import {
 } from "../services/media-storage";
 import { restoreMediaItem } from "../utils/media-recovery";
 import { projectManager } from "../services/project-manager";
+import { uploadStudioCloudAsset } from "../services/studio-cloud-assets";
 
 /**
  * ProjectState - Complete state interface for project management
@@ -655,6 +656,63 @@ export const useProjectStore = create<ProjectState>()(
 
       for (const track of nextProject.timeline.tracks) {
         syncTrackTransitionsBridge(nextProject, track.id);
+      }
+    };
+
+    const uploadMediaItemToCloud = async (
+      projectId: string,
+      mediaId: string,
+      file: File,
+    ) => {
+      try {
+        const asset = await uploadStudioCloudAsset(projectId, mediaId, file);
+        const currentProject = get().project;
+        if (currentProject.id !== projectId) return;
+        const updatedItems = currentProject.mediaLibrary.items.map((item) =>
+          item.id === mediaId
+            ? {
+                ...item,
+                cloudObjectKey: asset.objectKey,
+                cloudUrl: asset.url,
+                cloudContentType: asset.contentType,
+                cloudUploadedAt: Date.now(),
+                cloudUploadError: undefined,
+              }
+            : item,
+        );
+        set({
+          project: {
+            ...currentProject,
+            mediaLibrary: {
+              ...currentProject.mediaLibrary,
+              items: updatedItems,
+            },
+            modifiedAt: Date.now(),
+          },
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "素材云端上传失败";
+        const currentProject = get().project;
+        if (currentProject.id !== projectId) return;
+        const updatedItems = currentProject.mediaLibrary.items.map((item) =>
+          item.id === mediaId
+            ? {
+                ...item,
+                cloudUploadError: message,
+              }
+            : item,
+        );
+        set({
+          project: {
+            ...currentProject,
+            mediaLibrary: {
+              ...currentProject.mediaLibrary,
+              items: updatedItems,
+            },
+            modifiedAt: Date.now(),
+          },
+        });
+        console.warn("[ProjectStore] Studio cloud asset upload failed:", message);
       }
     };
 
@@ -1786,6 +1844,8 @@ export const useProjectStore = create<ProjectState>()(
             console.error("[ProjectStore] Failed to persist media blob:", err);
           }
 
+          void uploadMediaItemToCloud(updatedProject.id, newMediaItem.id, file);
+
           if (mediaType === "video" && !thumbnailUrl) {
             setTimeout(async () => {
               try {
@@ -1988,6 +2048,8 @@ export const useProjectStore = create<ProjectState>()(
             },
           });
 
+          void uploadMediaItemToCloud(project.id, mediaId, file);
+
           if (updatedItem.type === "video" && !updatedItem.thumbnailUrl) {
             setTimeout(async () => {
               try {
@@ -2166,6 +2228,8 @@ export const useProjectStore = create<ProjectState>()(
         } catch (err) {
           console.error("[ProjectStore] Failed to persist KieAI result blob:", err);
         }
+
+        void uploadMediaItemToCloud(project.id, mediaId, file);
       },
 
       // Track actions

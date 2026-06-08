@@ -60,6 +60,10 @@ public final class StorageKeys {
         return "images/dynamics/%d/%s".formatted(userId, fileName);
     }
 
+    public static String studioAsset(Integer userId, String projectId, String mediaId, String fileName) {
+        return "studio/%d/projects/%s/assets/%s/%s".formatted(userId, projectId, mediaId, fileName);
+    }
+
     public static String tempUpload(String uploadId, String part, String chunk) {
         return "temp-uploads/%s/%s/%s".formatted(uploadId, part, chunk);
     }
