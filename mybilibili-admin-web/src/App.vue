@@ -25,6 +25,7 @@ import {
   Tickets,
   User,
   UserFilled,
+  VideoPlay,
   Warning
 } from '@element-plus/icons-vue'
 import { useAdminStore } from './stores/admin'
@@ -73,7 +74,9 @@ const allMenuItems = [
     title: '运营中心',
     children: [
       { path: '/operation-tasks', icon: 'List', title: '任务中心', permission: 'operation:manage' },
-      { path: '/support-tickets', icon: 'Message', title: '工单中心', permission: 'ai:manage' },
+      { path: '/support-tickets', icon: 'Message', title: '工单中心', permission: 'operation:manage' },
+      { path: '/index-manager', icon: 'DataLine', title: '索引管理', permission: 'search:manage' },
+      { path: '/recommend-config', icon: 'DataAnalysis', title: '推荐配置', permission: 'search:manage' },
       { path: '/audit-logs', icon: 'Tickets', title: '审计日志', permission: 'audit:manage' }
     ]
   },
@@ -81,7 +84,6 @@ const allMenuItems = [
   { path: '/content-review', icon: 'DocumentChecked', title: '内容审核中心', permission: 'review:manage' },
   { path: '/categories', icon: 'Folder', title: '分类管理', permission: 'category:manage' },
   { path: '/banner-images', icon: 'Picture', title: '图片管理', permission: 'banner:manage' },
-  { path: '/index-manager', icon: 'DataLine', title: '索引管理', permission: 'search:manage' },
   { path: '/ai-usage', icon: 'DataAnalysis', title: 'AI 用量统计', permission: 'ai:manage' },
   { path: '/ai-skills', icon: 'Cpu', title: 'AI 技能管理', permission: 'ai:manage' },
   { path: '/api-management', icon: 'Setting', title: 'AI 渠道管理', permission: 'ai:manage' },
@@ -115,6 +117,7 @@ const activeMenu = computed(() => {
   if (path.startsWith('/categories')) return '/categories'
   if (path.startsWith('/banner-images')) return '/banner-images'
   if (path.startsWith('/index-manager')) return '/index-manager'
+  if (path.startsWith('/recommend-config')) return '/recommend-config'
   if (path.startsWith('/admins')) return '/admins'
   if (path.startsWith('/api-management')) return '/api-management'
   if (path.startsWith('/ai-skills')) return '/ai-skills'

@@ -1,11 +1,11 @@
 package com.mybilibili.ai.service.impl;
 
+import com.mybilibili.ai.client.OperationTicketClient;
 import com.mybilibili.ai.entity.AiChatMessage;
 import com.mybilibili.ai.entity.AiSession;
 import com.mybilibili.ai.mapper.AiChatMessageMapper;
 import com.mybilibili.ai.mapper.AiSessionMapper;
 import com.mybilibili.ai.service.CustomerSessionService;
-import com.mybilibili.ai.service.SupportTicketService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,7 +28,7 @@ public class CustomerSessionServiceImpl implements CustomerSessionService {
     private AiChatMessageMapper aiChatMessageMapper;
 
     @Autowired
-    private SupportTicketService supportTicketService;
+    private OperationTicketClient operationTicketClient;
 
     @Override
     public List<Map<String, Object>> listPendingSessions() {
@@ -100,12 +100,19 @@ public class CustomerSessionServiceImpl implements CustomerSessionService {
             session.setStatus(STATUS_PROCESSED);
             session.setUpdatedAt(new Date());
             aiSessionMapper.updateById(session);
-            supportTicketService.processBySession(sessionId, adminId, "人工客服会话已处理");
+            processCustomerSessionTicket(sessionId, adminId, "人工客服会话已处理");
         }
     }
 
     @Override
     public long countPending() {
         return aiSessionMapper.countByTypeAndStatus(TYPE_CUSTOMER_SERVICE, STATUS_WAITING_HUMAN);
+    }
+
+    private void processCustomerSessionTicket(Long sessionId, Long adminId, String adminReply) {
+        Map<String, Object> request = new HashMap<>();
+        request.put("adminId", adminId);
+        request.put("adminReply", adminReply);
+        operationTicketClient.processBySession(sessionId, request);
     }
 }

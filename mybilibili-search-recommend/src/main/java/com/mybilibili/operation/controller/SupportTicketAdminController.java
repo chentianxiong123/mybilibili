@@ -1,8 +1,8 @@
-package com.mybilibili.ai.controller;
+package com.mybilibili.operation.controller;
 
-import com.mybilibili.ai.entity.SupportTicket;
-import com.mybilibili.ai.service.SupportTicketService;
 import com.mybilibili.common.vo.Result;
+import com.mybilibili.operation.entity.SupportTicket;
+import com.mybilibili.operation.service.SupportTicketService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/ai/admin/tickets")
+@RequestMapping("/operation/admin/tickets")
 public class SupportTicketAdminController {
 
     @Autowired

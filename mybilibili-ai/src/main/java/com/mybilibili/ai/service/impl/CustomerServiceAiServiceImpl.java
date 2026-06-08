@@ -1,5 +1,6 @@
 package com.mybilibili.ai.service.impl;
 
+import com.mybilibili.ai.client.OperationTicketClient;
 import com.mybilibili.ai.config.DynamicChatClient;
 import com.mybilibili.ai.entity.AiApiConfig;
 import com.mybilibili.ai.entity.AiSkill;
@@ -13,7 +14,6 @@ import com.mybilibili.ai.service.AiApiConfigService;
 import com.mybilibili.ai.service.AiSkillService;
 import com.mybilibili.ai.service.CustomerServiceAiService;
 import com.mybilibili.ai.service.SkillRoutingService;
-import com.mybilibili.ai.service.SupportTicketService;
 import com.mybilibili.ai.tool.CustomerServiceReadonlyToolSet;
 import com.mybilibili.ai.util.AiUsageLogger;
 import org.springframework.ai.support.ToolCallbacks;
@@ -24,7 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
@@ -68,7 +70,7 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
     private SkillRoutingService skillRoutingService;
 
     @Autowired
-    private SupportTicketService supportTicketService;
+    private OperationTicketClient operationTicketClient;
 
     @Override
     public SseEmitter chat(Long userId, String content) {
@@ -171,7 +173,7 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
                             session.setStatus(STATUS_WAITING_HUMAN);
                             session.setUpdatedAt(new Date());
                             aiSessionMapper.updateById(session);
-                            supportTicketService.createFromCustomerSession(
+                            createCustomerSessionTicket(
                                     userId,
                                     session.getId(),
                                     "AI客服转人工工单",
@@ -227,12 +229,22 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
         session.setStatus(STATUS_WAITING_HUMAN);
         session.setUpdatedAt(new Date());
         aiSessionMapper.updateById(session);
-        supportTicketService.createFromCustomerSession(
+        createCustomerSessionTicket(
                 session.getUserId(),
                 session.getId(),
                 "用户请求人工客服介入",
                 reason,
                 null);
+    }
+
+    private void createCustomerSessionTicket(Long userId, Long sessionId, String title, String content, String entryReply) {
+        Map<String, Object> request = new HashMap<>();
+        request.put("userId", userId);
+        request.put("sessionId", sessionId);
+        request.put("title", title);
+        request.put("content", content);
+        request.put("entryReply", entryReply);
+        operationTicketClient.createFromCustomerSession(request);
     }
 
     private AiSession getOrCreateSession(Long userId) {

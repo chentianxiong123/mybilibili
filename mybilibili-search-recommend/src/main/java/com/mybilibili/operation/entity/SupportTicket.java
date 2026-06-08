@@ -1,4 +1,4 @@
-package com.mybilibili.ai.entity;
+package com.mybilibili.operation.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;

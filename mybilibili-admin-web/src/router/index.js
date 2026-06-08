@@ -117,7 +117,7 @@ const router = createRouter({
       path: '/support-tickets',
       name: 'supportTickets',
       component: () => import('../views/SupportTicketsView.vue'),
-      meta: { title: '工单中心 - 管理后台', requiresAuth: true, permission: 'ai:manage' }
+      meta: { title: '工单中心 - 管理后台', requiresAuth: true, permission: 'operation:manage' }
     },
     {
       path: '/live-rooms',
