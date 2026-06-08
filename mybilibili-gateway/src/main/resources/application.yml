@@ -324,6 +324,21 @@ spring:
           filters:
             - StripPrefix=1
 
+        # ========== 平台运营服务 ==========
+        - id: operation-admin
+          uri: lb://mybilibili-search-recommend
+          predicates:
+            - Path=/api/operation/admin/**
+          filters:
+            - StripPrefix=1
+
+        - id: operation-tickets
+          uri: lb://mybilibili-search-recommend
+          predicates:
+            - Path=/api/operation/tickets,/api/operation/tickets/**
+          filters:
+            - StripPrefix=1
+
         # ========== 默认视频服务路由（放最后）==========
         - id: video-service
           uri: lb://mybilibili-video-media

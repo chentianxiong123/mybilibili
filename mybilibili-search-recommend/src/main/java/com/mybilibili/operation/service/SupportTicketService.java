@@ -1,6 +1,6 @@
-package com.mybilibili.ai.service;
+package com.mybilibili.operation.service;
 
-import com.mybilibili.ai.entity.SupportTicket;
+import com.mybilibili.operation.entity.SupportTicket;
 
 import java.util.List;
 

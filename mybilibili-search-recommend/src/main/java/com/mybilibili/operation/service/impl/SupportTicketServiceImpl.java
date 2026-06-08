@@ -1,10 +1,10 @@
-package com.mybilibili.ai.service.impl;
+package com.mybilibili.operation.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.mybilibili.ai.entity.SupportTicket;
-import com.mybilibili.ai.mapper.SupportTicketMapper;
-import com.mybilibili.ai.service.SupportTicketService;
 import com.mybilibili.common.exception.BusinessException;
+import com.mybilibili.operation.entity.SupportTicket;
+import com.mybilibili.operation.mapper.SupportTicketMapper;
+import com.mybilibili.operation.service.SupportTicketService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

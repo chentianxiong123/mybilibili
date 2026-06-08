@@ -15,6 +15,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.mybilibili.searchrecommend",
         "com.mybilibili.search",
         "com.mybilibili.analytics",
+        "com.mybilibili.operation",
         "com.mybilibili.common",
         "com.mybilibili.mq"
 })
@@ -25,7 +26,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 })
 @MapperScan({
         "com.mybilibili.search.mapper",
-        "com.mybilibili.analytics.mapper"
+        "com.mybilibili.analytics.mapper",
+        "com.mybilibili.operation.mapper"
 })
 @EnableMongoRepositories(basePackages = "com.mybilibili.search.repository")
 @EnableElasticsearchRepositories(basePackages = "com.mybilibili.search.repository")
