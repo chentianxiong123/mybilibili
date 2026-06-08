@@ -5,9 +5,11 @@ import { SearchModal } from "./components/editor/SearchModal";
 import { MobileBlocker } from "./components/MobileBlocker";
 import { WelcomeScreen } from "./components/welcome";
 import { RecoveryDialog } from "./components/welcome/RecoveryDialog";
+import { AuthDialog } from "./components/AuthDialog";
 import { SharePage } from "./pages/SharePage";
 import { useUIStore } from "./stores/ui-store";
 import { useProjectStore } from "./stores/project-store";
+import { useAuthStore } from "./stores/auth-store";
 import { useRouter } from "./hooks/use-router";
 import { useProjectRecovery } from "./hooks/useProjectRecovery";
 import { useKieAIPoller } from "./hooks/useKieAIPoller";
@@ -39,6 +41,7 @@ function ReactApp() {
   const { activeModal, closeModal, skipWelcomeScreen } = useUIStore();
   const { openModal: openSearchModal } = useUIStore();
   const createNewProject = useProjectStore((state) => state.createNewProject);
+  const initializeAuth = useAuthStore((state) => state.initialize);
   const { showDialog, availableSaves, recover, dismiss, clearAll } = useProjectRecovery();
 
   const { route, params, navigate, parsedDimensions, fps } = useRouter();
@@ -47,12 +50,16 @@ function ReactApp() {
   useKieAIPoller();
 
   useEffect(() => {
+    void initializeAuth();
+  }, [initializeAuth]);
+
+  useEffect(() => {
     if (hasHandledInitialRoute.current) return;
 
     if (route === "new") {
       hasHandledInitialRoute.current = true;
 
-      let projectName = "New Project";
+      let projectName = "新建项目";
       let width = 1920;
       let height = 1080;
       let frameRate = fps;
@@ -64,7 +71,7 @@ function ReactApp() {
           width = preset.width;
           height = preset.height;
           frameRate = preset.frameRate || fps;
-          projectName = `New ${presetKey.charAt(0).toUpperCase() + presetKey.slice(1).replace(/-/g, " ")} Project`;
+          projectName = `新建${presetKey.replace(/-/g, " ")}项目`;
         }
       } else if (parsedDimensions) {
         width = parsedDimensions.width;
@@ -79,11 +86,11 @@ function ReactApp() {
 
         const aspectRatio = width / height;
         if (aspectRatio < 1) {
-          projectName = "New Vertical Video";
+          projectName = "新建竖屏视频";
         } else if (aspectRatio > 1) {
-          projectName = "New Horizontal Video";
+          projectName = "新建横屏视频";
         } else {
-          projectName = "New Square Video";
+          projectName = "新建方形视频";
         }
       }
 
@@ -141,10 +148,16 @@ function ReactApp() {
         ) : showWelcome ? (
           <WelcomeScreen initialTab={initialTab} />
         ) : (
-          <Suspense fallback={<LoadingSpinner message="Loading editor..." />}>
+          <Suspense fallback={<LoadingSpinner message="正在加载编辑器..." />}>
             <EditorInterface />
           </Suspense>
         )}
+        <AuthDialog
+          open={activeModal === "auth"}
+          onOpenChange={(open) => {
+            if (!open) closeModal();
+          }}
+        />
         <ToastContainer />
         <ScriptViewDialog
           isOpen={activeModal === "scriptView"}

@@ -1,11 +1,17 @@
 <script setup>
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { userApi, captchaApi, emailCodeApi } from '../api/index.js'
+import { setAuthSession } from '../utils/auth.js'
 import { Close, VideoPlay } from '@element-plus/icons-vue'
 
 const router = useRouter()
+const route = useRoute()
+
+const goAfterLogin = () => {
+  router.push(route.query.redirect || '/')
+}
 
 // 登录方式：password / email_code
 const loginMode = ref('password')
@@ -139,10 +145,9 @@ const handleLogin = () => {
       userApi.login(loginForm.username, loginForm.password)
         .then(response => {
           if (response.code === 200) {
-            localStorage.setItem('user', JSON.stringify(response.data.user))
-            localStorage.setItem('token', response.data.token)
+            setAuthSession(response.data)
             ElMessage.success('登录成功')
-            router.push('/')
+            goAfterLogin()
           } else {
             ElMessage.error(response.message || '登录失败')
           }
@@ -170,10 +175,9 @@ const handleEmailLogin = () => {
     userApi.login(null, null, 'email_code', emailLoginForm.email, emailLoginForm.emailCode)
       .then(response => {
         if (response.code === 200) {
-          localStorage.setItem('user', JSON.stringify(response.data.user))
-          localStorage.setItem('token', response.data.token)
+          setAuthSession(response.data)
           ElMessage.success('登录成功')
-          router.push('/')
+          goAfterLogin()
         } else {
           ElMessage.error(response.message || '登录失败')
         }

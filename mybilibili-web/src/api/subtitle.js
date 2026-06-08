@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { clearAuthSession, getToken } from '../utils/auth.js'
 
 // 创建axios实例
 const api = axios.create({
@@ -15,7 +16,7 @@ const api = axios.create({
 api.interceptors.request.use(
   config => {
     // 从localStorage获取token
-    const token = localStorage.getItem('token')
+    const token = getToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -35,8 +36,7 @@ api.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
+          clearAuthSession()
           // 不自动跳转登录页，由组件自己处理登录状态
           break
         case 403:

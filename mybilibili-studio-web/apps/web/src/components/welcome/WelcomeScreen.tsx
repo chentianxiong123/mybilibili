@@ -7,6 +7,8 @@ import {
   Monitor,
   Square,
   FolderOpen,
+  LogOut,
+  UserRound,
 } from "lucide-react";
 import { Button, Switch, Label } from "@mybilibili-studio/ui";
 import { useProjectStore } from "../../stores/project-store";
@@ -17,6 +19,7 @@ import { RecentProjects } from "./RecentProjects";
 import { useRouter } from "../../hooks/use-router";
 import { useEditorPreload } from "../../hooks/useEditorPreload";
 import { useAnalytics, AnalyticsEvents } from "../../hooks/useAnalytics";
+import { useAuthStore } from "../../stores/auth-store";
 
 interface FormatOption {
   id: string;
@@ -25,7 +28,6 @@ interface FormatOption {
   description: string;
   dimensions: string;
   icon: React.ElementType;
-  gradient: string;
 }
 
 const FORMAT_OPTIONS: FormatOption[] = [
@@ -36,7 +38,6 @@ const FORMAT_OPTIONS: FormatOption[] = [
     description: "短视频、竖版内容",
     dimensions: "1080 × 1920",
     icon: Smartphone,
-    gradient: "from-violet-500/20 to-fuchsia-500/20",
   },
   {
     id: "horizontal",
@@ -45,7 +46,6 @@ const FORMAT_OPTIONS: FormatOption[] = [
     description: "投稿视频、网页视频",
     dimensions: "1920 × 1080",
     icon: Monitor,
-    gradient: "from-blue-500/20 to-cyan-500/20",
   },
   {
     id: "square",
@@ -54,7 +54,6 @@ const FORMAT_OPTIONS: FormatOption[] = [
     description: "社交平台方形内容",
     dimensions: "1080 × 1080",
     icon: Square,
-    gradient: "from-orange-500/20 to-rose-500/20",
   },
 ];
 
@@ -138,7 +137,11 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
     (state) => state.setSkipWelcomeScreen,
   );
   const skipWelcomeScreen = useUIStore((state) => state.skipWelcomeScreen);
+  const openModal = useUIStore((state) => state.openModal);
   const createNewProject = useProjectStore((state) => state.createNewProject);
+  const authUser = useAuthStore((state) => state.user);
+  const authStatus = useAuthStore((state) => state.status);
+  const logout = useAuthStore((state) => state.logout);
   const { navigate } = useRouter();
   const { track } = useAnalytics();
 
@@ -243,33 +246,60 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-background overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(34,197,94,0.05),transparent_60%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(34,197,94,0.03),transparent_50%)]" />
+      <div className="absolute right-6 top-6 z-10 flex items-center gap-2">
+        {authStatus === "authenticated" && authUser ? (
+          <>
+            <div className="flex items-center gap-2 rounded-md border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary">
+              {authUser.avatar ? (
+                <img
+                  src={authUser.avatar}
+                  alt="用户头像"
+                  className="h-6 w-6 rounded-full object-cover"
+                />
+              ) : (
+                <UserRound size={16} className="text-text-muted" />
+              )}
+              <span className="max-w-[140px] truncate">
+                {authUser.nickname || authUser.username}
+              </span>
+            </div>
+            <Button variant="outline" size="sm" onClick={logout}>
+              <LogOut size={15} />
+              退出
+            </Button>
+          </>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => openModal("auth")}>
+            <UserRound size={15} />
+            登录
+          </Button>
+        )}
+      </div>
 
       <div className="relative h-full flex flex-col items-center justify-center px-6">
         <div className="w-full max-w-3xl">
-          <div className="flex flex-col items-center text-center mb-12">
-            <div className="flex items-center gap-3 mb-6">
+          <div className="flex flex-col items-center text-center mb-10">
+            <div className="flex items-center gap-3 mb-5">
               <div className="w-12 h-12 text-primary">
                 <StudioLogo className="w-full h-full" />
               </div>
-              <span className="text-xl font-semibold text-text-primary tracking-tight">
+              <span className="text-xl font-semibold text-text-primary">
                 mybilibili 剪辑工作室
               </span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl font-bold text-text-primary tracking-tight mb-3">
-              导入、剪辑、导出
+            <h1 className="text-3xl sm:text-4xl font-bold text-text-primary mb-3">
+              新建剪辑项目
             </h1>
-            <p className="text-xl text-text-secondary mb-8">
-              在浏览器里完成创作。
+            <p className="text-base text-text-secondary mb-2">
+              选择画布比例后进入工作台。
             </p>
-            <p className="text-base text-text-muted max-w-md">
-              选择画布比例后开始剪辑，进入编辑器后仍可调整。
+            <p className="text-sm text-text-muted max-w-md">
+              模板和最近项目可在下方打开。
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 mb-10">
+          <div className="grid grid-cols-3 gap-3 mb-8">
             {FORMAT_OPTIONS.map((option) => {
               const Icon = option.icon;
               const isHovered = hoveredFormat === option.id;
@@ -281,24 +311,17 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
                   onMouseEnter={() => setHoveredFormat(option.id)}
                   onMouseLeave={() => setHoveredFormat(null)}
                   className={`
-                    group relative flex flex-col items-center p-6 rounded-2xl
+                    group relative flex flex-col items-center p-5 rounded-md
                     bg-background-secondary border border-border
                     hover:border-primary/40 hover:bg-background-tertiary
                     transition-all duration-200
                     ${isHovered ? "scale-[1.02] shadow-lg shadow-primary/5" : ""}
                   `}
                 >
-                  <div
-                    className={`
-                    absolute inset-0 rounded-2xl bg-gradient-to-br ${option.gradient}
-                    opacity-0 group-hover:opacity-100 transition-opacity duration-300
-                  `}
-                  />
-
                   <div className="relative z-10 flex flex-col items-center">
                     <div
                       className={`
-                      w-16 h-16 mb-4 rounded-xl flex items-center justify-center
+                      w-14 h-14 mb-4 rounded-md flex items-center justify-center
                       bg-background-tertiary group-hover:bg-primary/10
                       transition-colors duration-200
                     `}
@@ -340,7 +363,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
             <Button
               variant="outline"
               onClick={() => setViewMode("templates")}
-              className="rounded-xl"
+              className="rounded-md"
             >
               <Layers size={16} />
               浏览模板
@@ -348,7 +371,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
             <Button
               variant="outline"
               onClick={() => setViewMode("recent")}
-              className="rounded-xl"
+              className="rounded-md"
             >
               <Clock size={16} />
               最近项目
@@ -356,7 +379,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
             <Button
               variant="outline"
               onClick={() => navigate("editor")}
-              className="rounded-xl"
+              className="rounded-md"
             >
               <FolderOpen size={16} />
               打开编辑器

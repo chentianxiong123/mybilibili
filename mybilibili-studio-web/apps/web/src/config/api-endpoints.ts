@@ -7,6 +7,14 @@
 
 const trimUrl = (value: string | undefined) => (value ?? "").trim().replace(/\/+$/, "");
 
+/** Main mybilibili gateway API. Defaults to the local Vite /api proxy. */
+export const MYBILIBILI_API_BASE_URL =
+  trimUrl(import.meta.env.VITE_MYBILIBILI_API_BASE_URL) || "/api";
+
+/** Main web app entry used for account registration and profile pages. */
+export const MYBILIBILI_WEB_URL =
+  trimUrl(import.meta.env.VITE_MYBILIBILI_WEB_URL) || "http://127.0.0.1:5173";
+
 /** Studio cloud services. Must be configured explicitly. */
 export const STUDIO_CLOUD_URL = trimUrl(import.meta.env.VITE_MYBILIBILI_STUDIO_CLOUD_URL);
 

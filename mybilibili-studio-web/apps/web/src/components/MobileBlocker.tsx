@@ -31,7 +31,7 @@ export function MobileBlocker() {
         </div>
 
         <div className="space-y-3">
-          <h1 className="text-5xl font-bold text-text-primary tracking-tight">
+          <h1 className="text-5xl font-bold text-text-primary">
             mybilibili 剪辑工作室
           </h1>
           <div className="flex items-center justify-center gap-2">

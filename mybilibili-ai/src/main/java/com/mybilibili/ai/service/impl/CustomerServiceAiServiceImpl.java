@@ -13,6 +13,7 @@ import com.mybilibili.ai.service.AiApiConfigService;
 import com.mybilibili.ai.service.AiSkillService;
 import com.mybilibili.ai.service.CustomerServiceAiService;
 import com.mybilibili.ai.service.SkillRoutingService;
+import com.mybilibili.ai.service.SupportTicketService;
 import com.mybilibili.ai.tool.CustomerServiceReadonlyToolSet;
 import com.mybilibili.ai.util.AiUsageLogger;
 import org.springframework.ai.support.ToolCallbacks;
@@ -65,6 +66,9 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
 
     @Autowired
     private SkillRoutingService skillRoutingService;
+
+    @Autowired
+    private SupportTicketService supportTicketService;
 
     @Override
     public SseEmitter chat(Long userId, String content) {
@@ -167,6 +171,12 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
                             session.setStatus(STATUS_WAITING_HUMAN);
                             session.setUpdatedAt(new Date());
                             aiSessionMapper.updateById(session);
+                            supportTicketService.createFromCustomerSession(
+                                    userId,
+                                    session.getId(),
+                                    "AI客服转人工工单",
+                                    content,
+                                    reply);
 
                             // 返回转人工标记
                             emitter.send(SseEmitter.event().name("transfer").data(""));
@@ -195,20 +205,10 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
             session = aiSessionMapper.selectById(sessionId);
         }
         if (session == null && userId != null) {
-            // 按 userId 查找活跃会话
-            try {
-                var sessions = aiSessionMapper.selectByTypeAndStatus(TYPE_CUSTOMER_SERVICE, STATUS_ACTIVE);
-                if (sessions != null && !sessions.isEmpty()) {
-                    for (AiSession s : sessions) {
-                        if (s.getUserId().equals(userId)) {
-                            session = s;
-                            break;
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                // Ignore
-            }
+            session = aiSessionMapper.selectLatestByUserIdAndTypeAndStatus(
+                    userId,
+                    TYPE_CUSTOMER_SERVICE,
+                    STATUS_ACTIVE);
         }
 
         if (session == null) {
@@ -227,24 +227,19 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
         session.setStatus(STATUS_WAITING_HUMAN);
         session.setUpdatedAt(new Date());
         aiSessionMapper.updateById(session);
+        supportTicketService.createFromCustomerSession(
+                session.getUserId(),
+                session.getId(),
+                "用户请求人工客服介入",
+                reason,
+                null);
     }
 
     private AiSession getOrCreateSession(Long userId) {
-        // 查找该用户的活跃客服会话
-        AiSession session = null;
-        try {
-            var sessions = aiSessionMapper.selectByTypeAndStatus(TYPE_CUSTOMER_SERVICE, STATUS_ACTIVE);
-            if (sessions != null && !sessions.isEmpty()) {
-                for (AiSession s : sessions) {
-                    if (s.getUserId().equals(userId)) {
-                        session = s;
-                        break;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // Ignore and create new session
-        }
+        AiSession session = aiSessionMapper.selectLatestByUserIdAndTypeAndStatus(
+                userId,
+                TYPE_CUSTOMER_SERVICE,
+                STATUS_ACTIVE);
 
         if (session == null) {
             session = new AiSession();

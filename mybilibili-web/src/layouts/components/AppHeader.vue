@@ -9,6 +9,15 @@ import { ElMessage } from 'element-plus'
 import { userApi } from '../../api/index.js'
 import { messageApi } from '../../api/message.js'
 import { searchApi } from '../../api/search.js'
+import {
+  clearAuthSession,
+  getCurrentUserId,
+  getStoredUser,
+  getToken,
+  hasAuthSession,
+  hasValidAccessToken,
+  setAuthSession
+} from '../../utils/auth.js'
 import { useNotificationWs } from '../../composables/useNotificationWs.js'
 import MessageDropdown from './dropdowns/MessageDropdown.vue'
 import DynamicDropdown from './dropdowns/DynamicDropdown.vue'
@@ -168,17 +177,14 @@ const isSearchPage = computed(() => {
 
 // 获取最新用户信息
 const fetchUserInfo = async () => {
-  const token = localStorage.getItem('token')
-  if (!token) return false
+  const userId = getCurrentUserId()
+  if (!userId) return false
   
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    const userId = payload.sub
-    
     const response = await userApi.getUserById(userId)
     if (response.code === 200) {
       userInfo.value = response.data
-      localStorage.setItem('user', JSON.stringify(response.data))
+      setAuthSession({ user: response.data })
       return true
     }
   } catch (error) {
@@ -189,38 +195,25 @@ const fetchUserInfo = async () => {
 
 // 检查token是否过期
 const checkTokenExpiration = () => {
-  const token = localStorage.getItem('token')
-  if (!token) {
-    localStorage.removeItem('user')
+  if (!hasAuthSession()) {
     isLogged.value = false
     userInfo.value = null
     return false
   }
-  
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    const exp = payload.exp * 1000
-    if (Date.now() > exp) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      isLogged.value = false
-      userInfo.value = null
-      return false
-    }
-    const userData = localStorage.getItem('user')
-    if (userData) {
-      userInfo.value = JSON.parse(userData)
-      isLogged.value = true
-    }
-    fetchUserInfo()
-    return true
-  } catch (error) {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+
+  if (!hasValidAccessToken() && !getStoredUser()) {
     isLogged.value = false
     userInfo.value = null
     return false
   }
+
+  const userData = getStoredUser()
+  if (userData) {
+    userInfo.value = userData
+    isLogged.value = true
+  }
+  fetchUserInfo()
+  return true
 }
 
 // 处理头像点击
@@ -234,8 +227,7 @@ const handleAvatarClick = () => {
 
 // 处理退出登录
 const handleLogout = () => {
-  localStorage.removeItem('user')
-  localStorage.removeItem('token')
+  clearAuthSession()
   isLogged.value = false
   userInfo.value = null
   wsDisconnect()
@@ -435,7 +427,7 @@ onMounted(() => {
   const unreadInterval = setInterval(fetchUnreadCounts, 60000)
 
   // 建立 WebSocket 通知连接
-  if (localStorage.getItem('token')) {
+  if (getToken()) {
     wsConnect()
   }
   

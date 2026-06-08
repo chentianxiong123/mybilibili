@@ -6,6 +6,7 @@ import { categoryApi } from '../api/index.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled, Delete, ArrowUp, ArrowDown, VideoPlay, Document, Plus, Loading, CircleCheck } from '@element-plus/icons-vue'
 import { useChunkedManuscriptUpload } from '../composables/useChunkedManuscriptUpload.js'
+import { hasAuthSession } from '../utils/auth.js'
 
 const router = useRouter()
 
@@ -219,28 +220,12 @@ const formatFileSize = (bytes) => {
 }
 
 const checkLoginStatus = () => {
-  const token = localStorage.getItem('token')
-  if (!token) {
+  if (!hasAuthSession()) {
     ElMessage.warning('请先登录后再上传稿件')
     return false
   }
 
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    const exp = payload.exp * 1000
-    if (Date.now() > exp) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      ElMessage.warning('登录已过期，请重新登录')
-      return false
-    }
-    return true
-  } catch (error) {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    ElMessage.warning('登录状态异常，请重新登录')
-    return false
-  }
+  return true
 }
 
 const addTag = () => {

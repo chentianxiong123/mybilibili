@@ -5,7 +5,7 @@
       <button
         @click="navigateToWelcome"
         class="flex items-center gap-1.5 pr-1.5"
-        title="Back to home"
+        title="返回首页"
       >
         <span class="w-[11px] h-[11px] rounded-full bg-[oklch(0.7_0.18_25)]" />
         <span class="w-[11px] h-[11px] rounded-full bg-[oklch(0.78_0.14_80)]" />
@@ -15,16 +15,16 @@
       <span class="text-[11px] text-fg-3 flex items-center gap-1.5">
         <span class="w-[5px] h-[5px] rounded-full bg-accent" />
         <template v-if="exportStateLocal.isExporting">
-          Exporting… {{ Math.round(exportStateLocal.progress) }}%
+          导出中... {{ Math.round(exportStateLocal.progress) }}%
         </template>
         <template v-else>
-          Auto saved: {{ autosaveLabel }}
+          自动保存：{{ autosaveLabel }}
         </template>
       </span>
     </div>
 
     <!-- ─── Center: project name ────────────────────────────── -->
-    <div class="flex items-center gap-1.5 text-[12.5px] font-medium tracking-tight">
+    <div class="flex items-center gap-1.5 text-[12.5px] font-medium">
       <input
         v-model="projectNameDraft"
         @blur="commitProjectName"
@@ -32,7 +32,7 @@
         @keydown.esc="cancelRename"
         :size="Math.max(projectNameDraft.length, 6)"
         spellcheck="false"
-        class="bg-transparent border-0 text-center font-medium text-[12.5px] tracking-tight text-fg px-2 py-0.5 rounded min-w-[60px] focus:bg-bg-2 focus:outline-none"
+        class="bg-transparent border-0 text-center font-medium text-[12.5px] text-fg px-2 py-0.5 rounded min-w-[60px] focus:bg-bg-2 focus:outline-none"
       />
       <!-- 使用 ReactAdapter 渲染 ProjectSwitcher React 组件 -->
       <ReactAdapter :component="ProjectSwitcherRaw" />
@@ -44,7 +44,7 @@
       <button
         @click="uiStore.openModal('search')"
         class="w-[26px] h-[26px] grid place-items-center rounded-md text-fg-2 hover:bg-hover hover:text-fg transition-colors"
-        title="Search tools, effects, or ask AI… (⌘K)"
+        title="搜索工具、特效或询问 AI (⌘K)"
       >
         <SearchIcon :size="14" />
       </button>
@@ -53,7 +53,7 @@
       <button
         @click="handleUndo"
         class="w-[26px] h-[26px] grid place-items-center rounded-md text-fg-2 hover:bg-hover hover:text-fg transition-colors"
-        title="Undo (⌘Z)"
+        title="撤销 (⌘Z)"
       >
         <UndoIcon :size="14" />
       </button>
@@ -62,7 +62,7 @@
       <button
         @click="handleRedo"
         class="w-[26px] h-[26px] grid place-items-center rounded-md text-fg-2 hover:bg-hover hover:text-fg transition-colors"
-        title="Redo (⇧⌘Z)"
+        title="重做 (⇧⌘Z)"
       >
         <RedoIcon :size="14" />
       </button>
@@ -76,7 +76,7 @@
           'w-[26px] h-[26px] grid place-items-center rounded-md transition-colors',
           isHistoryOpen ? 'bg-accent-soft text-accent' : 'text-fg-2 hover:bg-hover hover:text-fg'
         ]"
-        title="Action history"
+        title="操作历史"
       >
         <HistoryIcon :size="14" />
       </button>
@@ -88,7 +88,7 @@
           'w-[26px] h-[26px] grid place-items-center rounded-md transition-colors',
           uiState.keyframeEditorOpen ? 'bg-accent-soft text-accent' : 'text-fg-2 hover:bg-hover hover:text-fg'
         ]"
-        title="Keyframe editor"
+        title="关键帧编辑器"
       >
         <DiamondIcon :size="14" />
       </button>
@@ -100,7 +100,7 @@
           'w-[26px] h-[26px] grid place-items-center rounded-md transition-colors',
           uiState.panels.audioMixer?.visible ? 'bg-accent-soft text-accent' : 'text-fg-2 hover:bg-hover hover:text-fg'
         ]"
-        title="Audio mixer"
+        title="音频混音器"
       >
         <MusicIcon :size="14" />
       </button>
@@ -109,7 +109,7 @@
       <button
         @click="uiStore.openModal('scriptView')"
         class="w-[26px] h-[26px] grid place-items-center rounded-md text-fg-2 hover:bg-hover hover:text-fg transition-colors"
-        title="Project JSON"
+        title="项目 JSON"
       >
         <MessageSquareIcon :size="14" />
       </button>
@@ -121,7 +121,7 @@
         <button
           @click="isMenuOpen = !isMenuOpen"
           class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium text-fg-2 hover:bg-hover hover:text-fg transition-colors"
-          title="More tools"
+          title="更多工具"
         >
           <StarIcon :size="14" />
         </button>
@@ -133,24 +133,24 @@
             <SunIcon v-if="themeState.mode === 'light'" :size="14" />
             <MoonIcon v-else-if="themeState.mode === 'dark'" :size="14" />
             <SunMoonIcon v-else :size="14" />
-            <span>Theme: {{ themeState.mode }}</span>
+            <span>主题：{{ themeLabel }}</span>
           </button>
           <button @click="openSettings" class="w-full text-left px-2.5 py-1.5 hover:bg-hover hover:text-fg rounded flex items-center gap-2">
             <SettingsIcon :size="14" />
-            <span>Settings & API keys</span>
+            <span>设置与接口密钥</span>
           </button>
           <button @click="isRecorderOpen = true; isMenuOpen = false" class="w-full text-left px-2.5 py-1.5 hover:bg-hover hover:text-fg rounded flex items-center gap-2">
             <CircleIcon :size="14" class="fill-current text-status-error" />
-            <span>Screen recorder</span>
+            <span>屏幕录制</span>
           </button>
           <div class="h-px bg-border my-1" />
           <button @click="handleStartTour" class="w-full text-left px-2.5 py-1.5 hover:bg-hover hover:text-fg rounded flex items-center gap-2">
             <PlayIcon :size="14" />
-            <span>Editor tour</span>
+            <span>编辑器导览</span>
           </button>
           <button @click="handleStartMoGraphTour" class="w-full text-left px-2.5 py-1.5 hover:bg-hover hover:text-fg rounded flex items-center gap-2">
             <SparklesIcon :size="14" class="text-purple-400" />
-            <span>Animation tour</span>
+            <span>动画导览</span>
           </button>
         </div>
       </div>
@@ -180,17 +180,59 @@
       <template v-else-if="exportStateLocal.complete">
         <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-accent-soft text-accent text-[12.5px]">
           <CheckIcon :size="13" />
-          <span class="font-medium">Saved!</span>
+          <span class="font-medium">已保存</span>
         </div>
       </template>
       <template v-else>
+        <div class="relative">
+          <button
+            @click="isAccountOpen = !isAccountOpen"
+            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium text-fg-2 hover:bg-hover hover:text-fg transition-colors"
+            title="账号"
+          >
+            <img
+              v-if="authAvatar"
+              :src="authAvatar"
+              alt="用户头像"
+              class="w-[18px] h-[18px] rounded-full object-cover"
+            />
+            <UserRoundIcon v-else :size="14" />
+            <span class="max-w-[86px] truncate">{{ accountLabel }}</span>
+          </button>
+          <div
+            v-if="isAccountOpen"
+            class="absolute right-0 mt-1 w-48 rounded-md bg-bg-1 border border-border shadow-lg z-50 p-1 space-y-0.5 text-xs text-fg-2"
+          >
+            <div v-if="authState.status === 'authenticated'" class="px-2.5 py-2 border-b border-border">
+              <div class="text-fg font-medium truncate">{{ accountLabel }}</div>
+              <div class="text-[10px] text-fg-muted truncate">已登录 mybilibili</div>
+            </div>
+            <button
+              v-if="authState.status === 'authenticated'"
+              @click="handleLogout"
+              class="w-full text-left px-2.5 py-1.5 hover:bg-hover hover:text-fg rounded flex items-center gap-2"
+            >
+              <LogOutIcon :size="14" />
+              <span>退出登录</span>
+            </button>
+            <button
+              v-else
+              @click="openAuthDialog"
+              class="w-full text-left px-2.5 py-1.5 hover:bg-hover hover:text-fg rounded flex items-center gap-2"
+            >
+              <UserRoundIcon :size="14" />
+              <span>登录</span>
+            </button>
+          </div>
+        </div>
+
         <div class="relative">
           <button
             @click="isExportOpen = !isExportOpen"
             class="relative inline-flex items-center gap-1.5 px-3.5 py-[5px] rounded-md bg-accent text-accent-fg font-semibold text-[12.5px] shadow-glow hover:bg-accent-strong transition-colors"
           >
             <UploadIcon :size="13" />
-            <span>Export</span>
+            <span>导出</span>
             <ChevronDownIcon :size="12" :class="['transition-transform', isExportOpen ? 'rotate-180' : '']" />
           </button>
 
@@ -222,12 +264,12 @@
                     <div :class="['text-sm font-medium', option.recommended ? 'text-accent' : 'text-fg']">
                       {{ option.label }}
                       <span v-if="option.recommended" class="ml-1.5 text-[9px] bg-accent-soft text-accent px-1.5 py-0.5 rounded">
-                        Best
+                        推荐
                       </span>
                     </div>
                     <div class="text-[11px] text-fg-muted mt-0.5 truncate">{{ option.desc }}</div>
                     <div v-if="exportEstimates.get(option.type)" class="text-[9px] text-fg-3 mt-1">
-                      Est. {{ exportEstimates.get(option.type)?.formatted }}
+                      预计 {{ exportEstimates.get(option.type)?.formatted }}
                     </div>
                   </div>
                 </button>
@@ -242,8 +284,8 @@
                   <SettingsIcon :size="18" />
                 </div>
                 <div class="flex-1">
-                  <div class="text-sm font-medium text-accent">Custom export…</div>
-                  <div class="text-[11px] text-fg-muted mt-0.5">Full settings with AI upscaling</div>
+                  <div class="text-sm font-medium text-accent">自定义导出...</div>
+                  <div class="text-[11px] text-fg-muted mt-0.5">完整参数与 AI 放大</div>
                 </div>
                 <MoreHorizontalIcon :size="14" class="text-fg-muted" />
               </button>
@@ -287,7 +329,7 @@
       />
       <div class="fixed top-topbar right-0 bottom-0 w-80 bg-bg-1 border-l border-border z-50 shadow-lg flex flex-col">
         <div class="flex items-center justify-between p-3 border-b border-border bg-bg-1">
-          <span class="text-sm font-medium text-fg">Action history</span>
+          <span class="text-sm font-medium text-fg">操作历史</span>
           <button
             @click="isHistoryOpen = false"
             class="p-1.5 rounded hover:bg-hover text-fg-3 hover:text-fg transition-colors"
@@ -333,6 +375,8 @@ import {
   MoreHorizontal as MoreHorizontalIcon,
   Command as CommandIcon,
   Search as SearchIcon,
+  UserRound as UserRoundIcon,
+  LogOut as LogOutIcon,
 } from "lucide-vue-next";
 
 import ReactAdapter from "../ReactAdapter.vue";
@@ -341,6 +385,7 @@ import { useProjectStore } from "../../stores/project-store";
 import { useUIStore } from "../../stores/ui-store";
 import { useThemeStore } from "../../stores/theme-store";
 import { useSettingsStore } from "../../stores/settings-store";
+import { useAuthStore } from "../../stores/auth-store";
 import { navigateToRoute } from "../../hooks/use-router";
 import { toast } from "../../stores/notification-store";
 
@@ -372,11 +417,13 @@ const projectStore = useProjectStore;
 const uiStore = useUIStore;
 const themeStore = useThemeStore;
 const settingsStore = useSettingsStore;
+const authStore = useAuthStore;
 
 // Bind Zustand stores reactively
 const projectState = useZustandStore<any>(projectStore);
 const uiState = useZustandStore<any>(uiStore);
 const themeState = useZustandStore<any>(themeStore);
+const authState = useZustandStore<any>(authStore);
 
 // Router actions
 const openSettings = settingsStore.getState().openSettings;
@@ -387,6 +434,7 @@ const isExportOpen = ref(false);
 const isExportDialogOpen = ref(false);
 const isRecorderOpen = ref(false);
 const isHistoryOpen = ref(false);
+const isAccountOpen = ref(false);
 
 const projectNameDraft = ref(projectState.value.project.name);
 
@@ -430,6 +478,30 @@ const navigateToWelcome = () => {
   navigateToRoute("welcome");
 };
 
+const accountLabel = computed(() => {
+  const user = authState.value.user;
+  return user?.nickname || user?.username || "登录";
+});
+
+const authAvatar = computed(() => authState.value.user?.avatar || "");
+
+const themeLabel = computed(() => {
+  if (themeState.value.mode === "light") return "浅色";
+  if (themeState.value.mode === "dark") return "深色";
+  return "跟随系统";
+});
+
+const openAuthDialog = () => {
+  isAccountOpen.value = false;
+  uiStore.getState().openModal("auth");
+};
+
+const handleLogout = () => {
+  authStore.getState().logout();
+  isAccountOpen.value = false;
+  toast.success("已退出登录");
+};
+
 const handleUndo = () => {
   projectStore.getState().undo();
 };
@@ -456,6 +528,19 @@ const exportStateLocal = ref({
   error: null as string | null,
   complete: false,
 });
+
+const exportPhaseLabels: Record<string, string> = {
+  complete: "完成",
+  initializing: "初始化中",
+  loading: "加载中",
+  rendering: "渲染中",
+  encoding: "编码中",
+  muxing: "封装中",
+  writing: "写入中",
+  processing: "处理中",
+};
+
+const formatExportPhase = (phase: string) => exportPhaseLabels[phase] || "处理中";
 
 watch(
   () => exportStateLocal.value,
@@ -523,14 +608,14 @@ const runExport = async (videoSettings: Partial<VideoExportSettings>, writableSt
       break;
     }
     exportStateLocal.value.progress = value.progress * 100;
-    exportStateLocal.value.phase = value.phase === "complete" ? "Complete!" : `${value.phase}...`;
+    exportStateLocal.value.phase = formatExportPhase(value.phase);
   }
 
   if (finalResult?.success) {
     exportStateLocal.value.complete = true;
-    exportStateLocal.value.phase = "Saved!";
+    exportStateLocal.value.phase = "已保存";
   } else {
-    throw new Error(finalResult?.error?.message || "Export failed");
+    throw new Error(finalResult?.error?.message || "导出失败");
   }
 };
 
@@ -547,7 +632,7 @@ const showSavePicker = async (filename: string, ext: string): Promise<FileSystem
     const handle = await (window as any).showSaveFilePicker({
       suggestedName: filename,
       types: [{
-        description: "Media file",
+        description: "媒体文件",
         accept: { [mime]: [`.${ext}`] },
       }],
     });
@@ -621,7 +706,7 @@ const handleExport = async (type: ExportType) => {
       exportStateLocal.value = {
         isExporting: true,
         progress: 0,
-        phase: "Initializing...",
+        phase: "初始化中",
         error: null,
         complete: false,
       };
@@ -646,7 +731,7 @@ const handleExport = async (type: ExportType) => {
           break;
         }
         exportStateLocal.value.progress = value.progress * 100;
-        exportStateLocal.value.phase = value.phase === "complete" ? "Complete!" : `${value.phase}...`;
+        exportStateLocal.value.phase = formatExportPhase(value.phase);
       }
 
       if (finalResult?.success && finalResult.blob) {
@@ -663,10 +748,10 @@ const handleExport = async (type: ExportType) => {
           URL.revokeObjectURL(url);
         }
         exportStateLocal.value.complete = true;
-        exportStateLocal.value.phase = "Saved!";
+        exportStateLocal.value.phase = "已保存";
       } else {
         try { await writable.abort(); } catch {}
-        throw new Error(finalResult?.error?.message || "Export failed");
+        throw new Error(finalResult?.error?.message || "导出失败");
       }
     } else {
       const base = {
@@ -689,7 +774,7 @@ const handleExport = async (type: ExportType) => {
       exportStateLocal.value = {
         isExporting: true,
         progress: 0,
-        phase: "Initializing...",
+        phase: "初始化中",
         error: null,
         complete: false,
       };
@@ -703,7 +788,7 @@ const handleExport = async (type: ExportType) => {
   } catch (error: any) {
     if (error.name === "AbortError") return;
     exportStateLocal.value.isExporting = false;
-    exportStateLocal.value.error = error.message || "Export failed";
+    exportStateLocal.value.error = error.message || "导出失败";
   }
 };
 
@@ -728,7 +813,7 @@ const handleCustomExport = async (settings: VideoExportSettings) => {
     exportStateLocal.value = {
       isExporting: true,
       progress: 0,
-      phase: "Initializing...",
+      phase: "初始化中",
       error: null,
       complete: false,
     };
@@ -753,13 +838,13 @@ const handleCustomExport = async (settings: VideoExportSettings) => {
   } catch (error: any) {
     if (error.name === "AbortError") return;
     exportStateLocal.value.isExporting = false;
-    exportStateLocal.value.error = error.message || "Export failed";
+    exportStateLocal.value.error = error.message || "导出失败";
   }
 };
 
 const handleRecordingComplete = async (screenBlob: Blob, webcamBlob?: Blob) => {
   if (!screenBlob || screenBlob.size === 0) {
-    toast.error("Recording failed", "No video data was captured. Please try again.");
+    toast.error("录制失败", "没有捕获到视频数据，请重试。");
     return;
   }
 
@@ -774,7 +859,7 @@ const handleRecordingComplete = async (screenBlob: Blob, webcamBlob?: Blob) => {
   if (screenResult.success) {
     importCount++;
   } else {
-    errors.push(screenResult.error?.message || "Failed to import screen recording");
+    errors.push(screenResult.error?.message || "屏幕录制导入失败");
   }
 
   if (webcamBlob && webcamBlob.size > 0) {
@@ -785,19 +870,19 @@ const handleRecordingComplete = async (screenBlob: Blob, webcamBlob?: Blob) => {
     if (webcamResult.success) {
       importCount++;
     } else {
-      errors.push(webcamResult.error?.message || "Failed to import webcam recording");
+      errors.push(webcamResult.error?.message || "摄像头录制导入失败");
     }
   }
 
   if (importCount > 0) {
     toast.success(
-      `${importCount} recording${importCount > 1 ? "s" : ""} imported!`,
+      `已导入 ${importCount} 个录制素材`,
       webcamBlob && webcamBlob.size > 0
-        ? "Screen and webcam added to assets. Use the timeline to composite them."
-        : "Screen recording added to assets."
+        ? "屏幕和摄像头录制已加入素材，可在时间线中合成。"
+        : "屏幕录制已加入素材。"
     );
   } else if (errors.length > 0) {
-    toast.error("Import failed", errors.join(". "));
+    toast.error("导入失败", errors.join("。"));
   }
 };
 
@@ -827,9 +912,9 @@ const exportOptions = computed(() => {
     separator?: boolean;
   }> = [
     {
-      label: "MP4 Standard",
+      label: "MP4 标准",
       icon: ZapIcon,
-      desc: `${projectRes.value} H.264 - Web & social`,
+      desc: `${projectRes.value} H.264 - 网页与社交平台`,
       type: "mp4",
       recommended: true,
     },
@@ -841,21 +926,21 @@ const exportOptions = computed(() => {
       separator: true,
     },
     {
-      label: "1080p High Quality",
+      label: "1080p 高质量",
       icon: FileVideoIcon,
-      desc: "1920×1080 30fps - High bitrate",
+      desc: "1920×1080 30fps - 高码率",
       type: "1080p-high",
     },
     {
       label: "1080p 60fps",
       icon: FileVideoIcon,
-      desc: "1920×1080 - Smooth playback",
+      desc: "1920×1080 - 流畅播放",
       type: "1080p-60",
     },
     {
-      label: "Audio Only (WAV)",
+      label: "仅音频 (WAV)",
       icon: MusicIcon,
-      desc: "Uncompressed audio",
+      desc: "未压缩音频",
       type: "wav",
     },
   ];

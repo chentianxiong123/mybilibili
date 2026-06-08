@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2>任务中心</h2>
-        <p>统一查看上传、视频处理、AI流水线和存储迁移任务</p>
+        <p>统一查看上传、视频处理和存储迁移任务</p>
       </div>
       <el-button :icon="Refresh" :loading="loading" @click="loadData">刷新</el-button>
     </div>
@@ -130,7 +130,6 @@ const searchForm = reactive({
 const taskTypeOptions = [
   { label: '上传稿件', value: 'UPLOAD' },
   { label: '视频处理', value: 'VIDEO_PROCESS' },
-  { label: 'AI流水线', value: 'AI_PIPELINE' },
   { label: '存储迁移', value: 'STORAGE_MIGRATION' },
   { label: '推荐刷新', value: 'RECOMMEND_REFRESH' }
 ]
@@ -218,7 +217,7 @@ const normalizeProgress = (value) => {
 const formatTaskType = (type) => ({
   UPLOAD: '上传稿件',
   VIDEO_PROCESS: '视频处理',
-  AI_PIPELINE: 'AI流水线',
+  AI_PIPELINE: 'AI任务',
   STORAGE_MIGRATION: '存储迁移',
   RECOMMEND_REFRESH: '推荐刷新'
 }[type] || type || '-')

@@ -17,6 +17,11 @@ public interface AiSessionMapper extends BaseMapper<AiSession> {
     @Select("SELECT * FROM ai_sessions WHERE user_id = #{userId} AND type = #{type} ORDER BY updated_at DESC LIMIT 1")
     AiSession selectLatestByUserIdAndType(@Param("userId") Long userId, @Param("type") String type);
 
+    @Select("SELECT * FROM ai_sessions WHERE user_id = #{userId} AND type = #{type} AND status = #{status} ORDER BY updated_at DESC LIMIT 1")
+    AiSession selectLatestByUserIdAndTypeAndStatus(@Param("userId") Long userId,
+                                                   @Param("type") String type,
+                                                   @Param("status") Integer status);
+
     @Select("SELECT COUNT(*) FROM ai_sessions WHERE type = #{type} AND status = #{status}")
     long countByTypeAndStatus(@Param("type") String type, @Param("status") Integer status);
 }

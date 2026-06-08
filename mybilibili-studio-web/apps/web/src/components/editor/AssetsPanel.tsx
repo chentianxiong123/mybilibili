@@ -385,16 +385,16 @@ const MediaThumbnail: React.FC<{
           {item.type === "image" && onKieAI && (
             <ContextMenuItem onClick={onKieAI}>
               <Sparkles size={13} className="mr-2 text-primary" />
-              Create with KieAI
+              用 KieAI 创建
             </ContextMenuItem>
           )}
           <ContextMenuItem onClick={(e) => { (e as React.MouseEvent).stopPropagation?.(); onAddToTimeline(); }}>
             <Plus size={13} className="mr-2" />
-            Add to Timeline
+            添加到时间线
           </ContextMenuItem>
           <ContextMenuItem onClick={(e) => { (e as React.MouseEvent).stopPropagation?.(); onDelete(); }} className="text-red-400 focus:text-red-400">
             <Trash2 size={13} className="mr-2" />
-            Delete
+            删除
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
@@ -451,7 +451,7 @@ const MediaThumbnail: React.FC<{
         {item.kieaiError && (
           <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-red-500 rounded text-[8px] text-white font-bold flex items-center gap-1">
             <AlertTriangle size={8} />
-            Failed
+            失败
           </div>
         )}
 
@@ -467,7 +467,7 @@ const MediaThumbnail: React.FC<{
         {!item.kieaiError && !item.isPending && item.isPlaceholder && (
           <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-yellow-500 rounded text-[8px] text-black font-bold flex items-center gap-1">
             <AlertTriangle size={10} />
-            Missing
+            缺失
           </div>
         )}
 
@@ -536,16 +536,16 @@ const MediaThumbnail: React.FC<{
         {item.type === "image" && onKieAI && (
           <ContextMenuItem onClick={onKieAI}>
             <Sparkles size={13} className="mr-2 text-primary" />
-            Create with KieAI
+            用 KieAI 创建
           </ContextMenuItem>
         )}
         <ContextMenuItem onClick={() => onAddToTimeline()}>
           <Plus size={13} className="mr-2" />
-          Add to Timeline
+          添加到时间线
         </ContextMenuItem>
         <ContextMenuItem onClick={() => onDelete()} className="text-red-400 focus:text-red-400">
           <Trash2 size={13} className="mr-2" />
-          Delete
+          删除
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
@@ -558,16 +558,16 @@ const EmptyState: React.FC<{ onImport: () => void }> = ({ onImport }) => (
       <Upload size={24} className="text-text-muted" />
     </div>
     <p className="text-sm text-text-secondary mb-2 font-medium">
-      No media imported
+      尚未导入素材
     </p>
     <p className="text-xs text-text-muted mb-6">
-      Drag files here or click to import
+      将文件拖到这里，或点击导入
     </p>
     <button
       onClick={onImport}
       className="px-4 py-2 bg-background-elevated hover:bg-background-tertiary border border-border text-text-primary text-xs font-medium rounded-lg transition-all hover:border-primary/50"
     >
-      Import Media
+      导入素材
     </button>
   </div>
 );
@@ -1518,7 +1518,7 @@ export const AssetsPanel: React.FC = () => {
               key={tab.value}
               onClick={() => setActiveTab(tab.value)}
               title={tab.description}
-              className={`group flex flex-col items-center justify-center gap-1 px-2 py-1.5 rounded-md min-w-[50px] shrink-0 text-[10.5px] font-medium tracking-tight transition-colors ${
+              className={`group flex flex-col items-center justify-center gap-1 px-2 py-1.5 rounded-md min-w-[50px] shrink-0 text-[10.5px] font-medium transition-colors ${
                 isActive
                   ? "text-accent"
                   : "text-fg-3 hover:text-fg hover:bg-hover"

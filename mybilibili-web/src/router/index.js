@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { hasAuthSession } from '../utils/auth.js'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -327,6 +328,20 @@ router.beforeEach((to, from, next) => {
   if (to.meta.title) {
     document.title = to.meta.title
   }
+
+  if (to.meta.requiresAuth && !hasAuthSession()) {
+    next({
+      path: '/login',
+      query: { redirect: to.fullPath }
+    })
+    return
+  }
+
+  if ((to.path === '/login' || to.path === '/register') && hasAuthSession()) {
+    next('/')
+    return
+  }
+
   next()
 })
 

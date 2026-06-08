@@ -74,6 +74,9 @@ public interface VideoMapper extends BaseMapper<Video> {
                            @Param("processStatus") Integer processStatus,
                            @Param("processError") String processError);
 
+    @Update("UPDATE videos SET has_subtitle = #{hasSubtitle}, updated_at = NOW() WHERE id = #{id}")
+    int updateHasSubtitle(@Param("id") Integer id, @Param("hasSubtitle") Integer hasSubtitle);
+
     @Delete("DELETE FROM videos WHERE id = #{id}")
     int deleteById(Integer id);
 

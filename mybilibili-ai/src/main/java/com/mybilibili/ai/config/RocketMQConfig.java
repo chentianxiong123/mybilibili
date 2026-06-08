@@ -16,7 +16,7 @@ public class RocketMQConfig {
 
     @Bean
     public DefaultMQProducer defaultMQProducer() {
-        DefaultMQProducer producer = new DefaultMQProducer("video-process-group");
+        DefaultMQProducer producer = new DefaultMQProducer("video-ai-producer-group");
         producer.setNamesrvAddr(nameServer);
         producer.setInstanceName("ai-video-producer");
         return producer;

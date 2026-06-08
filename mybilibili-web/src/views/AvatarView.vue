@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Upload, Picture } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { userApi } from '@/api/index'
+import { getStoredUser, setAuthSession } from '@/utils/auth.js'
 
 // 当前用户信息
 const currentUser = ref(null)
@@ -31,15 +32,11 @@ const getFullAvatarUrl = (url) => {
 
 // 加载用户信息
 onMounted(() => {
-  const userData = localStorage.getItem('user')
+  const userData = getStoredUser()
   if (userData) {
-    try {
-      currentUser.value = JSON.parse(userData)
-      if (currentUser.value?.avatar) {
-        currentAvatar.value = getFullAvatarUrl(currentUser.value.avatar)
-      }
-    } catch (error) {
-      console.error('解析用户信息失败:', error)
+    currentUser.value = userData
+    if (currentUser.value?.avatar) {
+      currentAvatar.value = getFullAvatarUrl(currentUser.value.avatar)
     }
   }
 })
@@ -110,7 +107,7 @@ const updateAvatar = async () => {
 
       // 更新 localStorage 中的用户信息
       const updatedUser = { ...currentUser.value, avatar: response.data.avatar }
-      localStorage.setItem('user', JSON.stringify(updatedUser))
+      setAuthSession({ user: updatedUser })
       currentUser.value = updatedUser
 
       ElMessage.success('头像更新成功')

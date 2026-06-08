@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { clearAuthSession, getToken } from '../utils/auth.js'
 
 const api = axios.create({
   baseURL: '/api',
@@ -12,7 +13,7 @@ const api = axios.create({
 
 api.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('token')
+    const token = getToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -31,9 +32,7 @@ api.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
-          localStorage.removeItem('token')
-          localStorage.removeItem('refreshToken')
-          localStorage.removeItem('user')
+          clearAuthSession()
           break
         case 403:
           ElMessage.error('没有权限访问该资源')

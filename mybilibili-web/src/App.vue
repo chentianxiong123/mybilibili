@@ -6,6 +6,7 @@ import { ElMessage } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { userApi } from './api/index.js'
 import { startSilentRefresh, stopSilentRefresh } from './api/index.js'
+import { getRefreshToken, setAuthSession } from './utils/auth.js'
 
 // 导入布局组件
 import LayoutHome from './layouts/LayoutHome.vue'
@@ -60,9 +61,8 @@ const handleLogin = () => {
   userApi.login(loginForm.value.username, loginForm.value.password)
     .then(response => {
       if (response.code === 200) {
-        localStorage.setItem('user', JSON.stringify(response.data.user))
-        localStorage.setItem('token', response.data.token)
-        localStorage.setItem('refreshToken', response.data.refreshToken || '')
+        setAuthSession(response.data)
+        startSilentRefresh()
         showLoginDialog.value = false
         ElMessage.success('登录成功')
         
@@ -90,66 +90,14 @@ const handleLogin = () => {
 
 // 处理注册
 const handleRegister = () => {
-  if (!registerForm.value.username || !registerForm.value.email || !registerForm.value.password || !registerForm.value.confirmPassword) {
-    ElMessage.warning('请填写完整信息')
-    return
-  }
-  
-  if (!registerForm.value.agreeTerms) {
-    ElMessage.warning('请阅读并同意用户协议和隐私政策')
-    return
-  }
-  
-  if (registerForm.value.password !== registerForm.value.confirmPassword) {
-    ElMessage.warning('两次输入的密码不一致')
-    return
-  }
-  
-  if (registerForm.value.password.length < 6) {
-    ElMessage.warning('密码长度不能少于6位')
-    return
-  }
-  
-  // 验证邮箱格式
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(registerForm.value.email)) {
-    ElMessage.warning('请输入有效的邮箱地址')
-    return
-  }
-  
-  loading.value = true
-  const userData = {
-    username: registerForm.value.username,
-    email: registerForm.value.email,
-    password: registerForm.value.password
-  }
-  
-  userApi.register(userData)
-    .then(response => {
-      if (response.code === 200) {
-        ElMessage.success('注册成功')
-        switchToLogin()
-      } else {
-        ElMessage.error(response.message || '注册失败')
-      }
-    })
-    .catch(error => {
-      ElMessage.error('注册失败，请检查输入信息')
-      console.error('注册错误:', error)
-    })
-    .finally(() => {
-      loading.value = false
-    })
+  showLoginDialog.value = false
+  router.push('/register')
 }
 
 // 切换到注册模式
 const switchToRegister = () => {
-  dialogMode.value = 'register'
-  loginForm.value = {
-    username: '',
-    password: '',
-    rememberMe: false
-  }
+  showLoginDialog.value = false
+  router.push('/register')
 }
 
 // 切换到登录模式
@@ -186,7 +134,7 @@ provide('showLoginDialog', showLoginDialog)
 
 // 启动无感登录：access token 剩余 < 10 分钟时主动续期
 onMounted(() => {
-  if (localStorage.getItem('refreshToken')) {
+  if (getRefreshToken()) {
     startSilentRefresh()
   }
 })
