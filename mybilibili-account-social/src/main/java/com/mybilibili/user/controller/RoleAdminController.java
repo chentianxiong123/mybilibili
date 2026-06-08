@@ -13,12 +13,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/admin/roles")
 @Tag(name = "角色权限管理", description = "角色CRUD、权限查询、角色权限分配")
 public class RoleAdminController {
+
+    private static final Map<String, RoleTemplate> ROLE_TEMPLATES = createRoleTemplates();
 
     @Autowired
     private RoleMapper roleMapper;
@@ -108,6 +113,50 @@ public class RoleAdminController {
         return result;
     }
 
+    @GetMapping("/templates")
+    @Operation(summary = "获取岗位权限模板")
+    public Result<List<RoleTemplate>> getRoleTemplates() {
+        return Result.success(List.copyOf(ROLE_TEMPLATES.values()));
+    }
+
+    @PutMapping("/{id}/template/{templateCode}")
+    @Operation(summary = "应用岗位权限模板")
+    public Result<Void> applyRoleTemplate(@PathVariable Integer id,
+                                          @PathVariable String templateCode,
+                                          jakarta.servlet.http.HttpServletRequest request) {
+        Role role = roleMapper.selectById(id);
+        if (role == null) {
+            Result<Void> result = Result.error("角色不存在");
+            recordAudit(request, "role", "role_template_apply", "role", String.valueOf(id), result);
+            return result;
+        }
+        RoleTemplate template = ROLE_TEMPLATES.get(templateCode);
+        if (template == null) {
+            Result<Void> result = Result.error("岗位模板不存在");
+            recordAudit(request, "role", "role_template_apply", "role", String.valueOf(id), result);
+            return result;
+        }
+        List<Permission> permissions = permissionMapper.selectByCodes(template.permissionCodes());
+        Set<String> existingCodes = permissions.stream()
+                .map(Permission::getCode)
+                .collect(java.util.stream.Collectors.toSet());
+        List<String> missingCodes = template.permissionCodes().stream()
+                .filter(code -> !existingCodes.contains(code))
+                .toList();
+        if (!missingCodes.isEmpty()) {
+            Result<Void> result = Result.error("权限码不存在: " + String.join(", ", missingCodes));
+            recordAudit(request, "role", "role_template_apply", "role", String.valueOf(id), result);
+            return result;
+        }
+        rolePermissionMapper.deleteByRoleId(id);
+        for (Permission permission : permissions) {
+            rolePermissionMapper.insert(id, permission.getId());
+        }
+        Result<Void> result = Result.success("岗位模板已应用", null);
+        recordAudit(request, "role", "role_template_apply", "role", String.valueOf(id), result);
+        return result;
+    }
+
     @GetMapping("/permissions/all")
     @Operation(summary = "获取所有权限")
     public Result<List<Permission>> getAllPermissions() {
@@ -120,5 +169,69 @@ public class RoleAdminController {
                 result != null && result.getCode() != null && result.getCode() == 200 ? 1 : 0,
                 result == null ? null : result.getMessage(),
                 result == null || result.getData() == null ? null : result.getData().toString());
+    }
+
+    private static Map<String, RoleTemplate> createRoleTemplates() {
+        Map<String, RoleTemplate> templates = new LinkedHashMap<>();
+        templates.put("platform-operation", new RoleTemplate(
+                "platform-operation",
+                "平台运营",
+                "适合处理工单、运营任务、推荐策略、索引和运营审计",
+                List.of("operation:manage", "search:manage", "audit:manage", "statistics:manage")
+        ));
+        templates.put("content-review", new RoleTemplate(
+                "content-review",
+                "内容审核",
+                "适合处理稿件审核、内容审核、举报、评论和违禁词",
+                List.of("review:manage", "comment:manage")
+        ));
+        templates.put("ai-manager", new RoleTemplate(
+                "ai-manager",
+                "AI 管理",
+                "适合维护 AI 渠道、技能、用量和客服会话",
+                List.of("ai:manage")
+        ));
+        templates.put("media-manager", new RoleTemplate(
+                "media-manager",
+                "媒体管理",
+                "适合维护视频、字幕、分类、轮播图、直播和会议资源",
+                List.of("video:manage", "category:manage", "banner:manage", "live:manage", "meeting:manage")
+        ));
+        templates.put("system-manager", new RoleTemplate(
+                "system-manager",
+                "系统管理",
+                "适合维护管理员、角色权限和安全日志",
+                List.of("admin:manage", "role:manage", "security:manage")
+        ));
+        templates.put("super-admin", new RoleTemplate(
+                "super-admin",
+                "超级管理员",
+                "完整后台权限模板，仅用于初始化或修复超级管理员角色",
+                List.of(
+                        "user:manage",
+                        "video:manage",
+                        "comment:manage",
+                        "category:manage",
+                        "tag:manage",
+                        "review:manage",
+                        "statistics:manage",
+                        "role:manage",
+                        "admin:manage",
+                        "security:manage",
+                        "live:manage",
+                        "meeting:manage",
+                        "storage:manage",
+                        "banner:manage",
+                        "search:manage",
+                        "ai:manage",
+                        "message:manage",
+                        "audit:manage",
+                        "operation:manage"
+                )
+        ));
+        return templates;
+    }
+
+    public record RoleTemplate(String code, String name, String description, List<String> permissionCodes) {
     }
 }

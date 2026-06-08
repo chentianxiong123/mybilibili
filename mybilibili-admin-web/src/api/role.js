@@ -59,6 +59,22 @@ export const setRolePermissions = (id, permissionIds) => {
   })
 }
 
+// 获取岗位权限模板
+export const getRoleTemplates = () => {
+  return request({
+    url: '/admin/roles/templates',
+    method: 'get'
+  })
+}
+
+// 套用岗位权限模板
+export const applyRoleTemplate = (id, templateCode) => {
+  return request({
+    url: `/admin/roles/${id}/template/${templateCode}`,
+    method: 'put'
+  })
+}
+
 // 获取所有权限
 export const getAllPermissions = () => {
   return request({
