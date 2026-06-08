@@ -1,7 +1,17 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getRoleList, addRole, updateRole, deleteRole, getAllPermissions, getRolePermissions, setRolePermissions } from '../api/role'
+import {
+  getRoleList,
+  addRole,
+  updateRole,
+  deleteRole,
+  getAllPermissions,
+  getRolePermissions,
+  setRolePermissions,
+  getRoleTemplates,
+  applyRoleTemplate
+} from '../api/role'
 
 // 格式化日期
 const formatDate = (dateStr) => {
@@ -36,7 +46,35 @@ const permissionDialogVisible = ref(false)
 const currentRoleId = ref(null)
 const allPermissions = ref([])
 const rolePermissions = ref([])
+const roleTemplates = ref([])
+const currentRoleName = ref('')
+const selectedTemplateCode = ref('')
 const permissionLoading = ref(false)
+
+const permissionGroupRules = [
+  { title: '运营', codes: ['operation:manage', 'search:manage', 'audit:manage', 'statistics:manage'] },
+  { title: '内容审核', codes: ['review:manage', 'comment:manage'] },
+  { title: 'AI', codes: ['ai:manage'] },
+  { title: '媒体', codes: ['video:manage', 'category:manage', 'banner:manage', 'live:manage', 'meeting:manage'] },
+  { title: '系统', codes: ['admin:manage', 'role:manage', 'security:manage'] },
+  { title: '其他', codes: [] }
+]
+
+const groupedPermissions = computed(() => {
+  const usedCodes = new Set()
+  const groups = permissionGroupRules.map(group => {
+    const permissions = group.codes.length
+      ? group.codes
+          .map(code => allPermissions.value.find(permission => permission.code === code))
+          .filter(Boolean)
+      : []
+    permissions.forEach(permission => usedCodes.add(permission.code))
+    return { ...group, permissions }
+  })
+  const otherGroup = groups.find(group => group.title === '其他')
+  otherGroup.permissions = allPermissions.value.filter(permission => !usedCodes.has(permission.code))
+  return groups.filter(group => group.permissions.length > 0)
+})
 
 // 表单验证规则
 const rules = {
@@ -130,24 +168,27 @@ const handleDelete = async (row) => {
 // 打开权限设置对话框
 const handlePermissions = async (row) => {
   currentRoleId.value = row.id
+  currentRoleName.value = row.name
+  selectedTemplateCode.value = ''
   permissionLoading.value = true
   permissionDialogVisible.value = true
 
   try {
-    const [allRes, roleRes] = await Promise.all([
+    const [allRes, roleRes, templateRes] = await Promise.all([
       getAllPermissions(),
-      getRolePermissions(row.id)
+      getRolePermissions(row.id),
+      getRoleTemplates()
     ])
 
     if (allRes.code === 200 || allRes.success) {
       allPermissions.value = allRes.data || []
     }
+    if (templateRes.code === 200 || templateRes.success) {
+      roleTemplates.value = templateRes.data || []
+    }
     if (roleRes.code === 200 || roleRes.success) {
-      // 只提取权限ID数组
       const permissions = roleRes.data || []
-      console.log('获取的角色权限数据:', permissions)
       rolePermissions.value = permissions.map(p => p.id)
-      console.log('提取的权限ID:', rolePermissions.value)
     }
   } catch (error) {
     ElMessage.error('获取权限失败')
@@ -159,12 +200,7 @@ const handlePermissions = async (row) => {
 // 保存权限设置
 const handleSavePermissions = async () => {
   try {
-    console.log('设置权限参数:', {
-      roleId: currentRoleId.value,
-      permissions: rolePermissions.value
-    })
     const res = await setRolePermissions(currentRoleId.value, rolePermissions.value)
-    console.log('设置权限响应:', res)
     if (res.code === 200 || res.success) {
       ElMessage.success('权限设置成功')
       permissionDialogVisible.value = false
@@ -172,8 +208,36 @@ const handleSavePermissions = async () => {
       ElMessage.error(`权限设置失败: ${res.message || '未知错误'}`)
     }
   } catch (error) {
-    console.error('设置权限错误:', error)
     ElMessage.error(`权限设置失败: ${error.response?.data?.message || error.message || '未知错误'}`)
+  }
+}
+
+const handleApplyTemplate = async () => {
+  if (!selectedTemplateCode.value || !currentRoleId.value) return
+  const template = roleTemplates.value.find(item => item.code === selectedTemplateCode.value)
+  try {
+    await ElMessageBox.confirm(
+      `确认将“${template?.name || selectedTemplateCode.value}”模板套用到“${currentRoleName.value}”？`,
+      '套用岗位模板',
+      { type: 'warning' }
+    )
+    permissionLoading.value = true
+    const res = await applyRoleTemplate(currentRoleId.value, selectedTemplateCode.value)
+    if (res.code === 200 || res.success) {
+      const roleRes = await getRolePermissions(currentRoleId.value)
+      if (roleRes.code === 200 || roleRes.success) {
+        rolePermissions.value = (roleRes.data || []).map(p => p.id)
+      }
+      ElMessage.success('岗位模板已套用')
+    } else {
+      ElMessage.error(res.message || '套用失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.message || error.message || '套用失败')
+    }
+  } finally {
+    permissionLoading.value = false
   }
 }
 
@@ -256,20 +320,43 @@ onMounted(() => {
     <!-- 权限设置对话框 -->
     <el-dialog
       v-model="permissionDialogVisible"
-      title="权限设置"
-      width="600px"
+      :title="`权限设置${currentRoleName ? ` - ${currentRoleName}` : ''}`"
+      width="760px"
     >
       <div v-loading="permissionLoading">
+        <div class="template-bar">
+          <el-select v-model="selectedTemplateCode" clearable placeholder="岗位模板" class="template-select">
+            <el-option
+              v-for="template in roleTemplates"
+              :key="template.code"
+              :label="template.name"
+              :value="template.code"
+            />
+          </el-select>
+          <el-button type="primary" :disabled="!selectedTemplateCode" @click="handleApplyTemplate">
+            套用模板
+          </el-button>
+        </div>
         <el-checkbox-group v-model="rolePermissions">
-          <el-checkbox
-            v-for="permission in allPermissions"
-            :key="permission.id"
-            :label="permission.id"
-            :value="permission.id"
-            style="display: block; margin: 8px 0"
+          <div
+            v-for="group in groupedPermissions"
+            :key="group.title"
+            class="permission-group"
           >
-            {{ permission.name }}
-          </el-checkbox>
+            <div class="group-title">{{ group.title }}</div>
+            <div class="permission-list">
+              <el-checkbox
+                v-for="permission in group.permissions"
+                :key="permission.id"
+                :label="permission.id"
+                :value="permission.id"
+                class="permission-item"
+              >
+                <span>{{ permission.name }}</span>
+                <span class="permission-code">{{ permission.code }}</span>
+              </el-checkbox>
+            </div>
+          </div>
         </el-checkbox-group>
         <el-empty v-if="allPermissions.length === 0" description="暂无权限数据" />
       </div>
@@ -295,5 +382,43 @@ onMounted(() => {
 
 .action-bar {
   margin-bottom: 20px;
+}
+
+.template-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.template-select {
+  width: 220px;
+}
+
+.permission-group {
+  margin-bottom: 18px;
+}
+
+.group-title {
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.permission-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+}
+
+.permission-item {
+  height: 28px;
+  margin: 0;
+}
+
+.permission-code {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #909399;
 }
 </style>
