@@ -204,6 +204,14 @@ spring:
           filters:
             - StripPrefix=1
 
+        # 剪辑工作室接口 - 项目云端导出任务
+        - id: studio-service
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/studio/**
+          filters:
+            - StripPrefix=1
+
         # ========== 稿件互动相关接口（需要放在 manuscript-service 之前）==========
 
         - id: manuscript-interaction-like

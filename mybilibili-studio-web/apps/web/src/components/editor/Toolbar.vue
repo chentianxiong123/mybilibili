@@ -388,6 +388,11 @@ import { useSettingsStore } from "../../stores/settings-store";
 import { useAuthStore } from "../../stores/auth-store";
 import { navigateToRoute } from "../../hooks/use-router";
 import { toast } from "../../stores/notification-store";
+import {
+  createStudioCloudExportTask,
+  getStudioCloudExportTask,
+  type StudioExportTask,
+} from "../../services/studio-cloud-export";
 
 // React components that we wrap inside our ReactAdapter
 import ExportDialog from "./ExportDialog";
@@ -541,6 +546,47 @@ const exportPhaseLabels: Record<string, string> = {
 };
 
 const formatExportPhase = (phase: string) => exportPhaseLabels[phase] || "处理中";
+
+const cloudExportStageLabels: Record<string, string> = {
+  QUEUED: "等待渲染节点",
+  RENDERER_RECEIVED: "渲染节点已接收",
+  RENDERER_NOT_READY: "渲染器未接入",
+  QUEUE_FAILED: "任务入队失败",
+  WORKER_FAILED: "渲染节点异常",
+  CANCELLED: "已取消",
+  SUCCEEDED: "完成",
+};
+
+const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+const formatCloudExportPhase = (task: StudioExportTask) => {
+  if (task.errorMessage) return task.errorMessage;
+  if (task.stage && cloudExportStageLabels[task.stage]) return cloudExportStageLabels[task.stage];
+  return task.message || "云端导出处理中";
+};
+
+const syncCloudExportState = (task: StudioExportTask) => {
+  const terminal = ["SUCCEEDED", "FAILED", "CANCELLED"].includes(task.status);
+  exportStateLocal.value = {
+    isExporting: !terminal,
+    progress: task.progress ?? 0,
+    phase: formatCloudExportPhase(task),
+    error: task.status === "FAILED" ? formatCloudExportPhase(task) : null,
+    complete: task.status === "SUCCEEDED",
+  };
+};
+
+const pollCloudExportTask = async (taskId: string) => {
+  for (let i = 0; i < 8; i += 1) {
+    await sleep(1000);
+    const task = await getStudioCloudExportTask(taskId);
+    syncCloudExportState(task);
+    if (["SUCCEEDED", "FAILED", "CANCELLED"].includes(task.status)) {
+      return task;
+    }
+  }
+  return null;
+};
 
 watch(
   () => exportStateLocal.value,
@@ -700,7 +746,45 @@ const handleExport = async (type: ExportType) => {
   isExportOpen.value = false;
 
   try {
-    if (type === "wav") {
+    if (type === "cloud") {
+      if (authState.value.status !== "authenticated") {
+        openAuthDialog();
+        toast.warning("请先登录", "登录后才能创建云端导出任务。");
+        return;
+      }
+
+      exportStateLocal.value = {
+        isExporting: true,
+        progress: 0,
+        phase: "创建云端任务",
+        error: null,
+        complete: false,
+      };
+
+      const project = projectState.value.project;
+      const task = await createStudioCloudExportTask(project, {
+        format: "mp4",
+        codec: "h264",
+        width: project.settings.width,
+        height: project.settings.height,
+        frameRate: project.settings.frameRate,
+        bitrate: 12000,
+        quality: 85,
+      });
+
+      syncCloudExportState(task);
+      toast.success("云端导出任务已创建", `任务编号：${task.taskId}`);
+      const latestTask = await pollCloudExportTask(task.taskId);
+      if (latestTask?.status === "SUCCEEDED") {
+        toast.success("云端导出完成", latestTask.outputUrl || "导出文件已生成");
+        setTimeout(() => {
+          exportStateLocal.value = { isExporting: false, progress: 0, phase: "", error: null, complete: false };
+        }, 2500);
+      } else if (latestTask?.status === "FAILED") {
+        toast.error("云端导出失败", latestTask.errorMessage || latestTask.message || "任务执行失败");
+      }
+      return;
+    } else if (type === "wav") {
       const writable = await showSavePicker(`${projectState.value.project.name || "export"}.wav`, "wav");
 
       exportStateLocal.value = {
@@ -895,6 +979,7 @@ const aspectRatio = computed(() => projectState.value.project.settings.width / p
 const isVertical = computed(() => aspectRatio.value < 0.9);
 
 type ExportType =
+  | "cloud"
   | "mp4"
   | "gif"
   | "wav"
@@ -917,6 +1002,12 @@ const exportOptions = computed(() => {
       desc: `${projectRes.value} H.264 - 网页与社交平台`,
       type: "mp4",
       recommended: true,
+    },
+    {
+      label: "云端导出任务",
+      icon: UploadIcon,
+      desc: "提交到媒体节点，后续由 FFmpeg 渲染",
+      type: "cloud",
     },
     {
       label: "",
