@@ -2,7 +2,17 @@
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminRegister, getAdminList, updateAdmin, getAdminRoles, setAdminRoles } from '../api/admin'
-import { getRoleList, getAllPermissions, getRolePermissions, setRolePermissions, addRole, updateRole, deleteRole } from '../api/role'
+import {
+  getRoleList,
+  getAllPermissions,
+  getRolePermissions,
+  setRolePermissions,
+  addRole,
+  updateRole,
+  deleteRole,
+  getRoleTemplates,
+  applyRoleTemplate
+} from '../api/role'
 import { useAdminStore } from '../stores/admin'
 
 const adminStore = useAdminStore()
@@ -54,7 +64,34 @@ const permRoleId = ref(null)
 const permRoleName = ref('')
 const allPermissions = ref([])
 const selectedPermIds = ref([])
+const roleTemplates = ref([])
+const selectedTemplateCode = ref('')
 const permLoading = ref(false)
+
+const permissionGroupRules = [
+  { title: '运营', codes: ['operation:manage', 'search:manage', 'audit:manage', 'statistics:manage'] },
+  { title: '内容审核', codes: ['review:manage', 'comment:manage'] },
+  { title: 'AI', codes: ['ai:manage'] },
+  { title: '媒体', codes: ['video:manage', 'category:manage', 'banner:manage', 'live:manage', 'meeting:manage'] },
+  { title: '系统', codes: ['admin:manage', 'role:manage', 'security:manage'] },
+  { title: '其他', codes: [] }
+]
+
+const groupedPermissions = computed(() => {
+  const usedCodes = new Set()
+  const groups = permissionGroupRules.map(group => {
+    const permissions = group.codes.length
+      ? group.codes
+          .map(code => allPermissions.value.find(permission => permission.code === code))
+          .filter(Boolean)
+      : []
+    permissions.forEach(permission => usedCodes.add(permission.code))
+    return { ...group, permissions }
+  })
+  const otherGroup = groups.find(group => group.title === '其他')
+  otherGroup.permissions = allPermissions.value.filter(permission => !usedCodes.has(permission.code))
+  return groups.filter(group => group.permissions.length > 0)
+})
 
 // ==================== 加载数据 ====================
 const loadAdmins = async () => {
@@ -156,12 +193,14 @@ const handleDeleteRole = async (row) => {
 const handlePermissions = async (row) => {
   permRoleId.value = row.id
   permRoleName.value = row.name
+  selectedTemplateCode.value = ''
   permLoading.value = true
   permDialogVisible.value = true
   try {
-    const [allRes, roleRes] = await Promise.all([getAllPermissions(), getRolePermissions(row.id)])
+    const [allRes, roleRes, templateRes] = await Promise.all([getAllPermissions(), getRolePermissions(row.id), getRoleTemplates()])
     if (allRes.code === 200 || allRes.success) allPermissions.value = allRes.data || []
     if (roleRes.code === 200 || roleRes.success) selectedPermIds.value = (roleRes.data || []).map(p => p.id)
+    if (templateRes.code === 200 || templateRes.success) roleTemplates.value = templateRes.data || []
   } catch { ElMessage.error('获取权限失败') }
   finally { permLoading.value = false }
 }
@@ -172,6 +211,31 @@ const handleSavePermissions = async () => {
     if (res.code === 200 || res.success) { ElMessage.success('权限设置成功'); permDialogVisible.value = false }
     else ElMessage.error(res.message || '设置失败')
   } catch (e) { ElMessage.error('设置失败') }
+}
+
+const handleApplyTemplate = async () => {
+  if (!selectedTemplateCode.value || !permRoleId.value) return
+  const template = roleTemplates.value.find(item => item.code === selectedTemplateCode.value)
+  try {
+    await ElMessageBox.confirm(
+      `确认将“${template?.name || selectedTemplateCode.value}”模板套用到“${permRoleName.value}”？`,
+      '套用岗位模板',
+      { type: 'warning' }
+    )
+    permLoading.value = true
+    const res = await applyRoleTemplate(permRoleId.value, selectedTemplateCode.value)
+    if (res.code === 200 || res.success) {
+      const roleRes = await getRolePermissions(permRoleId.value)
+      if (roleRes.code === 200 || roleRes.success) selectedPermIds.value = (roleRes.data || []).map(p => p.id)
+      ElMessage.success('岗位模板已套用')
+    } else {
+      ElMessage.error(res.message || '套用失败')
+    }
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error(e.response?.data?.message || e.message || '套用失败')
+  } finally {
+    permLoading.value = false
+  }
 }
 </script>
 
@@ -310,13 +374,35 @@ const handleSavePermissions = async () => {
     </el-dialog>
 
     <!-- 权限设置对话框 -->
-    <el-dialog v-model="permDialogVisible" :title="`权限设置 - ${permRoleName}`" width="600px">
+    <el-dialog v-model="permDialogVisible" :title="`权限设置 - ${permRoleName}`" width="760px">
       <div v-loading="permLoading">
+        <div class="template-bar">
+          <el-select v-model="selectedTemplateCode" clearable placeholder="岗位模板" class="template-select">
+            <el-option
+              v-for="template in roleTemplates"
+              :key="template.code"
+              :label="template.name"
+              :value="template.code"
+            />
+          </el-select>
+          <el-button type="primary" :disabled="!selectedTemplateCode" @click="handleApplyTemplate">套用模板</el-button>
+        </div>
         <el-checkbox-group v-model="selectedPermIds">
-          <el-checkbox v-for="p in allPermissions" :key="p.id" :label="p.id" :value="p.id" style="display:block;margin:8px 0">
-            <span>{{ p.name }}</span>
-            <span v-if="p.code" style="color:#999;font-size:12px;margin-left:8px">{{ p.code }}</span>
-          </el-checkbox>
+          <div v-for="group in groupedPermissions" :key="group.title" class="permission-group">
+            <div class="group-title">{{ group.title }}</div>
+            <div class="permission-list">
+              <el-checkbox
+                v-for="p in group.permissions"
+                :key="p.id"
+                :label="p.id"
+                :value="p.id"
+                class="permission-item"
+              >
+                <span>{{ p.name }}</span>
+                <span v-if="p.code" class="permission-code">{{ p.code }}</span>
+              </el-checkbox>
+            </div>
+          </div>
         </el-checkbox-group>
         <el-empty v-if="allPermissions.length === 0" description="暂无权限数据" />
       </div>
@@ -334,4 +420,11 @@ const handleSavePermissions = async () => {
 .section-card { margin-bottom: 20px; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .card-title { font-size: 16px; font-weight: 600; }
+.template-bar { display: flex; gap: 12px; margin-bottom: 18px; }
+.template-select { width: 220px; }
+.permission-group { margin-bottom: 18px; }
+.group-title { margin-bottom: 8px; font-size: 14px; font-weight: 600; color: #303133; }
+.permission-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
+.permission-item { height: 28px; margin: 0; }
+.permission-code { margin-left: 8px; font-size: 12px; color: #909399; }
 </style>
