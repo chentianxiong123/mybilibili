@@ -157,8 +157,8 @@ export const RecipesTab: React.FC = () => {
   const handleApply = async (template: EditingTemplate): Promise<void> => {
     if (!selectedClip || !selectedTargetType) {
       toast.warning(
-        "Select a clip",
-        "Recipes apply to one selected video or image clip.",
+        "请先选择片段",
+        "方案只能应用到一个已选中的视频或图片片段。",
       );
       return;
     }
@@ -174,15 +174,15 @@ export const RecipesTab: React.FC = () => {
 
       if (!applicationId) {
         toast.error(
-          "Could not apply recipe",
-          "This recipe could not be applied to the current clip.",
+          "应用方案失败",
+          "当前片段无法应用这个方案。",
         );
         return;
       }
 
       toast.success(
-        "Recipe applied",
-        `${template.name} was added to ${selectedMedia?.name || "the selected clip"}.`,
+        "方案已应用",
+        `${template.name} 已添加到 ${selectedMedia?.name || "当前片段"}。`,
       );
     } finally {
       setApplyingTemplateId(null);
@@ -198,7 +198,7 @@ export const RecipesTab: React.FC = () => {
         <div>
           <p className="text-sm font-semibold text-text-primary">请先选择一个片段</p>
           <p className="mt-1.5 text-xs text-text-muted max-w-[240px] leading-relaxed mx-auto">
-            Choose a video or image in the timeline to apply clip-scoped recipes, looks, and caption treatments.
+            在时间线上选择一个视频或图片片段后，可以应用外观、叠加层和字幕处理方案。
           </p>
         </div>
       </div>
@@ -215,10 +215,10 @@ export const RecipesTab: React.FC = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-text-primary truncate" title={selectedMedia?.name || selectedClip.id}>
-              {selectedMedia?.name || 'Selected Clip'}
+              {selectedMedia?.name || '当前片段'}
             </p>
             <p className="text-[10px] text-text-muted mt-0.5">
-              {selectedClip.duration.toFixed(1)}s • {appliedTemplates.length} recipes applied
+              {selectedClip.duration.toFixed(1)}s • 已应用 {appliedTemplates.length} 个方案
             </p>
           </div>
         </div>
@@ -246,7 +246,7 @@ export const RecipesTab: React.FC = () => {
                 : "bg-background-tertiary text-text-muted hover:text-text-primary hover:bg-background-elevated border border-border/50"
             }`}
           >
-            ALL
+            全部
           </button>
           {EDITING_TEMPLATE_CATEGORIES.map((category) => (
             <button
@@ -326,7 +326,7 @@ export const RecipesTab: React.FC = () => {
                                 }`}
                               >
                                 <SlidersHorizontal size={10} />
-                                Edit
+                                调整
                               </button>
                             )}
                             <button
@@ -334,7 +334,7 @@ export const RecipesTab: React.FC = () => {
                               disabled={applyingTemplateId !== null}
                               className="h-6 px-3 bg-primary text-black text-[10px] font-bold rounded transition-colors hover:bg-primary/80 disabled:opacity-50"
                             >
-                              {applyingTemplateId === template.id ? "Applying" : "Apply"}
+                              {applyingTemplateId === template.id ? "应用中" : "应用"}
                             </button>
                           </div>
                         </div>

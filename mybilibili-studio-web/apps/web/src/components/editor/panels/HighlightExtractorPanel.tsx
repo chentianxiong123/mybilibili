@@ -52,7 +52,7 @@ export const HighlightExtractorPanel: React.FC<HighlightExtractorPanelProps> = (
 
     const mediaItem = getMediaItem(clip.mediaId);
     if (!mediaItem?.blob) {
-      setError("Media not found or not loaded");
+      setError("媒体文件尚未加载");
       return;
     }
 
@@ -61,7 +61,7 @@ export const HighlightExtractorPanel: React.FC<HighlightExtractorPanelProps> = (
     setHighlights([]);
 
     try {
-      setPhase("Transcribing audio...");
+      setPhase("正在转写音频...");
       setProgress(5);
 
       const transcriptionService = getTranscriptionService() || initializeTranscriptionService({
@@ -83,10 +83,10 @@ export const HighlightExtractorPanel: React.FC<HighlightExtractorPanelProps> = (
       );
 
       if (transcript.length === 0) {
-        throw new Error("No transcript words found");
+        throw new Error("没有识别到有效文字");
       }
 
-      setPhase("Decoding audio...");
+      setPhase("正在解析音频...");
       setProgress(25);
 
       const arrayBuffer = await mediaItem.blob.arrayBuffer();
@@ -106,7 +106,7 @@ export const HighlightExtractorPanel: React.FC<HighlightExtractorPanelProps> = (
       setHighlights(results);
       setSelected(new Set(results.map((_, i) => i)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Analysis failed");
+      setError(err instanceof Error ? err.message : "分析失败");
     } finally {
       setIsProcessing(false);
       setPhase("");
@@ -181,7 +181,7 @@ export const HighlightExtractorPanel: React.FC<HighlightExtractorPanelProps> = (
           ) : (
             <>
               <Sparkles size={14} />
-              Find Highlights
+              查找精彩片段
             </>
           )}
         </button>
@@ -311,7 +311,7 @@ export const HighlightExtractorPanel: React.FC<HighlightExtractorPanelProps> = (
             className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-[11px] font-medium transition-colors disabled:opacity-50"
           >
             <Check size={14} />
-            Apply {selected.size} Highlight{selected.size !== 1 ? "s" : ""}
+            应用 {selected.size} 个精彩片段
           </button>
         </div>
       )}

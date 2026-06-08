@@ -388,7 +388,41 @@
             class="absolute inset-3 border-2 border-dashed border-primary rounded-xl flex items-center justify-center bg-primary/5 pointer-events-none z-50 backdrop-blur-sm"
           >
             <div class="text-primary text-xs font-bold bg-background-secondary px-3 py-1.5 rounded-full shadow-lg">
-              Drop files to import
+              松开即可导入文件
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- Text tab -->
+      <template v-else-if="activeTab === 'text'">
+        <div class="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3">
+          <div>
+            <h4 class="text-[11px] font-medium text-text-secondary mb-2 flex items-center gap-1.5">
+              <Type :size="12" />
+              文字与字幕
+            </h4>
+            <div class="grid grid-cols-1 gap-2">
+              <button
+                v-for="preset in textPresets"
+                :key="preset.id"
+                @click="handleAddTextPreset(preset)"
+                class="w-full rounded-lg border border-border bg-background-tertiary hover:border-primary/50 hover:bg-primary/5 transition-all p-3 text-left group"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <div class="min-w-0">
+                    <div class="text-[12px] font-semibold text-text-primary truncate">{{ preset.label }}</div>
+                    <div class="text-[10px] text-text-muted mt-0.5 truncate">{{ preset.description }}</div>
+                  </div>
+                  <PlusIcon :size="14" class="text-text-muted group-hover:text-primary shrink-0" />
+                </div>
+                <div
+                  class="mt-2 rounded-md border border-border/60 bg-background-secondary px-2 py-2 text-center truncate"
+                  :style="{ color: preset.previewColor, fontSize: preset.previewSize }"
+                >
+                  {{ preset.text }}
+                </div>
+              </button>
             </div>
           </div>
         </div>
@@ -402,7 +436,7 @@
               <div class="flex items-center justify-between mb-2">
                 <h4 class="text-[11px] font-medium text-text-secondary flex items-center gap-1.5">
                   <PaletteIcon :size="11" />
-                  Backgrounds
+                  背景
                 </h4>
               </div>
               <div class="flex gap-1 mb-2 flex-wrap">
@@ -417,7 +451,7 @@
                       : 'bg-background-tertiary text-text-muted hover:text-text-secondary'
                   ]"
                 >
-                  {{ cat }}
+                  {{ backgroundCategoryLabel(cat) }}
                 </button>
               </div>
               <div class="grid grid-cols-4 gap-1.5">
@@ -447,7 +481,7 @@
             </div>
 
             <div>
-              <h4 class="text-[11px] font-medium text-text-secondary mb-2">Shapes</h4>
+              <h4 class="text-[11px] font-medium text-text-secondary mb-2">图形</h4>
               <div class="grid grid-cols-4 gap-1.5">
                 <button
                   v-for="shape in shapePresets"
@@ -537,6 +571,7 @@ import { useProjectStore } from "../../stores/project-store";
 import { useUIStore } from "../../stores/ui-store";
 import { useKieAIStore } from "../../stores/kieai-store";
 import { useTtsAudioStore } from "../../stores/tts-store";
+import { useTimelineStore } from "../../stores/timeline-store";
 import { toast } from "../../stores/notification-store";
 import { saveFileHandle, saveDirectoryHandle, loadMediaBlob } from "../../services/media-storage";
 import {
@@ -566,6 +601,7 @@ const AspectRatioMatchDialogRaw = markRaw(AspectRatioMatchDialog);
 const projectStore = useProjectStore;
 const uiStore = useUIStore;
 const kieaiStore = useKieAIStore;
+const timelineStore = useTimelineStore;
 
 const projectState = useZustandStore<any>(projectStore);
 const uiState = useZustandStore<any>(uiStore);
@@ -584,7 +620,7 @@ const showAspectRatioDialog = ref(false);
 const aspectRatioDialogData = ref<{ videoWidth: number; videoHeight: number; itemToAdd: MediaItem } | null>(null);
 const mediaViewMode = ref<MediaViewMode>("large");
 const generatingBackground = ref<string | null>(null);
-const backgroundCategory = ref<"all" | "solid" | "gradient" | "pattern" | "mesh">("all");
+const backgroundCategory = ref<BackgroundCategory>("all");
 const kieaiDialog = ref<{ file: File; previewUrl: string | null } | null>(null);
 const hoveredItemId = ref<string | null>(null);
 
@@ -638,6 +674,76 @@ const viewModes = [
 type MediaViewMode = "large" | "small" | "list";
 
 const backgroundCategories = ["all", "solid", "gradient", "mesh", "pattern"] as const;
+
+type BackgroundCategory = typeof backgroundCategories[number];
+
+const backgroundCategoryLabels: Record<BackgroundCategory, string> = {
+  all: "全部",
+  solid: "纯色",
+  gradient: "渐变",
+  mesh: "网格",
+  pattern: "图案",
+};
+
+interface TextPreset {
+  id: string;
+  label: string;
+  description: string;
+  text: string;
+  duration: number;
+  previewColor: string;
+  previewSize: string;
+  style: {
+    fontSize: number;
+    color: string;
+    fontWeight?: string;
+    textAlign?: "left" | "center" | "right";
+    backgroundColor?: string;
+    padding?: number;
+    borderRadius?: number;
+  };
+}
+
+const textPresets: TextPreset[] = [
+  {
+    id: "title",
+    label: "标题",
+    description: "适合片头、章节名和重点信息。",
+    text: "新标题",
+    duration: 5,
+    previewColor: "#ffffff",
+    previewSize: "18px",
+    style: { fontSize: 72, color: "#ffffff", fontWeight: "700", textAlign: "center" },
+  },
+  {
+    id: "subtitle",
+    label: "字幕",
+    description: "适合对白字幕和说明文字。",
+    text: "字幕文字",
+    duration: 4,
+    previewColor: "#ffffff",
+    previewSize: "14px",
+    style: {
+      fontSize: 42,
+      color: "#ffffff",
+      fontWeight: "600",
+      textAlign: "center",
+      backgroundColor: "rgba(0,0,0,0.45)",
+      padding: 12,
+      borderRadius: 8,
+    },
+  },
+  {
+    id: "body",
+    label: "正文",
+    description: "适合注释、说明和屏幕标注。",
+    text: "说明文字",
+    duration: 5,
+    previewColor: "#d1d5db",
+    previewSize: "13px",
+    style: { fontSize: 36, color: "#d1d5db", fontWeight: "500", textAlign: "center" },
+  },
+];
 
 const shapePresets = [
   { type: "rectangle" as ShapeType, icon: Square, label: "矩形" },
@@ -700,10 +806,13 @@ const filteredBackgrounds = computed(() => {
   return BACKGROUND_PRESETS.filter((p) => backgroundCategory.value === "all" || p.category === backgroundCategory.value);
 });
 
+function backgroundCategoryLabel(category: BackgroundCategory): string {
+  return backgroundCategoryLabels[category];
+}
+
 // --- Tab component resolver ---
 function getTabComponent(tab: AssetsTab) {
   switch (tab) {
-    case "text": return markRaw(AIGenTabRaw);
     case "effects": return markRaw(EffectsPanelRaw);
     case "transitions": return markRaw(TransitionsPanelRaw);
     case "ai": return markRaw(AIGenTabRaw);
@@ -934,6 +1043,42 @@ async function handleImportBackground(preset: BackgroundPreset) {
   } finally {
     generatingBackground.value = null;
   }
+}
+
+async function handleAddTextPreset(preset: TextPreset) {
+  const state = projectStore.getState();
+  const tracksBefore = state.project.timeline.tracks;
+  let textTrack = tracksBefore.find((track: any) => track.type === "text");
+
+  if (!textTrack) {
+    await state.addTrack("text", 0);
+    const tracksAfter = projectStore.getState().project.timeline.tracks;
+    textTrack = tracksAfter.find(
+      (track: any) => track.type === "text" && !tracksBefore.some((before: any) => before.id === track.id),
+    ) || tracksAfter.find((track: any) => track.type === "text");
+  }
+
+  if (!textTrack) {
+    toast.error("创建文字失败", "无法创建文字轨道。");
+    return;
+  }
+
+  const startTime = timelineStore.getState().playheadPosition || 0;
+  const textClip = projectStore.getState().createTextClip(
+    textTrack.id,
+    startTime,
+    preset.text,
+    preset.duration,
+    preset.style,
+  );
+
+  if (!textClip) {
+    toast.error("创建文字失败", "文字引擎尚未准备好。");
+    return;
+  }
+
+  uiStore.getState().selectClip(textClip.id);
+  toast.success("已添加文字", `${preset.label} 已放到播放头位置。`);
 }
 
 async function handleAddShape(shapeType: ShapeType) {
