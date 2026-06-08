@@ -37,6 +37,7 @@ class JwtRequestPolicyTest {
         assertFalse(policy.isPublicPath("/actuator/prometheus"));
         assertFalse(policy.isPublicPath("/api/video/admin/list"));
         assertFalse(policy.isPublicPath("/api/search/admin/index/status"));
+        assertFalse(policy.isPublicPath("/api/operation/admin/tickets"));
         assertFalse(policy.isPublicPath("POST", "/api/category"));
         assertFalse(policy.isPublicPath("POST", "/api/banner-images/home"));
         assertFalse(policy.isPublicPath("/uploads/avatar.png"));
@@ -52,6 +53,7 @@ class JwtRequestPolicyTest {
         assertTrue(policy.isAdminPath("GET", "/api/user/admin/list"));
         assertTrue(policy.isAdminPath("GET", "/api/video/admin/list"));
         assertTrue(policy.isAdminPath("GET", "/api/search/admin/index/status"));
+        assertTrue(policy.isAdminPath("GET", "/api/operation/admin/tickets"));
         assertTrue(policy.isAdminPath("GET", "/api/admin/operation-tasks/list"));
         assertTrue(policy.isAdminPath("GET", "/api/admin/audit-logs/list"));
         assertTrue(policy.isAdminPath("POST", "/api/category"));
@@ -61,6 +63,7 @@ class JwtRequestPolicyTest {
         assertTrue("user:manage".equals(policy.requiredPermission("GET", "/api/user/admin/list")));
         assertTrue("video:manage".equals(policy.requiredPermission("GET", "/api/video/admin/list")));
         assertTrue("search:manage".equals(policy.requiredPermission("GET", "/api/search/admin/index/status")));
+        assertTrue("operation:manage".equals(policy.requiredPermission("GET", "/api/operation/admin/tickets")));
         assertTrue("operation:manage".equals(policy.requiredPermission("GET", "/api/admin/operation-tasks/list")));
         assertTrue("audit:manage".equals(policy.requiredPermission("GET", "/api/admin/audit-logs/list")));
         assertTrue("category:manage".equals(policy.requiredPermission("POST", "/api/category")));

@@ -27,6 +27,7 @@ class GatewayRequestPolicyTest {
         assertFalse(policy.isPublicPath("/api/live/linkmic/apply/1"));
         assertFalse(policy.isPublicPath("/api/admin/live/rooms"));
         assertFalse(policy.isPublicPath("/api/search/admin/index/status"));
+        assertFalse(policy.isPublicPath("/api/operation/admin/tickets"));
         assertFalse(policy.isPublicPath("/api/admin/operation-tasks/list"));
         assertFalse(policy.isPublicPath("/api/admin/audit-logs/list"));
         assertFalse(policy.isPublicPath("/api/creator/stats/overview"));
@@ -43,6 +44,7 @@ class GatewayRequestPolicyTest {
         assertTrue(policy.isAdminPath("/api/manuscript/admin/pending"));
         assertTrue(policy.isAdminPath("/api/comment/admin/list"));
         assertTrue(policy.isAdminPath("/api/message/admin/system/broadcast"));
+        assertTrue(policy.isAdminPath("/api/operation/admin/tickets"));
         assertTrue(policy.isAdminPath("/api/search/admin/index/status"));
         assertTrue(policy.isAdminPath("/api/admin/operation-tasks/list"));
         assertTrue(policy.isAdminPath("/api/admin/audit-logs/list"));
@@ -64,6 +66,7 @@ class GatewayRequestPolicyTest {
         assertTrue("review:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/manuscript/admin/pending")));
         assertTrue("comment:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/comment/admin/list")));
         assertTrue("search:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/search/admin/index/status")));
+        assertTrue("operation:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/operation/admin/tickets")));
         assertTrue("operation:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/admin/operation-tasks/list")));
         assertTrue("audit:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/admin/audit-logs/list")));
         assertTrue("category:manage".equals(policy.requiredPermission(HttpMethod.POST, "/api/category")));
