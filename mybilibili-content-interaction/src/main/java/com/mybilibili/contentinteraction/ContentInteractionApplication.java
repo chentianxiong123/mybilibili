@@ -10,13 +10,14 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 @SpringBootApplication(
         nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class,
         scanBasePackages = {
-        "com.mybilibili.contentinteraction",
-        "com.mybilibili.comment",
-        "com.mybilibili.interaction",
-        "com.mybilibili.danmaku",
-        "com.mybilibili.common",
-        "com.mybilibili.mq"
-})
+                "com.mybilibili.contentinteraction",
+                "com.mybilibili.comment",
+                "com.mybilibili.interaction",
+                "com.mybilibili.danmaku",
+                "com.mybilibili.message",
+                "com.mybilibili.common",
+                "com.mybilibili.mq"
+        })
 @EnableFeignClients(clients = {
         com.mybilibili.comment.feign.ManuscriptClient.class,
         com.mybilibili.comment.feign.UserClient.class,
@@ -25,7 +26,8 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 @MapperScan({
         "com.mybilibili.comment.mapper",
         "com.mybilibili.interaction.mapper",
-        "com.mybilibili.danmaku.mapper"
+        "com.mybilibili.danmaku.mapper",
+        "com.mybilibili.message.mapper"
 })
 @EnableMongoRepositories(basePackages = {
         "com.mybilibili.interaction.repository",

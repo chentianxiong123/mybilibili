@@ -410,7 +410,7 @@ spring:
 
         # ========== 消息服务 ==========
         - id: message-service
-          uri: lb://mybilibili-account-social
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/api/message/**
           filters:
@@ -503,7 +503,7 @@ spring:
 
         # ========== WebSocket 通知推送 ==========
         - id: notification-websocket
-          uri: lb://mybilibili-account-social
+          uri: lb://mybilibili-content-interaction
           predicates:
             - Path=/ws/notification
           filters:
@@ -548,3 +548,5 @@ management:
       probes:
         enabled: true
       show-details: when_authorized
+
+

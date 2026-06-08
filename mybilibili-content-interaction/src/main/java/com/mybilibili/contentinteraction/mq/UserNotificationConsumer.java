@@ -1,4 +1,4 @@
-package com.mybilibili.accountsocial.mq;
+package com.mybilibili.contentinteraction.mq;
 
 import com.mybilibili.message.service.MessageService;
 import com.mybilibili.mq.MQConstants;
@@ -44,3 +44,4 @@ public class UserNotificationConsumer implements RocketMQListener<UserNotificati
         }
     }
 }
+
