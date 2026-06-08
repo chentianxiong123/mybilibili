@@ -98,6 +98,13 @@
           </button>
         </div>
 
+        <div v-if="cloudMissingCount > 0" class="px-3 pb-2 shrink-0">
+          <div class="px-3 py-1.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-[11px] font-medium flex items-center justify-between">
+            <span>云端导出素材准备中</span>
+            <span>{{ cloudReadyCount }}/{{ cloudTotalCount }}</span>
+          </div>
+        </div>
+
         <!-- Media grid / list -->
         <div
           class="flex-1 min-h-0 overflow-y-auto px-3 pb-3 relative"
@@ -174,6 +181,15 @@
                     </div>
                     <div v-else-if="item.isPlaceholder" class="absolute top-1 left-1 px-1 py-0.5 bg-yellow-500 rounded text-[7px] text-black font-bold flex items-center gap-0.5">
                       <AlertTriangleIcon :size="8" /> 缺失
+                    </div>
+                    <div v-else-if="item.cloudUploadError" class="absolute top-1 left-1 px-1 py-0.5 bg-red-500 rounded text-[7px] text-white font-bold">
+                      上云失败
+                    </div>
+                    <div v-else-if="item.cloudObjectKey" class="absolute top-1 left-1 px-1 py-0.5 bg-primary rounded text-[7px] text-black font-bold">
+                      已上云
+                    </div>
+                    <div v-else class="absolute top-1 left-1 px-1 py-0.5 bg-background-elevated/90 border border-border rounded text-[7px] text-text-muted font-bold">
+                      未上云
                     </div>
 
                     <!-- Duration badge -->
@@ -307,6 +323,8 @@
                       <span v-if="formatResolution(item)">{{ formatResolution(item) }}</span>
                       <span v-if="(item.metadata?.duration || formatResolution(item)) && formatFileSize(item.metadata?.fileSize)">•</span>
                       <span v-if="formatFileSize(item.metadata?.fileSize)">{{ formatFileSize(item.metadata?.fileSize) }}</span>
+                      <span v-if="cloudStatusLabel(item)">•</span>
+                      <span v-if="cloudStatusLabel(item)">{{ cloudStatusLabel(item) }}</span>
                     </div>
                   </div>
 
@@ -573,6 +591,10 @@ const hoveredItemId = ref<string | null>(null);
 // --- Computed ---
 const mediaItems = computed(() => projectState.value.project.mediaLibrary.items);
 const missingAssetsCount = computed(() => mediaItems.value.filter((i: MediaItem) => i.isPlaceholder).length);
+const cloudRelevantItems = computed(() => mediaItems.value.filter((i: MediaItem) => !i.isPlaceholder));
+const cloudTotalCount = computed(() => cloudRelevantItems.value.length);
+const cloudReadyCount = computed(() => cloudRelevantItems.value.filter((i: MediaItem) => Boolean(i.cloudObjectKey)).length);
+const cloudMissingCount = computed(() => Math.max(0, cloudTotalCount.value - cloudReadyCount.value));
 const filteredItems = computed(() => {
   const q = searchQuery.value.toLowerCase();
   return mediaItems.value.filter((item: MediaItem) => {
@@ -643,6 +665,13 @@ function formatFileSize(bytes?: number): string | null {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function cloudStatusLabel(item: MediaItem): string | null {
+  if (item.isPlaceholder) return null;
+  if (item.cloudUploadError) return "上云失败";
+  if (item.cloudObjectKey) return "已上云";
+  return "未上云";
 }
 
 function getItemIcon(type: string) {

@@ -41,10 +41,23 @@ function stripLocalOnlyProjectData(project: any): any {
   );
 }
 
+export function getMissingCloudAssetNames(project: any): string[] {
+  const items = project?.mediaLibrary?.items;
+  if (!Array.isArray(items)) return [];
+  return items
+    .filter((item) => !item?.isPlaceholder && !item?.cloudObjectKey)
+    .map((item) => item?.name || "未命名素材");
+}
+
 export async function createStudioCloudExportTask(
   project: any,
   exportSettings: CloudExportSettings,
 ): Promise<StudioExportTask> {
+  const missingAssets = getMissingCloudAssetNames(project);
+  if (missingAssets.length > 0) {
+    throw new Error(`还有 ${missingAssets.length} 个素材未上传到云端，请稍后再试：${missingAssets.slice(0, 3).join("、")}`);
+  }
+
   const cleanedProject = stripLocalOnlyProjectData(project);
   const result = await mybilibiliFetch<StudioExportTask>("/studio/export-tasks", {
     method: "POST",
