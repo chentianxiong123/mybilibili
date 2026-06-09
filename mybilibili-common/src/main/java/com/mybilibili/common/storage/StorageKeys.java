@@ -64,6 +64,10 @@ public final class StorageKeys {
         return "studio/%d/projects/%s/assets/%s/%s".formatted(userId, projectId, mediaId, fileName);
     }
 
+    public static String studioExport(Integer userId, String projectId, String taskId, String fileName) {
+        return "studio/%d/projects/%s/exports/%s/%s".formatted(userId, projectId, taskId, fileName);
+    }
+
     public static String tempUpload(String uploadId, String part, String chunk) {
         return "temp-uploads/%s/%s/%s".formatted(uploadId, part, chunk);
     }
