@@ -20,11 +20,14 @@ public class StudioExportTaskConsumer implements RocketMQListener<StudioExportTa
 
     private final StudioExportTaskService taskService;
     private final StudioExportRenderService renderService;
+    private final StudioExportTimelineRenderer timelineRenderer;
 
     public StudioExportTaskConsumer(StudioExportTaskService taskService,
-                                    StudioExportRenderService renderService) {
+                                    StudioExportRenderService renderService,
+                                    StudioExportTimelineRenderer timelineRenderer) {
         this.taskService = taskService;
         this.renderService = renderService;
+        this.timelineRenderer = timelineRenderer;
     }
 
     @Override
@@ -42,11 +45,10 @@ public class StudioExportTaskConsumer implements RocketMQListener<StudioExportTa
             taskService.markRunning(taskId, 30, "ASSET_PREPARING", "正在准备云端素材");
             StudioExportRenderService.RenderPreparation preparation = renderService.prepare(task);
             taskService.markRunning(taskId, 45, "RENDER_MANIFEST_READY", "素材已就绪，渲染清单已生成");
-            taskService.markFailed(
-                    taskId,
-                    "TIMELINE_RENDERER_NOT_READY",
-                    "渲染准备已完成，时间线 FFmpeg 渲染器尚未接入。manifest=" + preparation.manifestPath()
-            );
+            taskService.markRunning(taskId, 60, "TIMELINE_RENDERING", "正在渲染时间线");
+            StudioExportTimelineRenderer.RenderResult result = timelineRenderer.render(task, preparation);
+            taskService.markRunning(taskId, 90, "OUTPUT_UPLOADED", "导出视频已上传");
+            taskService.markSucceeded(taskId, result.outputUrl());
         } catch (Exception e) {
             log.warn("剪辑云端导出任务处理失败: taskId={}, error={}", taskId, e.getMessage());
             try {
