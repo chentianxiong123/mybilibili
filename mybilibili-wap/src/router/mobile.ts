@@ -42,6 +42,12 @@ const mobileRoutes: RouteRecordRaw[] = [
     meta: { title: '搜索', mobile: true }
   },
   {
+    path: '/m/search/hot',
+    name: 'mobile-search-hot',
+    component: () => import('../views/search/HotRank.vue'),
+    meta: { title: 'bilibili热搜', mobile: true, hideTabBar: true }
+  },
+  {
     path: '/m/search/result',
     name: 'mobile-search-result',
     component: () => import('../views/search/Result.vue'),
@@ -52,6 +58,18 @@ const mobileRoutes: RouteRecordRaw[] = [
     name: 'mobile-message',
     component: () => import('../views/message/Message.vue'),
     meta: { title: '消息', mobile: true }
+  },
+  {
+    path: '/m/message/chat/:id',
+    name: 'mobile-message-chat',
+    component: () => import('../views/message/Chat.vue'),
+    meta: { title: '私信', mobile: true, hideTabBar: true }
+  },
+  {
+    path: '/m/creator',
+    name: 'mobile-creator-center',
+    component: () => import('../views/creator/Center.vue'),
+    meta: { title: '创作中心', mobile: true, hideTabBar: true }
   },
   {
     path: '/m/space',
@@ -72,10 +90,28 @@ const mobileRoutes: RouteRecordRaw[] = [
     meta: { title: '我的收藏', mobile: true }
   },
   {
+    path: '/m/space/manuscripts',
+    name: 'mobile-space-manuscripts',
+    component: () => import('../views/space/ManuscriptManage.vue'),
+    meta: { title: '稿件管理', mobile: true, hideTabBar: true }
+  },
+  {
+    path: '/m/space/profile/edit',
+    name: 'mobile-space-profile-edit',
+    component: () => import('../views/space/ProfileEdit.vue'),
+    meta: { title: '账号资料', mobile: true, hideTabBar: true }
+  },
+  {
+    path: '/m/space/:mId/friends',
+    name: 'mobile-space-friends',
+    component: () => import('../views/space/FriendList.vue'),
+    meta: { title: '我的好友', mobile: true, hideTabBar: true }
+  },
+  {
     path: '/m/space/:mId',
     name: 'mobile-space-user',
     component: () => import('../views/space/UpUser.vue'),
-    meta: { title: 'UP主主页', mobile: true }
+    meta: { title: 'UP主主页', mobile: true, hideTabBar: true }
   },
   {
     path: '/m/dynamic',

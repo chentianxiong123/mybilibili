@@ -71,7 +71,8 @@ onMounted(async () => {
         liveBanners.value = liveList.value.slice(0, 3).map((l, index) => ({
           id: l.roomId || index,
           pic: l.cover || 'https://picsum.photos/600/340?random=' + (l.roomId || index),
-          url: `/m/live/${l.roomId}`
+          url: `/m/live/${l.roomId}`,
+          name: l.title || l.roomName || l.userName || ''
         }))
       }
     }
@@ -128,6 +129,8 @@ const goToLiveSlide = (i) => {
   if (swiperTimer) clearInterval(swiperTimer)
   initSwiper()
 }
+
+const getBannerTitle = (banner) => banner?.name || banner?.title || banner?.roomName || banner?.description || ''
 
 // 热门在数据库里 category_id=0，特殊处理
 function getCategoryIdForBanner(tabId) {
@@ -286,6 +289,9 @@ const activeCategoryBanners = computed(() => {
           <div v-for="(b, i) in liveBanners" :key="b.id" class="swiper-slide" v-show="currentLiveSlide === i">
             <router-link :to="b.url">
               <img :src="b.pic" width="100%" height="100%" alt="" />
+              <div v-if="getBannerTitle(b)" class="banner-caption">
+                <h3>{{ getBannerTitle(b) }}</h3>
+              </div>
             </router-link>
           </div>
           <div class="pagination-dots">
@@ -299,6 +305,9 @@ const activeCategoryBanners = computed(() => {
           <div v-for="(b, i) in banners" :key="b.id" class="swiper-slide" v-show="currentSlide === i">
             <a :href="b.url">
               <img :src="b.pic" width="100%" height="100%" alt="" />
+              <div v-if="getBannerTitle(b)" class="banner-caption">
+                <h3>{{ getBannerTitle(b) }}</h3>
+              </div>
             </a>
           </div>
           <div class="pagination-dots">
@@ -312,6 +321,9 @@ const activeCategoryBanners = computed(() => {
           <div v-for="(b, i) in activeCategoryBanners" :key="b.id" class="swiper-slide" v-show="currentSlide === i">
             <a :href="b.url">
               <img :src="b.pic" width="100%" height="100%" alt="" />
+              <div v-if="getBannerTitle(b)" class="banner-caption">
+                <h3>{{ getBannerTitle(b) }}</h3>
+              </div>
             </a>
           </div>
           <div class="pagination-dots" v-if="activeCategoryBanners.length > 1">
@@ -392,16 +404,25 @@ const activeCategoryBanners = computed(() => {
 
   .swiper-slide {
     width: 100%;
+
+    a,
+    :deep(a) {
+      position: relative;
+      display: block;
+      color: inherit;
+      text-decoration: none;
+    }
+
     img { width: 100%; display: block; object-fit: contain; }
   }
 
   .pagination-dots {
     position: absolute;
-    bottom: 6px;
-    right: 8px;
+    bottom: 12px;
+    right: 12px;
     display: flex;
     gap: 6px;
-    z-index: 1;
+    z-index: 3;
 
     .dot {
       width: 6px;
@@ -414,6 +435,39 @@ const activeCategoryBanners = computed(() => {
         background: #fff;
       }
     }
+  }
+}
+
+.banner-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: 46px;
+  padding: 18px 78px 10px 12px;
+  display: flex;
+  align-items: flex-end;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.78) 0%,
+    rgba(0, 0, 0, 0.56) 54%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  z-index: 2;
+  pointer-events: none;
+
+  h3 {
+    width: 100%;
+    margin: 0;
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.25;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
@@ -432,16 +486,26 @@ const activeCategoryBanners = computed(() => {
   .swiper-slide {
     width: 100%;
     height: 100%;
+
+    a {
+      position: relative;
+      display: block;
+      width: 100%;
+      height: 100%;
+      color: inherit;
+      text-decoration: none;
+    }
+
     img { width: 100%; height: 100%; display: block; object-fit: cover; }
   }
 
   .pagination-dots {
     position: absolute;
-    bottom: 6px;
-    right: 8px;
+    bottom: 12px;
+    right: 12px;
     display: flex;
     gap: 6px;
-    z-index: 1;
+    z-index: 3;
 
     .dot {
       width: 6px;

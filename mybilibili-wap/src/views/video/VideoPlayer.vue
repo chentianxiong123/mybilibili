@@ -121,8 +121,11 @@ const initPlayer = async () => {
         color: '#ffffff',
         fontSize: 20,
         synchronousPlayback: true,
-        maxlength: 50,
+        maxLength: 50,
         margin: [6, 6, 6, 6],
+        theme: props.danmakuMount ? 'light' : 'dark',
+        width: 0,
+        lockTime: 3,
         ...(props.danmakuMount ? { mount: props.danmakuMount } : {})
       })
     ]

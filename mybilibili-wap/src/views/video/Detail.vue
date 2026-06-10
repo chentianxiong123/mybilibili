@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Header from '../../components/Header.vue'
 import VideoPlayer from './VideoPlayer.vue'
@@ -50,9 +50,14 @@ const commentInput = ref('')
 const videoPlayerRef = ref(null)
 
 onMounted(async () => {
+  document.addEventListener('click', handleDanmakuPanelClick)
   await loadData()
   await loadInteractionState()
   await loadFollowState()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleDanmakuPanelClick)
 })
 
 watch(() => route.params.aId, async () => {
@@ -60,6 +65,30 @@ watch(() => route.params.aId, async () => {
   await loadInteractionState()
   await loadFollowState()
 })
+
+const closeDanmakuPanels = () => {
+  document
+    .querySelectorAll('#danmaku-emitter-mount .apd-touch-open')
+    .forEach((el) => el.classList.remove('apd-touch-open'))
+}
+
+const handleDanmakuPanelClick = (event) => {
+  const target = event.target
+  const mount = document.getElementById('danmaku-emitter-mount')
+  if (!mount || !(target instanceof Element)) return
+
+  if (target.closest('.apd-style-panel, .apd-config-panel')) return
+
+  const control = target.closest('.apd-style, .apd-config')
+  if (control && mount.contains(control)) {
+    const shouldOpen = !control.classList.contains('apd-touch-open')
+    closeDanmakuPanels()
+    if (shouldOpen) control.classList.add('apd-touch-open')
+    return
+  }
+
+  if (!mount.contains(target)) closeDanmakuPanels()
+}
 
 const loadInteractionState = async () => {
   try {
@@ -261,6 +290,19 @@ const formatTimeLabel = (timeStr) => {
   return `${y}年${m}月${r}日 ${h}:${min}`
 }
 
+const formatStandardTime = (timeStr) => {
+  if (!timeStr) return ''
+  const d = new Date(timeStr)
+  if (isNaN(d.getTime())) return timeStr
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const r = String(d.getDate()).padStart(2, '0')
+  const h = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  const s = String(d.getSeconds()).padStart(2, '0')
+  return `${y}-${m}-${r} ${h}:${min}:${s}`
+}
+
 const formatCount = (num) => {
   const n = parseInt(num)
   if (isNaN(n)) return 0
@@ -446,7 +488,7 @@ const goBack = () => {
               </div>
 
               <div class="comment-footer-actions">
-                <span class="time-label">{{ c.ctime }}</span>
+                <span class="time-label">{{ formatStandardTime(c.ctime) }}</span>
               </div>
 
               <!-- 子回复 -->
@@ -530,10 +572,11 @@ const goBack = () => {
   align-items: center;
   background: #fff;
   height: 40px;
-  padding: 0 16px;
+  padding: 0 12px 0 16px;
   border-bottom: 1px solid #f1f2f3;
 
   .tabs-titles {
+    flex: 0 0 auto;
     display: flex;
     gap: 24px;
 
@@ -569,43 +612,157 @@ const goBack = () => {
   }
 
   .danmaku-mount-area {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 210px;
+    height: 28px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: flex-end;
 
     // artplayer-plugin-danmuku 挂载后的样式覆盖
+    :deep(.artplayer-plugin-danmuku) {
+      width: 100%;
+      height: 28px;
+      justify-content: flex-end;
+      gap: 5px;
+      color: #18191c;
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    :deep(.apd-toggle),
+    :deep(.apd-config),
+    :deep(.apd-style) {
+      position: relative;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 28px;
+      flex: 0 0 22px;
+      cursor: pointer;
+    }
+
+    :deep(.apd-toggle .apd-icon),
+    :deep(.apd-config-icon),
+    :deep(.apd-style-icon) {
+      width: 18px;
+      height: 18px;
+      opacity: 0.76;
+      fill: #9499a0;
+    }
+
+    :deep(.apd-toggle .apd-icon:hover),
+    :deep(.apd-config-icon:hover),
+    :deep(.apd-style-icon:hover) {
+      opacity: 1;
+      fill: #fb7299;
+    }
+
+    :deep([data-danmuku-visible='true'] .apd-toggle-on),
+    :deep(.apd-toggle-on) {
+      fill: #fb7299;
+    }
+
+    :deep(.apd-config-panel),
+    :deep(.apd-style-panel) {
+      left: auto;
+      right: -8px;
+      bottom: 30px;
+      z-index: 20;
+    }
+
+    :deep(.apd-config.apd-touch-open .apd-config-panel),
+    :deep(.apd-style.apd-touch-open .apd-style-panel) {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    :deep(.apd-config-panel) {
+      width: min(320px, calc(100vw - 24px));
+    }
+
+    :deep(.apd-style-panel) {
+      width: min(220px, calc(100vw - 24px));
+    }
+
+    :deep(.apd-config-panel-inner),
+    :deep(.apd-style-panel-inner) {
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    }
+
     :deep(.apd-emitter) {
+      flex: 1 1 auto;
+      min-width: 0;
+      height: 28px;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 0;
+      overflow: visible;
+      background: #f1f2f3;
+      border-radius: 14px;
     }
 
     :deep(.apd-input) {
-      width: 80px;
+      flex: 1 1 auto;
+      min-width: 0;
+      width: 100%;
       height: 28px;
       border: none;
       outline: none;
-      background: #f1f2f3;
-      border-radius: 14px;
-      padding: 0 10px;
+      background: transparent;
+      border-radius: 0;
+      padding: 0 6px;
       font-size: 12px;
+      line-height: 28px;
       color: #18191c;
-      &::placeholder { color: #9499a0; }
+
+      &::placeholder {
+        color: #9499a0;
+      }
     }
 
     :deep(.apd-send) {
-      font-size: 12px;
+      position: relative;
+      width: 32px;
+      height: 28px;
+      flex: 0 0 32px;
+      padding: 0;
+      border-radius: 0 14px 14px 0;
+      background: #f1f2f3;
       color: #fb7299;
       cursor: pointer;
-      font-weight: 500;
-      padding: 2px 8px;
-      white-space: nowrap;
-    }
-
-    :deep(.apd-style) {
       display: flex;
       align-items: center;
-      cursor: pointer;
+      justify-content: center;
+      font-size: 0;
+
+      &::before {
+        content: '发送';
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 22px;
+        border-radius: 11px;
+        font-size: 12px;
+        line-height: 1;
+        font-weight: 500;
+        color: #fb7299;
+        background: transparent;
+      }
+
+      &.apd-lock {
+        color: #9499a0;
+        background: #f1f2f3;
+        cursor: not-allowed;
+
+        &::before {
+          color: #9499a0;
+        }
+      }
     }
   }
 }

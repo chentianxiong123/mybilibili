@@ -13,6 +13,100 @@ html, body {
   background: $bg-color;
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html[data-wap-theme='dark'],
+html[data-wap-theme='dark'] body,
+html[data-wap-theme='dark'] #app {
+  color: #f2f3f5;
+  background: #111214;
+}
+
+html[data-wap-theme='dark'] {
+  color-scheme: dark;
+}
+
+html[data-wap-theme='dark'] .space-page,
+html[data-wap-theme='dark'] .space-profile-page,
+html[data-wap-theme='dark'] .friends-page,
+html[data-wap-theme='dark'] .profile-edit-page {
+  color: #f2f3f5;
+  background: #111214;
+}
+
+html[data-wap-theme='dark'] .top-nav,
+html[data-wap-theme='dark'] .user-info-section,
+html[data-wap-theme='dark'] .common-tools-grid,
+html[data-wap-theme='dark'] .card-section,
+html[data-wap-theme='dark'] .bottom-tab-bar,
+html[data-wap-theme='dark'] .profile-topbar,
+html[data-wap-theme='dark'] .space-tabs,
+html[data-wap-theme='dark'] .friends-header,
+html[data-wap-theme='dark'] .top-tabs,
+html[data-wap-theme='dark'] .search-section,
+html[data-wap-theme='dark'] .friend-list,
+html[data-wap-theme='dark'] .row-group,
+html[data-wap-theme='dark'] .archive-filter,
+html[data-wap-theme='dark'] .archive-row,
+html[data-wap-theme='dark'] .dynamic-card,
+html[data-wap-theme='dark'] .empty-card,
+html[data-wap-theme='dark'] .favorite-title,
+html[data-wap-theme='dark'] .folder-row,
+html[data-wap-theme='dark'] .home-video-card,
+html[data-wap-theme='dark'] .text-card {
+  color: #f2f3f5;
+  background: #17191c;
+  border-color: rgba(255,255,255,0.08);
+}
+
+html[data-wap-theme='dark'] .nickname,
+html[data-wap-theme='dark'] .num,
+html[data-wap-theme='dark'] .title,
+html[data-wap-theme='dark'] .tool-label,
+html[data-wap-theme='dark'] .profile-row,
+html[data-wap-theme='dark'] .friend-main h2,
+html[data-wap-theme='dark'] .stats-cluster strong,
+html[data-wap-theme='dark'] .name-row h2,
+html[data-wap-theme='dark'] .archive-info h3,
+html[data-wap-theme='dark'] .dynamic-author strong,
+html[data-wap-theme='dark'] .dynamic-text,
+html[data-wap-theme='dark'] .folder-row h3 {
+  color: #f2f3f5;
+}
+
+html[data-wap-theme='dark'] .label,
+html[data-wap-theme='dark'] .coin-item,
+html[data-wap-theme='dark'] .space-link,
+html[data-wap-theme='dark'] .tab-icon,
+html[data-wap-theme='dark'] .tab-name,
+html[data-wap-theme='dark'] .friend-main p,
+html[data-wap-theme='dark'] .row-value,
+html[data-wap-theme='dark'] .signature,
+html[data-wap-theme='dark'] .archive-info time,
+html[data-wap-theme='dark'] .archive-stats,
+html[data-wap-theme='dark'] .folder-row p {
+  color: #aeb2ba;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+#app::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 a {

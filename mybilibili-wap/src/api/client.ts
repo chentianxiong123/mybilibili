@@ -21,9 +21,22 @@ const api = axios.create({
 api.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token')
-    const isImageRequest = config.url.includes('/covers/') || config.url.includes('/images/')
+    const url = config.url || ''
+    const isImageRequest = url.includes('/covers/') || url.includes('/images/')
     if (token && !isImageRequest) {
       config.headers.Authorization = `Bearer ${token}`
+    }
+    const userStr = localStorage.getItem('user')
+    if (userStr && !isImageRequest) {
+      try {
+        const localUser = JSON.parse(userStr)
+        const userId = localUser.id || localUser.userId || localUser.user?.id
+        if (userId) {
+          config.headers['X-User-Id'] = String(userId)
+        }
+      } catch (e) {
+        // ignore malformed local user cache
+      }
     }
     config.headers['X-Client-Platform'] = 'wap'
     return config
