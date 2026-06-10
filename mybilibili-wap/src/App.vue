@@ -8,6 +8,7 @@ const route = useRoute()
 // 只在主要页面显示底部 TabBar
 const showTabBar = computed(() => {
   const path = route.path
+  if (route.meta.hideTabBar) return false
   return path === '/m/index' || path.startsWith('/m/live') || path.startsWith('/m/search') || path.startsWith('/m/space') || path.startsWith('/m/dynamic')
 })
 
