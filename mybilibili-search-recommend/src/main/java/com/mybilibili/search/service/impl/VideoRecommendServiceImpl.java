@@ -1,11 +1,12 @@
 package com.mybilibili.search.service.impl;
 
-import com.mybilibili.common.document.ManuscriptDocument;
 import com.mybilibili.common.utils.JwtUtils;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.common.vo.VideoRecommendVO;
 import com.mybilibili.common.vo.VideoVO;
 import com.mybilibili.common.vo.WatchHistoryVO;
+import com.mybilibili.common.document.ManuscriptDocument;
+import com.mybilibili.search.entity.RecommendConfig;
 import com.mybilibili.search.feign.UserProfileClient;
 import com.mybilibili.search.service.VideoRecommendService;
 import lombok.extern.slf4j.Slf4j;
@@ -122,6 +123,10 @@ public class VideoRecommendServiceImpl implements VideoRecommendService {
         size = Math.max(1, Math.min(size, MAX_SIZE));
 
         try {
+            RecommendConfig rcfg = recommendConfigService.getConfig();
+            int candidateSize = calculateCandidateSize(size, rcfg);
+            double randomWeight = clampDouble(rcfg.getHotRandomWeight(), 0.0, 1.0, 0.0);
+
             NativeQueryBuilder queryBuilder = new NativeQueryBuilder()
                 .withQuery(q -> q.bool(b -> {
                     b.must(m -> m.term(t -> t.field("status").value(PUBLISHED_STATUS)));
@@ -131,18 +136,25 @@ public class VideoRecommendServiceImpl implements VideoRecommendService {
                     return b;
                 }))
                 .withSort(SortOptions.of(s -> s.field(f -> f.field("viewCount").order(SortOrder.Desc))))
-                .withPageable(PageRequest.of(0, size));
+                .withPageable(PageRequest.of(0, candidateSize));
 
             NativeQuery searchQuery = queryBuilder.build();
 
             SearchHits<ManuscriptDocument> searchHits = elasticsearchRestTemplate.search(
                 searchQuery, ManuscriptDocument.class);
 
+            List<SearchHit<ManuscriptDocument>> rankedHits = selectCandidateHits(
+                    searchHits.getSearchHits(),
+                    size,
+                    randomWeight,
+                    rcfg.getShuffleWindowSize()
+            );
+
             int rank = 1;
             List<VideoRecommendVO> result = new ArrayList<>();
-            for (SearchHit<ManuscriptDocument> hit : searchHits.getSearchHits()) {
+            for (SearchHit<ManuscriptDocument> hit : rankedHits) {
                 VideoRecommendVO vo = convertToVO(hit);
-                vo.setRecommendReason("热门排行第" + rank + "名");
+                vo.setRecommendReason(randomWeight > 0 ? "热门推荐" : "热门排行第" + rank + "名");
                 vo.setScore((double) hit.getScore());
                 result.add(vo);
                 rank++;
@@ -165,6 +177,7 @@ public class VideoRecommendServiceImpl implements VideoRecommendService {
         size = Math.max(1, Math.min(size, MAX_SIZE));
 
         try {
+            RecommendConfig rcfg = recommendConfigService.getConfig();
             Map<String, Object> profile = fetchUserProfile(userId);
             if (profile == null || profile.isEmpty()) {
                 return getHotVideos(null, size);
@@ -181,7 +194,8 @@ public class VideoRecommendServiceImpl implements VideoRecommendService {
             }
 
             List<Query> profileClauses = new ArrayList<>();
-            var rcfg = recommendConfigService.getConfig();
+            int candidateSize = calculateCandidateSize(size, rcfg);
+            double randomWeight = clampDouble(rcfg.getPersonalizedRandomWeight(), 0.0, 1.0, 0.0);
 
             if (categoryWeights != null) {
                 List<Map.Entry<String, Number>> topCategories = categoryWeights.entrySet().stream()
@@ -224,14 +238,21 @@ public class VideoRecommendServiceImpl implements VideoRecommendService {
                             .should(profileQuery)
                     ))
                     .withSort(SortOptions.of(s -> s.score(sc -> sc.order(SortOrder.Desc))))
-                    .withPageable(PageRequest.of(0, size))
+                    .withPageable(PageRequest.of(0, candidateSize))
                     .build();
 
             SearchHits<ManuscriptDocument> searchHits = elasticsearchRestTemplate.search(
                     searchQuery, ManuscriptDocument.class);
 
+            List<SearchHit<ManuscriptDocument>> rankedHits = selectCandidateHits(
+                    searchHits.getSearchHits(),
+                    size,
+                    randomWeight,
+                    rcfg.getShuffleWindowSize()
+            );
+
             List<VideoRecommendVO> result = new ArrayList<>();
-            for (SearchHit<ManuscriptDocument> hit : searchHits.getSearchHits()) {
+            for (SearchHit<ManuscriptDocument> hit : rankedHits) {
                 VideoRecommendVO vo = convertToVO(hit);
                 vo.setRecommendReason(generateProfileRecommendReason(hit.getContent(), categoryWeights, tagWeights));
                 vo.setScore((double) hit.getScore());
@@ -330,6 +351,7 @@ public class VideoRecommendServiceImpl implements VideoRecommendService {
         vo.setCoverUrl(document.getCoverUrl());
         vo.setUserId(document.getUserId());
         vo.setUserName(document.getUserName());
+        vo.setUserAvatar(document.getUserAvatar());
         vo.setCategoryId(document.getCategoryId());
         vo.setCategoryName(document.getCategoryName());
         vo.setTags(document.getTags());
@@ -362,6 +384,73 @@ public class VideoRecommendServiceImpl implements VideoRecommendService {
         }
 
         return "相关推荐";
+    }
+
+    private int calculateCandidateSize(int size, RecommendConfig config) {
+        int multiplier = clampInt(config != null ? config.getCandidateMultiplier() : null, 1, 10, 1);
+        return Math.min(MAX_SIZE, Math.max(size, size * multiplier));
+    }
+
+    private List<SearchHit<ManuscriptDocument>> selectCandidateHits(List<SearchHit<ManuscriptDocument>> hits,
+                                                                    int size,
+                                                                    double randomWeight,
+                                                                    Integer shuffleWindowSize) {
+        if (hits == null || hits.isEmpty()) {
+            return Collections.emptyList();
+        }
+        if (randomWeight <= 0) {
+            return new ArrayList<>(hits.subList(0, Math.min(size, hits.size())));
+        }
+
+        int windowSize = clampInt(shuffleWindowSize, size, MAX_SIZE, Math.max(size, 10));
+        int window = Math.min(hits.size(), windowSize);
+        List<RankedHit> ranked = new ArrayList<>();
+
+        for (int i = 0; i < window; i++) {
+            double baseScore = window <= 1 ? 1.0 : 1.0 - ((double) i / (window - 1));
+            double finalScore = baseScore * (1.0 - randomWeight) + Math.random() * randomWeight;
+            ranked.add(new RankedHit(hits.get(i), finalScore));
+        }
+
+        ranked.sort(Comparator.comparingDouble(RankedHit::score).reversed());
+
+        List<SearchHit<ManuscriptDocument>> result = ranked.stream()
+                .limit(size)
+                .map(RankedHit::hit)
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        for (int i = window; result.size() < size && i < hits.size(); i++) {
+            result.add(hits.get(i));
+        }
+        return result;
+    }
+
+    private int clampInt(Integer value, int min, int max, int fallback) {
+        int actual = value != null ? value : fallback;
+        return Math.max(min, Math.min(max, actual));
+    }
+
+    private double clampDouble(Double value, double min, double max, double fallback) {
+        double actual = value != null ? value : fallback;
+        return Math.max(min, Math.min(max, actual));
+    }
+
+    private static class RankedHit {
+        private final SearchHit<ManuscriptDocument> hit;
+        private final double score;
+
+        private RankedHit(SearchHit<ManuscriptDocument> hit, double score) {
+            this.hit = hit;
+            this.score = score;
+        }
+
+        private SearchHit<ManuscriptDocument> hit() {
+            return hit;
+        }
+
+        private double score() {
+            return score;
+        }
     }
 
     private boolean hasText(String text) {

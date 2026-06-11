@@ -14,13 +14,6 @@ export const getProcessingManuscripts = () => {
   })
 }
 
-export const getReadyManuscripts = () => {
-  return request({
-    url: '/manuscript/admin/ready',
-    method: 'get'
-  })
-}
-
 export const getAllManuscripts = () => {
   return request({
     url: '/manuscript/admin/all',

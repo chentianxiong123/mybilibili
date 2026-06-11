@@ -4,7 +4,6 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getPendingManuscripts,
   getProcessingManuscripts,
-  getReadyManuscripts,
   getAllManuscripts,
   getManuscriptDetail,
   approveManuscript,
@@ -61,9 +60,6 @@ const loadManuscripts = async () => {
         break
       case '1':
         res = await getProcessingManuscripts()
-        break
-      case '2':
-        res = await getReadyManuscripts()
         break
       default:
         res = await getAllManuscripts()

@@ -74,8 +74,7 @@ const allMenuItems = [
       { path: '/operation-tasks', icon: 'List', title: '任务中心', permission: 'operation:manage' },
       { path: '/support-tickets', icon: 'Message', title: '工单中心', permission: 'operation:manage' },
       { path: '/index-manager', icon: 'DataLine', title: '索引管理', permission: 'search:manage' },
-      { path: '/recommend-config', icon: 'DataAnalysis', title: '推荐配置', permission: 'search:manage' },
-      { path: '/audit-logs', icon: 'Tickets', title: '审计日志', permission: 'audit:manage' }
+      { path: '/recommend-config', icon: 'DataAnalysis', title: '推荐配置', permission: 'search:manage' }
     ]
   },
   {
@@ -119,6 +118,7 @@ const allMenuItems = [
       { path: '/dashboard', icon: 'DataBoard', title: '数据概览', permission: 'statistics:manage' },
       { path: '/users', icon: 'User', title: '用户管理', permission: 'user:manage' },
       { path: '/login-logs', icon: 'List', title: '登录日志', permission: 'security:manage' },
+      { path: '/audit-logs', icon: 'Tickets', title: '审计日志', permission: 'audit:manage' },
       { path: '/admins', icon: 'Lock', title: '管理员与角色权限', permission: 'role:manage', superAdminOnly: true }
     ]
   }

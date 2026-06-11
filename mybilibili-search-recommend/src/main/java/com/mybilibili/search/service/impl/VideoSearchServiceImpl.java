@@ -1,7 +1,7 @@
 package com.mybilibili.search.service.impl;
 
 import com.mybilibili.common.vo.VideoSearchVO;
-import com.mybilibili.search.document.ManuscriptDocument;
+import com.mybilibili.common.document.ManuscriptDocument;
 import com.mybilibili.search.service.HotSearchService;
 import com.mybilibili.search.service.VideoSearchService;
 import lombok.extern.slf4j.Slf4j;

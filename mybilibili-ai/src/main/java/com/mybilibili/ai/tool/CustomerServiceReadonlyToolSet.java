@@ -181,7 +181,6 @@ public class CustomerServiceReadonlyToolSet {
         return switch (status) {
             case Manuscript.STATUS_PENDING_REVIEW -> "待审核";
             case Manuscript.STATUS_PROCESSING -> "处理中";
-            case Manuscript.STATUS_READY_TO_PUBLISH -> "待发布";
             case Manuscript.STATUS_PUBLISHED -> "已发布";
             case Manuscript.STATUS_REJECTED -> "已驳回";
             case Manuscript.STATUS_PROCESS_FAILED -> "处理失败";

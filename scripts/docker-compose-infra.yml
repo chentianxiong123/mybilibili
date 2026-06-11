@@ -52,15 +52,15 @@ services:
     image: nacos/nacos-server:v2.3.2
     container_name: mybilibili-nacos
     restart: unless-stopped
-    mem_limit: 512m
-    cpus: 0.50
+    mem_limit: 768m
+    cpus: 0.75
     environment:
       MODE: standalone
       PREFER_HOST_MODE: hostname
       NACOS_AUTH_ENABLE: "false"
-      JVM_XMS: 128m
-      JVM_XMX: 256m
-      JVM_XMN: 64m
+      JVM_XMS: 192m
+      JVM_XMX: 384m
+      JVM_XMN: 96m
     ports:
       - "8848:8848"
       - "9848:9848"

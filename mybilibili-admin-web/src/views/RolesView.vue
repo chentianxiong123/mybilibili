@@ -52,11 +52,11 @@ const selectedTemplateCode = ref('')
 const permissionLoading = ref(false)
 
 const permissionGroupRules = [
-  { title: '运营', codes: ['operation:manage', 'search:manage', 'audit:manage', 'statistics:manage'] },
+  { title: '运营', codes: ['operation:manage', 'search:manage', 'statistics:manage'] },
   { title: '内容审核', codes: ['review:manage', 'comment:manage'] },
   { title: 'AI', codes: ['ai:manage'] },
   { title: '媒体', codes: ['video:manage', 'category:manage', 'banner:manage', 'live:manage', 'meeting:manage'] },
-  { title: '系统', codes: ['admin:manage', 'role:manage', 'security:manage'] },
+  { title: '系统', codes: ['admin:manage', 'role:manage', 'security:manage', 'audit:manage'] },
   { title: '其他', codes: [] }
 ]
 

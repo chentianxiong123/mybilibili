@@ -467,8 +467,8 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="匹配类型">
           <el-radio-group v-model="dialogForm.matchType">
-            <el-radio label="CONTAINS">包含匹配</el-radio>
-            <el-radio label="EXACT">精确匹配</el-radio>
+            <el-radio value="CONTAINS">包含匹配</el-radio>
+            <el-radio value="EXACT">精确匹配</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="分类">
@@ -483,8 +483,8 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="dialogForm.isEnabled">
-            <el-radio :label="1">启用</el-radio>
-            <el-radio :label="0">禁用</el-radio>
+            <el-radio :value="1">启用</el-radio>
+            <el-radio :value="0">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -519,8 +519,8 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="匹配类型">
           <el-radio-group v-model="importForm.matchType">
-            <el-radio label="CONTAINS">包含匹配</el-radio>
-            <el-radio label="EXACT">精确匹配</el-radio>
+            <el-radio value="CONTAINS">包含匹配</el-radio>
+            <el-radio value="EXACT">精确匹配</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="分类">

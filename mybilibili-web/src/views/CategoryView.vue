@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { ArrowLeft, ArrowRight, View, Star } from '@element-plus/icons-vue'
 import { videoApi, categoryApi } from '../api/index.js'
 import { getCategoryBanners } from '../api/banner.js'
+import { formatDuration, formatMonthDay, normalizeVideoCard } from '../utils/videoCard.js'
 
 const route = useRoute()
 const categoryId = ref(route.params.id)
@@ -112,14 +113,15 @@ const fetchVideoList = async () => {
       if (videos && Array.isArray(videos)) {
         for (const video of videos) {
           console.log('处理视频:', video)
-          if (video && video.id) {
-            console.log('视频ID:', video.id)
-            if (!videoIds.has(video.id)) {
-              videoIds.add(video.id)
-              uniqueVideos.push(video)
-              console.log('添加视频:', video.id, video.title)
+          const videoCard = normalizeVideoCard(video)
+          if (videoCard) {
+            console.log('视频ID:', videoCard.manuscriptId)
+            if (!videoIds.has(videoCard.manuscriptId)) {
+              videoIds.add(videoCard.manuscriptId)
+              uniqueVideos.push(videoCard)
+              console.log('添加视频:', videoCard.manuscriptId, videoCard.title)
             } else {
-              console.log('跳过重复视频:', video.id, video.title)
+              console.log('跳过重复视频:', videoCard.manuscriptId, videoCard.title)
             }
           } else {
             console.log('跳过无效视频:', video)
@@ -167,23 +169,6 @@ const fetchCategoryBanners = async (catId) => {
   }
 }
 
-// 格式化日期，只显示月和日
-const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${month}-${day}`
-}
-
-// 格式化视频时长
-const formatDuration = (seconds) => {
-  if (!seconds || seconds <= 0) return '00:00'
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-}
-
 // 跳转到稿件详情页
 const goToVideo = (video) => {
   // 优先使用稿件ID
@@ -193,7 +178,9 @@ const goToVideo = (video) => {
 
 // 跳转到作者主页
 const goToAuthor = (authorId) => {
-  window.open(`/profile/${authorId}/home`, '_blank')
+  if (authorId) {
+    window.open(`/profile/${authorId}/home`, '_blank')
+  }
 }
 
 const categoryMap = ref({})
@@ -313,15 +300,15 @@ onMounted(async () => {
             </span>
           </div>
           <!-- 右下角：视频时长 -->
-          <span class="video-duration">{{ formatDuration(video.durationSeconds) }}</span>
+          <span class="video-duration">{{ video.duration || formatDuration(video.durationSeconds) }}</span>
         </div>
         <span class="video-title">
           <span class="video-title-text" @click="goToVideo(video)">{{ video.title }}</span>
         </span>
         <div class="video-meta">
-          <span class="video-author" @click="goToAuthor(video.uploader?.id)">{{ video.uploader?.name }}</span>
+          <span class="video-author" @click="goToAuthor(video.uploader?.id)">{{ video.uploader?.name || '未知UP主' }}</span>
           <span class="video-separator"> · </span>
-          <span class="video-date">{{ formatDate(video.uploadTime) }}</span>
+          <span class="video-date">{{ video.dateText || formatMonthDay(video.uploadTime) }}</span>
         </div>
       </div>
     </div>
@@ -431,6 +418,7 @@ onMounted(async () => {
   align-items: center;
   gap: 4px;
   flex: 0 0 auto;
+  min-width: 0;
 }
 
 .video-author {
@@ -438,6 +426,11 @@ onMounted(async () => {
   color: #9499a0;
   cursor: pointer;
   transition: color 0.3s;
+  min-width: 0;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .video-author:hover {
@@ -447,11 +440,13 @@ onMounted(async () => {
 .video-date {
   font-size: 11px;
   color: #9499a0;
+  flex: 0 0 auto;
 }
 
 .video-separator {
   color: #9499a0;
   font-size: 11px;
+  flex: 0 0 auto;
 }
 
 .video-cover {

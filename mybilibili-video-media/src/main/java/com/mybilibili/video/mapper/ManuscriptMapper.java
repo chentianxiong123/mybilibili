@@ -52,9 +52,6 @@ public interface ManuscriptMapper extends BaseMapper<Manuscript> {
     @Select("SELECT COUNT(*) FROM manuscripts WHERE user_id = #{userId} AND status = 1")
     Integer countProcessingByUserId(Integer userId);
 
-    @Select("SELECT COUNT(*) FROM manuscripts WHERE user_id = #{userId} AND status = 2")
-    Integer countReadyByUserId(Integer userId);
-
     @Select("SELECT COUNT(*) FROM manuscripts WHERE user_id = #{userId} AND status = 3")
     Integer countPublishedByUserId(Integer userId);
 

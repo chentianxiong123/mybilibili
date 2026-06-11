@@ -182,17 +182,15 @@ public class ManuscriptController {
     }
 
     @PutMapping("/internal/{id}/take-down")
-    @Operation(summary = "内部下架稿件", description = "服务间调用，下架违规稿件")
-    public Result<?> takeDownManuscriptInternal(@PathVariable Integer id) {
+    @Operation(summary = "内部下架稿件", description = "服务间调用,下架违规稿件")
+    public Result<?> takeDownManuscriptInternal(@PathVariable Integer id,
+                                                 @RequestParam(required = false) String reason) {
         try {
-            Manuscript manuscript = new Manuscript();
-            manuscript.setId(id);
-            manuscript.setStatus(Manuscript.STATUS_UNPUBLISHED);
-            manuscript.setReviewStatus(Manuscript.REVIEW_STATUS_REJECTED);
-            manuscript.setReviewReason("举报违规，管理员下架");
-            manuscript.setReviewTime(new java.util.Date());
-            manuscriptService.updateManuscript(id, manuscript);
-            return Result.success("下架成功");
+            boolean success = manuscriptService.takeDownViolatingManuscript(id, reason);
+            if (success) {
+                return Result.success("下架成功");
+            }
+            return Result.error("稿件不存在");
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }
@@ -494,8 +492,6 @@ public class ManuscriptController {
                 return Manuscript.STATUS_PENDING_REVIEW;
             case "processing":
                 return Manuscript.STATUS_PROCESSING;
-            case "ready":
-                return Manuscript.STATUS_READY_TO_PUBLISH;
             case "published":
                 return Manuscript.STATUS_PUBLISHED;
             case "rejected":

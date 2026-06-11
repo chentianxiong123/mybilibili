@@ -179,6 +179,14 @@ spring:
           filters:
             - StripPrefix=1
 
+        # 粉丝列表接口（带用户ID）
+        - id: user-followers-with-id
+          uri: lb://mybilibili-account-social
+          predicates:
+            - Path=/api/follow/user/{id}/followers
+          filters:
+            - StripPrefix=1
+
         # 当前用户粉丝列表接口
         - id: user-me-followers
           uri: lb://mybilibili-account-social

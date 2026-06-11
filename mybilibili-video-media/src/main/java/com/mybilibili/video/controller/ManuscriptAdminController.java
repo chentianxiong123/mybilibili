@@ -52,13 +52,6 @@ public class ManuscriptAdminController {
         return Result.success("获取成功", manuscripts);
     }
 
-    @GetMapping("/ready")
-    @Operation(summary = "获取待上架稿件", description = "获取所有待上架的稿件列表")
-    public Result<List<ManuscriptVO>> getReadyManuscripts() {
-        List<ManuscriptVO> manuscripts = manuscriptService.getReadyManuscripts();
-        return Result.success("获取成功", manuscripts);
-    }
-
     @GetMapping("/all")
     @Operation(summary = "获取所有稿件", description = "获取所有稿件列表")
     public Result<List<ManuscriptVO>> getAllManuscripts() {

@@ -107,6 +107,22 @@ onMounted(fetchConfig)
           <el-form-item label="新鲜度窗口(天)">
             <el-input-number v-model="config.freshnessWindowDays" :min="1" :max="30" :step="1" />
           </el-form-item>
+          <el-form-item label="候选池倍数">
+            <el-input-number v-model="config.candidateMultiplier" :min="1" :max="10" :step="1" />
+            <span class="param-hint">先召回 size x 倍数的候选，再做排序和随机扰动</span>
+          </el-form-item>
+          <el-form-item label="热门随机权重">
+            <el-input-number v-model="config.hotRandomWeight" :min="0" :max="1" :step="0.01" :precision="2" />
+            <span class="param-hint">0 为纯热度排序，建议 0.10-0.25</span>
+          </el-form-item>
+          <el-form-item label="个性化随机权重">
+            <el-input-number v-model="config.personalizedRandomWeight" :min="0" :max="1" :step="0.01" :precision="2" />
+            <span class="param-hint">0 为纯画像相关排序，建议 0.05-0.20</span>
+          </el-form-item>
+          <el-form-item label="洗牌窗口">
+            <el-input-number v-model="config.shuffleWindowSize" :min="1" :max="50" :step="1" />
+            <span class="param-hint">只在前 N 个候选内随机重排，避免低质量内容冲到前排</span>
+          </el-form-item>
         </el-form>
       </el-card>
 

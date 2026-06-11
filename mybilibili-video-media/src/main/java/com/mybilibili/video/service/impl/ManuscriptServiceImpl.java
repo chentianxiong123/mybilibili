@@ -17,6 +17,7 @@ import com.mybilibili.common.vo.UserVO;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
 import com.mybilibili.mq.ManuscriptAnalyticsEvent;
+import com.mybilibili.mq.ManuscriptIndexEvent;
 import com.mybilibili.mq.UserEventMQProducer;
 import com.mybilibili.mq.UserExperienceEvent;
 import com.mybilibili.mq.UserNotificationEvent;
@@ -388,7 +389,6 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         Map<String, Integer> stats = new HashMap<>();
         stats.put("draft", manuscriptMapper.countPendingByUserId(userId));
         stats.put("processing", manuscriptMapper.countProcessingByUserId(userId));
-        stats.put("ready", manuscriptMapper.countReadyByUserId(userId));
         stats.put("published", manuscriptMapper.countPublishedByUserId(userId));
         stats.put("rejected", manuscriptMapper.countRejectedByUserId(userId));
         stats.put("unpublished", manuscriptMapper.countUnpublishedByUserId(userId));
@@ -967,12 +967,6 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     }
 
     @Override
-    public List<ManuscriptVO> getReadyManuscripts() {
-        List<Manuscript> manuscripts = manuscriptMapper.selectByStatus(Manuscript.STATUS_READY_TO_PUBLISH);
-        return convertToVOs(manuscripts);
-    }
-
-    @Override
     public List<ManuscriptVO> getAllManuscripts() {
         List<Manuscript> manuscripts = manuscriptMapper.selectList(null);
         return convertToVOs(manuscripts);
@@ -1214,6 +1208,28 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         if (updated) {
             recordManuscriptStatusEvent(manuscript, fromStatus, Manuscript.STATUS_UNPUBLISHED,
                     "ADMIN_UNPUBLISH", "ADMIN", null, null);
+            sendIndexDeleteEvent(manuscriptId, "ADMIN_UNPUBLISH");
+        }
+        return updated;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean takeDownViolatingManuscript(Integer manuscriptId, String reason) {
+        Manuscript manuscript = manuscriptMapper.selectById(manuscriptId);
+        if (manuscript == null) {
+            return false;
+        }
+        Integer fromStatus = manuscript.getStatus();
+        manuscript.setStatus(Manuscript.STATUS_UNPUBLISHED);
+        manuscript.setReviewStatus(Manuscript.REVIEW_STATUS_REJECTED);
+        manuscript.setReviewReason(reason != null ? reason : "违规内容,管理员下架");
+        manuscript.setReviewTime(new Date());
+        boolean updated = manuscriptMapper.updateById(manuscript) > 0;
+        if (updated) {
+            recordManuscriptStatusEvent(manuscript, fromStatus, Manuscript.STATUS_UNPUBLISHED,
+                    "TAKE_DOWN_VIOLATION", "ADMIN", null, reason);
+            sendIndexDeleteEvent(manuscriptId, "TAKE_DOWN_VIOLATION");
         }
         return updated;
     }
@@ -1225,11 +1241,23 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         if (manuscript == null || !manuscript.getUserId().equals(userId)) {
             return false;
         }
+        // 只允许从 UNPUBLISHED 重新上架,禁止绕过审核从其他状态直接 publish
+        if (manuscript.getStatus() == null
+                || manuscript.getStatus() != Manuscript.STATUS_UNPUBLISHED) {
+            log.warn("用户重新上架被拒绝:稿件状态不是 UNPUBLISHED manuscriptId={}, status={}",
+                    manuscriptId, manuscript.getStatus());
+            return false;
+        }
         Integer fromStatus = manuscript.getStatus();
         boolean updated = manuscriptMapper.updateStatusById(manuscriptId, Manuscript.STATUS_PUBLISHED) > 0;
         if (updated) {
             recordManuscriptStatusEvent(manuscript, fromStatus, Manuscript.STATUS_PUBLISHED,
-                    "OWNER_PUBLISH", "USER", userId, null);
+                    "OWNER_REPUBLISH", "USER", userId, "用户重新上架");
+            ManuscriptIndexEvent indexEvent = new ManuscriptIndexEvent();
+            indexEvent.setManuscriptId(manuscriptId);
+            indexEvent.setOperation(ManuscriptIndexEvent.OPERATION_UPSERT);
+            indexEvent.setTrigger("OWNER_REPUBLISH");
+            videoMQProducer.sendManuscriptIndexEvent(indexEvent);
         }
         return updated;
     }
@@ -1246,8 +1274,21 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         if (result > 0) {
             recordManuscriptStatusEvent(manuscript, fromStatus, Manuscript.STATUS_UNPUBLISHED,
                     "OWNER_UNPUBLISH", "USER", userId, null);
+            sendIndexDeleteEvent(manuscriptId, "OWNER_UNPUBLISH");
         }
         return result > 0;
+    }
+
+    /**
+     * 发 ES 删除索引事件(下架时调用)
+     */
+    private void sendIndexDeleteEvent(Integer manuscriptId, String trigger) {
+        if (manuscriptId == null) return;
+        ManuscriptIndexEvent event = new ManuscriptIndexEvent();
+        event.setManuscriptId(manuscriptId);
+        event.setOperation(ManuscriptIndexEvent.OPERATION_DELETE);
+        event.setTrigger(trigger);
+        videoMQProducer.sendManuscriptIndexEvent(event);
     }
 
     @Override
@@ -1276,7 +1317,6 @@ public class ManuscriptServiceImpl implements ManuscriptService {
         stats.put("total", manuscriptMapper.selectList(null).size());
         stats.put("pending", manuscriptMapper.selectByStatus(Manuscript.STATUS_PENDING_REVIEW).size());
         stats.put("processing", manuscriptMapper.selectByStatus(Manuscript.STATUS_PROCESSING).size());
-        stats.put("ready", manuscriptMapper.selectByStatus(Manuscript.STATUS_READY_TO_PUBLISH).size());
         stats.put("published", manuscriptMapper.selectByStatus(Manuscript.STATUS_PUBLISHED).size());
         stats.put("rejected", manuscriptMapper.selectByStatus(Manuscript.STATUS_REJECTED).size());
         stats.put("failed", manuscriptMapper.selectByStatus(Manuscript.STATUS_PROCESS_FAILED).size());
@@ -1341,6 +1381,59 @@ public class ManuscriptServiceImpl implements ManuscriptService {
     @Override
     public Video getVideoById(Integer videoId) {
         return videoMapper.selectById(videoId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean autoPublishIfAllVideosCompleted(Integer manuscriptId) {
+        Manuscript manuscript = manuscriptMapper.selectById(manuscriptId);
+        if (manuscript == null) {
+            log.warn("自动上架忽略:稿件不存在 manuscriptId={}", manuscriptId);
+            return false;
+        }
+        // 已被拒绝 / 已下架的稿件不能再自动上架
+        if (manuscript.getStatus() == null
+                || manuscript.getStatus() == Manuscript.STATUS_REJECTED
+                || manuscript.getStatus() == Manuscript.STATUS_UNPUBLISHED) {
+            log.info("自动上架忽略:稿件状态={} manuscriptId={}", manuscript.getStatus(), manuscriptId);
+            return false;
+        }
+        // 已经在 PUBLISHED 不重复发事件
+        if (manuscript.getStatus() != null && manuscript.getStatus() == Manuscript.STATUS_PUBLISHED) {
+            return true;
+        }
+        // 检查该稿件下所有 video 是否都 COMPLETED
+        List<Video> videos = videoMapper.selectByManuscriptId(manuscriptId);
+        if (videos == null || videos.isEmpty()) {
+            log.warn("自动上架忽略:稿件下无 video manuscriptId={}", manuscriptId);
+            return false;
+        }
+        boolean allCompleted = videos.stream()
+                .allMatch(v -> v.getProcessStatus() != null
+                        && v.getProcessStatus() == Video.PROCESS_STATUS_COMPLETED);
+        if (!allCompleted) {
+            log.info("自动上架等待:稿件 {} 下还有 video 未完成", manuscriptId);
+            return false;
+        }
+        // 全部完成,改 status=PUBLISHED
+        Integer fromStatus = manuscript.getStatus();
+        manuscript.setStatus(Manuscript.STATUS_PUBLISHED);
+        boolean updated = manuscriptMapper.updateById(manuscript) > 0;
+        if (updated) {
+            recordManuscriptStatusEvent(manuscript, fromStatus, Manuscript.STATUS_PUBLISHED,
+                    "AUTO_PUBLISH", "SYSTEM", null, "视频处理完成,自动上架");
+            String content = "您的稿件《" + manuscript.getTitle() + "》已通过审核并成功上架啦!";
+            userEventMQProducer.sendNotificationEvent(
+                    UserNotificationEvent.system(manuscript.getUserId(), "稿件上架通知", content));
+            // 发 ES 增量索引事件
+            ManuscriptIndexEvent indexEvent = new ManuscriptIndexEvent();
+            indexEvent.setManuscriptId(manuscriptId);
+            indexEvent.setOperation(ManuscriptIndexEvent.OPERATION_UPSERT);
+            indexEvent.setTrigger("AUTO_PUBLISH");
+            videoMQProducer.sendManuscriptIndexEvent(indexEvent);
+            log.info("稿件自动上架成功 manuscriptId={}", manuscriptId);
+        }
+        return updated;
     }
 
     @Override
