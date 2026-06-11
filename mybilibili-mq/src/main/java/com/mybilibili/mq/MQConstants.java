@@ -27,6 +27,7 @@ public class MQConstants {
     public static final String TOPIC_VIDEO_PROCESS_PROGRESS = "video-process-progress-topic";
 
     public static final String TOPIC_STUDIO_EXPORT = "studio-export-topic";
+    public static final String TOPIC_MANUSCRIPT_INDEX = "manuscript-index-topic";
 
     public static final String GROUP_VIDEO_MEDIA_PROCESS = "video-media-process-group";
 

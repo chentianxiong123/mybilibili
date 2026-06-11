@@ -26,6 +26,10 @@ public class RecommendConfig {
     private Integer hotFillMinCount;
     private Double freshnessBoost;
     private Integer freshnessWindowDays;
+    private Integer candidateMultiplier;
+    private Double hotRandomWeight;
+    private Double personalizedRandomWeight;
+    private Integer shuffleWindowSize;
 
     private Integer viewDeduplicationMinutes;
 
@@ -50,6 +54,10 @@ public class RecommendConfig {
         config.setHotFillMinCount(5);
         config.setFreshnessBoost(1.5);
         config.setFreshnessWindowDays(7);
+        config.setCandidateMultiplier(3);
+        config.setHotRandomWeight(0.18);
+        config.setPersonalizedRandomWeight(0.12);
+        config.setShuffleWindowSize(12);
         config.setViewDeduplicationMinutes(30);
         config.setSentinelVideoQps(200);
         config.setSentinelUserQps(100);

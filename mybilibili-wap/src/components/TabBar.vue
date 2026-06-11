@@ -32,10 +32,10 @@ const handleClick = (tab) => emit('click', tab)
   .tab-item {
     flex: 1;
     text-align: center;
-    height: 44px;
-    line-height: 44px;
-    font-size: 14px;
-    color: #757575;
+    height: 48px;
+    line-height: 48px;
+    font-size: 18px;
+    color: #61666d;
     position: relative;
     cursor: pointer;
     overflow: hidden;
@@ -44,19 +44,25 @@ const handleClick = (tab) => emit('click', tab)
 
     &.active {
       color: #fb7299;
-      font-weight: 500;
+      font-weight: 700;
       &::after {
         content: '';
         position: absolute;
-        bottom: 6px;
+        bottom: 4px;
         left: 50%;
         transform: translateX(-50%);
-        width: 16px;
-        height: 3px;
+        width: 26px;
+        height: 4px;
         background: #fb7299;
-        border-radius: 2px;
+        border-radius: 4px;
       }
     }
+  }
+}
+
+@media (max-width: 390px) {
+  .tab-bar .tab-item {
+    font-size: 16px;
   }
 }
 </style>

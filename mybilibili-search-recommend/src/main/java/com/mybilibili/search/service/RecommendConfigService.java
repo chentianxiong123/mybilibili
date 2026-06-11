@@ -23,7 +23,11 @@ public class RecommendConfigService {
             RecommendConfig defaults = RecommendConfig.defaults();
             cachedConfig = configRepository.save(defaults);
         } else {
-            cachedConfig = configs.get(0);
+            RecommendConfig current = configs.get(0);
+            if (fillMissingDefaults(current)) {
+                current = configRepository.save(current);
+            }
+            cachedConfig = current;
         }
         return cachedConfig;
     }
@@ -41,6 +45,10 @@ public class RecommendConfigService {
         if (update.getHotFillMinCount() != null) current.setHotFillMinCount(update.getHotFillMinCount());
         if (update.getFreshnessBoost() != null) current.setFreshnessBoost(update.getFreshnessBoost());
         if (update.getFreshnessWindowDays() != null) current.setFreshnessWindowDays(update.getFreshnessWindowDays());
+        if (update.getCandidateMultiplier() != null) current.setCandidateMultiplier(update.getCandidateMultiplier());
+        if (update.getHotRandomWeight() != null) current.setHotRandomWeight(update.getHotRandomWeight());
+        if (update.getPersonalizedRandomWeight() != null) current.setPersonalizedRandomWeight(update.getPersonalizedRandomWeight());
+        if (update.getShuffleWindowSize() != null) current.setShuffleWindowSize(update.getShuffleWindowSize());
         if (update.getViewDeduplicationMinutes() != null) current.setViewDeduplicationMinutes(update.getViewDeduplicationMinutes());
         if (update.getSentinelVideoQps() != null) current.setSentinelVideoQps(update.getSentinelVideoQps());
         if (update.getSentinelUserQps() != null) current.setSentinelUserQps(update.getSentinelUserQps());
@@ -50,6 +58,30 @@ public class RecommendConfigService {
         current.setUpdatedBy(adminName);
         cachedConfig = configRepository.save(current);
         return cachedConfig;
+    }
+
+    private boolean fillMissingDefaults(RecommendConfig current) {
+        boolean changed = false;
+        RecommendConfig defaults = RecommendConfig.defaults();
+
+        if (current.getCandidateMultiplier() == null) {
+            current.setCandidateMultiplier(defaults.getCandidateMultiplier());
+            changed = true;
+        }
+        if (current.getHotRandomWeight() == null) {
+            current.setHotRandomWeight(defaults.getHotRandomWeight());
+            changed = true;
+        }
+        if (current.getPersonalizedRandomWeight() == null) {
+            current.setPersonalizedRandomWeight(defaults.getPersonalizedRandomWeight());
+            changed = true;
+        }
+        if (current.getShuffleWindowSize() == null) {
+            current.setShuffleWindowSize(defaults.getShuffleWindowSize());
+            changed = true;
+        }
+
+        return changed;
     }
 
     public void invalidateCache() {

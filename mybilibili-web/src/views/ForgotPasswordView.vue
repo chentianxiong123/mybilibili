@@ -133,7 +133,7 @@ const goToLogin = () => {
 
 // 跳转到注册页
 const goToRegister = () => {
-  router.push('/register')
+  router.push({ path: '/login', query: { mode: 'register' } })
 }
 
 // 返回上一页

@@ -5,6 +5,7 @@ import com.mybilibili.common.entity.Video;
 import com.mybilibili.mq.VideoMQProducer;
 import com.mybilibili.mq.VideoProcessAnalyticsEvent;
 import com.mybilibili.mq.VideoProcessProgressEvent;
+import com.mybilibili.mq.VideoPublishEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -66,6 +67,12 @@ public class VideoProcessStateServiceImpl implements VideoProcessStateService {
                 Video.PROCESS_STATUS_COMPLETED,
                 "mybilibili-ai"
         ));
+        // AI 处理链全部完成,触发"自动上架"事件
+        VideoPublishEvent publishEvent = new VideoPublishEvent();
+        publishEvent.setManuscriptId(context.getManuscriptId());
+        publishEvent.setVideoId(context.getVideoId());
+        publishEvent.setTrigger("AUTO_CHAIN");
+        videoMQProducer.sendVideoPublishEvent(publishEvent);
     }
 
     private void push(VideoProcessContext context, String stage, String stageText, int progress, Integer status) {

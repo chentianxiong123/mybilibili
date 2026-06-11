@@ -1,6 +1,6 @@
 package com.mybilibili.search.service.impl;
 
-import com.mybilibili.search.document.ManuscriptDocument;
+import com.mybilibili.common.document.ManuscriptDocument;
 import com.mybilibili.search.mapper.ManuscriptMapper;
 import com.mybilibili.search.service.ManuscriptIndexService;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +10,9 @@ import org.springframework.data.elasticsearch.core.IndexOperations;
 import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -89,6 +92,36 @@ public class ManuscriptIndexServiceImpl implements ManuscriptIndexService {
         return bulkIndex();
     }
 
+    @Override
+    public boolean indexOne(Integer manuscriptId) {
+        List<Map<String, Object>> rows = manuscriptMapper.selectPublishedManuscriptById(manuscriptId);
+        if (rows == null || rows.isEmpty()) {
+            log.warn("稿件不存在或未上架: manuscriptId={}", manuscriptId);
+            return false;
+        }
+        ManuscriptDocument doc = convertToDocument(rows.get(0));
+        if (doc == null) {
+            log.error("稿件转换失败: manuscriptId={}", manuscriptId);
+            return false;
+        }
+        elasticsearchTemplate.save(doc);
+        log.info("单条索引成功: manuscriptId={}", manuscriptId);
+        return true;
+    }
+
+    @Override
+    public boolean deleteOne(Integer manuscriptId) {
+        try {
+            String deleteId = manuscriptId.toString();
+            elasticsearchTemplate.delete(deleteId, ManuscriptDocument.class);
+            log.info("稿件索引删除成功: manuscriptId={}", manuscriptId);
+            return true;
+        } catch (Exception e) {
+            log.error("稿件索引删除失败: manuscriptId={}, error={}", manuscriptId, e.getMessage());
+            return false;
+        }
+    }
+
     private Set<Integer> getExistingIds() {
         Set<Integer> ids = new HashSet<>();
         try {
@@ -114,7 +147,8 @@ public class ManuscriptIndexServiceImpl implements ManuscriptIndexService {
             doc.setTitle(toStr(row.get("title")));
             doc.setDescription(toStr(row.get("description")));
             doc.setUserId(toInt(row.get("user_id")));
-            doc.setUserName(toStr(row.get("userName")));
+            doc.setUserName(toStr(firstPresent(row, "userName", "user_name", "username")));
+            doc.setUserAvatar(toStr(firstPresent(row, "userAvatar", "user_avatar", "avatar")));
             doc.setCategoryId(toInt(row.get("category_id")));
             doc.setCategoryName(toStr(row.get("categoryName")));
             doc.setViewCount(toInt(row.get("view_count")));
@@ -124,7 +158,7 @@ public class ManuscriptIndexServiceImpl implements ManuscriptIndexService {
             doc.setCollectCount(toInt(row.get("collect_count")));
             doc.setCoinCount(toInt(row.get("coin_count")));
             doc.setDurationSeconds(toInt(row.get("duration_seconds")));
-            doc.setUploadTime(toDate(row.get("upload_time")));
+            doc.setUploadTime(toDate(firstPresent(row, "upload_time", "uploadTime")));
             doc.setStatus(toInt(row.get("status")));
             doc.setCoverUrl(toStr(row.get("cover_url")));
 
@@ -170,6 +204,41 @@ public class ManuscriptIndexServiceImpl implements ManuscriptIndexService {
 
     private Date toDate(Object obj) {
         if (obj instanceof Date) return (Date) obj;
+        if (obj instanceof LocalDateTime) {
+            return Date.from(((LocalDateTime) obj).atZone(ZoneId.systemDefault()).toInstant());
+        }
+        if (obj instanceof LocalDate) {
+            return Date.from(((LocalDate) obj).atStartOfDay(ZoneId.systemDefault()).toInstant());
+        }
+        if (obj instanceof Number) {
+            return new Date(((Number) obj).longValue());
+        }
+        if (obj instanceof CharSequence) {
+            String value = obj.toString().trim();
+            if (value.isEmpty()) return null;
+            try {
+                return Date.from(java.time.OffsetDateTime.parse(value).toInstant());
+            } catch (Exception ignored) {
+                // Try common MySQL datetime format below.
+            }
+            try {
+                return Date.from(LocalDateTime.parse(value.replace(' ', 'T'))
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant());
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private Object firstPresent(Map<String, Object> row, String... keys) {
+        if (row == null || keys == null) return null;
+        for (String key : keys) {
+            if (row.containsKey(key)) {
+                return row.get(key);
+            }
+        }
         return null;
     }
 }

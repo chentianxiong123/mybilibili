@@ -109,7 +109,7 @@ const handleTabClick = (tab: typeof tabs[0]) => {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 52px;
+  height: 58px;
   background: #fff;
   border-top: 1px solid #e3e5e7;
   display: flex;
@@ -140,36 +140,57 @@ const handleTabClick = (tab: typeof tabs[0]) => {
 }
 
 .big-plus-btn {
-  width: 40px;
-  height: 28px;
+  width: 58px;
+  height: 58px;
   background-color: $theme-pink;
-  border-radius: 8px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  box-shadow: 0 2px 6px rgba(251, 114, 153, 0.35);
+  box-shadow: 0 6px 16px rgba(251, 114, 153, 0.38);
   transition: transform 0.2s, background-color 0.2s;
+  transform: translateY(-10px);
 
   &:active {
-    transform: scale(0.9);
+    transform: translateY(-10px) scale(0.92);
     background-color: $theme-pink-hover;
   }
 
   svg {
-    width: 18px;
-    height: 18px;
+    width: 27px;
+    height: 27px;
   }
 }
 
 .tab-icon {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   color: #61666d;
 }
 
 .tab-name {
-  font-size: 10px;
+  font-size: 13px;
   color: #61666d;
+}
+
+@media (max-width: 390px) {
+  .bottom-tab-bar {
+    height: 54px;
+  }
+
+  .big-plus-btn {
+    width: 52px;
+    height: 52px;
+  }
+
+  .tab-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .tab-name {
+    font-size: 12px;
+  }
 }
 </style>

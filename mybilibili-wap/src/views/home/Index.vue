@@ -364,7 +364,8 @@ const activeCategoryBanners = computed(() => {
 @import '../../styles/variables';
 
 .mobile-index {
-  padding-bottom: 20px;
+  padding-bottom: 64px;
+  background: #fff;
 }
 
 .partition-bar {
@@ -373,32 +374,32 @@ const activeCategoryBanners = computed(() => {
   background: $bg-white;
   padding-right: 12px;
   position: sticky;
-  top: 44px;
-  z-index: 10;
+  top: 56px;
+  z-index: 19;
   border-bottom: 1px solid #f4f4f4;
 
   .tab-bar { flex: 1; }
 
   .switch-btn {
     width: 44px;
-    height: 44px;
+    height: 48px;
     display: flex;
     justify-content: center;
     align-items: center;
     color: #999;
     cursor: pointer;
     user-select: none;
-    svg { width: 16px; height: 16px; }
+    svg { width: 23px; height: 23px; }
   }
 }
 
 .banner-slider {
-  padding: 4px 4px 0;
+  padding: 6px 6px 0;
 
   .swiper-container {
     position: relative;
     overflow: hidden;
-    border-radius: 6px;
+    border-radius: 5px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
 
@@ -413,7 +414,12 @@ const activeCategoryBanners = computed(() => {
       text-decoration: none;
     }
 
-    img { width: 100%; display: block; object-fit: contain; }
+    img {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      display: block;
+      object-fit: cover;
+    }
   }
 
   .pagination-dots {
@@ -472,12 +478,12 @@ const activeCategoryBanners = computed(() => {
 }
 
 .category-banner-slider {
-  padding: 4px 4px 0;
+  padding: 6px 6px 0;
 
   .swiper-container {
     position: relative;
     overflow: hidden;
-    border-radius: 6px;
+    border-radius: 5px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     // 高度与一行视频格子对齐（约 56.25% 16:9 比例 + 标题高度）
     aspect-ratio: 16 / 9;
@@ -536,7 +542,7 @@ const activeCategoryBanners = computed(() => {
 .live-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: 4px;
 }
 
 .loading {

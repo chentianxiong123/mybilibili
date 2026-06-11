@@ -292,11 +292,7 @@ const router = createRouter({
     {
       path: '/register',
       name: 'register',
-      component: () => import('../views/RegisterView.vue'),
-      meta: {
-        title: '注册 - 哔哩哔哩',
-        layout: 'none'
-      }
+      redirect: to => ({ path: '/login', query: { ...to.query, mode: 'register' } })
     },
     {
       path: '/forgot-password',
@@ -337,7 +333,7 @@ router.beforeEach((to, from, next) => {
     return
   }
 
-  if ((to.path === '/login' || to.path === '/register') && hasAuthSession()) {
+  if (to.path === '/login' && hasAuthSession()) {
     next('/')
     return
   }

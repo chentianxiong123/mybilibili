@@ -54,7 +54,8 @@ public class VideoProcessMessagePortAdapter implements VideoProcessPort {
         if (videoId == null || manuscriptId == null) {
             return Result.error("视频处理任务缺少必要参数");
         }
-        VideoProcessMessage message = VideoProcessMessage.manualSingle(
+        // 改为 AUTO_CHAIN：admin 单步触发后,成功会继续走后续步骤
+        VideoProcessMessage message = VideoProcessMessage.of(
                 manuscriptId,
                 videoId,
                 null,

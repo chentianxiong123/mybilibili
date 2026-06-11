@@ -1,8 +1,9 @@
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { userApi, captchaApi, emailCodeApi } from '../api/index.js'
+import api from '../api/index.js'
 import { setAuthSession } from '../utils/auth.js'
 import { Close, VideoPlay } from '@element-plus/icons-vue'
 
@@ -12,6 +13,18 @@ const route = useRoute()
 const goAfterLogin = () => {
   router.push(route.query.redirect || '/')
 }
+
+const authMode = ref(route.query.mode === 'register' ? 'register' : 'login')
+
+watch(
+  () => route.query.mode,
+  (mode) => {
+    authMode.value = mode === 'register' ? 'register' : 'login'
+    if (authMode.value === 'register' && !registerCaptchaId.value) {
+      loadRegisterCaptcha()
+    }
+  }
+)
 
 // 登录方式：password / email_code
 const loginMode = ref('password')
@@ -32,6 +45,15 @@ const emailLoginForm = reactive({
   captchaAnswer: '',
   captchaId: '',
   captchaQuestion: ''
+})
+
+const registerForm = reactive({
+  username: '',
+  email: '',
+  password: '',
+  confirmPassword: '',
+  emailCode: '',
+  agreeTerms: false
 })
 
 // 表单验证规则
@@ -63,14 +85,68 @@ const emailLoginRules = {
   ]
 }
 
+const registerRules = {
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 3, max: 20, message: '用户名长度在 3 到 20 个字符', trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9_]+$/, message: '用户名只能包含字母、数字和下划线', trigger: 'blur' }
+  ],
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '请输入有效的邮箱地址', trigger: 'blur' }
+  ],
+  emailCode: [
+    { required: true, message: '请输入邮箱验证码', trigger: 'blur' },
+    { len: 6, message: '验证码为6位数字', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, max: 20, message: '密码长度在 6 到 20 个字符', trigger: 'blur' },
+    { pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d_]{6,20}$/, message: '密码必须包含大小写字母和数字', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认密码', trigger: 'blur' },
+    { validator: (rule, value, callback) => {
+        if (value !== registerForm.password) {
+          callback(new Error('两次输入的密码不一致'))
+        } else {
+          callback()
+        }
+      }, trigger: 'blur' }
+  ],
+  agreeTerms: [
+    { validator: (rule, value, callback) => {
+        if (!value) callback(new Error('请阅读并同意用户协议和隐私政策'))
+        else callback()
+      }, trigger: 'change' }
+  ]
+}
+
 // 表单引用
 const loginFormRef = ref()
 const emailLoginFormRef = ref()
+const registerFormRef = ref()
 const loading = ref(false)
 const captchaLoading = ref(false)
 const sendEmailLoading = ref(false)
 const emailSent = ref(false)
 const emailCountdown = ref(0)
+const registerCaptchaId = ref('')
+const registerCaptchaQuestion = ref('')
+const registerCaptchaAnswer = ref('')
+const registerCaptchaLoading = ref(false)
+const sendRegisterEmailLoading = ref(false)
+const registerEmailSent = ref(false)
+const registerEmailCountdown = ref(0)
+const showInterestDialog = ref(false)
+const registeredUser = ref(null)
+const selectedTags = ref([])
+const allInterestTags = [
+  '游戏', '科技', '音乐', '舞蹈', '动画', '番剧', '影视', '娱乐',
+  '生活', '美食', '知识', '教育', '体育', '汽车', '时尚', '搞笑',
+  '动物', '自然', '历史', '军事', '财经', '新闻', '鬼畜', '手工',
+  '绘画', '摄影', '编程', 'AI', '数码', '家电', '旅行', '健身'
+]
 
 // 加载新验证码
 const loadCaptcha = (form) => {
@@ -94,6 +170,23 @@ const loadCaptcha = (form) => {
 
 // 初始化加载验证码
 loadCaptcha()
+
+const loadRegisterCaptcha = () => {
+  registerCaptchaLoading.value = true
+  captchaApi.newCaptcha().then(res => {
+    if (res.code === 200) {
+      registerCaptchaId.value = res.data.captchaId
+      registerCaptchaQuestion.value = res.data.question
+      registerCaptchaAnswer.value = ''
+    }
+  }).finally(() => {
+    registerCaptchaLoading.value = false
+  })
+}
+
+if (authMode.value === 'register') {
+  loadRegisterCaptcha()
+}
 
 // 发送邮箱验证码
 const handleSendEmailCode = () => {
@@ -126,6 +219,41 @@ const handleSendEmailCode = () => {
         loadCaptcha('email')
       }
     }).finally(() => { sendEmailLoading.value = false })
+  })
+}
+
+const handleSendRegisterEmailCode = () => {
+  if (!registerForm.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registerForm.email)) {
+    ElMessage.error('请先输入有效的邮箱地址')
+    return
+  }
+  if (!registerCaptchaAnswer.value.trim()) {
+    ElMessage.error('请先输入图形验证码')
+    return
+  }
+  captchaApi.verifyCaptcha(registerCaptchaId.value, registerCaptchaAnswer.value).then(res => {
+    if (res.code !== 200 || !res.data) {
+      ElMessage.error('图形验证码错误')
+      loadRegisterCaptcha()
+      return
+    }
+    sendRegisterEmailLoading.value = true
+    emailCodeApi.sendCode(registerForm.email).then(res => {
+      if (res.code === 200) {
+        registerEmailSent.value = true
+        registerEmailCountdown.value = 60
+        ElMessage.success('验证码已发送到邮箱')
+        const timer = setInterval(() => {
+          registerEmailCountdown.value--
+          if (registerEmailCountdown.value <= 0) clearInterval(timer)
+        }, 1000)
+      } else {
+        ElMessage.error(res.message || '发送失败')
+        loadRegisterCaptcha()
+      }
+    }).finally(() => {
+      sendRegisterEmailLoading.value = false
+    })
   })
 }
 
@@ -192,9 +320,76 @@ const handleEmailLogin = () => {
   })
 }
 
-// 跳转到注册页
 const goToRegister = () => {
-  router.push('/register')
+  authMode.value = 'register'
+  router.replace({
+    path: '/login',
+    query: { ...route.query, mode: 'register' }
+  })
+  if (!registerCaptchaId.value) {
+    loadRegisterCaptcha()
+  }
+}
+
+const goToLogin = () => {
+  authMode.value = 'login'
+  const nextQuery = { ...route.query }
+  delete nextQuery.mode
+  router.replace({ path: '/login', query: nextQuery })
+}
+
+const handleRegister = () => {
+  registerFormRef.value.validate((valid) => {
+    if (!valid) return
+
+    loading.value = true
+    userApi.register({
+      username: registerForm.username,
+      email: registerForm.email,
+      emailCode: registerForm.emailCode,
+      password: registerForm.password
+    })
+      .then(response => {
+        if (response.code === 200) {
+          registeredUser.value = response.data?.user || null
+          showInterestDialog.value = true
+        } else {
+          ElMessage.error(response.message || '注册失败')
+        }
+      })
+      .catch(error => {
+        ElMessage.error('注册失败，请检查输入信息')
+        console.error('注册错误:', error)
+      })
+      .finally(() => {
+        loading.value = false
+      })
+  })
+}
+
+const toggleTag = (tag) => {
+  const idx = selectedTags.value.indexOf(tag)
+  if (idx >= 0) selectedTags.value.splice(idx, 1)
+  else if (selectedTags.value.length < 10) selectedTags.value.push(tag)
+}
+
+const finishInterestSelection = async () => {
+  if (registeredUser.value?.id && selectedTags.value.length > 0) {
+    try {
+      await api.post(`/profile/init/${registeredUser.value.id}`, { tags: selectedTags.value })
+    } catch (e) {
+      console.warn('兴趣标签初始化失败:', e)
+    }
+  }
+  showInterestDialog.value = false
+  ElMessage.success('注册成功，请登录')
+  goToLogin()
+}
+
+const skipInterest = () => {
+  showInterestDialog.value = false
+  ElMessage.success('注册成功，请登录')
+  goToLogin()
 }
 </script>
 
@@ -211,8 +406,9 @@ const goToRegister = () => {
           <el-icon><VideoPlay /></el-icon>
           <span>哔哩哔哩</span>
         </div>
-        <h2 class="login-title">登录</h2>
+        <h2 class="login-title">{{ authMode === 'login' ? '登录' : '注册' }}</h2>
 
+        <template v-if="authMode === 'login'">
         <!-- 登录方式切换 -->
         <div class="login-tabs">
           <span :class="{ active: loginMode === 'password' }" @click="loginMode = 'password'">密码登录</span>
@@ -333,15 +529,144 @@ const goToRegister = () => {
           <span>还没有账号？</span>
           <el-button type="text" @click="goToRegister">立即注册</el-button>
         </div>
+        </template>
+
+        <template v-else>
+          <el-form
+            ref="registerFormRef"
+            :model="registerForm"
+            :rules="registerRules"
+            label-width="0px"
+            class="form"
+          >
+            <el-form-item prop="username">
+              <el-input
+                v-model="registerForm.username"
+                placeholder="请输入用户名（3-20个字符）"
+                prefix-icon="el-icon-user"
+                clearable
+              />
+            </el-form-item>
+
+            <el-form-item prop="email">
+              <el-input
+                v-model="registerForm.email"
+                type="email"
+                placeholder="请输入邮箱"
+                prefix-icon="el-icon-message"
+                clearable
+              />
+            </el-form-item>
+
+            <el-form-item>
+              <div class="captcha-row">
+                <el-input
+                  v-model="registerCaptchaAnswer"
+                  placeholder="图形验证码"
+                  style="flex:1"
+                />
+                <span class="captcha-question" :class="{ loading: registerCaptchaLoading }">{{ registerCaptchaQuestion }}</span>
+                <el-button link type="primary" @click="loadRegisterCaptcha" :loading="registerCaptchaLoading">刷新</el-button>
+              </div>
+            </el-form-item>
+
+            <el-form-item prop="emailCode">
+              <div class="email-code-row">
+                <el-input
+                  v-model="registerForm.emailCode"
+                  placeholder="邮箱验证码"
+                  prefix-icon="el-icon-message"
+                />
+                <el-button
+                  type="primary"
+                  :disabled="registerEmailSent && registerEmailCountdown > 0"
+                  :loading="sendRegisterEmailLoading"
+                  @click="handleSendRegisterEmailCode"
+                >
+                  {{ registerEmailCountdown > 0 ? registerEmailCountdown + 's' : '发送验证码' }}
+                </el-button>
+              </div>
+            </el-form-item>
+
+            <el-form-item prop="password">
+              <el-input
+                v-model="registerForm.password"
+                type="password"
+                placeholder="请输入密码（包含大小写字母和数字）"
+                prefix-icon="el-icon-lock"
+                show-password
+              />
+            </el-form-item>
+
+            <el-form-item prop="confirmPassword">
+              <el-input
+                v-model="registerForm.confirmPassword"
+                type="password"
+                placeholder="请确认密码"
+                prefix-icon="el-icon-lock"
+                show-password
+              />
+            </el-form-item>
+
+            <el-form-item prop="agreeTerms">
+              <el-checkbox v-model="registerForm.agreeTerms">
+                我已阅读并同意
+                <a href="#" class="link">《用户协议》</a>
+                和
+                <a href="#" class="link">《隐私政策》</a>
+              </el-checkbox>
+            </el-form-item>
+
+            <el-form-item>
+              <el-button type="primary" @click="handleRegister" class="login-btn" block :loading="loading">
+                注册
+              </el-button>
+            </el-form-item>
+          </el-form>
+
+          <div class="register-link">
+            <span>已有账号？</span>
+            <el-button type="text" @click="goToLogin">立即登录</el-button>
+          </div>
+        </template>
       </div>
     </div>
   </div>
+
+  <el-dialog
+    v-model="showInterestDialog"
+    title="选择你感兴趣的内容"
+    width="560px"
+    :close-on-click-modal="false"
+    :close-on-press-escape="false"
+    :show-close="false"
+  >
+    <p class="interest-tip">选择 1-10 个你感兴趣的标签，我们会为你推荐更精准的内容</p>
+    <div class="interest-tags">
+      <button
+        v-for="tag in allInterestTags"
+        :key="tag"
+        type="button"
+        class="interest-tag"
+        :class="{ selected: selectedTags.includes(tag) }"
+        @click="toggleTag(tag)"
+      >
+        {{ tag }}
+      </button>
+    </div>
+    <template #footer>
+      <el-button @click="skipInterest">跳过</el-button>
+      <el-button type="primary" @click="finishInterestSelection" :disabled="selectedTags.length === 0">
+        完成 ({{ selectedTags.length }}/10)
+      </el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <style scoped>
 .login-container {
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -455,6 +780,11 @@ const goToRegister = () => {
   color: #00a1d6;
 }
 
+.link {
+  color: #00a1d6;
+  text-decoration: none;
+}
+
 .captcha-row {
   display: flex;
   align-items: center;
@@ -502,5 +832,34 @@ const goToRegister = () => {
 .register-link el-button {
   color: #00a1d6;
   padding: 0;
+}
+
+.interest-tip {
+  color: #61666d;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.interest-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.interest-tag {
+  padding: 6px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  border: 2px solid #e3e5e7;
+  background: #fff;
+  color: #61666d;
+  transition: all 0.2s;
+}
+
+.interest-tag.selected {
+  border-color: #00a1d6;
+  background: rgba(0, 161, 214, 0.1);
+  color: #00a1d6;
 }
 </style>

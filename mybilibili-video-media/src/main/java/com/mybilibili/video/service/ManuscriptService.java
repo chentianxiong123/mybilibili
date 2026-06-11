@@ -28,7 +28,6 @@ public interface ManuscriptService {
 
     List<ManuscriptVO> getPendingManuscripts();
     List<ManuscriptVO> getProcessingManuscripts();
-    List<ManuscriptVO> getReadyManuscripts();
     List<ManuscriptVO> getAllManuscripts();
     Map<String, Object> getManuscriptDetail(Integer manuscriptId);
     boolean approveManuscript(Integer manuscriptId, Integer reviewerId, String reason);
@@ -36,6 +35,13 @@ public interface ManuscriptService {
     boolean rejectManuscript(Integer manuscriptId, Integer reviewerId, String reason);
     boolean publishManuscript(Integer manuscriptId);
     boolean unpublishManuscript(Integer manuscriptId);
+
+    /**
+     * 违规下架(举报处理后,管理员人工下架)
+     * 区别于普通 unpublishManuscript:还更新 reviewStatus=REJECTED + reviewReason
+     * 并发 ES DELETE 事件
+     */
+    boolean takeDownViolatingManuscript(Integer manuscriptId, String reason);
     boolean publishManuscriptByOwner(Integer manuscriptId, Integer userId);
     boolean unpublishManuscriptByOwner(Integer manuscriptId, Integer userId);
     List<ManuscriptVO.VideoItemVO> getManuscriptVideos(Integer manuscriptId);
@@ -48,6 +54,15 @@ public interface ManuscriptService {
     Video getVideoById(Integer videoId);
     void incrementViewCount(Integer manuscriptId);
     void incrementViewCount(Integer manuscriptId, String viewerKey);
+
+    /**
+     * 处理完成时自动上架:检查稿件下所有 video 是否全部 COMPLETED,
+     * 若是则改 status=PUBLISHED + 发 ES 索引事件。
+     * 由 ManuscriptAutoPublishConsumer 调用。
+     *
+     * @return true 表示已上架,false 表示还有 video 未完成
+     */
+    boolean autoPublishIfAllVideosCompleted(Integer manuscriptId);
     void updateCommentCount(Integer manuscriptId, Integer count);
     void incrementCommentCount(Integer manuscriptId);
     void decrementCommentCount(Integer manuscriptId);

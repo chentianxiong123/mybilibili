@@ -1,6 +1,6 @@
 package com.mybilibili.search.controller;
 
-import com.mybilibili.search.document.ManuscriptDocument;
+import com.mybilibili.common.document.ManuscriptDocument;
 import com.mybilibili.search.service.ManuscriptIndexService;
 import com.mybilibili.common.vo.Result;
 import com.mybilibili.search.service.VideoSearchService;

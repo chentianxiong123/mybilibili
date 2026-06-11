@@ -83,6 +83,22 @@ public class VideoMQProducer {
         );
     }
 
+    public void sendVideoPublishEvent(VideoPublishEvent event) {
+        rocketMQTemplate.asyncSend(
+            MQConstants.TOPIC_VIDEO_PUBLISH,
+            event,
+            quietCallback("稿件自动上架事件", event == null ? null : event.getManuscriptId())
+        );
+    }
+
+    public void sendManuscriptIndexEvent(ManuscriptIndexEvent event) {
+        rocketMQTemplate.asyncSend(
+            MQConstants.TOPIC_MANUSCRIPT_INDEX,
+            event,
+            quietCallback("稿件索引事件", event == null ? null : event.getManuscriptId())
+        );
+    }
+
     private org.apache.rocketmq.client.producer.SendCallback quietCallback(String label, Integer targetId) {
         return new org.apache.rocketmq.client.producer.SendCallback() {
             @Override

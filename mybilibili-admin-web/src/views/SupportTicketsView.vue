@@ -149,11 +149,11 @@ onMounted(loadData)
 
     <div class="filter-bar">
       <el-radio-group v-model="statusFilter" @change="handleFilter">
-        <el-radio-button label="">全部</el-radio-button>
-        <el-radio-button label="PENDING">待处理</el-radio-button>
-        <el-radio-button label="PROCESSING">处理中</el-radio-button>
-        <el-radio-button label="PROCESSED">已处理</el-radio-button>
-        <el-radio-button label="CLOSED">已关闭</el-radio-button>
+        <el-radio-button value="">全部</el-radio-button>
+        <el-radio-button value="PENDING">待处理</el-radio-button>
+        <el-radio-button value="PROCESSING">处理中</el-radio-button>
+        <el-radio-button value="PROCESSED">已处理</el-radio-button>
+        <el-radio-button value="CLOSED">已关闭</el-radio-button>
       </el-radio-group>
     </div>
 

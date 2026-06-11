@@ -1,9 +1,9 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import { ArrowLeft, ArrowRight, View, Star } from '@element-plus/icons-vue'
-import { manuscriptApi } from '../api/manuscript.js'
 import { recommendApi } from '../api/recommend.js'
 import { getHomeBanners } from '../api/banner.js'
+import { formatDuration, formatMonthDay, normalizeVideoCard } from '../utils/videoCard.js'
 
 // 轮播图数据
 const bannerList = ref([])
@@ -91,29 +91,18 @@ const fetchVideoList = async () => {
       try {
         const forYouResponse = await recommendApi.getRecommendedVideos(30)
         if (forYouResponse.code === 200 && forYouResponse.data && forYouResponse.data.length > 0) {
-          manuscripts = forYouResponse.data.map(item => ({
-            id: item.manuscriptId,
-            firstVideoId: item.videoId,
-            title: item.title,
-            coverUrl: item.coverUrl,
-            viewCount: item.viewCount || 0,
-            commentCount: item.commentCount || 0,
-            userId: item.userId,
-            userName: item.userName,
-            duration: item.duration,
-            uploadTime: item.uploadTime
-          }))
+          manuscripts = forYouResponse.data
         }
       } catch (e) {
         // 个性化推荐失败，回退到默认列表
       }
     }
 
-    // 回退到推荐稿件列表
+    // 回退到 ES 热门推荐，首页保持同一个搜索推荐数据源
     if (!manuscripts || manuscripts.length === 0) {
-      const recommendedResponse = await manuscriptApi.getRecommendedManuscripts()
-      if (recommendedResponse.code === 200) {
-        manuscripts = recommendedResponse.data
+      const hotResponse = await recommendApi.getHotVideos(null, 30)
+      if (hotResponse.code === 200) {
+        manuscripts = hotResponse.data
       }
     }
 
@@ -128,25 +117,10 @@ const fetchVideoList = async () => {
 
       if (manuscripts && Array.isArray(manuscripts)) {
         for (const manuscript of manuscripts) {
-          if (manuscript && manuscript.id) {
-            if (!itemIds.has(manuscript.id)) {
-              itemIds.add(manuscript.id)
-              // 将稿件数据转换为视频卡片格式（兼容现有UI）
-              uniqueItems.push({
-                id: manuscript.firstVideoId || manuscript.id, // 使用第一个视频ID用于跳转
-                title: manuscript.title,
-                coverUrl: manuscript.coverUrl,
-                viewCount: manuscript.viewCount || 0,
-                commentCount: manuscript.commentCount || 0,
-                uploadTime: manuscript.uploadTime,
-                uploader: manuscript.uploader, // 添加上传者信息
-                duration: manuscript.duration, // 添加视频时长
-                durationSeconds: manuscript.durationSeconds, // 添加视频时长秒数
-                // 保留稿件原始数据
-                manuscriptId: manuscript.id,
-                manuscript: manuscript
-              })
-            }
+          const videoCard = normalizeVideoCard(manuscript)
+          if (videoCard && !itemIds.has(videoCard.manuscriptId)) {
+            itemIds.add(videoCard.manuscriptId)
+            uniqueItems.push(videoCard)
           }
         }
       }
@@ -196,23 +170,6 @@ onMounted(() => {
   window.addEventListener('resize', adjustBannerHeight)
 })
 
-// 格式化日期，只显示月和日
-const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${month}-${day}`
-}
-
-// 格式化视频时长
-const formatDuration = (seconds) => {
-  if (!seconds || seconds <= 0) return '00:00'
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-}
-
 // 跳转到视频详情页（使用稿件ID）
 const goToVideo = (item) => {
   // item.manuscriptId 是稿件ID
@@ -226,7 +183,9 @@ const goToVideo = (item) => {
 
 // 跳转到作者主页
 const goToAuthor = (authorId) => {
-  window.open(`/profile/${authorId}/home`, '_blank')
+  if (authorId) {
+    window.open(`/profile/${authorId}/home`, '_blank')
+  }
 }
 
 </script>
@@ -293,15 +252,15 @@ const goToAuthor = (authorId) => {
             </span>
           </div>
           <!-- 右下角：视频时长 -->
-          <span class="video-duration">{{ formatDuration(video.durationSeconds) }}</span>
+          <span class="video-duration">{{ video.duration || formatDuration(video.durationSeconds) }}</span>
         </div>
         <span class="video-title">
           <span class="video-title-text" @click="goToVideo(video)">{{ video.title }}</span>
         </span>
         <div class="video-meta">
-          <span class="video-author" @click="goToAuthor(video.uploader?.id)">{{ video.uploader?.name }}</span>
+          <span class="video-author" @click="goToAuthor(video.uploader?.id)">{{ video.uploader?.name || '未知UP主' }}</span>
           <span class="video-separator"> · </span>
-          <span class="video-date">{{ formatDate(video.uploadTime) }}</span>
+          <span class="video-date">{{ video.dateText || formatMonthDay(video.uploadTime) }}</span>
         </div>
       </div>
     </div>
@@ -463,6 +422,7 @@ const goToAuthor = (authorId) => {
   align-items: center;
   gap: 4px;
   flex: 0 0 auto;
+  min-width: 0;
 }
 
 .video-author {
@@ -470,6 +430,11 @@ const goToAuthor = (authorId) => {
   color: #9499a0;
   cursor: pointer;
   transition: color 0.3s;
+  min-width: 0;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .video-author:hover {
@@ -479,11 +444,13 @@ const goToAuthor = (authorId) => {
 .video-date {
   font-size: 11px;
   color: #9499a0;
+  flex: 0 0 auto;
 }
 
 .video-separator {
   color: #9499a0;
   font-size: 11px;
+  flex: 0 0 auto;
 }
 
 .video-cover {

@@ -11,7 +11,8 @@ import java.util.Map;
 public interface ManuscriptMapper extends BaseMapper<Manuscript> {
 
     @Select("SELECT m.*, " +
-            "u.nickname as userName, " +
+            "COALESCE(NULLIF(u.nickname, ''), u.username) as userName, " +
+            "u.avatar as userAvatar, " +
             "c.name as categoryName, " +
             "GROUP_CONCAT(DISTINCT v.title SEPARATOR '||') as videoTitles, " +
             "GROUP_CONCAT(DISTINCT v.id SEPARATOR ',') as videoIds, " +
@@ -23,6 +24,21 @@ public interface ManuscriptMapper extends BaseMapper<Manuscript> {
             "WHERE m.status = 3 " +
             "GROUP BY m.id")
     List<Map<String, Object>> selectPublishedManuscripts();
+
+    @Select("SELECT m.*, " +
+            "COALESCE(NULLIF(u.nickname, ''), u.username) as userName, " +
+            "u.avatar as userAvatar, " +
+            "c.name as categoryName, " +
+            "GROUP_CONCAT(DISTINCT v.title SEPARATOR '||') as videoTitles, " +
+            "GROUP_CONCAT(DISTINCT v.id SEPARATOR ',') as videoIds, " +
+            "COUNT(DISTINCT v.id) as videoCount " +
+            "FROM manuscripts m " +
+            "LEFT JOIN users u ON m.user_id = u.id " +
+            "LEFT JOIN categories c ON m.category_id = c.id " +
+            "LEFT JOIN videos v ON v.manuscript_id = m.id " +
+            "WHERE m.status = 3 AND m.id = #{manuscriptId} " +
+            "GROUP BY m.id")
+    List<Map<String, Object>> selectPublishedManuscriptById(@Param("manuscriptId") Integer manuscriptId);
 
     @Select("SELECT DISTINCT t.name FROM tags t " +
             "INNER JOIN video_tags vt ON t.id = vt.tag_id " +
