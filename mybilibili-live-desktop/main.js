@@ -29,6 +29,7 @@ const {
   webContents,
   desktopCapturer,
   MessageChannelMain,
+  protocol,
 } = require('electron');
 const path = require('path');
 const remote = require('@electron/remote/main');
@@ -40,6 +41,11 @@ if (process.env.SLOBS_CACHE_DIR) {
 }
 
 app.setPath('userData', path.join(app.getPath('appData'), 'mybilibili-live-desktop'));
+
+// 注册 slbundle:// 自定义协议:privileged 必须在 app ready 之前注册
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'slbundle', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }
+]);
 
 if (process.argv.includes('--clearCacheDir')) {
   try {
@@ -96,6 +102,17 @@ ipcMain.on('logmsg', (e, msg) => {
   }
 
   logFromRemote(msg.level, msg.sender, msg.message);
+});
+
+// app.ts 调 electron.ipcRenderer.sendSync('getBundleNames', bundles),
+// 原版用真实 bundle 名替换 stack trace。fork 时没注册,导致渲染卡死
+ipcMain.on('getBundleNames', (e, bundles) => {
+  // 直接返回 file:// URL 形式,renderer 拿来当 filename 用即可
+  const result = {};
+  bundles.forEach(name => {
+    result[name] = `file://${__dirname}/bundles/${name}`;
+  });
+  e.returnValue = result;
 });
 
 function logFromRemote(level, sender, msg) {
@@ -183,6 +200,44 @@ console.log(`Free: ${humanFileSize(os.freemem(), false)}`);
 console.log('=================================');
 
 app.on('ready', () => {
+  /* 注册 slbundle:// 协议(fork 后缺失,导致 renderer.js 加载失败)
+     registerSchemesAsPrivileged 已在 ready 之前调用,这里只挂 handler */
+  if (typeof protocol.handle === 'function') {
+    protocol.handle('slbundle', (request) => {
+      try {
+        const url = new URL(request.url);
+        // slbundle://bundles/renderer.js -> bundles/renderer.js
+        // slbundle://vendor/xxx.css  -> vendor/xxx.css (可能缺失,返回空)
+        const filePath = path.join(__dirname, url.hostname + url.pathname);
+        const { pathToFileURL } = require('url');
+
+        if (fs.existsSync(filePath)) {
+          console.log('[slbundle] 请求:', request.url, '-> 解析路径:', filePath);
+          return pathToFileURL(filePath);
+        } else {
+          // vendor/ 目录在 fork 中缺失,返回空响应避免 CSP 报错
+          console.log('[slbundle] 文件不存在,返回空:', filePath);
+          const ext = path.extname(filePath).toLowerCase();
+          if (ext === '.css' || ext === '.js') {
+            return new Response('', { status: 200, headers: { 'Content-Type': 'text/' + (ext === '.js' ? 'javascript' : 'css') } });
+          }
+          return new Response('not found', { status: 404 });
+        }
+      } catch (e) {
+        console.error('[slbundle] 解析失败:', request.url, e);
+        return new Response('not found', { status: 404 });
+      }
+    });
+    console.log('[ok] slbundle:// 协议已注册 (handle)');
+  } else {
+    protocol.registerFileProtocol('slbundle', (request, callback) => {
+      const url = new URL(request.url);
+      const filePath = path.join(__dirname, url.hostname + url.pathname);
+      callback({ path: filePath });
+    });
+    console.log('[ok] slbundle:// 协议已注册 (legacy)');
+  }
+
   /* Load React DevTools in dev mode */
   if (process.env.NODE_ENV === 'development') {
     const reactDevToolsPath = path.join(__dirname, 'vendor', 'react-devtools');
@@ -314,15 +369,20 @@ async function startApp() {
   mainWindow.loadURL(`${global.indexUrl}?windowId=main`);
   // }, 5 * 1000)
 
-  if (process.env.SLOBS_PRODUCTION_DEBUG) {
-    mainWindow.webContents.once('dom-ready', () => {
-      mainWindow.webContents.openDevTools({ mode: 'detach' });
-    });
-  }
-
   mainWindowState.manage(mainWindow);
 
   mainWindow.removeMenu();
+
+  // 显示窗口 - 修复 fork 后窗口未自动显示的 bug
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
+  // 兜底:加载完后 3 秒强制显示,避免 ready-to-show 不触发
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      mainWindow.show();
+    }
+  }, 3000);
 
   mainWindow.on('close', e => {
     if (!shutdownStarted) {
