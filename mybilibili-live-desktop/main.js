@@ -121,19 +121,31 @@ function logFromRemote(level, sender, msg) {
   });
 }
 
+function serializeConsoleArg(arg) {
+  if (typeof arg === 'string') return arg;
+  if (arg instanceof Error) return arg.stack || arg.message;
+  return util.inspect(arg);
+}
+
+function logMainConsole(level, args) {
+  if (!process.env.SLOBS_DISABLE_MAIN_LOGGING) {
+    const serialized = args.map(serializeConsoleArg).join(' ');
+
+    logFromRemote(level, 'electron-main', serialized);
+  }
+}
+
 const consoleLog = console.log;
 console.log = (...args) => {
-  if (!process.env.SLOBS_DISABLE_MAIN_LOGGING) {
-    const serialized = args
-      .map(arg => {
-        if (typeof arg === 'string') return arg;
+  logMainConsole('info', args);
+};
 
-        return util.inspect(arg);
-      })
-      .join(' ');
+console.warn = (...args) => {
+  logMainConsole('warn', args);
+};
 
-    logFromRemote('info', 'electron-main', serialized);
-  }
+console.error = (...args) => {
+  logMainConsole('error', args);
 };
 
 const lineBuffer = [];
@@ -209,11 +221,21 @@ app.on('ready', () => {
         // slbundle://bundles/renderer.js -> bundles/renderer.js
         // slbundle://vendor/xxx.css  -> vendor/xxx.css (可能缺失,返回空)
         const filePath = path.join(__dirname, url.hostname + url.pathname);
-        const { pathToFileURL } = require('url');
-
         if (fs.existsSync(filePath)) {
           console.log('[slbundle] 请求:', request.url, '-> 解析路径:', filePath);
-          return pathToFileURL(filePath);
+          // 必须返回 Response 并设置正确 MIME 类型,否则 Chromium 拒绝执行
+          const ext = path.extname(filePath).toLowerCase();
+          const mimeTypes = { '.js': 'application/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json' };
+          const contentType = mimeTypes[ext] || 'application/octet-stream';
+          const content = fs.readFileSync(filePath);
+          return new Response(content, {
+            status: 200,
+            headers: {
+              'Content-Type': `${contentType}; charset=utf-8`,
+              'Access-Control-Allow-Origin': '*',
+              'Cache-Control': 'no-store',
+            },
+          });
         } else {
           // vendor/ 目录在 fork 中缺失,返回空响应避免 CSP 报错
           console.log('[slbundle] 文件不存在,返回空:', filePath);
@@ -298,6 +320,39 @@ function openDevTools() {
   workerWindow.webContents.openDevTools({ mode: 'detach' });
 }
 
+function attachWebContentsDiagnostics(name, win) {
+  win.webContents.on('console-message', (event, levelOrDetails, message, line, sourceId) => {
+    if (levelOrDetails && typeof levelOrDetails === 'object') {
+      const details = levelOrDetails;
+      const detailsMessage =
+        details.message ||
+        (typeof details.toString === 'function' ? details.toString() : JSON.stringify(details));
+      console.log(
+        `[renderer:${name}] ${details.level || ''} ${details.sourceId || ''}:${
+          details.lineNumber || details.line || ''
+        } - ${detailsMessage}`,
+      );
+      return;
+    }
+
+    console.log(`[renderer:${name}] ${sourceId || ''}:${line || ''} - ${message || ''}`);
+  });
+
+  win.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error(
+      `[renderer:${name}] did-fail-load ${errorCode} ${errorDescription} ${validatedURL}`,
+    );
+  });
+
+  win.webContents.on('render-process-gone', (event, details) => {
+    console.error(`[renderer:${name}] render-process-gone ${JSON.stringify(details)}`);
+  });
+
+  win.webContents.on('did-finish-load', () => {
+    console.log(`[renderer:${name}] did-finish-load ${win.webContents.getURL()}`);
+  });
+}
+
 // TODO: Clean this up
 // These windows are waiting for services to be ready
 const waitingVuexStores = [];
@@ -306,6 +361,9 @@ let workerInitFinished = false;
 async function startApp() {
   ipcMain.on('register-in-crash-handler', () => {});
   ipcMain.on('unregister-in-crash-handler', () => {});
+  ipcMain.on('startupError', (e, msg) => {
+    console.error('[DIAG-STARTUP-ERROR]', msg);
+  });
 
   remote.initialize();
 
@@ -315,6 +373,7 @@ async function startApp() {
   });
 
   remote.enable(workerWindow.webContents);
+  attachWebContentsDiagnostics('worker', workerWindow);
 
   // setTimeout(() => {
   workerWindow.loadURL(`${global.indexUrl}?windowId=worker`);
@@ -364,10 +423,67 @@ async function startApp() {
   });
 
   remote.enable(mainWindow.webContents);
+  attachWebContentsDiagnostics('main', mainWindow);
 
   // setTimeout(() => {
   mainWindow.loadURL(`${global.indexUrl}?windowId=main`);
   // }, 5 * 1000)
+
+  // 诊断1:1 秒后确认 webpack boot 是否完成
+  setTimeout(() => {
+    workerWindow.webContents.executeJavaScript('JSON.stringify({t:1,w:location.search,d:document.title})').then(function(r){
+      console.log('[DIAG-W1]', r);
+    }).catch(function(e){ console.error('[DIAG-W1-ERR]', e.message); });
+    mainWindow.webContents.executeJavaScript('JSON.stringify({t:1,w:location.search,d:document.title})').then(function(r){
+      console.log('[DIAG-M1]', r);
+    }).catch(function(e){ console.error('[DIAG-M1-ERR]', e.message); });
+  }, 1000);
+
+  // 诊断2:3 秒后问 worker 状态
+  setTimeout(() => {
+    workerWindow.webContents.executeJavaScript(`
+      JSON.stringify({
+        win: window.location.search,
+        hasObs: typeof window.obs !== 'undefined',
+        hasStore: typeof window.__vuex_store__ !== 'undefined',
+        // webpack 5 挂在 window 上的 chunk 数组
+        hasChunks: typeof webpackChunkmybilibili_live_desktop !== 'undefined',
+        chunksLen: typeof webpackChunkmybilibili_live_desktop !== 'undefined' ? webpackChunkmybilibili_live_desktop.length : -1,
+        // window 整体状态
+        hasVue: typeof Vue !== 'undefined',
+        hasReact: typeof React !== 'undefined',
+        hasApp: !!document.getElementById('app'),
+        appHTML: (document.getElementById('app') || {}).innerHTML ? document.getElementById('app').innerHTML.substring(0,300) : '',
+        OBS_API_result: typeof window.__OBS_API_result !== 'undefined' ? window.__OBS_API_result : 'not_set',
+        title: document.title,
+        keys: Object.keys(window).length,
+        sampleKeys: Object.keys(window).filter(k => k.startsWith('__') || k.startsWith('webpack') || k.startsWith('Vue') || k.startsWith('React') || k.startsWith('obs')).join(',')
+      })
+    `).then(function(r) {
+      try { var s = JSON.parse(r); console.log('[DIAG-WORKER]', JSON.stringify(s)); }
+      catch(e) { console.log('[DIAG-WORKER]', r); }
+    }).catch(function(e) { console.error('[DIAG-WORKER-ERR]', e.message); });
+  }, 3000);
+
+  // 诊断:4 秒后问 main window 状态
+  setTimeout(() => {
+    mainWindow.webContents.executeJavaScript(`
+      JSON.stringify({
+        win: window.location.search,
+        hasStore: typeof window.__vuex_store__ !== 'undefined',
+        bulkLoadFinished: window.__vuex_store__ ? window.__vuex_store__.state.bulkLoadFinished : 'no_store',
+        i18nReady: window.__vuex_store__ ? window.__vuex_store__.state.i18nReady : 'no_store',
+        title: document.title,
+        appHTML: (document.getElementById('app') || document.body || {}).innerHTML ? (document.getElementById('app') || document.body).innerHTML.substring(0,300) : '',
+        bodyText: document.body ? document.body.innerText.substring(0,300) : '',
+        registeredStores: typeof window.__vuex_store__ !== 'undefined' ? 'store_exists' : 'no_store',
+        keys: Object.keys(window).length
+      })
+    `).then(function(r) {
+      try { var s = JSON.parse(r); console.log('[DIAG-MAIN]', JSON.stringify(s)); }
+      catch(e) { console.log('[DIAG-MAIN]', r); }
+    }).catch(function(e) { console.error('[DIAG-MAIN-ERR]', e.message); });
+  }, 4000);
 
   mainWindowState.manage(mainWindow);
 
@@ -449,6 +565,7 @@ async function startApp() {
   });
 
   remote.enable(childWindow.webContents);
+  attachWebContentsDiagnostics('child', childWindow);
 
   childWindow.removeMenu();
 
@@ -499,15 +616,36 @@ async function startApp() {
   }
 
   ipcMain.on('AppInitFinished', () => {
+    console.log('[DIAG] AppInitFinished 收到! worker 初始化完成');
     workerInitFinished = true;
 
     waitingVuexStores.forEach(winId => {
+      console.log('[DIAG] 发送 initFinished 给窗口', winId);
       BrowserWindow.fromId(winId).send('initFinished');
     });
 
     waitingVuexStores.forEach(windowId => {
+      console.log('[DIAG] 通知 worker 发送 vuex 状态给窗口', windowId);
       workerWindow.webContents.send('vuex-sendState', windowId);
     });
+    console.log('[DIAG] AppInitFinished 处理完毕');
+  });
+
+  ipcMain.on('vuex-sendState', () => {
+    console.log('[DIAG] worker 回复状态同步');
+  });
+
+  ipcMain.on('vuex-mutation', (event, mutation) => {
+    // 只打印关键 mutations
+    const key = mutation && mutation.payload && mutation.payload[0];
+    if (key && key.includes('bulkLoad') || key && key.includes('i18n')) {
+      console.log('[DIAG] vuex-mutation:', key, '=', mutation.payload[1]);
+    }
+  });
+
+  // 监控 shutdownComplete 和 unhandledErrorState
+  ipcMain.on('shutdownComplete', () => {
+    console.log('[DIAG] shutdownComplete! worker 进程关闭');
   });
 
   ipcMain.on('services-request', (event, payload) => {

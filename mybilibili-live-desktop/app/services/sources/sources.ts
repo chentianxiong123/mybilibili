@@ -682,50 +682,12 @@ export class SourcesService extends StatefulService<ISourcesState> {
     const source = this.views.getSource(sourceId);
     if (!source) return;
 
-    if (source.type === 'screen_capture') return this.showScreenCaptureProperties(source);
     const propertiesManagerType = source.getPropertiesManagerType();
-
-    if (propertiesManagerType === 'iconLibrary') return this.showIconLibrarySettings(source);
 
     let propertiesName = SourceDisplayData()[source.type].name;
     if (propertiesManagerType === 'replay') propertiesName = $t('Instant Replay');
 
-    // uncomment the source type to use it's React version
-    const reactSourceProps: TSourceType[] = [
-      'color_source',
-      // 'image_source',
-      'browser_source',
-      // 'slideshow',
-      'ffmpeg_source',
-      // 'text_gdiplus',
-      // 'text_ft2_source',
-      // 'monitor_capture',
-      // 'window_capture',
-      'game_capture',
-      // 'dshow_input',
-      'dshow_input',
-      // 'wasapi_input_capture',
-      // 'wasapi_output_capture',
-      // 'decklink-input',
-      // 'scene',
-      // 'ndi_source',
-      'openvr_capture',
-      // 'screen_capture',
-      // 'liv_capture',
-      // 'ovrstream_dc_source',
-      // 'vlc_source',
-      // 'coreaudio_input_capture',
-      // 'coreaudio_output_capture',
-      // 'macos_avcapture',
-      // 'display_capture',
-      // 'audio_line',
-      // 'syphon-input',
-    ];
-
-    const componentName =
-      reactSourceProps.includes(source.type) && propertiesManagerType === 'default'
-        ? 'SourceProperties'
-        : 'SourcePropertiesDeprecated';
+    const componentName = 'SourceProperties';
 
     this.windowsService.showWindow({
       componentName,

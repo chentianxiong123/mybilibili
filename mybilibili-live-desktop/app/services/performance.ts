@@ -182,7 +182,11 @@ export class PerformanceService extends StatefulService<IPerformanceState> {
     electron.ipcRenderer.on(
       'performanceStatsResponse',
       (e: electron.Event, am: electron.ProcessMetric[]) => {
-        const streamingStats = this.streamingService.streamingPerformanceStats;
+        const streamingStats = this.streamingService.streamingPerformanceStats || {
+          totalFrames: 0,
+          droppedFrames: 0,
+          kbitsPerSec: 0,
+        };
 
         // CPU with child processes
         const CPU =

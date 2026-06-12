@@ -252,10 +252,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     locale: 'zh-CN',
     fallbackLocale: 'zh-CN',
     messages: {},
-    silentTranslationWarn: false,
+    silentTranslationWarn: true,
     missing: (language: string, key: string) => {
       if (isProduction) return;
-      console.error(`Missing translation found for ${language} -- "${key}"`);
+      console.warn(`Missing translation found for ${language} -- "${key}"`);
     },
   });
   I18nService.setVuei18nInstance(i18n);

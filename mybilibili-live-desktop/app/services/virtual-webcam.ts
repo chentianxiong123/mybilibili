@@ -8,7 +8,7 @@ import { SettingsService } from 'services/settings';
 import { UsageStatisticsService, SourcesService } from 'app-services';
 import * as remote from '@electron/remote';
 import { Subject } from 'rxjs';
-import { VCamOutputType } from 'obs-studio-node';
+import { VCamOutputType } from '../../obs-api';
 import { EOBSOutputType, EOBSOutputSignal, IOBSOutputSignalInfo } from './core/signals';
 import os from 'os';
 import { SignalsService } from './signals-manager';

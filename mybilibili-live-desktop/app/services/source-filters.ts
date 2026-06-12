@@ -15,7 +15,7 @@ import { WindowsService } from './windows';
 import * as obs from '../../obs-api';
 import namingHelpers from '../util/NamingHelpers';
 import { $t } from 'services/i18n';
-import { EOrderMovement } from 'obs-studio-node';
+import { EOrderMovement } from '../../obs-api';
 import { Subject } from 'rxjs';
 import { UsageStatisticsService } from './usage-statistics';
 import { getSharedResource } from 'util/get-shared-resource';
