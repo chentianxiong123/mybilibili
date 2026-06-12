@@ -4,7 +4,7 @@ import { ListInput } from 'components/shared/inputs/inputs';
 import ObsFontSizeSelector from './ObsFontSizeSelector.vue';
 import HFormGroup from 'components/shared/inputs/HFormGroup.vue';
 import fontManager from 'font-manager';
-import { EFontStyle } from 'obs-studio-node';
+import { EFontStyle } from '../../../../obs-api';
 
 /**
  * @tutorial https://github.com/devongovett/font-manager

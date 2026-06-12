@@ -2,7 +2,7 @@ import { IPropertyManager } from './properties-managers/properties-manager';
 import { IObsListOption, TObsFormData } from 'components/obs/inputs/ObsInput';
 import { Observable } from 'rxjs';
 import { IAudioSource } from 'services/audio';
-import { EDeinterlaceFieldOrder, EDeinterlaceMode } from 'obs-studio-node';
+import { EDeinterlaceFieldOrder, EDeinterlaceMode } from '../../../obs-api';
 import { TDisplayType } from 'services/settings-v2';
 
 export interface ISource {

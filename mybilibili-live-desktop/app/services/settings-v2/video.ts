@@ -186,6 +186,7 @@ export class VideoSettingsService extends StatefulService<IVideoSetting> {
         display === 'horizontal' && this.contexts.horizontal === null
           ? Video
           : this.contexts[display];
+      if (!context) continue;
       skippedFrames += context.skippedFrames;
     }
 
@@ -200,6 +201,7 @@ export class VideoSettingsService extends StatefulService<IVideoSetting> {
         display === 'horizontal' && this.contexts.horizontal === null
           ? Video
           : this.contexts[display];
+      if (!context) continue;
       encodedFrames += context.encodedFrames;
     }
 

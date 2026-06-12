@@ -1,5 +1,5 @@
 import * as fi from 'node-fontinfo';
-import { EFontStyle } from 'obs-studio-node';
+import { EFontStyle } from '../../../../obs-api';
 import { Component, Prop } from 'vue-property-decorator';
 import { FontLibraryService } from '../../../services/font-library';
 import { Inject } from '../../../services/core/injector';

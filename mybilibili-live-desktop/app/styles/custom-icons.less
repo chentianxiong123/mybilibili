@@ -7,9 +7,6 @@
 
 [class^='icon-'],
 [class*=' icon-'] {
-  /* use !important to prevent issues with browser extensions that change fonts */
-  font-family: 'icomoon' !important;
-
   speak: never;
   font-style: normal;
   font-weight: normal;
@@ -21,6 +18,32 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+.icon-add-circle:before { content: '+'; }
+.icon-trash:before { content: '×'; }
+.icon-settings:before { content: '⚙'; }
+.icon-developer:before { content: '</>'; font-size: 10px; }
+.icon-studio:before { content: '▣'; }
+.icon-studio-mode-3:before { content: '⇄'; }
+.icon-play-round:before { content: '▶'; }
+.icon-back:before { content: '‹'; }
+.icon-subtract:before { content: '−'; }
+.icon-expand-1:before { content: '□'; }
+.icon-close:before { content: '×'; }
+.icon-transition:before { content: '⇢'; }
+.icon-view:before { content: '●'; }
+.icon-hide:before { content: '○'; }
+.icon-lock:before { content: '🔒'; }
+.icon-unlock:before { content: '🔓'; }
+.icon-audio:before { content: '♪'; }
+.icon-mute:before { content: '×'; }
+.icon-save:before { content: '✓'; }
+.icon-replay-buffer:before { content: '↺'; }
+.icon-leaderboard-4:before { content: '▥'; }
+.icon-cpu:before { content: 'CPU'; font-size: 10px; }
+.icon-fps:before { content: 'FPS'; font-size: 10px; }
+.icon-dropped-frames:before { content: 'DRP'; font-size: 10px; }
+.icon-bitrate:before { content: 'KB'; font-size: 10px; }
 
 .icon-game-pulse:before {
   content: "\ea32";
@@ -875,3 +898,31 @@
 .icon-sound:before {
   content: '\e9e2';
 }
+
+// Temporary fallback while the original icomoon font asset is unavailable.
+// Keep this at the end so it overrides the original private-use glyph codes.
+.icon-add-circle:before { content: '+'; }
+.icon-trash:before { content: '×'; }
+.icon-settings:before { content: '⚙'; }
+.icon-developer:before { content: '</>'; font-size: 10px; }
+.icon-studio:before { content: '▣'; }
+.icon-studio-mode-3:before { content: '⇄'; }
+.icon-play-round:before { content: '▶'; }
+.icon-back:before { content: '‹'; }
+.icon-subtract:before { content: '−'; }
+.icon-expand-1:before { content: '□'; }
+.icon-close:before { content: '×'; }
+.icon-transition:before { content: '⇢'; }
+.icon-view:before { content: '●'; }
+.icon-hide:before { content: '○'; }
+.icon-lock:before { content: '🔒'; }
+.icon-unlock:before { content: '🔓'; }
+.icon-audio:before { content: '♪'; }
+.icon-mute:before { content: '×'; }
+.icon-save:before { content: '✓'; }
+.icon-replay-buffer:before { content: '↺'; }
+.icon-leaderboard-4:before { content: '▥'; }
+.icon-cpu:before { content: 'CPU'; font-size: 10px; }
+.icon-fps:before { content: 'FPS'; font-size: 10px; }
+.icon-dropped-frames:before { content: 'DRP'; font-size: 10px; }
+.icon-bitrate:before { content: 'KB'; font-size: 10px; }

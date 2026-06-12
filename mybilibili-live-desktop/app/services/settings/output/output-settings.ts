@@ -3,7 +3,7 @@ import { ISettingsSubCategory, SettingsService } from 'services/settings';
 import { TDisplayType, VideoSettingsService } from 'services/settings-v2/video';
 import { Inject } from 'services/core/injector';
 import { Dictionary } from 'vuex';
-import { ERecordingQuality, ERecordingFormat, EScaleType, ISettings } from 'obs-studio-node';
+import { ERecordingQuality, ERecordingFormat, EScaleType, ISettings } from '../../../../obs-api';
 
 /**
  * list of encoders for simple mode

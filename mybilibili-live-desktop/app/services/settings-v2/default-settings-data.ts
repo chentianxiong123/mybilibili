@@ -1,4 +1,4 @@
-import { EVideoFormat, EColorSpace, ERangeType, EScaleType, EFPSType } from 'obs-studio-node';
+import { EVideoFormat, EColorSpace, ERangeType, EScaleType, EFPSType } from '../../../obs-api';
 
 export const horizontalDisplayData = {
   fpsNum: 30,

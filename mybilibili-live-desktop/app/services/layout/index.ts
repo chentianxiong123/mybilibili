@@ -128,14 +128,13 @@ export class LayoutService extends PersistentStatefulService<ILayoutServiceState
         currentLayout: ELayout.Default,
         slottedElements: {
           [ELayoutElement.Display]: { slot: '1' },
-          [ELayoutElement.Minifeed]: { slot: '2' },
           [ELayoutElement.Scenes]: { slot: '3' },
           [ELayoutElement.Sources]: { slot: '4' },
           [ELayoutElement.Mixer]: { slot: '5' },
         },
         resizes: {
-          bar1: 156,
-          bar2: 240,
+          bar1: 0.3,
+          bar2: 0,
         },
       },
     },
@@ -147,6 +146,7 @@ export class LayoutService extends PersistentStatefulService<ILayoutServiceState
   init() {
     super.init();
     this.migrateSlots();
+    this.removeDisabledStreamlabsSlots();
 
     // Hack since defaultState can't take a translated string
     if (!this.state.tabs.default.name) {
@@ -198,6 +198,31 @@ export class LayoutService extends PersistentStatefulService<ILayoutServiceState
       }
     });
     this.SET_SLOTS(slottedElements);
+  }
+
+  private removeDisabledStreamlabsSlots() {
+    const defaultTab = this.state.tabs.default;
+    if (!defaultTab) return;
+
+    const slottedElements = { ...defaultTab.slottedElements };
+    const hasDisabledSlot =
+      slottedElements[ELayoutElement.Minifeed]?.slot ||
+      slottedElements[ELayoutElement.LegacyEvents]?.slot;
+
+    if (!hasDisabledSlot) return;
+
+    delete slottedElements[ELayoutElement.Minifeed];
+    delete slottedElements[ELayoutElement.LegacyEvents];
+
+    this.SET_SLOTS({
+      ...slottedElements,
+      [ELayoutElement.Display]: { slot: '1' },
+      [ELayoutElement.Scenes]: { slot: '3' },
+      [ELayoutElement.Sources]: { slot: '4' },
+      [ELayoutElement.Mixer]: { slot: '5' },
+    });
+    this.SET_RESIZE('bar1', 0.3);
+    this.SET_RESIZE('bar2', 0);
   }
 
   get views() {
@@ -307,14 +332,13 @@ export class LayoutService extends PersistentStatefulService<ILayoutServiceState
 
       slottedElements: {
         [ELayoutElement.Display]: { slot: '1' },
-        [ELayoutElement.Minifeed]: { slot: '2' },
         [ELayoutElement.Scenes]: { slot: '3' },
         [ELayoutElement.Sources]: { slot: '4' },
         [ELayoutElement.Mixer]: { slot: '5' },
       },
       resizes: {
-        bar1: 156,
-        bar2: 240,
+        bar1: 0.3,
+        bar2: 0,
       },
     });
     this.state.currentTab = id;

@@ -92,12 +92,10 @@ export const loggedOutMenuItems: ISideNavItem[] = [
     key: EMenuItemKey.Editor,
     target: 'Studio',
   },
-  { key: EMenuItemKey.RecordingHistory, target: 'RecordingHistory' },
 ];
 
 export const compactMenuItemKeys: Set<EMenuItemKey | ESubMenuItemKey> = new Set([
   EMenuItemKey.Editor,
-  EMenuItemKey.RecordingHistory,
 ]);
 
 /**
@@ -128,7 +126,6 @@ export const SideBarTopNavData = () => {
       menuItems[EMenuItemKey.Editor],
       menuItems[EMenuItemKey.LayoutEditor],
       menuItems[EMenuItemKey.StudioMode],
-      menuItems[EMenuItemKey.RecordingHistory],
     ],
   };
 };
@@ -183,7 +180,7 @@ export const SideNavMenuItems = (): TMenuItems => {
       target: 'RecordingHistory',
       icon: 'icon-play-round',
       trackingTarget: 'recording-history',
-      isActive: true,
+      isActive: false,
       isExpanded: false,
     },
     [EMenuItemKey.DevTools]: {

@@ -29,6 +29,10 @@ export class Vec2 {
     return new Vec2(this.x - v.x, this.y - v.y);
   }
 
+  multiply(v: IVec2) {
+    return new Vec2(this.x * v.x, this.y * v.y);
+  }
+
   multiplyScalar(value: number) {
     return new Vec2(this.x * value, this.y * value);
   }

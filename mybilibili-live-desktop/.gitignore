@@ -1,3 +1,6 @@
 bundles/
 .yarn/
 *.log
+
+# Debug screenshots taken during the renderer boot-debug session.
+*.png

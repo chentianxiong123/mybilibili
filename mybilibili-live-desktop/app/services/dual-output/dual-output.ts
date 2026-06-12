@@ -1,5 +1,6 @@
 import { Subject } from 'rxjs';
 import { mutation, PersistentStatefulService, ViewHandler } from 'services/core';
+import { verticalDisplayData } from 'services/settings-v2/default-settings-data';
 
 type TDisplayType = 'horizontal' | 'vertical';
 
@@ -40,12 +41,24 @@ class DualOutputViews extends ViewHandler<IDualOutputServiceState> {
     return this.state.videoSettings.activeDisplays;
   }
 
+  get showHorizontalDisplay() {
+    return !this.state.dualOutputMode || (this.activeDisplays.horizontal && !this.state.isLoading);
+  }
+
+  get showVerticalDisplay() {
+    return this.state.dualOutputMode && this.activeDisplays.vertical && !this.state.isLoading;
+  }
+
   get showBothDisplays() {
-    return true;
+    return this.showHorizontalDisplay && this.showVerticalDisplay;
   }
 
   get hideBothDisplays() {
-    return false;
+    return !this.showHorizontalDisplay && !this.showVerticalDisplay;
+  }
+
+  get onlyVerticalDisplayActive() {
+    return this.activeDisplays.vertical && !this.activeDisplays.horizontal;
   }
 
   get videoSettings() {
@@ -82,7 +95,7 @@ export class DualOutputService extends PersistentStatefulService<IDualOutputServ
     dualOutputMode: false,
     videoSettings: {
       horizontal: null,
-      vertical: null,
+      vertical: verticalDisplayData,
       activeDisplays: { horizontal: true, vertical: false },
     },
     isLoading: false,
