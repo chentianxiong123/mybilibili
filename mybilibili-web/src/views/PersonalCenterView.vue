@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import { Avatar, Brush, Clock, House, User, UserFilled } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,6 +18,15 @@ const navItems = [
   { name: '个人空间', icon: 'UserFilled', path: 'space', special: true },
   { name: '创作中心', icon: 'Brush', path: '/create-center', special: true }
 ]
+
+const iconMap = {
+  Avatar,
+  Brush,
+  Clock,
+  Home: House,
+  User,
+  UserFilled
+}
 
 // 当前活跃的导航选项
 const activeNav = computed(() => {
@@ -71,7 +80,7 @@ const handleNavClick = (item) => {
             :class="['nav-item', { active: activeNav === item.name }]"
             @click="handleNavClick(item)"
           >
-            <el-icon class="nav-icon"><component :is="ElementPlusIconsVue[item.icon]" /></el-icon>
+            <el-icon class="nav-icon"><component :is="iconMap[item.icon]" /></el-icon>
             <span class="nav-text">{{ item.name }}</span>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { clearAuthSession, getToken } from '../utils/auth.js'
 
 // 创建axios实例
 const api = axios.create({
@@ -14,7 +15,7 @@ const api = axios.create({
 // 请求拦截器
 api.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('token')
+    const token = getToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -34,8 +35,7 @@ api.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
+          clearAuthSession()
           // 不自动跳转登录页，由组件自己处理登录状态
           break
         case 403:
@@ -156,8 +156,14 @@ export const manuscriptApi = {
     return api.post('/manuscript/upload-chunk', formData, {
       timeout: 120000,
       onUploadProgress: onProgress ? (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-        onProgress(percentCompleted)
+        const total = progressEvent.total || chunkData.file.size || 0
+        const loaded = Math.min(progressEvent.loaded || 0, total)
+        const percentCompleted = total > 0 ? Math.round((loaded * 100) / total) : 0
+        onProgress({
+          percent: percentCompleted,
+          loaded,
+          total
+        })
         return percentCompleted
       } : undefined
     })

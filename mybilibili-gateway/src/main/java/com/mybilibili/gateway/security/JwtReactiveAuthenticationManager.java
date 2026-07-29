@@ -20,8 +20,8 @@ import java.util.List;
 @Component
 public class JwtReactiveAuthenticationManager implements ReactiveAuthenticationManager {
 
-    private static final String SECRET_KEY = "REDACTED_JWT_SECRET";
-    private static final SecretKey KEY = Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
+    private static final String LOCAL_DEV_SECRET = "mybilibili-local-dev-jwt-secret-0123456789abcdef";
+    private static final SecretKey KEY = resolveKey();
 
     @Override
     public Mono<Authentication> authenticate(Authentication authentication) {
@@ -71,4 +71,22 @@ public class JwtReactiveAuthenticationManager implements ReactiveAuthenticationM
                 .distinct()
                 .toList();
     }
+
+    private static SecretKey resolveKey() {
+        String secret = firstNonBlank(System.getProperty("jwt.secret"), System.getenv("JWT_SECRET"), LOCAL_DEV_SECRET);
+        if (secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("JWT secret must be at least 32 bytes");
+        }
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return LOCAL_DEV_SECRET;
+    }
+
 }

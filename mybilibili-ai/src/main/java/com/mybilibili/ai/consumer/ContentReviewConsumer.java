@@ -1,15 +1,15 @@
 package com.mybilibili.ai.consumer;
 
-import com.mybilibili.ai.feign.ReportCallbackClient;
 import com.mybilibili.ai.service.ContentReviewService;
 import com.mybilibili.mq.ContentReviewMessage;
+import com.mybilibili.mq.ContentReviewMQProducer;
+import com.mybilibili.mq.ContentReviewResultEvent;
 import com.mybilibili.mq.MQConstants;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @Component
@@ -23,7 +23,7 @@ public class ContentReviewConsumer implements RocketMQListener<ContentReviewMess
     private ContentReviewService contentReviewService;
 
     @Autowired
-    private ReportCallbackClient reportCallbackClient;
+    private ContentReviewMQProducer contentReviewMQProducer;
 
     @Override
     public void onMessage(ContentReviewMessage message) {
@@ -32,12 +32,12 @@ public class ContentReviewConsumer implements RocketMQListener<ContentReviewMess
 
         String status = reviewResult.get("status") != null ? reviewResult.get("status").toString() : "FAILED";
 
-        Map<String, Object> callbackData = new HashMap<>();
-        callbackData.put("reportId", message.getReportId());
-        callbackData.put("aiReviewStatus", status);
-        callbackData.put("aiVerdict", reviewResult.get("verdict"));
-        callbackData.put("aiRiskLevel", reviewResult.get("riskLevel"));
-
-        reportCallbackClient.updateAiReviewResult(callbackData);
+        contentReviewMQProducer.sendContentReviewResultEvent(
+            ContentReviewResultEvent.of(
+                message.getReportId(),
+                status,
+                reviewResult.get("verdict"),
+                reviewResult.get("riskLevel"))
+        );
     }
 }

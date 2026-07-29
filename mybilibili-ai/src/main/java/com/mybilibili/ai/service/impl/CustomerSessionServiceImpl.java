@@ -1,5 +1,6 @@
 package com.mybilibili.ai.service.impl;
 
+import com.mybilibili.ai.client.OperationTicketClient;
 import com.mybilibili.ai.entity.AiChatMessage;
 import com.mybilibili.ai.entity.AiSession;
 import com.mybilibili.ai.mapper.AiChatMessageMapper;
@@ -25,6 +26,9 @@ public class CustomerSessionServiceImpl implements CustomerSessionService {
 
     @Autowired
     private AiChatMessageMapper aiChatMessageMapper;
+
+    @Autowired
+    private OperationTicketClient operationTicketClient;
 
     @Override
     public List<Map<String, Object>> listPendingSessions() {
@@ -90,17 +94,25 @@ public class CustomerSessionServiceImpl implements CustomerSessionService {
 
     @Override
     @Transactional
-    public void markProcessed(Long sessionId) {
+    public void markProcessed(Long sessionId, Long adminId) {
         AiSession session = aiSessionMapper.selectById(sessionId);
         if (session != null) {
             session.setStatus(STATUS_PROCESSED);
             session.setUpdatedAt(new Date());
             aiSessionMapper.updateById(session);
+            processCustomerSessionTicket(sessionId, adminId, "人工客服会话已处理");
         }
     }
 
     @Override
     public long countPending() {
         return aiSessionMapper.countByTypeAndStatus(TYPE_CUSTOMER_SERVICE, STATUS_WAITING_HUMAN);
+    }
+
+    private void processCustomerSessionTicket(Long sessionId, Long adminId, String adminReply) {
+        Map<String, Object> request = new HashMap<>();
+        request.put("adminId", adminId);
+        request.put("adminReply", adminReply);
+        operationTicketClient.processBySession(sessionId, request);
     }
 }

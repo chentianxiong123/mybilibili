@@ -1,9 +1,12 @@
 <script setup>
-import { ref, computed, onMounted, provide } from 'vue'
+import { ref, computed, onMounted, onUnmounted, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { User, Lock, Message, Close, VideoPlay } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { userApi } from './api/index.js'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import { userApi, captchaApi, emailCodeApi } from './api/index.js'
+import { startSilentRefresh, stopSilentRefresh } from './api/index.js'
+import { getRefreshToken, setAuthSession } from './utils/auth.js'
 
 // 导入布局组件
 import LayoutHome from './layouts/LayoutHome.vue'
@@ -42,10 +45,18 @@ const loginForm = ref({
 const registerForm = ref({
   username: '',
   email: '',
+  emailCode: '',
   password: '',
   confirmPassword: '',
   agreeTerms: false
 })
+const registerCaptchaId = ref('')
+const registerCaptchaQuestion = ref('')
+const registerCaptchaAnswer = ref('')
+const registerCaptchaLoading = ref(false)
+const sendRegisterEmailLoading = ref(false)
+const registerEmailSent = ref(false)
+const registerEmailCountdown = ref(0)
 
 // 处理登录
 const handleLogin = () => {
@@ -58,8 +69,8 @@ const handleLogin = () => {
   userApi.login(loginForm.value.username, loginForm.value.password)
     .then(response => {
       if (response.code === 200) {
-        localStorage.setItem('user', JSON.stringify(response.data.user))
-        localStorage.setItem('token', response.data.token)
+        setAuthSession(response.data)
+        startSilentRefresh()
         showLoginDialog.value = false
         ElMessage.success('登录成功')
         
@@ -87,44 +98,29 @@ const handleLogin = () => {
 
 // 处理注册
 const handleRegister = () => {
-  if (!registerForm.value.username || !registerForm.value.email || !registerForm.value.password || !registerForm.value.confirmPassword) {
-    ElMessage.warning('请填写完整信息')
+  if (!registerForm.value.username || !registerForm.value.email || !registerForm.value.password || !registerForm.value.emailCode) {
+    ElMessage.warning('请完整填写注册信息')
     return
   }
-  
-  if (!registerForm.value.agreeTerms) {
-    ElMessage.warning('请阅读并同意用户协议和隐私政策')
-    return
-  }
-  
   if (registerForm.value.password !== registerForm.value.confirmPassword) {
     ElMessage.warning('两次输入的密码不一致')
     return
   }
-  
-  if (registerForm.value.password.length < 6) {
-    ElMessage.warning('密码长度不能少于6位')
+  if (!registerForm.value.agreeTerms) {
+    ElMessage.warning('请阅读并同意用户协议和隐私政策')
     return
   }
-  
-  // 验证邮箱格式
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(registerForm.value.email)) {
-    ElMessage.warning('请输入有效的邮箱地址')
-    return
-  }
-  
+
   loading.value = true
-  const userData = {
+  userApi.register({
     username: registerForm.value.username,
     email: registerForm.value.email,
+    emailCode: registerForm.value.emailCode,
     password: registerForm.value.password
-  }
-  
-  userApi.register(userData)
+  })
     .then(response => {
       if (response.code === 200) {
-        ElMessage.success('注册成功')
+        ElMessage.success('注册成功，请登录')
         switchToLogin()
       } else {
         ElMessage.error(response.message || '注册失败')
@@ -142,10 +138,8 @@ const handleRegister = () => {
 // 切换到注册模式
 const switchToRegister = () => {
   dialogMode.value = 'register'
-  loginForm.value = {
-    username: '',
-    password: '',
-    rememberMe: false
+  if (!registerCaptchaId.value) {
+    loadRegisterCaptcha()
   }
 }
 
@@ -155,10 +149,60 @@ const switchToLogin = () => {
   registerForm.value = {
     username: '',
     email: '',
+    emailCode: '',
     password: '',
     confirmPassword: '',
     agreeTerms: false
   }
+}
+
+const loadRegisterCaptcha = () => {
+  registerCaptchaLoading.value = true
+  captchaApi.newCaptcha().then(res => {
+    if (res.code === 200) {
+      registerCaptchaId.value = res.data.captchaId
+      registerCaptchaQuestion.value = res.data.question
+      registerCaptchaAnswer.value = ''
+    }
+  }).finally(() => {
+    registerCaptchaLoading.value = false
+  })
+}
+
+const handleSendRegisterEmailCode = () => {
+  if (!registerForm.value.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registerForm.value.email)) {
+    ElMessage.error('请先输入有效的邮箱地址')
+    return
+  }
+  if (!registerCaptchaAnswer.value.trim()) {
+    ElMessage.error('请先输入图形验证码')
+    return
+  }
+
+  captchaApi.verifyCaptcha(registerCaptchaId.value, registerCaptchaAnswer.value).then(res => {
+    if (res.code !== 200 || !res.data) {
+      ElMessage.error('图形验证码错误')
+      loadRegisterCaptcha()
+      return
+    }
+    sendRegisterEmailLoading.value = true
+    emailCodeApi.sendCode(registerForm.value.email).then(res => {
+      if (res.code === 200) {
+        registerEmailSent.value = true
+        registerEmailCountdown.value = 60
+        ElMessage.success('验证码已发送到邮箱')
+        const timer = setInterval(() => {
+          registerEmailCountdown.value--
+          if (registerEmailCountdown.value <= 0) clearInterval(timer)
+        }, 1000)
+      } else {
+        ElMessage.error(res.message || '发送失败')
+        loadRegisterCaptcha()
+      }
+    }).finally(() => {
+      sendRegisterEmailLoading.value = false
+    })
+  })
 }
 
 // 关闭弹窗
@@ -172,6 +216,7 @@ const handleCloseDialog = () => {
   registerForm.value = {
     username: '',
     email: '',
+    emailCode: '',
     password: '',
     confirmPassword: '',
     agreeTerms: false
@@ -180,24 +225,33 @@ const handleCloseDialog = () => {
 
 // 提供给子组件使用
 provide('showLoginDialog', showLoginDialog)
+
+// 启动无感登录：access token 剩余 < 10 分钟时主动续期
+onMounted(() => {
+  if (getRefreshToken()) {
+    startSilentRefresh()
+  }
+})
+onUnmounted(stopSilentRefresh)
 </script>
 
 <template>
-  <div class="app-container">
-    <!-- 动态布局 -->
-    <component :is="currentLayout">
-      <router-view />
-    </component>
-    
-    <!-- 登录/注册弹窗（全局） -->
-    <el-dialog
-      v-model="showLoginDialog"
-      :title="''"
-      width="420px"
-      :close-on-click-modal="false"
-      class="login-dialog"
-      @close="handleCloseDialog"
-    >
+  <el-config-provider :locale="zhCn">
+    <div class="app-container">
+      <!-- 动态布局 -->
+      <component :is="currentLayout">
+        <router-view />
+      </component>
+
+      <!-- 登录/注册弹窗（全局） -->
+      <el-dialog
+        v-model="showLoginDialog"
+        :title="''"
+        width="420px"
+        :close-on-click-modal="false"
+        class="login-dialog"
+        @close="handleCloseDialog"
+      >
       <div class="dialog-content-wrapper">
         <!-- 关闭按钮 -->
         <button class="dialog-close-btn" @click="showLoginDialog = false">
@@ -285,6 +339,37 @@ provide('showLoginDialog', showLoginDialog)
             />
           </el-form-item>
           <el-form-item label="">
+            <div class="captcha-row">
+              <el-input
+                v-model="registerCaptchaAnswer"
+                placeholder="图形验证码"
+                size="large"
+                clearable
+              />
+              <span class="captcha-question" :class="{ loading: registerCaptchaLoading }">{{ registerCaptchaQuestion }}</span>
+              <el-button link type="primary" @click="loadRegisterCaptcha" :loading="registerCaptchaLoading">刷新</el-button>
+            </div>
+          </el-form-item>
+          <el-form-item label="">
+            <div class="email-code-row">
+              <el-input
+                v-model="registerForm.emailCode"
+                placeholder="邮箱验证码"
+                size="large"
+                :prefix-icon="Message"
+                clearable
+              />
+              <el-button
+                type="primary"
+                :disabled="registerEmailSent && registerEmailCountdown > 0"
+                :loading="sendRegisterEmailLoading"
+                @click="handleSendRegisterEmailCode"
+              >
+                {{ registerEmailCountdown > 0 ? registerEmailCountdown + 's' : '发送验证码' }}
+              </el-button>
+            </div>
+          </el-form-item>
+          <el-form-item label="">
             <el-input
               v-model="registerForm.password"
               type="password"
@@ -331,8 +416,9 @@ provide('showLoginDialog', showLoginDialog)
         </div>
       </div>
       </div>
-    </el-dialog>
-  </div>
+      </el-dialog>
+    </div>
+  </el-config-provider>
 </template>
 
 <style>
@@ -420,6 +506,30 @@ body {
   align-items: center;
   margin-bottom: 15px;
   font-size: 12px;
+}
+
+.captcha-row,
+.email-code-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.captcha-row .el-input,
+.email-code-row .el-input {
+  flex: 1;
+}
+
+.captcha-question {
+  min-width: 72px;
+  white-space: nowrap;
+  font-size: 13px;
+  color: #333;
+}
+
+.captcha-question.loading {
+  color: #999;
 }
 
 .forget-password {

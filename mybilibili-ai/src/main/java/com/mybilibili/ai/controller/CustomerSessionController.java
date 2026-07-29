@@ -64,8 +64,10 @@ public class CustomerSessionController {
      * 标记会话为已处理
      */
     @PostMapping("/sessions/{sessionId}/resolve")
-    public Map<String, Object> resolveSession(@PathVariable Long sessionId) {
-        customerSessionService.markProcessed(sessionId);
+    public Map<String, Object> resolveSession(@PathVariable Long sessionId,
+                                              HttpServletRequest request) {
+        Long adminId = getAdminId(request);
+        customerSessionService.markProcessed(sessionId, adminId);
         return Map.of(
             "code", 200,
             "message", "会话已标记为已处理"

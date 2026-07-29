@@ -31,7 +31,6 @@ public class Video {
 
     public static final int STATUS_PENDING_REVIEW = 0;
     public static final int STATUS_PROCESSING = 1;
-    public static final int STATUS_READY_TO_PUBLISH = 2;
     public static final int STATUS_PUBLISHED = 3;
     public static final int STATUS_REJECTED = 4;
     public static final int STATUS_PROCESS_FAILED = 5;

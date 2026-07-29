@@ -2,6 +2,7 @@ package com.mybilibili.common.storage;
 
 import io.minio.*;
 import io.minio.http.Method;
+import io.minio.messages.Item;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.InputStream;
@@ -11,13 +12,15 @@ import java.util.concurrent.TimeUnit;
 public class MinioStorageService implements StorageService {
 
     private final MinioClient minioClient;
+    private final MinioClient publicMinioClient;
     private final String bucketName;
-    private final String endpoint;
+    private final String publicEndpoint;
 
-    public MinioStorageService(MinioClient minioClient, String bucketName, String endpoint) {
+    public MinioStorageService(MinioClient minioClient, MinioClient publicMinioClient, String bucketName, String publicEndpoint) {
         this.minioClient = minioClient;
+        this.publicMinioClient = publicMinioClient;
         this.bucketName = bucketName;
-        this.endpoint = endpoint;
+        this.publicEndpoint = publicEndpoint;
         initBucket();
     }
 
@@ -87,7 +90,7 @@ public class MinioStorageService implements StorageService {
     @Override
     public String getPresignedUrl(String key, int expirySeconds) {
         try {
-            return minioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
+            return publicMinioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
                     .method(Method.GET)
                     .bucket(bucketName)
                     .object(key)
@@ -100,7 +103,7 @@ public class MinioStorageService implements StorageService {
 
     @Override
     public String getPublicUrl(String key) {
-        String base = endpoint.endsWith("/") ? endpoint.substring(0, endpoint.length() - 1) : endpoint;
+        String base = publicEndpoint.endsWith("/") ? publicEndpoint.substring(0, publicEndpoint.length() - 1) : publicEndpoint;
         return base + "/" + bucketName + "/" + key;
     }
 
@@ -120,6 +123,23 @@ public class MinioStorageService implements StorageService {
             minioClient.removeObject(RemoveObjectArgs.builder().bucket(bucketName).object(key).build());
         } catch (Exception e) {
             log.warn("MinIO delete failed: {}", key, e);
+        }
+    }
+
+    @Override
+    public void deletePrefix(String prefix) {
+        try {
+            Iterable<io.minio.Result<Item>> results = minioClient.listObjects(ListObjectsArgs.builder()
+                    .bucket(bucketName)
+                    .prefix(prefix)
+                    .recursive(true)
+                    .build());
+            for (io.minio.Result<Item> result : results) {
+                Item item = result.get();
+                minioClient.removeObject(RemoveObjectArgs.builder().bucket(bucketName).object(item.objectName()).build());
+            }
+        } catch (Exception e) {
+            log.warn("MinIO prefix delete failed: {}", prefix, e);
         }
     }
 

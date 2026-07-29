@@ -1,22 +1,32 @@
 package com.mybilibili.ai.service.impl;
 
+import com.mybilibili.ai.client.OperationTicketClient;
 import com.mybilibili.ai.config.DynamicChatClient;
+import com.mybilibili.ai.entity.AiApiConfig;
 import com.mybilibili.ai.entity.AiSkill;
 import com.mybilibili.ai.entity.AiSession;
 import com.mybilibili.ai.entity.AiChatMessage;
 import com.mybilibili.ai.mapper.AiSessionMapper;
 import com.mybilibili.ai.mapper.AiChatMessageMapper;
+import com.mybilibili.ai.mapper.ManuscriptMapper;
+import com.mybilibili.ai.mapper.VideoMapper;
+import com.mybilibili.ai.service.AiApiConfigService;
 import com.mybilibili.ai.service.AiSkillService;
 import com.mybilibili.ai.service.CustomerServiceAiService;
 import com.mybilibili.ai.service.SkillRoutingService;
+import com.mybilibili.ai.tool.CustomerServiceReadonlyToolSet;
 import com.mybilibili.ai.util.AiUsageLogger;
+import org.springframework.ai.support.ToolCallbacks;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
@@ -30,6 +40,8 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
     /** Base system prompt for customer service AI */
     public static final String BASE_SYSTEM_PROMPT = "你是哔哩哔哩平台的AI客服助手。请专业、友善地回答用户问题。\n" +
             "回答时保持清晰结构，必要时引导转人工服务。\n" +
+            "你可以使用只读查询工具帮助用户查询其本人可见的稿件状态、视频处理状态、字幕/摘要生成状态和客服会话状态。\n" +
+            "你不能承诺或执行任何写操作，包括审核、发布、下架、重试处理、转码、重新生成字幕或摘要；用户需要这些操作时应转人工服务。\n" +
             "当你判断需要转人工服务时，请在回复末尾添加转人工标记：[TRANSFER_TO_HUMAN]\n" +
             "转人工的条件包括：用户明确要求转人工、涉及复杂投诉、需要人工授权、情绪激动的用户等。";
 
@@ -40,18 +52,31 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
     private AiUsageLogger aiUsageLogger;
 
     @Autowired
+    private AiApiConfigService aiApiConfigService;
+
+    @Autowired
     private AiSessionMapper aiSessionMapper;
 
     @Autowired
     private AiChatMessageMapper aiChatMessageMapper;
 
     @Autowired
+    private VideoMapper videoMapper;
+
+    @Autowired
+    private ManuscriptMapper manuscriptMapper;
+
+    @Autowired
     private SkillRoutingService skillRoutingService;
+
+    @Autowired
+    private OperationTicketClient operationTicketClient;
 
     @Override
     public SseEmitter chat(Long userId, String content) {
         // 1. Get ChatClient for CHAT feature
         org.springframework.ai.chat.client.ChatClient client = dynamicChatClient.getClient("CHAT");
+        String model = modelForFeature("CHAT");
         if (client == null) {
             SseEmitter emitter = new SseEmitter(0L);
             try {
@@ -77,6 +102,9 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
 
         // 5. Build system prompt from matched skills or use base prompt only
         String systemPrompt = buildSystemPrompt(matchedSkills);
+        List<ToolCallback> toolCallbacks = List.of(
+                ToolCallbacks.from(new CustomerServiceReadonlyToolSet(userId, videoMapper, manuscriptMapper, aiSessionMapper))
+        );
 
         // 6. 调用 client.prompt().system(SYSTEM_PROMPT).user(content).stream() 返回 SSE
         SseEmitter emitter = new SseEmitter(120000L);
@@ -87,6 +115,7 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
         reactor.core.publisher.Flux<String> flux = client.prompt()
                 .system(systemPrompt)
                 .user(content)
+                .tools(toolCallbacks)
                 .stream()
                 .content();
 
@@ -101,7 +130,7 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
                     } catch (Exception ignored) {}
                 },
                 error -> {
-                    aiUsageLogger.log("CHAT", "customer-service", null, null, System.currentTimeMillis() - startTime, false, error.getMessage());
+                    aiUsageLogger.log("CHAT", model, null, null, System.currentTimeMillis() - startTime, false, error.getMessage());
                     try {
                         emitter.send(SseEmitter.event().name("error").data("回复生成失败: " + error.getMessage()));
                         emitter.complete();
@@ -110,7 +139,7 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
                 () -> {
                     try {
                         String reply = fullResp.toString();
-                        aiUsageLogger.log("CHAT", "customer-service", null, null, System.currentTimeMillis() - startTime, true, null);
+                        aiUsageLogger.log("CHAT", model, null, null, System.currentTimeMillis() - startTime, true, null);
 
                         // 检查是否需要转人工
                         if (reply.contains(TRANSFER_MARKER)) {
@@ -144,6 +173,12 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
                             session.setStatus(STATUS_WAITING_HUMAN);
                             session.setUpdatedAt(new Date());
                             aiSessionMapper.updateById(session);
+                            createCustomerSessionTicket(
+                                    userId,
+                                    session.getId(),
+                                    "AI客服转人工工单",
+                                    content,
+                                    reply);
 
                             // 返回转人工标记
                             emitter.send(SseEmitter.event().name("transfer").data(""));
@@ -172,20 +207,10 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
             session = aiSessionMapper.selectById(sessionId);
         }
         if (session == null && userId != null) {
-            // 按 userId 查找活跃会话
-            try {
-                var sessions = aiSessionMapper.selectByTypeAndStatus(TYPE_CUSTOMER_SERVICE, STATUS_ACTIVE);
-                if (sessions != null && !sessions.isEmpty()) {
-                    for (AiSession s : sessions) {
-                        if (s.getUserId().equals(userId)) {
-                            session = s;
-                            break;
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                // Ignore
-            }
+            session = aiSessionMapper.selectLatestByUserIdAndTypeAndStatus(
+                    userId,
+                    TYPE_CUSTOMER_SERVICE,
+                    STATUS_ACTIVE);
         }
 
         if (session == null) {
@@ -204,24 +229,29 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
         session.setStatus(STATUS_WAITING_HUMAN);
         session.setUpdatedAt(new Date());
         aiSessionMapper.updateById(session);
+        createCustomerSessionTicket(
+                session.getUserId(),
+                session.getId(),
+                "用户请求人工客服介入",
+                reason,
+                null);
+    }
+
+    private void createCustomerSessionTicket(Long userId, Long sessionId, String title, String content, String entryReply) {
+        Map<String, Object> request = new HashMap<>();
+        request.put("userId", userId);
+        request.put("sessionId", sessionId);
+        request.put("title", title);
+        request.put("content", content);
+        request.put("entryReply", entryReply);
+        operationTicketClient.createFromCustomerSession(request);
     }
 
     private AiSession getOrCreateSession(Long userId) {
-        // 查找该用户的活跃客服会话
-        AiSession session = null;
-        try {
-            var sessions = aiSessionMapper.selectByTypeAndStatus(TYPE_CUSTOMER_SERVICE, STATUS_ACTIVE);
-            if (sessions != null && !sessions.isEmpty()) {
-                for (AiSession s : sessions) {
-                    if (s.getUserId().equals(userId)) {
-                        session = s;
-                        break;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // Ignore and create new session
-        }
+        AiSession session = aiSessionMapper.selectLatestByUserIdAndTypeAndStatus(
+                userId,
+                TYPE_CUSTOMER_SERVICE,
+                STATUS_ACTIVE);
 
         if (session == null) {
             session = new AiSession();
@@ -255,5 +285,10 @@ public class CustomerServiceAiServiceImpl implements CustomerServiceAiService {
         }
 
         return prompt.toString();
+    }
+
+    private String modelForFeature(String feature) {
+        AiApiConfig config = aiApiConfigService.getConfigForFeature(feature);
+        return config != null ? config.getModel() : null;
     }
 }

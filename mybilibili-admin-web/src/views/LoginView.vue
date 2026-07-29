@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { Lock, User } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useAdminStore } from '../stores/admin'
+import { firstAllowedPathByPermissions } from '../router/permissionRoutes'
 
 const router = useRouter()
 const adminStore = useAdminStore()
@@ -25,6 +26,10 @@ const rules = {
   ]
 }
 
+const firstAllowedPath = () => {
+  return firstAllowedPathByPermissions(adminStore.role, adminStore.permissions)
+}
+
 const handleLogin = async () => {
   if (!loginFormRef.value) return
 
@@ -36,7 +41,7 @@ const handleLogin = async () => {
       const result = await adminStore.login(loginForm.value)
       if (result.success) {
         ElMessage.success('登录成功')
-        router.push('/dashboard')
+        router.push(firstAllowedPath())
       } else {
         ElMessage.error(result.message)
       }
@@ -55,7 +60,7 @@ const handleLogin = async () => {
       <div class="login-header">
         <el-icon :size="48" color="#00aeec"><Monitor /></el-icon>
         <h1 class="login-title">管理后台</h1>
-        <p class="login-subtitle">Admin System</p>
+        <p class="login-subtitle">平台管理中心</p>
       </div>
 
       <el-form

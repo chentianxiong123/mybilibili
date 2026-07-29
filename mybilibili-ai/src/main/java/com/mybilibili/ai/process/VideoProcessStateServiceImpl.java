@@ -1,9 +1,11 @@
 package com.mybilibili.ai.process;
 
 import com.mybilibili.ai.mapper.VideoMapper;
-import com.mybilibili.ai.service.VideoProgressSseService;
-import com.mybilibili.ai.websocket.VideoProcessWebSocketHandler;
 import com.mybilibili.common.entity.Video;
+import com.mybilibili.mq.VideoMQProducer;
+import com.mybilibili.mq.VideoProcessAnalyticsEvent;
+import com.mybilibili.mq.VideoProcessProgressEvent;
+import com.mybilibili.mq.VideoPublishEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +16,7 @@ public class VideoProcessStateServiceImpl implements VideoProcessStateService {
     private VideoMapper videoMapper;
 
     @Autowired
-    private VideoProgressSseService progressSseService;
+    private VideoMQProducer videoMQProducer;
 
     @Override
     public void markStepStarted(VideoProcessContext context) {
@@ -41,35 +43,40 @@ public class VideoProcessStateServiceImpl implements VideoProcessStateService {
     public void markStepFailed(VideoProcessContext context, String errorMessage) {
         VideoProcessStepType step = context.getCurrentStep();
         updateVideoState(context.getVideoId(), step.getFailedStatus(), 0, step.getRunningStageCode(), errorMessage);
-        VideoProcessWebSocketHandler.broadcastError(
+        videoMQProducer.sendVideoProcessProgressEvent(VideoProcessProgressEvent.error(
                 context.getVideoId(),
                 context.getManuscriptId(),
                 context.getVideoTitle(),
                 step.getRunningStageCode(),
-                errorMessage
-        );
-        progressSseService.pushProcessEvent(videoMapper.selectById(context.getVideoId()), "error", errorMessage);
+                errorMessage,
+                step.getFailedStatus(),
+                errorMessage,
+                "mybilibili-ai"
+        ));
     }
 
     @Override
     public void markProcessCompleted(VideoProcessContext context) {
         updateVideoState(context.getVideoId(), Video.PROCESS_STATUS_COMPLETED, 100, "AI_SUCCESS", null);
-        VideoProcessWebSocketHandler.broadcastComplete(context.getVideoId(), context.getManuscriptId(), context.getVideoTitle());
-        progressSseService.pushProcessEvent(videoMapper.selectById(context.getVideoId()), "complete", "处理完成");
-        progressSseService.complete(context.getVideoId());
-    }
-
-    private void push(VideoProcessContext context, String stage, String stageText, int progress, Integer status) {
-        VideoProcessWebSocketHandler.broadcastProgress(
+        videoMQProducer.sendVideoProcessProgressEvent(VideoProcessProgressEvent.complete(
                 context.getVideoId(),
                 context.getManuscriptId(),
                 context.getVideoTitle(),
-                stage,
-                stageText,
-                progress,
-                status
-        );
-        progressSseService.pushProcessEventWithStatus(
+                "AI_SUCCESS",
+                "处理完成",
+                Video.PROCESS_STATUS_COMPLETED,
+                "mybilibili-ai"
+        ));
+        // AI 处理链全部完成,触发"自动上架"事件
+        VideoPublishEvent publishEvent = new VideoPublishEvent();
+        publishEvent.setManuscriptId(context.getManuscriptId());
+        publishEvent.setVideoId(context.getVideoId());
+        publishEvent.setTrigger("AUTO_CHAIN");
+        videoMQProducer.sendVideoPublishEvent(publishEvent);
+    }
+
+    private void push(VideoProcessContext context, String stage, String stageText, int progress, Integer status) {
+        videoMQProducer.sendVideoProcessProgressEvent(VideoProcessProgressEvent.progress(
                 context.getVideoId(),
                 context.getManuscriptId(),
                 context.getVideoTitle(),
@@ -77,12 +84,29 @@ public class VideoProcessStateServiceImpl implements VideoProcessStateService {
                 stageText,
                 progress,
                 status,
-                null,
-                "progress"
-        );
+                "mybilibili-ai"
+        ));
     }
 
     private void updateVideoState(Integer videoId, Integer status, Integer progress, String stage, String error) {
-        videoMapper.updateProcessState(videoId, status, progress, stage, error);
+        Video previous = videoMapper.selectById(videoId);
+        int updated = videoMapper.updateProcessState(videoId, status, progress, stage, error);
+        if (updated <= 0) {
+            return;
+        }
+        Integer fromStatus = previous != null ? previous.getProcessStatus() : null;
+        Integer manuscriptId = previous != null ? previous.getManuscriptId() : null;
+        VideoProcessAnalyticsEvent event = VideoProcessAnalyticsEvent.of(
+                videoId,
+                manuscriptId,
+                fromStatus,
+                status,
+                stage,
+                progress,
+                error,
+                "SYSTEM",
+                null
+        );
+        videoMQProducer.sendVideoProcessAnalyticsEvent(event);
     }
 }

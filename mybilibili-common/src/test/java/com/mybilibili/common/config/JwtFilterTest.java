@@ -2,17 +2,25 @@ package com.mybilibili.common.config;
 
 import com.mybilibili.common.utils.JwtUtils;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import org.mockito.ArgumentCaptor;
+
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 class JwtFilterTest {
+
+    static {
+        System.setProperty("jwt.secret", "test-jwt-secret-0123456789abcdef0123456789abcdef");
+    }
 
     private final JwtFilter filter = new JwtFilter();
 
@@ -38,7 +46,7 @@ class JwtFilterTest {
         filter.doFilterInternal(request, response, chain);
 
         assertEquals(401, response.getStatus());
-        assertEquals("未授权，请登录", response.getContentAsString());
+        assertEquals("{\"code\":401,\"message\":\"未授权，请登录\",\"data\":null}", response.getContentAsString());
         verify(chain, never()).doFilter(request, response);
     }
 
@@ -53,7 +61,13 @@ class JwtFilterTest {
 
         assertEquals(200, response.getStatus());
         assertEquals(12, request.getAttribute("userId"));
-        verify(chain).doFilter(request, response);
+
+        ArgumentCaptor<HttpServletRequest> forwardedRequest = ArgumentCaptor.forClass(HttpServletRequest.class);
+        verify(chain).doFilter(forwardedRequest.capture(), eq(response));
+        assertEquals("12", forwardedRequest.getValue().getHeader("X-User-Id"));
+        assertEquals("alice", forwardedRequest.getValue().getHeader("X-Username"));
+        assertEquals("USER", forwardedRequest.getValue().getHeader("X-User-Role"));
+        assertNull(forwardedRequest.getValue().getHeader("X-Admin-Id"));
     }
 
     @Test
@@ -65,7 +79,7 @@ class JwtFilterTest {
         filter.doFilterInternal(request, response, chain);
 
         assertEquals(401, response.getStatus());
-        assertEquals("token无效", response.getContentAsString());
+        assertEquals("{\"code\":401,\"message\":\"token无效\",\"data\":null}", response.getContentAsString());
         verify(chain, never()).doFilter(request, response);
     }
 

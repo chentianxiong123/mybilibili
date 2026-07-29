@@ -201,7 +201,7 @@ onUnmounted(() => {
           </div>
 
           <div v-if="sessions.length === 0" class="empty-tip">
-            暂无不需处理的会话
+            暂无待处理会话
           </div>
         </div>
       </div>

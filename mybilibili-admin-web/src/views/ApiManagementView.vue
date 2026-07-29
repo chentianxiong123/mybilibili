@@ -235,7 +235,7 @@ onMounted(loadData)
     >
       <el-form ref="formRef" :model="form" :rules="drawerMode !== 'view' ? rules : {}" label-width="80px" :disabled="drawerMode === 'view'">
         <el-form-item label="名称" prop="name">
-          <el-input v-model="form.name" placeholder="如 DeepSeek / OpenAI" />
+          <el-input v-model="form.name" placeholder="如 OpenAI Compatible / GLM ASR" />
         </el-form-item>
         <el-form-item label="类型" prop="type">
           <el-select v-model="form.type" :disabled="drawerMode !== 'create'" style="width: 100%">
@@ -243,7 +243,7 @@ onMounted(loadData)
           </el-select>
         </el-form-item>
         <el-form-item label="API 地址" prop="baseUrl">
-          <el-input v-model="form.baseUrl" placeholder="https://api.deepseek.com" />
+          <el-input v-model="form.baseUrl" placeholder="https://api.example.com" />
           <div class="form-tip">填根地址即可，系统自动拼接对应接口路径</div>
         </el-form-item>
         <el-form-item label="API 密钥" prop="apiKey">
@@ -251,7 +251,7 @@ onMounted(loadData)
             :placeholder="drawerMode === 'edit' ? '留空则不修改' : '请输入 API Key'" />
         </el-form-item>
         <el-form-item label="模型" prop="model">
-          <el-input v-model="form.model" placeholder="deepseek-chat" />
+          <el-input v-model="form.model" placeholder="如 gpt-4.1-mini / whisper-1" />
         </el-form-item>
         <el-form-item label="Max Tokens">
           <el-input-number v-model="form.maxTokens" :min="100" :max="8000" :step="100" />

@@ -22,9 +22,12 @@ onMounted(async () => {
   try {
     const res = await getRankingPartitions()
     if (res.code === '1') {
-      tabBarData.value = res.data || []
-      tabBarData.value.unshift({ id: 0, name: '首页', pids: [] })
-      tabBarData.value.push({ id: -1, name: '直播' })
+      tabBarData.value = [
+        { id: -1, name: '直播' },
+        { id: 0, name: '推荐' },
+        { id: -2, name: '热门' },
+        ...(res.data || [])
+      ]
     }
     await loadPartitionVideos()
   } catch (e) {
@@ -53,11 +56,13 @@ const loadPartitionVideos = async () => {
 const handleTabClick = (tab) => {
   activeId.value = tab.id
   if (tab.id === -1) {
-    window.location.href = '/m/live'
+    window.location.href = '/m/index?tab=live'
     return
   }
   if (tab.id === 0) {
     window.location.href = '/m/index'
+  } else if (tab.id === -2) {
+    window.location.href = '/m/index?tab=hot'
   } else {
     window.location.href = `/m/channel/${tab.id}`
   }

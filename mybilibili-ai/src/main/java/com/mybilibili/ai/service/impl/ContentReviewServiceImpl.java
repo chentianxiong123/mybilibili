@@ -3,9 +3,11 @@ package com.mybilibili.ai.service.impl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mybilibili.ai.config.DynamicChatClient;
-import com.mybilibili.ai.service.AiConfigService;
+import com.mybilibili.ai.entity.AiApiConfig;
+import com.mybilibili.ai.service.AiApiConfigService;
 import com.mybilibili.ai.service.ContentReviewService;
 import com.mybilibili.ai.util.AiUsageLogger;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,7 +20,7 @@ public class ContentReviewServiceImpl implements ContentReviewService {
     private DynamicChatClient dynamicChatClient;
 
     @Autowired
-    private AiConfigService aiConfigService;
+    private AiApiConfigService aiApiConfigService;
 
     @Autowired
     private AiUsageLogger aiUsageLogger;
@@ -38,18 +40,21 @@ public class ContentReviewServiceImpl implements ContentReviewService {
     public Map<String, Object> reviewContent(String content, String reason) {
         Map<String, Object> result = new HashMap<>();
         long startTime = System.currentTimeMillis();
+        AiApiConfig reviewConfig = aiApiConfigService.getConfigForFeature("REVIEW");
+        String model = modelOf(reviewConfig);
         try {
-            String apiKey = aiConfigService.getApiKey();
-            if (apiKey == null || apiKey.isEmpty()) {
+            ChatClient client = dynamicChatClient.getClient("REVIEW");
+            if (client == null) {
                 result.put("status", "FAILED");
-                result.put("verdict", "AI服务未配置API密钥");
+                result.put("verdict", "REVIEW 渠道未配置或已禁用");
                 result.put("riskLevel", null);
+                aiUsageLogger.log("REVIEW", null, null, null, System.currentTimeMillis() - startTime, false, "REVIEW 渠道未配置或已禁用");
                 return result;
             }
 
             String userPrompt = "举报原因：" + reason + "\n\n被举报内容：\n" + content;
 
-            String responseContent = dynamicChatClient.getClient("REVIEW").prompt()
+            String responseContent = client.prompt()
                     .system(SYSTEM_PROMPT)
                     .user(userPrompt)
                     .call()
@@ -67,13 +72,13 @@ public class ContentReviewServiceImpl implements ContentReviewService {
             result.put("verdict", parsed.getOrDefault("verdict", responseContent));
             result.put("riskLevel", parsed.getOrDefault("riskLevel", "LOW"));
 
-            aiUsageLogger.log("REVIEW", "deepseek-r1", null, null, System.currentTimeMillis() - startTime, true, null);
+            aiUsageLogger.log("REVIEW", model, null, null, System.currentTimeMillis() - startTime, true, null);
 
         } catch (Exception e) {
             result.put("status", "FAILED");
             result.put("verdict", "审核调用异常: " + e.getMessage());
             result.put("riskLevel", null);
-            aiUsageLogger.log("REVIEW", "deepseek-r1", null, null, System.currentTimeMillis() - startTime, false, e.getMessage());
+            aiUsageLogger.log("REVIEW", model, null, null, System.currentTimeMillis() - startTime, false, e.getMessage());
         }
         return result;
     }
@@ -107,5 +112,9 @@ public class ContentReviewServiceImpl implements ContentReviewService {
         }
 
         return parsed;
+    }
+
+    private String modelOf(AiApiConfig config) {
+        return config != null ? config.getModel() : null;
     }
 }

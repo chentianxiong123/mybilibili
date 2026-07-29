@@ -7,11 +7,11 @@ import java.nio.file.attribute.BasicFileAttributes;
 public class MigrationRunner {
 
     public static void main(String[] args) throws Exception {
-        String endpoint = args.length > 0 ? args[0] : "http://127.0.0.1:9000";
-        String accessKey = args.length > 1 ? args[1] : "REDACTED_MINIO_CREDENTIAL";
-        String secretKey = args.length > 2 ? args[2] : "REDACTED_MINIO_CREDENTIAL";
-        String bucketName = args.length > 3 ? args[3] : "mybilibili";
-        String localUploadsPath = args.length > 4 ? args[4] : "d:/files/mybilibili/uploads";
+        String endpoint = resolveArg(args, 0, "minio.endpoint", "MINIO_ENDPOINT", "http://127.0.0.1:9000");
+        String accessKey = resolveRequiredArg(args, 1, "minio.access-key", "MINIO_ACCESS_KEY");
+        String secretKey = resolveRequiredArg(args, 2, "minio.secret-key", "MINIO_SECRET_KEY");
+        String bucketName = resolveArg(args, 3, "minio.bucket-name", "MINIO_BUCKET", "mybilibili");
+        String localUploadsPath = resolveArg(args, 4, "local.uploads.path", "LOCAL_UPLOADS_PATH", "d:/files/mybilibili/uploads");
 
         log("=== MinIO Migration Tool ===");
         log("Endpoint: " + endpoint);
@@ -93,5 +93,33 @@ public class MigrationRunner {
 
     private static void log(String msg) {
         System.out.println("[" + java.time.LocalTime.now().toString().substring(0, 12) + "] " + msg);
+    }
+
+    private static String resolveArg(String[] args, int index, String systemProperty, String envName, String defaultValue) {
+        if (args.length > index && args[index] != null && !args[index].isBlank()) {
+            return args[index];
+        }
+        String value = firstNonBlank(System.getProperty(systemProperty), System.getenv(envName));
+        return value != null ? value : defaultValue;
+    }
+
+    private static String resolveRequiredArg(String[] args, int index, String systemProperty, String envName) {
+        if (args.length > index && args[index] != null && !args[index].isBlank()) {
+            return args[index];
+        }
+        String value = firstNonBlank(System.getProperty(systemProperty), System.getenv(envName));
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException("Missing required value: " + envName + " or -" + systemProperty);
+        }
+        return value;
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 }

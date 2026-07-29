@@ -17,7 +17,4 @@ public interface AiApiConfigService {
     void bindFeature(String feature, Long configId);
     /** 获取所有功能绑定关系 */
     java.util.Map<String, Long> getAllBindings();
-
-    /** 获取 Whisper 功能绑定配置 */
-    java.util.Map<String, Object> getWhisperConfig();
 }

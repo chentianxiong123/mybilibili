@@ -11,6 +11,8 @@ class JwtRequestPolicyTest {
 
     @Test
     void allowsConfiguredPublicRoutesAndAssets() {
+        assertTrue(policy.isPublicPath("/actuator/health"));
+        assertTrue(policy.isPublicPath("/actuator/health/readiness"));
         assertTrue(policy.isPublicPath("/api/user/login"));
         assertTrue(policy.isPublicPath("/api/admin/login"));
         assertTrue(policy.isPublicPath("/api/user/42/following"));
@@ -27,11 +29,15 @@ class JwtRequestPolicyTest {
         assertFalse(policy.isPublicPath("/api/user/following"));
         assertFalse(policy.isPublicPath("/api/user/add-experience"));
         assertFalse(policy.isPublicPath("/api/admin/register"));
+        assertFalse(policy.isPublicPath("/api/admin/operation-tasks/list"));
+        assertFalse(policy.isPublicPath("/api/admin/audit-logs/list"));
         assertFalse(policy.isPublicPath("/api/meeting/my-rooms"));
         assertFalse(policy.isPublicPath("/api/live/linkmic/apply/1"));
         assertFalse(policy.isPublicPath("/api/manuscript/100/status"));
+        assertFalse(policy.isPublicPath("/actuator/prometheus"));
         assertFalse(policy.isPublicPath("/api/video/admin/list"));
         assertFalse(policy.isPublicPath("/api/search/admin/index/status"));
+        assertFalse(policy.isPublicPath("/api/operation/admin/tickets"));
         assertFalse(policy.isPublicPath("POST", "/api/category"));
         assertFalse(policy.isPublicPath("POST", "/api/banner-images/home"));
         assertFalse(policy.isPublicPath("/uploads/avatar.png"));
@@ -47,6 +53,9 @@ class JwtRequestPolicyTest {
         assertTrue(policy.isAdminPath("GET", "/api/user/admin/list"));
         assertTrue(policy.isAdminPath("GET", "/api/video/admin/list"));
         assertTrue(policy.isAdminPath("GET", "/api/search/admin/index/status"));
+        assertTrue(policy.isAdminPath("GET", "/api/operation/admin/tickets"));
+        assertTrue(policy.isAdminPath("GET", "/api/admin/operation-tasks/list"));
+        assertTrue(policy.isAdminPath("GET", "/api/admin/audit-logs/list"));
         assertTrue(policy.isAdminPath("POST", "/api/category"));
         assertTrue(policy.isAdminPath("POST", "/api/banner-images/home"));
         assertTrue(policy.isSuperAdminPath("POST", "/api/admin/register"));
@@ -54,6 +63,9 @@ class JwtRequestPolicyTest {
         assertTrue("user:manage".equals(policy.requiredPermission("GET", "/api/user/admin/list")));
         assertTrue("video:manage".equals(policy.requiredPermission("GET", "/api/video/admin/list")));
         assertTrue("search:manage".equals(policy.requiredPermission("GET", "/api/search/admin/index/status")));
+        assertTrue("operation:manage".equals(policy.requiredPermission("GET", "/api/operation/admin/tickets")));
+        assertTrue("operation:manage".equals(policy.requiredPermission("GET", "/api/admin/operation-tasks/list")));
+        assertTrue("audit:manage".equals(policy.requiredPermission("GET", "/api/admin/audit-logs/list")));
         assertTrue("category:manage".equals(policy.requiredPermission("POST", "/api/category")));
         assertTrue("banner:manage".equals(policy.requiredPermission("POST", "/api/banner-images/home")));
     }

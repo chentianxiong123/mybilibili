@@ -26,7 +26,7 @@ public class AiApiConfig {
     /** 渠道名称 */
     private String name;
 
-    /** API 类型: LLM / STT / TTS / IMAGE */
+    /** API 类型: LLM / ASR / TTS / IMAGE / MODERATION */
     private String type;
 
     /** API 根地址 */

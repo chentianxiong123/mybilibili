@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { clearAuthSession, getToken } from '../utils/auth.js'
 
 // 创建axios实例
 const api = axios.create({
@@ -13,7 +14,7 @@ const api = axios.create({
 // 请求拦截器
 api.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('token')
+    const token = getToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -32,8 +33,7 @@ api.interceptors.response.use(
   error => {
     if (error.response?.status === 401) {
       ElMessage.error('登录已过期，请重新登录')
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      clearAuthSession()
       window.location.href = '/login'
     }
     return Promise.reject(error)
@@ -60,10 +60,10 @@ export const aiSummaryApi = {
     
     // 构建URL
     const baseURL = window.location.origin
-    const url = `${baseURL}/api/ai-summary/stream/${videoId}`
+    const url = `${baseURL}/api/ai/summary/stream/${videoId}`
     
     // 获取token
-    const token = localStorage.getItem('token')
+    const token = getToken()
     
     // 创建AbortController用于取消请求
     const controller = new AbortController()
@@ -145,7 +145,7 @@ export const aiSummaryApi = {
    * @returns {Promise}
    */
   getSummary(videoId) {
-    return api.get(`/ai-summary/${videoId}`)
+    return api.get(`/ai/summary/${videoId}`)
   },
 
   /**
@@ -154,7 +154,7 @@ export const aiSummaryApi = {
    * @returns {Promise}
    */
   checkSummary(videoId) {
-    return api.get(`/ai-summary/check/${videoId}`)
+    return api.get(`/ai/summary/check/${videoId}`)
   }
 }
 

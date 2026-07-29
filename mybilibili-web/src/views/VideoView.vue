@@ -183,7 +183,13 @@ const saveSubtitleSettings = () => {
 }
 
 // 全屏状态
+const isNativeFullscreen = ref(false)
+const isWebFullscreen = ref(false)
 const isFullscreenMode = ref(false)
+
+const updateFullscreenMode = () => {
+  isFullscreenMode.value = isNativeFullscreen.value || isWebFullscreen.value
+}
 
 // 推送设置到字幕组件（考虑全屏缩放）
 const pushSettingsToSubtitle = () => {
@@ -193,6 +199,28 @@ const pushSettingsToSubtitle = () => {
     ...subtitleSettings.value,
     fontSize: Math.round(subtitleSettings.value.fontSize * scale)
   })
+}
+
+const refreshSubtitleLayout = (resetPosition = false) => {
+  nextTick(() => {
+    pushSettingsToSubtitle()
+
+    if (!subtitleDisplayRef.value) return
+
+    if (resetPosition) {
+      subtitleDisplayRef.value.centerSubtitle()
+    } else {
+      subtitleDisplayRef.value.updatePosition()
+    }
+
+    requestAnimationFrame(() => {
+      subtitleDisplayRef.value?.updatePosition()
+    })
+  })
+}
+
+const handleSubtitlePlayerResize = () => {
+  refreshSubtitleLayout(false)
 }
 
 const updateSubtitleSettings = (settings) => {
@@ -467,6 +495,7 @@ const loadingReplies = ref({})
 
 // 评论排序方式
 const commentSort = ref('hot')
+const REPLY_PAGE_SIZE = 7
 
 // 新评论输入
 const newComment = ref('')
@@ -485,10 +514,10 @@ const showReplyEmojiPicker = ref({})
 const activeReplyEmojiCommentId = ref(null)
 
 // 当前用户头像
-const currentUserAvatar = ref(() => {
+const currentUserAvatar = () => {
   const user = JSON.parse(localStorage.getItem('user') || 'null')
   return user?.avatar || '/default-avatar.svg'
-})
+}
 
 // 切换评论输入框折叠状态
 const toggleCommentInput = () => {
@@ -542,6 +571,31 @@ const selectReplyEmoji = (emoji, commentId) => {
   activeReplyEmojiCommentId.value = null
 }
 
+const isUploaderUser = (userId) => {
+  const uploaderId = videoInfo.value.uploader.id
+  return uploaderId !== undefined && uploaderId !== null && uploaderId !== '' && String(userId) === String(uploaderId)
+}
+
+const getUploaderReplies = (comment) => {
+  return (comment.replies || []).filter(reply => isUploaderUser(reply.userId))
+}
+
+const getOtherReplies = (comment) => {
+  return (comment.replies || []).filter(reply => !isUploaderUser(reply.userId))
+}
+
+const getReplyTotal = (comment) => {
+  return Number(comment.replyCount ?? comment.replies?.length ?? 0)
+}
+
+const getReplyPageCount = (comment) => {
+  return Math.max(1, Math.ceil(getReplyTotal(comment) / REPLY_PAGE_SIZE))
+}
+
+const shouldShowReplyExpand = (comment) => {
+  return getReplyTotal(comment) > getUploaderReplies(comment).length
+}
+
 // 提交评论
 const submitComment = async () => {
   if (!newComment.value.trim()) {
@@ -551,7 +605,7 @@ const submitComment = async () => {
   
   try {
     console.log('【调试】提交评论，manuscriptId:', currentManuscriptId.value, '内容:', newComment.value)
-    const response = await commentApi.postComment('manuscript', currentManuscriptId.value, newComment.value)
+    const response = await commentApi.postComment('VIDEO', currentManuscriptId.value, newComment.value)
     console.log('评论API响应:', response)
     if (response.code === 200) {
       // 将新评论添加到列表开头
@@ -559,12 +613,14 @@ const submitComment = async () => {
         id: response.data.id,
         userId: response.data.userId,
         author: response.data.userName,
-        avatar: response.data.userAvatar || currentUserAvatar.value,
+        avatar: response.data.userAvatar || currentUserAvatar(),
         userLevel: response.data.userLevel || currentUser.value?.level || 0,
         content: response.data.content,
         time: formatDate(response.data.createTime || new Date()),
         likeCount: response.data.likeCount || 0,
-        isLiked: response.data.liked || false
+        isLiked: response.data.liked || false,
+        replyCount: response.data.replyCount || 0,
+        replies: []
       })
       videoInfo.value.commentCount++
       newComment.value = ''
@@ -698,7 +754,7 @@ const dislikeReply = (replyId) => {
 const loadReplies = async (commentId, page = 1) => {
   try {
     loadingReplies.value[commentId] = true
-    const response = await commentApi.getRepliesByCommentId(commentId, page, 7)
+    const response = await commentApi.getRepliesByCommentId(commentId, page, REPLY_PAGE_SIZE)
     if (response.code === 200) {
       const comment = comments.value.find(c => c.id === commentId)
       if (comment) {
@@ -815,7 +871,7 @@ const submitReply = async (commentId) => {
           id: response.data.id,
           userId: response.data.userId,
           author: response.data.userName || '未知用户',
-          avatar: response.data.userAvatar || currentUserAvatar.value,
+          avatar: response.data.userAvatar || currentUserAvatar(),
           userLevel: response.data.userLevel || currentUser.value?.level || 0,
           content: response.data.content,
           time: formatDate(response.data.createTime),
@@ -824,12 +880,13 @@ const submitReply = async (commentId) => {
           isLiked: response.data.liked || false,
           targetAuthor: response.data.replyToUserName || targetAuthor
         }
+        comment.replyCount = (comment.replyCount || 0) + 1
         console.log('【调试】创建的newReply:', newReply)
         console.log('【调试】comment.userId:', comment.userId)
         // 检查是否是作者的回复
-        const isAuthorReply = newReply.userId === comment.userId
-        console.log('【调试】是否UP主回复:', isAuthorReply, 'newReply.userId:', newReply.userId)
-        if (isAuthorReply) {
+        const isUploaderReply = isUploaderUser(newReply.userId)
+        console.log('【调试】是否UP主回复:', isUploaderReply, 'newReply.userId:', newReply.userId)
+        if (isUploaderReply) {
           // 作者回复放在最前面
           comment.replies.unshift(newReply)
         } else {
@@ -1085,7 +1142,7 @@ const loadComments = async (sort = 'new') => {
   try {
     loadingComments.value = true
     console.log('【调试】开始加载评论，manuscriptId:', currentManuscriptId.value)
-    const commentResponse = await commentApi.getCommentsByVideoId(currentManuscriptId.value, 1, 20, sort)
+    const commentResponse = await commentApi.getComments('VIDEO', currentManuscriptId.value, 1, 20, sort)
     console.log('【调试】评论API响应:', commentResponse)
     if (commentResponse.code === 200) {
       const commentData = commentResponse.data
@@ -1102,6 +1159,7 @@ const loadComments = async (sort = 'new') => {
         likeCount: comment.likeCount || 0,
         dislikeCount: comment.dislikeCount || 0,
         isLiked: comment.liked || false,
+        replyCount: comment.replyCount || 0,
         showReplyInput: false,
         replies: (comment.replies || []).map(reply => ({
           id: reply.id,
@@ -1117,17 +1175,9 @@ const loadComments = async (sort = 'new') => {
           targetAuthor: reply.replyToUserName || reply.targetAuthor || reply.replyTo || reply.toUserName || null
         }))
       }))
-      // 更新评论数量（包含回复数）
-      let totalComments = comments.value.length
-      comments.value.forEach(comment => {
-        totalComments += comment.replies.length
-      })
-      videoInfo.value.commentCount = totalComments
       console.log('评论数据:', commentData)
       console.log('处理后的评论列表:', comments.value)
       console.log('评论数量:', comments.value.length)
-      console.log('回复数量:', totalComments - comments.value.length)
-      console.log('总评论数（含回复）:', totalComments)
       console.log('评论获取成功:', comments.value)
     }
   } catch (error) {
@@ -1923,17 +1973,15 @@ onMounted(async () => {
       html: '',
       style: {
         position: 'absolute',
-        bottom: '60px',
-        left: '0',
-        right: '0',
-        display: 'flex',
-        justifyContent: 'center',
-        pointerEvents: 'auto',
-        zIndex: 2147483647
+        inset: '0',
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        zIndex: 42
       },
       mounted: function(layer) {
         if (subtitleDisplayRef.value) {
           layer.appendChild(subtitleDisplayRef.value.$el)
+          refreshSubtitleLayout(false)
         }
       }
     },
@@ -1942,11 +1990,10 @@ onMounted(async () => {
       html: '',
       style: {
         position: 'absolute',
-        bottom: '55px',
-        right: '10px',
-        zIndex: 2147483647,
-        pointerEvents: 'auto',
-        overflow: 'visible'
+        inset: '0',
+        zIndex: 100,
+        pointerEvents: 'none',
+        overflow: 'hidden'
       },
       mounted: function(layer) {
         if (subtitleSettingsPanelRef.value) {
@@ -1960,10 +2007,7 @@ onMounted(async () => {
 
   // 播放器准备好后推送字幕设置并更新位置
   art.on('ready', () => {
-    pushSettingsToSubtitle()
-    if (subtitleDisplayRef.value) {
-      subtitleDisplayRef.value.centerSubtitle()
-    }
+    refreshSubtitleLayout(true)
     if (resumeTime.value > 0) {
       setTimeout(() => applyResumeTime(resumeTime.value), 100)
     }
@@ -2011,26 +2055,20 @@ onMounted(async () => {
 
   // 监听全屏事件 - 进入全屏时重置字幕位置并缩放字体
   art.on('fullscreen', (isFullscreen) => {
-    isFullscreenMode.value = isFullscreen
-    if (subtitleDisplayRef.value) {
-      setTimeout(() => {
-        pushSettingsToSubtitle()
-        subtitleDisplayRef.value.centerSubtitle()
-        subtitleDisplayRef.value.updatePosition()
-      }, 100)
-    }
+    isNativeFullscreen.value = isFullscreen
+    updateFullscreenMode()
+    setTimeout(() => refreshSubtitleLayout(true), 100)
   })
 
   // 监听网页全屏事件
   art.on('fullscreenWeb', (isFullscreen) => {
-    isFullscreenMode.value = isFullscreen
-    if (subtitleDisplayRef.value) {
-      setTimeout(() => {
-        pushSettingsToSubtitle()
-        subtitleDisplayRef.value.centerSubtitle()
-        subtitleDisplayRef.value.updatePosition()
-      }, 100)
-    }
+    isWebFullscreen.value = isFullscreen
+    updateFullscreenMode()
+    setTimeout(() => refreshSubtitleLayout(true), 100)
+  })
+
+  art.on('resize', () => {
+    refreshSubtitleLayout(false)
   })
 
   // 组件卸载时清理定时器
@@ -2045,6 +2083,7 @@ onMounted(async () => {
 
   // 添加点击外部区域的事件监听
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('resize', handleSubtitlePlayerResize)
   
   // 添加页面离开时记录浏览历史的监听
   window.addEventListener('beforeunload', recordWatchHistorySync)
@@ -2058,6 +2097,7 @@ onUnmounted(() => {
 
   // 移除页面离开监听
   window.removeEventListener('beforeunload', recordWatchHistorySync)
+  window.removeEventListener('resize', handleSubtitlePlayerResize)
 
   // 移除点击外部区域的事件监听
   document.removeEventListener('click', handleClickOutside)
@@ -2506,9 +2546,9 @@ watch(() => [route.query.p, route.query.t], ([newP, newT]) => {
                     </div>
                     
                     <!-- 回复列表 -->
-                    <div class="replies-list" v-if="comment.replies && comment.replies.length > 0">
+                    <div class="replies-list" v-if="getReplyTotal(comment) > 0">
                       <!-- 显示视频作者的回复 -->
-                      <div v-for="reply in comment.replies.filter(r => videoInfo.uploader.id && r.userId === videoInfo.uploader.id)" :key="reply.id" class="reply-item">
+                      <div v-for="reply in getUploaderReplies(comment)" :key="reply.id" class="reply-item">
                         <img :src="reply.avatar || '/default-avatar.svg'" alt="用户头像" class="reply-avatar" @click="goToAuthor(reply.userId)">
                         <div class="reply-content">
                           <div class="reply-text">
@@ -2532,17 +2572,17 @@ watch(() => [route.query.p, route.query.t], ([newP, newT]) => {
                       </div>
                       
                       <!-- 其他回复（全部折叠） -->
-                      <div v-if="comment.replies.filter(r => !videoInfo.uploader.id || r.userId !== videoInfo.uploader.id).length > 0">
+                      <div v-if="shouldShowReplyExpand(comment)">
                         <!-- 折叠状态 -->
                         <div class="reply-collapse" v-if="!replyExpanded[comment.id]">
                           <el-button text size="small" @click="toggleReplyExpanded(comment.id)">
-                            显示全部 {{ comment.replies.filter(r => !videoInfo.uploader.id || r.userId !== videoInfo.uploader.id).length }} 条回复
+                            显示全部 {{ getReplyTotal(comment) }} 条回复
                           </el-button>
                         </div>
                         
                         <!-- 展开状态 -->
                         <div v-if="replyExpanded[comment.id]">
-                          <div v-for="reply in comment.replies.filter(r => !videoInfo.uploader.id || r.userId !== videoInfo.uploader.id)" :key="reply.id" class="reply-item">
+                          <div v-for="reply in getOtherReplies(comment)" :key="reply.id" class="reply-item">
                             <img :src="reply.avatar || '/default-avatar.svg'" alt="用户头像" class="reply-avatar" @click="goToAuthor(reply.userId)">
                             <div class="reply-content">
                               <div class="reply-text">
@@ -2567,9 +2607,9 @@ watch(() => [route.query.p, route.query.t], ([newP, newT]) => {
                           
                           <!-- 数字分页 -->
                           <div class="reply-pagination">
-                            <span class="page-info">共{{ Math.ceil((comment.replies.filter(r => !videoInfo.uploader.id || r.userId !== videoInfo.uploader.id).length) / 7) }}页</span>
+                            <span class="page-info">共{{ getReplyPageCount(comment) }}页</span>
                             <span 
-                              v-for="page in Math.ceil((comment.replies.filter(r => !videoInfo.uploader.id || r.userId !== videoInfo.uploader.id).length) / 7)" 
+                              v-for="page in getReplyPageCount(comment)"
                               :key="page"
                               class="page-number"
                               :class="{ 'active': replyPage[comment.id] === page }"
@@ -2577,7 +2617,7 @@ watch(() => [route.query.p, route.query.t], ([newP, newT]) => {
                             >
                               {{ page }}
                             </span>
-                            <span class="page-control" @click="loadReplies(comment.id, (replyPage[comment.id] || 1) + 1)" v-if="(replyPage[comment.id] || 1) < Math.ceil((comment.replies.filter(r => !videoInfo.uploader.id || r.userId !== videoInfo.uploader.id).length) / 7)">
+                            <span class="page-control" @click="loadReplies(comment.id, (replyPage[comment.id] || 1) + 1)" v-if="(replyPage[comment.id] || 1) < getReplyPageCount(comment)">
                               下一页
                             </span>
                             <span class="page-control" @click="replyExpanded[comment.id] = false">
@@ -3011,15 +3051,18 @@ watch(() => [route.query.p, route.query.t], ([newP, newT]) => {
 .subtitle-settings-panel {
   position: absolute;
   bottom: 50px;
-  right: 0;
+  right: 10px;
   width: 280px;
+  max-width: calc(100% - 20px);
+  max-height: calc(100% - 70px);
   background: rgba(28, 28, 28, 0.95);
   border-radius: 8px;
   padding: 16px;
   z-index: 120;
   color: #fff;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  overflow: visible;
+  overflow: auto;
+  pointer-events: auto;
 }
 
 .subtitle-settings-panel .settings-header {
@@ -3068,6 +3111,7 @@ watch(() => [route.query.p, route.query.t], ([newP, newT]) => {
   background-color: #000;
   min-height: 450px;
   position: relative;
+  overflow: hidden;
 }
 
 /* 右侧弹幕列表 */

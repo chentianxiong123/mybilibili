@@ -6,6 +6,7 @@ import java.util.List;
 public interface AiSkillService {
     List<AiSkill> listAll();
     List<AiSkill> listByType(String type);
+    List<AiSkill> createMissingCustomerServiceDefaults();
     AiSkill getById(Long id);
     AiSkill getEnabledByType(String type);
     AiSkill create(AiSkill skill);

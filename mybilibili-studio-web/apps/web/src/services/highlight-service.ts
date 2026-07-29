@@ -1,0 +1,82 @@
+import {
+  analyzeAudioForHighlights,
+  type TranscriptWord,
+  type AudioSegmentMetrics,
+} from "@mybilibili-studio/core";
+import { STUDIO_CLOUD_URL, requireStudioEndpoint } from "../config/api-endpoints";
+
+export interface HighlightResult {
+  start: number;
+  end: number;
+  score: number;
+  title: string;
+  reason: string;
+}
+
+export interface HighlightPreferences {
+  targetClipCount: number;
+  minClipDuration: number;
+  maxClipDuration: number;
+  contentType: string;
+}
+
+const DEFAULT_PREFERENCES: HighlightPreferences = {
+  targetClipCount: 5,
+  minClipDuration: 5,
+  maxClipDuration: 60,
+  contentType: "video",
+};
+
+type ProgressCallback = (phase: string, progress: number, message: string) => void;
+
+export async function extractHighlights(
+  audioBuffer: AudioBuffer,
+  transcript: TranscriptWord[],
+  preferences: Partial<HighlightPreferences> = {},
+  onProgress?: ProgressCallback,
+): Promise<HighlightResult[]> {
+  const prefs = { ...DEFAULT_PREFERENCES, ...preferences };
+
+  onProgress?.("analyze", 10, "正在分析音频能量...");
+  const analysis = analyzeAudioForHighlights(audioBuffer, transcript);
+
+  onProgress?.("analyze", 30, "正在准备 AI 分析数据...");
+  const energyData = analysis.segments
+    .filter((seg) => !seg.isSilence)
+    .map((seg: AudioSegmentMetrics) => ({
+      start: seg.start,
+      end: seg.end,
+      rmsDb: seg.rmsDb,
+      peakDb: seg.peakDb,
+    }));
+
+  onProgress?.("ai", 40, "正在发送给 AI 识别高光片段...");
+  const apiBase = requireStudioEndpoint(STUDIO_CLOUD_URL, "剪辑高光服务");
+
+  const response = await fetch(`${apiBase}/highlights`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      transcript: transcript.map((w) => ({
+        text: w.text,
+        start: w.start,
+        end: w.end,
+      })),
+      energy: energyData,
+      duration: analysis.duration,
+      preferences: prefs,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error((errorData as { error?: string }).error || `API error: ${response.status}`);
+  }
+
+  onProgress?.("ai", 80, "正在处理 AI 返回结果...");
+  const data = (await response.json()) as { highlights: HighlightResult[] };
+
+  onProgress?.("done", 100, "高光片段已就绪");
+  return data.highlights;
+}
+

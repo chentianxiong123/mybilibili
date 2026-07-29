@@ -2,10 +2,13 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getMyInfo } from '../../api/user'
+import { getWapTheme, toggleWapTheme } from '../../utils/theme'
+import noface from '../../assets/noface.gif'
 
 const router = useRouter()
 const userInfo = ref<any>(null)
 const isLoggedIn = ref(false)
+const isDarkMode = ref(getWapTheme() === 'dark')
 
 onMounted(async () => {
   const token = localStorage.getItem('token')
@@ -40,6 +43,24 @@ const handleLogout = () => {
 const navigateTo = (path: string) => {
   router.push(path)
 }
+
+const openWebPath = (path: string) => {
+  const origin = window.location.origin.replace(':5174', ':5173')
+  window.location.href = `${origin}${path}`
+}
+
+const getUserCount = (keys: string[]) => {
+  const user = userInfo.value || {}
+  for (const key of keys) {
+    const value = user[key]
+    if (value !== undefined && value !== null && value !== '') return value
+  }
+  return 0
+}
+
+const handleToggleTheme = () => {
+  isDarkMode.value = toggleWapTheme() === 'dark'
+}
 </script>
 
 <template>
@@ -59,7 +80,7 @@ const navigateTo = (path: string) => {
             <path d="M20.37 8.91l-8-5a1 1 0 0 0-1.07 0l-8 5A1 1 0 0 0 3 9.76v8.48a1 1 0 0 0 .53.88l8 5a1 1 0 0 0 1.07 0l8-5a1 1 0 0 0 .53-.88V9.76a1 1 0 0 0-.53-.85z" />
           </svg>
         </div>
-        <div class="icon-btn" title="夜间模式">
+        <div :class="['icon-btn', { active: isDarkMode }]" :title="isDarkMode ? '日间模式' : '夜间模式'" @click="handleToggleTheme">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
           </svg>
@@ -70,7 +91,7 @@ const navigateTo = (path: string) => {
     <!-- 用户基本信息 -->
     <div class="user-info-section" v-if="userInfo">
       <div class="avatar-row">
-        <img :src="userInfo.avatar || '../../../src/assets/noface.gif'" class="avatar" />
+        <img :src="userInfo.avatar || noface" class="avatar" />
         <div class="meta-info">
           <div class="name-row">
             <span class="nickname">{{ userInfo.nickname || userInfo.username }}</span>
@@ -90,17 +111,17 @@ const navigateTo = (path: string) => {
       <!-- 动态/关注/粉丝 统计 -->
       <div class="stats-row">
         <div class="stat-item" @click="navigateTo(`/m/space/${userInfo.id}`)">
-          <div class="num">{{ userInfo.dynamicCount || 0 }}</div>
+          <div class="num">{{ getUserCount(['dynamicCount', 'dynamics']) }}</div>
           <div class="label">动态</div>
         </div>
         <div class="divider"></div>
-        <div class="stat-item">
-          <div class="num">{{ userInfo.followingCount || 0 }}</div>
+        <div class="stat-item" @click="navigateTo(`/m/space/${userInfo.id}/friends?tab=following`)">
+          <div class="num">{{ getUserCount(['followingCount', 'following', 'attentions']) }}</div>
           <div class="label">关注</div>
         </div>
         <div class="divider"></div>
-        <div class="stat-item">
-          <div class="num">{{ userInfo.followerCount || 0 }}</div>
+        <div class="stat-item" @click="navigateTo(`/m/space/${userInfo.id}/friends?tab=followers`)">
+          <div class="num">{{ getUserCount(['followerCount', 'follower', 'followers', 'fans']) }}</div>
           <div class="label">粉丝</div>
         </div>
       </div>
@@ -151,13 +172,13 @@ const navigateTo = (path: string) => {
     <div class="card-section">
       <div class="section-header">
         <span class="title">创作中心</span>
-        <div class="publish-btn">
+        <div class="publish-btn" @click="openWebPath('/create-center/upload')">
           <span class="upload-icon">↑</span>
           发布
         </div>
       </div>
       <div class="tools-grid">
-        <div class="tool-item">
+        <div class="tool-item" @click="navigateTo('/m/creator')">
           <div class="icon-wrap orange">
             <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#ff9e1b" stroke-width="2">
               <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
@@ -165,7 +186,7 @@ const navigateTo = (path: string) => {
           </div>
           <div class="tool-label">创作中心</div>
         </div>
-        <div class="tool-item">
+        <div class="tool-item" @click="navigateTo('/m/space/manuscripts')">
           <div class="icon-wrap orange">
             <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#ff9e1b" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -306,8 +327,14 @@ const navigateTo = (path: string) => {
       display: flex;
       align-items: center;
       justify-content: center;
+      border-radius: 50%;
+      padding: 3px;
       &:active {
         opacity: 0.7;
+      }
+      &.active {
+        color: #fb7299;
+        background: #fff1f3;
       }
     }
   }

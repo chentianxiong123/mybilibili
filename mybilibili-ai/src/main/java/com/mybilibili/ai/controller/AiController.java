@@ -1,14 +1,13 @@
 package com.mybilibili.ai.controller;
 
 import com.mybilibili.ai.mapper.VideoMapper;
-import com.mybilibili.ai.service.AiSummaryService;
-import com.mybilibili.ai.service.impl.AiTaskService;
 import com.mybilibili.common.entity.Video;
 import com.mybilibili.common.storage.StorageKeys;
 import com.mybilibili.common.storage.StorageService;
 import com.mybilibili.common.vo.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
@@ -19,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
+@Slf4j
 @RestController
 @RequestMapping("/ai")
 @Tag(name = "AI服务", description = "AI字幕生成和摘要服务")
@@ -28,48 +28,32 @@ public class AiController {
     private VideoMapper videoMapper;
 
     @Autowired
-    private AiSummaryService aiSummaryService;
-
-    @Autowired
     private StringRedisTemplate redisTemplate;
-
-    @Autowired
-    private AiTaskService aiTaskService;
 
     @Autowired
     private StorageService storageService;
 
-    @PostMapping("/subtitle/generate")
-    @Operation(summary = "提交字幕生成任务", description = "直接执行字幕生成任务")
-    public Result<String> generateSubtitle(@RequestParam Integer videoId) {
-        aiTaskService.processSubtitleTask(videoId);
-        return Result.success("字幕生成任务已完成");
-    }
-
-    @GetMapping("/subtitle/{videoId}")
-    @Operation(summary = "获取字幕内容", description = "从Redis获取生成的字幕内容")
-    public Result<String> getSubtitle(@PathVariable Integer videoId) {
-        String subtitle = redisTemplate.opsForValue().get("subtitle:" + videoId);
-        if (subtitle == null) {
-            return Result.error(404, "字幕尚未生成");
-        }
-        return Result.success(subtitle);
-    }
-
-    @PostMapping("/summary/generate")
-    @Operation(summary = "提交摘要生成任务", description = "直接执行摘要生成任务")
-    public Result<String> generateSummary(@RequestParam Integer videoId) {
-        aiTaskService.processSummaryTask(videoId);
-        return Result.success("摘要生成任务已完成");
-    }
-
     @GetMapping("/summary/{videoId}")
-    @Operation(summary = "获取摘要内容", description = "从Redis获取生成的摘要内容")
+    @Operation(summary = "获取摘要内容", description = "从缓存或对象存储获取生成的摘要内容")
     public Result<String> getSummary(@PathVariable Integer videoId) {
         String summary = redisTemplate.opsForValue().get("summary:" + videoId);
-        if (summary == null) {
+        if (summary != null && !summary.isBlank()) {
+            return Result.success(summary);
+        }
+
+        Video video = videoMapper.selectById(videoId);
+        if (video == null) {
+            return Result.error("视频不存在");
+        }
+        if (video.getHasSummary() == null || video.getHasSummary() != 1) {
             return Result.error(404, "摘要尚未生成");
         }
+
+        summary = readSummaryFromStorage(videoId, video.getManuscriptId());
+        if (summary == null || summary.isBlank()) {
+            return Result.error(404, "摘要文件不存在或为空");
+        }
+        redisTemplate.opsForValue().set("summary:" + videoId, summary);
         return Result.success(summary);
     }
 
@@ -175,36 +159,16 @@ public class AiController {
         }
     }
 
-    @PostMapping("/test-api")
-    @Operation(summary = "测试AI API连接", description = "测试DeepSeek API是否配置正确")
-    public Result<Object> testApiConnection(@RequestBody(required = false) java.util.Map<String, String> request) {
-        String testText = request != null ? request.get("text") : null;
-        AiSummaryService.TestResult testResult = aiSummaryService.testApiConnection(testText);
-
-        java.util.Map<String, Object> data = new java.util.HashMap<>();
-        data.put("success", testResult.isSuccess());
-        data.put("message", testResult.getMessage());
-        data.put("response", testResult.getResponse());
-        data.put("responseTime", testResult.getResponseTime() + "ms");
-
-        if (testResult.isSuccess()) {
-            return Result.success(data);
-        } else {
-            return Result.error(500, testResult.getMessage());
-        }
-    }
-
     private String readSummaryFromStorage(Integer videoId, Integer manuscriptId) {
+        String key = StorageKeys.videoSummary(manuscriptId, videoId);
         try {
-            String key = StorageKeys.videoSummary(manuscriptId, videoId);
             String content;
             try (InputStream input = storageService.download(key)) {
                 content = new String(input.readAllBytes(), StandardCharsets.UTF_8);
             }
             return extractSummaryContent(content);
-
         } catch (Exception e) {
-            System.err.println("读取摘要对象失败: " + e.getMessage());
+            log.warn("读取摘要对象失败: {}, {}", key, e.getMessage());
             return null;
         }
     }

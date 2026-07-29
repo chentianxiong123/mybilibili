@@ -10,24 +10,24 @@ import java.util.regex.Pattern;
 public final class GatewayRequestPolicy {
 
     private static final List<String> PUBLIC_GET_PATH_PREFIXES = List.of(
+            "/actuator/health",
+            "/actuator/info",
             "/api/video/play",
             "/api/video/recommended",
             "/api/video/hot",
             "/api/video/list",
             "/api/video/category",
-            "/api/video/manuscript/",
-            "/api/video/user/",
             "/api/manuscript/recommended",
             "/api/manuscript/hot",
             "/api/manuscript/list",
             "/api/manuscript/category",
+            "/api/manuscript/user/",
             "/api/search/",
             "/api/search/hot",
             "/api/category",
             "/api/category/",
             "/api/category/list",
             "/api/banner-images/",
-            "/api/banner/",
             "/api/recommend/hot",
             "/api/recommend/related/",
             "/api/danmaku/",
@@ -45,6 +45,8 @@ public final class GatewayRequestPolicy {
             "/api/user/email/verify",
             "/api/user/password/forgot",
             "/api/user/default-avatar",
+            "/api/captcha/new",
+            "/api/captcha/verify",
             "/api/admin/login",
             "/api/live/room/srs/hook",
             "/ws/notification",
@@ -55,11 +57,10 @@ public final class GatewayRequestPolicy {
     private static final List<String> ADMIN_PATH_PREFIXES = List.of(
             "/api/admin/",
             "/api/ai/admin",
-            "/api/ai/process/",
             "/api/comment/admin/",
             "/api/manuscript/admin/",
-            "/manuscript/admin/",
             "/api/message/admin/",
+            "/api/operation/admin/",
             "/api/search/admin/",
             "/api/user/admin/",
             "/api/video/admin/",
@@ -78,6 +79,8 @@ public final class GatewayRequestPolicy {
             new PermissionRule("/api/admin/permissions", "role:manage"),
             new PermissionRule("/api/admin/admins", "admin:manage"),
             new PermissionRule("/api/admin/register", "admin:manage"),
+            new PermissionRule("/api/admin/operation-tasks/", "operation:manage"),
+            new PermissionRule("/api/admin/audit-logs/", "audit:manage"),
             new PermissionRule("/api/admin/login-logs/", "security:manage"),
             new PermissionRule("/api/admin/content-review/", "review:manage"),
             new PermissionRule("/api/admin/report/", "review:manage"),
@@ -88,11 +91,10 @@ public final class GatewayRequestPolicy {
             new PermissionRule("/api/admin/storage/", "storage:manage"),
             new PermissionRule("/api/admin/", "admin:manage"),
             new PermissionRule("/api/ai/admin", "ai:manage"),
-            new PermissionRule("/api/ai/process/", "ai:manage"),
             new PermissionRule("/api/comment/admin/", "comment:manage"),
             new PermissionRule("/api/manuscript/admin/", "review:manage"),
-            new PermissionRule("/manuscript/admin/", "review:manage"),
             new PermissionRule("/api/message/admin/", "message:manage"),
+            new PermissionRule("/api/operation/admin/", "operation:manage"),
             new PermissionRule("/api/search/admin/", "search:manage"),
             new PermissionRule("/api/user/admin/", "user:manage"),
             new PermissionRule("/api/video/admin/", "video:manage"),
@@ -106,11 +108,6 @@ public final class GatewayRequestPolicy {
             "/api/user/login-logs",
             "/api/user/privacy",
             "/api/user/pinned-video",
-            "/api/video/favorite",
-            "/api/video/like",
-            "/api/video/coin",
-            "/api/video/collect",
-            "/api/video/status",
             "/api/manuscript/favorite",
             "/api/manuscript/like",
             "/api/manuscript/coin",
@@ -121,6 +118,7 @@ public final class GatewayRequestPolicy {
             "/api/manuscript/user/likes",
             "/api/manuscript/user/collections",
             "/api/manuscript/me/",
+            "/api/creator/stats/",
             "/api/watch-history",
             "/api/message/conversations",
             "/api/message/send",
@@ -139,6 +137,8 @@ public final class GatewayRequestPolicy {
 
     private static final Pattern PUBLIC_USER_PROFILE =
             Pattern.compile("^/api/user/\\d+$|^/api/user/\\d+/pinned-video$");
+    private static final Pattern PUBLIC_MANUSCRIPT_DETAIL =
+            Pattern.compile("^/api/manuscript/\\d+$");
     private static final Pattern PUBLIC_LIVE_READ =
             Pattern.compile("^/api/live/room/\\d+$");
 
@@ -156,7 +156,9 @@ public final class GatewayRequestPolicy {
         if (!HttpMethod.GET.equals(method)) {
             return false;
         }
-        if (PUBLIC_USER_PROFILE.matcher(path).matches() || PUBLIC_LIVE_READ.matcher(path).matches()) {
+        if (PUBLIC_USER_PROFILE.matcher(path).matches()
+                || PUBLIC_MANUSCRIPT_DETAIL.matcher(path).matches()
+                || PUBLIC_LIVE_READ.matcher(path).matches()) {
             return true;
         }
         return PUBLIC_GET_PATH_PREFIXES.stream().anyMatch(prefix -> matchesPrefix(path, prefix));
@@ -219,4 +221,3 @@ public final class GatewayRequestPolicy {
     private record PermissionRule(String pathPrefix, String permission) {
     }
 }
-
