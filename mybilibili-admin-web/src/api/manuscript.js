@@ -14,13 +14,6 @@ export const getProcessingManuscripts = () => {
   })
 }
 
-export const getReadyManuscripts = () => {
-  return request({
-    url: '/manuscript/admin/ready',
-    method: 'get'
-  })
-}
-
 export const getAllManuscripts = () => {
   return request({
     url: '/manuscript/admin/all',
@@ -97,32 +90,28 @@ export const retryManuscript = (manuscriptId) => {
 export const manualTranscode = (videoId) => {
   return request({
     url: `/manuscript/admin/transcode/${videoId}`,
-    method: 'post',
-    timeout: 300000
+    method: 'post'
   })
 }
 
 export const manualExtractAudio = (videoId) => {
   return request({
     url: `/manuscript/admin/extract-audio/${videoId}`,
-    method: 'post',
-    timeout: 120000
+    method: 'post'
   })
 }
 
 export const manualGenerateSubtitle = (videoId) => {
   return request({
     url: `/manuscript/admin/generate-subtitle/${videoId}`,
-    method: 'post',
-    timeout: 300000
+    method: 'post'
   })
 }
 
 export const manualAiSummary = (videoId) => {
   return request({
     url: `/manuscript/admin/ai-summary/${videoId}`,
-    method: 'post',
-    timeout: 300000
+    method: 'post'
   })
 }
 
@@ -140,31 +129,9 @@ export const resetVideoStatus = (videoId) => {
   })
 }
 
-export const getVideoProcessStatus = (videoId) => {
-  return request({
-    url: `/manuscript/admin/video-status/${videoId}`,
-    method: 'get'
-  })
-}
-
 export const getVideoSourceUrl = (videoId) => {
   return request({
     url: `/manuscript/admin/video-source/${videoId}`,
     method: 'get'
-  })
-}
-
-export const testAiApi = (text) => {
-  return request({
-    url: '/manuscript/admin/test-ai-api',
-    method: 'post',
-    data: { text }
-  })
-}
-
-export const testAiSummary = (videoId) => {
-  return request({
-    url: `/manuscript/admin/test-ai-summary/${videoId}`,
-    method: 'post'
   })
 }

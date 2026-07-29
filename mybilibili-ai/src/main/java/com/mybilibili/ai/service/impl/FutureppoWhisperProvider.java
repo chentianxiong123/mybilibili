@@ -1,10 +1,10 @@
 package com.mybilibili.ai.service.impl;
 
 import com.mybilibili.ai.entity.AiApiConfig;
-import com.mybilibili.ai.service.AiApiConfigService;
 import com.mybilibili.ai.service.SttProvider;
 import com.mybilibili.ai.service.SttProvider.TranscribeRequest;
 import com.mybilibili.ai.util.AiUsageLogger;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.core.io.FileSystemResource;
@@ -23,18 +23,18 @@ import java.util.*;
  * 使用 /v1/audio/transcriptions 接口，model=whisper-large-v3。
  * 返回 verbose_json 格式带 segments（start/end/text），转为 SRT。
  */
+@Slf4j
 @Component
 public class FutureppoWhisperProvider implements SttProvider {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
-    @Autowired(required = false)
-    private AiApiConfigService aiApiConfigService;
+    public FutureppoWhisperProvider(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     @Autowired(required = false)
     private AiUsageLogger aiUsageLogger;
-
-    private volatile AiApiConfig activeConfig;
 
     @Override
     public String getName() {
@@ -42,42 +42,43 @@ public class FutureppoWhisperProvider implements SttProvider {
     }
 
     @Override
-    public boolean isAvailable() {
-        loadConfig();
-        return activeConfig != null && activeConfig.getEnabled();
+    public boolean supports(AiApiConfig config) {
+        String name = config != null && config.getName() != null ? config.getName().toLowerCase() : "";
+        String model = config != null && config.getModel() != null ? config.getModel().toLowerCase() : "";
+        if (name.contains("local") || model.contains("local")) {
+            return false;
+        }
+        return SttProvider.super.supports(config) || model.contains("whisper");
     }
 
-    private void loadConfig() {
-        if (activeConfig != null) return;
-        if (aiApiConfigService == null) return;
-        activeConfig = aiApiConfigService.getConfigForFeature("TRANSCRIBE");
+    @Override
+    public boolean isAvailable() {
+        return true;
     }
 
     @Override
     public Object invoke(TranscribeRequest request) {
-        return transcribe(request.getAudioPath(), request.getLanguage());
+        return transcribe(request.getConfig(), request.getAudioPath(), request.getLanguage());
     }
 
-    public String transcribe(String audioPath, String language) {
+    public String transcribe(AiApiConfig config, String audioPath, String language) {
         long start = System.currentTimeMillis();
+        String model = null;
         try {
-            loadConfig();
-
             File audioFile = new File(audioPath);
             if (!audioFile.exists()) {
-                System.err.println("[FutureppoWhisper] 音频文件不存在: " + audioPath);
+                log.warn("[FutureppoWhisper] 音频文件不存在: {}", audioPath);
                 return null;
             }
 
             String baseUrl;
             String apiKey;
-            String model;
-            if (activeConfig != null) {
-                baseUrl = activeConfig.getBaseUrl() != null ? activeConfig.getBaseUrl() : "";
-                apiKey = activeConfig.getApiKey() != null ? activeConfig.getApiKey() : "";
-                model = activeConfig.getModel() != null ? activeConfig.getModel() : "whisper-large-v3";
+            if (config != null) {
+                baseUrl = config.getBaseUrl() != null ? config.getBaseUrl() : "";
+                apiKey = config.getApiKey() != null ? config.getApiKey() : "";
+                model = config.getModel() != null ? config.getModel() : "whisper-large-v3";
             } else {
-                System.err.println("[FutureppoWhisper] 未找到 TRANSCRIBE 渠道配置");
+                log.warn("[FutureppoWhisper] 未找到 TRANSCRIBE 渠道配置");
                 return null;
             }
 
@@ -127,9 +128,9 @@ public class FutureppoWhisperProvider implements SttProvider {
             }
             return null;
         } catch (Exception e) {
-            System.err.println("[FutureppoWhisper] 转写异常: " + e.getMessage());
+            log.warn("[FutureppoWhisper] 转写异常: {}", e.getMessage());
             if (aiUsageLogger != null) {
-                aiUsageLogger.log("TRANSCRIBE", "whisper-large-v3", null, null, System.currentTimeMillis() - start, false, e.getMessage());
+                aiUsageLogger.log("TRANSCRIBE", model, null, null, System.currentTimeMillis() - start, false, e.getMessage());
             }
             return null;
         }

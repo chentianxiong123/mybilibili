@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getAiUsageOverview, getAiUsageFeatures, getAiUsageDaily } from '../api/aiUsage'
-import * as echarts from 'echarts'
+import echarts from '../utils/echartsCore'
 
 const loading = ref(false)
 const overview = ref({ totalCount: 0, totalTokens: 0, avgDuration: 0, successCount: 0 })

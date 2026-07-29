@@ -13,8 +13,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,23 +53,12 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
     @Override
     public boolean generateSubtitle(Integer manuscriptId, Integer videoId, ProgressListener progressListener) {
         try {
-            Path sourceVideoPath = processingStorageService.materializeSourceVideo(manuscriptId, videoId);
-            Path audioPath = processingStorageService.getAudioPath(manuscriptId, videoId);
+            Path audioPath = processingStorageService.materializeAudio(manuscriptId, videoId);
             Path subtitleDir = processingStorageService.getSubtitleDir(manuscriptId, videoId);
 
-            Files.createDirectories(audioPath.getParent());
             Files.createDirectories(subtitleDir);
 
-            if (!Files.exists(audioPath) || Files.size(audioPath) == 0) {
-                pushProgress(progressListener, 5, "提取音频中");
-
-                if (!extractAudio(sourceVideoPath.toString(), audioPath.toString())) {
-                    pushProgress(progressListener, 0, "音频提取失败");
-                    return false;
-                }
-                processingStorageService.uploadAudio(manuscriptId, videoId, audioPath);
-            }
-            pushProgress(progressListener, 30, "音频提取完成，开始语音识别");
+            pushProgress(progressListener, 30, "音频已准备，开始语音识别");
 
             boolean recognized = generateSubtitleWithApi(manuscriptId, videoId, audioPath.toString(), subtitleDir.toString(), progressListener);
 
@@ -212,48 +199,6 @@ public class AiSubtitleServiceImpl implements AiSubtitleService {
                Double.parseDouble(minute) * 60 +
                Double.parseDouble(second) +
                Double.parseDouble(millis) / 1000.0;
-    }
-
-    private boolean extractAudio(String videoPath, String audioPath) {
-        try {
-            java.io.File videoFile = new java.io.File(videoPath);
-            if (!videoFile.exists()) {
-                return false;
-            }
-
-            java.io.File audioFile = new java.io.File(audioPath);
-            java.io.File audioDir = audioFile.getParentFile();
-            if (audioDir != null && !audioDir.exists()) {
-                audioDir.mkdirs();
-            }
-
-            ProcessBuilder pb = new ProcessBuilder(
-                    "ffmpeg",
-                    "-i", videoPath,
-                    "-vn",
-                    "-acodec", "pcm_s16le",
-                    "-ar", "16000",
-                    "-ac", "1",
-                    "-y",
-                    audioPath
-            );
-            pb.redirectErrorStream(true);
-
-            Process process = pb.start();
-
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    // silent
-                }
-            }
-
-            int exitCode = process.waitFor();
-            return exitCode == 0;
-
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     private boolean generateSubtitleWithApi(Integer manuscriptId, Integer videoId, String audioPath, String outputDir, ProgressListener progressListener) {

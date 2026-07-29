@@ -25,38 +25,44 @@ const handleClick = (tab) => emit('click', tab)
 
 .tab-bar {
   display: flex;
-  overflow-x: auto;
-  white-space: nowrap;
-  -webkit-overflow-scrolling: touch;
-  padding: 0 4px;
-
-  &::-webkit-scrollbar { display: none; }
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
 
   .tab-item {
-    flex: none;
-    padding: 0 16px;
-    height: 44px;
-    line-height: 44px;
-    font-size: 15px;
-    color: #757575;
+    flex: 1;
+    text-align: center;
+    height: 48px;
+    line-height: 48px;
+    font-size: 18px;
+    color: #61666d;
     position: relative;
     cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 
     &.active {
       color: #fb7299;
-      font-weight: 500;
+      font-weight: 700;
       &::after {
         content: '';
         position: absolute;
-        bottom: 6px;
+        bottom: 4px;
         left: 50%;
         transform: translateX(-50%);
-        width: 16px;
-        height: 3px;
+        width: 26px;
+        height: 4px;
         background: #fb7299;
-        border-radius: 2px;
+        border-radius: 4px;
       }
     }
+  }
+}
+
+@media (max-width: 390px) {
+  .tab-bar .tab-item {
+    font-size: 16px;
   }
 }
 </style>

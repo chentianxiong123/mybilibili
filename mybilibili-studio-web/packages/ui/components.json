@@ -1,0 +1,18 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/styles/globals.css",
+    "baseColor": "neutral"
+  },
+  "aliases": {
+    "components": "@mybilibili-studio/ui/components",
+    "utils": "@mybilibili-studio/ui/lib/utils",
+    "hooks": "@mybilibili-studio/ui/hooks",
+    "ui": "@mybilibili-studio/ui/components",
+    "lib": "@mybilibili-studio/ui/lib"
+  }
+}

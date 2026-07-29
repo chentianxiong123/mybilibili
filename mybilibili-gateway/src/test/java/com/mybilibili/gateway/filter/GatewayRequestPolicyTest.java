@@ -12,15 +12,26 @@ class GatewayRequestPolicyTest {
 
     @Test
     void classifiesPublicAndProtectedPaths() {
+        assertTrue(policy.isPublicPath("/actuator/health"));
+        assertTrue(policy.isPublicPath("/actuator/health/readiness"));
         assertTrue(policy.isPublicPath("/api/user/login"));
         assertTrue(policy.isPublicPath("/api/live/room/list"));
         assertTrue(policy.isPublicPath("/api/live/room/100"));
         assertTrue(policy.isPublicPath("/api/search/hot"));
+        assertTrue(policy.isPublicPath("/api/manuscript/100"));
+        assertTrue(policy.isPublicPath(HttpMethod.POST, "/api/captcha/new"));
+        assertTrue(policy.isPublicPath(HttpMethod.POST, "/api/captcha/verify"));
 
+        assertFalse(policy.isPublicPath("/api/video/manuscript/100"));
         assertFalse(policy.isPublicPath("/api/meeting/my-rooms"));
         assertFalse(policy.isPublicPath("/api/live/linkmic/apply/1"));
         assertFalse(policy.isPublicPath("/api/admin/live/rooms"));
         assertFalse(policy.isPublicPath("/api/search/admin/index/status"));
+        assertFalse(policy.isPublicPath("/api/operation/admin/tickets"));
+        assertFalse(policy.isPublicPath("/api/admin/operation-tasks/list"));
+        assertFalse(policy.isPublicPath("/api/admin/audit-logs/list"));
+        assertFalse(policy.isPublicPath("/api/creator/stats/overview"));
+        assertFalse(policy.isPublicPath("/actuator/prometheus"));
         assertFalse(policy.isPublicPath(HttpMethod.POST, "/api/category"));
         assertFalse(policy.isPublicPath(HttpMethod.POST, "/api/banner-images/home"));
     }
@@ -28,19 +39,22 @@ class GatewayRequestPolicyTest {
     @Test
     void classifiesAdminAndSuperAdminPaths() {
         assertTrue(policy.isAdminPath("/api/admin/live/rooms"));
-        assertTrue(policy.isAdminPath("/api/ai/admin/process/stream"));
         assertTrue(policy.isAdminPath("/api/user/admin/list"));
         assertTrue(policy.isAdminPath("/api/video/admin/list"));
         assertTrue(policy.isAdminPath("/api/manuscript/admin/pending"));
         assertTrue(policy.isAdminPath("/api/comment/admin/list"));
         assertTrue(policy.isAdminPath("/api/message/admin/system/broadcast"));
+        assertTrue(policy.isAdminPath("/api/operation/admin/tickets"));
         assertTrue(policy.isAdminPath("/api/search/admin/index/status"));
+        assertTrue(policy.isAdminPath("/api/admin/operation-tasks/list"));
+        assertTrue(policy.isAdminPath("/api/admin/audit-logs/list"));
         assertTrue(policy.isAdminPath("/api/statistics/overview"));
         assertTrue(policy.isAdminPath(HttpMethod.POST, "/api/category"));
         assertTrue(policy.isAdminPath(HttpMethod.POST, "/api/banner-images/home"));
         assertTrue(policy.isSuperAdminPath("/api/admin/register"));
         assertTrue(policy.isSuperAdminPath("/api/admin/roles"));
 
+        assertFalse(policy.isAdminPath("/api/creator/stats/overview"));
         assertFalse(policy.isAdminPath("/api/meeting/my-rooms"));
         assertFalse(policy.isSuperAdminPath("/api/admin/live/rooms"));
     }
@@ -52,6 +66,9 @@ class GatewayRequestPolicyTest {
         assertTrue("review:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/manuscript/admin/pending")));
         assertTrue("comment:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/comment/admin/list")));
         assertTrue("search:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/search/admin/index/status")));
+        assertTrue("operation:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/operation/admin/tickets")));
+        assertTrue("operation:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/admin/operation-tasks/list")));
+        assertTrue("audit:manage".equals(policy.requiredPermission(HttpMethod.GET, "/api/admin/audit-logs/list")));
         assertTrue("category:manage".equals(policy.requiredPermission(HttpMethod.POST, "/api/category")));
         assertTrue("banner:manage".equals(policy.requiredPermission(HttpMethod.POST, "/api/banner-images/home")));
     }

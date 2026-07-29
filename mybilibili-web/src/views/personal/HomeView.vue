@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, Edit } from '@element-plus/icons-vue'
 import { userApi } from '../../api/index.js'
+import { getCurrentUserId, getStoredUser, getToken, setAuthSession } from '../../utils/auth.js'
 
 const router = useRouter()
 
@@ -32,24 +33,23 @@ const calculateMaxExperience = (level) => {
 
 // 加载用户信息
 onMounted(async () => {
-  const token = localStorage.getItem('token')
-  const userData = localStorage.getItem('user')
+  const token = getToken()
+  const userData = getStoredUser()
   
   if (token && userData) {
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]))
-      const userId = payload.sub
+      const userId = getCurrentUserId()
       
       const response = await userApi.getUserById(userId)
       if (response.code === 200) {
         currentUser.value = response.data
-        localStorage.setItem('user', JSON.stringify(response.data))
+        setAuthSession({ user: response.data })
       } else {
-        currentUser.value = JSON.parse(userData)
+        currentUser.value = userData
       }
     } catch (error) {
       console.error('获取用户信息失败:', error)
-      currentUser.value = JSON.parse(userData)
+      currentUser.value = userData
     }
     
     if (currentUser.value) {

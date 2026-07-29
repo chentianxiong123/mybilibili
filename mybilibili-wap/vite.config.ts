@@ -4,15 +4,27 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [vue()],
+  base: '/wap/',
+  css: {
+    preprocessorOptions: {
+      scss: {
+        api: 'modern-compiler',
+        silenceDeprecations: ['legacy-js-api', 'import']
+      }
+    }
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src')
     }
   },
   build: {
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
         manualChunks: {
+          'vendor-vue': ['vue', 'vue-router'],
+          'vendor-utils': ['axios'],
           'vendor-player': ['artplayer', 'artplayer-plugin-danmuku'],
           'vendor-hls': ['hls.js']
         }

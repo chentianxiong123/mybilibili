@@ -130,7 +130,7 @@ public class UploadFilePathUtils {
     }
 
     public String getSummaryPath(Integer manuscriptId, Integer videoId) {
-        return getVideoSummaryDir(manuscriptId, videoId) + File.separator + "summary.txt";
+        return getVideoSummaryDir(manuscriptId, videoId) + File.separator + "ai-summary.txt";
     }
 
     public void createManuscriptDirectory(Integer manuscriptId) {

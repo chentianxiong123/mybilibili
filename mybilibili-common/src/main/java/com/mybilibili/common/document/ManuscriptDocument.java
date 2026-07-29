@@ -32,6 +32,9 @@ public class ManuscriptDocument {
     @Field(type = FieldType.Keyword)
     private String userName;
 
+    @Field(type = FieldType.Keyword)
+    private String userAvatar;
+
     @Field(type = FieldType.Integer)
     private Integer categoryId;
 

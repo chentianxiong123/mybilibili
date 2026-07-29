@@ -63,6 +63,9 @@ public class ManuscriptVO {
         private Integer videoOrder;
         private Integer status;
         private Integer processStatus;
+        private Integer processProgress;
+        private String processStage;
+        private String processError;
     }
 
     @Data

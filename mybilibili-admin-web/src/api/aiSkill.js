@@ -50,3 +50,18 @@ export function toggleAiSkill(id) {
     method: 'put'
   })
 }
+
+export function initializeCustomerServiceSkills() {
+  return request({
+    url: '/ai/admin/skills/customer-service/defaults',
+    method: 'post'
+  })
+}
+
+export function testCustomerServiceSkillRoute(question) {
+  return request({
+    url: '/ai/admin/skills/customer-service/route-test',
+    method: 'post',
+    data: { question }
+  })
+}

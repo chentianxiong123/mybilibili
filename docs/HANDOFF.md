@@ -1,29 +1,32 @@
 # mybilibili-cloud 项目交接文档
 
-> 最后更新: 2026-05-31 | 提交: 41ff715 | JDK: Corretto 17
+> 最后更新: 2026-06-01 | JDK: Corretto 17
 
 ---
 
 ## 一、项目概览
 
-Spring Cloud 微服务仿 B 站平台，13 个后端模块 + 2 个前端（用户端 + 管理端）。
+Spring Cloud 微服务仿 B 站平台，14 个后端模块 + 2 个主要前端（用户端 + 管理端，仓库内另有 WAP 目录）。
 
 | 模块 | 端口 | 职责 |
 |------|------|------|
 | gateway | 8080 | WebFlux 网关，JWT 鉴权 + 路由 + Sentinel 限流 |
 | user | 8081 | 用户/管理员/角色/权限/JWT 双 token |
-| video | 8082 | 稿件/视频/分类/轮播图/统计/播放量防刷 |
-| comment | 8083 | 评论/举报/违禁词/内容审核 |
-| interaction | 8084 | 动态/收藏/合集/观看历史/用户画像 |
-| danmaku | 8085 | 弹幕 + WebSocket 实时广播 |
-| search | 8086 | ES 搜索/推荐/热词/索引管理/推荐配置 |
+| video | 8082 | 稿件/视频/分类/轮播图/播放量防刷 |
+| danmaku | 8083 | 弹幕 + WebSocket 实时广播 |
+| search | 8084 | ES 搜索/推荐/热词/索引管理/推荐配置 |
+| comment | 8085 | 评论/举报/违禁词/内容审核 |
+| interaction | 8086 | 动态/收藏/合集/观看历史/用户画像 |
 | message | 8087 | 私信/系统通知 + WebSocket 实时推送 |
 | ai | 8088 | AI 字幕/总结/客服/技能/渠道 |
 | live | 8089 | 直播间/连麦/会议/WebSocket |
+| analytics | 8090 | 创作者数据中心/趋势统计/排行 |
 | common | - | 共享实体/工具/Security/Storage/全局异常处理 |
 | mq | - | RocketMQ 消息定义 |
 
 前端: `mybilibili-web`(用户端 Vite+Vue3) / `mybilibili-admin-web`(管理端)
+
+服务边界: 业务服务之间不再通过 Maven 直接依赖对方模块；同步调用走 Feign，异步协作走 RocketMQ，共享类型只放在 `common` / `mq`。
 
 ---
 
@@ -75,6 +78,17 @@ Spring Cloud 微服务仿 B 站平台，13 个后端模块 + 2 个前端（用�
 - 校验注解覆盖: LoginDTO / UserDTO / SendMessageDTO / AdminLoginDTO / VideoUploadDTO / UserUpdateDTO / ManuscriptUploadDTO / NotificationDTO
 - 控制器 @Valid: register / login / sendMessage / updateUser / adminLogin
 
+### 2.7 服务健康探针 + Docker 编排
+
+- 所有运行时服务已加入 `spring-boot-starter-actuator`
+- 暴露端点: `/actuator/health`, `/actuator/health/liveness`, `/actuator/health/readiness`, `/actuator/info`
+- Gateway 与服务层安全策略只放行 health/info，未开放 Prometheus 等更深观测端点
+- `scripts/docker-compose-infra.yml`: 基础设施组，统一使用 `mybilibili-net`，持久化目录均在 `D:\DockerFiles\mybilibili`
+- `scripts/docker-compose-infra.yml` 直接挂载仓库内的 `scripts/rocketmq/broker.conf` 和 `srs.conf`
+- AI 处理目录默认改为 `D:/DockerFiles/mybilibili/processing`
+- 本地 Whisper 模式使用 `D:\DockerFiles\mybilibili\whisper`
+- MinIO 支持 `minio.public-endpoint`，容器内服务访问 `http://minio:9000`，返回给浏览器的 URL 使用 `MINIO_PUBLIC_ENDPOINT`
+
 ---
 
 ## 三、本次新增功能（2403da7 ~ 41ff715，共 12 次提交）
@@ -90,7 +104,7 @@ Spring Cloud 微服务仿 B 站平台，13 个后端模块 + 2 个前端（用�
 
 **前端**
 - `composables/useNotificationWs.js`: 全局 WS 连接管理，ElNotification toast
-- `AppHeader.vue`: WS 连接 + 未读数实时同步，轮询降为 60s 兜底
+- `AppHeader.vue`: WS 连接 + 未读数实时同步，保留 60s 辅助轮询
 
 ### 3.2 弹幕实时推送
 
@@ -130,7 +144,7 @@ Spring Cloud 微服务仿 B 站平台，13 个后端模块 + 2 个前端（用�
 - `RegisterView.vue`: 注册成功后弹出兴趣标签选择弹窗（32 个标签，最多选 10 个）
 
 **首页个性化**
-- `HomeView.vue`: 登录用户优先调用 `/api/recommend/for-you`，失败回退默认列表
+- `HomeView.vue`: 登录用户优先调用 `/api/recommend/for-you`，未取到个性化数据时展示默认列表
 - `recommend.js`: `getRecommendedVideos` 指向 `/recommend/for-you`
 
 **个人画像展示页**
@@ -145,16 +159,30 @@ Spring Cloud 微服务仿 B 站平台，13 个后端模块 + 2 个前端（用�
 - `ManuscriptServiceImpl.incrementViewCount(manuscriptId, viewerKey)`
 - `ManuscriptController.getClientIp`: X-Forwarded-For → X-Real-IP → RemoteAddr
 
-### 3.5 搜索联想词
+### 3.5 创作者统计服务拆分
+
+- 新增 `mybilibili-analytics` 服务，端口 `8090`，承接 `/creator/stats/**`
+- 网关 `/api/creator/stats/**` 已从 `mybilibili-video` 改路由到 `mybilibili-analytics`
+- `GatewayRequestPolicy` 将创作者统计归为登录态接口，非公开、非管理员接口
+- `SentinelRuleConfig` 新增 `creator-api` 限流分组
+- `video` 模块已移除 `CreatorStatsController` / `CreatorStatsService` / `CreatorStatsMapper`，不再承载创作者数据中心
+- `video` 不再直接写创作者统计表，稿件状态/播放增量通过 `manuscript-analytics-topic` 发往 `analytics`
+- `video-media` / `ai` 视频处理状态通过 `video-process-analytics-topic` 发往 `analytics`，由 `video_process_events` 保存转码/音频/字幕/AI 摘要处理流水
+- `interaction` / `comment` / `danmaku` 的点赞、投币、收藏、分享、评论、弹幕动作也会汇入 `manuscript_daily_metrics`
+- 视频处理控制面和进度面已统一回到 RocketMQ；`video-process-topic` 负责任务调度，`video-process-progress-topic` 负责进度/SSE 广播，已废弃 `ai` 内部 `video_pipeline_tasks` DB pipeline，避免出现第二套任务调度语义
+- 新增趋势统计表: `manuscript_status_events` / `manuscript_daily_metrics` / `video_process_events`，迁移文件 `init/V13__creator_analytics_events.sql`
+
+### 3.6 搜索联想词
 
 - 后端 `VideoSearchServiceImpl.suggest`: `match_phrase_prefix`(title, boost 3.0) + `prefix`(tags, boost 2.0) + `match_phrase_prefix`(description, boost 1.0)
 - 前端 `AppHeader.vue`: 输入时 300ms 防抖调用 `searchApi.getSearchSuggestions`，显示联想词下拉
 
-### 3.6 网关路由新增
+### 3.7 网关路由新增
 
 - `/ws/notification` → mybilibili-message
 - `/ws/danmaku` → mybilibili-danmaku
 - `/api/profile/**` → mybilibili-interaction
+- `/api/creator/stats/**` → mybilibili-analytics
 - 以上路径均加入公开路径或需登录路径
 
 ---
@@ -168,6 +196,28 @@ mvn test → BUILD SUCCESS
 Tests run: 56, Failures: 0, Errors: 0
 mybilibili-web vite build → ✓ built in ~25s
 mybilibili-admin-web vite build → ✓ built in ~19s
+```
+
+本次服务拆分回归（2026-06-01）：
+
+```powershell
+mvn -pl mybilibili-analytics,mybilibili-gateway,mybilibili-video -am test
+# BUILD SUCCESS, Tests run: 28, Failures: 0, Errors: 0
+
+mvn -pl mybilibili-ai,mybilibili-analytics,mybilibili-gateway,mybilibili-video -am test
+# BUILD SUCCESS, Tests run: 28, Failures: 0, Errors: 0
+
+mvn -pl mybilibili-gateway,mybilibili-user,mybilibili-video,mybilibili-danmaku,mybilibili-search,mybilibili-comment,mybilibili-interaction,mybilibili-message,mybilibili-live,mybilibili-ai,mybilibili-analytics -am test
+# BUILD SUCCESS
+
+docker compose -f scripts/docker-compose-infra.yml config --quiet
+# 配置渲染通过
+
+pnpm run build  # mybilibili-web / mybilibili-admin-web / mybilibili-wap
+# 三套前端均构建通过；存在 chunk size 与 Sass deprecation warning，非阻断
+
+mvn -DskipTests package
+# BUILD SUCCESS，14 个 Maven 模块 jar 产出成功
 ```
 
 ---
@@ -184,6 +234,12 @@ mvn compile
 # 全量测试
 mvn test
 
+# 构建后端 jar
+mvn -DskipTests package
+
+# 基础设施容器
+docker compose -f scripts/docker-compose-infra.yml up -d
+
 # 单模块
 mvn -pl mybilibili-gateway -am test
 
@@ -197,8 +253,8 @@ cd mybilibili-admin-web && npx vite build
 ## 六、已知待办
 
 ### P0 — 生产必备
-- [ ] Docker Compose 一键部署（13 服务 + MySQL + Redis + MongoDB + ES + MinIO + Nacos + RocketMQ）
-- [ ] 视频转码流水线优化（当前 FFmpeg → HLS 三档已可用，但无转码队列管理）
+- [ ] Docker Compose 端到端实跑验收（infra/services 编排文件已落地，仍需按真实 `.env` 和数据迁移结果完整启动一次）
+- [ ] 视频处理流水线增强（当前 FFmpeg 转码/音频提取归属 `video-media`，字幕/摘要归属 `ai`，任务和进度已走 RocketMQ；后续仍缺更细的分布式调度/优先级编排）
 
 ### P1 — 体验提升
 - [ ] 单元测试覆盖（目前仅 56 个测试，大部分模块无测试）
@@ -262,7 +318,13 @@ cd mybilibili-admin-web && npx vite build
 ### 数据库
 - `init/mybilibili-mysql.sql` (种子数据)
 - `init/V6__meeting_reserve.sql` ~ `init/V9__admin_permission_hardening.sql` (迁移)
+- `init/V13__creator_analytics_events.sql` (创作者趋势/稿件状态流水/视频处理流水)
+- `init/V17__drop_video_pipeline_tasks.sql` (清理废弃的视频 DB pipeline 表)
 - MongoDB: `user_profiles` / `recommend_config` / `danmakus` collections
+
+### Docker
+- `scripts/docker-compose-infra.yml` (基础设施容器组)
+- `docs/INFRA_DOCKER.md` (Docker 使用说明)
 
 ---
 

@@ -20,8 +20,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JwtReactiveAuthenticationManagerTest {
 
-    private static final String SECRET_KEY = "REDACTED_JWT_SECRET";
+    private static final String SECRET_KEY = "test-jwt-secret-0123456789abcdef0123456789abcdef";
     private static final SecretKey KEY = Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
+
+    static {
+        System.setProperty("jwt.secret", SECRET_KEY);
+    }
 
     private final JwtReactiveAuthenticationManager manager = new JwtReactiveAuthenticationManager();
 

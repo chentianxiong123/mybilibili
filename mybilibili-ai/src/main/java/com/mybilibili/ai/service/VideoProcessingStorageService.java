@@ -64,6 +64,25 @@ public class VideoProcessingStorageService {
         return getVideoWorkDir(manuscriptId, videoId).resolve("audio").resolve("audio.wav");
     }
 
+    public Path materializeAudio(Integer manuscriptId, Integer videoId) throws IOException {
+        Path audioPath = getAudioPath(manuscriptId, videoId);
+        if (Files.exists(audioPath) && Files.size(audioPath) > 0) {
+            return audioPath;
+        }
+
+        String key = StorageKeys.videoAudio(manuscriptId, videoId);
+        if (!storageService.exists(key)) {
+            throw new IOException("音频对象不存在，请先执行视频媒体音频提取: " + key);
+        }
+
+        Files.createDirectories(audioPath.getParent());
+        try (InputStream input = storageService.download(key)) {
+            Files.copy(input, audioPath, StandardCopyOption.REPLACE_EXISTING);
+        }
+        log.info("[视频处理存储] 音频已从MinIO拉取: videoId={}, key={}", videoId, key);
+        return audioPath;
+    }
+
     public Path getSubtitlePath(Integer manuscriptId, Integer videoId) {
         return getVideoWorkDir(manuscriptId, videoId).resolve("subtitles").resolve("zh-CN.srt");
     }

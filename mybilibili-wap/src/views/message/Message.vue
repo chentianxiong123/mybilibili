@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getConversations, getUnreadCounts } from '../../api/message'
+import noface from '../../assets/noface.gif'
 
 const router = useRouter()
 const conversations = ref<any[]>([])
@@ -62,6 +63,19 @@ const formatTime = (timeStr: string) => {
 
 const goBack = () => {
   router.back()
+}
+
+const openConversation = (item: any) => {
+  const id = item.targetUserId || item.userId || item.id
+  router.push({
+    path: `/m/message/chat/${id}`,
+    query: {
+      name: item.targetUserNickname || item.targetUsername || item.nickname || '私信',
+      avatar: item.targetUserAvatar || item.avatar || '',
+      time: item.lastMessageTime || '',
+      last: item.lastMessageContent || ''
+    }
+  })
 }
 </script>
 
@@ -140,9 +154,10 @@ const goBack = () => {
           v-for="item in conversations"
           :key="item.id"
           class="chat-item"
+          @click="openConversation(item)"
         >
           <div class="avatar-wrap">
-            <img :src="item.targetUserAvatar || '../../../src/assets/noface.gif'" class="avatar" />
+            <img :src="item.targetUserAvatar || noface" class="avatar" />
             <span v-if="item.unreadCount > 0" class="dot"></span>
           </div>
           <div class="chat-content">

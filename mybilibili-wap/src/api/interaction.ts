@@ -68,6 +68,9 @@ export async function shareManuscript(manuscriptId: number) {
 
 // 获取互动状态
 export async function getInteractionStatus(manuscriptId: number) {
+  if (!localStorage.getItem('token')) {
+    return { code: '0', data: null }
+  }
   try {
     const res = await api.get(`/manuscript/${manuscriptId}/status`)
     return { code: '1', data: res?.data || res }

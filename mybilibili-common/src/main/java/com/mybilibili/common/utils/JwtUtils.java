@@ -2,18 +2,15 @@ package com.mybilibili.common.utils;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Date;
 
 public class JwtUtils {
-    private static final String SECRET_KEY = "REDACTED_JWT_SECRET";
     private static final long EXPIRATION_TIME = 2 * 60 * 60 * 1000; // 2 hours
     private static final long REFRESH_EXPIRATION_TIME = 30L * 24 * 60 * 60 * 1000; // 30 days
-    private static final SecretKey KEY = Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
+    private static final SecretKey KEY = JwtSecretUtils.resolveKey();
 
     public static String generateToken(Integer userId, String username) {
         Date now = new Date();

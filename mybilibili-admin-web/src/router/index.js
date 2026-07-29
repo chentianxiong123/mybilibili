@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { firstAllowedPathByPermissions } from './permissionRoutes'
 
 const router = createRouter({
   history: createWebHistory('/admin/'),
@@ -32,10 +33,16 @@ const router = createRouter({
       meta: { title: '稿件管理 - 管理后台', requiresAuth: true, permission: 'review:manage' }
     },
     {
-      path: '/video-process',
-      name: 'videoProcess',
-      component: () => import('../views/VideoProcessView.vue'),
-      meta: { title: '视频处理 - 管理后台', requiresAuth: true, permission: 'ai:manage' }
+      path: '/operation-tasks',
+      name: 'operationTasks',
+      component: () => import('../views/OperationTasksView.vue'),
+      meta: { title: '任务中心 - 管理后台', requiresAuth: true, permission: 'operation:manage' }
+    },
+    {
+      path: '/audit-logs',
+      name: 'auditLogs',
+      component: () => import('../views/AuditLogsView.vue'),
+      meta: { title: '审计日志 - 管理后台', requiresAuth: true, permission: 'audit:manage' }
     },
     {
       path: '/prohibited-words',
@@ -108,10 +115,10 @@ const router = createRouter({
       meta: { title: 'AI 技能管理 - 管理后台', requiresAuth: true, permission: 'ai:manage' }
     },
     {
-      path: '/ai-feedback',
-      name: 'aiFeedback',
-      component: () => import('../views/AiFeedbackView.vue'),
-      meta: { title: 'AI 反馈管理 - 管理后台', requiresAuth: true, permission: 'ai:manage' }
+      path: '/support-tickets',
+      name: 'supportTickets',
+      component: () => import('../views/SupportTicketsView.vue'),
+      meta: { title: '工单中心 - 管理后台', requiresAuth: true, permission: 'operation:manage' }
     },
     {
       path: '/live-rooms',
@@ -136,6 +143,12 @@ const router = createRouter({
       name: 'loginLogs',
       component: () => import('../views/LoginLogsView.vue'),
       meta: { title: '登录日志 - 管理后台', requiresAuth: true, permission: 'security:manage' }
+    },
+    {
+      path: '/no-permission',
+      name: 'noPermission',
+      component: () => import('../views/NoPermissionView.vue'),
+      meta: { title: '暂无权限 - 管理后台', requiresAuth: true }
     }
   ]
 })
@@ -155,12 +168,10 @@ const hasPermission = (permission) => {
   return getAdminPermissions().includes(permission)
 }
 
-const clearAdminSession = () => {
-  localStorage.removeItem('admin_token')
-  localStorage.removeItem('admin_user')
-  localStorage.removeItem('admin_role')
-  localStorage.removeItem('admin_permissions')
-  localStorage.removeItem('admin_id')
+const firstAllowedPath = () => {
+  const role = localStorage.getItem('admin_role')
+  const permissions = getAdminPermissions()
+  return firstAllowedPathByPermissions(role, permissions)
 }
 
 // 路由守卫
@@ -171,18 +182,14 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !token) {
     next('/login')
   } else if (to.path === '/login' && token) {
-    next('/dashboard')
+    next(firstAllowedPath())
+  } else if (to.path === '/' && token) {
+    next(firstAllowedPath())
   } else if (to.meta.superAdminOnly && role !== '超级管理员') {
-    next('/dashboard')
+    next(firstAllowedPath())
   } else if (to.meta.requiresAuth && !hasPermission(to.meta.permission)) {
-    if (getAdminPermissions().length === 0) {
-      clearAdminSession()
-      next('/login')
-      return
-    }
-    const fallback = router.getRoutes()
-      .find(route => route.meta.requiresAuth && !route.meta.superAdminOnly && hasPermission(route.meta.permission))
-    next(fallback && fallback.path !== to.path ? fallback.path : '/login')
+    const fallback = firstAllowedPath()
+    next(fallback !== to.path ? fallback : '/no-permission')
   } else {
     next()
   }

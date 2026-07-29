@@ -1,10 +1,10 @@
 package com.mybilibili.ai.service.impl;
 
 import com.mybilibili.ai.entity.AiApiConfig;
-import com.mybilibili.ai.service.AiApiConfigService;
 import com.mybilibili.ai.service.SttProvider;
 import com.mybilibili.ai.service.SttProvider.TranscribeRequest;
 import com.mybilibili.ai.util.AiUsageLogger;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.http.*;
@@ -17,18 +17,18 @@ import java.util.Date;
  * 智谱 ASR (glm-asr) 语音转文字提供者。
  * 使用小水管 API 平台的 /v1/audio/transcriptions 接口。
  */
+@Slf4j
 @Component
 public class GlmAsrProvider implements SttProvider {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
-    @Autowired(required = false)
-    private AiApiConfigService aiApiConfigService;
+    public GlmAsrProvider(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     @Autowired(required = false)
     private AiUsageLogger aiUsageLogger;
-
-    private volatile AiApiConfig activeConfig;
 
     @Override
     public String getName() {
@@ -37,44 +37,35 @@ public class GlmAsrProvider implements SttProvider {
 
     @Override
     public boolean isAvailable() {
-        loadConfig();
-        return activeConfig != null && activeConfig.getEnabled();
-    }
-
-    private void loadConfig() {
-        if (activeConfig != null) return;
-        if (aiApiConfigService == null) return;
-        activeConfig = aiApiConfigService.getConfigForFeature("TRANSCRIBE");
+        return true;
     }
 
     @Override
     public Object invoke(TranscribeRequest request) {
-        return transcribe(request.getAudioPath(), request.getLanguage());
+        return transcribe(request.getConfig(), request.getAudioPath(), request.getLanguage());
     }
 
     /**
      * 调用智谱 ASR API
      */
-    public String transcribe(String audioPath, String language) {
+    public String transcribe(AiApiConfig config, String audioPath, String language) {
         long start = System.currentTimeMillis();
+        String model = null;
         try {
-            loadConfig();
-
             File audioFile = new File(audioPath);
             if (!audioFile.exists()) {
-                System.err.println("[GlmAsr] 音频文件不存在: " + audioPath);
+                log.warn("[GlmAsr] 音频文件不存在: {}", audioPath);
                 return null;
             }
 
             String baseUrl;
             String apiKey;
-            String model;
-            if (activeConfig != null) {
-                baseUrl = activeConfig.getBaseUrl() != null ? activeConfig.getBaseUrl() : "";
-                apiKey = activeConfig.getApiKey() != null ? activeConfig.getApiKey() : "";
-                model = activeConfig.getModel() != null ? activeConfig.getModel() : "glm-asr";
+            if (config != null) {
+                baseUrl = config.getBaseUrl() != null ? config.getBaseUrl() : "";
+                apiKey = config.getApiKey() != null ? config.getApiKey() : "";
+                model = config.getModel() != null ? config.getModel() : "glm-asr";
             } else {
-                System.err.println("[GlmAsr] 未找到 TRANSCRIBE 渠道配置");
+                log.warn("[GlmAsr] 未找到 TRANSCRIBE 渠道配置");
                 return null;
             }
 
@@ -112,9 +103,9 @@ public class GlmAsrProvider implements SttProvider {
             }
             return null;
         } catch (Exception e) {
-            System.err.println("[GlmAsr] 转写异常: " + e.getMessage());
+            log.warn("[GlmAsr] 转写异常: {}", e.getMessage());
             if (aiUsageLogger != null) {
-                aiUsageLogger.log("TRANSCRIBE", "glm-asr", null, null, System.currentTimeMillis() - start, false, e.getMessage());
+                aiUsageLogger.log("TRANSCRIBE", model, null, null, System.currentTimeMillis() - start, false, e.getMessage());
             }
             return null;
         }

@@ -24,6 +24,7 @@ logs/
 *.temp
 *.bak
 *.backup
+.trash/
 
 # Maven
 .mvn/
@@ -82,6 +83,7 @@ whisper/
 *.db
 *.sqlite
 *.sqlitedb
+backups/
 
 # Docker 相关 (可选保留)
 # docker-compose*.yml
@@ -123,6 +125,10 @@ start-nacos.bat
 
 # Claude Agent worktrees (massive duplicate directories)
 .claude/worktrees/
+.claude/scheduled_tasks.lock
+
+# Reference projects kept outside version control
+references/
 
 # 图片二进制文件 (项目资源除外)
 # favicon.ico 和 vite.svg 等项目资源保留跟踪
@@ -132,3 +138,5 @@ start-nacos.bat
 # *.gif
 # *.ico
 # *.svg
+
+# mybilibili-live-desktop source tree is now tracked (no longer excluded).

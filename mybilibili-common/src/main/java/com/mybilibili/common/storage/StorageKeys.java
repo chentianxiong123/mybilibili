@@ -49,7 +49,7 @@ public final class StorageKeys {
     }
 
     public static String videoSummary(Integer manuscriptId, Integer videoId) {
-        return "manuscripts/%d/videos/%d/summary/summary.txt".formatted(manuscriptId, videoId);
+        return "manuscripts/%d/videos/%d/summary/ai-summary.txt".formatted(manuscriptId, videoId);
     }
 
     public static String bannerImage(String fileName) {
@@ -58,6 +58,14 @@ public final class StorageKeys {
 
     public static String dynamicImage(Integer userId, String fileName) {
         return "images/dynamics/%d/%s".formatted(userId, fileName);
+    }
+
+    public static String studioAsset(Integer userId, String projectId, String mediaId, String fileName) {
+        return "studio/%d/projects/%s/assets/%s/%s".formatted(userId, projectId, mediaId, fileName);
+    }
+
+    public static String studioExport(Integer userId, String projectId, String taskId, String fileName) {
+        return "studio/%d/projects/%s/exports/%s/%s".formatted(userId, projectId, taskId, fileName);
     }
 
     public static String tempUpload(String uploadId, String part, String chunk) {

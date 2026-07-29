@@ -18,5 +18,7 @@ public interface StorageService {
 
     void delete(String key);
 
+    void deletePrefix(String prefix);
+
     void copy(String sourceKey, String targetKey);
 }

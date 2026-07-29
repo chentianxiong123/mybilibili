@@ -60,6 +60,8 @@ export function useChunkedManuscriptUpload({
   let lastBytesSnapshot = 0
   let lastSnapshotTime = 0
   let speedTimer = null
+  let confirmedUploadedBytes = 0
+  const activeChunkBytes = new Map()
 
   const stageLabel = computed(() => STAGE_LABELS[stage.value] || stage.value)
   const isUploading = computed(() => stage.value === STAGE_UPLOADING)
@@ -112,6 +114,8 @@ export function useChunkedManuscriptUpload({
       clearInterval(speedTimer)
       speedTimer = null
     }
+    confirmedUploadedBytes = 0
+    activeChunkBytes.clear()
   }
 
   function updateSpeed() {
@@ -135,31 +139,78 @@ export function useChunkedManuscriptUpload({
     }
   }
 
+  function chunkKey(partIndex, chunkIndex) {
+    return `${partIndex}:${chunkIndex}`
+  }
+
+  function recomputeUploadedBytes() {
+    const activeBytes = Array.from(activeChunkBytes.values())
+      .reduce((sum, bytes) => sum + bytes, 0)
+    uploadedBytes.value = Math.min(totalBytes.value, confirmedUploadedBytes + activeBytes)
+    updatePercentage()
+  }
+
+  function markChunkProgress(partIndex, chunkIndex, loaded, chunkSizeActual) {
+    const boundedLoaded = Math.min(Math.max(loaded || 0, 0), chunkSizeActual)
+    currentPartIndex.value = partIndex
+    currentChunkIndex.value = chunkIndex
+    activeChunkBytes.set(chunkKey(partIndex, chunkIndex), boundedLoaded)
+    recomputeUploadedBytes()
+    updateSpeed()
+  }
+
   function markChunkUploaded(partIndex, chunkIndex, chunkSizeActual) {
-    uploadedBytes.value += chunkSizeActual
+    activeChunkBytes.delete(chunkKey(partIndex, chunkIndex))
+    confirmedUploadedBytes += chunkSizeActual
     uploadedChunks.value++
     currentPartIndex.value = partIndex
     currentChunkIndex.value = chunkIndex
     if (partProgress.value[partIndex]) {
       partProgress.value[partIndex].uploaded++
     }
-    updatePercentage()
+    recomputeUploadedBytes()
     updateSpeed()
   }
 
+  function resolveProgressLoaded(progress, chunkSizeActual) {
+    if (typeof progress === 'number') {
+      return Math.round((chunkSizeActual * progress) / 100)
+    }
+    if (progress && typeof progress.loaded === 'number') {
+      return progress.loaded
+    }
+    if (progress && typeof progress.percent === 'number') {
+      return Math.round((chunkSizeActual * progress.percent) / 100)
+    }
+    return 0
+  }
+
   async function uploadChunkWithRetry(uploadIdVal, partIndex, chunkIndex, chunkTotal, blob) {
+    const key = chunkKey(partIndex, chunkIndex)
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       if (aborted.value) throw new Error('cancelled')
       try {
-        await api.uploadChunk({
-          uploadId: uploadIdVal,
-          partIndex,
-          chunkIndex,
-          totalChunks: chunkTotal,
-          file: blob
-        })
+        markChunkProgress(partIndex, chunkIndex, 0, blob.size)
+        const res = await api.uploadChunk(
+          {
+            uploadId: uploadIdVal,
+            partIndex,
+            chunkIndex,
+            totalChunks: chunkTotal,
+            file: blob
+          },
+          progress => {
+            markChunkProgress(partIndex, chunkIndex, resolveProgressLoaded(progress, blob.size), blob.size)
+          }
+        )
+        if (res && res.code !== undefined && res.code !== 200) {
+          throw new Error(res.message || '分片上传失败')
+        }
         return
       } catch (e) {
+        activeChunkBytes.delete(key)
+        recomputeUploadedBytes()
+        updateSpeed()
         retryCount.value++
         if (attempt >= maxRetries) throw e
         await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)))

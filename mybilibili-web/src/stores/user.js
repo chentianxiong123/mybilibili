@@ -1,4 +1,13 @@
 import { defineStore } from 'pinia'
+import { userApi } from '../api/index.js'
+import {
+  clearAuthSession,
+  getCurrentUserId,
+  getRefreshToken,
+  getStoredUser,
+  getToken,
+  setAuthSession
+} from '../utils/auth.js'
 
 // 用户store
 export const useUserStore = defineStore('user', {
@@ -73,29 +82,28 @@ export const useUserStore = defineStore('user', {
     setToken(token, refreshToken) {
       this.token = token
       this.refreshToken = refreshToken
-      // 保存到本地存储
-      localStorage.setItem('token', token)
-      localStorage.setItem('refreshToken', refreshToken)
+      setAuthSession({ token, refreshToken })
     },
 
     // 清除令牌
     clearToken() {
       this.token = ''
       this.refreshToken = ''
-      localStorage.removeItem('token')
-      localStorage.removeItem('refreshToken')
+      clearAuthSession()
     },
 
     // 加载本地存储的令牌
     loadTokenFromStorage() {
-      const token = localStorage.getItem('token')
-      const refreshToken = localStorage.getItem('refreshToken')
+      const token = getToken()
+      const refreshToken = getRefreshToken()
       if (token && refreshToken) {
         this.token = token
         this.refreshToken = refreshToken
         this.isLoggedIn = true
-        // 可以在这里调用接口获取用户信息
-        // this.getUserInfo()
+        const user = getStoredUser()
+        if (user) {
+          this.setUserInfo(user)
+        }
       }
     },
 
@@ -103,33 +111,18 @@ export const useUserStore = defineStore('user', {
     async login(loginForm) {
       try {
         this.loginLoading = true
-        // 模拟API请求
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // 模拟登录成功
-        const mockToken = 'mock-jwt-token-' + Date.now()
-        const mockRefreshToken = 'mock-refresh-token-' + Date.now()
-        
-        // 设置令牌
-        this.setToken(mockToken, mockRefreshToken)
-        
-        // 设置用户信息
-        this.setUserInfo({
-          id: '1',
-          username: loginForm.username,
-          nickname: loginForm.username + '的昵称',
-          avatar: 'https://picsum.photos/id/1005/40/40',
-          email: 'user@example.com',
-          phone: '13800138000',
-          level: 5,
-          followingCount: 120,
-          followerCount: 85,
-          videoCount: 15
-        })
-        
-        // 设置登录状态
+        const response = await userApi.login(loginForm.username, loginForm.password)
+        if (response.code !== 200 || !response.data?.token) {
+          return { success: false, message: response.message || '登录失败，请检查用户名和密码' }
+        }
+
+        setAuthSession(response.data)
+        this.token = response.data.token
+        this.refreshToken = response.data.refreshToken || ''
+        if (response.data.user) {
+          this.setUserInfo(response.data.user)
+        }
         this.setLoginStatus(true)
-        
         return { success: true, message: '登录成功' }
       } catch (error) {
         console.error('登录失败:', error)
@@ -143,11 +136,11 @@ export const useUserStore = defineStore('user', {
     async register(registerForm) {
       try {
         this.registerLoading = true
-        // 模拟API请求
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        
-        // 模拟注册成功
-        return { success: true, message: '注册成功，请登录' }
+        const response = await userApi.register(registerForm)
+        if (response.code !== 200) {
+          return { success: false, message: response.message || '注册失败，请稍后重试' }
+        }
+        return { success: true, message: response.message || '注册成功，请登录' }
       } catch (error) {
         console.error('注册失败:', error)
         return { success: false, message: '注册失败，请稍后重试' }
@@ -178,8 +171,9 @@ export const useUserStore = defineStore('user', {
         pointCount: 0
       })
       
-      // 清除令牌
-      this.clearToken()
+      clearAuthSession()
+      this.token = ''
+      this.refreshToken = ''
       
       // 设置登录状态
       this.setLoginStatus(false)
@@ -188,26 +182,15 @@ export const useUserStore = defineStore('user', {
     // 获取用户信息
     async getUserInfo() {
       try {
-        // 模拟API请求
-        await new Promise(resolve => setTimeout(resolve, 800))
-        
-        // 模拟获取用户信息成功
-        this.setUserInfo({
-          id: '1',
-          username: 'testuser',
-          nickname: '测试用户',
-          avatar: 'https://picsum.photos/id/1005/40/40',
-          email: 'test@example.com',
-          phone: '13800138000',
-          level: 5,
-          followingCount: 120,
-          followerCount: 85,
-          videoCount: 15,
-          likedCount: 320,
-          coinCount: 150,
-          pointCount: 5000
-        })
-        
+        const userId = getCurrentUserId()
+        if (!userId) return { success: false }
+        const response = await userApi.getUserById(userId)
+        if (response.code !== 200) {
+          return { success: false }
+        }
+        this.setUserInfo(response.data)
+        setAuthSession({ user: response.data })
+        this.setLoginStatus(true)
         return { success: true }
       } catch (error) {
         console.error('获取用户信息失败:', error)
@@ -218,12 +201,14 @@ export const useUserStore = defineStore('user', {
     // 更新用户信息
     async updateUserInfo(updateInfo) {
       try {
-        // 模拟API请求
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // 更新用户信息
-        this.setUserInfo(updateInfo)
-        
+        const userId = getCurrentUserId()
+        if (!userId) return { success: false, message: '请先登录' }
+        const response = await userApi.updateUser(userId, updateInfo)
+        if (response.code !== 200) {
+          return { success: false, message: response.message || '更新失败，请稍后重试' }
+        }
+        this.setUserInfo(response.data)
+        setAuthSession({ user: response.data })
         return { success: true, message: '用户信息更新成功' }
       } catch (error) {
         console.error('更新用户信息失败:', error)
@@ -234,12 +219,11 @@ export const useUserStore = defineStore('user', {
     // 更新用户头像
     async updateAvatar(avatarUrl) {
       try {
-        // 模拟API请求
-        await new Promise(resolve => setTimeout(resolve, 800))
-        
-        // 更新用户头像
         this.setUserInfo({ avatar: avatarUrl })
-        
+        const user = getStoredUser()
+        if (user) {
+          setAuthSession({ user: { ...user, avatar: avatarUrl } })
+        }
         return { success: true, message: '头像更新成功' }
       } catch (error) {
         console.error('更新头像失败:', error)

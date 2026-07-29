@@ -2,7 +2,8 @@ package com.mybilibili.ai.service.impl;
 
 import org.springframework.ai.chat.client.ChatClient;
 import com.mybilibili.ai.config.DynamicChatClient;
-import com.mybilibili.ai.service.AiConfigService;
+import com.mybilibili.ai.entity.AiApiConfig;
+import com.mybilibili.ai.service.AiApiConfigService;
 import com.mybilibili.ai.service.AiSummaryService;
 import com.mybilibili.ai.utils.SubtitleTextUtils;
 import com.mybilibili.ai.util.AiUsageLogger;
@@ -25,7 +26,7 @@ public class AiSummaryServiceImpl implements AiSummaryService {
     private DynamicChatClient dynamicChatClient;
 
     @Autowired
-    private AiConfigService aiConfigService;
+    private AiApiConfigService aiApiConfigService;
 
     @Autowired
     private AiUsageLogger aiUsageLogger;
@@ -78,47 +79,28 @@ public class AiSummaryServiceImpl implements AiSummaryService {
 
     private String callAiApi(String userPrompt) {
         long start = System.currentTimeMillis();
+        AiApiConfig summaryConfig = aiApiConfigService.getConfigForFeature("SUMMARY");
+        String model = modelOf(summaryConfig);
         try {
-            String result = dynamicChatClient.getClient("SUMMARY").prompt()
+            ChatClient client = dynamicChatClient.getClient("SUMMARY");
+            if (client == null) {
+                String message = "SUMMARY 渠道未配置或已禁用";
+                aiUsageLogger.log("SUMMARY", null, null, null, System.currentTimeMillis() - start, false, message);
+                log.warn("AI摘要生成中止：{}", message);
+                return null;
+            }
+
+            String result = client.prompt()
                     .system(SYSTEM_PROMPT)
                     .user(userPrompt)
                     .call()
                     .content();
-            aiUsageLogger.log("SUMMARY", "deepseek-r1", null, null, System.currentTimeMillis() - start, true, null);
+            aiUsageLogger.log("SUMMARY", model, null, null, System.currentTimeMillis() - start, true, null);
             return result;
         } catch (Exception e) {
-            aiUsageLogger.log("SUMMARY", "deepseek-r1", null, null, System.currentTimeMillis() - start, false, e.getMessage());
+            aiUsageLogger.log("SUMMARY", model, null, null, System.currentTimeMillis() - start, false, e.getMessage());
             log.error("AI摘要生成失败: {}", e.getMessage(), e);
             return null;
-        }
-    }
-
-    @Override
-    public TestResult testApiConnection(String testText) {
-        long startTime = System.currentTimeMillis();
-        try {
-            String apiKey = aiConfigService.getApiKey();
-            if (apiKey == null || apiKey.isEmpty()) {
-                return new TestResult(false, "API密钥未配置，请在API管理页面配置密钥");
-            }
-
-            String prompt = testText != null && !testText.isEmpty() ? testText : "你好，请回复'API测试成功'";
-            ChatClient client = dynamicChatClient.getClient("CHAT");
-            if (client == null) client = dynamicChatClient.getFirstActiveClient();
-            String responseContent = client.prompt()
-                    .user(prompt)
-                    .call()
-                    .content();
-
-            aiUsageLogger.log("TEST", "deepseek-r1", null, null, System.currentTimeMillis() - startTime, responseContent != null, null);
-
-            long responseTime = System.currentTimeMillis() - startTime;
-            return new TestResult(true, "API连接成功", responseContent, responseTime);
-
-        } catch (Exception e) {
-            aiUsageLogger.log("TEST", "deepseek-r1", null, null, System.currentTimeMillis() - startTime, false, e.getMessage());
-            long responseTime = System.currentTimeMillis() - startTime;
-            return new TestResult(false, "API调用异常: " + e.getMessage(), null, responseTime);
         }
     }
 
@@ -157,5 +139,9 @@ public class AiSummaryServiceImpl implements AiSummaryService {
             sb.append(c);
         }
         return sb.toString();
+    }
+
+    private String modelOf(AiApiConfig config) {
+        return config != null ? config.getModel() : null;
     }
 }

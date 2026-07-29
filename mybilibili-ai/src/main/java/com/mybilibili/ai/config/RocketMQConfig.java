@@ -3,6 +3,7 @@ package com.mybilibili.ai.config;
 import com.mybilibili.mq.VideoMQProducer;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
+import org.apache.rocketmq.spring.support.RocketMQMessageConverter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,16 +16,18 @@ public class RocketMQConfig {
 
     @Bean
     public DefaultMQProducer defaultMQProducer() {
-        DefaultMQProducer producer = new DefaultMQProducer("video-process-group");
+        DefaultMQProducer producer = new DefaultMQProducer("video-ai-producer-group");
         producer.setNamesrvAddr(nameServer);
         producer.setInstanceName("ai-video-producer");
         return producer;
     }
 
     @Bean
-    public RocketMQTemplate rocketMQTemplate(DefaultMQProducer defaultMQProducer) {
+    public RocketMQTemplate rocketMQTemplate(DefaultMQProducer defaultMQProducer,
+                                             RocketMQMessageConverter rocketMQMessageConverter) {
         RocketMQTemplate template = new RocketMQTemplate();
         template.setProducer(defaultMQProducer);
+        template.setMessageConverter(rocketMQMessageConverter.getMessageConverter());
         return template;
     }
 

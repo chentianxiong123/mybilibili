@@ -1,0 +1,155 @@
+import type {
+  Template,
+  TemplateSummary,
+  ScriptableTemplate,
+} from "@mybilibili-studio/core";
+
+import { STUDIO_CLOUD_URL, requireStudioEndpoint } from "../config/api-endpoints";
+
+const CLOUD_API_URL = STUDIO_CLOUD_URL;
+
+export interface CloudTemplate extends TemplateSummary {
+  author?: string;
+}
+
+export class TemplateCloudService {
+  private apiUrl: string;
+
+  constructor(apiUrl: string = CLOUD_API_URL) {
+    this.apiUrl = apiUrl;
+  }
+
+  private requireApiUrl(): string {
+    return requireStudioEndpoint(this.apiUrl, "剪辑模板服务");
+  }
+
+  async listTemplates(): Promise<CloudTemplate[]> {
+    const apiUrl = this.requireApiUrl();
+    try {
+      const response = await fetch(`${apiUrl}/templates`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      return data.templates || [];
+    } catch (error) {
+      console.error("Failed to list templates from cloud:", error);
+      return [];
+    }
+  }
+
+  async getTemplate(id: string): Promise<Template | null> {
+    const apiUrl = this.requireApiUrl();
+    try {
+      const response = await fetch(`${apiUrl}/templates/${id}`);
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error(`Failed to get template ${id} from cloud:`, error);
+      return null;
+    }
+  }
+
+  async uploadTemplate(
+    template: Template,
+  ): Promise<{ success: boolean; error?: string }> {
+    const apiUrl = this.requireApiUrl();
+    try {
+      const response = await fetch(`${apiUrl}/templates`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(template),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error || "Upload failed" };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error("Failed to upload template to cloud:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Upload failed",
+      };
+    }
+  }
+
+  async deleteTemplate(
+    id: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    const apiUrl = this.requireApiUrl();
+    try {
+      const response = await fetch(`${apiUrl}/templates/${id}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error || "Delete failed" };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error(`Failed to delete template ${id} from cloud:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Delete failed",
+      };
+    }
+  }
+
+  async checkHealth(): Promise<boolean> {
+    const apiUrl = this.requireApiUrl();
+    try {
+      const response = await fetch(`${apiUrl}/health`);
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async listScriptableTemplates(): Promise<ScriptableTemplate[]> {
+    const apiUrl = this.requireApiUrl();
+    try {
+      const response = await fetch(`${apiUrl}/templates/scriptable`);
+      if (!response.ok) {
+        return [];
+      }
+      const data = await response.json();
+      return data.templates || [];
+    } catch (error) {
+      console.error("Failed to list scriptable templates from cloud:", error);
+      return [];
+    }
+  }
+
+  async getScriptableTemplate(id: string): Promise<ScriptableTemplate | null> {
+    const apiUrl = this.requireApiUrl();
+    try {
+      const response = await fetch(`${apiUrl}/templates/scriptable/${id}`);
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error(
+        `Failed to get scriptable template ${id} from cloud:`,
+        error,
+      );
+      return null;
+    }
+  }
+}
+
+export const templateCloudService = new TemplateCloudService();
+

@@ -1,6 +1,11 @@
 import api from './client'
 
+function hasToken() {
+  return !!localStorage.getItem('token')
+}
+
 export async function getCollectedVideos() {
+  if (!hasToken()) return { code: '0', data: [] }
   try {
     const res = await api.get('/manuscript/user/collections')
     return {
@@ -13,6 +18,7 @@ export async function getCollectedVideos() {
 }
 
 export async function getFavoriteFolders() {
+  if (!hasToken()) return { code: '0', data: [] }
   try {
     const res = await api.get('/manuscript/favorite/folders')
     return {
@@ -25,6 +31,7 @@ export async function getFavoriteFolders() {
 }
 
 export async function getFavoriteFolderVideos(folderId: number) {
+  if (!hasToken()) return { code: '0', data: [] }
   try {
     const res = await api.get(`/manuscript/favorite/folders/${folderId}/videos`)
     return {

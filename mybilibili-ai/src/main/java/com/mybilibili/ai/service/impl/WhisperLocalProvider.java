@@ -1,8 +1,10 @@
 package com.mybilibili.ai.service.impl;
 
 import com.mybilibili.ai.config.WhisperConfig;
+import com.mybilibili.ai.entity.AiApiConfig;
 import com.mybilibili.ai.service.SttProvider;
 import com.mybilibili.ai.service.SttProvider.TranscribeRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +14,7 @@ import java.io.InputStreamReader;
 /**
  * 本地 Whisper CLI STT 提供者。
  */
+@Slf4j
 @Component
 public class WhisperLocalProvider implements SttProvider {
 
@@ -21,6 +24,14 @@ public class WhisperLocalProvider implements SttProvider {
     @Override
     public String getName() {
         return "whisper-local";
+    }
+
+    @Override
+    public boolean supports(AiApiConfig config) {
+        String name = config != null && config.getName() != null ? config.getName().toLowerCase() : "";
+        String model = config != null && config.getModel() != null ? config.getModel().toLowerCase() : "";
+        return (name.contains("whisper") || model.contains("whisper"))
+                && (name.contains("local") || model.contains("local"));
     }
 
     @Override
@@ -81,7 +92,7 @@ public class WhisperLocalProvider implements SttProvider {
             }
             return null;
         } catch (Exception e) {
-            System.err.println("[Whisper] 转写异常: " + e.getMessage());
+            log.warn("[Whisper] 转写异常: {}", e.getMessage());
             return null;
         }
     }

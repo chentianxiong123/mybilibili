@@ -4,12 +4,15 @@ import com.mybilibili.common.vo.Result;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 
 import java.util.stream.Collectors;
 
@@ -45,6 +48,15 @@ public class GlobalExceptionHandler {
     public Result<Void> handleMissingParam(MissingServletRequestParameterException e) {
         log.warn("缺少请求参数: {}", e.getParameterName());
         return Result.error(400, "缺少必要参数: " + e.getParameterName());
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<Result<Void>> handleMissingHeader(MissingRequestHeaderException e) {
+        log.warn("缺少请求头: {}", e.getHeaderName());
+        if ("X-User-Id".equalsIgnoreCase(e.getHeaderName()) || "X-Admin-Id".equalsIgnoreCase(e.getHeaderName())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Result.error(401, "请先登录"));
+        }
+        return ResponseEntity.badRequest().body(Result.error(400, "缺少必要请求头: " + e.getHeaderName()));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
