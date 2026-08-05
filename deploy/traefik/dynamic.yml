@@ -1,0 +1,118 @@
+# Traefik 动态配置（路由规则）
+
+# 中间件
+http:
+  middlewares:
+    # JWT 认证（校验 token，透传 user_id 到后端）
+    jwt-auth:
+      forwardAuth:
+        address: "http://localhost:8080/api/v1/auth/verify"
+        authResponseHeaders:
+          - X-User-Id
+          - X-User-Role
+
+    # 限流
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 200
+        sourceCriterion:
+          ipStrategy:
+            depth: 1
+
+    # WebSocket 连接超时关闭
+    ws-timeout:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+
+    # 安全头
+    security-headers:
+      headers:
+        frameDeny: true
+        sslRedirect: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        referrerPolicy: strict-origin-when-cross-origin
+        permissionsPolicy: "camera=(), microphone=(), geolocation=()"
+
+# 路由规则
+routers:
+  # ＝＝＝ Core 胖单体（前端 + API）＝＝＝
+  core-web:
+    rule: "Host(`mylib.com`)"
+    priority: 1
+    service: core
+    middlewares:
+      - security-headers
+    tls:
+      certResolver: letsencrypt
+
+  # ＝＝＝ API 路由（带 JWT）＝＝＝
+  core-api:
+    rule: "Host(`mylib.com`) && PathPrefix(`/api/v1/`)"
+    priority: 10
+    service: core
+    middlewares:
+      - jwt-auth
+      - rate-limit
+      - security-headers
+    tls:
+      certResolver: letsencrypt
+
+  # ＝＝＝ SSE 推送（不需要 JWT，前端 EventSource 不带自定义头）＝＝＝
+  core-sse:
+    rule: "Host(`mylib.com`) && PathPrefix(`/sse/`)"
+    priority: 10
+    service: core
+    middlewares:
+      - security-headers
+    tls:
+      certResolver: letsencrypt
+
+  # ＝＝＝ live 服务 WebSocket 信令（语聊房）＝＝＝
+  live-ws:
+    rule: "Host(`mylib.com`) && PathPrefix(`/ws/`)"
+    priority: 10
+    service: live
+    middlewares:
+      - jwt-auth
+      - ws-timeout
+    tls:
+      certResolver: letsencrypt
+
+  # ＝＝＝ gRPC 内部（服务间，不对外）＝＝＝
+  grpc-internal:
+    rule: "Host(`internal.mylib.com`)"
+    service: core-grpc
+    tls:
+      certResolver: letsencrypt
+
+# 服务
+services:
+  core:
+    loadBalancer:
+      servers:
+        - url: "http://localhost:8080"
+      healthCheck:
+        path: /api/v1/health
+        interval: 10s
+        timeout: 3s
+
+  core-grpc:
+    loadBalancer:
+      servers:
+        - url: "h2c://localhost:9090"
+      healthCheck:
+        path: /grpc.health.v1.Health/Check
+        interval: 10s
+        timeout: 3s
+
+  live:
+    loadBalancer:
+      servers:
+        - url: "http://localhost:8081"
+      healthCheck:
+        path: /api/v1/health
+        interval: 10s
+        timeout: 3s

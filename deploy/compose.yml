@@ -1,0 +1,21 @@
+services:
+  traefik:
+    image: traefik:v3.3
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./dynamic.yml:/etc/traefik/dynamic/dynamic.yml:ro
+      - acme:/etc/traefik/acme
+    networks:
+      - mylib
+
+volumes:
+  acme:
+
+networks:
+  mylib:
+    external: true
