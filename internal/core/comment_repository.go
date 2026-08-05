@@ -1,0 +1,263 @@
+package core
+
+import (
+	"context"
+	"database/sql"
+	"time"
+
+	pb "mybilibili/internal/core/pb"
+)
+
+type Comment struct {
+	ID           int64
+	ManuscriptID int64
+	UserID       int64
+	Content      string
+	LikeCount    int32
+	ReplyCount   int32
+	Status       int32
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+type Reply struct {
+	ID           int64
+	CommentID    int64
+	UserID       int64
+	ReplyToUserID sql.NullInt64
+	Content      string
+	LikeCount    int32
+	Status       string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+type CommentRepository struct {
+	db *sql.DB
+}
+
+func NewCommentRepository(db *sql.DB) *CommentRepository {
+	return &CommentRepository{db: db}
+}
+
+func (r *CommentRepository) CreateComment(ctx context.Context, c *Comment) (int64, error) {
+	var id int64
+	err := r.db.QueryRowContext(ctx,
+		`INSERT INTO comments (manuscript_id, user_id, content) VALUES ($1, $2, $3) RETURNING id`,
+		c.ManuscriptID, c.UserID, c.Content).Scan(&id)
+	return id, err
+}
+
+func (r *CommentRepository) FindByID(ctx context.Context, id int64) (*Comment, error) {
+	c := &Comment{}
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, manuscript_id, user_id, content, like_count, reply_count, status, created_at, updated_at
+		 FROM comments WHERE id = $1`, id,
+	).Scan(&c.ID, &c.ManuscriptID, &c.UserID, &c.Content, &c.LikeCount, &c.ReplyCount, &c.Status, &c.CreatedAt, &c.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func (r *CommentRepository) ListByManuscript(ctx context.Context, manuscriptID int64, page, pageSize int32, sort string) ([]*Comment, error) {
+	order := "ORDER BY created_at DESC"
+	if sort == "hot" {
+		order = "ORDER BY like_count DESC, created_at DESC"
+	}
+
+	offset := (page - 1) * pageSize
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, manuscript_id, user_id, content, like_count, reply_count, status, created_at, updated_at
+		 FROM comments WHERE manuscript_id = $1 AND status = 0 `+order+` LIMIT $2 OFFSET $3`,
+		manuscriptID, pageSize, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []*Comment
+	for rows.Next() {
+		c := &Comment{}
+		if err := rows.Scan(&c.ID, &c.ManuscriptID, &c.UserID, &c.Content, &c.LikeCount, &c.ReplyCount, &c.Status, &c.CreatedAt, &c.UpdatedAt); err != nil {
+			return nil, err
+		}
+		list = append(list, c)
+	}
+	return list, nil
+}
+
+func (r *CommentRepository) Delete(ctx context.Context, id, userID int64) error {
+	res, err := r.db.ExecContext(ctx, `UPDATE comments SET status = 1 WHERE id = $1 AND user_id = $2`, id, userID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (r *CommentRepository) CreateReply(ctx context.Context, rep *Reply) (int64, error) {
+	var id int64
+	err := r.db.QueryRowContext(ctx,
+		`INSERT INTO replies (comment_id, user_id, reply_to_user_id, content) VALUES ($1, $2, $3, $4) RETURNING id`,
+		rep.CommentID, rep.UserID, nullInt64(rep.ReplyToUserID), rep.Content).Scan(&id)
+	return id, err
+}
+
+func (r *CommentRepository) FindReplyByID(ctx context.Context, id int64) (*Reply, error) {
+	rep := &Reply{}
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, comment_id, user_id, reply_to_user_id, content, like_count, status, created_at, updated_at
+		 FROM replies WHERE id = $1`, id,
+	).Scan(&rep.ID, &rep.CommentID, &rep.UserID, &rep.ReplyToUserID, &rep.Content, &rep.LikeCount, &rep.Status, &rep.CreatedAt, &rep.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return rep, nil
+}
+
+func (r *CommentRepository) ListRepliesByComment(ctx context.Context, commentID int64, page, pageSize int32) ([]*Reply, error) {
+	offset := (page - 1) * pageSize
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, comment_id, user_id, reply_to_user_id, content, like_count, status, created_at, updated_at
+		 FROM replies WHERE comment_id = $1 AND status = 'NORMAL' ORDER BY created_at ASC LIMIT $2 OFFSET $3`,
+		commentID, pageSize, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []*Reply
+	for rows.Next() {
+		rep := &Reply{}
+		if err := rows.Scan(&rep.ID, &rep.CommentID, &rep.UserID, &rep.ReplyToUserID, &rep.Content, &rep.LikeCount, &rep.Status, &rep.CreatedAt, &rep.UpdatedAt); err != nil {
+			return nil, err
+		}
+		list = append(list, rep)
+	}
+	return list, nil
+}
+
+func (r *CommentRepository) DeleteReply(ctx context.Context, id, userID int64) error {
+	res, err := r.db.ExecContext(ctx, `UPDATE replies SET status = 'REMOVED' WHERE id = $1 AND user_id = $2`, id, userID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (r *CommentRepository) IncrementReplyCount(ctx context.Context, commentID int64) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE comments SET reply_count = reply_count + 1 WHERE id = $1`, commentID)
+	return err
+}
+
+func (r *CommentRepository) FindUserByID(ctx context.Context, userID int64) (*User, error) {
+	u := &User{}
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, username, nickname, avatar, level FROM users WHERE id = $1`, userID,
+	).Scan(&u.ID, &u.Username, &u.Nickname, &u.Avatar, &u.Level)
+	if err != nil {
+		return nil, err
+	}
+	return u, nil
+}
+
+func (r *CommentRepository) IsCommentLiked(ctx context.Context, commentID, userID int64) (bool, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM user_interactions WHERE target_type = 'COMMENT' AND target_id = $1 AND user_id = $2 AND interaction_type = 'LIKE'`,
+		commentID, userID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (r *CommentRepository) IsReplyLiked(ctx context.Context, replyID, userID int64) (bool, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM user_interactions WHERE target_type = 'REPLY' AND target_id = $1 AND user_id = $2 AND interaction_type = 'LIKE'`,
+		replyID, userID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (r *CommentRepository) LikeTarget(ctx context.Context, targetType string, targetID, userID int64) error {
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO user_interactions (user_id, target_type, target_id, interaction_type) VALUES ($1, $2, $3, 'like')
+		 ON CONFLICT (user_id, target_type, target_id, interaction_type) DO NOTHING`,
+		userID, targetType, targetID)
+	if err != nil {
+		return err
+	}
+	if targetType == "COMMENT" {
+		_, err = r.db.ExecContext(ctx, `UPDATE comments SET like_count = like_count + 1 WHERE id = $1`, targetID)
+	} else if targetType == "REPLY" {
+		_, err = r.db.ExecContext(ctx, `UPDATE replies SET like_count = like_count + 1 WHERE id = $1`, targetID)
+	}
+	return err
+}
+
+func (r *CommentRepository) UnlikeTarget(ctx context.Context, targetType string, targetID, userID int64) error {
+	_, err := r.db.ExecContext(ctx,
+		`DELETE FROM user_interactions WHERE user_id = $1 AND target_type = $2 AND target_id = $3 AND interaction_type = 'LIKE'`,
+		userID, targetType, targetID)
+	if err != nil {
+		return err
+	}
+	if targetType == "COMMENT" {
+		_, err = r.db.ExecContext(ctx, `UPDATE comments SET like_count = GREATEST(like_count - 1, 0) WHERE id = $1`, targetID)
+	} else if targetType == "REPLY" {
+		_, err = r.db.ExecContext(ctx, `UPDATE replies SET like_count = GREATEST(like_count - 1, 0) WHERE id = $1`, targetID)
+	}
+	return err
+}
+
+func commentToPB(c *Comment, userName, userAvatar string, userLevel int32, liked bool, replies []*pb.ReplyInfo) *pb.CommentInfo {
+	return &pb.CommentInfo{
+		Id:           c.ID,
+		ManuscriptId: c.ManuscriptID,
+		UserId:       c.UserID,
+		UserName:     userName,
+		UserAvatar:   userAvatar,
+		UserLevel:    userLevel,
+		Content:      c.Content,
+		LikeCount:    c.LikeCount,
+		ReplyCount:   c.ReplyCount,
+		CreatedAt:    c.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		Liked:        liked,
+		Replies:      replies,
+	}
+}
+
+func replyToPB(rep *Reply, userName, userAvatar string, userLevel int32, replyToUserName string, liked bool) *pb.ReplyInfo {
+	return &pb.ReplyInfo{
+		Id:              rep.ID,
+		CommentId:       rep.CommentID,
+		UserId:          rep.UserID,
+		UserName:        userName,
+		UserAvatar:      userAvatar,
+		UserLevel:       userLevel,
+		Content:         rep.Content,
+		LikeCount:       rep.LikeCount,
+		CreatedAt:       rep.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		ReplyToUserName: replyToUserName,
+		Liked:           liked,
+	}
+}
+
+func nullInt64(n sql.NullInt64) *int64 {
+	if n.Valid {
+		return &n.Int64
+	}
+	return nil
+}

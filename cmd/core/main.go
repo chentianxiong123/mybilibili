@@ -55,6 +55,10 @@ func main() {
 	manuscriptSvc := core.NewManuscriptService(manuscriptRepo, userRepo)
 	manuscriptH := core.NewManuscriptHandler(manuscriptSvc)
 
+	commentRepo := core.NewCommentRepository(db)
+	commentSvc := core.NewCommentService(commentRepo)
+	commentH := core.NewCommentHandler(commentSvc)
+
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -70,6 +74,7 @@ func main() {
 
 	pb.RegisterUserServiceServer(srv, userH)
 	pb.RegisterManuscriptServiceServer(srv, manuscriptH)
+	pb.RegisterCommentServiceServer(srv, commentH)
 	reflection.Register(srv)
 
 	log.Printf("core service listening on %s", grpcAddr)
