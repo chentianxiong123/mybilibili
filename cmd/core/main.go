@@ -32,6 +32,11 @@ func main() {
 		grpcAddr = ":9090"
 	}
 
+	httpAddr := os.Getenv("HTTP_ADDR")
+	if httpAddr == "" {
+		httpAddr = ":8080"
+	}
+
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
@@ -63,6 +68,16 @@ func main() {
 	interactionSvc := core.NewInteractionService(interactionRepo)
 	interactionH := core.NewInteractionHandler(interactionSvc)
 
+	danmakuRepo := core.NewDanmakuRepository(db)
+	danmakuBroadcaster := core.NewDanmakuBroadcaster()
+	danmakuSvc := core.NewDanmakuService(danmakuRepo, danmakuBroadcaster)
+
+	messageRepo := core.NewMessageRepository(db)
+	notifBroadcaster := core.NewNotificationBroadcaster()
+
+	httpH := core.NewHTTPHandler(danmakuSvc, messageRepo, notifBroadcaster)
+	go core.StartHTTPServer(httpAddr, httpH)
+
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -82,7 +97,7 @@ func main() {
 	pb.RegisterInteractionServiceServer(srv, interactionH)
 	reflection.Register(srv)
 
-	log.Printf("core service listening on %s", grpcAddr)
+	log.Printf("gRPC listening on %s, HTTP/SSE listening on %s", grpcAddr, httpAddr)
 	if err := srv.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
