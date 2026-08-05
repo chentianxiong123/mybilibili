@@ -59,6 +59,10 @@ func main() {
 	commentSvc := core.NewCommentService(commentRepo)
 	commentH := core.NewCommentHandler(commentSvc)
 
+	interactionRepo := core.NewInteractionRepository(db)
+	interactionSvc := core.NewInteractionService(interactionRepo)
+	interactionH := core.NewInteractionHandler(interactionSvc)
+
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -75,6 +79,7 @@ func main() {
 	pb.RegisterUserServiceServer(srv, userH)
 	pb.RegisterManuscriptServiceServer(srv, manuscriptH)
 	pb.RegisterCommentServiceServer(srv, commentH)
+	pb.RegisterInteractionServiceServer(srv, interactionH)
 	reflection.Register(srv)
 
 	log.Printf("core service listening on %s", grpcAddr)

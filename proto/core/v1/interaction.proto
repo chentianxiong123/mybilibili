@@ -1,0 +1,180 @@
+syntax = "proto3";
+
+package core.v1;
+
+option go_package = "mybilibili/internal/core/pb";
+
+service InteractionService {
+  rpc LikeManuscript(LikeManuscriptRequest) returns (LikeManuscriptResponse);
+  rpc UnlikeManuscript(UnlikeManuscriptRequest) returns (UnlikeManuscriptResponse);
+  rpc CoinManuscript(CoinManuscriptRequest) returns (CoinManuscriptResponse);
+  rpc CollectManuscript(CollectManuscriptRequest) returns (CollectManuscriptResponse);
+  rpc UncollectManuscript(UncollectManuscriptRequest) returns (UncollectManuscriptResponse);
+  rpc ShareManuscript(ShareManuscriptRequest) returns (ShareManuscriptResponse);
+  rpc GetInteractionStatus(GetInteractionStatusRequest) returns (GetInteractionStatusResponse);
+  rpc FollowUser(FollowUserRequest) returns (FollowUserResponse);
+  rpc UnfollowUser(UnfollowUserRequest) returns (UnfollowUserResponse);
+  rpc CheckFollow(CheckFollowRequest) returns (CheckFollowResponse);
+  rpc GetFollowCount(GetFollowCountRequest) returns (GetFollowCountResponse);
+  rpc GetLikedManuscripts(GetLikedManuscriptsRequest) returns (GetLikedManuscriptsResponse);
+  rpc GetCollectedManuscripts(GetCollectedManuscriptsRequest) returns (GetCollectedManuscriptsResponse);
+  rpc AddWatchHistory(AddWatchHistoryRequest) returns (AddWatchHistoryResponse);
+  rpc GetWatchHistory(GetWatchHistoryRequest) returns (GetWatchHistoryResponse);
+  rpc ClearWatchHistory(ClearWatchHistoryRequest) returns (ClearWatchHistoryResponse);
+}
+
+message LikeManuscriptRequest {
+  int64 manuscript_id = 1;
+  int64 user_id = 2;
+}
+
+message LikeManuscriptResponse {
+  bool liked = 1;
+  int32 like_count = 2;
+}
+
+message UnlikeManuscriptRequest {
+  int64 manuscript_id = 1;
+  int64 user_id = 2;
+}
+
+message UnlikeManuscriptResponse {
+  bool liked = 1;
+  int32 like_count = 2;
+}
+
+message CoinManuscriptRequest {
+  int64 manuscript_id = 1;
+  int64 user_id = 2;
+  int32 coin_count = 3;
+}
+
+message CoinManuscriptResponse {
+  bool success = 1;
+}
+
+message CollectManuscriptRequest {
+  int64 manuscript_id = 1;
+  int64 user_id = 2;
+  int64 folder_id = 3;
+}
+
+message CollectManuscriptResponse {
+  bool collected = 1;
+}
+
+message UncollectManuscriptRequest {
+  int64 manuscript_id = 1;
+  int64 user_id = 2;
+}
+
+message UncollectManuscriptResponse {
+  bool collected = 1;
+}
+
+message ShareManuscriptRequest {
+  int64 manuscript_id = 1;
+  int64 user_id = 2;
+  string channel = 3;
+}
+
+message ShareManuscriptResponse {
+  bool success = 1;
+}
+
+message GetInteractionStatusRequest {
+  int64 manuscript_id = 1;
+  int64 user_id = 2;
+}
+
+message GetInteractionStatusResponse {
+  bool liked = 1;
+  bool collected = 2;
+  bool shared = 3;
+  int32 coin_count = 4;
+}
+
+message FollowUserRequest {
+  int64 target_user_id = 1;
+  int64 user_id = 2;
+}
+
+message FollowUserResponse {
+  bool following = 1;
+}
+
+message UnfollowUserRequest {
+  int64 target_user_id = 1;
+  int64 user_id = 2;
+}
+
+message UnfollowUserResponse {
+  bool following = 1;
+}
+
+message CheckFollowRequest {
+  int64 target_user_id = 1;
+  int64 user_id = 2;
+}
+
+message CheckFollowResponse {
+  bool following = 1;
+}
+
+message GetFollowCountRequest {
+  int64 user_id = 1;
+}
+
+message GetFollowCountResponse {
+  int32 following_count = 1;
+  int32 follower_count = 2;
+}
+
+message GetLikedManuscriptsRequest {
+  int64 user_id = 1;
+}
+
+message GetLikedManuscriptsResponse {
+  repeated int64 manuscript_ids = 1;
+}
+
+message GetCollectedManuscriptsRequest {
+  int64 user_id = 1;
+}
+
+message GetCollectedManuscriptsResponse {
+  repeated int64 manuscript_ids = 1;
+}
+
+message AddWatchHistoryRequest {
+  int64 user_id = 1;
+  int64 manuscript_id = 2;
+  int32 progress_seconds = 3;
+}
+
+message AddWatchHistoryResponse {}
+
+message GetWatchHistoryRequest {
+  int64 user_id = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message WatchHistoryItem {
+  int64 manuscript_id = 1;
+  string title = 2;
+  string cover_url = 3;
+  int32 progress_seconds = 4;
+  int32 duration_seconds = 5;
+  string watched_at = 6;
+}
+
+message GetWatchHistoryResponse {
+  repeated WatchHistoryItem items = 1;
+}
+
+message ClearWatchHistoryRequest {
+  int64 user_id = 1;
+}
+
+message ClearWatchHistoryResponse {}
