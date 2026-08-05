@@ -47,9 +47,13 @@ func main() {
 	}
 	log.Println("connected to database")
 
-	repo := core.NewRepository(db)
-	svc := core.NewService(repo, jwtSecret)
-	h := core.NewHandler(svc)
+	userRepo := core.NewRepository(db)
+	userSvc := core.NewService(userRepo, jwtSecret)
+	userH := core.NewHandler(userSvc)
+
+	manuscriptRepo := core.NewManuscriptRepository(db)
+	manuscriptSvc := core.NewManuscriptService(manuscriptRepo, userRepo)
+	manuscriptH := core.NewManuscriptHandler(manuscriptSvc)
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
@@ -64,7 +68,8 @@ func main() {
 		),
 	)
 
-	pb.RegisterUserServiceServer(srv, h)
+	pb.RegisterUserServiceServer(srv, userH)
+	pb.RegisterManuscriptServiceServer(srv, manuscriptH)
 	reflection.Register(srv)
 
 	log.Printf("core service listening on %s", grpcAddr)

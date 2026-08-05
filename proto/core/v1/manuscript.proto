@@ -1,0 +1,199 @@
+syntax = "proto3";
+
+package core.v1;
+
+option go_package = "mybilibili/internal/core/pb";
+
+service ManuscriptService {
+  rpc GetManuscript(GetManuscriptRequest) returns (GetManuscriptResponse);
+  rpc GetManuscriptWithVideos(GetManuscriptWithVideosRequest) returns (GetManuscriptResponse);
+  rpc ListUserManuscripts(ListUserManuscriptsRequest) returns (ListUserManuscriptsResponse);
+  rpc ListRecommended(ListRecommendedRequest) returns (ListRecommendedResponse);
+  rpc ListHot(ListHotRequest) returns (ListHotResponse);
+  rpc ListByCategory(ListByCategoryRequest) returns (ListByCategoryResponse);
+  rpc ListCategories(ListCategoriesRequest) returns (ListCategoriesResponse);
+  rpc DeleteManuscript(DeleteManuscriptRequest) returns (DeleteManuscriptResponse);
+  rpc UpdateManuscript(UpdateManuscriptRequest) returns (UpdateManuscriptResponse);
+  rpc PublishManuscript(PublishManuscriptRequest) returns (PublishManuscriptResponse);
+  rpc UnpublishManuscript(UnpublishManuscriptRequest) returns (UnpublishManuscriptResponse);
+  rpc SearchUserManuscripts(SearchUserManuscriptsRequest) returns (SearchUserManuscriptsResponse);
+}
+
+message ManuscriptInfo {
+  int64 id = 1;
+  string title = 2;
+  string description = 3;
+  string cover_url = 4;
+  int64 user_id = 5;
+  int64 category_id = 6;
+  string category_name = 7;
+  int64 view_count = 8;
+  int64 like_count = 9;
+  int64 coin_count = 10;
+  int64 collect_count = 11;
+  int64 share_count = 12;
+  int64 comment_count = 13;
+  int64 danmaku_count = 14;
+  string duration = 15;
+  int32 duration_seconds = 16;
+  int32 status = 17;
+  int32 review_status = 18;
+  string review_reason = 19;
+  string created_at = 20;
+  string updated_at = 21;
+  UserInfo uploader = 22;
+  repeated string tags = 23;
+  int64 first_video_id = 24;
+  string first_video_play_url = 25;
+  repeated VideoItem videos = 26;
+}
+
+message VideoItem {
+  int64 id = 1;
+  string title = 2;
+  string description = 3;
+  string play_url = 4;
+  string play_url_hd = 5;
+  string play_url_sd = 6;
+  string play_url_ld = 7;
+  string duration = 8;
+  int32 duration_seconds = 9;
+  int32 video_order = 10;
+  int32 status = 11;
+  int32 process_status = 12;
+  int32 process_progress = 13;
+  string process_stage = 14;
+  string process_error = 15;
+}
+
+message UserInfo {
+  int64 id = 1;
+  string name = 2;
+  string avatar = 3;
+  int32 level = 4;
+  string bio = 5;
+  string signature = 6;
+  int32 follower_count = 7;
+  int32 following_count = 8;
+  int32 liked_count = 9;
+  bool following = 10;
+}
+
+message GetManuscriptRequest {
+  int64 id = 1;
+}
+
+message GetManuscriptWithVideosRequest {
+  int64 id = 1;
+  int64 current_user_id = 2;
+}
+
+message GetManuscriptResponse {
+  ManuscriptInfo manuscript = 1;
+}
+
+message ListUserManuscriptsRequest {
+  int64 user_id = 1;
+  int32 status = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message ListUserManuscriptsResponse {
+  repeated ManuscriptInfo manuscripts = 1;
+  int64 total = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message ListRecommendedRequest {
+  int64 user_id = 1;
+}
+
+message ListRecommendedResponse {
+  repeated ManuscriptInfo manuscripts = 1;
+}
+
+message ListHotRequest {
+  int64 user_id = 1;
+}
+
+message ListHotResponse {
+  repeated ManuscriptInfo manuscripts = 1;
+}
+
+message ListByCategoryRequest {
+  int64 category_id = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message ListByCategoryResponse {
+  repeated ManuscriptInfo manuscripts = 1;
+  int64 total = 2;
+}
+
+message ListCategoriesRequest {}
+
+message CategoryInfo {
+  int64 id = 1;
+  string name = 2;
+  string icon = 3;
+  int32 sort_order = 4;
+}
+
+message ListCategoriesResponse {
+  repeated CategoryInfo categories = 1;
+}
+
+message DeleteManuscriptRequest {
+  int64 id = 1;
+  int64 user_id = 2;
+}
+
+message DeleteManuscriptResponse {}
+
+message UpdateManuscriptRequest {
+  int64 id = 1;
+  int64 user_id = 2;
+  string title = 3;
+  string description = 4;
+  int64 category_id = 5;
+  repeated string tags = 6;
+  repeated UpdateVideoItem videos = 7;
+}
+
+message UpdateVideoItem {
+  int64 id = 1;
+  string title = 2;
+  int32 video_order = 3;
+  int32 duration_seconds = 4;
+}
+
+message UpdateManuscriptResponse {
+  ManuscriptInfo manuscript = 1;
+}
+
+message PublishManuscriptRequest {
+  int64 id = 1;
+  int64 user_id = 2;
+}
+
+message PublishManuscriptResponse {}
+
+message UnpublishManuscriptRequest {
+  int64 id = 1;
+  int64 user_id = 2;
+}
+
+message UnpublishManuscriptResponse {}
+
+message SearchUserManuscriptsRequest {
+  int64 user_id = 1;
+  string keyword = 2;
+  string sort = 3;
+}
+
+message SearchUserManuscriptsResponse {
+  repeated ManuscriptInfo manuscripts = 1;
+}
