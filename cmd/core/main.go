@@ -116,6 +116,7 @@ func main() {
 	adminRepo := admin.NewRepository(db)
 	adminSvc := admin.NewService(adminRepo)
 	adminH := admin.NewHandler(adminSvc)
+	adminDataH := admin.NewAdminDataHandler(db)
 
 	modRepo := moderation.NewRepository(db)
 	modSvc := moderation.NewService(modRepo)
@@ -175,7 +176,7 @@ func main() {
 
 	httpH := core.NewHTTPHandler(danmakuSvc, messageRepo, notifBroadcaster)
 	core.StartHTTPServer(httpAddr, httpH,
-		liveH, linkmicH, followH, socialH, videoH, adminH, modH,
+		liveH, linkmicH, followH, socialH, videoH, adminH, adminDataH, modH,
 		meetingH, aiH, searchH, supportH, userExtH,
 		subtitleH, analyticsH, studioH)
 
