@@ -24,6 +24,7 @@ import (
 	"mybilibili/internal/moderation"
 	"mybilibili/internal/search"
 	"mybilibili/internal/social"
+	"mybilibili/internal/studio"
 	"mybilibili/internal/subtitle"
 	"mybilibili/internal/support"
 	"mybilibili/internal/video"
@@ -161,6 +162,10 @@ func main() {
 	analyticsSvc := analytics.NewService(analyticsRepo)
 	analyticsH := analytics.NewHandler(analyticsSvc)
 
+	studioRepo := studio.NewRepository(db)
+	studioSvc := studio.NewService(studioRepo)
+	studioH := studio.NewHandler(studioSvc)
+
 	summarySvc := ai.NewSummaryService(caller)
 	reviewSvc := ai.NewReviewService(caller)
 	customerSvc := ai.NewCustomerService(caller)
@@ -172,7 +177,7 @@ func main() {
 	core.StartHTTPServer(httpAddr, httpH,
 		liveH, linkmicH, followH, socialH, videoH, adminH, modH,
 		meetingH, aiH, searchH, supportH, userExtH,
-		subtitleH, analyticsH)
+		subtitleH, analyticsH, studioH)
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
