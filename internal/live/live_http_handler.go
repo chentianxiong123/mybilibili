@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type HTTPHandler struct {
@@ -70,10 +71,72 @@ func (h *HTTPHandler) handleRoomByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if parts[0] == "my" {
+		if r.Method != "GET" {
+			http.Error(w, "method not allowed", 405)
+			return
+		}
+		userID := getUserID(r)
+		if userID == 0 {
+			http.Error(w, "unauthorized", 401)
+			return
+		}
+		room, err := h.svc.GetRoomByHost(r.Context(), userID)
+		if err != nil {
+			http.Error(w, "no room", 404)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(room)
+		return
+	}
+
 	roomID, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil {
 		http.Error(w, "invalid room id", 400)
 		return
+	}
+
+	userID := getUserID(r)
+
+	if len(parts) >= 2 {
+		switch parts[1] {
+		case "status":
+			if r.Method != "PUT" || userID == 0 {
+				http.Error(w, "method not allowed", 405)
+				return
+			}
+			var req struct {
+				Status int32 `json:"status"`
+			}
+			json.NewDecoder(r.Body).Decode(&req)
+			if err := h.svc.UpdateRoomStatus(r.Context(), roomID, userID, req.Status); err != nil {
+				http.Error(w, err.Error(), 403)
+				return
+			}
+			w.Write([]byte(`{"status":"ok"}`))
+			return
+		case "schedule":
+			if r.Method != "PUT" || userID == 0 {
+				http.Error(w, "method not allowed", 405)
+				return
+			}
+			var req struct {
+				ScheduledAt *int64 `json:"scheduled_at"`
+			}
+			json.NewDecoder(r.Body).Decode(&req)
+			var scheduledAt *time.Time
+			if req.ScheduledAt != nil {
+				t := time.UnixMilli(*req.ScheduledAt)
+				scheduledAt = &t
+			}
+			if err := h.svc.ScheduleRoom(r.Context(), roomID, userID, scheduledAt); err != nil {
+				http.Error(w, err.Error(), 403)
+				return
+			}
+			w.Write([]byte(`{"status":"ok"}`))
+			return
+		}
 	}
 
 	switch r.Method {
@@ -86,7 +149,6 @@ func (h *HTTPHandler) handleRoomByID(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(room)
 	case "PUT":
-		userID := getUserID(r)
 		if userID == 0 {
 			http.Error(w, "unauthorized", 401)
 			return

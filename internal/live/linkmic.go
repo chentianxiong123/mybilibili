@@ -88,6 +88,22 @@ func (r *LinkmicRepository) QueuePosition(ctx context.Context, roomID, viewerID 
 	return pos + 1, nil
 }
 
+func (r *LinkmicRepository) ToggleAudio(ctx context.Context, id int64) (int32, error) {
+	var enabled int32
+	err := r.db.QueryRowContext(ctx,
+		`UPDATE live_linkmic SET audio_enabled = CASE WHEN audio_enabled = 1 THEN 0 ELSE 1 END
+		 WHERE id = $1 RETURNING audio_enabled`, id).Scan(&enabled)
+	return enabled, err
+}
+
+func (r *LinkmicRepository) ToggleVideo(ctx context.Context, id int64) (int32, error) {
+	var enabled int32
+	err := r.db.QueryRowContext(ctx,
+		`UPDATE live_linkmic SET video_enabled = CASE WHEN video_enabled = 1 THEN 0 ELSE 1 END
+		 WHERE id = $1 RETURNING video_enabled`, id).Scan(&enabled)
+	return enabled, err
+}
+
 type LinkmicService struct {
 	repo  *LinkmicRepository
 	hub   *Hub
@@ -135,4 +151,12 @@ func (s *LinkmicService) Pending(ctx context.Context, roomID int64) ([]*Linkmic,
 
 func (s *LinkmicService) QueuePosition(ctx context.Context, roomID, userID int64) (int, error) {
 	return s.repo.QueuePosition(ctx, roomID, userID)
+}
+
+func (s *LinkmicService) ToggleAudio(ctx context.Context, linkmicID int64) (int32, error) {
+	return s.repo.ToggleAudio(ctx, linkmicID)
+}
+
+func (s *LinkmicService) ToggleVideo(ctx context.Context, linkmicID int64) (int32, error) {
+	return s.repo.ToggleVideo(ctx, linkmicID)
 }

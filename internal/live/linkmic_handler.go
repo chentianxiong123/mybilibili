@@ -63,5 +63,23 @@ func (h *LinkmicHandler) handleLinkmic(w http.ResponseWriter, r *http.Request) {
 		roomID, _ := strconv.ParseInt(parts[1], 10, 64)
 		pos, _ := h.svc.QueuePosition(r.Context(), roomID, userID)
 		json.NewEncoder(w).Encode(map[string]int{"position": pos})
+
+	case len(parts) >= 2 && parts[0] == "toggle-audio" && r.Method == "POST":
+		id, _ := strconv.ParseInt(parts[1], 10, 64)
+		enabled, err := h.svc.ToggleAudio(r.Context(), id)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]int32{"audio_enabled": enabled})
+
+	case len(parts) >= 2 && parts[0] == "toggle-video" && r.Method == "POST":
+		id, _ := strconv.ParseInt(parts[1], 10, 64)
+		enabled, err := h.svc.ToggleVideo(r.Context(), id)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]int32{"video_enabled": enabled})
 	}
 }

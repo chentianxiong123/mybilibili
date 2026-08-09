@@ -149,6 +149,12 @@ func (r *Repository) UpdateRoomStatus(ctx context.Context, id int64, status int3
 	return err
 }
 
+func (r *Repository) ScheduleRoom(ctx context.Context, id int64, scheduledAt sql.NullTime) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE live_rooms SET scheduled_at=$1, updated_at=NOW() WHERE id=$2`, scheduledAt, id)
+	return err
+}
+
 func (r *Repository) IncrementViewerCount(ctx context.Context, id int64) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE live_rooms SET viewer_count = viewer_count + 1 WHERE id=$1`, id)

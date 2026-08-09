@@ -91,6 +91,32 @@ func (s *Service) UpdateRoom(ctx context.Context, roomID, userID int64, roomName
 	return s.repo.UpdateRoom(ctx, room)
 }
 
+func (s *Service) UpdateRoomStatus(ctx context.Context, roomID, userID int64, status int32) error {
+	room, err := s.repo.GetRoomByID(ctx, roomID)
+	if err != nil {
+		return ErrNotFound("room not found")
+	}
+	if room.HostID != userID {
+		return ErrPermissionDenied("only host can update room status")
+	}
+	return s.repo.UpdateRoomStatus(ctx, roomID, status)
+}
+
+func (s *Service) ScheduleRoom(ctx context.Context, roomID, userID int64, scheduledAt *time.Time) error {
+	room, err := s.repo.GetRoomByID(ctx, roomID)
+	if err != nil {
+		return ErrNotFound("room not found")
+	}
+	if room.HostID != userID {
+		return ErrPermissionDenied("only host can schedule room")
+	}
+	ts := sql.NullTime{}
+	if scheduledAt != nil {
+		ts = sql.NullTime{Time: *scheduledAt, Valid: true}
+	}
+	return s.repo.ScheduleRoom(ctx, roomID, ts)
+}
+
 func (s *Service) HandleSRSCallback(ctx context.Context, action, streamKey string) error {
 	if action != "on_publish" {
 		return nil
