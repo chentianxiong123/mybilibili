@@ -41,9 +41,17 @@ func (s *Service) ListBanners(ctx context.Context, bannerType int32) ([]*BannerI
 	return s.repo.ListBanners(ctx, bannerType)
 }
 
+func (s *Service) ListBannersByCategory(ctx context.Context, bannerType int32, categoryID int64) ([]*BannerImage, error) {
+	return s.repo.ListBannersByCategory(ctx, bannerType, categoryID)
+}
+
 func (s *Service) CreateBanner(ctx context.Context, b *BannerImage) error {
 	_, err := s.repo.CreateBanner(ctx, b)
 	return err
+}
+
+func (s *Service) UpdateBanner(ctx context.Context, id int64, b *BannerImage) error {
+	return s.repo.UpdateBanner(ctx, id, b)
 }
 
 func (s *Service) DeleteBanner(ctx context.Context, id int64) error {

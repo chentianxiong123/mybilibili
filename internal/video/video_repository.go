@@ -140,11 +140,25 @@ func (r *Repository) DeleteCategory(ctx context.Context, id int64) error {
 }
 
 func (r *Repository) ListBanners(ctx context.Context, bannerType int32) ([]*BannerImage, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, title, image_url, link_url, sort_order, status, type, COALESCE(category_id,0),
+	return r.listBanners(ctx, bannerType, 0)
+}
+
+func (r *Repository) ListBannersByCategory(ctx context.Context, bannerType int32, categoryID int64) ([]*BannerImage, error) {
+	return r.listBanners(ctx, bannerType, categoryID)
+}
+
+func (r *Repository) listBanners(ctx context.Context, bannerType int32, categoryID int64) ([]*BannerImage, error) {
+	query := `SELECT id, title, image_url, link_url, sort_order, status, type, COALESCE(category_id,0),
 		        start_time, end_time FROM banner_images
 		 WHERE type = $1 AND status = 1 AND (start_time IS NULL OR start_time <= NOW())
-		   AND (end_time IS NULL OR end_time >= NOW()) ORDER BY sort_order`, bannerType)
+		   AND (end_time IS NULL OR end_time >= NOW())`
+	args := []any{bannerType}
+	if categoryID > 0 {
+		query += ` AND category_id = $2`
+		args = append(args, categoryID)
+	}
+	query += ` ORDER BY sort_order`
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -172,6 +186,13 @@ func (r *Repository) CreateBanner(ctx context.Context, b *BannerImage) (int64, e
 		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
 		b.Title, b.ImageURL, b.LinkURL, b.SortOrder, b.Type, nullInt64(b.CategoryID), b.StartTime, b.EndTime).Scan(&id)
 	return id, err
+}
+
+func (r *Repository) UpdateBanner(ctx context.Context, id int64, b *BannerImage) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE banner_images SET title=$1, image_url=$2, link_url=$3, sort_order=$4, status=$5, category_id=$6, start_time=$7, end_time=$8 WHERE id=$9`,
+		b.Title, b.ImageURL, b.LinkURL, b.SortOrder, b.Status, nullInt64(b.CategoryID), b.StartTime, b.EndTime, id)
+	return err
 }
 
 func (r *Repository) DeleteBanner(ctx context.Context, id int64) error {
