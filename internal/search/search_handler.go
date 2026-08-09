@@ -4,14 +4,22 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+
+	"mybilibili/internal/abstraction"
 )
 
 type Handler struct {
-	svc *Service
+	svc    *Service
+	engine abstraction.SearchEngine
 }
 
 func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
+}
+
+func (h *Handler) WithEngine(engine abstraction.SearchEngine) *Handler {
+	h.engine = engine
+	return h
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
@@ -19,6 +27,13 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/search/hot", h.handleHot)
 	mux.HandleFunc("/api/v1/recommend/related/", h.handleRelated)
 	mux.HandleFunc("/api/v1/recommend/for-you", h.handleForYou)
+	mux.HandleFunc("/api/v1/search/admin/index/status", h.handleIndexStatus)
+	mux.HandleFunc("/api/v1/search/admin/index/bulk", h.handleIndexBulk)
+	mux.HandleFunc("/api/v1/search/admin/index/rebuild", h.handleIndexRebuild)
+	mux.HandleFunc("/api/v1/search/admin/index/refresh", h.handleIndexRefresh)
+	mux.HandleFunc("/api/v1/search/admin/index/incremental", h.handleIndexIncremental)
+	mux.HandleFunc("/api/v1/search/admin/recommend-config", h.handleRecommendConfig)
+	mux.HandleFunc("/api/v1/search/admin/recommend-config/reset", h.handleRecommendConfigReset)
 }
 
 func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
@@ -46,6 +61,137 @@ func (h *Handler) handleRelated(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleForYou(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode([]map[string]interface{}{})
+}
+
+func (h *Handler) handleIndexStatus(w http.ResponseWriter, r *http.Request) {
+	count, _ := h.svc.CountIndexed(r.Context())
+	status := "active"
+	engineStatus := "memory"
+	if h.engine == nil {
+		status = "not_found"
+		engineStatus = "unavailable"
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"indexName": "manuscripts",
+		"status":    status,
+		"engine":    engineStatus,
+		"indexedCount": count,
+	})
+}
+
+func (h *Handler) handleIndexBulk(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	if h.engine == nil {
+		http.Error(w, "search engine unavailable", 500)
+		return
+	}
+	count, err := h.svc.BulkIndex(r.Context(), h.engine)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "success", "message": "批量索引完成", "indexedCount": count,
+	})
+}
+
+func (h *Handler) handleIndexRebuild(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	if h.engine == nil {
+		http.Error(w, "search engine unavailable", 500)
+		return
+	}
+	count, err := h.svc.BulkIndex(r.Context(), h.engine)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "success", "message": "索引重建完成", "indexedCount": count,
+	})
+}
+
+func (h *Handler) handleIndexRefresh(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "success", "message": "索引刷新成功",
+	})
+}
+
+func (h *Handler) handleIndexIncremental(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	if h.engine == nil {
+		http.Error(w, "search engine unavailable", 500)
+		return
+	}
+	count, err := h.svc.BulkIndex(r.Context(), h.engine)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "success", "message": "增量索引完成", "indexedCount": count,
+	})
+}
+
+func (h *Handler) handleRecommendConfig(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		cfg, _ := h.svc.GetRecommendConfig(r.Context())
+		var data map[string]interface{}
+		json.Unmarshal([]byte(cfg), &data)
+		if data == nil {
+			data = map[string]interface{}{}
+		}
+		json.NewEncoder(w).Encode(data)
+	case "PUT":
+		var data map[string]interface{}
+		json.NewDecoder(r.Body).Decode(&data)
+		b, _ := json.Marshal(data)
+		updatedBy := r.Header.Get("X-Username")
+		if updatedBy == "" {
+			updatedBy = "admin"
+		}
+		if err := h.svc.UpdateRecommendConfig(r.Context(), string(b), updatedBy); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		json.NewEncoder(w).Encode(data)
+	default:
+		http.Error(w, "method not allowed", 405)
+	}
+}
+
+func (h *Handler) handleRecommendConfigReset(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	defaults := map[string]interface{}{
+		"refresh_interval": 300, "for_you_size": 20, "related_size": 10, "hot_size": 10, "personalized": true,
+	}
+	b, _ := json.Marshal(defaults)
+	updatedBy := r.Header.Get("X-Username")
+	if updatedBy == "" {
+		updatedBy = "admin"
+	}
+	if err := h.svc.UpdateRecommendConfig(r.Context(), string(b), updatedBy); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	json.NewEncoder(w).Encode(defaults)
 }
 
 func parsePage(r *http.Request) (int32, int32) {

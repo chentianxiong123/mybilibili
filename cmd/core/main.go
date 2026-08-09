@@ -133,7 +133,6 @@ func main() {
 
 	searchRepo := search.NewRepository(db)
 	searchSvc := search.NewService(searchRepo)
-	searchH := search.NewHandler(searchSvc)
 
 	supportRepo := support.NewRepository(db)
 	supportSvc := support.NewService(supportRepo)
@@ -151,6 +150,8 @@ func main() {
 	mq, _ := abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: "memory"})
 	_ = abstractionCfg
 	_ = storageSvc
+
+	searchH := search.NewHandler(searchSvc).WithEngine(searchEngine)
 
 	eventPublisher := core.NewEventPublisher(mq)
 	_ = eventPublisher

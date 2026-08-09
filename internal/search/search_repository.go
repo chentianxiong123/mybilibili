@@ -3,6 +3,8 @@ package search
 import (
 	"context"
 	"database/sql"
+
+	"mybilibili/internal/abstraction"
 )
 
 type Repository struct {
@@ -77,6 +79,22 @@ func (r *Repository) RecommendRelated(ctx context.Context, manuscriptID, categor
 	return r.SearchManuscripts(ctx, "", categoryID, 1, size)
 }
 
+func (r *Repository) GetRecommendConfig(ctx context.Context) (string, error) {
+	var config string
+	err := r.db.QueryRowContext(ctx,
+		`SELECT config_json FROM recommend_configs WHERE config_key = 'default'`).Scan(&config)
+	return config, err
+}
+
+func (r *Repository) UpdateRecommendConfig(ctx context.Context, configJSON, updatedBy string) error {
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO recommend_configs (config_key, config_json, updated_by)
+		 VALUES ('default', $1, $2)
+		 ON CONFLICT (config_key) DO UPDATE SET config_json = $1, updated_by = $2, updated_at = NOW()`,
+		configJSON, updatedBy)
+	return err
+}
+
 type Service struct {
 	repo *Repository
 }
@@ -95,4 +113,44 @@ func (s *Service) Hot(ctx context.Context) ([]string, error) {
 
 func (s *Service) Related(ctx context.Context, manuscriptID int64, size int32) ([]map[string]interface{}, error) {
 	return s.repo.RecommendRelated(ctx, manuscriptID, 0, size)
+}
+
+func (s *Service) GetRecommendConfig(ctx context.Context) (string, error) {
+	return s.repo.GetRecommendConfig(ctx)
+}
+
+func (s *Service) UpdateRecommendConfig(ctx context.Context, configJSON, updatedBy string) error {
+	return s.repo.UpdateRecommendConfig(ctx, configJSON, updatedBy)
+}
+
+func (s *Service) CountIndexed(ctx context.Context) (int64, error) {
+	var count int64
+	err := s.repo.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscripts WHERE status = 3`).Scan(&count)
+	return count, err
+}
+
+func (s *Service) BulkIndex(ctx context.Context, engine abstraction.SearchEngine) (int, error) {
+	rows, err := s.repo.db.QueryContext(ctx,
+		`SELECT id, title FROM manuscripts WHERE status = 3`)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	docs := make(map[string]interface{})
+	count := 0
+	for rows.Next() {
+		var id int64
+		var title string
+		if err := rows.Scan(&id, &title); err != nil {
+			continue
+		}
+		docs[formatID(id)] = map[string]interface{}{"id": id, "title": title, "status": 3}
+		count++
+	}
+	if len(docs) > 0 {
+		if err := engine.BulkIndex(ctx, "manuscripts", docs); err != nil {
+			return 0, err
+		}
+	}
+	return count, nil
 }
