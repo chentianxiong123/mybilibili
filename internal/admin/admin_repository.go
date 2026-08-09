@@ -6,6 +6,8 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type AdminUser struct {
@@ -188,6 +190,28 @@ func (r *Repository) GetRolePermissions(ctx context.Context, roleID int64) ([]in
 		ids = append(ids, id)
 	}
 	return ids, nil
+}
+
+func (r *Repository) GetPermissionIDsByCodes(ctx context.Context, codes []string) (map[string]int64, error) {
+	result := make(map[string]int64, len(codes))
+	if len(codes) == 0 {
+		return result, nil
+	}
+	query := `SELECT id, code FROM permissions WHERE code = ANY($1)`
+	rows, err := r.db.QueryContext(ctx, query, pq.Array(codes))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		var code string
+		if err := rows.Scan(&id, &code); err != nil {
+			return nil, err
+		}
+		result[code] = id
+	}
+	return result, nil
 }
 
 func (r *Repository) SetAdminRoles(ctx context.Context, adminID int64, roleIDs []int64) error {

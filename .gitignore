@@ -1,0 +1,17 @@
+# Go build artifacts
+/bin/
+cmd/core/core
+cmd/media/media
+*.exe
+*.test
+*.out
+
+# Binaries built into repo root
+/core
+/media
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
