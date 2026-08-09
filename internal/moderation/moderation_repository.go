@@ -70,6 +70,39 @@ func (r *Repository) DeleteWord(ctx context.Context, id int64) error {
 	return err
 }
 
+func (r *Repository) GetWord(ctx context.Context, id int64) (*ProhibitedWord, error) {
+	p := &ProhibitedWord{}
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, word, match_type, COALESCE(category,''), is_enabled, created_at, updated_at
+		 FROM prohibited_words WHERE id = $1`, id).
+		Scan(&p.ID, &p.Word, &p.MatchType, &p.Category, &p.IsEnabled, &p.CreatedAt, &p.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func (r *Repository) UpdateWord(ctx context.Context, id int64, word, matchType, category string, isEnabled int32) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE prohibited_words SET word=$1, match_type=$2, category=$3, is_enabled=$4 WHERE id=$5`,
+		word, matchType, category, isEnabled, id)
+	return err
+}
+
+func (r *Repository) BatchImportWords(ctx context.Context, words []*ProhibitedWord) (int, error) {
+	imported := 0
+	for _, w := range words {
+		if w.Word == "" {
+			continue
+		}
+		if err := r.CreateWord(ctx, w.Word, w.MatchType, w.Category); err != nil {
+			return imported, err
+		}
+		imported++
+	}
+	return imported, nil
+}
+
 func (r *Repository) ContainsProhibited(ctx context.Context, content string) (bool, error) {
 	var found bool
 	err := r.db.QueryRowContext(ctx,
@@ -128,6 +161,13 @@ func (r *Repository) ProcessReport(ctx context.Context, id int64, action, remark
 	return err
 }
 
+func (r *Repository) UpdateAIRegReview(ctx context.Context, reportID int64, verdict, riskLevel string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE reports SET ai_verdict=$1, ai_risk_level=$2 WHERE id=$3`,
+		verdict, riskLevel, reportID)
+	return err
+}
+
 func nullInt64(v int64) interface{} {
 	if v == 0 {
 		return nil
@@ -155,6 +195,18 @@ func (s *Service) DeleteWord(ctx context.Context, id int64) error {
 	return s.repo.DeleteWord(ctx, id)
 }
 
+func (s *Service) GetWord(ctx context.Context, id int64) (*ProhibitedWord, error) {
+	return s.repo.GetWord(ctx, id)
+}
+
+func (s *Service) UpdateWord(ctx context.Context, id int64, word, matchType, category string, isEnabled int32) error {
+	return s.repo.UpdateWord(ctx, id, word, matchType, category, isEnabled)
+}
+
+func (s *Service) BatchImportWords(ctx context.Context, words []*ProhibitedWord) (int, error) {
+	return s.repo.BatchImportWords(ctx, words)
+}
+
 func (s *Service) ContainsProhibited(ctx context.Context, content string) (bool, error) {
 	return s.repo.ContainsProhibited(ctx, content)
 }
@@ -170,4 +222,8 @@ func (s *Service) ListReports(ctx context.Context, page, size int32, status stri
 
 func (s *Service) ProcessReport(ctx context.Context, id int64, action, remark string) error {
 	return s.repo.ProcessReport(ctx, id, action, remark)
+}
+
+func (s *Service) UpdateAIRegReview(ctx context.Context, reportID int64, verdict, riskLevel string) error {
+	return s.repo.UpdateAIRegReview(ctx, reportID, verdict, riskLevel)
 }
