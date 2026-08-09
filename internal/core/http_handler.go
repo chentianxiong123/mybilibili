@@ -253,9 +253,16 @@ func getUserIDFromHeader(r *http.Request) int64 {
 	return id
 }
 
-func StartHTTPServer(addr string, h *HTTPHandler) {
+type LiveHandler interface {
+	Register(mux *http.ServeMux)
+}
+
+func StartHTTPServer(addr string, h *HTTPHandler, extras ...LiveHandler) {
 	mux := http.NewServeMux()
 	h.Register(mux)
+	for _, e := range extras {
+		e.Register(mux)
+	}
 
 	log.Printf("HTTP server listening on %s", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {

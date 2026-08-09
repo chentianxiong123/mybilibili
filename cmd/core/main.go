@@ -14,6 +14,7 @@ import (
 	"mybilibili/internal/common/middleware"
 	"mybilibili/internal/core"
 	pb "mybilibili/internal/core/pb"
+	"mybilibili/internal/live"
 )
 
 func main() {
@@ -75,8 +76,13 @@ func main() {
 	messageRepo := core.NewMessageRepository(db)
 	notifBroadcaster := core.NewNotificationBroadcaster()
 
+	liveRepo := live.NewRepository(db)
+	liveHub := live.NewHub()
+	liveSvc := live.NewService(liveRepo, liveHub)
+	liveH := live.NewHTTPHandler(liveSvc, liveHub)
+
 	httpH := core.NewHTTPHandler(danmakuSvc, messageRepo, notifBroadcaster)
-	go core.StartHTTPServer(httpAddr, httpH)
+	core.StartHTTPServer(httpAddr, httpH, liveH)
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
