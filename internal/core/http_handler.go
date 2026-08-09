@@ -27,9 +27,12 @@ func NewHTTPHandler(danmakuSvc *DanmakuService, messageRepo *MessageRepository, 
 func (h *HTTPHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/danmaku/send", h.handleSendDanmaku)
 	mux.HandleFunc("/api/v1/danmaku/video/", h.handleGetDanmaku)
+	mux.HandleFunc("/api/v1/danmaku/batch-count", h.handleDanmakuBatchCount)
+	mux.HandleFunc("/api/v1/danmaku/trend", h.handleDanmakuTrend)
+	mux.HandleFunc("/api/v1/danmaku/", h.handleDanmakuByPath)
+	mux.HandleFunc("/api/v1/creator/danmaku/list", h.handleCreatorDanmakuList)
+	mux.HandleFunc("/api/v1/creator/danmaku/", h.handleCreatorDanmakuByPath)
 	mux.HandleFunc("/sse/danmaku", h.handleSSEDanmaku)
-	mux.HandleFunc("/api/v1/message/send", h.handleSendMessage)
-	mux.HandleFunc("/api/v1/message/conversations", h.handleGetConversations)
 	mux.HandleFunc("/sse/notify", h.handleSSENotify)
 	mux.HandleFunc("/api/v1/video/process/sse/", h.handleVideoProcessSSE)
 	mux.HandleFunc("/api/v1/health", h.handleHealth)
@@ -140,6 +143,128 @@ func (h *HTTPHandler) handleGetDanmaku(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(events)
+}
+
+func (h *HTTPHandler) handleDanmakuByPath(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/danmaku/")
+	if path == "" {
+		http.Error(w, "not found", 404)
+		return
+	}
+	if strings.HasPrefix(path, "video/") && strings.HasSuffix(path, "/count") {
+		videoID, err := strconv.ParseInt(strings.TrimPrefix(strings.TrimSuffix(path, "/count"), "video/"), 10, 64)
+		if err != nil {
+			http.Error(w, "invalid video id", 400)
+			return
+		}
+		count, err := h.danmakuSvc.CountByVideo(r.Context(), videoID)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]int64{"count": count})
+		return
+	}
+	if r.Method == "DELETE" {
+		id, err := strconv.ParseInt(path, 10, 64)
+		if err != nil {
+			http.Error(w, "invalid danmaku id", 400)
+			return
+		}
+		userID := getUserIDFromHeader(r)
+		if err := h.danmakuSvc.Delete(r.Context(), id, userID); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		w.Write([]byte(`{"status":"ok"}`))
+		return
+	}
+	http.Error(w, "method not allowed", 405)
+}
+
+func (h *HTTPHandler) handleDanmakuBatchCount(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var ids []int64
+	json.NewDecoder(r.Body).Decode(&ids)
+	counts, err := h.danmakuSvc.CountByManuscriptIDs(r.Context(), ids)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(counts)
+}
+
+func (h *HTTPHandler) handleDanmakuTrend(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var ids []int64
+	json.NewDecoder(r.Body).Decode(&ids)
+	startDate := r.URL.Query().Get("startDate")
+	endDate := r.URL.Query().Get("endDate")
+	if startDate == "" || endDate == "" {
+		http.Error(w, "startDate and endDate required", 400)
+		return
+	}
+	trend, err := h.danmakuSvc.Trend(r.Context(), ids, startDate, endDate)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(trend)
+}
+
+func (h *HTTPHandler) handleCreatorDanmakuList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	userID := getUserIDFromHeader(r)
+	if userID == 0 {
+		http.Error(w, "unauthorized", 401)
+		return
+	}
+	page, size := parsePageParams(r)
+	var videoID int64
+	if v := r.URL.Query().Get("videoId"); v != "" {
+		videoID, _ = strconv.ParseInt(v, 10, 64)
+	}
+	list, total, err := h.danmakuSvc.CreatorList(r.Context(), userID, videoID, page, size)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"list": list, "total": total, "page": page, "size": size})
+}
+
+func (h *HTTPHandler) handleCreatorDanmakuByPath(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "DELETE" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	userID := getUserIDFromHeader(r)
+	if userID == 0 {
+		http.Error(w, "unauthorized", 401)
+		return
+	}
+	id, err := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/creator/danmaku/"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid danmaku id", 400)
+		return
+	}
+	if err := h.danmakuSvc.CreatorDelete(r.Context(), id, userID); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	w.Write([]byte(`{"status":"ok"}`))
 }
 
 func (h *HTTPHandler) handleSSEDanmaku(w http.ResponseWriter, r *http.Request) {
@@ -283,6 +408,18 @@ func getUserIDFromHeader(r *http.Request) int64 {
 		return 0
 	}
 	return id
+}
+
+func parsePageParams(r *http.Request) (int32, int32) {
+	page, _ := strconv.ParseInt(r.URL.Query().Get("page"), 10, 32)
+	size, _ := strconv.ParseInt(r.URL.Query().Get("page_size"), 10, 32)
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 || size > 50 {
+		size = 20
+	}
+	return int32(page), int32(size)
 }
 
 type LiveHandler interface {

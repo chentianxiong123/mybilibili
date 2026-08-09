@@ -64,3 +64,39 @@ func (s *DanmakuService) ListByTimeRange(ctx context.Context, videoID int64, sta
 	}
 	return events, nil
 }
+
+func (s *DanmakuService) Delete(ctx context.Context, id, userID int64) error {
+	return s.repo.Delete(ctx, id, userID)
+}
+
+func (s *DanmakuService) CountByVideo(ctx context.Context, videoID int64) (int64, error) {
+	return s.repo.CountByVideo(ctx, videoID)
+}
+
+func (s *DanmakuService) CountByManuscriptIDs(ctx context.Context, manuscriptIDs []int64) (map[int64]int64, error) {
+	return s.repo.CountByManuscriptIDs(ctx, manuscriptIDs)
+}
+
+func (s *DanmakuService) Trend(ctx context.Context, manuscriptIDs []int64, startDate, endDate string) (map[string]int, error) {
+	return s.repo.TrendByDate(ctx, manuscriptIDs, startDate, endDate)
+}
+
+func (s *DanmakuService) CreatorList(ctx context.Context, userID, videoID int64, page, size int32) ([]*DanmakuEvent, int64, error) {
+	list, total, err := s.repo.ListByCreator(ctx, userID, videoID, page, size)
+	if err != nil {
+		return nil, 0, err
+	}
+	var events []*DanmakuEvent
+	for _, d := range list {
+		events = append(events, &DanmakuEvent{
+			ID: d.ID, VideoID: d.VideoID, UserID: d.UserID,
+			Content: d.Content, Time: d.Time, Color: d.Color, Mode: d.Mode,
+			CreatedAt: d.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		})
+	}
+	return events, total, nil
+}
+
+func (s *DanmakuService) CreatorDelete(ctx context.Context, id, userID int64) error {
+	return s.repo.DeleteByCreator(ctx, id, userID)
+}

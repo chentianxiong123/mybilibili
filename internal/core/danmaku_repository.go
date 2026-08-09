@@ -3,7 +3,10 @@ package core
 import (
 	"context"
 	"database/sql"
+	"strconv"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type Danmaku struct {
@@ -85,6 +88,102 @@ func (r *DanmakuRepository) CountByVideo(ctx context.Context, videoID int64) (in
 	var count int64
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM danmaku WHERE video_id = $1`, videoID).Scan(&count)
 	return count, err
+}
+
+func (r *DanmakuRepository) CountByManuscriptIDs(ctx context.Context, manuscriptIDs []int64) (map[int64]int64, error) {
+	result := make(map[int64]int64, len(manuscriptIDs))
+	for _, mid := range manuscriptIDs {
+		result[mid] = 0
+	}
+	if len(manuscriptIDs) == 0 {
+		return result, nil
+	}
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT manuscript_id, COUNT(*) FROM danmaku WHERE manuscript_id = ANY($1) GROUP BY manuscript_id`,
+		pq.Array(manuscriptIDs))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var mid, cnt int64
+		if err := rows.Scan(&mid, &cnt); err != nil {
+			return nil, err
+		}
+		result[mid] = cnt
+	}
+	return result, nil
+}
+
+func (r *DanmakuRepository) TrendByDate(ctx context.Context, manuscriptIDs []int64, startDate, endDate string) (map[string]int, error) {
+	result := make(map[string]int)
+	if len(manuscriptIDs) == 0 {
+		return result, nil
+	}
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT TO_CHAR(created_at, 'YYYY-MM-DD') AS day, COUNT(*)
+		 FROM danmaku
+		 WHERE manuscript_id = ANY($1)
+		   AND created_at >= $2::date AND created_at < ($3::date + INTERVAL '1 day')
+		 GROUP BY day ORDER BY day`,
+		pq.Array(manuscriptIDs), startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var day string
+		var cnt int
+		if err := rows.Scan(&day, &cnt); err != nil {
+			return nil, err
+		}
+		result[day] = cnt
+	}
+	return result, nil
+}
+
+func (r *DanmakuRepository) ListByCreator(ctx context.Context, userID, videoID int64, page, size int32) ([]*Danmaku, int64, error) {
+	where := `JOIN videos v ON v.id = danmaku.video_id
+	          JOIN manuscripts m ON m.id = v.manuscript_id
+	          WHERE m.user_id = $1`
+	args := []any{userID}
+	if videoID > 0 {
+		where += ` AND danmaku.video_id = $2`
+		args = append(args, videoID)
+	}
+	var total int64
+	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM danmaku `+where, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	offset := int64(page-1) * int64(size)
+	query := `SELECT danmaku.id, danmaku.video_id, danmaku.manuscript_id, danmaku.user_id, danmaku.content, danmaku.time, danmaku.color, danmaku.mode, danmaku.created_at
+	          FROM danmaku ` + where + ` ORDER BY danmaku.created_at DESC LIMIT $` + strconv.Itoa(len(args)+1) + ` OFFSET $` + strconv.Itoa(len(args)+2)
+	args = append(args, size, offset)
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	var list []*Danmaku
+	for rows.Next() {
+		d := &Danmaku{}
+		if err := rows.Scan(&d.ID, &d.VideoID, &d.ManuscriptID, &d.UserID, &d.Content, &d.Time, &d.Color, &d.Mode, &d.CreatedAt); err != nil {
+			return nil, 0, err
+		}
+		list = append(list, d)
+	}
+	return list, total, nil
+}
+
+func (r *DanmakuRepository) DeleteByCreator(ctx context.Context, id, userID int64) error {
+	_, err := r.db.ExecContext(ctx,
+		`DELETE FROM danmaku
+		 WHERE id = $1 AND video_id IN (
+		     SELECT v.id FROM videos v
+		     JOIN manuscripts m ON m.id = v.manuscript_id
+		     WHERE m.user_id = $2)`,
+		id, userID)
+	return err
 }
 
 type DanmakuBroadcaster struct {
