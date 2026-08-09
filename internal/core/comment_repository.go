@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"database/sql"
+	"strconv"
 	"time"
 
 	pb "mybilibili/internal/core/pb"
@@ -260,4 +261,77 @@ func nullInt64(n sql.NullInt64) *int64 {
 		return &n.Int64
 	}
 	return nil
+}
+
+func (r *CommentRepository) ListCommentsByCreator(ctx context.Context, userID, manuscriptID int64, page, pageSize int32, sort, commentType string) ([]*Comment, error) {
+	where := `JOIN manuscripts m ON m.id = comments.manuscript_id WHERE m.user_id = $1`
+	args := []any{userID}
+	if manuscriptID > 0 {
+		where += ` AND comments.manuscript_id = $2`
+		args = append(args, manuscriptID)
+	}
+	if commentType == "reply" {
+		where += ` AND comments.reply_count > 0`
+	}
+	order := `comments.created_at DESC`
+	if sort == "latest" {
+		order = `comments.created_at DESC`
+	} else if sort == "oldest" {
+		order = `comments.created_at ASC`
+	} else if sort == "likes" {
+		order = `comments.like_count DESC`
+	}
+	offset := int64(page-1) * int64(pageSize)
+	query := `SELECT comments.id, comments.manuscript_id, comments.user_id, comments.content, comments.like_count, comments.reply_count, comments.status, comments.created_at, comments.updated_at
+	          FROM comments ` + where + ` ORDER BY ` + order + ` LIMIT $` + strconv.Itoa(len(args)+1) + ` OFFSET $` + strconv.Itoa(len(args)+2)
+	args = append(args, pageSize, offset)
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var list []*Comment
+	for rows.Next() {
+		c := &Comment{}
+		if err := rows.Scan(&c.ID, &c.ManuscriptID, &c.UserID, &c.Content, &c.LikeCount, &c.ReplyCount, &c.Status, &c.CreatedAt, &c.UpdatedAt); err != nil {
+			return nil, err
+		}
+		list = append(list, c)
+	}
+	return list, nil
+}
+
+func (r *CommentRepository) CountCommentsByCreator(ctx context.Context, userID, manuscriptID int64, commentType string) (int64, error) {
+	where := `JOIN manuscripts m ON m.id = comments.manuscript_id WHERE m.user_id = $1`
+	args := []any{userID}
+	if manuscriptID > 0 {
+		where += ` AND comments.manuscript_id = $2`
+		args = append(args, manuscriptID)
+	}
+	if commentType == "reply" {
+		where += ` AND comments.reply_count > 0`
+	}
+	var total int64
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM comments `+where, args...).Scan(&total)
+	return total, err
+}
+
+func (r *CommentRepository) DeleteCommentByCreator(ctx context.Context, commentID, userID int64) error {
+	_, err := r.db.ExecContext(ctx,
+		`DELETE FROM comments
+		 WHERE id = $1 AND manuscript_id IN (
+		     SELECT id FROM manuscripts WHERE user_id = $2)`,
+		commentID, userID)
+	return err
+}
+
+func (r *CommentRepository) DeleteReplyByCreator(ctx context.Context, replyID, userID int64) error {
+	_, err := r.db.ExecContext(ctx,
+		`DELETE FROM replies
+		 WHERE id = $1 AND comment_id IN (
+		     SELECT c.id FROM comments c
+		     JOIN manuscripts m ON m.id = c.manuscript_id
+		     WHERE m.user_id = $2)`,
+		replyID, userID)
+	return err
 }

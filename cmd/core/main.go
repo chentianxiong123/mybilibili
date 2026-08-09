@@ -141,6 +141,7 @@ func main() {
 
 	userExtH := core.NewUserExtendHandler(userSvc)
 	messageH := core.NewMessageHTTPHandler(messageRepo, notifBroadcaster)
+	creatorCommentH := core.NewCreatorCommentHTTPHandler(commentRepo, commentSvc)
 
 	abstractionCfg := abstraction.Config{}
 	docStore, _ := abstraction.NewDocumentStore(abstraction.DocumentStoreConfig{Type: "memory"})
@@ -184,7 +185,7 @@ func main() {
 	core.StartHTTPServer(httpAddr, httpH,
 		liveH, linkmicH, followH, socialH, videoH, adminH, adminDataH, modH,
 		meetingH, aiH, searchH, supportH, userExtH, messageH,
-		subtitleH, analyticsH, studioH, profileH)
+		subtitleH, analyticsH, studioH, profileH, creatorCommentH)
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
