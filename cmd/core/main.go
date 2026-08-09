@@ -22,6 +22,7 @@ import (
 	"mybilibili/internal/live"
 	"mybilibili/internal/meeting"
 	"mybilibili/internal/moderation"
+	"mybilibili/internal/profile"
 	"mybilibili/internal/search"
 	"mybilibili/internal/social"
 	"mybilibili/internal/studio"
@@ -162,6 +163,10 @@ func main() {
 	analyticsRepo := analytics.NewRepository(db)
 	analyticsSvc := analytics.NewService(analyticsRepo)
 	analyticsH := analytics.NewHandler(analyticsSvc)
+
+	profileRepo := profile.NewRepository(docStore)
+	profileSvc := profile.NewService(profileRepo)
+	_ = profileSvc
 
 	studioRepo := studio.NewRepository(db)
 	studioSvc := studio.NewService(studioRepo)

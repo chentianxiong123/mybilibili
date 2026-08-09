@@ -20,9 +20,30 @@ func NewSocialHandler(followSvc *FollowService, dynamicSvc *DynamicService, coll
 
 func (h *SocialHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/dynamic/", h.handleDynamic)
+	mux.HandleFunc("/api/v1/dynamic/comment/delete/", h.handleDynamicCommentDelete)
+	mux.HandleFunc("/api/v1/dynamic/comment/like/", h.handleDynamicCommentLike)
 	mux.HandleFunc("/api/v1/collection/", h.handleCollection)
 	mux.HandleFunc("/api/v1/share/", h.handleShare)
 	mux.HandleFunc("/api/v1/watch-history/", h.handleWatchHistory)
+}
+
+func (h *SocialHandler) handleDynamicCommentDelete(w http.ResponseWriter, r *http.Request) {
+	commentIDStr := strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/comment/delete/")
+	commentID, _ := strconv.ParseInt(commentIDStr, 10, 64)
+	if r.Method == "DELETE" && commentID > 0 {
+		h.dynamicSvc.repo.DeleteComment(r.Context(), commentID)
+	}
+	w.Write([]byte(`{"status":"ok"}`))
+}
+
+func (h *SocialHandler) handleDynamicCommentLike(w http.ResponseWriter, r *http.Request) {
+	commentIDStr := strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/comment/like/")
+	commentID, _ := strconv.ParseInt(commentIDStr, 10, 64)
+	if r.Method == "POST" && commentID > 0 {
+		h.dynamicSvc.repo.db.ExecContext(r.Context(),
+			`UPDATE dynamic_comments SET like_count = like_count + 1 WHERE id = $1`, commentID)
+	}
+	w.Write([]byte(`{"status":"ok"}`))
 }
 
 func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
