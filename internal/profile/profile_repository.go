@@ -86,14 +86,81 @@ func (s *Service) Init(ctx context.Context, userID int64, tags []string) (*Profi
 	return p, nil
 }
 
-func (s *Service) RecordWatch(ctx context.Context, userID int64) error {
-	p, _ := s.repo.GetByUser(ctx, userID)
-	if p == nil {
-		p = &Profile{UserID: userID, UpdatedAt: time.Now()}
+func (s *Service) GetOrCreate(ctx context.Context, userID int64) (*Profile, error) {
+	p, err := s.repo.GetByUser(ctx, userID)
+	if err != nil {
+		return nil, err
 	}
+	if p != nil {
+		return p, nil
+	}
+	p = &Profile{UserID: userID, UpdatedAt: time.Now()}
+	if err := s.repo.Upsert(ctx, p); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func (s *Service) mergeTags(p *Profile, categoryID int64, tags []string) {
+	if categoryID > 0 && !containsInt64(p.FavoriteCategories, categoryID) {
+		p.FavoriteCategories = append(p.FavoriteCategories, categoryID)
+	}
+	for _, t := range tags {
+		if t != "" && !containsStr(p.Tags, t) {
+			p.Tags = append(p.Tags, t)
+		}
+	}
+}
+
+func (s *Service) RecordWatch(ctx context.Context, userID int64, categoryID int64, tags []string, duration int64) error {
+	p, err := s.GetOrCreate(ctx, userID)
+	if err != nil {
+		return err
+	}
+	s.mergeTags(p, categoryID, tags)
 	p.WatchCount++
 	p.UpdatedAt = time.Now()
 	return s.repo.Upsert(ctx, p)
+}
+
+func (s *Service) RecordLike(ctx context.Context, userID int64, categoryID int64, tags []string) error {
+	p, err := s.GetOrCreate(ctx, userID)
+	if err != nil {
+		return err
+	}
+	s.mergeTags(p, categoryID, tags)
+	p.LikeCount++
+	p.UpdatedAt = time.Now()
+	return s.repo.Upsert(ctx, p)
+}
+
+func (s *Service) RecordCollect(ctx context.Context, userID int64, categoryID int64, tags []string) error {
+	p, err := s.GetOrCreate(ctx, userID)
+	if err != nil {
+		return err
+	}
+	s.mergeTags(p, categoryID, tags)
+	p.CollectCount++
+	p.UpdatedAt = time.Now()
+	return s.repo.Upsert(ctx, p)
+}
+
+func containsStr(list []string, v string) bool {
+	for _, s := range list {
+		if s == v {
+			return true
+		}
+	}
+	return false
+}
+
+func containsInt64(list []int64, v int64) bool {
+	for _, s := range list {
+		if s == v {
+			return true
+		}
+	}
+	return false
 }
 
 var _ = context.Background

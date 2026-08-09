@@ -167,7 +167,7 @@ func main() {
 
 	profileRepo := profile.NewRepository(docStore)
 	profileSvc := profile.NewService(profileRepo)
-	_ = profileSvc
+	profileH := profile.NewHandler(profileSvc)
 
 	studioRepo := studio.NewRepository(db)
 	studioSvc := studio.NewService(studioRepo)
@@ -184,7 +184,7 @@ func main() {
 	core.StartHTTPServer(httpAddr, httpH,
 		liveH, linkmicH, followH, socialH, videoH, adminH, adminDataH, modH,
 		meetingH, aiH, searchH, supportH, userExtH, messageH,
-		subtitleH, analyticsH, studioH)
+		subtitleH, analyticsH, studioH, profileH)
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
