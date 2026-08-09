@@ -142,10 +142,10 @@ type NotificationBroadcaster struct {
 }
 
 type NotificationEvent struct {
-	Type    string `json:"type"`
-	Content string `json:"content"`
-	FromUID int64  `json:"from_uid"`
-	FromName string `json:"from_name"`
+	Type      string `json:"type"`
+	Content   string `json:"content"`
+	FromUID   int64  `json:"from_uid"`
+	FromName  string `json:"from_name"`
 	CreatedAt string `json:"created_at"`
 }
 

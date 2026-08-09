@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net"
@@ -138,9 +139,15 @@ func main() {
 	searchEngine, _ := abstraction.NewSearchEngine(abstraction.SearchEngineConfig{Type: "memory"})
 	storageSvc, _ := abstraction.NewStorageService(abstraction.StorageServiceConfig{Type: "memory"})
 	caller, _ := abstraction.NewServiceCaller(abstraction.ServiceCallerConfig{Type: "memory"})
+	mq, _ := abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: "memory"})
 	_ = abstractionCfg
-	_ = searchEngine
 	_ = storageSvc
+
+	eventPublisher := core.NewEventPublisher(mq)
+	_ = eventPublisher
+
+	indexMgr := search.NewIndexManager(searchEngine, mq)
+	go indexMgr.Start(context.Background())
 
 	subtitleRepo := subtitle.NewRepository(docStore)
 	subtitleSvc := subtitle.NewService(subtitleRepo)

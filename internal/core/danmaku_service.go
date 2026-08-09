@@ -6,7 +6,7 @@ import (
 )
 
 type DanmakuService struct {
-	repo       *DanmakuRepository
+	repo        *DanmakuRepository
 	broadcaster *DanmakuBroadcaster
 }
 

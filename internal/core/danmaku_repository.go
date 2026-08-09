@@ -92,14 +92,14 @@ type DanmakuBroadcaster struct {
 }
 
 type DanmakuEvent struct {
-	ID           int64   `json:"id"`
-	VideoID      int64   `json:"video_id"`
-	UserID       int64   `json:"user_id"`
-	Content      string  `json:"content"`
-	Time         float64 `json:"time"`
-	Color        string  `json:"color"`
-	Mode         int32   `json:"mode"`
-	CreatedAt    string  `json:"created_at"`
+	ID        int64   `json:"id"`
+	VideoID   int64   `json:"video_id"`
+	UserID    int64   `json:"user_id"`
+	Content   string  `json:"content"`
+	Time      float64 `json:"time"`
+	Color     string  `json:"color"`
+	Mode      int32   `json:"mode"`
+	CreatedAt string  `json:"created_at"`
 }
 
 func NewDanmakuBroadcaster() *DanmakuBroadcaster {

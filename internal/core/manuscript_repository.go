@@ -8,48 +8,48 @@ import (
 )
 
 type Manuscript struct {
-	ID             int64
-	Title          string
-	Description    string
-	CoverURL       string
-	UserID         int64
-	CategoryID     int64
-	ViewCount      int64
-	LikeCount      int64
-	CoinCount      int64
-	CollectCount   int64
-	ShareCount     int64
-	CommentCount   int64
-	DanmakuCount   int64
-	Status         int32
-	ReviewStatus   int32
-	ReviewReason   string
-	ReviewTime     sql.NullTime
-	ReviewerID     sql.NullInt64
-	UploadTime     sql.NullTime
-	UpdatedAt      sql.NullTime
-	Duration       string
+	ID              int64
+	Title           string
+	Description     string
+	CoverURL        string
+	UserID          int64
+	CategoryID      int64
+	ViewCount       int64
+	LikeCount       int64
+	CoinCount       int64
+	CollectCount    int64
+	ShareCount      int64
+	CommentCount    int64
+	DanmakuCount    int64
+	Status          int32
+	ReviewStatus    int32
+	ReviewReason    string
+	ReviewTime      sql.NullTime
+	ReviewerID      sql.NullInt64
+	UploadTime      sql.NullTime
+	UpdatedAt       sql.NullTime
+	Duration        string
 	DurationSeconds int32
 }
 
 type Video struct {
-	ID             int64
-	ManuscriptID   int64
-	VideoOrder     int32
-	Title          string
-	Description    string
-	PlayURLHd      string
-	PlayURLSd      string
-	PlayURLld      string
-	UploadTime     sql.NullTime
-	UpdatedAt      sql.NullTime
+	ID              int64
+	ManuscriptID    int64
+	VideoOrder      int32
+	Title           string
+	Description     string
+	PlayURLHd       string
+	PlayURLSd       string
+	PlayURLld       string
+	UploadTime      sql.NullTime
+	UpdatedAt       sql.NullTime
 	ProcessProgress int32
-	ProcessStage   string
-	HasSubtitle    int32
-	HasSummary     int32
-	ProcessStatus  int32
-	ProcessError   string
-	SourceVideoURL string
+	ProcessStage    string
+	HasSubtitle     int32
+	HasSummary      int32
+	ProcessStatus   int32
+	ProcessError    string
+	SourceVideoURL  string
 	DurationSeconds int32
 }
 
@@ -181,7 +181,7 @@ func (r *ManuscriptRepository) ListByUser(ctx context.Context, userID int64, sta
 	var list []*Manuscript
 	for rows.Next() {
 		m := &Manuscript{}
-if err := rows.Scan(&m.ID, &m.Title, &m.Description, &m.CoverURL, &m.UserID, &m.CategoryID,
+		if err := rows.Scan(&m.ID, &m.Title, &m.Description, &m.CoverURL, &m.UserID, &m.CategoryID,
 			&m.ViewCount, &m.LikeCount, &m.CoinCount, &m.CollectCount, &m.ShareCount,
 			&m.CommentCount, &m.DanmakuCount, &m.Status, &m.ReviewStatus, &m.ReviewReason,
 			&m.ReviewTime, &m.ReviewerID, &m.UploadTime, &m.UpdatedAt, &m.Duration, &m.DurationSeconds); err != nil {
@@ -357,32 +357,32 @@ func (r *ManuscriptRepository) ToPB(m *Manuscript, catName string, uploader *pb.
 	}
 
 	return &pb.ManuscriptInfo{
-		Id:               m.ID,
-		Title:            m.Title,
-		Description:      m.Description,
-		CoverUrl:         m.CoverURL,
-		UserId:           m.UserID,
-		CategoryId:       m.CategoryID,
-		CategoryName:     catName,
-		ViewCount:        m.ViewCount,
-		LikeCount:        m.LikeCount,
-		CoinCount:        m.CoinCount,
-		CollectCount:     m.CollectCount,
-		ShareCount:       m.ShareCount,
-		CommentCount:     m.CommentCount,
-		DanmakuCount:     m.DanmakuCount,
-		Duration:         m.Duration,
-		DurationSeconds:  m.DurationSeconds,
-		Status:           m.Status,
-		ReviewStatus:     m.ReviewStatus,
-		ReviewReason:     m.ReviewReason,
-		CreatedAt:        createdAt,
-		UpdatedAt:        updatedAt,
-		Uploader:         uploader,
-		Tags:             tags,
-		FirstVideoId:     firstVideoID,
+		Id:                m.ID,
+		Title:             m.Title,
+		Description:       m.Description,
+		CoverUrl:          m.CoverURL,
+		UserId:            m.UserID,
+		CategoryId:        m.CategoryID,
+		CategoryName:      catName,
+		ViewCount:         m.ViewCount,
+		LikeCount:         m.LikeCount,
+		CoinCount:         m.CoinCount,
+		CollectCount:      m.CollectCount,
+		ShareCount:        m.ShareCount,
+		CommentCount:      m.CommentCount,
+		DanmakuCount:      m.DanmakuCount,
+		Duration:          m.Duration,
+		DurationSeconds:   m.DurationSeconds,
+		Status:            m.Status,
+		ReviewStatus:      m.ReviewStatus,
+		ReviewReason:      m.ReviewReason,
+		CreatedAt:         createdAt,
+		UpdatedAt:         updatedAt,
+		Uploader:          uploader,
+		Tags:              tags,
+		FirstVideoId:      firstVideoID,
 		FirstVideoPlayUrl: firstVideoPlayURL,
-		Videos:           videos,
+		Videos:            videos,
 	}
 }
 

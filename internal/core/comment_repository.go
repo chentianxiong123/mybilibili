@@ -21,15 +21,15 @@ type Comment struct {
 }
 
 type Reply struct {
-	ID           int64
-	CommentID    int64
-	UserID       int64
+	ID            int64
+	CommentID     int64
+	UserID        int64
 	ReplyToUserID sql.NullInt64
-	Content      string
-	LikeCount    int32
-	Status       string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	Content       string
+	LikeCount     int32
+	Status        string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 type CommentRepository struct {

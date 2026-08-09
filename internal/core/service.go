@@ -91,8 +91,8 @@ func (s *Service) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.GetU
 }
 
 type JWT struct {
-	secret    string
-	duration  time.Duration
+	secret   string
+	duration time.Duration
 }
 
 func NewJWT(secret string) *JWT {

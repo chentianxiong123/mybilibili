@@ -11,8 +11,8 @@ import (
 )
 
 type HTTPHandler struct {
-	danmakuSvc  *DanmakuService
-	messageRepo *MessageRepository
+	danmakuSvc       *DanmakuService
+	messageRepo      *MessageRepository
 	notifBroadcaster *NotificationBroadcaster
 }
 
@@ -189,9 +189,9 @@ func (h *HTTPHandler) handleSendMessage(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req struct {
-		ReceiverID int64  `json:"receiver_id"`
-		Content    string `json:"content"`
-		MessageType int32 `json:"message_type"`
+		ReceiverID  int64  `json:"receiver_id"`
+		Content     string `json:"content"`
+		MessageType int32  `json:"message_type"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request", 400)

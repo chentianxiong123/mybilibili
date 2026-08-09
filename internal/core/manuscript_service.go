@@ -9,7 +9,7 @@ import (
 )
 
 type ManuscriptService struct {
-	repo  *ManuscriptRepository
+	repo     *ManuscriptRepository
 	userRepo *Repository
 }
 
