@@ -31,7 +31,39 @@ func (h *HTTPHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/message/send", h.handleSendMessage)
 	mux.HandleFunc("/api/v1/message/conversations", h.handleGetConversations)
 	mux.HandleFunc("/sse/notify", h.handleSSENotify)
+	mux.HandleFunc("/api/v1/video/process/sse/", h.handleVideoProcessSSE)
 	mux.HandleFunc("/api/v1/health", h.handleHealth)
+}
+
+func (h *HTTPHandler) handleVideoProcessSSE(w http.ResponseWriter, r *http.Request) {
+	videoIDStr := strings.TrimPrefix(r.URL.Path, "/api/v1/video/process/sse/")
+	videoID, err := strconv.ParseInt(videoIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid video id", 400)
+		return
+	}
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", 500)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	ctx := r.Context()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(5 * time.Second):
+			data := fmt.Sprintf(`{"video_id":%d,"stage":"progress","progress":0}`, videoID)
+			fmt.Fprintf(w, "data: %s\n\n", data)
+			flusher.Flush()
+		}
+	}
 }
 
 func (h *HTTPHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
