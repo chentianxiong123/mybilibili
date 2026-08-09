@@ -1,0 +1,71 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20) NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gender INT NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS signature VARCHAR(255) NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS birthdate DATE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS following_count INT NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS follower_count INT NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS manuscript_count INT NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS liked_count INT NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS coin_count INT NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS pinned_video_id BIGINT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS experience INT NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS announcement TEXT NOT NULL DEFAULT '';
+
+CREATE TABLE IF NOT EXISTS user_tags (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    tag_name VARCHAR(50) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id, tag_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_tags_user ON user_tags(user_id);
+
+CREATE TABLE IF NOT EXISTS user_privacy_settings (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    public_collection INT NOT NULL DEFAULT 1,
+    public_birthday_tags INT NOT NULL DEFAULT 0,
+    public_coin_videos INT NOT NULL DEFAULT 0,
+    public_like_videos INT NOT NULL DEFAULT 0,
+    public_following_list INT NOT NULL DEFAULT 0,
+    public_followers_list INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS message_settings (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    private_message_notification INT NOT NULL DEFAULT 1,
+    reply_notification INT NOT NULL DEFAULT 1,
+    at_notification INT NOT NULL DEFAULT 1,
+    like_notification INT NOT NULL DEFAULT 1,
+    system_notification INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS creator_settings (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    default_category_id BIGINT REFERENCES categories(id) ON DELETE SET NULL,
+    auto_publish INT NOT NULL DEFAULT 0,
+    comment_notify INT NOT NULL DEFAULT 1,
+    like_notify INT NOT NULL DEFAULT 1,
+    follow_notify INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS login_logs (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    ip VARCHAR(50) NOT NULL DEFAULT '',
+    user_agent VARCHAR(500) NOT NULL DEFAULT '',
+    status INT NOT NULL DEFAULT 0,
+    login_time TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_logs_user ON login_logs(user_id, login_time DESC);

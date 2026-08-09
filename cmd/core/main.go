@@ -11,10 +11,18 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
+	"mybilibili/internal/admin"
+	"mybilibili/internal/ai"
 	"mybilibili/internal/common/middleware"
 	"mybilibili/internal/core"
 	pb "mybilibili/internal/core/pb"
 	"mybilibili/internal/live"
+	"mybilibili/internal/meeting"
+	"mybilibili/internal/moderation"
+	"mybilibili/internal/search"
+	"mybilibili/internal/social"
+	"mybilibili/internal/support"
+	"mybilibili/internal/video"
 )
 
 func main() {
@@ -81,8 +89,51 @@ func main() {
 	liveSvc := live.NewService(liveRepo, liveHub)
 	liveH := live.NewHTTPHandler(liveSvc, liveHub)
 
+	followRepo := social.NewFollowRepository(db)
+	followSvc := social.NewFollowService(followRepo)
+	followH := social.NewFollowHandler(followSvc)
+
+	dynamicRepo := social.NewDynamicRepository(db)
+	dynamicSvc := social.NewDynamicService(dynamicRepo)
+	collectRepo := social.NewCollectionRepository(db)
+	collectSvc := social.NewCollectionService(collectRepo)
+	shareRepo := social.NewShareRepository(db)
+	socialH := social.NewSocialHandler(followSvc, dynamicSvc, collectSvc, shareRepo)
+
+	videoRepo := video.NewRepository(db)
+	videoSvc := video.NewService(videoRepo)
+	videoH := video.NewHandler(videoSvc)
+
+	adminRepo := admin.NewRepository(db)
+	adminSvc := admin.NewService(adminRepo)
+	adminH := admin.NewHandler(adminSvc)
+
+	modRepo := moderation.NewRepository(db)
+	modSvc := moderation.NewService(modRepo)
+	modH := moderation.NewHandler(modSvc)
+
+	meetingRepo := meeting.NewRepository(db)
+	meetingSvc := meeting.NewService(meetingRepo)
+	meetingH := meeting.NewHandler(meetingSvc)
+
+	aiRepo := ai.NewRepository(db)
+	aiSvc := ai.NewService(aiRepo)
+	aiH := ai.NewHandler(aiSvc)
+
+	searchRepo := search.NewRepository(db)
+	searchSvc := search.NewService(searchRepo)
+	searchH := search.NewHandler(searchSvc)
+
+	supportRepo := support.NewRepository(db)
+	supportSvc := support.NewService(supportRepo)
+	supportH := support.NewHandler(supportSvc)
+
+	userExtH := core.NewUserExtendHandler(userSvc)
+
 	httpH := core.NewHTTPHandler(danmakuSvc, messageRepo, notifBroadcaster)
-	core.StartHTTPServer(httpAddr, httpH, liveH)
+	core.StartHTTPServer(httpAddr, httpH,
+		liveH, followH, socialH, videoH, adminH, modH,
+		meetingH, aiH, searchH, supportH, userExtH)
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
