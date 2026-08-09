@@ -93,6 +93,10 @@ func main() {
 	liveSvc := live.NewService(liveRepo, liveHub)
 	liveH := live.NewHTTPHandler(liveSvc, liveHub)
 
+	linkmicRepo := live.NewLinkmicRepository(db)
+	linkmicSvc := live.NewLinkmicService(linkmicRepo, liveHub, liveRepo)
+	linkmicH := live.NewLinkmicHandler(linkmicSvc)
+
 	followRepo := social.NewFollowRepository(db)
 	followSvc := social.NewFollowService(followRepo)
 	followH := social.NewFollowHandler(followSvc)
@@ -166,7 +170,7 @@ func main() {
 
 	httpH := core.NewHTTPHandler(danmakuSvc, messageRepo, notifBroadcaster)
 	core.StartHTTPServer(httpAddr, httpH,
-		liveH, followH, socialH, videoH, adminH, modH,
+		liveH, linkmicH, followH, socialH, videoH, adminH, modH,
 		meetingH, aiH, searchH, supportH, userExtH,
 		subtitleH, analyticsH)
 
