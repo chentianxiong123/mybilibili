@@ -140,6 +140,7 @@ func main() {
 	supportH := support.NewHandler(supportSvc)
 
 	userExtH := core.NewUserExtendHandler(userSvc)
+	messageH := core.NewMessageHTTPHandler(messageRepo, notifBroadcaster)
 
 	abstractionCfg := abstraction.Config{}
 	docStore, _ := abstraction.NewDocumentStore(abstraction.DocumentStoreConfig{Type: "memory"})
@@ -182,7 +183,7 @@ func main() {
 	httpH := core.NewHTTPHandler(danmakuSvc, messageRepo, notifBroadcaster)
 	core.StartHTTPServer(httpAddr, httpH,
 		liveH, linkmicH, followH, socialH, videoH, adminH, adminDataH, modH,
-		meetingH, aiH, searchH, supportH, userExtH,
+		meetingH, aiH, searchH, supportH, userExtH, messageH,
 		subtitleH, analyticsH, studioH)
 
 	lis, err := net.Listen("tcp", grpcAddr)
