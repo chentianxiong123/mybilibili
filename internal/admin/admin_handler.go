@@ -23,7 +23,9 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/admin/roles/", h.handleRolesByID)
 	mux.HandleFunc("/api/v1/admin/permissions", h.handlePermissions)
 	mux.HandleFunc("/api/v1/admin/audit-logs", h.handleAuditLogs)
+	mux.HandleFunc("/api/v1/admin/audit-logs/", h.handleAuditLogByID)
 	mux.HandleFunc("/api/v1/admin/login-logs", h.handleLoginLogs)
+	mux.HandleFunc("/api/v1/admin/login-logs/user/", h.handleUserLoginLogs)
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -89,6 +91,11 @@ func (h *Handler) handleRolesByID(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(path, "/")
 	id, _ := strconv.ParseInt(parts[0], 10, 64)
 
+	if parts[0] == "templates" && r.Method == "GET" {
+		json.NewEncoder(w).Encode(roleTemplates())
+		return
+	}
+
 	if len(parts) >= 2 && parts[1] == "permissions" {
 		if r.Method == "GET" {
 			ids, _ := h.svc.GetRolePermissions(r.Context(), id)
@@ -101,6 +108,40 @@ func (h *Handler) handleRolesByID(w http.ResponseWriter, r *http.Request) {
 			h.svc.SetRolePermissions(r.Context(), id, req.PermissionIDs)
 			w.Write([]byte(`{"status":"ok"}`))
 		}
+		return
+	}
+
+	if len(parts) >= 3 && parts[1] == "template" && r.Method == "PUT" {
+		code := parts[2]
+		tpl, ok := roleTemplates()[code]
+		if !ok {
+			http.Error(w, "岗位模板不存在", 400)
+			return
+		}
+		permMap, err := h.svc.GetPermissionIDsByCodes(r.Context(), tpl.PermissionCodes)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		missing := []string{}
+		for _, c := range tpl.PermissionCodes {
+			if _, ok := permMap[c]; !ok {
+				missing = append(missing, c)
+			}
+		}
+		if len(missing) > 0 {
+			http.Error(w, "权限码不存在: "+strings.Join(missing, ", "), 400)
+			return
+		}
+		ids := []int64{}
+		for _, c := range tpl.PermissionCodes {
+			ids = append(ids, permMap[c])
+		}
+		if err := h.svc.SetRolePermissions(r.Context(), id, ids); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		w.Write([]byte(`{"status":"ok"}`))
 		return
 	}
 
@@ -119,6 +160,53 @@ func (h *Handler) handleRolesByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type roleTemplate struct {
+	Code            string   `json:"code"`
+	Name            string   `json:"name"`
+	Description     string   `json:"description"`
+	PermissionCodes []string `json:"permission_codes"`
+}
+
+func roleTemplates() map[string]roleTemplate {
+	return map[string]roleTemplate{
+		"platform-operation": {
+			Code: "platform-operation", Name: "平台运营",
+			Description:     "适合处理工单、运营任务、推荐策略、索引和运营审计",
+			PermissionCodes: []string{"operation:manage", "search:manage", "audit:manage", "statistics:manage"},
+		},
+		"content-review": {
+			Code: "content-review", Name: "内容审核",
+			Description:     "适合处理稿件审核、内容审核、举报、评论和违禁词",
+			PermissionCodes: []string{"review:manage", "comment:manage"},
+		},
+		"ai-manager": {
+			Code: "ai-manager", Name: "AI 管理",
+			Description:     "适合维护 AI 渠道、技能、用量和客服会话",
+			PermissionCodes: []string{"ai:manage"},
+		},
+		"media-manager": {
+			Code: "media-manager", Name: "媒体管理",
+			Description:     "适合维护视频、字幕、分类、轮播图、直播和会议资源",
+			PermissionCodes: []string{"video:manage", "category:manage", "banner:manage", "live:manage", "meeting:manage"},
+		},
+		"system-manager": {
+			Code: "system-manager", Name: "系统管理",
+			Description:     "适合维护管理员、角色权限和安全日志",
+			PermissionCodes: []string{"admin:manage", "role:manage", "security:manage"},
+		},
+		"super-admin": {
+			Code: "super-admin", Name: "超级管理员",
+			Description: "完整后台权限模板，仅用于初始化或修复超级管理员角色",
+			PermissionCodes: []string{
+				"user:manage", "video:manage", "comment:manage", "category:manage", "tag:manage",
+				"review:manage", "statistics:manage", "role:manage", "admin:manage", "security:manage",
+				"live:manage", "meeting:manage", "storage:manage", "banner:manage", "search:manage",
+				"ai:manage", "message:manage", "audit:manage", "operation:manage",
+			},
+		},
+	}
+}
+
 func (h *Handler) handlePermissions(w http.ResponseWriter, r *http.Request) {
 	list, _ := h.svc.ListPermissions(r.Context())
 	json.NewEncoder(w).Encode(list)
@@ -128,6 +216,31 @@ func (h *Handler) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 	page, size := parsePage(r)
 	list, _ := h.svc.ListAuditLogs(r.Context(), page, size)
 	json.NewEncoder(w).Encode(list)
+}
+
+func (h *Handler) handleAuditLogByID(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	id, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/admin/audit-logs/"), 10, 64)
+	l, err := h.svc.GetAuditLogByID(r.Context(), id)
+	if err != nil {
+		http.Error(w, "audit log not found", 404)
+		return
+	}
+	json.NewEncoder(w).Encode(l)
+}
+
+func (h *Handler) handleUserLoginLogs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	userID, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/admin/login-logs/user/"), 10, 64)
+	page, size := parsePage(r)
+	list, _ := h.svc.ListLoginLogs(r.Context(), userID, page, size)
+	json.NewEncoder(w).Encode(map[string]interface{}{"list": list, "page": page, "size": size})
 }
 
 func (h *Handler) handleLoginLogs(w http.ResponseWriter, r *http.Request) {

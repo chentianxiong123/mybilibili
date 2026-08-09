@@ -274,6 +274,21 @@ func (r *Repository) ListAuditLogs(ctx context.Context, page, size int32) ([]*Au
 	return list, nil
 }
 
+func (r *Repository) GetAuditLogByID(ctx context.Context, id int64) (*AuditLog, error) {
+	l := &AuditLog{}
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, operator_id, operator_name, operator_role, module, action, target_type, target_id,
+		        request_method, request_uri, client_ip, user_agent, result, message, detail, created_at
+		 FROM audit_logs WHERE id = $1`, id).
+		Scan(&l.ID, &l.OperatorID, &l.OperatorName, &l.OperatorRole, &l.Module, &l.Action,
+			&l.TargetType, &l.TargetID, &l.RequestMethod, &l.RequestURI, &l.ClientIP,
+			&l.UserAgent, &l.Result, &l.Message, &l.Detail, &l.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return l, nil
+}
+
 func (r *Repository) RecordLoginLog(ctx context.Context, userID int64, ip, userAgent string, status int32) error {
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO login_logs (user_id, ip, user_agent, status) VALUES ($1,$2,$3,$4)`,
@@ -352,6 +367,10 @@ func (s *Service) GetRolePermissions(ctx context.Context, roleID int64) ([]int64
 	return s.repo.GetRolePermissions(ctx, roleID)
 }
 
+func (s *Service) GetPermissionIDsByCodes(ctx context.Context, codes []string) (map[string]int64, error) {
+	return s.repo.GetPermissionIDsByCodes(ctx, codes)
+}
+
 func (s *Service) SetAdminRoles(ctx context.Context, adminID int64, roleIDs []int64) error {
 	return s.repo.SetAdminRoles(ctx, adminID, roleIDs)
 }
@@ -362,6 +381,10 @@ func (s *Service) GetAdminRoles(ctx context.Context, adminID int64) ([]int64, er
 
 func (s *Service) ListAuditLogs(ctx context.Context, page, size int32) ([]*AuditLog, error) {
 	return s.repo.ListAuditLogs(ctx, page, size)
+}
+
+func (s *Service) GetAuditLogByID(ctx context.Context, id int64) (*AuditLog, error) {
+	return s.repo.GetAuditLogByID(ctx, id)
 }
 
 func (s *Service) RecordLoginLog(ctx context.Context, userID int64, ip, ua string, status int32) error {
