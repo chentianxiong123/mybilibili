@@ -11,8 +11,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
+	"mybilibili/internal/abstraction"
 	"mybilibili/internal/admin"
 	"mybilibili/internal/ai"
+	"mybilibili/internal/analytics"
 	"mybilibili/internal/common/middleware"
 	"mybilibili/internal/core"
 	pb "mybilibili/internal/core/pb"
@@ -21,6 +23,7 @@ import (
 	"mybilibili/internal/moderation"
 	"mybilibili/internal/search"
 	"mybilibili/internal/social"
+	"mybilibili/internal/subtitle"
 	"mybilibili/internal/support"
 	"mybilibili/internal/video"
 )
@@ -130,10 +133,35 @@ func main() {
 
 	userExtH := core.NewUserExtendHandler(userSvc)
 
+	abstractionCfg := abstraction.Config{}
+	docStore, _ := abstraction.NewDocumentStore(abstraction.DocumentStoreConfig{Type: "memory"})
+	searchEngine, _ := abstraction.NewSearchEngine(abstraction.SearchEngineConfig{Type: "memory"})
+	storageSvc, _ := abstraction.NewStorageService(abstraction.StorageServiceConfig{Type: "memory"})
+	caller, _ := abstraction.NewServiceCaller(abstraction.ServiceCallerConfig{Type: "memory"})
+	_ = abstractionCfg
+	_ = searchEngine
+	_ = storageSvc
+
+	subtitleRepo := subtitle.NewRepository(docStore)
+	subtitleSvc := subtitle.NewService(subtitleRepo)
+	subtitleH := subtitle.NewHandler(subtitleSvc)
+
+	analyticsRepo := analytics.NewRepository(db)
+	analyticsSvc := analytics.NewService(analyticsRepo)
+	analyticsH := analytics.NewHandler(analyticsSvc)
+
+	summarySvc := ai.NewSummaryService(caller)
+	reviewSvc := ai.NewReviewService(caller)
+	customerSvc := ai.NewCustomerService(caller)
+	_ = summarySvc
+	_ = reviewSvc
+	_ = customerSvc
+
 	httpH := core.NewHTTPHandler(danmakuSvc, messageRepo, notifBroadcaster)
 	core.StartHTTPServer(httpAddr, httpH,
 		liveH, followH, socialH, videoH, adminH, modH,
-		meetingH, aiH, searchH, supportH, userExtH)
+		meetingH, aiH, searchH, supportH, userExtH,
+		subtitleH, analyticsH)
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {

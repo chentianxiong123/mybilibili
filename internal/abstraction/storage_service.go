@@ -7,10 +7,10 @@ import (
 )
 
 type FileInfo struct {
-	Key         string
-	Size        int64
-	ContentType string
-	ETag        string
+	Key          string
+	Size         int64
+	ContentType  string
+	ETag         string
 	LastModified time.Time
 }
 

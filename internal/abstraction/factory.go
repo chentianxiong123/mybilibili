@@ -16,37 +16,37 @@ type Config struct {
 }
 
 type ServiceDiscoveryConfig struct {
-	Type      string   `yaml:"type"`       // memory / file / etcd
+	Type      string   `yaml:"type"` // memory / file / etcd
 	Endpoints []string `yaml:"endpoints"`
 	Prefix    string   `yaml:"prefix"`
 }
 
 type MessageQueueConfig struct {
-	Type        string `yaml:"type"`         // memory / redis-stream / nats
-	RedisAddr   string `yaml:"redis_addr"`
+	Type         string `yaml:"type"` // memory / redis-stream / nats
+	RedisAddr    string `yaml:"redis_addr"`
 	StreamPrefix string `yaml:"stream_prefix"`
-	NATSURL     string `yaml:"nats_url"`
+	NATSURL      string `yaml:"nats_url"`
 }
 
 type CacheStoreConfig struct {
-	Type      string `yaml:"type"`       // memory / sqlite / redis
-	Addr      string `yaml:"addr"`
-	Password  string `yaml:"password"`
-	DB        int    `yaml:"db"`
-	Path      string `yaml:"path"`
-	TableName string `yaml:"table_name"`
-	MaxItems  int    `yaml:"max_items"`
+	Type       string        `yaml:"type"` // memory / sqlite / redis
+	Addr       string        `yaml:"addr"`
+	Password   string        `yaml:"password"`
+	DB         int           `yaml:"db"`
+	Path       string        `yaml:"path"`
+	TableName  string        `yaml:"table_name"`
+	MaxItems   int           `yaml:"max_items"`
 	DefaultTTL time.Duration `yaml:"default_ttl"`
 }
 
 type ServiceCallerConfig struct {
-	Type    string `yaml:"type"`    // memory / grpc / http
+	Type    string        `yaml:"type"` // memory / grpc / http
 	Timeout time.Duration `yaml:"timeout"`
-	Retries int `yaml:"retries"`
+	Retries int           `yaml:"retries"`
 }
 
 type StorageServiceConfig struct {
-	Type      string `yaml:"type"`      // local / minio / s3
+	Type      string `yaml:"type"` // local / minio / s3
 	Endpoint  string `yaml:"endpoint"`
 	AccessKey string `yaml:"access_key"`
 	SecretKey string `yaml:"secret_key"`
@@ -56,13 +56,13 @@ type StorageServiceConfig struct {
 }
 
 type SearchEngineConfig struct {
-	Type      string `yaml:"type"`       // pg-fts / bleve / elasticsearch
-	IndexPath string `yaml:"index_path"`
+	Type      string   `yaml:"type"` // pg-fts / bleve / elasticsearch
+	IndexPath string   `yaml:"index_path"`
 	Addresses []string `yaml:"addresses"`
 }
 
 type DocumentStoreConfig struct {
-	Type string `yaml:"type"`   // pg-jsonb / sqlite / mongodb
+	Type string `yaml:"type"` // pg-jsonb / sqlite / mongodb
 	Path string `yaml:"path"`
 	DSN  string `yaml:"dsn"`
 }
@@ -121,6 +121,8 @@ func NewServiceCaller(cfg ServiceCallerConfig) (ServiceCaller, error) {
 
 func NewStorageService(cfg StorageServiceConfig) (StorageService, error) {
 	switch cfg.Type {
+	case "memory":
+		return newMemoryStorage(), nil
 	case "local":
 		return newLocalStorage(cfg)
 	case "minio":
@@ -134,6 +136,8 @@ func NewStorageService(cfg StorageServiceConfig) (StorageService, error) {
 
 func NewSearchEngine(cfg SearchEngineConfig) (SearchEngine, error) {
 	switch cfg.Type {
+	case "memory":
+		return newMemorySearch(), nil
 	case "pg-fts":
 		return newPGFTS(cfg)
 	case "bleve":
@@ -147,6 +151,8 @@ func NewSearchEngine(cfg SearchEngineConfig) (SearchEngine, error) {
 
 func NewDocumentStore(cfg DocumentStoreConfig) (DocumentStore, error) {
 	switch cfg.Type {
+	case "memory":
+		return newMemoryDocStore(), nil
 	case "pg-jsonb":
 		return newPGJSONB(cfg)
 	case "sqlite":

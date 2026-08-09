@@ -23,7 +23,7 @@ type SearchResult struct {
 }
 
 type SearchHit struct {
-	ID      string
-	Score   float64
-	Source  any
+	ID     string
+	Score  float64
+	Source any
 }
