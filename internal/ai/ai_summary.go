@@ -115,6 +115,27 @@ func (s *CustomerService) Chat(ctx context.Context, userID int64, content string
 	return resp.Reply, nil
 }
 
+func (s *CustomerService) History(ctx context.Context, userID int64) ([]map[string]interface{}, error) {
+	req := map[string]interface{}{"user_id": userID}
+	var resp []map[string]interface{}
+	if s.caller == nil {
+		return []map[string]interface{}{}, nil
+	}
+	if err := s.caller.Call(ctx, "ai", "CustomerHistory", req, &resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (s *CustomerService) Transfer(ctx context.Context, userID int64) error {
+	req := map[string]interface{}{"user_id": userID}
+	var resp map[string]interface{}
+	if s.caller == nil {
+		return nil
+	}
+	return s.caller.Call(ctx, "ai", "CustomerTransfer", req, &resp)
+}
+
 var _ = json.Marshal
 var _ = io.EOF
 var _ = time.Now

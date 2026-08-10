@@ -26,6 +26,92 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/admin/audit-logs/", h.handleAuditLogByID)
 	mux.HandleFunc("/api/v1/admin/login-logs", h.handleLoginLogs)
 	mux.HandleFunc("/api/v1/admin/login-logs/user/", h.handleUserLoginLogs)
+	mux.HandleFunc("/api/v1/admin/storage/migrate", h.handleStorageMigrate)
+	mux.HandleFunc("/api/v1/admin/operation-tasks", h.handleOperationTasks)
+	mux.HandleFunc("/api/v1/admin/operation-tasks/", h.handleOperationTaskByID)
+}
+
+func (h *Handler) handleStorageMigrate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		From string `json:"from"`
+		To   string `json:"to"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	if req.To == "" {
+		req.To = "s3"
+	}
+	_, err := h.svc.repo.db.ExecContext(r.Context(),
+		`UPDATE videos SET source_video_url = replace(source_video_url, $1, $2)
+		 WHERE source_video_url LIKE '%' || $1 || '%'`, req.From, req.To)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "ok", "from": req.From, "to": req.To,
+	})
+}
+
+func (h *Handler) handleOperationTasks(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	page, size := parsePage(r)
+	rows, err := h.svc.repo.db.QueryContext(r.Context(),
+		`SELECT id, task_key, task_type, task_name, target_type, COALESCE(target_id,0),
+		        status, COALESCE(progress,0), COALESCE(error_message,''), created_at, updated_at
+		 FROM operation_tasks ORDER BY id DESC LIMIT $1 OFFSET $2`, size, (page-1)*size)
+	if err != nil {
+		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		return
+	}
+	defer rows.Close()
+	list := []map[string]interface{}{}
+	for rows.Next() {
+		var id, targetID int64
+		var key, typ, name, targetType, status string
+		var progress int32
+		var errMsg string
+		var created, updated string
+		rows.Scan(&id, &key, &typ, &name, &targetType, &targetID, &status, &progress, &errMsg, &created, &updated)
+		list = append(list, map[string]interface{}{
+			"id": id, "task_key": key, "task_type": typ, "task_name": name,
+			"target_type": targetType, "target_id": targetID, "status": status,
+			"progress": progress, "error_message": errMsg, "created_at": created, "updated_at": updated,
+		})
+	}
+	json.NewEncoder(w).Encode(list)
+}
+
+func (h *Handler) handleOperationTaskByID(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	id, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/admin/operation-tasks/"), 10, 64)
+	row := h.svc.repo.db.QueryRowContext(r.Context(),
+		`SELECT id, task_key, task_type, task_name, target_type, COALESCE(target_id,0),
+		        status, COALESCE(progress,0), COALESCE(error_message,''), created_at, updated_at
+		 FROM operation_tasks WHERE id=$1`, id)
+	var tid, targetID int64
+	var key, typ, name, targetType, status string
+	var progress int32
+	var errMsg string
+	var created, updated string
+	if err := row.Scan(&tid, &key, &typ, &name, &targetType, &targetID, &status, &progress, &errMsg, &created, &updated); err != nil {
+		http.Error(w, "not found", 404)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"id": tid, "task_key": key, "task_type": typ, "task_name": name,
+		"target_type": targetType, "target_id": targetID, "status": status,
+		"progress": progress, "error_message": errMsg, "created_at": created, "updated_at": updated,
+	})
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {

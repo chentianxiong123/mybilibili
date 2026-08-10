@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type Video struct {
@@ -94,6 +96,51 @@ func (r *Repository) ListByManuscript(ctx context.Context, manuscriptID int64) (
 	return list, nil
 }
 
+func (r *Repository) ListUserManuscriptIDs(ctx context.Context, userID int64) ([]int64, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id FROM manuscripts WHERE user_id = $1 ORDER BY id`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		rows.Scan(&id)
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+func (r *Repository) ListUserVideoIDs(ctx context.Context, userID int64) ([]int64, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT v.id FROM videos v JOIN manuscripts m ON v.manuscript_id = m.id
+		 WHERE m.user_id = $1 ORDER BY v.id`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		rows.Scan(&id)
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+func (r *Repository) BatchDeleteVideos(ctx context.Context, ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	_, err := r.db.ExecContext(ctx, `DELETE FROM videos WHERE id = ANY($1)`, pq.Array(ids))
+	return err
+}
+
+func (r *Repository) ListBanners(ctx context.Context, bannerType int32) ([]*BannerImage, error) {
+	return r.listBanners(ctx, bannerType, 0)
+}
+
 func (r *Repository) ListCategories(ctx context.Context) ([]*Category, error) {
 	rows, err := r.db.QueryContext(ctx, `SELECT id, name, icon, sort_order FROM categories ORDER BY sort_order`)
 	if err != nil {
@@ -137,10 +184,6 @@ func (r *Repository) UpdateCategory(ctx context.Context, id int64, name, icon st
 func (r *Repository) DeleteCategory(ctx context.Context, id int64) error {
 	_, err := r.db.ExecContext(ctx, `DELETE FROM categories WHERE id = $1`, id)
 	return err
-}
-
-func (r *Repository) ListBanners(ctx context.Context, bannerType int32) ([]*BannerImage, error) {
-	return r.listBanners(ctx, bannerType, 0)
 }
 
 func (r *Repository) ListBannersByCategory(ctx context.Context, bannerType int32, categoryID int64) ([]*BannerImage, error) {

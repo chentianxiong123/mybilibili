@@ -24,6 +24,7 @@ func (h *Handler) WithEngine(engine abstraction.SearchEngine) *Handler {
 
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/search/videos", h.handleSearch)
+	mux.HandleFunc("/api/v1/search/suggest", h.handleSuggest)
 	mux.HandleFunc("/api/v1/search/hot", h.handleHot)
 	mux.HandleFunc("/api/v1/recommend/related/", h.handleRelated)
 	mux.HandleFunc("/api/v1/recommend/for-you", h.handleForYou)
@@ -46,6 +47,16 @@ func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleHot(w http.ResponseWriter, r *http.Request) {
 	list, _ := h.svc.Hot(r.Context())
+	json.NewEncoder(w).Encode(list)
+}
+
+func (h *Handler) handleSuggest(w http.ResponseWriter, r *http.Request) {
+	keyword := r.URL.Query().Get("keyword")
+	size, _ := strconv.ParseInt(r.URL.Query().Get("size"), 10, 32)
+	if size <= 0 {
+		size = 10
+	}
+	list, _ := h.svc.Suggest(r.Context(), keyword, int32(size))
 	json.NewEncoder(w).Encode(list)
 }
 

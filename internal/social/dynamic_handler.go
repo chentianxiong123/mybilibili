@@ -20,11 +20,64 @@ func NewSocialHandler(followSvc *FollowService, dynamicSvc *DynamicService, coll
 
 func (h *SocialHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/dynamic/", h.handleDynamic)
+	mux.HandleFunc("/api/v1/dynamic/comment/list", h.handleDynamicCommentList)
+	mux.HandleFunc("/api/v1/dynamic/comment/add", h.handleDynamicCommentAdd)
+	mux.HandleFunc("/api/v1/dynamic/comment/replies", h.handleDynamicCommentReplies)
 	mux.HandleFunc("/api/v1/dynamic/comment/delete/", h.handleDynamicCommentDelete)
 	mux.HandleFunc("/api/v1/dynamic/comment/like/", h.handleDynamicCommentLike)
 	mux.HandleFunc("/api/v1/collection/", h.handleCollection)
 	mux.HandleFunc("/api/v1/share/", h.handleShare)
 	mux.HandleFunc("/api/v1/watch-history/", h.handleWatchHistory)
+}
+
+func (h *SocialHandler) handleDynamicCommentList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	dynamicID, _ := strconv.ParseInt(r.URL.Query().Get("dynamicId"), 10, 64)
+	page, limit := parsePage(r)
+	list, _ := h.dynamicSvc.ListComments(r.Context(), dynamicID, page, limit)
+	json.NewEncoder(w).Encode(list)
+}
+
+func (h *SocialHandler) handleDynamicCommentAdd(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	userID := getUserID(r)
+	dynamicID, _ := strconv.ParseInt(r.URL.Query().Get("dynamicId"), 10, 64)
+	content := r.URL.Query().Get("content")
+	parentID, _ := strconv.ParseInt(r.URL.Query().Get("parentId"), 10, 64)
+	replyUserID, _ := strconv.ParseInt(r.URL.Query().Get("replyUserId"), 10, 64)
+	if content == "" {
+		var req struct {
+			DynamicID   int64  `json:"dynamicId"`
+			Content     string `json:"content"`
+			ParentID    int64  `json:"parentId"`
+			ReplyUserID int64  `json:"replyUserId"`
+		}
+		json.NewDecoder(r.Body).Decode(&req)
+		dynamicID, content, parentID, replyUserID = req.DynamicID, req.Content, req.ParentID, req.ReplyUserID
+	}
+	dc, err := h.dynamicSvc.AddComment(r.Context(), dynamicID, userID, content, parentID, replyUserID)
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+	json.NewEncoder(w).Encode(dc)
+}
+
+func (h *SocialHandler) handleDynamicCommentReplies(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	commentID, _ := strconv.ParseInt(r.URL.Query().Get("commentId"), 10, 64)
+	page, limit := parsePage(r)
+	list, _ := h.dynamicSvc.ListReplies(r.Context(), commentID, page, limit)
+	json.NewEncoder(w).Encode(list)
 }
 
 func (h *SocialHandler) handleDynamicCommentDelete(w http.ResponseWriter, r *http.Request) {

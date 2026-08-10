@@ -42,6 +42,16 @@ func (h *Handler) handleVideo(w http.ResponseWriter, r *http.Request) {
 		msID, _ := strconv.ParseInt(parts[0], 10, 64)
 		list, _ := h.svc.ListByManuscript(r.Context(), msID)
 		json.NewEncoder(w).Encode(list)
+	} else if len(parts) >= 3 && parts[0] == "user" && parts[2] == "ids" && r.Method == "GET" {
+		uid, _ := strconv.ParseInt(parts[1], 10, 64)
+		ids, _ := h.svc.ListUserManuscriptIDs(r.Context(), uid)
+		json.NewEncoder(w).Encode(ids)
+	} else if len(parts) >= 3 && parts[0] == "user" && parts[2] == "video-ids" && r.Method == "GET" {
+		uid, _ := strconv.ParseInt(parts[1], 10, 64)
+		ids, _ := h.svc.ListUserVideoIDs(r.Context(), uid)
+		json.NewEncoder(w).Encode(ids)
+	} else {
+		http.Error(w, "not found", 404)
 	}
 }
 

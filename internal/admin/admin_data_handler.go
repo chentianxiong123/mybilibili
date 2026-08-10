@@ -3,6 +3,7 @@ package admin
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -57,7 +58,66 @@ func (h *AdminDataHandler) handleManuscriptAdmin(w http.ResponseWriter, r *http.
 func (h *AdminDataHandler) handleVideoAdmin(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/video/admin/"), "/")
 	if parts[0] == "list" && r.Method == "GET" {
-		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		keyword := r.URL.Query().Get("keyword")
+		status := r.URL.Query().Get("status")
+		page, size := parsePage(r)
+		rows, err := h.db.QueryContext(r.Context(),
+			`SELECT v.id, v.manuscript_id, v.title, v.process_status, m.user_id, m.title
+			 FROM videos v LEFT JOIN manuscripts m ON v.manuscript_id = m.id
+			 WHERE ($1 = '' OR v.title ILIKE '%'||$1||'%' OR m.title ILIKE '%'||$1||'%')
+			   AND ($2 = '' OR v.process_status::text = $2)
+			 ORDER BY v.id DESC LIMIT $3 OFFSET $4`, keyword, status, size, (page-1)*size)
+		if err != nil {
+			json.NewEncoder(w).Encode([]map[string]interface{}{})
+			return
+		}
+		defer rows.Close()
+		list := []map[string]interface{}{}
+		for rows.Next() {
+			var id, msID int64
+			var title string
+			var processStatus int32
+			var userID sql.NullInt64
+			var msTitle sql.NullString
+			rows.Scan(&id, &msID, &title, &processStatus, &userID, &msTitle)
+			list = append(list, map[string]interface{}{
+				"id": id, "manuscript_id": msID, "title": title,
+				"process_status": processStatus, "user_id": userID.Int64, "manuscript_title": msTitle.String,
+			})
+		}
+		json.NewEncoder(w).Encode(list)
+	} else if parts[0] == "batch" && r.Method == "DELETE" {
+		var ids []int64
+		json.NewDecoder(r.Body).Decode(&ids)
+		for _, id := range ids {
+			h.exec(w, r, `DELETE FROM videos WHERE id=$1`, id)
+		}
+		w.Write([]byte(`{"status":"ok"}`))
+	} else if len(parts) >= 1 && r.Method == "GET" {
+		id, _ := strconv.ParseInt(parts[0], 10, 64)
+		row := h.db.QueryRowContext(r.Context(),
+			`SELECT id, manuscript_id, video_order, title, description, play_url_hd, play_url_sd, play_url_ld,
+			        duration_seconds, process_progress, process_stage, has_subtitle, has_summary
+			 FROM videos WHERE id=$1`, id)
+		var vid int64
+		var msID int64
+		var order int32
+		var title, desc, hd, sd, ld string
+		var dur int32
+		var progress int32
+		var stage string
+		var hasSub, hasSum bool
+		if err := row.Scan(&vid, &msID, &order, &title, &desc, &hd, &sd, &ld,
+			&dur, &progress, &stage, &hasSub, &hasSum); err != nil {
+			http.Error(w, "not found", 404)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"id": vid, "manuscript_id": msID, "video_order": order, "title": title,
+			"description": desc, "play_url_hd": hd, "play_url_sd": sd, "play_url_ld": ld,
+			"duration_seconds": dur, "process_progress": progress, "process_stage": stage,
+			"has_subtitle": hasSub, "has_summary": hasSum,
+		})
 	} else if len(parts) >= 1 && r.Method == "DELETE" {
 		id, _ := strconv.ParseInt(parts[0], 10, 64)
 		h.exec(w, r, `DELETE FROM videos WHERE id=$1`, id)
@@ -110,11 +170,85 @@ func (h *AdminDataHandler) handleSecuritySettings(w http.ResponseWriter, r *http
 
 func (h *AdminDataHandler) handleContentReview(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/admin/content-review/"), "/")
+	contentType := r.URL.Query().Get("contentType")
+	status := r.URL.Query().Get("status")
+	page, size := parsePage(r)
+	conds := ""
+	args := []interface{}{}
+	if contentType != "" {
+		args = append(args, contentType)
+		conds += fmt.Sprintf(" AND type = $%d", len(args))
+	}
+	args = append(args, status)
+	conds += fmt.Sprintf(" AND ($%d::text = '' OR status = $%d::text)", len(args), len(args))
+	args = append(args, page, size)
 	switch {
 	case parts[0] == "pending" && r.Method == "GET":
-		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		rows, err := h.db.QueryContext(r.Context(),
+			`SELECT id, type, user_id, content, status, reviewed_at FROM content_reviews
+			 WHERE status = 'pending'`+conds+` ORDER BY id DESC LIMIT $`+strconv.Itoa(len(args)-1)+` OFFSET $`+strconv.Itoa(len(args)), args...)
+		if err != nil {
+			json.NewEncoder(w).Encode([]map[string]interface{}{})
+			return
+		}
+		defer rows.Close()
+		list := []map[string]interface{}{}
+		for rows.Next() {
+			var id int64
+			var typ, content string
+			var userID sql.NullInt64
+			var st sql.NullString
+			var reviewedAt sql.NullTime
+			rows.Scan(&id, &typ, &userID, &content, &st, &reviewedAt)
+			list = append(list, map[string]interface{}{
+				"id": id, "type": typ, "user_id": userID.Int64, "content": content,
+				"status": st.String, "reviewed_at": reviewedAt,
+			})
+		}
+		json.NewEncoder(w).Encode(list)
 	case parts[0] == "all" && r.Method == "GET":
-		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		rows, err := h.db.QueryContext(r.Context(),
+			`SELECT id, type, user_id, content, status, reviewed_at FROM content_reviews
+			 WHERE 1=1`+conds+` ORDER BY id DESC LIMIT $`+strconv.Itoa(len(args)-1)+` OFFSET $`+strconv.Itoa(len(args)), args...)
+		if err != nil {
+			json.NewEncoder(w).Encode([]map[string]interface{}{})
+			return
+		}
+		defer rows.Close()
+		list := []map[string]interface{}{}
+		for rows.Next() {
+			var id int64
+			var typ, content string
+			var userID sql.NullInt64
+			var st sql.NullString
+			var reviewedAt sql.NullTime
+			rows.Scan(&id, &typ, &userID, &content, &st, &reviewedAt)
+			list = append(list, map[string]interface{}{
+				"id": id, "type": typ, "user_id": userID.Int64, "content": content,
+				"status": st.String, "reviewed_at": reviewedAt,
+			})
+		}
+		json.NewEncoder(w).Encode(list)
+	case parts[0] == "restore" && len(parts) >= 3 && r.Method == "PUT":
+		h.exec(w, r, `UPDATE content_reviews SET status = 'active', reviewed_at = NOW() WHERE type = $1 AND id = $2`, parts[1], parts[2])
+	case len(parts) >= 2 && r.Method == "DELETE":
+		h.exec(w, r, `UPDATE content_reviews SET status = 'deleted', reviewed_at = NOW() WHERE type = $1 AND id = $2`, parts[0], parts[1])
+	case parts[0] == "batch" && r.Method == "POST":
+		var req struct {
+			Action string          `json:"action"`
+			Items  []map[string]any `json:"items"`
+		}
+		json.NewDecoder(r.Body).Decode(&req)
+		for _, item := range req.Items {
+			typ, _ := item["type"].(string)
+			id, _ := item["id"].(float64)
+			if req.Action == "restore" {
+				h.exec(w, r, `UPDATE content_reviews SET status = 'active', reviewed_at = NOW() WHERE type = $1 AND id = $2`, typ, int64(id))
+			} else {
+				h.exec(w, r, `UPDATE content_reviews SET status = 'deleted', reviewed_at = NOW() WHERE type = $1 AND id = $2`, typ, int64(id))
+			}
+		}
+		w.Write([]byte(`{"status":"ok"}`))
 	default:
 		w.Write([]byte(`{"status":"ok"}`))
 	}

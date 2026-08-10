@@ -20,6 +20,8 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/creator/stats/ranking", h.handleRanking)
 	mux.HandleFunc("/api/v1/creator/stats/latest-comments", h.handleLatestComments)
 	mux.HandleFunc("/api/v1/creator/stats/fans-trend", h.handleFansTrend)
+	mux.HandleFunc("/api/v1/creator/stats/fans-ranking", h.handleFansRanking)
+	mux.HandleFunc("/api/v1/creator/stats/manuscript-trend", h.handleManuscriptTrend)
 }
 
 func (h *Handler) handleOverview(w http.ResponseWriter, r *http.Request) {
@@ -53,6 +55,20 @@ func (h *Handler) handleFansTrend(w http.ResponseWriter, r *http.Request) {
 	userID := getUserID(r)
 	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
 	data, _ := h.svc.FansTrend(r.Context(), userID, days)
+	json.NewEncoder(w).Encode(data)
+}
+
+func (h *Handler) handleFansRanking(w http.ResponseWriter, r *http.Request) {
+	userID := getUserID(r)
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	data, _ := h.svc.FansRanking(r.Context(), userID, limit)
+	json.NewEncoder(w).Encode(data)
+}
+
+func (h *Handler) handleManuscriptTrend(w http.ResponseWriter, r *http.Request) {
+	userID := getUserID(r)
+	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
+	data, _ := h.svc.ManuscriptTrend(r.Context(), userID, days)
 	json.NewEncoder(w).Encode(data)
 }
 

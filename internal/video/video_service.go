@@ -61,3 +61,15 @@ func (s *Service) DeleteBanner(ctx context.Context, id int64) error {
 func (s *Service) Statistics(ctx context.Context) (map[string]interface{}, error) {
 	return s.repo.GetStatistics(ctx)
 }
+
+func (s *Service) ListUserManuscriptIDs(ctx context.Context, userID int64) ([]int64, error) {
+	return s.repo.ListUserManuscriptIDs(ctx, userID)
+}
+
+func (s *Service) ListUserVideoIDs(ctx context.Context, userID int64) ([]int64, error) {
+	return s.repo.ListUserVideoIDs(ctx, userID)
+}
+
+func (s *Service) BatchDeleteVideos(ctx context.Context, ids []int64) error {
+	return s.repo.BatchDeleteVideos(ctx, ids)
+}

@@ -142,6 +142,29 @@ func (r *DynamicRepository) ListComments(ctx context.Context, dynamicID int64, p
 	return list, nil
 }
 
+func (r *DynamicRepository) ListReplies(ctx context.Context, commentID int64, page, limit int32) ([]*DynamicComment, error) {
+	offset := (page - 1) * limit
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, dynamic_id, user_id, content, COALESCE(parent_id,0), COALESCE(reply_user_id,0),
+		        like_count, status, created_at, updated_at
+		 FROM dynamic_comments WHERE parent_id = $1 AND status = 0 ORDER BY created_at ASC LIMIT $2 OFFSET $3`,
+		commentID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var list []*DynamicComment
+	for rows.Next() {
+		dc := &DynamicComment{}
+		if err := rows.Scan(&dc.ID, &dc.DynamicID, &dc.UserID, &dc.Content, &dc.ParentID, &dc.ReplyUserID,
+			&dc.LikeCount, &dc.Status, &dc.CreatedAt, &dc.UpdatedAt); err != nil {
+			return nil, err
+		}
+		list = append(list, dc)
+	}
+	return list, nil
+}
+
 func (r *DynamicRepository) DeleteComment(ctx context.Context, id int64) error {
 	_, err := r.db.ExecContext(ctx, `UPDATE dynamic_comments SET status = 1 WHERE id = $1`, id)
 	return err

@@ -161,3 +161,57 @@ func (s *Service) FansTrend(ctx context.Context, userID int64, days int) ([]map[
 	}
 	return s.repo.FansTrend(ctx, userID, days)
 }
+
+func (s *Service) FansRanking(ctx context.Context, userID int64, limit int) ([]map[string]interface{}, error) {
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	rows, err := s.repo.db.QueryContext(ctx,
+		`SELECT f.follower_id, u.nickname, u.avatar, f.created_at
+		 FROM follows f JOIN users u ON f.follower_id = u.id
+		 WHERE f.followee_id = $1
+		 ORDER BY f.created_at DESC LIMIT $2`, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []map[string]interface{}
+	for rows.Next() {
+		var id int64
+		var nickname string
+		var avatar sql.NullString
+		var createdAt time.Time
+		rows.Scan(&id, &nickname, &avatar, &createdAt)
+		out = append(out, map[string]interface{}{
+			"user_id": id, "nickname": nickname, "avatar": avatar.String,
+			"follow_time": createdAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+	return out, nil
+}
+
+func (s *Service) ManuscriptTrend(ctx context.Context, userID int64, days int) ([]map[string]interface{}, error) {
+	if days < 1 || days > 365 {
+		days = 7
+	}
+	rows, err := s.repo.db.QueryContext(ctx,
+		`SELECT date_trunc('day', created_at)::date AS day, COUNT(*), COALESCE(SUM(view_count), 0), COALESCE(SUM(like_count), 0)
+		 FROM manuscripts WHERE user_id = $1 AND created_at >= NOW() - ($2 || ' days')::interval
+		 GROUP BY day ORDER BY day`, userID, days)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []map[string]interface{}
+	for rows.Next() {
+		var day time.Time
+		var cnt int64
+		var views, likes int64
+		rows.Scan(&day, &cnt, &views, &likes)
+		out = append(out, map[string]interface{}{
+			"date": day.Format("2006-01-02"), "count": cnt,
+			"views": views, "likes": likes,
+		})
+	}
+	return out, nil
+}

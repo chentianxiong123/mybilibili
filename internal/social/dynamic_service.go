@@ -60,6 +60,10 @@ func (s *DynamicService) ListComments(ctx context.Context, dynamicID int64, page
 	return s.repo.ListComments(ctx, dynamicID, page, limit)
 }
 
+func (s *DynamicService) ListReplies(ctx context.Context, commentID int64, page, limit int32) ([]*DynamicComment, error) {
+	return s.repo.ListReplies(ctx, commentID, page, limit)
+}
+
 type CollectionRepository struct {
 	db *sql.DB
 }

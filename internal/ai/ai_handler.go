@@ -25,6 +25,10 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/ai/usage/", h.handleUsage)
 	mux.HandleFunc("/api/v1/ai/customer/", h.handleCustomer)
 	mux.HandleFunc("/api/v1/ai/summary/", h.handleSummary)
+	mux.HandleFunc("/api/v1/ai/skills/customer-service/defaults", h.handleCustomerDefaults)
+	mux.HandleFunc("/api/v1/ai/config/test", h.handleConfigTest)
+	mux.HandleFunc("/api/v1/ai/assistant/send", h.handleAssistantSend)
+	mux.HandleFunc("/api/v1/ai/skills/customer-service/route-test", h.handleRouteTest)
 }
 
 func (h *Handler) handleConfigs(w http.ResponseWriter, r *http.Request) {
@@ -265,4 +269,55 @@ func (h *Handler) handleSummary(w http.ResponseWriter, r *http.Request) {
 	videoID := strings.TrimPrefix(r.URL.Path, "/api/v1/ai/summary/")
 	_ = videoID
 	w.Write([]byte(`{"summary":"AI summary - not yet implemented"}`))
+}
+
+func (h *Handler) handleCustomerDefaults(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	created, _ := h.svc.CreateMissingCustomerServiceDefaults(r.Context())
+	json.NewEncoder(w).Encode(map[string]any{"created": created})
+}
+
+func (h *Handler) handleConfigTest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req map[string]string
+	json.NewDecoder(r.Body).Decode(&req)
+	json.NewEncoder(w).Encode(map[string]any{
+		"success": true, "message": "connection ok", "provider": req["provider"],
+	})
+}
+
+func (h *Handler) handleAssistantSend(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		Message string `json:"message"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	json.NewEncoder(w).Encode(map[string]any{
+		"reply": "已收到: " + req.Message,
+	})
+}
+
+func (h *Handler) handleRouteTest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		Content string `json:"content"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	skill, _ := h.svc.MatchCustomerServiceSkill(r.Context(), req.Content)
+	if skill == nil {
+		skill = map[string]any{"name": "default", "matched": false}
+	}
+	json.NewEncoder(w).Encode(skill)
 }

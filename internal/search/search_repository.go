@@ -111,6 +111,26 @@ func (s *Service) Hot(ctx context.Context) ([]string, error) {
 	return s.repo.HotSearch(ctx)
 }
 
+func (s *Service) Suggest(ctx context.Context, keyword string, size int32) ([]string, error) {
+	if keyword == "" {
+		return []string{}, nil
+	}
+	rows, err := s.repo.db.QueryContext(ctx,
+		`SELECT title FROM manuscripts WHERE status = 3 AND title ILIKE '%'||$1||'%'
+		 ORDER BY view_count DESC LIMIT $2`, keyword, size)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var t string
+		rows.Scan(&t)
+		out = append(out, t)
+	}
+	return out, nil
+}
+
 func (s *Service) Related(ctx context.Context, manuscriptID int64, size int32) ([]map[string]interface{}, error) {
 	return s.repo.RecommendRelated(ctx, manuscriptID, 0, size)
 }

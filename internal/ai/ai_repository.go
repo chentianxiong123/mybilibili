@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 )
 
@@ -475,6 +476,20 @@ func (s *Service) CreateMissingCustomerServiceDefaults(ctx context.Context) (int
 		created++
 	}
 	return created, nil
+}
+
+func (s *Service) MatchCustomerServiceSkill(ctx context.Context, content string) (map[string]any, error) {
+	skills, err := s.repo.ListSkillsByType(ctx, "CUSTOMER_SERVICE")
+	if err != nil {
+		return nil, err
+	}
+	for _, sk := range skills {
+		lower := strings.ToLower(content)
+		if strings.Contains(strings.ToLower(sk.Name), lower) || strings.Contains(strings.ToLower(sk.Description), lower) {
+			return map[string]any{"name": sk.Name, "id": sk.ID, "matched": true}, nil
+		}
+	}
+	return map[string]any{"name": "default", "matched": false}, nil
 }
 
 func (s *Service) UsageOverview(ctx context.Context) (map[string]any, error) {

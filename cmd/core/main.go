@@ -179,14 +179,13 @@ func main() {
 	reviewSvc := ai.NewReviewService(caller)
 	customerSvc := ai.NewCustomerService(caller)
 	_ = summarySvc
-	_ = reviewSvc
-	_ = customerSvc
+	aiChatH := ai.NewAIChatHandler(reviewSvc, customerSvc)
 
 	httpH := core.NewHTTPHandler(danmakuSvc, messageRepo, notifBroadcaster)
 	core.StartHTTPServer(httpAddr, httpH,
 		liveH, linkmicH, followH, socialH, videoH, adminH, adminDataH, modH,
 		meetingH, aiH, searchH, supportH, userExtH, messageH,
-		subtitleH, analyticsH, studioH, profileH, creatorCommentH)
+		subtitleH, analyticsH, studioH, profileH, creatorCommentH, aiChatH)
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {

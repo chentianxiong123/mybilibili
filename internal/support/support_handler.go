@@ -19,6 +19,8 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/operation/tickets", h.handleCreate)
 	mux.HandleFunc("/api/v1/operation/admin/tickets", h.handleList)
 	mux.HandleFunc("/api/v1/operation/admin/tickets/", h.handleTicketByID)
+	mux.HandleFunc("/api/v1/operation/internal/tickets/customer-session", h.handleCustomerSession)
+	mux.HandleFunc("/api/v1/operation/internal/tickets/session/", h.handleSessionProcess)
 }
 
 func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
@@ -84,6 +86,51 @@ func getUserID(r *http.Request) int64 {
 	}
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	return id
+}
+
+func (h *Handler) handleCustomerSession(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		UserID   int64  `json:"userId"`
+		TicketNo string `json:"ticketNo"`
+		Title    string `json:"title"`
+		Content  string `json:"content"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	if req.UserID == 0 {
+		req.UserID = getUserID(r)
+	}
+	t, err := h.svc.Create(r.Context(), req.UserID, req.Title, req.Content)
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"ticketId": t.ID, "ticketNo": t.TicketNo, "sessionId": t.SessionID,
+	})
+}
+
+func (h *Handler) handleSessionProcess(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "PUT" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	sessionID, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/operation/internal/tickets/session/"), 10, 64)
+	var req struct {
+		AdminReply string `json:"adminReply"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	_, err := h.svc.repo.db.ExecContext(r.Context(),
+		`UPDATE support_tickets SET admin_reply = $2, status = 'processed', processed_at = NOW() WHERE session_id = $1`,
+		sessionID, req.AdminReply)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	w.Write([]byte(`{"status":"ok"}`))
 }
 
 func getAdminID(r *http.Request) int64 {
