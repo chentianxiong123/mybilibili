@@ -28,6 +28,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/search/hot", h.handleHot)
 	mux.HandleFunc("/api/v1/recommend/related/", h.handleRelated)
 	mux.HandleFunc("/api/v1/recommend/for-you", h.handleForYou)
+	mux.HandleFunc("/api/v1/recommend/hot", h.handleHotRecommend)
 	mux.HandleFunc("/api/v1/search/admin/index/status", h.handleIndexStatus)
 	mux.HandleFunc("/api/v1/search/admin/index/bulk", h.handleIndexBulk)
 	mux.HandleFunc("/api/v1/search/admin/index/rebuild", h.handleIndexRebuild)
@@ -72,6 +73,16 @@ func (h *Handler) handleRelated(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleForYou(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode([]map[string]interface{}{})
+}
+
+func (h *Handler) handleHotRecommend(w http.ResponseWriter, r *http.Request) {
+	categoryID, _ := strconv.ParseInt(r.URL.Query().Get("categoryId"), 10, 64)
+	size, _ := strconv.ParseInt(r.URL.Query().Get("size"), 10, 32)
+	if size <= 0 {
+		size = 10
+	}
+	list, _ := h.svc.HotRecommend(r.Context(), categoryID, int32(size))
+	json.NewEncoder(w).Encode(list)
 }
 
 func (h *Handler) handleIndexStatus(w http.ResponseWriter, r *http.Request) {

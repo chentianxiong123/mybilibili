@@ -3,6 +3,7 @@ package search
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"mybilibili/internal/abstraction"
 )
@@ -133,6 +134,35 @@ func (s *Service) Suggest(ctx context.Context, keyword string, size int32) ([]st
 
 func (s *Service) Related(ctx context.Context, manuscriptID int64, size int32) ([]map[string]interface{}, error) {
 	return s.repo.RecommendRelated(ctx, manuscriptID, 0, size)
+}
+
+func (s *Service) HotRecommend(ctx context.Context, categoryID int64, size int32) ([]map[string]interface{}, error) {
+	query := `SELECT id, user_id, title, cover_url, view_count, like_count, created_at
+	          FROM manuscripts WHERE status = 3`
+	args := []interface{}{}
+	if categoryID > 0 {
+		query += ` AND category_id = $1`
+		args = append(args, categoryID)
+	}
+	query += ` ORDER BY view_count DESC, like_count DESC LIMIT $2`
+	args = append(args, size)
+	rows, err := s.repo.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []map[string]interface{}
+	for rows.Next() {
+		var id, userID, views, likes int64
+		var title, cover string
+		var created time.Time
+		rows.Scan(&id, &userID, &title, &cover, &views, &likes, &created)
+		out = append(out, map[string]interface{}{
+			"manuscript_id": id, "user_id": userID, "title": title, "cover_url": cover,
+			"view_count": views, "like_count": likes, "created_at": created.Format("2006-01-02 15:04:05"),
+		})
+	}
+	return out, nil
 }
 
 func (s *Service) GetRecommendConfig(ctx context.Context) (string, error) {
