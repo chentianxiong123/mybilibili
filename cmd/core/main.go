@@ -139,6 +139,7 @@ func main() {
 	supportH := support.NewHandler(supportSvc)
 
 	userExtH := core.NewUserExtendHandler(userSvc)
+	manuscriptHTTPH := core.NewManuscriptHTTPHandler(db)
 	messageH := core.NewMessageHTTPHandler(messageRepo, notifBroadcaster)
 	creatorCommentH := core.NewCreatorCommentHTTPHandler(commentRepo, commentSvc)
 
@@ -185,7 +186,7 @@ func main() {
 	core.StartHTTPServer(httpAddr, httpH,
 		liveH, linkmicH, followH, socialH, videoH, adminH, adminDataH, modH,
 		meetingH, aiH, searchH, supportH, userExtH, messageH,
-		subtitleH, analyticsH, studioH, profileH, creatorCommentH, aiChatH)
+		subtitleH, analyticsH, studioH, profileH, creatorCommentH, aiChatH, manuscriptHTTPH)
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {

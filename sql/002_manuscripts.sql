@@ -89,3 +89,17 @@ INSERT INTO categories (id, name, icon, sort_order) VALUES
     (12, '政治', '', 12),
     (13, '历史', '', 13),
     (14, '经济', '', 14);
+CREATE TABLE IF NOT EXISTS upload_sessions (
+    id VARCHAR(32) PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    title VARCHAR(100) NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    category_id BIGINT,
+    tags TEXT NOT NULL DEFAULT '',
+    videos JSONB NOT NULL DEFAULT '[]',
+    uploaded_chunks INT NOT NULL DEFAULT 0,
+    total_chunks INT NOT NULL DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
