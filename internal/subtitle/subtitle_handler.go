@@ -16,6 +16,11 @@ func NewHandler(svc *Service) *Handler {
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
+	mux.HandleFunc("/api/v1/subtitle/videos", h.handleAllVideos)
+	mux.HandleFunc("/api/v1/subtitle/import-srt", h.handleImport)
+	mux.HandleFunc("/api/v1/subtitle/scan/", h.handleScan)
+	mux.HandleFunc("/api/v1/subtitle/import-system", h.handleImportSystem)
+	mux.HandleFunc("/api/v1/subtitle/set-default", h.handleSetDefault)
 	mux.HandleFunc("/api/v1/subtitle/video/", h.handleVideoSubtitle)
 	mux.HandleFunc("/api/v1/subtitle/pending", h.handlePending)
 	mux.HandleFunc("/api/v1/subtitle/upload", h.handleUpload)
@@ -90,6 +95,107 @@ func (h *Handler) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(sub)
+}
+
+func (h *Handler) handleAllVideos(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	list, err := h.svc.ListAll(r.Context())
+	if err != nil {
+		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		return
+	}
+	out := make([]map[string]interface{}, 0, len(list))
+	for _, s := range list {
+		out = append(out, map[string]interface{}{
+			"id": s.ID, "video_id": s.VideoID, "language": s.Language,
+			"language_name": s.LanguageName, "status": s.Status,
+			"created_at": s.UploadTime.Format("2006-01-02 15:04:05"),
+		})
+	}
+	json.NewEncoder(w).Encode(out)
+}
+
+func (h *Handler) handleImport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		VideoID int64  `json:"video_id"`
+		Srt     string `json:"srt"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	if req.VideoID == 0 || req.Srt == "" {
+		http.Error(w, "video_id and srt required", 400)
+		return
+	}
+	sub, err := h.svc.Upload(r.Context(), req.VideoID, getUserID(r), "zh-CN", "中文", req.Srt)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	json.NewEncoder(w).Encode(sub)
+}
+
+func (h *Handler) handleScan(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	videoID, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/subtitle/scan/"), 10, 64)
+	list, err := h.svc.ListByVideoForScan(r.Context(), videoID)
+	if err != nil {
+		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		return
+	}
+	out := make([]map[string]interface{}, 0, len(list))
+	for _, s := range list {
+		out = append(out, map[string]interface{}{
+			"id": s.ID, "video_id": s.VideoID, "language": s.Language,
+			"language_name": s.LanguageName, "status": s.Status,
+		})
+	}
+	json.NewEncoder(w).Encode(out)
+}
+
+func (h *Handler) handleImportSystem(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		VideoID int64  `json:"video_id"`
+		Srt     string `json:"srt"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	if req.VideoID == 0 || req.Srt == "" {
+		http.Error(w, "video_id and srt required", 400)
+		return
+	}
+	sub, err := h.svc.Upload(r.Context(), req.VideoID, 0, "zh-CN", "中文", req.Srt)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	h.svc.Approve(r.Context(), sub.ID)
+	json.NewEncoder(w).Encode(sub)
+}
+
+func (h *Handler) handleSetDefault(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		VideoID int64  `json:"video_id"`
+		ID      string `json:"id"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	h.svc.SetDefault(r.Context(), req.VideoID, req.ID)
+	w.Write([]byte(`{"status":"ok"}`))
 }
 
 func (h *Handler) handleSubtitleByID(w http.ResponseWriter, r *http.Request) {

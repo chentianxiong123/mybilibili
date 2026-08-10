@@ -32,14 +32,66 @@ func (h *AdminDataHandler) handleManuscriptAdmin(w http.ResponseWriter, r *http.
 	parts := strings.Split(path, "/")
 	switch {
 	case parts[0] == "pending" && r.Method == "GET":
-		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		h.listManuscripts(w, r, `review_status = 0`)
+	case parts[0] == "processing" && r.Method == "GET":
+		h.listManuscripts(w, r, `status = 2 AND process_status = 1`)
 	case parts[0] == "all" && r.Method == "GET":
-		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		h.listManuscripts(w, r, `1 = 1`)
 	case parts[0] == "statistics" && r.Method == "GET":
-		json.NewEncoder(w).Encode(map[string]interface{}{"total": 0, "pending": 0, "published": 0, "rejected": 0})
+		json.NewEncoder(w).Encode(h.manuscriptStats(r))
+	case len(parts) == 1 && parts[0] != "" && r.Method == "GET":
+		id, _ := strconv.ParseInt(parts[0], 10, 64)
+		row := h.db.QueryRowContext(r.Context(),
+			`SELECT m.id, m.user_id, m.title, m.description, m.cover_url, m.category_id,
+			        COALESCE(m.view_count,0), COALESCE(m.like_count,0), COALESCE(m.coin_count,0), COALESCE(m.collect_count,0),
+			        m.review_status, m.status, m.process_status, m.created_at, m.updated_at
+			 FROM manuscripts m WHERE m.id = $1`, id)
+		var mid, uid, catID, views, likes, coins, collects int64
+		var title, desc, cover, created, updated string
+		var reviewStatus, status, processStatus int32
+		if err := row.Scan(&mid, &uid, &title, &desc, &cover, &catID, &views, &likes, &coins, &collects,
+			&reviewStatus, &status, &processStatus, &created, &updated); err != nil {
+			http.Error(w, "not found", 404)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"id": mid, "user_id": uid, "title": title, "description": desc, "cover_url": cover,
+			"category_id": catID, "view_count": views, "like_count": likes, "coin_count": coins,
+			"collect_count": collects, "review_status": reviewStatus, "status": status,
+			"process_status": processStatus, "created_at": created, "updated_at": updated,
+		})
+	case len(parts) >= 2 && parts[1] == "videos" && r.Method == "GET":
+		id, _ := strconv.ParseInt(parts[0], 10, 64)
+		rows, err := h.db.QueryContext(r.Context(),
+			`SELECT v.id, v.video_order, v.title, v.play_url_hd, v.play_url_sd, v.play_url_ld,
+			        COALESCE(v.duration_seconds,0), v.process_status, v.has_subtitle, v.has_summary
+			 FROM videos v WHERE v.manuscript_id = $1 ORDER BY v.video_order`, id)
+		if err != nil {
+			json.NewEncoder(w).Encode([]map[string]interface{}{})
+			return
+		}
+		defer rows.Close()
+		list := []map[string]interface{}{}
+		for rows.Next() {
+			var vid, order int64
+			var title, hd, sd, ld string
+			var dur, processStatus int64
+			var hasSub, hasSum bool
+			rows.Scan(&vid, &order, &title, &hd, &sd, &ld, &dur, &processStatus, &hasSub, &hasSum)
+			list = append(list, map[string]interface{}{
+				"id": vid, "video_order": order, "title": title,
+				"play_url_hd": hd, "play_url_sd": sd, "play_url_ld": ld,
+				"duration_seconds": dur, "process_status": processStatus,
+				"has_subtitle": hasSub, "has_summary": hasSum,
+			})
+		}
+		json.NewEncoder(w).Encode(list)
 	case len(parts) >= 2 && parts[0] == "approve" && r.Method == "POST":
 		id, _ := strconv.ParseInt(parts[1], 10, 64)
 		h.exec(w, r, `UPDATE manuscripts SET review_status=1, status=2, review_time=NOW() WHERE id=$1`, id)
+	case len(parts) >= 2 && parts[1] == "approve-with-process" && r.Method == "POST":
+		id, _ := strconv.ParseInt(parts[0], 10, 64)
+		h.exec(w, r, `UPDATE manuscripts SET review_status=1, status=2, process_status=1, review_time=NOW() WHERE id=$1`, id)
 	case len(parts) >= 2 && parts[0] == "reject" && r.Method == "POST":
 		id, _ := strconv.ParseInt(parts[1], 10, 64)
 		h.exec(w, r, `UPDATE manuscripts SET review_status=2, status=4, review_time=NOW() WHERE id=$1`, id)
@@ -54,6 +106,54 @@ func (h *AdminDataHandler) handleManuscriptAdmin(w http.ResponseWriter, r *http.
 		h.exec(w, r, `UPDATE manuscripts SET status=2, process_status=0 WHERE id=$1`, id)
 	}
 }
+
+func (h *AdminDataHandler) listManuscripts(w http.ResponseWriter, r *http.Request, where string) {
+	keyword := r.URL.Query().Get("keyword")
+	page, size := parsePage(r)
+	query := `SELECT m.id, m.user_id, m.title, m.cover_url, m.review_status, m.status, m.process_status, m.created_at
+	          FROM manuscripts m WHERE ` + where
+	args := []interface{}{}
+	if keyword != "" {
+		args = append(args, "%"+keyword+"%")
+		query += ` AND (m.title ILIKE $` + itoa(len(args)) + ` OR m.description ILIKE $` + itoa(len(args)) + `)`
+	}
+	args = append(args, size, (page-1)*size)
+	query += ` ORDER BY m.id DESC LIMIT $` + itoa(len(args)-1) + ` OFFSET $` + itoa(len(args))
+	rows, err := h.db.QueryContext(r.Context(), query, args...)
+	if err != nil {
+		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		return
+	}
+	defer rows.Close()
+	list := []map[string]interface{}{}
+	for rows.Next() {
+		var id, uid int64
+		var title, cover, created string
+		var reviewStatus, status, processStatus int32
+		rows.Scan(&id, &uid, &title, &cover, &reviewStatus, &status, &processStatus, &created)
+		list = append(list, map[string]interface{}{
+			"id": id, "user_id": uid, "title": title, "cover_url": cover,
+			"review_status": reviewStatus, "status": status, "process_status": processStatus, "created_at": created,
+		})
+	}
+	json.NewEncoder(w).Encode(list)
+}
+
+func (h *AdminDataHandler) manuscriptStats(r *http.Request) map[string]interface{} {
+	total := "0"
+	pending := "0"
+	published := "0"
+	rejected := "0"
+	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts`).Scan(&total)
+	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts WHERE review_status = 0`).Scan(&pending)
+	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts WHERE status = 3`).Scan(&published)
+	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts WHERE status = 4`).Scan(&rejected)
+	return map[string]interface{}{
+		"total": total, "pending": pending, "published": published, "rejected": rejected,
+	}
+}
+
+var itoa = func(n int) string { return strconv.Itoa(n) }
 
 func (h *AdminDataHandler) handleVideoAdmin(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/video/admin/"), "/")

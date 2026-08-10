@@ -21,6 +21,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/category/", h.handleCategoryByID)
 	mux.HandleFunc("/api/v1/banner/", h.handleBanner)
 	mux.HandleFunc("/api/v1/statistics", h.handleStatistics)
+	mux.HandleFunc("/api/v1/statistics/", h.handleStatisticsByPath)
 }
 
 func (h *Handler) handleVideo(w http.ResponseWriter, r *http.Request) {
@@ -230,4 +231,46 @@ func decodeBanner(r *http.Request) *BannerImage {
 func (h *Handler) handleStatistics(w http.ResponseWriter, r *http.Request) {
 	stats, _ := h.svc.Statistics(r.Context())
 	json.NewEncoder(w).Encode(stats)
+}
+
+func (h *Handler) handleStatisticsByPath(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/statistics/")
+	switch path {
+	case "overview":
+		stats, _ := h.svc.Statistics(r.Context())
+		json.NewEncoder(w).Encode(stats)
+	case "manuscript/status":
+		data := map[string]interface{}{}
+		h.svc.repo.db.QueryRowContext(r.Context(),
+			`SELECT COUNT(*) FILTER (WHERE review_status=0), COUNT(*) FILTER (WHERE review_status=1),
+			        COUNT(*) FILTER (WHERE status=3), COUNT(*) FILTER (WHERE status=4)
+			 FROM manuscripts`).Scan(
+			func() *int64 { var v int64; data["pending_review"] = &v; return &v }(),
+			func() *int64 { var v int64; data["approved"] = &v; return &v }(),
+			func() *int64 { var v int64; data["published"] = &v; return &v }(),
+			func() *int64 { var v int64; data["rejected"] = &v; return &v }())
+		json.NewEncoder(w).Encode(data)
+	case "manuscript/recent":
+		rows, err := h.svc.repo.db.QueryContext(r.Context(),
+			`SELECT id, user_id, title, cover_url, view_count, created_at
+			 FROM manuscripts ORDER BY created_at DESC LIMIT 10`)
+		if err != nil {
+			json.NewEncoder(w).Encode([]map[string]interface{}{})
+			return
+		}
+		defer rows.Close()
+		list := []map[string]interface{}{}
+		for rows.Next() {
+			var id, uid, views int64
+			var title, cover, created string
+			rows.Scan(&id, &uid, &title, &cover, &views, &created)
+			list = append(list, map[string]interface{}{
+				"id": id, "user_id": uid, "title": title, "cover_url": cover,
+				"view_count": views, "created_at": created,
+			})
+		}
+		json.NewEncoder(w).Encode(list)
+	default:
+		http.Error(w, "not found", 404)
+	}
 }

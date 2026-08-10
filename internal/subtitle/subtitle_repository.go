@@ -90,6 +90,15 @@ func (r *Repository) ListPending(ctx context.Context) ([]*Subtitle, error) {
 	return result, nil
 }
 
+func (r *Repository) ListAll(ctx context.Context) ([]*Subtitle, error) {
+	var result []*Subtitle
+	filter := abstraction.QueryFilter{PageSize: 100}
+	if err := r.store.Query(ctx, collection, filter, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func (r *Repository) Update(ctx context.Context, id string, s *Subtitle) error {
 	return r.store.Update(ctx, collection, id, s)
 }
@@ -135,6 +144,14 @@ func (s *Service) Upload(ctx context.Context, videoID, uploadedBy int64, languag
 }
 
 func (s *Service) ListByVideo(ctx context.Context, videoID int64) ([]*Subtitle, error) {
+	return s.repo.ListByVideo(ctx, videoID)
+}
+
+func (s *Service) ListAll(ctx context.Context) ([]*Subtitle, error) {
+	return s.repo.ListAll(ctx)
+}
+
+func (s *Service) ListByVideoForScan(ctx context.Context, videoID int64) ([]*Subtitle, error) {
 	return s.repo.ListByVideo(ctx, videoID)
 }
 
