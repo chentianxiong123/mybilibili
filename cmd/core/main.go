@@ -142,6 +142,8 @@ func main() {
 	manuscriptHTTPH := core.NewManuscriptHTTPHandler(db)
 	messageH := core.NewMessageHTTPHandler(messageRepo, notifBroadcaster)
 	creatorCommentH := core.NewCreatorCommentHTTPHandler(commentRepo, commentSvc)
+	favoriteH := core.NewFavoriteHandler(db)
+	adminManuscriptH := admin.NewManuscriptAdminHandler(db)
 
 	abstractionCfg := abstraction.Config{}
 	docStore, _ := abstraction.NewDocumentStore(abstraction.DocumentStoreConfig{Type: "memory"})
@@ -184,8 +186,8 @@ func main() {
 
 	httpH := core.NewHTTPHandler(danmakuSvc, messageRepo, notifBroadcaster)
 	core.StartHTTPServer(httpAddr, httpH,
-		liveH, linkmicH, followH, socialH, videoH, adminH, adminDataH, modH,
-		meetingH, aiH, searchH, supportH, userExtH, messageH,
+		liveH, linkmicH, followH, socialH, videoH, adminH, adminDataH, adminManuscriptH, modH,
+		meetingH, aiH, searchH, supportH, userExtH, messageH, favoriteH,
 		subtitleH, analyticsH, studioH, profileH, creatorCommentH, aiChatH, manuscriptHTTPH)
 
 	lis, err := net.Listen("tcp", grpcAddr)
