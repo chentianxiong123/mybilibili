@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:media_kit/media_kit.dart';
 import 'core/router/router.dart';
 import 'core/theme/theme.dart';
 
 Future<void> launchApp() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   runApp(const ProviderScope(child: MyBiliApp()));
 }
 
