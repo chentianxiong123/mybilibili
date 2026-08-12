@@ -1,0 +1,46 @@
+name: mybilibili_app_flutter
+description: "mybilibili Flutter client - Bilibili-style video platform"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_riverpod: ^2.6.1
+
+  # Navigation
+  go_router: ^14.8.1
+
+  # HTTP
+  dio: ^5.7.0
+
+  # Video player
+  media_kit: 1.1.11
+  media_kit_video: 1.2.5
+  media_kit_libs_video: 1.0.5
+
+  # Danmaku
+  canvas_danmaku: ^0.3.1
+
+  # Storage
+  flutter_secure_storage: ^9.2.4
+  shared_preferences: ^2.3.4
+
+  # UI
+  flutter_svg: ^2.0.16
+  cached_network_image: ^3.4.1
+  intl: ^0.20.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
