@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	pb "mybilibili/internal/core/pb"
 )
 
 type UserExtendHandler struct {
@@ -19,6 +21,8 @@ func NewUserExtendHandler(svc *Service) *UserExtendHandler {
 }
 
 func (h *UserExtendHandler) Register(mux *http.ServeMux) {
+	mux.HandleFunc("/api/v1/user/login", h.handleLogin)
+	mux.HandleFunc("/api/v1/user/register", h.handleRegister)
 	mux.HandleFunc("/api/v1/user/token/refresh", h.handleRefresh)
 	mux.HandleFunc("/api/v1/user/email/code", h.handleEmailCode)
 	mux.HandleFunc("/api/v1/user/email/verify", h.handleEmailVerify)
@@ -33,6 +37,64 @@ func (h *UserExtendHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/user/settings/message", h.handleMessageSettings)
 	mux.HandleFunc("/api/v1/user/settings/creator", h.handleCreatorSettings)
 	mux.HandleFunc("/api/v1/captcha/", h.handleCaptcha)
+}
+
+func (h *UserExtendHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", 400)
+		return
+	}
+	resp, err := h.svc.Login(r.Context(), &pb.LoginRequest{Username: req.Username, Password: req.Password})
+	if err != nil {
+		http.Error(w, err.Error(), 401)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data": map[string]interface{}{
+			"token":    resp.Token,
+			"user_id":  resp.UserId,
+			"nickname": resp.Nickname,
+		},
+	})
+}
+
+func (h *UserExtendHandler) handleRegister(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+		Nickname string `json:"nickname"`
+		Email    string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", 400)
+		return
+	}
+	resp, err := h.svc.Register(r.Context(), &pb.RegisterRequest{
+		Username: req.Username, Password: req.Password,
+		Nickname: req.Nickname, Email: req.Email,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data": map[string]interface{}{
+			"token":   resp.Token,
+			"user_id": resp.UserId,
+		},
+	})
 }
 
 func (h *UserExtendHandler) handleRefresh(w http.ResponseWriter, r *http.Request) {

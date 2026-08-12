@@ -12,6 +12,7 @@ import '../../features/dynamic/dynamic_page.dart' as dyn;
 import '../../features/message/message_page.dart';
 import '../../features/follow/follow_list_page.dart';
 import '../../features/live/live_list_page.dart';
+import '../../features/creator/creator_center_page.dart';
 import '../../features/video/screens/video_detail_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -47,6 +48,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/message', builder: (context, state) => const MessagePage()),
       GoRoute(path: '/live', builder: (context, state) => const LiveListPage()),
+      GoRoute(path: '/creator', builder: (context, state) => const CreatorCenterPage()),
       GoRoute(path: '/follow/followers', builder: (context, state) => const FollowListPage(showFollowers: true)),
       GoRoute(path: '/follow/following', builder: (context, state) => const FollowListPage(showFollowers: false)),
     ],
