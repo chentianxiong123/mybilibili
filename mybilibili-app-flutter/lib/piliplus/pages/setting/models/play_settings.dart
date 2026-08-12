@@ -1,0 +1,1 @@
+const int kMaxVolume = 100;

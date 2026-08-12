@@ -1,0 +1,1 @@
+enum ActionType { skip, mute, skipToEnd }

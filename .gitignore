@@ -17,3 +17,11 @@ dist/
 .idea/
 .vscode/
 *.local
+
+# Flutter
+**/android/.gradle/
+**/build/
+**/.dart_tool/
+**/.packages
+**/.pub/
+**/pubspec.lock
