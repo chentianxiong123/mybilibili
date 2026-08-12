@@ -11,6 +11,7 @@ import '../../features/user/user_page.dart';
 import '../../features/dynamic/dynamic_page.dart' as dyn;
 import '../../features/message/message_page.dart';
 import '../../features/follow/follow_list_page.dart';
+import '../../features/live/live_list_page.dart';
 import '../../features/video/screens/video_detail_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -21,7 +22,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, child) => AppShell(child: child),
         routes: [
           GoRoute(path: '/home', pageBuilder: (context, state) => const NoTransitionPage(child: HomePage())),
-          GoRoute(path: '/hot', pageBuilder: (context, state) => const NoTransitionPage(child: HotPage())),
+          GoRoute(path: '/hot', pageBuilder: (context, state) => const NoTransitionPage(child: LiveListPage())),
           GoRoute(path: '/dynamic', pageBuilder: (context, state) => const NoTransitionPage(child: dyn.DynamicPage())),
           GoRoute(path: '/profile', pageBuilder: (context, state) => const NoTransitionPage(child: ProfilePage())),
         ],
@@ -45,6 +46,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: '/message', builder: (context, state) => const MessagePage()),
+      GoRoute(path: '/live', builder: (context, state) => const LiveListPage()),
       GoRoute(path: '/follow/followers', builder: (context, state) => const FollowListPage(showFollowers: true)),
       GoRoute(path: '/follow/following', builder: (context, state) => const FollowListPage(showFollowers: false)),
     ],
@@ -64,7 +66,7 @@ class AppShell extends StatelessWidget {
         onTap: (index) => _onTap(context, index),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: '首页'),
-          BottomNavigationBarItem(icon: Icon(Icons.local_fire_department), label: '热门'),
+          BottomNavigationBarItem(icon: Icon(Icons.live_tv), label: '直播'),
           BottomNavigationBarItem(icon: Icon(Icons.dynamic_feed), label: '动态'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: '我的'),
         ],
@@ -75,7 +77,7 @@ class AppShell extends StatelessWidget {
   int _calculateIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     if (location.startsWith('/home')) return 0;
-    if (location.startsWith('/hot')) return 1;
+    if (location.startsWith('/hot') || location.startsWith('/live')) return 1;
     if (location.startsWith('/dynamic')) return 2;
     if (location.startsWith('/profile')) return 3;
     return 0;
@@ -84,7 +86,7 @@ class AppShell extends StatelessWidget {
   void _onTap(BuildContext context, int index) {
     switch (index) {
       case 0: context.go('/home');
-      case 1: context.go('/hot');
+      case 1: context.go('/live');
       case 2: context.go('/dynamic');
       case 3: context.go('/profile');
     }
