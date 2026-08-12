@@ -6,6 +6,7 @@ import '../../features/home/dynamic_page.dart';
 import '../../features/home/hot_page.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/profile/profile_page.dart';
+import '../../features/search/search_page.dart';
 import '../../features/video/screens/video_detail_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -43,6 +44,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           final id = int.parse(state.pathParameters['id']!);
           return VideoDetailScreen(manuscriptId: id);
         },
+      ),
+      GoRoute(
+        path: '/search',
+        builder: (context, state) => const SearchPage(),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          child: const SearchPage(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              SlideTransition(position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(animation), child: child),
+        ),
       ),
     ],
   );
