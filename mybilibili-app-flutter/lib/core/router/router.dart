@@ -7,6 +7,7 @@ import '../../features/home/hot_page.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/search/search_page.dart';
+import '../../features/user/user_page.dart';
 import '../../features/video/screens/video_detail_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -16,35 +17,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (context, state, child) => AppShell(child: child),
         routes: [
-          GoRoute(
-            path: '/home',
-            pageBuilder: (context, state) => const NoTransitionPage(child: HomePage()),
-          ),
-          GoRoute(
-            path: '/hot',
-            pageBuilder: (context, state) => const NoTransitionPage(child: HotPage()),
-          ),
-          GoRoute(
-            path: '/dynamic',
-            pageBuilder: (context, state) => const NoTransitionPage(child: DynamicPage()),
-          ),
-          GoRoute(
-            path: '/profile',
-            pageBuilder: (context, state) => const NoTransitionPage(child: ProfilePage()),
-          ),
+          GoRoute(path: '/home', pageBuilder: (context, state) => const NoTransitionPage(child: HomePage())),
+          GoRoute(path: '/hot', pageBuilder: (context, state) => const NoTransitionPage(child: HotPage())),
+          GoRoute(path: '/dynamic', pageBuilder: (context, state) => const NoTransitionPage(child: DynamicPage())),
+          GoRoute(path: '/profile', pageBuilder: (context, state) => const NoTransitionPage(child: ProfilePage())),
         ],
       ),
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginPage(),
-      ),
-      GoRoute(
-        path: '/video/:id',
-        builder: (context, state) {
-          final id = int.parse(state.pathParameters['id']!);
-          return VideoDetailScreen(manuscriptId: id);
-        },
-      ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(path: '/video/:id', builder: (context, state) {
+        final id = int.parse(state.pathParameters['id']!);
+        return VideoDetailScreen(manuscriptId: id);
+      }),
+      GoRoute(path: '/user/:id', builder: (context, state) {
+        final id = int.parse(state.pathParameters['id']!);
+        return UserPage(userId: id);
+      }),
       GoRoute(
         path: '/search',
         builder: (context, state) => const SearchPage(),
