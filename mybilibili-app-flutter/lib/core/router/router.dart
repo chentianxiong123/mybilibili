@@ -8,6 +8,9 @@ import '../../features/auth/login_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/search/search_page.dart';
 import '../../features/user/user_page.dart';
+import '../../features/dynamic/dynamic_page.dart' as dyn;
+import '../../features/message/message_page.dart';
+import '../../features/follow/follow_list_page.dart';
 import '../../features/video/screens/video_detail_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -19,7 +22,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: '/home', pageBuilder: (context, state) => const NoTransitionPage(child: HomePage())),
           GoRoute(path: '/hot', pageBuilder: (context, state) => const NoTransitionPage(child: HotPage())),
-          GoRoute(path: '/dynamic', pageBuilder: (context, state) => const NoTransitionPage(child: DynamicPage())),
+          GoRoute(path: '/dynamic', pageBuilder: (context, state) => const NoTransitionPage(child: dyn.DynamicPage())),
           GoRoute(path: '/profile', pageBuilder: (context, state) => const NoTransitionPage(child: ProfilePage())),
         ],
       ),
@@ -41,6 +44,9 @@ final routerProvider = Provider<GoRouter>((ref) {
               SlideTransition(position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(animation), child: child),
         ),
       ),
+      GoRoute(path: '/message', builder: (context, state) => const MessagePage()),
+      GoRoute(path: '/follow/followers', builder: (context, state) => const FollowListPage(showFollowers: true)),
+      GoRoute(path: '/follow/following', builder: (context, state) => const FollowListPage(showFollowers: false)),
     ],
   );
 });

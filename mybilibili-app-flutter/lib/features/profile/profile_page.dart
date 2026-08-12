@@ -72,6 +72,7 @@ class ProfilePage extends ConsumerWidget {
           _menuItem(Icons.folder, '收藏夹', () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FavoritesPage()))),
           _menuItem(Icons.video_library, '我的投稿', () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ManuscriptsPage()))),
           _menuItem(Icons.edit, '编辑资料', () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EditProfilePage()))),
+          _menuItem(Icons.mail, '消息中心', () => Navigator.of(context).pushNamed('/message')),
           _menuItem(Icons.people, '关注列表', () => Navigator.of(context).pushNamed('/follow/following')),
           _menuItem(Icons.people_outline, '粉丝列表', () => Navigator.of(context).pushNamed('/follow/followers')),
           _menuItem(Icons.settings, '设置', () {}),
