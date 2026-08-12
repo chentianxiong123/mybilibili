@@ -1,17 +1,19 @@
-# Go build artifacts
+# Go
 /bin/
-cmd/core/core
-cmd/media/media
 *.exe
 *.test
 *.out
-
-# Binaries built into repo root
 /core
 /media
 
-# OS / editor
+# Node
+node_modules/
+dist/
+.pnpm-store/
+
+# OS
 .DS_Store
 *.swp
 .idea/
 .vscode/
+*.local
