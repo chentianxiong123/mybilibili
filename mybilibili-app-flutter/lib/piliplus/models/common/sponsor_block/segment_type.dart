@@ -1,1 +1,0 @@
-enum SegmentType { sponsor, intro, outro, interaction, preview, musicOfftopic, poiHighlight, filler }
