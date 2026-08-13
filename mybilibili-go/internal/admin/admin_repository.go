@@ -115,6 +115,22 @@ func (r *Repository) ListAdmins(ctx context.Context) ([]*AdminUser, error) {
 	return list, nil
 }
 
+func (r *Repository) GetAdminByID(ctx context.Context, id int64) (*AdminUser, error) {
+	u := &AdminUser{}
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, username, nickname, admin_level FROM admin_users WHERE id=$1`, id).
+		Scan(&u.ID, &u.Username, &u.Nickname, &u.AdminLevel)
+	if err != nil {
+		return nil, err
+	}
+	return u, nil
+}
+
+func (r *Repository) UpdateAdmin(ctx context.Context, id int64, nickname string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE admin_users SET nickname=$1, updated_at=NOW() WHERE id=$2`, nickname, id)
+	return err
+}
+
 func (r *Repository) ListRoles(ctx context.Context) ([]*Role, error) {
 	rows, err := r.db.QueryContext(ctx, `SELECT id, name, COALESCE(description,'') FROM roles ORDER BY id`)
 	if err != nil {
