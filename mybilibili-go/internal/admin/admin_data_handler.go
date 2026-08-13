@@ -18,12 +18,12 @@ func NewAdminDataHandler(db *sql.DB) *AdminDataHandler {
 }
 
 func (h *AdminDataHandler) Register(mux *http.ServeMux) {
-	mux.HandleFunc("/api/v1/manuscript/admin/", h.handleManuscriptAdmin)
+	// /api/v1/manuscript/admin/ is registered in admin_manuscript_handler.go
 	mux.HandleFunc("/api/v1/video/admin/", h.handleVideoAdmin)
-	mux.HandleFunc("/api/v1/comment/admin/", h.handleCommentAdmin)
+	mux.HandleFunc("/api/v1/admin/comment/", h.handleCommentAdmin)
 	mux.HandleFunc("/api/v1/admin/live/", h.handleLiveAdmin)
 	mux.HandleFunc("/api/v1/admin/meeting/", h.handleMeetingAdmin)
-	mux.HandleFunc("/api/v1/admin/security-settings", h.handleSecuritySettings)
+	// /api/v1/admin/security-settings is registered in admin_handler.go
 	mux.HandleFunc("/api/v1/admin/content-review/", h.handleContentReview)
 }
 
@@ -225,7 +225,7 @@ func (h *AdminDataHandler) handleVideoAdmin(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *AdminDataHandler) handleCommentAdmin(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/comment/admin/"), "/")
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/admin/comment/"), "/")
 	switch {
 	case parts[0] == "list" && r.Method == "GET":
 		json.NewEncoder(w).Encode([]map[string]interface{}{})
