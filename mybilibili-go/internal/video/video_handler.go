@@ -20,6 +20,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/category", h.handleCategory)
 	mux.HandleFunc("/api/v1/category/", h.handleCategoryByID)
 	mux.HandleFunc("/api/v1/banner/", h.handleBanner)
+	mux.HandleFunc("/api/v1/banner-images/", h.handleBannerImages)
 	mux.HandleFunc("/api/v1/statistics", h.handleStatistics)
 	mux.HandleFunc("/api/v1/statistics/", h.handleStatisticsByPath)
 }
@@ -103,6 +104,9 @@ func (h *Handler) handleCategoryByID(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleBanner(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/banner/")
+	if path == r.URL.Path {
+		path = strings.TrimPrefix(r.URL.Path, "/api/v1/banner-images/")
+	}
 	parts := strings.Split(path, "/")
 	if len(parts) == 0 || parts[0] == "" {
 		http.Error(w, "not found", 404)
@@ -133,6 +137,10 @@ func (h *Handler) handleBanner(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "not found", 404)
 	}
+}
+
+func (h *Handler) handleBannerImages(w http.ResponseWriter, r *http.Request) {
+	h.handleBanner(w, r)
 }
 
 func (h *Handler) handleBannerHome(w http.ResponseWriter, r *http.Request, parts []string) {
