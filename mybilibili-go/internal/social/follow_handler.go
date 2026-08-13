@@ -118,6 +118,12 @@ func getUserID(r *http.Request) int64 {
 func parsePage(r *http.Request) (int32, int32) {
 	page, _ := strconv.ParseInt(r.URL.Query().Get("page"), 10, 32)
 	pageSize, _ := strconv.ParseInt(r.URL.Query().Get("page_size"), 10, 32)
+	if pageSize < 1 {
+		pageSize, _ = strconv.ParseInt(r.URL.Query().Get("pageSize"), 10, 32)
+	}
+	if pageSize < 1 {
+		pageSize, _ = strconv.ParseInt(r.URL.Query().Get("size"), 10, 32)
+	}
 	if page < 1 {
 		page = 1
 	}
