@@ -23,7 +23,7 @@ class CommentItem {
   factory CommentItem.fromJson(Map<String, dynamic> json) => CommentItem(
     id: (json['id'] as num?)?.toInt() ?? 0,
     userId: (json['userId'] as num?)?.toInt() ?? 0,
-    username: json['username'] as String? ?? json['nickname'] as String? ?? '',
+    username: json['username'] as String? ?? json['userName'] as String? ?? json['nickname'] as String? ?? '',
     userAvatar: json['userAvatar'] as String? ?? json['avatar'] as String? ?? '',
     userLevel: (json['userLevel'] as num?)?.toInt() ?? 0,
     content: json['content'] as String? ?? '',
