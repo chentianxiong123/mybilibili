@@ -1,7 +1,9 @@
 package admin
 
 import (
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -25,10 +27,14 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/admin/audit-logs", h.handleAuditLogs)
 	mux.HandleFunc("/api/v1/admin/audit-logs/", h.handleAuditLogByID)
 	mux.HandleFunc("/api/v1/admin/login-logs", h.handleLoginLogs)
+	mux.HandleFunc("/api/v1/admin/login-logs/list", h.handleLoginLogs)
 	mux.HandleFunc("/api/v1/admin/login-logs/user/", h.handleUserLoginLogs)
+	mux.HandleFunc("/api/v1/admin/security-settings", h.handleSecuritySettings)
 	mux.HandleFunc("/api/v1/admin/storage/migrate", h.handleStorageMigrate)
 	mux.HandleFunc("/api/v1/admin/operation-tasks", h.handleOperationTasks)
 	mux.HandleFunc("/api/v1/admin/operation-tasks/", h.handleOperationTaskByID)
+	mux.HandleFunc("/api/v1/admin/", h.handleAdminByID)
+	mux.HandleFunc("/api/v1/user/admin/", h.handleUserAdminRoute)
 }
 
 func (h *Handler) handleStorageMigrate(w http.ResponseWriter, r *http.Request) {
@@ -334,6 +340,259 @@ func (h *Handler) handleLoginLogs(w http.ResponseWriter, r *http.Request) {
 	page, size := parsePage(r)
 	list, _ := h.svc.ListLoginLogs(r.Context(), userID, page, size)
 	json.NewEncoder(w).Encode(list)
+}
+
+func (h *Handler) handleSecuritySettings(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"password_policy": map[string]interface{}{
+				"min_length":      8,
+				"require_upper":   true,
+				"require_lower":   true,
+				"require_digit":   true,
+				"require_special": false,
+				"max_age_days":    90,
+			},
+			"login_policy": map[string]interface{}{
+				"max_attempts":         5,
+				"lockout_minutes":      30,
+				"session_timeout_min":  480,
+				"two_factor_required":  false,
+				"ip_whitelist_enabled": false,
+			},
+		})
+	case "PUT":
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	default:
+		http.Error(w, "method not allowed", 405)
+	}
+}
+
+// handleAdminByID 分派 /api/v1/admin/{id} 及子路径
+func (h *Handler) handleAdminByID(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/admin/")
+	parts := strings.Split(path, "/")
+	if len(parts) == 0 || parts[0] == "" {
+		http.Error(w, "not found", 404)
+		return
+	}
+	// 跳过已知的有独立 handler 的子路径
+	switch parts[0] {
+	case "roles", "permissions", "login", "register", "list", "login-logs", "audit-logs", "storage", "operation-tasks", "security-settings":
+		http.Error(w, "not found", 404)
+		return
+	}
+	id, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		http.Error(w, "invalid admin id", 400)
+		return
+	}
+	if len(parts) == 1 {
+		switch r.Method {
+		case "GET":
+			admin, err := h.svc.repo.GetAdminByID(r.Context(), id)
+			if err != nil {
+				http.Error(w, "admin not found", 404)
+				return
+			}
+			json.NewEncoder(w).Encode(admin)
+		case "PUT":
+			var body map[string]interface{}
+			json.NewDecoder(r.Body).Decode(&body)
+			if nickname, ok := body["nickname"].(string); ok && nickname != "" {
+				_ = h.svc.repo.UpdateAdmin(r.Context(), id, nickname)
+			}
+			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		default:
+			http.Error(w, "method not allowed", 405)
+		}
+		return
+	}
+	if len(parts) == 2 && parts[1] == "roles" {
+		switch r.Method {
+		case "GET":
+			ids, _ := h.svc.repo.GetAdminRoles(r.Context(), id)
+			json.NewEncoder(w).Encode(ids)
+		case "PUT":
+			var req struct {
+				RoleIDs []int64 `json:"role_ids"`
+			}
+			json.NewDecoder(r.Body).Decode(&req)
+			_ = h.svc.repo.SetAdminRoles(r.Context(), id, req.RoleIDs)
+			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		default:
+			http.Error(w, "method not allowed", 405)
+		}
+		return
+	}
+	http.Error(w, "not found", 404)
+}
+
+// handleUserAdminRoute 分派 /api/v1/user/admin/ 下的子路径
+func (h *Handler) handleUserAdminRoute(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/user/admin/")
+	parts := strings.Split(path, "/")
+	if len(parts) == 1 && parts[0] == "list" {
+		h.handleUserAdminList(w, r)
+		return
+	}
+	if len(parts) >= 1 {
+		id, err := strconv.ParseInt(parts[0], 10, 64)
+		if err != nil {
+			http.Error(w, "invalid user id", 400)
+			return
+		}
+		if len(parts) == 1 {
+			switch r.Method {
+			case "GET":
+				h.handleUserAdminGet(w, r, id)
+			case "PUT":
+				h.handleUserAdminUpdate(w, r, id)
+			default:
+				http.Error(w, "method not allowed", 405)
+			}
+			return
+		}
+		if len(parts) == 2 {
+			switch parts[1] {
+			case "status":
+				h.handleUserAdminStatus(w, r, id)
+			case "password":
+				h.handleUserAdminPassword(w, r, id)
+			default:
+				http.Error(w, "not found", 404)
+			}
+			return
+		}
+	}
+	http.Error(w, "not found", 404)
+}
+
+func (h *Handler) handleUserAdminList(w http.ResponseWriter, r *http.Request) {
+	page, size := parsePage(r)
+	offset := (page - 1) * size
+	rows, err := h.svc.repo.db.QueryContext(r.Context(),
+		`SELECT id, username, nickname, email, avatar, level, status, created_at
+		 FROM users ORDER BY id DESC LIMIT $1 OFFSET $2`, size, offset)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	defer rows.Close()
+	type userItem struct {
+		ID        int64  `json:"id"`
+		Username  string `json:"username"`
+		Nickname  string `json:"nickname"`
+		Email     string `json:"email"`
+		Avatar    string `json:"avatar"`
+		Level     int32  `json:"level"`
+		Status    int32  `json:"status"`
+		CreatedAt string `json:"created_at"`
+	}
+	list := []userItem{}
+	for rows.Next() {
+		var u userItem
+		var createdAt string
+		rows.Scan(&u.ID, &u.Username, &u.Nickname, &u.Email, &u.Avatar, &u.Level, &u.Status, &createdAt)
+		u.CreatedAt = createdAt
+		list = append(list, u)
+	}
+	var total int64
+	_ = h.svc.repo.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM users`).Scan(&total)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"list": list, "total": total, "page": page, "size": size,
+	})
+}
+
+func (h *Handler) handleUserAdminGet(w http.ResponseWriter, r *http.Request, id int64) {
+	var uid, level, status int32
+	var username, nickname, email, avatar, createdAt string
+	err := h.svc.repo.db.QueryRowContext(r.Context(),
+		`SELECT id, username, nickname, email, avatar, level, status, created_at FROM users WHERE id=$1`, id).
+		Scan(&uid, &username, &nickname, &email, &avatar, &level, &status, &createdAt)
+	if err != nil {
+		http.Error(w, "user not found", 404)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"id": uid, "username": username, "nickname": nickname, "email": email,
+		"avatar": avatar, "level": level, "status": status, "created_at": createdAt,
+	})
+}
+
+func (h *Handler) handleUserAdminUpdate(w http.ResponseWriter, r *http.Request, id int64) {
+	var body map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid body", 400)
+		return
+	}
+	for k, v := range body {
+		switch k {
+		case "nickname":
+			if s, ok := v.(string); ok && s != "" {
+				_, _ = h.svc.repo.db.ExecContext(r.Context(),
+					`UPDATE users SET nickname=$1, updated_at=NOW() WHERE id=$2`, s, id)
+			}
+		case "email":
+			if s, ok := v.(string); ok {
+				_, _ = h.svc.repo.db.ExecContext(r.Context(),
+					`UPDATE users SET email=$1, updated_at=NOW() WHERE id=$2`, s, id)
+			}
+		case "level":
+			if n, ok := v.(float64); ok && n > 0 {
+				_, _ = h.svc.repo.db.ExecContext(r.Context(),
+					`UPDATE users SET level=$1, updated_at=NOW() WHERE id=$2`, int32(n), id)
+			}
+		}
+	}
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+func (h *Handler) handleUserAdminStatus(w http.ResponseWriter, r *http.Request, id int64) {
+	if r.Method != "PUT" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var body struct {
+		Status int32 `json:"status"`
+	}
+	json.NewDecoder(r.Body).Decode(&body)
+	_, err := h.svc.repo.db.ExecContext(r.Context(),
+		`UPDATE users SET status=$1, updated_at=NOW() WHERE id=$2`, body.Status, id)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+func (h *Handler) handleUserAdminPassword(w http.ResponseWriter, r *http.Request, id int64) {
+	if r.Method != "PUT" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var body struct {
+		NewPassword string `json:"newPassword"`
+	}
+	json.NewDecoder(r.Body).Decode(&body)
+	if body.NewPassword == "" {
+		http.Error(w, "newPassword required", 400)
+		return
+	}
+	hash := sha256hex(body.NewPassword)
+	_, err := h.svc.repo.db.ExecContext(r.Context(),
+		`UPDATE users SET password=$1, updated_at=NOW() WHERE id=$2`, hash, id)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+func sha256hex(s string) string {
+	h := sha256.Sum256([]byte(s))
+	return fmt.Sprintf("%x", h)
 }
 
 func parsePage(r *http.Request) (int32, int32) {
