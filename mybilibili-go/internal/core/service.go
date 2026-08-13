@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	pb "mybilibili/internal/core/pb"
 )
 
@@ -90,6 +91,11 @@ func (s *Service) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.GetU
 	return s.repo.ToPB(user), nil
 }
 
+type JWTClaims struct {
+	UserId int64 `json:"user_id"`
+	jwt.RegisteredClaims
+}
+
 type JWT struct {
 	secret   string
 	duration time.Duration
@@ -100,8 +106,39 @@ func NewJWT(secret string) *JWT {
 }
 
 func (j *JWT) Generate(userID int64) (string, error) {
-	payload := fmt.Sprintf("%d:%d:%s", userID, time.Now().Add(j.duration).Unix(), j.secret)
-	hash := sha256.Sum256([]byte(payload))
-	token := fmt.Sprintf("%x", hash)
-	return token, nil
+	claims := JWTClaims{
+		UserId: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.duration)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(j.secret))
+}
+
+func (j *JWT) GenerateRefresh(userID int64) (string, error) {
+	claims := JWTClaims{
+		UserId: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(j.secret))
+}
+
+func (j *JWT) Parse(tokenStr string) (int64, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &JWTClaims{}, func(t *jwt.Token) (interface{}, error) {
+		return []byte(j.secret), nil
+	})
+	if err != nil {
+		return 0, ErrUnauthenticated("invalid or expired token")
+	}
+	claims, ok := token.Claims.(*JWTClaims)
+	if !ok || !token.Valid {
+		return 0, ErrUnauthenticated("invalid token")
+	}
+	return claims.UserId, nil
 }

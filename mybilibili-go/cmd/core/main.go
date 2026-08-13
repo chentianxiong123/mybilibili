@@ -187,7 +187,7 @@ func main() {
 	publicAPIH := core.NewPublicAPIHandler(commentSvc)
 
 	httpH := core.NewHTTPHandler(danmakuSvc, messageRepo, notifBroadcaster)
-	core.StartHTTPServer(httpAddr, httpH,
+	core.StartHTTPServer(httpAddr, httpH, core.NewJWT(jwtSecret),
 		liveH, linkmicH, followH, socialH, videoH, adminH, adminDataH, adminManuscriptH, modH,
 		meetingH, aiH, searchH, supportH, userExtH, messageH, favoriteH,
 		subtitleH, analyticsH, studioH, profileH, creatorCommentH, aiChatH, manuscriptHTTPH, publicAPIH)

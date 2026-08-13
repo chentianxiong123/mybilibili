@@ -23,6 +23,8 @@ func NewUserExtendHandler(svc *Service) *UserExtendHandler {
 func (h *UserExtendHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/user/login", h.handleLogin)
 	mux.HandleFunc("/api/v1/user/register", h.handleRegister)
+	mux.HandleFunc("/api/v1/user/me", h.handleMe)
+	mux.HandleFunc("/api/v1/user/me/avatar", h.handleMeAvatar)
 	mux.HandleFunc("/api/v1/user/token/refresh", h.handleRefresh)
 	mux.HandleFunc("/api/v1/user/email/code", h.handleEmailCode)
 	mux.HandleFunc("/api/v1/user/email/verify", h.handleEmailVerify)
@@ -57,12 +59,12 @@ func (h *UserExtendHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, err.Error(), 401)
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"data": map[string]interface{}{
-			"token":    resp.Token,
-			"user_id":  resp.UserId,
-			"nickname": resp.Nickname,
-		},
+	refreshToken, _ := h.svc.jwt.GenerateRefresh(resp.UserId)
+	writeOK(w, map[string]interface{}{
+		"token":         resp.Token,
+		"refresh_token": refreshToken,
+		"user_id":       resp.UserId,
+		"nickname":      resp.Nickname,
 	})
 }
 
@@ -89,11 +91,12 @@ func (h *UserExtendHandler) handleRegister(w http.ResponseWriter, r *http.Reques
 		http.Error(w, err.Error(), 400)
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"data": map[string]interface{}{
-			"token":   resp.Token,
-			"user_id": resp.UserId,
-		},
+	refreshToken, _ := h.svc.jwt.GenerateRefresh(resp.UserId)
+	writeOK(w, map[string]interface{}{
+		"token":         resp.Token,
+		"refresh_token": refreshToken,
+		"user_id":       resp.UserId,
+		"nickname":      req.Nickname,
 	})
 }
 
@@ -106,8 +109,18 @@ func (h *UserExtendHandler) handleRefresh(w http.ResponseWriter, r *http.Request
 		RefreshToken string `json:"refreshToken"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
-	_ = req
-	w.Write([]byte(`{"token":"new-token-here"}`))
+	userID, err := h.svc.jwt.Parse(req.RefreshToken)
+	if err != nil {
+		writeError(w, ErrUnauthenticated("invalid or expired refresh token"))
+		return
+	}
+	newToken, _ := h.svc.jwt.Generate(userID)
+	newRefresh, _ := h.svc.jwt.GenerateRefresh(userID)
+	writeOK(w, map[string]interface{}{
+		"token":         newToken,
+		"refresh_token": newRefresh,
+		"user_id":       userID,
+	})
 }
 
 func (h *UserExtendHandler) handleEmailCode(w http.ResponseWriter, r *http.Request) {
@@ -358,6 +371,93 @@ func (h *UserExtendHandler) handleCreatorSettings(w http.ResponseWriter, r *http
 		}
 		w.Write([]byte(`{"status":"ok"}`))
 	}
+}
+
+func (h *UserExtendHandler) handleMe(w http.ResponseWriter, r *http.Request) {
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		user, err := h.svc.repo.FindByID(r.Context(), uid)
+		if err != nil {
+			writeError(w, ErrNotFound("user not found"))
+			return
+		}
+		var followerCount, followingCount, likeCount, manuscriptCount int64
+		_ = h.svc.repo.db.QueryRowContext(r.Context(),
+			`SELECT COUNT(*) FROM follows WHERE following_id = $1`, uid).Scan(&followerCount)
+		_ = h.svc.repo.db.QueryRowContext(r.Context(),
+			`SELECT COUNT(*) FROM follows WHERE follower_id = $1`, uid).Scan(&followingCount)
+		_ = h.svc.repo.db.QueryRowContext(r.Context(),
+			`SELECT COALESCE(SUM(like_count),0) FROM manuscripts WHERE user_id = $1`, uid).Scan(&likeCount)
+		_ = h.svc.repo.db.QueryRowContext(r.Context(),
+			`SELECT COUNT(*) FROM manuscripts WHERE user_id = $1`, uid).Scan(&manuscriptCount)
+		writeOK(w, map[string]interface{}{
+			"id":               user.ID,
+			"username":         user.Username,
+			"nickname":         user.Nickname,
+			"avatar":           user.Avatar,
+			"avatar_url":       user.Avatar,
+			"introduction":     "",
+			"sign":             "",
+			"level":            user.Level,
+			"follower_count":   followerCount,
+			"following_count":  followingCount,
+			"like_count":       likeCount,
+			"manuscript_count": manuscriptCount,
+			"created_at":       user.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		})
+	case http.MethodPut:
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid body", "data": nil})
+			return
+		}
+		for k, v := range body {
+			switch k {
+			case "nickname":
+				if s, ok := v.(string); ok && s != "" {
+					_, _ = h.svc.repo.db.ExecContext(r.Context(),
+						`UPDATE users SET nickname = $1, updated_at = NOW() WHERE id = $2`, s, uid)
+				}
+			case "avatar", "avatar_url":
+				if s, ok := v.(string); ok && s != "" {
+					_, _ = h.svc.repo.db.ExecContext(r.Context(),
+						`UPDATE users SET avatar = $1, updated_at = NOW() WHERE id = $2`, s, uid)
+				}
+			}
+		}
+		writeOK(w, map[string]interface{}{"status": "ok"})
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+	}
+}
+
+func (h *UserExtendHandler) handleMeAvatar(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	var body struct {
+		Avatar string `json:"avatar"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Avatar == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "avatar required", "data": nil})
+		return
+	}
+	_, err := h.svc.repo.db.ExecContext(r.Context(),
+		`UPDATE users SET avatar = $1, updated_at = NOW() WHERE id = $2`, body.Avatar, uid)
+	if err != nil {
+		writeError(w, ErrInternal("update avatar failed"))
+		return
+	}
+	writeOK(w, map[string]interface{}{"status": "ok"})
 }
 
 func (h *UserExtendHandler) handleCaptcha(w http.ResponseWriter, r *http.Request) {
