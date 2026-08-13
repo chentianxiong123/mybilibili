@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/home/home_page.dart';
-import '../../features/home/dynamic_page.dart';
 import '../../features/home/hot_page.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/profile/profile_page.dart';
@@ -23,7 +22,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, child) => AppShell(child: child),
         routes: [
           GoRoute(path: '/home', pageBuilder: (context, state) => const NoTransitionPage(child: HomePage())),
-          GoRoute(path: '/hot', pageBuilder: (context, state) => const NoTransitionPage(child: LiveListPage())),
+          GoRoute(path: '/hot', pageBuilder: (context, state) => const NoTransitionPage(child: HotPage())),
           GoRoute(path: '/dynamic', pageBuilder: (context, state) => const NoTransitionPage(child: dyn.DynamicPage())),
           GoRoute(path: '/profile', pageBuilder: (context, state) => const NoTransitionPage(child: ProfilePage())),
         ],
@@ -68,7 +67,7 @@ class AppShell extends StatelessWidget {
         onTap: (index) => _onTap(context, index),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: '首页'),
-          BottomNavigationBarItem(icon: Icon(Icons.live_tv), label: '直播'),
+          BottomNavigationBarItem(icon: Icon(Icons.local_fire_department), label: '热门'),
           BottomNavigationBarItem(icon: Icon(Icons.dynamic_feed), label: '动态'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: '我的'),
         ],
@@ -88,7 +87,7 @@ class AppShell extends StatelessWidget {
   void _onTap(BuildContext context, int index) {
     switch (index) {
       case 0: context.go('/home');
-      case 1: context.go('/live');
+      case 1: context.go('/hot');
       case 2: context.go('/dynamic');
       case 3: context.go('/profile');
     }
