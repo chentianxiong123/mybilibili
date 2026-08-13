@@ -16,6 +16,10 @@ final dioProvider = Provider<Dio>((ref) {
       if (token != null) {
         options.headers['Authorization'] = 'Bearer $token';
       }
+      final userId = await TokenStorage.getUserId();
+      if (userId != null) {
+        options.headers['X-User-Id'] = '$userId';
+      }
       handler.next(options);
     },
     onError: (error, handler) async {
