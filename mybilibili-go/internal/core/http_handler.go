@@ -412,7 +412,14 @@ func getUserIDFromHeader(r *http.Request) int64 {
 
 func parsePageParams(r *http.Request) (int32, int32) {
 	page, _ := strconv.ParseInt(r.URL.Query().Get("page"), 10, 32)
-	size, _ := strconv.ParseInt(r.URL.Query().Get("page_size"), 10, 32)
+	sizeStr := r.URL.Query().Get("page_size")
+	if sizeStr == "" {
+		sizeStr = r.URL.Query().Get("pageSize")
+	}
+	if sizeStr == "" {
+		sizeStr = r.URL.Query().Get("size")
+	}
+	size, _ := strconv.ParseInt(sizeStr, 10, 32)
 	if page < 1 {
 		page = 1
 	}
