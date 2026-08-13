@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -163,6 +164,27 @@ func (h *ManuscriptAdminHandler) handleStatistics(w http.ResponseWriter, r *http
 	json.NewEncoder(w).Encode(stats)
 }
 
+const (
+	manuscriptStatusPendingReview = 0
+	manuscriptStatusProcessing    = 1
+	manuscriptStatusPublished     = 3
+	manuscriptStatusRejected      = 4
+	manuscriptStatusProcessFailed = 5
+	manuscriptStatusUnpublished   = -1
+
+	manuscriptReviewStatusPending  = 0
+	manuscriptReviewStatusApproved = 1
+	manuscriptReviewStatusRejected = 2
+
+	videoProcessStatusPending      = 0
+	videoProcessStatusTranscoding  = 1
+	videoProcessStatusAudioExtra   = 2
+	videoProcessStatusSubtitleGen  = 3
+	videoProcessStatusAiSummary    = 4
+	videoProcessStatusCompleted    = 5
+	videoProcessStatusTranscodeEnd = 11
+)
+
 // GET /api/v1/manuscript/admin/{id} — 稿件详情（含视频列表）
 // POST /api/v1/manuscript/admin/{id}/approve-with-process — 审核通过并触发处理
 func (h *ManuscriptAdminHandler) handleByID(w http.ResponseWriter, r *http.Request) {
@@ -172,8 +194,72 @@ func (h *ManuscriptAdminHandler) handleByID(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "not found", 404)
 		return
 	}
+
+	// 视频级动作（不依赖稿件ID前缀）:
+	// /transcode/{videoId} /extract-audio/{videoId} /generate-subtitle/{videoId}
+	// /ai-summary/{videoId} /process-all/{videoId} /video-source/{videoId} /reset/{videoId}
+	switch parts[0] {
+	case "transcode", "extract-audio", "generate-subtitle", "ai-summary", "process-all", "video-source", "reset":
+		if len(parts) < 2 {
+			http.Error(w, "invalid video id", 400)
+			return
+		}
+		videoID, err := strconv.ParseInt(parts[1], 10, 64)
+		if err != nil {
+			http.Error(w, "invalid video id", 400)
+			return
+		}
+		switch parts[0] {
+		case "transcode":
+			h.triggerVideoProcess(w, r, videoID, videoProcessStatusTranscoding, "TRANSCODING")
+		case "extract-audio":
+			h.triggerVideoProcess(w, r, videoID, videoProcessStatusAudioExtra, "AUDIO_EXTRACTING")
+		case "generate-subtitle":
+			h.triggerVideoProcess(w, r, videoID, videoProcessStatusSubtitleGen, "SUBTITLE_GENERATING")
+		case "ai-summary":
+			h.triggerVideoProcess(w, r, videoID, videoProcessStatusAiSummary, "AI_SUMMARIZING")
+		case "process-all":
+			h.triggerVideoProcess(w, r, videoID, videoProcessStatusTranscoding, "PROCESS_ALL")
+		case "video-source":
+			h.getVideoSource(w, r, videoID)
+		case "reset":
+			h.resetVideo(w, r, videoID)
+		}
+		return
+	}
+
 	id, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil {
+		// 稿件级动作: /approve/{id} /reject/{id} /publish/{id} /unpublish/{id} /retry/{id}
+		switch parts[0] {
+		case "approve", "reject", "publish", "unpublish", "retry":
+			if len(parts) < 2 || r.Method != "POST" {
+				if r.Method != "POST" {
+					http.Error(w, "method not allowed", 405)
+				} else {
+					http.Error(w, "invalid manuscript id", 400)
+				}
+				return
+			}
+			mid, perr := strconv.ParseInt(parts[1], 10, 64)
+			if perr != nil {
+				http.Error(w, "invalid manuscript id", 400)
+				return
+			}
+			switch parts[0] {
+			case "approve":
+				h.reviewManuscript(w, r, mid, true, false)
+			case "reject":
+				h.reviewManuscript(w, r, mid, false, false)
+			case "publish":
+				h.setManuscriptStatus(w, r, mid, manuscriptStatusPublished)
+			case "unpublish":
+				h.setManuscriptStatus(w, r, mid, manuscriptStatusUnpublished)
+			case "retry":
+				h.setManuscriptStatus(w, r, mid, manuscriptStatusProcessing)
+			}
+			return
+		}
 		http.Error(w, "invalid id", 400)
 		return
 	}
@@ -188,6 +274,18 @@ func (h *ManuscriptAdminHandler) handleByID(w http.ResponseWriter, r *http.Reque
 	if len(parts) >= 2 && parts[1] == "approve-with-process" && r.Method == "POST" {
 		h.approveWithProcess(w, r, id)
 		return
+	}
+
+	// /{id}/publish /{id}/unpublish — 稿件级发布/下架（owner 端也可调用）
+	if len(parts) >= 2 && r.Method == "POST" {
+		switch parts[1] {
+		case "publish":
+			h.setManuscriptStatus(w, r, id, manuscriptStatusPublished)
+			return
+		case "unpublish":
+			h.setManuscriptStatus(w, r, id, manuscriptStatusUnpublished)
+			return
+		}
 	}
 
 	if r.Method != "GET" {
@@ -301,6 +399,188 @@ func (h *ManuscriptAdminHandler) getVideos(w http.ResponseWriter, r *http.Reques
 		list = append(list, v)
 	}
 	json.NewEncoder(w).Encode(list)
+}
+
+// reviewManuscript 审核通过/拒绝稿件，对齐旧版 approveManuscript/rejectManuscript 的状态流转。
+func (h *ManuscriptAdminHandler) reviewManuscript(w http.ResponseWriter, r *http.Request, manuscriptID int64, approved bool, autoProcess bool) {
+	reviewerID := r.URL.Query().Get("reviewerId")
+	if reviewerID == "" {
+		reviewerID = "0"
+	}
+	reason := r.URL.Query().Get("reason")
+
+	var status, reviewStatus = manuscriptStatusProcessing, manuscriptReviewStatusApproved
+	if !approved {
+		status, reviewStatus = manuscriptStatusRejected, manuscriptReviewStatusRejected
+	}
+
+	var exists int64
+	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&exists)
+	if exists == 0 {
+		http.Error(w, "稿件不存在", 404)
+		return
+	}
+
+	_, err := h.db.ExecContext(r.Context(),
+		`UPDATE manuscripts SET status = $1, review_status = $2, review_time = NOW(),
+		        reviewer_id = $3, review_reason = $4, updated_at = NOW()
+		 WHERE id = $5`,
+		status, reviewStatus, reviewerID, reason, manuscriptID)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	// 审核通过(含自动处理)时触发视频处理流程；拒绝时不触发
+	if approved {
+		h.triggerAllVideoProcess(r.Context(), manuscriptID)
+	}
+
+	message := "审核拒绝成功"
+	if approved {
+		message = "审核通过"
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "ok", "manuscript_id": manuscriptID, "message": message,
+		"review_status": reviewStatus,
+	})
+}
+
+// setManuscriptStatus 设置稿件状态（对齐 publish/unpublish/retry/owner 重新上架）
+func (h *ManuscriptAdminHandler) setManuscriptStatus(w http.ResponseWriter, r *http.Request, manuscriptID int64, status int32) {
+	var exists int64
+	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&exists)
+	if exists == 0 {
+		http.Error(w, "稿件不存在", 404)
+		return
+	}
+
+	var title string
+	_ = h.db.QueryRowContext(r.Context(), `SELECT title FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&title)
+
+	_, err := h.db.ExecContext(r.Context(),
+		`UPDATE manuscripts SET status = $1, updated_at = NOW() WHERE id = $2`, status, manuscriptID)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	msg := "操作成功"
+	switch status {
+	case manuscriptStatusPublished:
+		msg = "发布成功"
+	case manuscriptStatusUnpublished:
+		msg = "下架成功"
+	case manuscriptStatusProcessing:
+		msg = "重试成功"
+	}
+
+	// 发布后向稿件作者发系统通知（对齐旧版 publishManuscript）
+	if status == manuscriptStatusPublished {
+		var uid int64
+		_ = h.db.QueryRowContext(r.Context(), `SELECT user_id FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&uid)
+		if uid > 0 {
+			content := "您的稿件《" + title + "》已通过审核并成功上架啦！"
+			_, _ = h.db.ExecContext(r.Context(),
+				`INSERT INTO notifications (user_id, type, title, content, is_read, created_at)
+				 VALUES ($1, 'system', '稿件上架通知', $2, 0, NOW())`, uid, content)
+		}
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "ok", "manuscript_id": manuscriptID, "status_int": status, "message": msg,
+	})
+}
+
+// triggerVideoProcess 触发单视频处理（对齐旧版 manualTranscode / manualExtractAudio / manualGenerateSubtitle / manualAiSummary / manualProcessAll）
+func (h *ManuscriptAdminHandler) triggerVideoProcess(w http.ResponseWriter, r *http.Request, videoID int64, processStatus int, stage string) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var exists int64
+	var manuscriptID int64
+	var title string
+	err := h.db.QueryRowContext(r.Context(),
+		`SELECT COUNT(*) FROM videos WHERE id = $1`, videoID).Scan(&exists)
+	if exists == 0 {
+		http.Error(w, "视频不存在", 404)
+		return
+	}
+	_ = h.db.QueryRowContext(r.Context(),
+		`SELECT manuscript_id, title FROM videos WHERE id = $1`, videoID).Scan(&manuscriptID, &title)
+
+	_, err = h.db.ExecContext(r.Context(),
+		`UPDATE videos SET process_status = $1, process_stage = $2, updated_at = NOW() WHERE id = $3`,
+		processStatus, stage, videoID)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	// 稿件标记为处理中（对齐旧版 approve 后 status=PROCESSING）
+	if manuscriptID > 0 {
+		_, _ = h.db.ExecContext(r.Context(),
+			`UPDATE manuscripts SET status = $1, updated_at = NOW() WHERE id = $2`,
+			manuscriptStatusProcessing, manuscriptID)
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "ok", "video_id": videoID, "manuscript_id": manuscriptID,
+		"process_status": processStatus, "message": "任务已触发",
+	})
+}
+
+// resetVideo 重置视频处理状态（对齐旧版 resetVideoStatus）
+func (h *ManuscriptAdminHandler) resetVideo(w http.ResponseWriter, r *http.Request, videoID int64) {
+	var exists int64
+	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM videos WHERE id = $1`, videoID).Scan(&exists)
+	if exists == 0 {
+		http.Error(w, "视频不存在", 404)
+		return
+	}
+	_, err := h.db.ExecContext(r.Context(),
+		`UPDATE videos SET process_status = $1, process_stage = '', process_error = '', updated_at = NOW() WHERE id = $2`,
+		videoProcessStatusPending, videoID)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{"status": "ok", "video_id": videoID, "message": "重置成功"})
+}
+
+// getVideoSource 获取视频源地址（对齐旧版 getVideoSourceUrl）
+func (h *ManuscriptAdminHandler) getVideoSource(w http.ResponseWriter, r *http.Request, videoID int64) {
+	var sourceURL, title string
+	var duration int
+	err := h.db.QueryRowContext(r.Context(),
+		`SELECT COALESCE(source_video_url,''), COALESCE(title,''), COALESCE(duration_seconds,0)
+		 FROM videos WHERE id = $1`, videoID).Scan(&sourceURL, &title, &duration)
+	if err != nil {
+		http.Error(w, "视频不存在", 404)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"video_id": videoID, "source_url": sourceURL,
+		"title": title, "duration_seconds": duration,
+	})
+}
+
+// triggerAllVideoProcess 触发稿件下所有视频的处理流程（审核通过后调用）
+func (h *ManuscriptAdminHandler) triggerAllVideoProcess(ctx context.Context, manuscriptID int64) {
+	rows, err := h.db.QueryContext(ctx,
+		`SELECT id FROM videos WHERE manuscript_id = $1`, manuscriptID)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var vid int64
+		rows.Scan(&vid)
+		_, _ = h.db.ExecContext(ctx,
+			`UPDATE videos SET process_status = $1, process_stage = 'TRANSCODING', updated_at = NOW() WHERE id = $2`,
+			videoProcessStatusTranscoding, vid)
+	}
 }
 
 func (h *ManuscriptAdminHandler) approveWithProcess(w http.ResponseWriter, r *http.Request, manuscriptID int64) {
