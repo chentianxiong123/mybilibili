@@ -234,6 +234,10 @@ func manuscriptRouteName(parts []string) string {
 				return "incrementComment"
 			case "decrement-comment":
 				return "decrementComment"
+			case "publish":
+				return "publishManuscript"
+			case "unpublish":
+				return "unpublishManuscript"
 			}
 		}
 		return ""
