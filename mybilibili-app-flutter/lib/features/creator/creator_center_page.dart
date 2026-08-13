@@ -5,6 +5,7 @@ import '../../core/theme/theme.dart';
 import 'creator_manuscripts_page.dart';
 import 'creator_comments_page.dart';
 import 'creator_stats_page.dart';
+import '../upload/upload_page.dart';
 
 final overviewProvider = FutureProvider.autoDispose<CreatorOverview>((ref) {
   return ref.read(creatorApiProvider).getOverview();
@@ -49,6 +50,7 @@ class CreatorCenterPage extends ConsumerWidget {
             error: (e, _) => Padding(padding: const EdgeInsets.all(24), child: Center(child: Text('加载失败: $e', style: const TextStyle(color: Colors.grey)))),
           ),
           const Divider(height: 1, color: Color(0xFF2A2A2A)),
+          _menuItem(Icons.add_box, '发布视频', () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const UploadPage()))),
           _menuItem(Icons.video_library, '稿件管理', () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CreatorManuscriptsPage()))),
           _menuItem(Icons.comment, '评论管理', () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CreatorCommentsPage()))),
           _menuItem(Icons.bar_chart, '数据中心', () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CreatorStatsPage()))),
