@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -439,6 +441,13 @@ func StartHTTPServer(addr string, h *HTTPHandler, extras ...LiveHandler) {
 	for _, e := range extras {
 		e.Register(mux)
 	}
+
+	uploadDir := os.Getenv("MYBILIBILI_UPLOAD_DIR")
+	if uploadDir == "" {
+		uploadDir = filepath.Join(os.TempDir(), "mybilibili-uploads")
+	}
+	_ = os.MkdirAll(uploadDir, 0o755)
+	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
 
 	log.Printf("HTTP server listening on %s", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {

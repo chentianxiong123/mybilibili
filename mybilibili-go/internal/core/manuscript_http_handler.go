@@ -1,12 +1,17 @@
 package core
 
 import (
+	"context"
 	"crypto/md5"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -55,6 +60,10 @@ func (h *ManuscriptHTTPHandler) handleManuscriptRoute(w http.ResponseWriter, r *
 	case "uploadSessionComplete":
 		r.SetPathValue("id", parts[1])
 		h.handleUploadComplete(w, r)
+	case "uploadChunk":
+		h.handleUploadChunk(w, r)
+	case "uploadCompleteWeb":
+		h.handleUploadCompleteWeb(w, r)
 	case "fixDurations":
 		h.handleFixDurations(w, r)
 	case "internal":
@@ -71,12 +80,27 @@ func (h *ManuscriptHTTPHandler) handleManuscriptRoute(w http.ResponseWriter, r *
 	case "userSearch":
 		r.SetPathValue("id", parts[1])
 		h.handleUserSearch(w, r)
+	case "userStats":
+		r.SetPathValue("id", parts[1])
+		h.handleUserManuscriptStats(w, r)
 	case "userManuscripts":
 		r.SetPathValue("id", parts[1])
 		h.handleUserManuscripts(w, r)
+	case "userCollections":
+		h.handleMyCollections(w, r)
+	case "userLikes":
+		h.handleMyLikes(w, r)
+	case "favoriteFolders":
+		h.handleFavoriteFolders(w, r)
 	case "detail":
 		r.SetPathValue("id", parts[0])
 		h.handleManuscriptDetail(w, r)
+	case "updateManuscript":
+		r.SetPathValue("id", parts[0])
+		h.handleUpdateManuscript(w, r)
+	case "deleteManuscript":
+		r.SetPathValue("id", parts[0])
+		h.handleDeleteManuscript(w, r)
 	case "status":
 		r.SetPathValue("id", parts[0])
 		h.handleInteractionStatus(w, r)
@@ -124,6 +148,16 @@ func manuscriptRouteName(parts []string) string {
 			}
 		}
 		return ""
+	case "upload-chunk":
+		if len(parts) == 1 {
+			return "uploadChunk"
+		}
+		return ""
+	case "upload-complete":
+		if len(parts) == 1 {
+			return "uploadCompleteWeb"
+		}
+		return ""
 	case "fix-durations":
 		if len(parts) == 1 {
 			return "fixDurations"
@@ -160,8 +194,22 @@ func manuscriptRouteName(parts []string) string {
 		if len(parts) == 3 && parts[2] == "search" {
 			return "userSearch"
 		}
+		if len(parts) == 3 && parts[2] == "stats" {
+			return "userStats"
+		}
+		if len(parts) == 2 && parts[1] == "collections" {
+			return "userCollections"
+		}
+		if len(parts) == 2 && parts[1] == "likes" {
+			return "userLikes"
+		}
 		if len(parts) == 2 {
 			return "userManuscripts"
+		}
+		return ""
+	case "favorite":
+		if len(parts) == 2 && parts[1] == "folders" {
+			return "favoriteFolders"
 		}
 		return ""
 	default:
@@ -534,10 +582,473 @@ func (h *ManuscriptHTTPHandler) handleManuscriptList(w http.ResponseWriter, r *h
 	writeOK(w, manuscriptListToJSON(resp.Manuscripts))
 }
 
+// ---- 更新 / 删除 / 统计 / 收藏点赞列表 ----
+
+// handleUpdateManuscript PUT /api/v1/manuscript/{id} — 更新稿件信息（multipart 或 JSON）。
+func (h *ManuscriptHTTPHandler) handleUpdateManuscript(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+	if id <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid manuscript id", "data": nil})
+		return
+	}
+	var req struct {
+		Title       string   `json:"title"`
+		Description string   `json:"description"`
+		CategoryID  int64    `json:"category_id"`
+		Tags        []string `json:"tags"`
+	}
+	contentType := r.Header.Get("Content-Type")
+	if strings.Contains(contentType, "multipart/form-data") {
+		if err := r.ParseMultipartForm(32 << 20); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid multipart form", "data": nil})
+			return
+		}
+		req.Title = r.FormValue("title")
+		req.Description = r.FormValue("description")
+		catID, _ := strconv.ParseInt(r.FormValue("categoryId"), 10, 64)
+		req.CategoryID = catID
+		if tags := r.Form["tags"]; len(tags) > 0 {
+			req.Tags = tags
+		}
+	} else {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid body", "data": nil})
+			return
+		}
+	}
+
+	var owner int64
+	if err := h.db.QueryRowContext(r.Context(), `SELECT user_id FROM manuscripts WHERE id = $1`, id).Scan(&owner); err != nil {
+		writeError(w, ErrNotFound("manuscript not found"))
+		return
+	}
+	if owner != uid {
+		writeError(w, ErrPermissionDenied("forbidden"))
+		return
+	}
+	if req.Title != "" {
+		_, _ = h.db.ExecContext(r.Context(), `UPDATE manuscripts SET title = $1, updated_at = NOW() WHERE id = $2`, req.Title, id)
+	}
+	if req.Description != "" {
+		_, _ = h.db.ExecContext(r.Context(), `UPDATE manuscripts SET description = $1, updated_at = NOW() WHERE id = $2`, req.Description, id)
+	}
+	if req.CategoryID > 0 {
+		_, _ = h.db.ExecContext(r.Context(), `UPDATE manuscripts SET category_id = $1, updated_at = NOW() WHERE id = $2`, req.CategoryID, id)
+	}
+	if len(req.Tags) > 0 {
+		var firstVideoID int64
+		_ = h.db.QueryRowContext(r.Context(), `SELECT id FROM videos WHERE manuscript_id = $1 ORDER BY video_order LIMIT 1`, id).Scan(&firstVideoID)
+		if firstVideoID > 0 {
+			_, _ = h.db.ExecContext(r.Context(), `DELETE FROM video_tags WHERE video_id = $1`, firstVideoID)
+			for _, t := range req.Tags {
+				t = strings.TrimSpace(t)
+				if t == "" {
+					continue
+				}
+				var tid int64
+				_ = h.db.QueryRowContext(r.Context(),
+					`INSERT INTO tags (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`, t).Scan(&tid)
+				_, _ = h.db.ExecContext(r.Context(),
+					`INSERT INTO video_tags (video_id, tag_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, firstVideoID, tid)
+			}
+		}
+	}
+	writeOK(w, map[string]interface{}{"id": id, "status": "ok"})
+}
+
+// handleDeleteManuscript DELETE /api/v1/manuscript/{id} — 删除稿件。
+func (h *ManuscriptHTTPHandler) handleDeleteManuscript(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+	if id <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid manuscript id", "data": nil})
+		return
+	}
+	_, err := h.manuscriptSvc.DeleteManuscript(r.Context(), &pb.DeleteManuscriptRequest{Id: id, UserId: uid})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeOK(w, map[string]interface{}{"status": "ok"})
+}
+
+// handleUserManuscriptStats GET /api/v1/manuscript/user/{id}/stats — 用户稿件统计。
+func (h *ManuscriptHTTPHandler) handleUserManuscriptStats(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+	if id <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid user id", "data": nil})
+		return
+	}
+	var total, published, views, likes int64
+	_ = h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts WHERE user_id = $1`, id).Scan(&total)
+	_ = h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts WHERE user_id = $1 AND status >= 0`, id).Scan(&published)
+	_ = h.db.QueryRowContext(r.Context(),
+		`SELECT COALESCE(SUM(view_count),0), COALESCE(SUM(like_count),0) FROM manuscripts WHERE user_id = $1`, id).Scan(&views, &likes)
+	writeOK(w, map[string]interface{}{
+		"total": total, "published": published, "views": views, "likes": likes,
+	})
+}
+
+// manuscriptsByIDs 按 id 集合返回完整稿件列表（保持 id 顺序）。
+func (h *ManuscriptHTTPHandler) manuscriptsByIDs(ctx context.Context, ids []int64) []map[string]interface{} {
+	out := make([]map[string]interface{}, 0, len(ids))
+	for _, id := range ids {
+		resp, err := h.manuscriptSvc.GetManuscript(ctx, &pb.GetManuscriptRequest{Id: id})
+		if err != nil {
+			continue
+		}
+		out = append(out, manuscriptToMap(resp.Manuscript))
+	}
+	return out
+}
+
+// handleMyCollections GET /api/v1/manuscript/user/collections — 我收藏的稿件。
+func (h *ManuscriptHTTPHandler) handleMyCollections(w http.ResponseWriter, r *http.Request) {
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	page, size := parsePageParams(r)
+	ids, _ := h.interactionSvc.repo.GetInteractionIDs(r.Context(), uid, "MANUSCRIPT", "COLLECT")
+	// 简单分页：排序后取当前页
+	sort.Slice(ids, func(i, j int) bool { return ids[i] > ids[j] })
+	start := int((page - 1) * size)
+	end := start + int(size)
+	if start > len(ids) {
+		start = len(ids)
+	}
+	if end > len(ids) {
+		end = len(ids)
+	}
+	writeOK(w, map[string]interface{}{
+		"list": h.manuscriptsByIDs(r.Context(), ids[start:end]), "total": len(ids), "page": page, "size": size,
+	})
+}
+
+// handleMyLikes GET /api/v1/manuscript/user/likes — 我点赞的稿件。
+func (h *ManuscriptHTTPHandler) handleMyLikes(w http.ResponseWriter, r *http.Request) {
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	page, size := parsePageParams(r)
+	ids, _ := h.interactionSvc.repo.GetInteractionIDs(r.Context(), uid, "MANUSCRIPT", "LIKE")
+	sort.Slice(ids, func(i, j int) bool { return ids[i] > ids[j] })
+	start := int((page - 1) * size)
+	end := start + int(size)
+	if start > len(ids) {
+		start = len(ids)
+	}
+	if end > len(ids) {
+		end = len(ids)
+	}
+	writeOK(w, map[string]interface{}{
+		"list": h.manuscriptsByIDs(r.Context(), ids[start:end]), "total": len(ids), "page": page, "size": size,
+	})
+}
+
+// handleFavoriteFolders GET|POST /api/v1/manuscript/favorite/folders — 收藏夹列表/创建。
+func (h *ManuscriptHTTPHandler) handleFavoriteFolders(w http.ResponseWriter, r *http.Request) {
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		rows, err := h.db.QueryContext(r.Context(),
+			`SELECT f.id, f.name, COALESCE(fc.cnt,0)
+			 FROM favorite_folders f
+			 LEFT JOIN (SELECT folder_id, COUNT(*) AS cnt FROM favorite_folder_videos GROUP BY folder_id) fc ON fc.folder_id = f.id
+			 WHERE f.user_id = $1 ORDER BY f.created_at DESC`, uid)
+		if err != nil {
+			writeError(w, ErrInternal("database error"))
+			return
+		}
+		defer rows.Close()
+		type folder struct {
+			ID         int64  `json:"id"`
+			Name       string `json:"name"`
+			VideoCount int64  `json:"video_count"`
+		}
+		list := []folder{}
+		for rows.Next() {
+			var f folder
+			_ = rows.Scan(&f.ID, &f.Name, &f.VideoCount)
+			list = append(list, f)
+		}
+		writeOK(w, list)
+	case http.MethodPost:
+		var req struct {
+			Name string `json:"name"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if strings.TrimSpace(req.Name) == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "name required", "data": nil})
+			return
+		}
+		var id int64
+		err := h.db.QueryRowContext(r.Context(),
+			`INSERT INTO favorite_folders (user_id, name) VALUES ($1,$2) RETURNING id`, uid, req.Name).Scan(&id)
+		if err != nil {
+			writeError(w, ErrInternal("create folder failed"))
+			return
+		}
+		writeOK(w, map[string]interface{}{"id": id, "name": req.Name})
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+	}
+}
+
+// ---- 上传分片（web-ts 直传兼容） ----
+
+func uploadWorkDir() string {
+	dir := os.Getenv("MYBILIBILI_UPLOAD_DIR")
+	if dir == "" {
+		dir = filepath.Join(os.TempDir(), "mybilibili-uploads")
+	}
+	return dir
+}
+
+// handleUploadChunk POST /api/v1/manuscript/upload-chunk — 保存单个分片到磁盘。
+func (h *ManuscriptHTTPHandler) handleUploadChunk(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	if err := r.ParseMultipartForm(64 << 20); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid multipart form", "data": nil})
+		return
+	}
+	uploadID := r.FormValue("uploadId")
+	if uploadID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "uploadId required", "data": nil})
+		return
+	}
+	var owner int64
+	if err := h.db.QueryRowContext(r.Context(), `SELECT user_id FROM upload_sessions WHERE id = $1`, uploadID).Scan(&owner); err != nil {
+		writeError(w, ErrNotFound("upload session not found"))
+		return
+	}
+	if owner != uid {
+		writeError(w, ErrPermissionDenied("forbidden"))
+		return
+	}
+	partIndex := r.FormValue("partIndex")
+	chunkIndex := r.FormValue("chunkIndex")
+	if partIndex == "" {
+		partIndex = "0"
+	}
+	if chunkIndex == "" {
+		chunkIndex = "0"
+	}
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "file required", "data": nil})
+		return
+	}
+	defer file.Close()
+
+	dir := filepath.Join(uploadWorkDir(), uploadID, partIndex)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		writeError(w, ErrInternal("create upload dir failed"))
+		return
+	}
+	dst, err := os.Create(filepath.Join(dir, chunkIndex))
+	if err != nil {
+		writeError(w, ErrInternal("create chunk file failed"))
+		return
+	}
+	defer dst.Close()
+	if _, err := io.Copy(dst, file); err != nil {
+		writeError(w, ErrInternal("save chunk failed"))
+		return
+	}
+	_, _ = h.db.ExecContext(r.Context(),
+		`UPDATE upload_sessions SET uploaded_chunks = uploaded_chunks + 1, updated_at = NOW() WHERE id = $1`, uploadID)
+	writeOK(w, map[string]interface{}{"status": "ok", "chunk_index": chunkIndex})
+}
+
+// handleUploadCompleteWeb POST /api/v1/manuscript/upload-complete — 合并分片并创建稿件。
+func (h *ManuscriptHTTPHandler) handleUploadCompleteWeb(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	if err := r.ParseMultipartForm(64 << 20); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid multipart form", "data": nil})
+		return
+	}
+	uploadID := r.FormValue("uploadId")
+	if uploadID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "uploadId required", "data": nil})
+		return
+	}
+	var owner int64
+	if err := h.db.QueryRowContext(r.Context(), `SELECT user_id FROM upload_sessions WHERE id = $1`, uploadID).Scan(&owner); err != nil {
+		writeError(w, ErrNotFound("upload session not found"))
+		return
+	}
+	if owner != uid {
+		writeError(w, ErrPermissionDenied("forbidden"))
+		return
+	}
+
+	var title, desc, tags, videos string
+	var catID sql.NullInt64
+	if err := h.db.QueryRowContext(r.Context(),
+		`SELECT title, description, category_id, tags, videos FROM upload_sessions WHERE id = $1`,
+		uploadID).Scan(&title, &desc, &catID, &tags, &videos); err != nil {
+		writeError(w, ErrInternal("load upload session failed"))
+		return
+	}
+
+	// 封面
+	var coverPath string
+	cover, coverHeader, err := r.FormFile("cover")
+	if err == nil {
+		dir := filepath.Join(uploadWorkDir(), uploadID)
+		_ = os.MkdirAll(dir, 0o755)
+		ext := filepath.Ext(coverHeader.Filename)
+		if ext == "" {
+			ext = ".jpg"
+		}
+		coverPath = filepath.Join(dir, "cover"+ext)
+		f, err := os.Create(coverPath)
+		if err == nil {
+			_, _ = io.Copy(f, cover)
+			_ = f.Close()
+		}
+		cover.Close()
+	}
+	coverURL := ""
+	if coverPath != "" {
+		coverURL = "/uploads/" + uploadID + "/" + filepath.Base(coverPath)
+	}
+
+	// 解析会话中的视频元数据（fileName/size/durationSeconds 等）
+	var vv []map[string]interface{}
+	_ = json.Unmarshal([]byte(videos), &vv)
+	partDirs, _ := os.ReadDir(filepath.Join(uploadWorkDir(), uploadID))
+	parts := []int{}
+	for _, d := range partDirs {
+		if !d.IsDir() {
+			continue
+		}
+		n, err := strconv.Atoi(d.Name())
+		if err != nil {
+			continue
+		}
+		parts = append(parts, n)
+	}
+	sort.Ints(parts)
+	if len(parts) == 0 {
+		writeError(w, ErrInvalidArgument("no uploaded video parts"))
+		return
+	}
+
+	categoryID := int64(0)
+	if catID.Valid {
+		categoryID = catID.Int64
+	}
+	var msID int64
+	if err := h.db.QueryRowContext(r.Context(),
+		`INSERT INTO manuscripts (title, description, cover_url, user_id, category_id, status, review_status, upload_time, updated_at)
+		 VALUES ($1,$2,$3,$4,$5,0,0,NOW(),NOW()) RETURNING id`,
+		title, desc, coverURL, uid, categoryID).Scan(&msID); err != nil {
+		writeError(w, ErrInternal("create manuscript failed"))
+		return
+	}
+
+	var allTags []string
+	_ = json.Unmarshal([]byte(tags), &allTags)
+
+	for i, part := range parts {
+		chunkFiles, _ := os.ReadDir(filepath.Join(uploadWorkDir(), uploadID, strconv.Itoa(part)))
+		chunks := []int{}
+		for _, c := range chunkFiles {
+			if c.IsDir() {
+				continue
+			}
+			n, err := strconv.Atoi(c.Name())
+			if err != nil {
+				continue
+			}
+			chunks = append(chunks, n)
+		}
+		sort.Ints(chunks)
+		partDir := filepath.Join(uploadWorkDir(), uploadID, strconv.Itoa(part))
+		mergedPath := filepath.Join(partDir, "merged")
+		out, err := os.Create(mergedPath)
+		if err != nil {
+			continue
+		}
+		for _, c := range chunks {
+			src, err := os.Open(filepath.Join(partDir, strconv.Itoa(c)))
+			if err != nil {
+				continue
+			}
+			_, _ = io.Copy(out, src)
+			_ = src.Close()
+		}
+		_ = out.Close()
+
+		playURL := "/uploads/" + uploadID + "/" + strconv.Itoa(part) + "/merged"
+		vt := "P" + strconv.Itoa(i+1)
+		if i < len(vv) {
+			if t, ok := vv[i]["title"].(string); ok && t != "" {
+				vt = t
+			}
+		}
+		var vid int64
+		if err := h.db.QueryRowContext(r.Context(),
+			`INSERT INTO videos (manuscript_id, video_order, title, play_url_hd, source_video_url, process_status, upload_time, updated_at)
+			 VALUES ($1,$2,$3,$4,$4,0,NOW(),NOW()) RETURNING id`,
+			msID, i, vt, playURL).Scan(&vid); err != nil {
+			continue
+		}
+		for _, t := range allTags {
+			t = strings.TrimSpace(t)
+			if t == "" {
+				continue
+			}
+			var tid int64
+			_ = h.db.QueryRowContext(r.Context(),
+				`INSERT INTO tags (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`, t).Scan(&tid)
+			_, _ = h.db.ExecContext(r.Context(),
+				`INSERT INTO video_tags (video_id, tag_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, vid, tid)
+		}
+	}
+	_, _ = h.db.ExecContext(r.Context(),
+		`UPDATE upload_sessions SET status = 'uploaded', updated_at = NOW() WHERE id = $1`, uploadID)
+	writeOK(w, map[string]interface{}{"manuscript_id": msID, "status": "uploaded"})
+}
+
 // ---- 互动 ----
 
-func (h *ManuscriptHTTPHandler) handleInteractionStatus(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+func (h *ManuscriptHTTPHandler) handleInteractionStatus(w http.ResponseWriter, r *http.Request) {	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
 	if id <= 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid manuscript id", "data": nil})
 		return
