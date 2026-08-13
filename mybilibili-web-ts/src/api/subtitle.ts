@@ -4,7 +4,7 @@ import { clearAuthSession, getToken } from '../utils/auth'
 
 // 创建axios实例
 const api = axios.create({
-  baseURL: '/api', // 后端API地址（通过Nginx反向代理）
+  baseURL: '/api/v1', // 后端API地址（通过Nginx反向代理）
   timeout: 10000, // 请求超时时间
   headers: {
     'Content-Type': 'application/json'

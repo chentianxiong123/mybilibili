@@ -435,7 +435,7 @@ type LiveHandler interface {
 	Register(mux *http.ServeMux)
 }
 
-func StartHTTPServer(addr string, h *HTTPHandler, extras ...LiveHandler) {
+func StartHTTPServer(addr string, h *HTTPHandler, jwt *JWT, extras ...LiveHandler) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 	for _, e := range extras {
@@ -449,8 +449,13 @@ func StartHTTPServer(addr string, h *HTTPHandler, extras ...LiveHandler) {
 	_ = os.MkdirAll(uploadDir, 0o755)
 	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
 
+	var handler http.Handler = mux
+	if jwt != nil {
+		handler = AuthMiddleware(jwt)(mux)
+	}
+
 	log.Printf("HTTP server listening on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatalf("HTTP server failed: %v", err)
 	}
 }

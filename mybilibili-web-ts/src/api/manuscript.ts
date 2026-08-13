@@ -4,7 +4,7 @@ import { clearAuthSession, getToken } from '../utils/auth'
 
 // 创建axios实例
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: '/api/v1',
   timeout: 300000, // 5分钟超时，因为上传文件可能较大
   headers: {
     'Content-Type': 'multipart/form-data'
