@@ -9,25 +9,190 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	pb "mybilibili/internal/core/pb"
 )
 
-// ManuscriptHTTPHandler 提供 Java 侧 HTTP-only 的稿件接口兜底：
-// upload-session 会话、internal take-down、fix-durations、comment-count 维护。
+// ManuscriptHTTPHandler 提供稿件域的 HTTP JSON 端点（Flutter App 与 web-ts 直接消费），
+// 覆盖公开稿件列表/详情、互动、以及上传会话等内部兜底路由。
+// 全部走单一 /api/v1/manuscript/ 子树分发，避免 ServeMux 通配符 pattern 互相冲突。
 type ManuscriptHTTPHandler struct {
-	db *sql.DB
+	db             *sql.DB
+	manuscriptSvc  *ManuscriptService
+	commentSvc     *CommentService
+	interactionSvc *InteractionService
 }
 
-func NewManuscriptHTTPHandler(db *sql.DB) *ManuscriptHTTPHandler {
-	return &ManuscriptHTTPHandler{db: db}
+func NewManuscriptHTTPHandler(db *sql.DB, manuscriptSvc *ManuscriptService, commentSvc *CommentService, interactionSvc *InteractionService) *ManuscriptHTTPHandler {
+	return &ManuscriptHTTPHandler{
+		db:             db,
+		manuscriptSvc:  manuscriptSvc,
+		commentSvc:     commentSvc,
+		interactionSvc: interactionSvc,
+	}
 }
 
 func (h *ManuscriptHTTPHandler) Register(mux *http.ServeMux) {
-	mux.HandleFunc("/api/v1/manuscript/upload-session", h.handleUploadSession)
-	mux.HandleFunc("/api/v1/manuscript/upload-session/", h.handleUploadSessionByID)
-	mux.HandleFunc("/api/v1/manuscript/fix-durations", h.handleFixDurations)
-	mux.HandleFunc("/api/v1/manuscript/internal/", h.handleInternalByPath)
-	mux.HandleFunc("/api/v1/manuscript/", h.handleManuscriptByID)
+	mux.HandleFunc("/api/v1/manuscript/", h.handleRouter)
 }
+
+// handleRouter 手动分派 /api/v1/manuscript/ 下的所有子路径。
+func (h *ManuscriptHTTPHandler) handleRouter(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/manuscript/")
+	if path == "" {
+		http.Error(w, "not found", 404)
+		return
+	}
+	h.handleManuscriptRoute(w, r, strings.Split(path, "/"))
+}
+
+func (h *ManuscriptHTTPHandler) handleManuscriptRoute(w http.ResponseWriter, r *http.Request, parts []string) {
+	switch manuscriptRouteName(parts) {
+	case "uploadSession":
+		h.handleUploadSession(w, r)
+	case "uploadSessionByID":
+		h.handleUploadSessionByID(w, r)
+	case "uploadSessionComplete":
+		r.SetPathValue("id", parts[1])
+		h.handleUploadComplete(w, r)
+	case "fixDurations":
+		h.handleFixDurations(w, r)
+	case "internal":
+		h.handleInternalByPath(w, r)
+	case "recommended":
+		h.handleRecommended(w, r)
+	case "hot":
+		h.handleHot(w, r)
+	case "list", "meList":
+		h.handleManuscriptList(w, r)
+	case "category":
+		r.SetPathValue("id", parts[1])
+		h.handleCategory(w, r)
+	case "userSearch":
+		r.SetPathValue("id", parts[1])
+		h.handleUserSearch(w, r)
+	case "userManuscripts":
+		r.SetPathValue("id", parts[1])
+		h.handleUserManuscripts(w, r)
+	case "detail":
+		r.SetPathValue("id", parts[0])
+		h.handleManuscriptDetail(w, r)
+	case "status":
+		r.SetPathValue("id", parts[0])
+		h.handleInteractionStatus(w, r)
+	case "like":
+		r.SetPathValue("id", parts[0])
+		h.handleLike(w, r)
+	case "coin":
+		r.SetPathValue("id", parts[0])
+		h.handleCoin(w, r)
+	case "collect":
+		r.SetPathValue("id", parts[0])
+		h.handleCollect(w, r)
+	case "share":
+		r.SetPathValue("id", parts[0])
+		h.handleShare(w, r)
+	case "commentCount":
+		r.SetPathValue("id", parts[0])
+		h.handleCommentCount(w, r)
+	case "incrementComment":
+		r.SetPathValue("id", parts[0])
+		h.handleIncrementComment(w, r)
+	case "decrementComment":
+		r.SetPathValue("id", parts[0])
+		h.handleDecrementComment(w, r)
+	default:
+		http.Error(w, "not found", 404)
+	}
+}
+
+// manuscriptRouteName 将 /api/v1/manuscript/ 前缀后的路径段映射为路由名。
+func manuscriptRouteName(parts []string) string {
+	if len(parts) == 0 {
+		return ""
+	}
+	switch parts[0] {
+	case "upload-session":
+		switch len(parts) {
+		case 1:
+			return "uploadSession"
+		case 2:
+			return "uploadSessionByID"
+		case 3:
+			if parts[2] == "complete" {
+				return "uploadSessionComplete"
+			}
+		}
+		return ""
+	case "fix-durations":
+		if len(parts) == 1 {
+			return "fixDurations"
+		}
+		return ""
+	case "internal":
+		return "internal"
+	case "recommended":
+		if len(parts) == 1 {
+			return "recommended"
+		}
+		return ""
+	case "hot":
+		if len(parts) == 1 {
+			return "hot"
+		}
+		return ""
+	case "list":
+		if len(parts) == 1 {
+			return "list"
+		}
+		return ""
+	case "me":
+		if len(parts) == 2 && parts[1] == "list" {
+			return "meList"
+		}
+		return ""
+	case "category":
+		if len(parts) == 2 {
+			return "category"
+		}
+		return ""
+	case "user":
+		if len(parts) == 3 && parts[2] == "search" {
+			return "userSearch"
+		}
+		if len(parts) == 2 {
+			return "userManuscripts"
+		}
+		return ""
+	default:
+		switch len(parts) {
+		case 1:
+			return "detail"
+		case 2:
+			switch parts[1] {
+			case "status":
+				return "status"
+			case "like":
+				return "like"
+			case "coin":
+				return "coin"
+			case "collect":
+				return "collect"
+			case "share":
+				return "share"
+			case "comment-count":
+				return "commentCount"
+			case "increment-comment":
+				return "incrementComment"
+			case "decrement-comment":
+				return "decrementComment"
+			}
+		}
+		return ""
+	}
+}
+
+// ---- 上传会话与内部兜底 ----
 
 func (h *ManuscriptHTTPHandler) handleUploadSession(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
@@ -40,12 +205,12 @@ func (h *ManuscriptHTTPHandler) handleUploadSession(w http.ResponseWriter, r *ht
 		return
 	}
 	var req struct {
-		Title       string `json:"title"`
-		Description string `json:"description"`
-		CategoryID  int64  `json:"category_id"`
-		Tags        []string           `json:"tags"`
-		Videos      []map[string]any   `json:"videos"`
-		TotalChunks *int               `json:"total_chunks"`
+		Title       string         `json:"title"`
+		Description string         `json:"description"`
+		CategoryID  int64          `json:"category_id"`
+		Tags        []string       `json:"tags"`
+		Videos      []map[string]any `json:"videos"`
+		TotalChunks *int           `json:"total_chunks"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	if req.Title == "" && req.CategoryID == 0 && req.TotalChunks == nil {
@@ -115,6 +280,87 @@ func (h *ManuscriptHTTPHandler) handleUploadSessionByID(w http.ResponseWriter, r
 	}
 }
 
+// handleUploadComplete 从会话创建稿件与视频（URL 导入）。
+func (h *ManuscriptHTTPHandler) handleUploadComplete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	uploadID := pathValue(r, "id")
+	var owner int64
+	if err := h.db.QueryRowContext(r.Context(), `SELECT user_id FROM upload_sessions WHERE id=$1`, uploadID).Scan(&owner); err != nil {
+		writeError(w, ErrNotFound("upload session not found"))
+		return
+	}
+	if owner != uid {
+		writeError(w, ErrPermissionDenied("forbidden"))
+		return
+	}
+	var title, desc, tags, videos string
+	var catID sql.NullInt64
+	if err := h.db.QueryRowContext(r.Context(),
+		`SELECT title, description, category_id, tags, videos
+		 FROM upload_sessions WHERE id = $1`, uploadID).Scan(&title, &desc, &catID, &tags, &videos); err != nil {
+		writeError(w, ErrInternal("load upload session failed"))
+		return
+	}
+
+	playURL := ""
+	var vv []map[string]interface{}
+	_ = json.Unmarshal([]byte(videos), &vv)
+	if len(vv) > 0 {
+		if u, ok := vv[0]["url"].(string); ok {
+			playURL = u
+		}
+		if u, ok := vv[0]["video_url"].(string); ok {
+			playURL = u
+		}
+	}
+	if playURL == "" {
+		writeError(w, ErrInvalidArgument("no playable video source"))
+		return
+	}
+
+	categoryID := int64(0)
+	if catID.Valid {
+		categoryID = catID.Int64
+	}
+	var msID int64
+	if err := h.db.QueryRowContext(r.Context(),
+		`INSERT INTO manuscripts (title, description, cover_url, user_id, category_id, status, review_status, upload_time, updated_at)
+		 VALUES ($1,$2,'',$3,$4,0,0,NOW(),NOW()) RETURNING id`,
+		title, desc, uid, categoryID).Scan(&msID); err != nil {
+		writeError(w, ErrInternal("create manuscript failed"))
+		return
+	}
+	var vid int64
+	if err := h.db.QueryRowContext(r.Context(),
+		`INSERT INTO videos (manuscript_id, video_order, title, play_url_hd, source_video_url, process_status, upload_time, updated_at)
+		 VALUES ($1,0,$2,$3,$3,0,NOW(),NOW()) RETURNING id`,
+		msID, title, playURL).Scan(&vid); err != nil {
+		writeError(w, ErrInternal("create video failed"))
+		return
+	}
+	for _, t := range strings.Split(tags, ",") {
+		t = strings.TrimSpace(t)
+		if t == "" {
+			continue
+		}
+		var tid int64
+		_ = h.db.QueryRowContext(r.Context(),
+			`INSERT INTO tags (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`, t).Scan(&tid)
+		_, _ = h.db.ExecContext(r.Context(),
+			`INSERT INTO video_tags (video_id, tag_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, vid, tid)
+	}
+	_, _ = h.db.ExecContext(r.Context(),
+		`UPDATE upload_sessions SET status = 'uploaded', updated_at = NOW() WHERE id = $1`, uploadID)
+	writeOK(w, map[string]interface{}{"manuscript_id": msID, "status": "uploaded"})
+}
+
 func (h *ManuscriptHTTPHandler) handleFixDurations(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "method not allowed", 405)
@@ -140,27 +386,295 @@ func (h *ManuscriptHTTPHandler) handleInternalByPath(w http.ResponseWriter, r *h
 	http.Error(w, "not found", 404)
 }
 
-func (h *ManuscriptHTTPHandler) handleManuscriptByID(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/api/v1/manuscript/")
-	parts := strings.Split(path, "/")
-	if len(parts) == 0 || parts[0] == "" {
-		http.Error(w, "not found", 404)
+func (h *ManuscriptHTTPHandler) handleCommentCount(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "PUT" {
+		http.Error(w, "method not allowed", 405)
 		return
 	}
-	id, _ := strconv.ParseInt(parts[0], 10, 64)
+	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+	count, _ := strconv.ParseInt(r.URL.Query().Get("count"), 10, 64)
+	_, _ = h.db.ExecContext(r.Context(), `UPDATE manuscripts SET comment_count = $2 WHERE id = $1`, id, count)
+	w.Write([]byte(`{"status":"ok"}`))
+}
 
-	switch {
-	case len(parts) >= 2 && parts[1] == "comment-count" && r.Method == "PUT":
-		count, _ := strconv.ParseInt(r.URL.Query().Get("count"), 10, 64)
-		_, _ = h.db.ExecContext(r.Context(), `UPDATE manuscripts SET comment_count = $2 WHERE id = $1`, id, count)
-		w.Write([]byte(`{"status":"ok"}`))
-	case len(parts) >= 2 && parts[1] == "increment-comment" && r.Method == "POST":
-		_, _ = h.db.ExecContext(r.Context(), `UPDATE manuscripts SET comment_count = comment_count + 1 WHERE id = $1`, id)
-		w.Write([]byte(`{"status":"ok"}`))
-	case len(parts) >= 2 && parts[1] == "decrement-comment" && r.Method == "POST":
-		_, _ = h.db.ExecContext(r.Context(), `UPDATE manuscripts SET comment_count = GREATEST(comment_count - 1, 0) WHERE id = $1`, id)
-		w.Write([]byte(`{"status":"ok"}`))
-	default:
-		http.Error(w, "not found", 404)
+func (h *ManuscriptHTTPHandler) handleIncrementComment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
 	}
+	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+	_, _ = h.db.ExecContext(r.Context(), `UPDATE manuscripts SET comment_count = comment_count + 1 WHERE id = $1`, id)
+	w.Write([]byte(`{"status":"ok"}`))
+}
+
+func (h *ManuscriptHTTPHandler) handleDecrementComment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+	_, _ = h.db.ExecContext(r.Context(), `UPDATE manuscripts SET comment_count = GREATEST(comment_count - 1, 0) WHERE id = $1`, id)
+	w.Write([]byte(`{"status":"ok"}`))
+}
+
+// ---- 公开稿件 ----
+
+// manuscriptToMap 将 pb 稿件编码为 snake_case JSON map，
+// 并给 uploader 补 nickname/username（Flutter 读取）。
+func manuscriptToMap(info *pb.ManuscriptInfo) map[string]interface{} {
+	b, _ := json.Marshal(info)
+	var m map[string]interface{}
+	_ = json.Unmarshal(b, &m)
+	if m == nil {
+		m = map[string]interface{}{}
+	}
+	if up, ok := m["uploader"].(map[string]interface{}); ok {
+		if name, ok := up["name"].(string); ok {
+			up["nickname"] = name
+			up["username"] = name
+		}
+	}
+	return m
+}
+
+func manuscriptListToJSON(infos []*pb.ManuscriptInfo) []map[string]interface{} {
+	out := make([]map[string]interface{}, 0, len(infos))
+	for _, info := range infos {
+		out = append(out, manuscriptToMap(info))
+	}
+	return out
+}
+
+func (h *ManuscriptHTTPHandler) handleRecommended(w http.ResponseWriter, r *http.Request) {
+	uid := getUserIDFromHeader(r)
+	resp, err := h.manuscriptSvc.ListRecommended(r.Context(), &pb.ListRecommendedRequest{UserId: uid})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeOK(w, manuscriptListToJSON(resp.Manuscripts))
+}
+
+func (h *ManuscriptHTTPHandler) handleHot(w http.ResponseWriter, r *http.Request) {
+	uid := getUserIDFromHeader(r)
+	resp, err := h.manuscriptSvc.ListHot(r.Context(), &pb.ListHotRequest{UserId: uid})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeOK(w, manuscriptListToJSON(resp.Manuscripts))
+}
+
+func (h *ManuscriptHTTPHandler) handleManuscriptDetail(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+	if id <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid manuscript id", "data": nil})
+		return
+	}
+	uid := getUserIDFromHeader(r)
+	resp, err := h.manuscriptSvc.GetManuscriptWithVideos(r.Context(), &pb.GetManuscriptWithVideosRequest{Id: id, CurrentUserId: uid})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeOK(w, manuscriptToMap(resp.Manuscript))
+}
+
+func (h *ManuscriptHTTPHandler) handleCategory(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+	page, size := parsePageParams(r)
+	resp, err := h.manuscriptSvc.ListByCategory(r.Context(), &pb.ListByCategoryRequest{CategoryId: id, Page: page, PageSize: size})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeOK(w, manuscriptListToJSON(resp.Manuscripts))
+}
+
+func (h *ManuscriptHTTPHandler) handleUserManuscripts(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+	status, _ := strconv.ParseInt(r.URL.Query().Get("status"), 10, 32)
+	page, size := parsePageParams(r)
+	resp, err := h.manuscriptSvc.ListUserManuscripts(r.Context(), &pb.ListUserManuscriptsRequest{
+		UserId: id, Status: int32(status), Page: page, PageSize: size,
+	})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeOK(w, manuscriptListToJSON(resp.Manuscripts))
+}
+
+func (h *ManuscriptHTTPHandler) handleUserSearch(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+	keyword := r.URL.Query().Get("keyword")
+	sort := r.URL.Query().Get("sort")
+	resp, err := h.manuscriptSvc.SearchUserManuscripts(r.Context(), &pb.SearchUserManuscriptsRequest{UserId: id, Keyword: keyword, Sort: sort})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeOK(w, manuscriptListToJSON(resp.Manuscripts))
+}
+
+func (h *ManuscriptHTTPHandler) handleManuscriptList(w http.ResponseWriter, r *http.Request) {
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	status, _ := strconv.ParseInt(r.URL.Query().Get("status"), 10, 32)
+	page, size := parsePageParams(r)
+	resp, err := h.manuscriptSvc.ListUserManuscripts(r.Context(), &pb.ListUserManuscriptsRequest{
+		UserId: uid, Status: int32(status), Page: page, PageSize: size,
+	})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeOK(w, manuscriptListToJSON(resp.Manuscripts))
+}
+
+// ---- 互动 ----
+
+func (h *ManuscriptHTTPHandler) handleInteractionStatus(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+	if id <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid manuscript id", "data": nil})
+		return
+	}
+	uid := getUserIDFromHeader(r)
+	statusResp, err := h.interactionSvc.GetInteractionStatus(r.Context(), &pb.GetInteractionStatusRequest{ManuscriptId: id, UserId: uid})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	infoResp, err := h.manuscriptSvc.GetManuscript(r.Context(), &pb.GetManuscriptRequest{Id: id})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	coined := false
+	if uid > 0 {
+		coined, _ = h.interactionSvc.repo.HasInteraction(r.Context(), uid, "MANUSCRIPT", "COIN", id)
+	}
+	m := infoResp.Manuscript
+	writeOK(w, map[string]interface{}{
+		"liked":        statusResp.Liked,
+		"coined":       coined,
+		"collected":    statusResp.Collected,
+		"likeCount":    m.LikeCount,
+		"coinCount":    m.CoinCount,
+		"collectCount": m.CollectCount,
+	})
+}
+
+func (h *ManuscriptHTTPHandler) handleLike(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	switch r.Method {
+	case http.MethodPost:
+		_, err := h.interactionSvc.LikeManuscript(r.Context(), &pb.LikeManuscriptRequest{ManuscriptId: id, UserId: uid})
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+	case http.MethodDelete:
+		_, err := h.interactionSvc.UnlikeManuscript(r.Context(), &pb.UnlikeManuscriptRequest{ManuscriptId: id, UserId: uid})
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	writeOK(w, map[string]interface{}{"status": "ok"})
+}
+
+func (h *ManuscriptHTTPHandler) handleCoin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	count := int32(2)
+	if q := r.URL.Query().Get("coinCount"); q != "" {
+		n, _ := strconv.ParseInt(q, 10, 32)
+		if n > 0 {
+			count = int32(n)
+		}
+	} else {
+		var body struct {
+			Count int32 `json:"count"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body.Count > 0 {
+			count = body.Count
+		}
+	}
+	_, err := h.interactionSvc.CoinManuscript(r.Context(), &pb.CoinManuscriptRequest{ManuscriptId: id, UserId: uid, CoinCount: count})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeOK(w, map[string]interface{}{"status": "ok"})
+}
+
+func (h *ManuscriptHTTPHandler) handleCollect(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	switch r.Method {
+	case http.MethodPost:
+		var body struct {
+			FolderId int64 `json:"folderId"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		_, err := h.interactionSvc.CollectManuscript(r.Context(), &pb.CollectManuscriptRequest{ManuscriptId: id, UserId: uid, FolderId: body.FolderId})
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+	case http.MethodDelete:
+		_, err := h.interactionSvc.UncollectManuscript(r.Context(), &pb.UncollectManuscriptRequest{ManuscriptId: id, UserId: uid})
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	writeOK(w, map[string]interface{}{"status": "ok"})
+}
+
+func (h *ManuscriptHTTPHandler) handleShare(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	var body struct {
+		Channel string `json:"channel"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	_, err := h.interactionSvc.ShareManuscript(r.Context(), &pb.ShareManuscriptRequest{ManuscriptId: id, UserId: uid, Channel: body.Channel})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeOK(w, map[string]interface{}{"status": "ok"})
 }
