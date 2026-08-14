@@ -6,10 +6,17 @@ import (
 	pb "mybilibili/internal/core/pb"
 )
 
+type ProfileRecorder interface {
+	RecordWatch(ctx context.Context, userID, categoryID int64, tags []string, duration int64) error
+	RecordLike(ctx context.Context, userID, categoryID int64, tags []string) error
+	RecordCollect(ctx context.Context, userID, categoryID int64, tags []string) error
+}
+
 type InteractionService struct {
-	repo        *InteractionRepository
-	publisher   *EventPublisher
-	messageRepo *MessageRepository
+	repo            *InteractionRepository
+	publisher       *EventPublisher
+	messageRepo     *MessageRepository
+	profileRecorder ProfileRecorder
 }
 
 func NewInteractionService(repo *InteractionRepository) *InteractionService {
@@ -18,6 +25,10 @@ func NewInteractionService(repo *InteractionRepository) *InteractionService {
 
 func (s *InteractionService) SetMessageRepo(mr *MessageRepository) {
 	s.messageRepo = mr
+}
+
+func (s *InteractionService) SetProfileRecorder(pr ProfileRecorder) {
+	s.profileRecorder = pr
 }
 
 func (s *InteractionService) SetEventPublisher(p *EventPublisher) {
@@ -32,6 +43,11 @@ func (s *InteractionService) LikeManuscript(ctx context.Context, req *pb.LikeMan
 		s.repo.UpsertDailyMetric(ctx, req.ManuscriptId, req.UserId, "like_count", 1)
 		s.publishAnalytics(ctx, req.ManuscriptId, req.UserId, "MANUSCRIPT_LIKE", "like_count", 1)
 		s.sendLikeNotification(ctx, req.UserId, req.ManuscriptId)
+		if s.profileRecorder != nil {
+			var catID int64
+			s.messageRepo.DB().QueryRowContext(ctx, `SELECT category_id FROM manuscripts WHERE id = $1`, req.ManuscriptId).Scan(&catID)
+			s.profileRecorder.RecordLike(ctx, req.UserId, catID, nil)
+		}
 	}
 	count, _ := s.repo.CountInteraction(ctx, "MANUSCRIPT", "LIKE", req.ManuscriptId)
 	return &pb.LikeManuscriptResponse{Liked: true, LikeCount: count}, nil
@@ -66,6 +82,11 @@ func (s *InteractionService) CollectManuscript(ctx context.Context, req *pb.Coll
 		s.repo.IncrementManuscriptCount(ctx, "collect_count", req.ManuscriptId)
 		s.repo.UpsertDailyMetric(ctx, req.ManuscriptId, req.UserId, "collect_count", 1)
 		s.publishAnalytics(ctx, req.ManuscriptId, req.UserId, "MANUSCRIPT_COLLECT", "collect_count", 1)
+		if s.profileRecorder != nil {
+			var catID int64
+			s.messageRepo.DB().QueryRowContext(ctx, `SELECT category_id FROM manuscripts WHERE id = $1`, req.ManuscriptId).Scan(&catID)
+			s.profileRecorder.RecordCollect(ctx, req.UserId, catID, nil)
+		}
 	}
 	return &pb.CollectManuscriptResponse{Collected: true}, nil
 }
