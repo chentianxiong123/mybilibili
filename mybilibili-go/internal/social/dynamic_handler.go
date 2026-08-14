@@ -92,9 +92,17 @@ func (h *SocialHandler) handleDynamicCommentDelete(w http.ResponseWriter, r *htt
 func (h *SocialHandler) handleDynamicCommentLike(w http.ResponseWriter, r *http.Request) {
 	commentIDStr := strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/comment/like/")
 	commentID, _ := strconv.ParseInt(commentIDStr, 10, 64)
-	if r.Method == "POST" && commentID > 0 {
-		h.dynamicSvc.repo.db.ExecContext(r.Context(),
-			`UPDATE dynamic_comments SET like_count = like_count + 1 WHERE id = $1`, commentID)
+	switch r.Method {
+	case "POST":
+		if commentID > 0 {
+			h.dynamicSvc.repo.db.ExecContext(r.Context(),
+				`UPDATE dynamic_comments SET like_count = like_count + 1 WHERE id = $1`, commentID)
+		}
+	case "DELETE":
+		if commentID > 0 {
+			h.dynamicSvc.repo.db.ExecContext(r.Context(),
+				`UPDATE dynamic_comments SET like_count = GREATEST(like_count - 1, 0) WHERE id = $1`, commentID)
+		}
 	}
 	w.Write([]byte(`{"status":"ok"}`))
 }

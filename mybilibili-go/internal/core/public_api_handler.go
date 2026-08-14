@@ -31,6 +31,7 @@ func (h *PublicAPIHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/comment/{id}/like", h.handleCommentLike)
 	mux.HandleFunc("/api/v1/comment/{id}/replies", h.handleCommentReplies)
 	mux.HandleFunc("/api/v1/comment/reply/{id}/like", h.handleReplyLike)
+	mux.HandleFunc("/api/v1/comment/batch-like-counts", h.handleBatchLikeCounts)
 }
 
 // ---- 响应辅助 ----
@@ -319,4 +320,42 @@ func (h *PublicAPIHandler) handleReplyLike(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	writeOK(w, map[string]interface{}{"status": "ok"})
+}
+
+// handleBatchLikeCounts 批量查询评论/回复点赞数（对齐旧版 batchGetLikeCount）。
+func (h *PublicAPIHandler) handleBatchLikeCounts(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	uid := getUserIDFromHeader(r)
+	targetType := r.URL.Query().Get("type")
+	if targetType == "" {
+		targetType = "comment"
+	}
+	weirdIDs := strings.Split(r.URL.Query().Get("ids"), ",")
+	ids := make([]int64, 0, len(weirdIDs))
+	for _, s := range weirdIDs {
+		if s == "" {
+			continue
+		}
+		id, _ := strconv.ParseInt(strings.TrimSpace(s), 10, 64)
+		if id > 0 {
+			ids = append(ids, id)
+		}
+	}
+	upper := "COMMENT"
+	if targetType == "reply" {
+		upper = "REPLY"
+	}
+	counts, _ := h.commentSvc.repo.BatchGetLikeCounts(r.Context(), upper, ids)
+	liked, _ := h.commentSvc.repo.BatchIsLiked(r.Context(), uid, upper, ids)
+	out := map[string]interface{}{}
+	for _, id := range ids {
+		out[strconv.FormatInt(id, 10)] = map[string]interface{}{
+			"like_count": counts[id],
+			"is_liked":   liked[id],
+		}
+	}
+	writeOK(w, out)
 }

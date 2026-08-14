@@ -3,7 +3,9 @@ package core
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	pb "mybilibili/internal/core/pb"
@@ -232,6 +234,65 @@ func (r *CommentRepository) UnlikeTarget(ctx context.Context, targetType string,
 		_, err = r.db.ExecContext(ctx, `UPDATE replies SET like_count = GREATEST(like_count - 1, 0) WHERE id = $1`, targetID)
 	}
 	return err
+}
+
+// BatchGetLikeCounts 批量返回评论/回复的点赞数（对齐旧版 batchGetLikeCount）。
+func (r *CommentRepository) BatchGetLikeCounts(ctx context.Context, targetType string, ids []int64) (map[int64]int64, error) {
+	out := make(map[int64]int64, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	table := "comments"
+	if targetType == "REPLY" {
+		table = "replies"
+	}
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = id
+	}
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, like_count FROM `+table+` WHERE id IN (`+strings.Join(placeholders, ",")+`)`, args...)
+	if err != nil {
+		return out, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, count int64
+		rows.Scan(&id, &count)
+		out[id] = count
+	}
+	return out, nil
+}
+
+// BatchIsLiked 批量判断用户对评论/回复的点赞态（对齐旧版 batchIsLiked）。
+func (r *CommentRepository) BatchIsLiked(ctx context.Context, userID int64, targetType string, ids []int64) (map[int64]bool, error) {
+	out := make(map[int64]bool, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, 0, len(ids)+2)
+	args = append(args, userID, targetType)
+	for i, id := range ids {
+		placeholders[i] = fmt.Sprintf("$%d", i+3)
+		args = append(args, id)
+	}
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT target_id FROM user_interactions
+		 WHERE user_id = $1 AND target_type = $2 AND interaction_type = 'like'
+		  AND target_id IN (`+strings.Join(placeholders, ",")+`)`, args...)
+	if err != nil {
+		return out, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		rows.Scan(&id)
+		out[id] = true
+	}
+	return out, nil
 }
 
 func commentToPB(c *Comment, userName, userAvatar string, userLevel int32, liked bool, replies []*pb.ReplyInfo) *pb.CommentInfo {

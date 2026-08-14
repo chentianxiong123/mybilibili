@@ -3,21 +3,29 @@ package core
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	pb "mybilibili/internal/core/pb"
 )
 
 type CommentService struct {
-	repo *CommentRepository
+	repo    *CommentRepository
+	limiter *commentRateLimiter
 }
 
 func NewCommentService(repo *CommentRepository) *CommentService {
-	return &CommentService{repo: repo}
+	return &CommentService{
+		repo:    repo,
+		limiter: newCommentRateLimiter(10*time.Minute, 20),
+	}
 }
 
 func (s *CommentService) AddComment(ctx context.Context, req *pb.AddCommentRequest) (*pb.AddCommentResponse, error) {
 	if req.Content == "" {
 		return nil, ErrInvalidArgument("content required")
+	}
+	if s.limiter.record(req.UserId, time.Now()) {
+		return nil, ErrResourceExhausted("too many comments, please slow down")
 	}
 	c := &Comment{
 		ManuscriptID: req.ManuscriptId,
@@ -58,6 +66,9 @@ func (s *CommentService) DeleteComment(ctx context.Context, req *pb.DeleteCommen
 func (s *CommentService) AddReply(ctx context.Context, req *pb.AddReplyRequest) (*pb.AddReplyResponse, error) {
 	if req.Content == "" {
 		return nil, ErrInvalidArgument("content required")
+	}
+	if s.limiter.record(req.UserId, time.Now()) {
+		return nil, ErrResourceExhausted("too many comments, please slow down")
 	}
 
 	rep := &Reply{
