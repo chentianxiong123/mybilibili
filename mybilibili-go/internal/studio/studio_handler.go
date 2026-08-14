@@ -60,10 +60,25 @@ func (h *Handler) handleTaskByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleAssetUpload(w http.ResponseWriter, r *http.Request) {
-	// Multipart asset upload stub
 	userID := getUserID(r)
-	_ = userID
-	w.Write([]byte(`{"status":"uploaded","url":""}`))
+	if err := r.ParseMultipartForm(50 << 20); err != nil {
+		http.Error(w, "parse form: "+err.Error(), 400)
+		return
+	}
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "file required", 400)
+		return
+	}
+	defer file.Close()
+	assetType := r.FormValue("type")
+	taskID, _ := strconv.ParseInt(r.FormValue("task_id"), 10, 64)
+	url, err := h.svc.UploadAsset(r.Context(), userID, taskID, assetType, header.Filename, file)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{"status": "uploaded", "url": url})
 }
 
 func getUserID(r *http.Request) int64 {

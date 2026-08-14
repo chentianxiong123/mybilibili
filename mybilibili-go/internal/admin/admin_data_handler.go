@@ -343,9 +343,41 @@ func (h *AdminDataHandler) handleMeetingAdmin(w http.ResponseWriter, r *http.Req
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/admin/meeting/"), "/")
 	switch {
 	case parts[0] == "rooms" && r.Method == "GET":
-		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		rows, err := h.db.QueryContext(r.Context(),
+			`SELECT id, user_id, title, status, created_at FROM meeting_room ORDER BY created_at DESC LIMIT 50`)
+		if err != nil {
+			json.NewEncoder(w).Encode([]map[string]interface{}{})
+			return
+		}
+		defer rows.Close()
+		var list []map[string]interface{}
+		for rows.Next() {
+			var id, uid, st int64
+			var title, t string
+			rows.Scan(&id, &uid, &title, &st, &t)
+			list = append(list, map[string]interface{}{
+				"id": id, "user_id": uid, "title": title, "status": st, "created_at": t,
+			})
+		}
+		json.NewEncoder(w).Encode(list)
 	case parts[0] == "pending" && r.Method == "GET":
-		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		rows, err := h.db.QueryContext(r.Context(),
+			`SELECT id, user_id, title, status, created_at FROM meeting_room WHERE status = 0 ORDER BY created_at DESC LIMIT 50`)
+		if err != nil {
+			json.NewEncoder(w).Encode([]map[string]interface{}{})
+			return
+		}
+		defer rows.Close()
+		var list []map[string]interface{}
+		for rows.Next() {
+			var id, uid, st int64
+			var title, t string
+			rows.Scan(&id, &uid, &title, &st, &t)
+			list = append(list, map[string]interface{}{
+				"id": id, "user_id": uid, "title": title, "status": st, "created_at": t,
+			})
+		}
+		json.NewEncoder(w).Encode(list)
 	case len(parts) >= 2 && parts[0] == "approve" && r.Method == "POST":
 		id, _ := strconv.ParseInt(parts[1], 10, 64)
 		h.exec(w, r, `UPDATE meeting_room SET status=0 WHERE id=$1`, id)
