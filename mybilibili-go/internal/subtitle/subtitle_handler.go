@@ -172,6 +172,11 @@ func (h *Handler) handleImport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "video_id and srt required", 400)
 		return
 	}
+	cues, err := ParseSRT(req.Srt)
+	if err != nil || len(cues) == 0 {
+		http.Error(w, "invalid srt content", 400)
+		return
+	}
 	sub, err := h.svc.Upload(r.Context(), req.VideoID, getUserID(r), "zh-CN", "中文", req.Srt)
 	if err != nil {
 		http.Error(w, err.Error(), 500)

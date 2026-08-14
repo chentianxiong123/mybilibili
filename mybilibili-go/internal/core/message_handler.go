@@ -23,6 +23,7 @@ func (h *MessageHTTPHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/message/conversations/", h.handleConversationByID)
 	mux.HandleFunc("/api/v1/message/send", h.handleSend)
 	mux.HandleFunc("/api/v1/message/unread/", h.handleUnread)
+	mux.HandleFunc("/api/v1/message/conversation/unread/", h.handleConversationUnread)
 	mux.HandleFunc("/api/v1/message/replies", h.handleReplies)
 	mux.HandleFunc("/api/v1/message/at", h.handleAt)
 	mux.HandleFunc("/api/v1/message/likes", h.handleLikes)
@@ -125,6 +126,16 @@ func (h *MessageHTTPHandler) handleUnread(w http.ResponseWriter, r *http.Request
 	userID := getUserIDFromHeader(r)
 	cnt, _ := h.repo.GetUnreadCount(r.Context(), userID)
 	json.NewEncoder(w).Encode(map[string]int32{"unread_count": cnt})
+}
+
+func (h *MessageHTTPHandler) handleConversationUnread(w http.ResponseWriter, r *http.Request) {
+	userID := getUserIDFromHeader(r)
+	convIDStr := strings.TrimPrefix(r.URL.Path, "/api/v1/message/conversation/unread/")
+	convID, _ := strconv.ParseInt(convIDStr, 10, 64)
+	var unread int32
+	_ = h.repo.db.QueryRowContext(r.Context(),
+		`SELECT unread_count FROM conversations WHERE id = $1 AND user_id = $2`, convID, userID).Scan(&unread)
+	json.NewEncoder(w).Encode(map[string]int32{"unread_count": unread})
 }
 
 func (h *MessageHTTPHandler) handleReplies(w http.ResponseWriter, r *http.Request) {

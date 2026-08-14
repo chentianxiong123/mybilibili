@@ -202,6 +202,7 @@ func main() {
 	profileRepo := profile.NewRepository(docStore)
 	profileSvc := profile.NewService(profileRepo)
 	profileH := profile.NewHandler(profileSvc)
+	interactionSvc.SetProfileRecorder(profileSvc)
 
 	studioRepo := studio.NewRepository(db)
 	studioSvc := studio.NewService(studioRepo)
