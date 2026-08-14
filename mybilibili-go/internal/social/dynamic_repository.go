@@ -93,6 +93,20 @@ func (r *DynamicRepository) ListFollowing(ctx context.Context, userID int64, pag
 	return scanDynamics(rows)
 }
 
+func (r *DynamicRepository) ListAll(ctx context.Context, page, limit int32) ([]*Dynamic, error) {
+	offset := (page - 1) * limit
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, user_id, content, dynamic_type, COALESCE(image_url,''), COALESCE(ref_manuscript_id,0),
+		        like_count, comment_count, share_count, status, created_at
+		 FROM user_dynamics WHERE status = 0 ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+		limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanDynamics(rows)
+}
+
 func (r *DynamicRepository) Delete(ctx context.Context, id, userID int64) error {
 	_, err := r.db.ExecContext(ctx, `UPDATE user_dynamics SET status = 1 WHERE id = $1 AND user_id = $2`, id, userID)
 	return err
@@ -108,6 +122,20 @@ func (r *DynamicRepository) IncrCommentCount(ctx context.Context, id int64, delt
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE user_dynamics SET comment_count = GREATEST(comment_count + $1, 0) WHERE id = $2`, delta, id)
 	return err
+}
+
+func (r *DynamicRepository) IncrShareCount(ctx context.Context, id int64, delta int) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE user_dynamics SET share_count = GREATEST(share_count + $1, 0) WHERE id = $2`, delta, id)
+	return err
+}
+
+func (r *DynamicRepository) IsLiked(ctx context.Context, dynamicID, userID int64) (bool, error) {
+	var cnt int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM dynamic_likes WHERE dynamic_id = $1 AND user_id = $2`,
+		dynamicID, userID).Scan(&cnt)
+	return cnt > 0, err
 }
 
 func (r *DynamicRepository) CreateComment(ctx context.Context, dc *DynamicComment) (int64, error) {

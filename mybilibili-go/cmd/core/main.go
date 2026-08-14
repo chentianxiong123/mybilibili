@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net"
 	"os"
@@ -165,6 +166,30 @@ func main() {
 
 	indexMgr := search.NewIndexManager(searchEngine, mq)
 	go indexMgr.Start(context.Background())
+
+	go func() {
+		ch, err := mq.Subscribe(context.Background(), "video-publish-topic", "auto-publish")
+		if err != nil {
+			log.Printf("auto-publish subscribe: %v", err)
+			return
+		}
+		for msg := range ch {
+			var evt struct {
+				ManuscriptID int64 `json:"manuscript_id"`
+				VideoID      int64 `json:"video_id"`
+			}
+			json.Unmarshal(msg.Payload, &evt)
+			if evt.ManuscriptID == 0 {
+				continue
+			}
+			var remaining int
+			_ = db.QueryRow(`SELECT COUNT(*) FROM videos WHERE manuscript_id = $1 AND process_status != 5`, evt.ManuscriptID).Scan(&remaining)
+			if remaining == 0 {
+				_, _ = db.Exec(`UPDATE manuscripts SET status = 3 WHERE id = $1 AND status = 0`, evt.ManuscriptID)
+				log.Printf("auto-published manuscript %d (all videos completed)", evt.ManuscriptID)
+			}
+		}
+	}()
 
 	subtitleRepo := subtitle.NewRepository(docStore)
 	subtitleSvc := subtitle.NewService(subtitleRepo)
