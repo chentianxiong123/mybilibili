@@ -151,7 +151,7 @@ func main() {
 	docStore, _ := abstraction.NewDocumentStore(abstraction.DocumentStoreConfig{Type: "pg-jsonb", DSN: dsn})
 	searchEngine, _ := abstraction.NewSearchEngine(abstraction.SearchEngineConfig{Type: "pg-fts", DSN: dsn})
 	storageSvc, _ := abstraction.NewStorageService(abstraction.StorageServiceConfig{Type: "memory"})
-	caller, _ := abstraction.NewServiceCaller(abstraction.ServiceCallerConfig{Type: "memory"})
+	caller, _ := abstraction.NewServiceCaller(abstraction.ServiceCallerConfig{Type: "ollama"})
 	mq, _ := abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: "memory"})
 	_ = abstractionCfg
 	_ = storageSvc
@@ -212,6 +212,7 @@ func main() {
 	reviewSvc := ai.NewReviewService(caller)
 	customerSvc := ai.NewCustomerService(caller)
 	_ = summarySvc
+	commentSvc.SetReviewService(reviewSvc)
 	aiChatH := ai.NewAIChatHandler(reviewSvc, customerSvc)
 
 	publicAPIH := core.NewPublicAPIHandler(commentSvc)

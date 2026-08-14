@@ -12,6 +12,9 @@ type CommentService struct {
 	repo        *CommentRepository
 	limiter     *commentRateLimiter
 	messageRepo *MessageRepository
+	reviewSvc   interface {
+		ReviewComment(ctx context.Context, content string) (bool, error)
+	}
 }
 
 func NewCommentService(repo *CommentRepository) *CommentService {
@@ -23,6 +26,12 @@ func NewCommentService(repo *CommentRepository) *CommentService {
 
 func (s *CommentService) SetMessageRepo(mr *MessageRepository) {
 	s.messageRepo = mr
+}
+
+func (s *CommentService) SetReviewService(rs interface {
+	ReviewComment(ctx context.Context, content string) (bool, error)
+}) {
+	s.reviewSvc = rs
 }
 
 func (s *CommentService) AddComment(ctx context.Context, req *pb.AddCommentRequest) (*pb.AddCommentResponse, error) {
@@ -60,6 +69,14 @@ func (s *CommentService) AddComment(ctx context.Context, req *pb.AddCommentReque
 	}
 	c.ID = id
 	s.repo.UpsertDailyMetric(ctx, c.ManuscriptID, c.UserID, "comment_count", 1)
+
+	s.repo.WriteContentReview(ctx, "comment", req.UserId, req.Content)
+	if s.reviewSvc != nil {
+		passed, _ := s.reviewSvc.ReviewComment(ctx, req.Content)
+		if !passed {
+			s.repo.UpdateCommentStatus(ctx, id, 1)
+		}
+	}
 
 	info := s.buildComment(ctx, c, req.UserId, nil)
 	return &pb.AddCommentResponse{Comment: info}, nil
