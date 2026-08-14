@@ -13,6 +13,7 @@ type ProfileRecorder interface {
 }
 
 type InteractionService struct {
+	pb.UnimplementedInteractionServiceServer
 	repo            *InteractionRepository
 	publisher       *EventPublisher
 	messageRepo     *MessageRepository

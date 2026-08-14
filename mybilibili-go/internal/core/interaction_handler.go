@@ -1,80 +1,146 @@
 package core
 
 import (
-	"context"
-
-	pb "mybilibili/internal/core/pb"
+	"encoding/json"
+	"net/http"
+	"strconv"
+	"strings"
 )
 
-type InteractionHandler struct {
-	pb.UnimplementedInteractionServiceServer
-	svc *InteractionService
+type GenericInteractionHandler struct {
+	repo *InteractionRepository
 }
 
-func NewInteractionHandler(svc *InteractionService) *InteractionHandler {
-	return &InteractionHandler{svc: svc}
+func NewGenericInteractionHandler(repo *InteractionRepository) *GenericInteractionHandler {
+	return &GenericInteractionHandler{repo: repo}
 }
 
-func (h *InteractionHandler) LikeManuscript(ctx context.Context, req *pb.LikeManuscriptRequest) (*pb.LikeManuscriptResponse, error) {
-	return h.svc.LikeManuscript(ctx, req)
+func (h *GenericInteractionHandler) Register(mux *http.ServeMux) {
+	mux.HandleFunc("/api/v1/interaction/", h.handleRouter)
 }
 
-func (h *InteractionHandler) UnlikeManuscript(ctx context.Context, req *pb.UnlikeManuscriptRequest) (*pb.UnlikeManuscriptResponse, error) {
-	return h.svc.UnlikeManuscript(ctx, req)
+func (h *GenericInteractionHandler) handleRouter(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/interaction/")
+	parts := strings.Split(path, "/")
+	if len(parts) == 0 {
+		http.Error(w, "not found", 404)
+		return
+	}
+	switch parts[0] {
+	case "like":
+		h.handleLike(w, r)
+	case "status":
+		h.handleStatus(w, r)
+	case "batch":
+		if len(parts) >= 2 && parts[1] == "status" {
+			h.handleBatchStatus(w, r)
+		} else if len(parts) >= 2 && parts[1] == "count" {
+			h.handleBatchCount(w, r)
+		} else {
+			http.Error(w, "not found", 404)
+		}
+	case "count":
+		h.handleCount(w, r)
+	default:
+		http.Error(w, "not found", 404)
+	}
 }
 
-func (h *InteractionHandler) CoinManuscript(ctx context.Context, req *pb.CoinManuscriptRequest) (*pb.CoinManuscriptResponse, error) {
-	return h.svc.CoinManuscript(ctx, req)
+func (h *GenericInteractionHandler) handleLike(w http.ResponseWriter, r *http.Request) {
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	var req struct {
+		TargetType string `json:"targetType"`
+		TargetID   int64  `json:"targetId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid request"})
+		return
+	}
+	if req.TargetType == "" || req.TargetID == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "targetType and targetId required"})
+		return
+	}
+	switch r.Method {
+	case http.MethodPost:
+		if err := h.repo.AddInteraction(r.Context(), uid, req.TargetType, "like", req.TargetID); err != nil {
+			writeError(w, ErrInternal("failed to like"))
+			return
+		}
+		writeOK(w, map[string]interface{}{"status": "liked"})
+	case http.MethodDelete:
+		if err := h.repo.RemoveInteraction(r.Context(), uid, req.TargetType, "like", req.TargetID); err != nil {
+			writeError(w, ErrInternal("failed to unlike"))
+			return
+		}
+		writeOK(w, map[string]interface{}{"status": "unliked"})
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed"})
+	}
 }
 
-func (h *InteractionHandler) CollectManuscript(ctx context.Context, req *pb.CollectManuscriptRequest) (*pb.CollectManuscriptResponse, error) {
-	return h.svc.CollectManuscript(ctx, req)
+func (h *GenericInteractionHandler) handleStatus(w http.ResponseWriter, r *http.Request) {
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	targetType := r.URL.Query().Get("targetType")
+	targetID, _ := strconv.ParseInt(r.URL.Query().Get("targetId"), 10, 64)
+	if targetType == "" || targetID == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "targetType and targetId required"})
+		return
+	}
+	liked, _ := h.repo.HasInteraction(r.Context(), uid, targetType, "like", targetID)
+	writeOK(w, map[string]interface{}{"liked": liked})
 }
 
-func (h *InteractionHandler) UncollectManuscript(ctx context.Context, req *pb.UncollectManuscriptRequest) (*pb.UncollectManuscriptResponse, error) {
-	return h.svc.UncollectManuscript(ctx, req)
+func (h *GenericInteractionHandler) handleBatchStatus(w http.ResponseWriter, r *http.Request) {
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	var req struct {
+		TargetType string  `json:"targetType"`
+		TargetIDs  []int64 `json:"targetIds"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid request"})
+		return
+	}
+	result := make(map[int64]bool)
+	for _, id := range req.TargetIDs {
+		liked, _ := h.repo.HasInteraction(r.Context(), uid, req.TargetType, "like", id)
+		result[id] = liked
+	}
+	writeOK(w, result)
 }
 
-func (h *InteractionHandler) ShareManuscript(ctx context.Context, req *pb.ShareManuscriptRequest) (*pb.ShareManuscriptResponse, error) {
-	return h.svc.ShareManuscript(ctx, req)
+func (h *GenericInteractionHandler) handleCount(w http.ResponseWriter, r *http.Request) {
+	targetType := r.URL.Query().Get("targetType")
+	targetID, _ := strconv.ParseInt(r.URL.Query().Get("targetId"), 10, 64)
+	if targetType == "" || targetID == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "targetType and targetId required"})
+		return
+	}
+	count, _ := h.repo.CountInteraction(r.Context(), targetType, "like", targetID)
+	writeOK(w, map[string]interface{}{"count": count})
 }
 
-func (h *InteractionHandler) GetInteractionStatus(ctx context.Context, req *pb.GetInteractionStatusRequest) (*pb.GetInteractionStatusResponse, error) {
-	return h.svc.GetInteractionStatus(ctx, req)
-}
-
-func (h *InteractionHandler) FollowUser(ctx context.Context, req *pb.FollowUserRequest) (*pb.FollowUserResponse, error) {
-	return h.svc.FollowUser(ctx, req)
-}
-
-func (h *InteractionHandler) UnfollowUser(ctx context.Context, req *pb.UnfollowUserRequest) (*pb.UnfollowUserResponse, error) {
-	return h.svc.UnfollowUser(ctx, req)
-}
-
-func (h *InteractionHandler) CheckFollow(ctx context.Context, req *pb.CheckFollowRequest) (*pb.CheckFollowResponse, error) {
-	return h.svc.CheckFollow(ctx, req)
-}
-
-func (h *InteractionHandler) GetFollowCount(ctx context.Context, req *pb.GetFollowCountRequest) (*pb.GetFollowCountResponse, error) {
-	return h.svc.GetFollowCount(ctx, req)
-}
-
-func (h *InteractionHandler) GetLikedManuscripts(ctx context.Context, req *pb.GetLikedManuscriptsRequest) (*pb.GetLikedManuscriptsResponse, error) {
-	return h.svc.GetLikedManuscripts(ctx, req)
-}
-
-func (h *InteractionHandler) GetCollectedManuscripts(ctx context.Context, req *pb.GetCollectedManuscriptsRequest) (*pb.GetCollectedManuscriptsResponse, error) {
-	return h.svc.GetCollectedManuscripts(ctx, req)
-}
-
-func (h *InteractionHandler) AddWatchHistory(ctx context.Context, req *pb.AddWatchHistoryRequest) (*pb.AddWatchHistoryResponse, error) {
-	return h.svc.AddWatchHistory(ctx, req)
-}
-
-func (h *InteractionHandler) GetWatchHistory(ctx context.Context, req *pb.GetWatchHistoryRequest) (*pb.GetWatchHistoryResponse, error) {
-	return h.svc.GetWatchHistory(ctx, req)
-}
-
-func (h *InteractionHandler) ClearWatchHistory(ctx context.Context, req *pb.ClearWatchHistoryRequest) (*pb.ClearWatchHistoryResponse, error) {
-	return h.svc.ClearWatchHistory(ctx, req)
+func (h *GenericInteractionHandler) handleBatchCount(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		TargetType string  `json:"targetType"`
+		TargetIDs  []int64 `json:"targetIds"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid request"})
+		return
+	}
+	result := make(map[int64]int32)
+	for _, id := range req.TargetIDs {
+		count, _ := h.repo.CountInteraction(r.Context(), req.TargetType, "like", id)
+		result[id] = count
+	}
+	writeOK(w, result)
 }

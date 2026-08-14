@@ -82,7 +82,7 @@ func main() {
 
 	interactionRepo := core.NewInteractionRepository(db)
 	interactionSvc := core.NewInteractionService(interactionRepo)
-	interactionH := core.NewInteractionHandler(interactionSvc)
+	interactionH := interactionSvc
 
 	danmakuRepo := core.NewDanmakuRepository(db)
 	danmakuBroadcaster := core.NewDanmakuBroadcaster()
@@ -146,6 +146,7 @@ func main() {
 	messageH := core.NewMessageHTTPHandler(messageRepo, notifBroadcaster)
 	creatorCommentH := core.NewCreatorCommentHTTPHandler(commentRepo, commentSvc)
 	favoriteH := core.NewFavoriteHandler(db)
+	genericInteractionH := core.NewGenericInteractionHandler(interactionRepo)
 
 	abstractionCfg := abstraction.Config{}
 	docStore, _ := abstraction.NewDocumentStore(abstraction.DocumentStoreConfig{Type: "pg-jsonb", DSN: dsn})
@@ -221,7 +222,7 @@ func main() {
 	core.StartHTTPServer(httpAddr, httpH, core.NewJWT(jwtSecret),
 		liveH, linkmicH, followH, socialH, videoH, adminH, adminDataH, adminManuscriptH, modH,
 		meetingH, aiH, searchH, supportH, userExtH, messageH, favoriteH,
-		subtitleH, analyticsH, studioH, profileH, creatorCommentH, aiChatH, manuscriptHTTPH, publicAPIH)
+		subtitleH, analyticsH, studioH, profileH, creatorCommentH, aiChatH, manuscriptHTTPH, publicAPIH, genericInteractionH)
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
