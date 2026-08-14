@@ -2,6 +2,7 @@ package subtitle
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -24,6 +25,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/subtitle/video/", h.handleVideoSubtitle)
 	mux.HandleFunc("/api/v1/subtitle/pending", h.handlePending)
 	mux.HandleFunc("/api/v1/subtitle/upload", h.handleUpload)
+	mux.HandleFunc("/api/v1/subtitle/upload-srt", h.handleUploadSRT)
 	mux.HandleFunc("/api/v1/subtitle/", h.handleSubtitleByID)
 }
 
@@ -94,6 +96,44 @@ func (h *Handler) handleUpload(w http.ResponseWriter, r *http.Request) {
 		h.svc.SetDefault(r.Context(), req.VideoID, sub.ID)
 	}
 
+	json.NewEncoder(w).Encode(sub)
+}
+
+func (h *Handler) handleUploadSRT(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	userID := getUserID(r)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		http.Error(w, "parse form: "+err.Error(), 400)
+		return
+	}
+	videoID, _ := strconv.ParseInt(r.FormValue("video_id"), 10, 64)
+	language := r.FormValue("language")
+	if language == "" {
+		language = "zh-CN"
+	}
+	languageName := r.FormValue("language_name")
+	if languageName == "" {
+		languageName = "中文"
+	}
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "file required", 400)
+		return
+	}
+	defer file.Close()
+	content, _ := io.ReadAll(file)
+	if len(content) == 0 {
+		http.Error(w, "empty file", 400)
+		return
+	}
+	sub, err := h.svc.Upload(r.Context(), videoID, userID, language, languageName, string(content))
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
 	json.NewEncoder(w).Encode(sub)
 }
 

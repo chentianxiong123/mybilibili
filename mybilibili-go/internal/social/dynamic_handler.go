@@ -20,11 +20,15 @@ func NewSocialHandler(followSvc *FollowService, dynamicSvc *DynamicService, coll
 
 func (h *SocialHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/dynamic/", h.handleDynamic)
+	mux.HandleFunc("/api/v1/dynamic/all", h.handleDynamicAll)
+	mux.HandleFunc("/api/v1/dynamic/like/", h.handleDynamicLike)
 	mux.HandleFunc("/api/v1/dynamic/comment/list", h.handleDynamicCommentList)
 	mux.HandleFunc("/api/v1/dynamic/comment/add", h.handleDynamicCommentAdd)
 	mux.HandleFunc("/api/v1/dynamic/comment/replies", h.handleDynamicCommentReplies)
 	mux.HandleFunc("/api/v1/dynamic/comment/delete/", h.handleDynamicCommentDelete)
 	mux.HandleFunc("/api/v1/dynamic/comment/like/", h.handleDynamicCommentLike)
+	mux.HandleFunc("/api/v1/dynamic/share/", h.handleDynamicShare)
+	mux.HandleFunc("/api/v1/dynamic/comment/increment/", h.handleDynamicCommentIncrement)
 	mux.HandleFunc("/api/v1/collection/", h.handleCollection)
 	mux.HandleFunc("/api/v1/share/", h.handleShare)
 	mux.HandleFunc("/api/v1/watch-history/", h.handleWatchHistory)
@@ -105,6 +109,48 @@ func (h *SocialHandler) handleDynamicCommentLike(w http.ResponseWriter, r *http.
 		}
 	}
 	w.Write([]byte(`{"status":"ok"}`))
+}
+
+func (h *SocialHandler) handleDynamicAll(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	page, limit := parsePage(r)
+	list, _ := h.dynamicSvc.ListAll(r.Context(), page, limit)
+	json.NewEncoder(w).Encode(list)
+}
+
+func (h *SocialHandler) handleDynamicLike(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/like/"), 10, 64)
+	userID := getUserID(r)
+	switch r.Method {
+	case http.MethodPost:
+		h.dynamicSvc.Like(r.Context(), id, userID)
+		w.Write([]byte(`{"status":"ok"}`))
+	case http.MethodDelete:
+		liked, _ := h.dynamicSvc.IsLiked(r.Context(), id, userID)
+		json.NewEncoder(w).Encode(map[string]interface{}{"liked": liked})
+	default:
+		http.Error(w, "method not allowed", 405)
+	}
+}
+
+func (h *SocialHandler) handleDynamicShare(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/share/"), 10, 64)
+	if r.Method == "POST" && id > 0 {
+		userID := getUserID(r)
+		h.dynamicSvc.ShareDynamic(r.Context(), id, userID)
+		w.Write([]byte(`{"status":"ok"}`))
+	}
+}
+
+func (h *SocialHandler) handleDynamicCommentIncrement(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/comment/increment/"), 10, 64)
+	if r.Method == "POST" && id > 0 {
+		h.dynamicSvc.IncrCommentCount(r.Context(), id, 1)
+		w.Write([]byte(`{"status":"ok"}`))
+	}
 }
 
 func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {

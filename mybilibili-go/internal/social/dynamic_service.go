@@ -34,6 +34,10 @@ func (s *DynamicService) ListFollowing(ctx context.Context, userID int64, page, 
 	return s.repo.ListFollowing(ctx, userID, page, limit)
 }
 
+func (s *DynamicService) ListAll(ctx context.Context, page, limit int32) ([]*Dynamic, error) {
+	return s.repo.ListAll(ctx, page, limit)
+}
+
 func (s *DynamicService) Delete(ctx context.Context, id, userID int64) error {
 	return s.repo.Delete(ctx, id, userID)
 }
@@ -44,6 +48,18 @@ func (s *DynamicService) Like(ctx context.Context, id, userID int64) error {
 
 func (s *DynamicService) Unlike(ctx context.Context, id, userID int64) error {
 	return s.repo.IncrLikeCount(ctx, id, -1)
+}
+
+func (s *DynamicService) ShareDynamic(ctx context.Context, id, userID int64) error {
+	return s.repo.IncrShareCount(ctx, id, 1)
+}
+
+func (s *DynamicService) IsLiked(ctx context.Context, dynamicID, userID int64) (bool, error) {
+	return s.repo.IsLiked(ctx, dynamicID, userID)
+}
+
+func (s *DynamicService) IncrCommentCount(ctx context.Context, id int64, delta int) error {
+	return s.repo.IncrCommentCount(ctx, id, delta)
 }
 
 func (s *DynamicService) AddComment(ctx context.Context, dynamicID, userID int64, content string, parentID, replyUserID int64) (*DynamicComment, error) {
