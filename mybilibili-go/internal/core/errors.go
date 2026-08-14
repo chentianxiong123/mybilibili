@@ -28,3 +28,7 @@ func ErrUnauthenticated(msg string) error {
 func ErrPermissionDenied(msg string) error {
 	return status.Errorf(codes.PermissionDenied, msg)
 }
+
+func ErrResourceExhausted(msg string) error {
+	return status.Errorf(codes.ResourceExhausted, msg)
+}
