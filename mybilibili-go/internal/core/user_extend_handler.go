@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
@@ -34,6 +35,7 @@ func (h *UserExtendHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/user/add-experience", h.handleAddExperience)
 	mux.HandleFunc("/api/v1/user/pinned-video", h.handlePinnedVideo)
 	mux.HandleFunc("/api/v1/user/login-logs", h.handleLoginLogs)
+	mux.HandleFunc("/api/v1/user/login-logs/count", h.handleLoginLogCount)
 	mux.HandleFunc("/api/v1/user/privacy/", h.handlePrivacy)
 	mux.HandleFunc("/api/v1/user/tags", h.handleTags)
 	mux.HandleFunc("/api/v1/user/settings/message", h.handleMessageSettings)
@@ -132,7 +134,16 @@ func (h *UserExtendHandler) handleEmailCode(w http.ResponseWriter, r *http.Reque
 		Email string `json:"email"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
-	_ = req
+	if req.Email == "" {
+		http.Error(w, "email required", 400)
+		return
+	}
+	code := fmt.Sprintf("%06d", rand.Intn(1000000))
+	_, _ = h.svc.repo.db.ExecContext(r.Context(),
+		`INSERT INTO verification_codes (identifier, code_type, code_value, expires_at)
+		 VALUES ($1, 'email_code', $2, NOW() + INTERVAL '10 minutes')`,
+		req.Email, code)
+	_ = code
 	w.Write([]byte(`{"status":"code_sent"}`))
 }
 
@@ -146,7 +157,21 @@ func (h *UserExtendHandler) handleEmailVerify(w http.ResponseWriter, r *http.Req
 		Code  string `json:"code"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
-	_ = req
+	if req.Email == "" || req.Code == "" {
+		http.Error(w, "email and code required", 400)
+		return
+	}
+	var id int64
+	err := h.svc.repo.db.QueryRowContext(r.Context(),
+		`SELECT id FROM verification_codes
+		 WHERE identifier = $1 AND code_type = 'email_code' AND code_value = $2 AND used = 0
+		  AND expires_at > NOW() ORDER BY expires_at DESC LIMIT 1`,
+		req.Email, req.Code).Scan(&id)
+	if err != nil {
+		w.Write([]byte(`{"status":"failed","message":"invalid or expired code"}`))
+		return
+	}
+	_, _ = h.svc.repo.db.ExecContext(r.Context(), `UPDATE verification_codes SET used = 1 WHERE id = $1`, id)
 	w.Write([]byte(`{"status":"verified"}`))
 }
 
@@ -247,6 +272,45 @@ func (h *UserExtendHandler) handleLoginLogs(w http.ResponseWriter, r *http.Reque
 		})
 	}
 	json.NewEncoder(w).Encode(list)
+}
+
+// GET /api/v1/user/login-logs/count — 按条件计数（countUserLogs / countByCondition）
+func (h *UserExtendHandler) handleLoginLogCount(w http.ResponseWriter, r *http.Request) {
+	userID := getUserIDFromHeader(r)
+	conds := "WHERE 1=1"
+	args := []interface{}{}
+	argIdx := 0
+
+	if uidStr := r.URL.Query().Get("user_id"); uidStr != "" {
+		argIdx++
+		uid, _ := strconv.ParseInt(uidStr, 10, 64)
+		args = append(args, uid)
+		conds += fmt.Sprintf(" AND user_id = $%d", argIdx)
+	} else {
+		argIdx++
+		args = append(args, userID)
+		conds += fmt.Sprintf(" AND user_id = $%d", argIdx)
+	}
+	if statusStr := r.URL.Query().Get("status"); statusStr != "" {
+		argIdx++
+		args = append(args, statusStr)
+		conds += fmt.Sprintf(" AND status = $%d", argIdx)
+	}
+	if start := r.URL.Query().Get("start_time"); start != "" {
+		argIdx++
+		args = append(args, start)
+		conds += fmt.Sprintf(" AND login_time >= $%d", argIdx)
+	}
+	if end := r.URL.Query().Get("end_time"); end != "" {
+		argIdx++
+		args = append(args, end)
+		conds += fmt.Sprintf(" AND login_time <= $%d", argIdx)
+	}
+
+	var total int64
+	_ = h.svc.repo.db.QueryRowContext(r.Context(),
+		`SELECT COUNT(*) FROM login_logs `+conds, args...).Scan(&total)
+	json.NewEncoder(w).Encode(map[string]int64{"total": total})
 }
 
 func (h *UserExtendHandler) handlePrivacy(w http.ResponseWriter, r *http.Request) {
@@ -464,11 +528,39 @@ func (h *UserExtendHandler) handleCaptcha(w http.ResponseWriter, r *http.Request
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/captcha/")
 	switch path {
 	case "new":
+		a := rand.Intn(50) + 1
+		b := rand.Intn(50) + 1
+		answer := a + b
+		captchaID := fmt.Sprintf("%d", time.Now().UnixNano())
+		_, _ = h.svc.repo.db.ExecContext(r.Context(),
+			`INSERT INTO verification_codes (identifier, code_type, code_value, expires_at)
+			 VALUES ($1, 'captcha', $2, NOW() + INTERVAL '5 minutes')`,
+			captchaID, fmt.Sprintf("%d", answer))
 		json.NewEncoder(w).Encode(map[string]string{
-			"captchaId": fmt.Sprintf("%d", time.Now().UnixNano()),
-			"question":  "1+1=?",
+			"captchaId": captchaID,
+			"question":  fmt.Sprintf("%d+%d=?", a, b),
 		})
 	case "verify":
+		var req struct {
+			CaptchaID string `json:"captchaId"`
+			Answer    string `json:"answer"`
+		}
+		json.NewDecoder(r.Body).Decode(&req)
+		if req.CaptchaID == "" || req.Answer == "" {
+			json.NewEncoder(w).Encode(map[string]bool{"verified": false})
+			return
+		}
+		var id int64
+		err := h.svc.repo.db.QueryRowContext(r.Context(),
+			`SELECT id FROM verification_codes
+			 WHERE identifier = $1 AND code_type = 'captcha' AND code_value = $2 AND used = 0
+			  AND expires_at > NOW() ORDER BY expires_at DESC LIMIT 1`,
+			req.CaptchaID, req.Answer).Scan(&id)
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]bool{"verified": false})
+			return
+		}
+		_, _ = h.svc.repo.db.ExecContext(r.Context(), `UPDATE verification_codes SET used = 1 WHERE id = $1`, id)
 		json.NewEncoder(w).Encode(map[string]bool{"verified": true})
 	}
 }
