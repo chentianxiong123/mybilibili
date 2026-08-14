@@ -46,20 +46,12 @@ func newS3Storage(cfg StorageServiceConfig) (StorageService, error) {
 	return nil, errors.New("s3 storage not implemented")
 }
 
-func newPGFTS(cfg SearchEngineConfig) (SearchEngine, error) {
-	return nil, errors.New("pg fts not implemented")
-}
-
 func newBleveSearch(cfg SearchEngineConfig) (SearchEngine, error) {
 	return nil, errors.New("bleve search not implemented")
 }
 
 func newElasticSearch(cfg SearchEngineConfig) (SearchEngine, error) {
 	return nil, errors.New("elastic search not implemented")
-}
-
-func newPGJSONB(cfg DocumentStoreConfig) (DocumentStore, error) {
-	return nil, errors.New("pg jsonb not implemented")
 }
 
 func newSQLiteDocument(cfg DocumentStoreConfig) (DocumentStore, error) {
