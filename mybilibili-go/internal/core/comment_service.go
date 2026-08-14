@@ -9,8 +9,9 @@ import (
 )
 
 type CommentService struct {
-	repo    *CommentRepository
-	limiter *commentRateLimiter
+	repo        *CommentRepository
+	limiter     *commentRateLimiter
+	messageRepo *MessageRepository
 }
 
 func NewCommentService(repo *CommentRepository) *CommentService {
@@ -18,6 +19,10 @@ func NewCommentService(repo *CommentRepository) *CommentService {
 		repo:    repo,
 		limiter: newCommentRateLimiter(10*time.Minute, 20),
 	}
+}
+
+func (s *CommentService) SetMessageRepo(mr *MessageRepository) {
+	s.messageRepo = mr
 }
 
 func (s *CommentService) AddComment(ctx context.Context, req *pb.AddCommentRequest) (*pb.AddCommentResponse, error) {
@@ -92,6 +97,8 @@ func (s *CommentService) AddReply(ctx context.Context, req *pb.AddReplyRequest) 
 		s.repo.UpsertDailyMetric(ctx, parent.ManuscriptID, req.UserId, "comment_count", 1)
 	}
 
+	s.sendReplyNotification(ctx, req.CommentId, req.UserId)
+
 	info := s.buildReply(ctx, rep, req.UserId)
 	return &pb.AddReplyResponse{Reply: info}, nil
 }
@@ -120,6 +127,7 @@ func (s *CommentService) LikeComment(ctx context.Context, req *pb.LikeCommentReq
 	if err := s.repo.LikeTarget(ctx, "comment", req.CommentId, req.UserId); err != nil {
 		return nil, ErrInternal("failed to like")
 	}
+	s.sendCommentLikeNotification(ctx, "comment", req.CommentId, req.UserId)
 	return &pb.LikeCommentResponse{}, nil
 }
 
@@ -134,6 +142,7 @@ func (s *CommentService) LikeReply(ctx context.Context, req *pb.LikeReplyRequest
 	if err := s.repo.LikeTarget(ctx, "reply", req.ReplyId, req.UserId); err != nil {
 		return nil, ErrInternal("failed to like")
 	}
+	s.sendCommentLikeNotification(ctx, "reply", req.ReplyId, req.UserId)
 	return &pb.LikeReplyResponse{}, nil
 }
 
@@ -188,4 +197,34 @@ func (s *CommentService) buildReply(ctx context.Context, rep *Reply, currentUser
 	}
 
 	return replyToPB(rep, userName, userAvatar, userLevel, replyToUserName, liked)
+}
+
+func (s *CommentService) sendCommentLikeNotification(ctx context.Context, targetType string, targetID, senderID int64) {
+	if s.messageRepo == nil {
+		return
+	}
+	var ownerID int64
+	table := "comments"
+	if targetType == "reply" {
+		table = "replies"
+	}
+	_ = s.messageRepo.DB().QueryRowContext(ctx,
+		`SELECT user_id FROM `+table+` WHERE id = $1`, targetID).Scan(&ownerID)
+	if ownerID == 0 || ownerID == senderID {
+		return
+	}
+	_, _ = s.messageRepo.SendMessage(ctx, senderID, ownerID, "liked your comment", 6)
+}
+
+func (s *CommentService) sendReplyNotification(ctx context.Context, commentID, senderID int64) {
+	if s.messageRepo == nil {
+		return
+	}
+	var ownerID int64
+	_ = s.messageRepo.DB().QueryRowContext(ctx,
+		`SELECT user_id FROM comments WHERE id = $1`, commentID).Scan(&ownerID)
+	if ownerID == 0 || ownerID == senderID {
+		return
+	}
+	_, _ = s.messageRepo.SendMessage(ctx, senderID, ownerID, "replied to your comment", 2)
 }

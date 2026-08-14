@@ -7,12 +7,17 @@ import (
 )
 
 type InteractionService struct {
-	repo      *InteractionRepository
-	publisher *EventPublisher
+	repo        *InteractionRepository
+	publisher   *EventPublisher
+	messageRepo *MessageRepository
 }
 
 func NewInteractionService(repo *InteractionRepository) *InteractionService {
 	return &InteractionService{repo: repo}
+}
+
+func (s *InteractionService) SetMessageRepo(mr *MessageRepository) {
+	s.messageRepo = mr
 }
 
 func (s *InteractionService) SetEventPublisher(p *EventPublisher) {
@@ -26,6 +31,7 @@ func (s *InteractionService) LikeManuscript(ctx context.Context, req *pb.LikeMan
 		s.repo.IncrementManuscriptCount(ctx, "like_count", req.ManuscriptId)
 		s.repo.UpsertDailyMetric(ctx, req.ManuscriptId, req.UserId, "like_count", 1)
 		s.publishAnalytics(ctx, req.ManuscriptId, req.UserId, "MANUSCRIPT_LIKE", "like_count", 1)
+		s.sendLikeNotification(ctx, req.UserId, req.ManuscriptId)
 	}
 	count, _ := s.repo.CountInteraction(ctx, "MANUSCRIPT", "LIKE", req.ManuscriptId)
 	return &pb.LikeManuscriptResponse{Liked: true, LikeCount: count}, nil
@@ -134,4 +140,17 @@ func (s *InteractionService) publishAnalytics(ctx context.Context, manuscriptID,
 	if s.publisher != nil {
 		_ = s.publisher.PublishAnalytics(ctx, manuscriptID, userID, eventType, metricType, delta)
 	}
+}
+
+func (s *InteractionService) sendLikeNotification(ctx context.Context, senderID, manuscriptID int64) {
+	if s.messageRepo == nil {
+		return
+	}
+	var ownerID int64
+	err := s.messageRepo.DB().QueryRowContext(ctx,
+		`SELECT user_id FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&ownerID)
+	if err != nil || ownerID == 0 {
+		return
+	}
+	_, _ = s.messageRepo.SendMessage(ctx, senderID, ownerID, "liked your manuscript", 4)
 }

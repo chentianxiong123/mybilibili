@@ -89,6 +89,8 @@ func main() {
 
 	messageRepo := core.NewMessageRepository(db)
 	notifBroadcaster := core.NewNotificationBroadcaster()
+	commentSvc.SetMessageRepo(messageRepo)
+	interactionSvc.SetMessageRepo(messageRepo)
 
 	liveRepo := live.NewRepository(db)
 	liveHub := live.NewHub()
