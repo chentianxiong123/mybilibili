@@ -252,7 +252,32 @@ func (h *SocialHandler) handleCollection(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *SocialHandler) handleShare(w http.ResponseWriter, r *http.Request) {
-	manuscriptID, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/share/"), 10, 64)
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/share/")
+	if path == "statistics" && r.Method == "GET" {
+		manuscriptID, _ := strconv.ParseInt(r.URL.Query().Get("manuscript_id"), 10, 64)
+		if manuscriptID == 0 {
+			http.Error(w, "manuscript_id required", 400)
+			return
+		}
+		rows, err := h.shareRepo.db.QueryContext(r.Context(),
+			`SELECT channel, COUNT(*) FROM shares WHERE manuscript_id = $1 GROUP BY channel`, manuscriptID)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer rows.Close()
+		stats := map[string]int64{}
+		for rows.Next() {
+			var ch string
+			var n int64
+			rows.Scan(&ch, &n)
+			stats[ch] = n
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+	}
+
+	manuscriptID, _ := strconv.ParseInt(path, 10, 64)
 	if r.Method == "POST" && manuscriptID > 0 {
 		userID := getUserID(r)
 		channel := r.URL.Query().Get("channel")
@@ -264,6 +289,8 @@ func (h *SocialHandler) handleShare(w http.ResponseWriter, r *http.Request) {
 
 func (h *SocialHandler) handleWatchHistory(w http.ResponseWriter, r *http.Request) {
 	userID := getUserID(r)
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/watch-history/")
+
 	switch r.Method {
 	case "GET":
 		page, limit := parsePage(r)
@@ -299,7 +326,11 @@ func (h *SocialHandler) handleWatchHistory(w http.ResponseWriter, r *http.Reques
 		w.Write([]byte(`{"status":"ok"}`))
 
 	case "DELETE":
-		h.shareRepo.db.ExecContext(r.Context(), `DELETE FROM watch_history WHERE user_id = $1`, userID)
+		if manuscriptID, err := strconv.ParseInt(path, 10, 64); err == nil && manuscriptID > 0 {
+			h.shareRepo.db.ExecContext(r.Context(), `DELETE FROM watch_history WHERE user_id = $1 AND manuscript_id = $2`, userID, manuscriptID)
+		} else {
+			h.shareRepo.db.ExecContext(r.Context(), `DELETE FROM watch_history WHERE user_id = $1`, userID)
+		}
 		w.Write([]byte(`{"status":"ok"}`))
 	}
 }

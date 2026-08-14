@@ -120,6 +120,12 @@ func (h *FavoriteHandler) handleByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// /api/v1/favorites/{id}/videos — GET 分页查询, PUT 批量更新
+	if strings.Contains(path, "/videos") {
+		h.handleFolderVideos(w, r, path)
+		return
+	}
+
 	id, err := strconv.ParseInt(path, 10, 64)
 	if err != nil {
 		http.Error(w, "invalid id", 400)
@@ -219,6 +225,98 @@ func (h *FavoriteHandler) handleFolderManuscripts(w http.ResponseWriter, r *http
 		return
 	}
 	w.Write([]byte(`{"status":"ok"}`))
+}
+
+// GET|PUT /api/v1/favorites/{folderId}/videos — 分页查询/批量更新收藏夹视频
+func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Request, path string) {
+	parts := strings.Split(path, "/")
+	if len(parts) < 2 {
+		http.Error(w, "not found", 404)
+		return
+	}
+	folderID, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		http.Error(w, "invalid folder id", 400)
+		return
+	}
+	userID := getUserIDFromReq(r)
+
+	// 确认 folder 属于当前用户
+	var cnt int
+	h.db.QueryRowContext(r.Context(),
+		`SELECT COUNT(*) FROM favorite_folders WHERE id = $1 AND user_id = $2`,
+		folderID, userID).Scan(&cnt)
+	if cnt == 0 {
+		http.Error(w, "folder not found", 404)
+		return
+	}
+
+	switch r.Method {
+	case "GET":
+		page, size := parsePageFromReq(r)
+		offset := (int(page) - 1) * int(size)
+		rows, err := h.db.QueryContext(r.Context(),
+			`SELECT ffv.manuscript_id, m.title, ffv.created_at
+			 FROM favorite_folder_videos ffv
+			 JOIN manuscripts m ON m.id = ffv.manuscript_id
+			 WHERE ffv.folder_id = $1
+			 ORDER BY ffv.created_at DESC
+			 LIMIT $2 OFFSET $3`, folderID, size, offset)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer rows.Close()
+		type item struct {
+			ManuscriptID int64  `json:"manuscript_id"`
+			Title        string `json:"title"`
+			CreatedAt    string `json:"created_at"`
+		}
+		list := []item{}
+		for rows.Next() {
+			var it item
+			var t time.Time
+			if err := rows.Scan(&it.ManuscriptID, &it.Title, &t); err != nil {
+				continue
+			}
+			it.CreatedAt = t.Format("2006-01-02T15:04:05Z")
+			list = append(list, it)
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"list": list, "page": page, "size": size,
+		})
+
+	case "PUT":
+		var req struct {
+			ManuscriptIDs []int64 `json:"manuscript_ids"`
+		}
+		json.NewDecoder(r.Body).Decode(&req)
+		tx, err := h.db.BeginTx(r.Context(), nil)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer tx.Rollback()
+		_, err = tx.ExecContext(r.Context(), `DELETE FROM favorite_folder_videos WHERE folder_id = $1`, folderID)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		for _, msID := range req.ManuscriptIDs {
+			_, err = tx.ExecContext(r.Context(),
+				`INSERT INTO favorite_folder_videos (folder_id, manuscript_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+				folderID, msID)
+			if err != nil {
+				http.Error(w, err.Error(), 500)
+				return
+			}
+		}
+		tx.Commit()
+		w.Write([]byte(`{"status":"ok"}`))
+
+	default:
+		http.Error(w, "method not allowed", 405)
+	}
 }
 
 // GET /api/v1/favorites/check?manuscript_id=xxx — 检查稿件是否已收藏
