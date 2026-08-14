@@ -29,6 +29,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/ai/config/test", h.handleConfigTest)
 	mux.HandleFunc("/api/v1/ai/assistant/send", h.handleAssistantSend)
 	mux.HandleFunc("/api/v1/ai/skills/customer-service/route-test", h.handleRouteTest)
+	mux.HandleFunc("/api/v1/ai/skills/customer-service/route", h.handleRouteSkills)
 }
 
 func (h *Handler) handleConfigs(w http.ResponseWriter, r *http.Request) {
@@ -320,4 +321,21 @@ func (h *Handler) handleRouteTest(w http.ResponseWriter, r *http.Request) {
 		skill = map[string]any{"name": "default", "matched": false}
 	}
 	json.NewEncoder(w).Encode(skill)
+}
+
+func (h *Handler) handleRouteSkills(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		Content string `json:"content"`
+		Limit   int    `json:"limit"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	skills, _ := h.svc.RouteSkills(r.Context(), req.Content, req.Limit)
+	if skills == nil {
+		skills = []map[string]any{}
+	}
+	json.NewEncoder(w).Encode(skills)
 }

@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"database/sql"
+	"sort"
 	"strings"
 	"time"
 )
@@ -490,6 +491,65 @@ func (s *Service) MatchCustomerServiceSkill(ctx context.Context, content string)
 		}
 	}
 	return map[string]any{"name": "default", "matched": false}, nil
+}
+
+func (s *Service) RouteSkills(ctx context.Context, content string, limit int) ([]map[string]any, error) {
+	skills, err := s.repo.ListSkillsByType(ctx, "CUSTOMER_SERVICE")
+	if err != nil {
+		return nil, err
+	}
+	if limit <= 0 {
+		limit = 3
+	}
+	type scored struct {
+		skill *Skill
+		score int
+	}
+	var scoredSkills []scored
+	contentLower := strings.ToLower(content)
+	words := strings.Fields(contentLower)
+	for _, sk := range skills {
+		if sk.Enabled == 0 {
+			continue
+		}
+		score := 0
+		nameLower := strings.ToLower(sk.Name)
+		descLower := strings.ToLower(sk.Description)
+		if nameLower == contentLower {
+			score += 100
+		} else if strings.Contains(nameLower, contentLower) {
+			score += 50
+		} else if strings.Contains(contentLower, nameLower) {
+			score += 30
+		}
+		for _, word := range words {
+			if len(word) < 2 {
+				continue
+			}
+			if strings.Contains(nameLower, word) {
+				score += 10
+			}
+			if strings.Contains(descLower, word) {
+				score += 5
+			}
+		}
+		if score > 0 {
+			scoredSkills = append(scoredSkills, scored{skill: sk, score: score})
+		}
+	}
+	sort.Slice(scoredSkills, func(i, j int) bool {
+		return scoredSkills[i].score > scoredSkills[j].score
+	})
+	if len(scoredSkills) > limit {
+		scoredSkills = scoredSkills[:limit]
+	}
+	result := make([]map[string]any, 0, len(scoredSkills))
+	for _, ss := range scoredSkills {
+		result = append(result, map[string]any{
+			"id": ss.skill.ID, "name": ss.skill.Name, "score": ss.score, "matched": true,
+		})
+	}
+	return result, nil
 }
 
 func (s *Service) UsageOverview(ctx context.Context) (map[string]any, error) {
