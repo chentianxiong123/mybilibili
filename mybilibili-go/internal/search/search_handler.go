@@ -36,6 +36,14 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/search/admin/index/incremental", h.handleIndexIncremental)
 	mux.HandleFunc("/api/v1/search/admin/recommend-config", h.handleRecommendConfig)
 	mux.HandleFunc("/api/v1/search/admin/recommend-config/reset", h.handleRecommendConfigReset)
+	mux.HandleFunc("/api/v1/search/hot/increment", h.handleHotIncrement)
+	mux.HandleFunc("/api/v1/search/hot/keyword", h.handleHotKeyword)
+	mux.HandleFunc("/api/v1/search/hot/rank", h.handleHotRank)
+	mux.HandleFunc("/api/v1/search/hot/score", h.handleHotScore)
+	mux.HandleFunc("/api/v1/search/hot/clean-expired", h.handleCleanExpired)
+	mux.HandleFunc("/api/v1/search/hot/delete", h.handleHotDelete)
+	mux.HandleFunc("/api/v1/search/hot/get", h.handleHotGet)
+	mux.HandleFunc("/api/v1/search/hot/score-get", h.handleHotScoreGet)
 }
 
 func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
@@ -49,6 +57,112 @@ func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleHot(w http.ResponseWriter, r *http.Request) {
 	list, _ := h.svc.Hot(r.Context())
 	json.NewEncoder(w).Encode(list)
+}
+
+func (h *Handler) handleHotIncrement(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		Keyword string `json:"keyword"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	_ = h.svc.IncrementHotSearch(r.Context(), req.Keyword)
+	w.Write([]byte(`{"status":"ok"}`))
+}
+
+func (h *Handler) handleHotKeyword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		Keyword string `json:"keyword"`
+		Score   int    `json:"score"`
+		Rank    int    `json:"rank"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	_ = h.svc.SetKeyword(r.Context(), req.Keyword, req.Score, req.Rank)
+	w.Write([]byte(`{"status":"ok"}`))
+}
+
+func (h *Handler) handleHotRank(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "PUT" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		Keyword string `json:"keyword"`
+		Rank    int    `json:"rank"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	_ = h.svc.SetRank(r.Context(), req.Keyword, req.Rank)
+	w.Write([]byte(`{"status":"ok"}`))
+}
+
+func (h *Handler) handleHotScore(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "PUT" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		Keyword string `json:"keyword"`
+		Score   int    `json:"score"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	_ = h.svc.SetScore(r.Context(), req.Keyword, req.Score)
+	w.Write([]byte(`{"status":"ok"}`))
+}
+
+func (h *Handler) handleCleanExpired(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	_ = h.svc.CleanExpiredHotSearch(r.Context())
+	w.Write([]byte(`{"status":"ok"}`))
+}
+
+func (h *Handler) handleHotDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "DELETE" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		Keyword string `json:"keyword"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	_ = h.svc.DeleteOne(r.Context(), req.Keyword)
+	w.Write([]byte(`{"status":"ok"}`))
+}
+
+func (h *Handler) handleHotGet(w http.ResponseWriter, r *http.Request) {
+	keyword := r.URL.Query().Get("keyword")
+	if keyword == "" {
+		http.Error(w, "keyword required", 400)
+		return
+	}
+	result, err := h.svc.GetKeyword(r.Context(), keyword)
+	if err != nil {
+		http.Error(w, "not found", 404)
+		return
+	}
+	json.NewEncoder(w).Encode(result)
+}
+
+func (h *Handler) handleHotScoreGet(w http.ResponseWriter, r *http.Request) {
+	keyword := r.URL.Query().Get("keyword")
+	if keyword == "" {
+		http.Error(w, "keyword required", 400)
+		return
+	}
+	score, err := h.svc.GetScore(r.Context(), keyword)
+	if err != nil {
+		http.Error(w, "not found", 404)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{"keyword": keyword, "score": score})
 }
 
 func (h *Handler) handleSuggest(w http.ResponseWriter, r *http.Request) {
