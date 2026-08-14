@@ -12,10 +12,13 @@ import (
 
 type ExportTask struct {
 	ID           string
+	TaskKey      string
+	TaskName     string
 	UserID       int64
 	ProjectID    string
-	Status       int32
+	Status       string
 	Progress     int32
+	Message      string
 	OutputURL    string
 	ErrorMessage string
 	CreatedAt    time.Time
@@ -31,7 +34,7 @@ func NewRepository(db *sql.DB) *Repository {
 }
 
 func (r *Repository) CreateTask(ctx context.Context, userID int64, projectID string) (*ExportTask, error) {
-	t := &ExportTask{UserID: userID, ProjectID: projectID, Status: 0, Progress: 0}
+	t := &ExportTask{UserID: userID, ProjectID: projectID, Status: "PENDING", Progress: 0}
 	// Uses a simple UUID-like ID from the task number
 	var id int64
 	err := r.db.QueryRowContext(ctx,
@@ -47,12 +50,14 @@ func (r *Repository) CreateTask(ctx context.Context, userID int64, projectID str
 
 func (r *Repository) GetTask(ctx context.Context, taskID string) (*ExportTask, error) {
 	t := &ExportTask{}
+	var id int64
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, task_key, task_name, status, progress, message, error_message, created_at, updated_at
-		 FROM operation_tasks WHERE id = $1`, taskID).Scan(&t.ID, nil, nil, &t.Status, &t.Progress, nil, &t.ErrorMessage, &t.CreatedAt, &t.UpdatedAt)
+		 FROM operation_tasks WHERE id = $1`, taskID).Scan(&id, &t.TaskKey, &t.TaskName, &t.Status, &t.Progress, &t.Message, &t.ErrorMessage, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
+	t.ID = itoa(id)
 	return t, nil
 }
 

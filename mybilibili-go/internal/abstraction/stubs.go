@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 )
@@ -327,7 +328,24 @@ func (m *memoryStorage) Head(ctx context.Context, bucket, key string) (*FileInfo
 }
 
 func (m *memoryStorage) List(ctx context.Context, bucket, prefix string) ([]FileInfo, error) {
-	return nil, nil
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	bp := bucket + "/"
+	var result []FileInfo
+	for k, v := range m.files {
+		if !strings.HasPrefix(k, bp) {
+			continue
+		}
+		key := strings.TrimPrefix(k, bp)
+		if prefix != "" && !strings.HasPrefix(key, prefix) {
+			continue
+		}
+		result = append(result, FileInfo{Key: key, Size: int64(len(v))})
+	}
+	if result == nil {
+		return []FileInfo{}, nil
+	}
+	return result, nil
 }
 
 func (m *memoryStorage) SignedURL(ctx context.Context, bucket, key string, expire time.Duration) (string, error) {
