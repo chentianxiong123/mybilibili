@@ -4,8 +4,11 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
+	"net/smtp"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -150,7 +153,7 @@ func (h *UserExtendHandler) handleEmailCode(w http.ResponseWriter, r *http.Reque
 		`INSERT INTO verification_codes (identifier, code_type, code_value, expires_at)
 		 VALUES ($1, 'email_code', $2, NOW() + INTERVAL '10 minutes')`,
 		req.Email, code)
-	_ = code
+	sendEmail(req.Email, code)
 	w.Write([]byte(`{"status":"code_sent"}`))
 }
 
@@ -594,6 +597,25 @@ func (h *UserExtendHandler) handleCaptcha(w http.ResponseWriter, r *http.Request
 		}
 		_, _ = h.svc.repo.db.ExecContext(r.Context(), `UPDATE verification_codes SET used = 1 WHERE id = $1`, id)
 		json.NewEncoder(w).Encode(map[string]bool{"verified": true})
+	}
+}
+
+func sendEmail(to, code string) {
+	host := os.Getenv("SMTP_HOST")
+	port := os.Getenv("SMTP_PORT")
+	user := os.Getenv("SMTP_USER")
+	pass := os.Getenv("SMTP_PASS")
+	from := os.Getenv("SMTP_FROM")
+	if host == "" || port == "" || from == "" {
+		log.Printf("SMTP not configured, skipping email to %s", to)
+		return
+	}
+	auth := smtp.PlainAuth("", user, pass, host)
+	msg := []byte(fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s",
+		from, to, "Your verification code", fmt.Sprintf("Your verification code is: %s\n\nThis code expires in 10 minutes.", code)))
+	addr := host + ":" + port
+	if err := smtp.SendMail(addr, auth, from, []string{to}, msg); err != nil {
+		log.Printf("send email to %s: %v", to, err)
 	}
 }
 

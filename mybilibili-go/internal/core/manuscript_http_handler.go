@@ -92,6 +92,9 @@ func (h *ManuscriptHTTPHandler) handleManuscriptRoute(w http.ResponseWriter, r *
 		h.handleMyLikes(w, r)
 	case "favoriteFolders":
 		h.handleFavoriteFolders(w, r)
+	case "favoriteFolderByID":
+		r.SetPathValue("id", parts[2])
+		h.handleFavoriteFolderByID(w, r)
 	case "detail":
 		r.SetPathValue("id", parts[0])
 		h.handleManuscriptDetail(w, r)
@@ -210,6 +213,9 @@ func manuscriptRouteName(parts []string) string {
 	case "favorite":
 		if len(parts) == 2 && parts[1] == "folders" {
 			return "favoriteFolders"
+		}
+		if len(parts) == 3 && parts[1] == "folders" {
+			return "favoriteFolderByID"
 		}
 		return ""
 	default:
@@ -813,6 +819,43 @@ func (h *ManuscriptHTTPHandler) handleFavoriteFolders(w http.ResponseWriter, r *
 			return
 		}
 		writeOK(w, map[string]interface{}{"id": id, "name": req.Name})
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+	}
+}
+
+func (h *ManuscriptHTTPHandler) handleFavoriteFolderByID(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(pathValue(r, "id"), 10, 64)
+	uid, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	switch r.Method {
+	case http.MethodPut:
+		var req struct {
+			Name string `json:"name"`
+		}
+		json.NewDecoder(r.Body).Decode(&req)
+		if strings.TrimSpace(req.Name) == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "name required", "data": nil})
+			return
+		}
+		_, err := h.db.ExecContext(r.Context(),
+			`UPDATE favorite_folders SET name = $1 WHERE id = $2 AND user_id = $3`, req.Name, id, uid)
+		if err != nil {
+			writeError(w, ErrInternal("update failed"))
+			return
+		}
+		writeOK(w, map[string]interface{}{"status": "ok"})
+	case http.MethodDelete:
+		_, _ = h.db.ExecContext(r.Context(), `DELETE FROM favorite_folder_videos WHERE folder_id = $1`, id)
+		_, err := h.db.ExecContext(r.Context(),
+			`DELETE FROM favorite_folders WHERE id = $1 AND user_id = $2`, id, uid)
+		if err != nil {
+			writeError(w, ErrInternal("delete failed"))
+			return
+		}
+		writeOK(w, map[string]interface{}{"status": "ok"})
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
 	}

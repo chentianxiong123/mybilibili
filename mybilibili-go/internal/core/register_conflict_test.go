@@ -29,6 +29,7 @@ func TestManuscriptRouterDispatches(t *testing.T) {
 		{"/api/v1/manuscript/user/collections", "userCollections"},
 		{"/api/v1/manuscript/user/likes", "userLikes"},
 		{"/api/v1/manuscript/favorite/folders", "favoriteFolders"},
+		{"/api/v1/manuscript/favorite/folders/42", "favoriteFolderByID"},
 		{"/api/v1/manuscript/upload-chunk", "uploadChunk"},
 		{"/api/v1/manuscript/upload-complete", "uploadCompleteWeb"},
 		{"/api/v1/manuscript/123", "detail"},
