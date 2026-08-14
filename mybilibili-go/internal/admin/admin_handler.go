@@ -135,6 +135,13 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid credentials", 401)
 		return
 	}
+	ip := r.Header.Get("X-Forwarded-For")
+	if ip == "" {
+		ip = r.RemoteAddr
+	}
+	h.svc.repo.db.ExecContext(r.Context(),
+		`INSERT INTO login_logs (user_id, ip, user_agent, status) VALUES ($1, $2, $3, 0)`,
+		admin.ID, ip, r.UserAgent())
 	json.NewEncoder(w).Encode(admin)
 }
 

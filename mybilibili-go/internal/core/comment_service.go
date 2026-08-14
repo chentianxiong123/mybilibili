@@ -32,6 +32,23 @@ func (s *CommentService) AddComment(ctx context.Context, req *pb.AddCommentReque
 	if s.limiter.record(req.UserId, time.Now()) {
 		return nil, ErrResourceExhausted("too many comments, please slow down")
 	}
+	if s.messageRepo != nil {
+		var cnt int
+		s.messageRepo.DB().QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM prohibited_words WHERE $1 ILIKE '%' || word || '%'`, req.Content).Scan(&cnt)
+		if cnt > 0 {
+			c := &Comment{
+				ManuscriptID: req.ManuscriptId,
+				UserID:       req.UserId,
+				Content:      req.Content,
+				Status:       1,
+			}
+			id, _ := s.repo.CreateComment(ctx, c)
+			c.ID = id
+			info := s.buildComment(ctx, c, req.UserId, nil)
+			return &pb.AddCommentResponse{Comment: info}, nil
+		}
+	}
 	c := &Comment{
 		ManuscriptID: req.ManuscriptId,
 		UserID:       req.UserId,
