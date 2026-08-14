@@ -59,6 +59,7 @@ type SearchEngineConfig struct {
 	Type      string   `yaml:"type"` // pg-fts / bleve / elasticsearch
 	IndexPath string   `yaml:"index_path"`
 	Addresses []string `yaml:"addresses"`
+	DSN       string   `yaml:"dsn"`
 }
 
 type DocumentStoreConfig struct {

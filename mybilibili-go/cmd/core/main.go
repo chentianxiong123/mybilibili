@@ -148,8 +148,8 @@ func main() {
 	favoriteH := core.NewFavoriteHandler(db)
 
 	abstractionCfg := abstraction.Config{}
-	docStore, _ := abstraction.NewDocumentStore(abstraction.DocumentStoreConfig{Type: "memory"})
-	searchEngine, _ := abstraction.NewSearchEngine(abstraction.SearchEngineConfig{Type: "memory"})
+	docStore, _ := abstraction.NewDocumentStore(abstraction.DocumentStoreConfig{Type: "pg-jsonb", DSN: dsn})
+	searchEngine, _ := abstraction.NewSearchEngine(abstraction.SearchEngineConfig{Type: "pg-fts", DSN: dsn})
 	storageSvc, _ := abstraction.NewStorageService(abstraction.StorageServiceConfig{Type: "memory"})
 	caller, _ := abstraction.NewServiceCaller(abstraction.ServiceCallerConfig{Type: "memory"})
 	mq, _ := abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: "memory"})
