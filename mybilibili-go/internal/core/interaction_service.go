@@ -47,10 +47,15 @@ func (s *InteractionService) UnlikeManuscript(ctx context.Context, req *pb.Unlik
 }
 
 func (s *InteractionService) CoinManuscript(ctx context.Context, req *pb.CoinManuscriptRequest) (*pb.CoinManuscriptResponse, error) {
+	coinCount, err := s.repo.GetUserCoinCount(ctx, req.UserId)
+	if err != nil || coinCount <= 0 {
+		return nil, ErrResourceExhausted("insufficient coins")
+	}
 	s.repo.AddInteraction(ctx, req.UserId, "MANUSCRIPT", "COIN", req.ManuscriptId)
 	s.repo.IncrementManuscriptCount(ctx, "coin_count", req.ManuscriptId)
 	s.repo.UpsertDailyMetric(ctx, req.ManuscriptId, req.UserId, "coin_count", 1)
 	s.publishAnalytics(ctx, req.ManuscriptId, req.UserId, "MANUSCRIPT_COIN", "coin_count", 1)
+	s.repo.DeductCoin(ctx, req.UserId)
 	return &pb.CoinManuscriptResponse{Success: true}, nil
 }
 

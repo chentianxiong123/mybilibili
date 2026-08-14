@@ -61,6 +61,13 @@ func (h *UserExtendHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, err.Error(), 401)
 		return
 	}
+	ip := r.Header.Get("X-Forwarded-For")
+	if ip == "" {
+		ip = r.RemoteAddr
+	}
+	h.svc.repo.db.ExecContext(r.Context(),
+		`INSERT INTO login_logs (user_id, ip, user_agent, status) VALUES ($1, $2, $3, 0)`,
+		resp.UserId, ip, r.UserAgent())
 	refreshToken, _ := h.svc.jwt.GenerateRefresh(resp.UserId)
 	writeOK(w, map[string]interface{}{
 		"token":         resp.Token,

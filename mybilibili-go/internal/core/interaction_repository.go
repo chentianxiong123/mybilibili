@@ -173,3 +173,14 @@ func (r *InteractionRepository) UpsertDailyMetric(ctx context.Context, manuscrip
 		manuscriptID, userID, delta)
 	return err
 }
+
+func (r *InteractionRepository) GetUserCoinCount(ctx context.Context, userID int64) (int64, error) {
+	var count int64
+	err := r.db.QueryRowContext(ctx, `SELECT coin_count FROM users WHERE id = $1`, userID).Scan(&count)
+	return count, err
+}
+
+func (r *InteractionRepository) DeductCoin(ctx context.Context, userID int64) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE users SET coin_count = coin_count - 1 WHERE id = $1 AND coin_count > 0`, userID)
+	return err
+}
