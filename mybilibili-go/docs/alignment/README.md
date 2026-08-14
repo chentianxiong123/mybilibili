@@ -9,26 +9,26 @@
 | ✅ | 文件 | 覆盖旧版类 | 方法数 | 状态 |
 |---|---|---|---|---|
 | ☑ | [state-machines.md](state-machines.md) | Manuscript/Video/EditVersion/Collection/Interaction/Analytics | — | ✅ 已建 |
-| ☑ | [tasks/01-稿件域.md](tasks/01-稿件域.md) | ManuscriptService | 39 | 已核对 ✅24/🟡10/❌5 |
-| ☑ | [tasks/02-互动域.md](tasks/02-互动域.md) | VideoInteraction/WatchHistory/Collection | 32 | 已核对 ✅12/🟡6/❌12 |
-| ☑ | [tasks/03-评论域.md](tasks/03-评论域.md) | Comment×26/CreatorComment×5/DynamicComment×6/ProhibitedWord ×6/Report×3/Spam×3 | 49 | 已核对 ✅12/🟡6/❌31 |
-| ☑ | [tasks/04-动态弹幕域.md](tasks/04-动态弹幕域.md) | DynamicServiceImpl/DanmakuServiceImpl | 20 | 已核对 ✅13/🟡3/❌4 |
-| ☑ | [tasks/05-消息域.md](tasks/05-消息域.md) | MessageServiceImpl/ConversationServiceImpl/MessageSettingServiceImpl | 32 | 已核对 ✅15/🟡6/❌11 |
-| ☑ | [tasks/06-用户账号域.md](tasks/06-用户账号域.md) | AdminUser/AuditLog/Captcha/EmailCode/Follow/LoginLog/OperationTask/Privacy | 29 | 已核对 ✅9/🟡6/❌14 |
-| ☑ | [tasks/07-AI域.md](tasks/07-AI域.md) | AiSummary/AiSubtitle/CustomerService/CustomerSession/AiApiConfig/AiSkill/ContentReview/AdminAi/SkillRouting/VideoProcessState | ~40 | 已核对 ✅20/🟡8/❌12 |
-| ☑ | [tasks/08-搜索推荐域.md](tasks/08-搜索推荐域.md) | VideoSearch×2/VideoRecommend/HotSearch/ManuscriptIndex/UserProfile | ~21 | 已核对 ✅6/🟡7/❌8 |
+| ☑ | [tasks/01-稿件域.md](tasks/01-稿件域.md) | ManuscriptService | 39 | 已核对 ✅26/🟡10/❌3 |
+| ☑ | [tasks/02-互动域.md](tasks/02-互动域.md) | VideoInteraction/WatchHistory/Collection | 32 | 已核对 ✅22/🟡6/❌2 |
+| ☑ | [tasks/03-评论域.md](tasks/03-评论域.md) | Comment×26/CreatorComment×5/DynamicComment×6/ProhibitedWord ×6/Report×3/Spam×3 | 49 | 已核对 ✅23/🟡6/❌20 |
+| ☑ | [tasks/04-动态弹幕域.md](tasks/04-动态弹幕域.md) | DynamicServiceImpl/DanmakuServiceImpl | 20 | 已核对 ✅17/🟡3/❌0 |
+| ☑ | [tasks/05-消息域.md](tasks/05-消息域.md) | MessageServiceImpl/ConversationServiceImpl/MessageSettingServiceImpl | 32 | 已核对 ✅22/🟡6/❌4 |
+| ☑ | [tasks/06-用户账号域.md](tasks/06-用户账号域.md) | AdminUser/AuditLog/Captcha/EmailCode/Follow/LoginLog/OperationTask/Privacy | 29 | 已核对 ✅15/🟡6/❌8 |
+| ☑ | [tasks/07-AI域.md](tasks/07-AI域.md) | AiSummary/AiSubtitle/CustomerService/CustomerSession/AiApiConfig/AiSkill/ContentReview/AdminAi/SkillRouting/VideoProcessState | ~40 | 已核对 ✅23/🟡8/❌9 |
+| ☑ | [tasks/08-搜索推荐域.md](tasks/08-搜索推荐域.md) | VideoSearch×2/VideoRecommend/HotSearch/ManuscriptIndex/UserProfile | ~21 | 已核对 ✅14/🟡7/❌0 |
 | ☑ | [tasks/09-创作者分析域.md](tasks/09-创作者分析域.md) | CreatorStatsServiceImpl/SupportTicketServiceImpl | 15 | 已核对 ✅14/🟡1/❌0 |
-| ☑ | [tasks/10-字幕直播域.md](tasks/10-字幕直播域.md) | SubtitleServiceImpl/LiveRoomServiceImpl | 27 | 已核对 ✅23/🟡1/❌3 |
-| ☑ | [tasks/11-管理域.md](tasks/11-管理域.md) | AdminUserService/AuditLogService/AdminAiService/ContentReviewService | 14 | 已核对 ✅13/🟡0/❌1 |
+| ☑ | [tasks/10-字幕直播域.md](tasks/10-字幕直播域.md) | SubtitleServiceImpl/LiveRoomServiceImpl | 27 | 已核对 ✅26/🟡1/❌0 |
+| ☑ | [tasks/11-管理域.md](tasks/11-管理域.md) | AdminUserService/AuditLogService/AdminAiService/ContentReviewService | 14 | 已核对 ✅15/🟡0/❌0 |
 
 ## 汇总
 
 | 指标 | 值 |
 |---|---|
 | 旧版方法总数 | ~318（含 ~62 个近似/汇总方法） |
-| ✅ 完整等效 | 161 |
+| ✅ 完整等效 | 217 |
 | 🟡 部分等效 | 54 |
-| ❌ 缺失 | 101 |
+| ❌ 缺失 | 45 |
 | 覆盖域 | 11/11（全部落盘） |
 
 ## 状态图例
