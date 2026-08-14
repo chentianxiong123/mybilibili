@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"mybilibili/internal/abstraction"
@@ -162,8 +163,7 @@ func (p *Pipeline) doAISummary(ctx context.Context, task ProcessMessage, dir str
 	p.emitProgress(task.VideoID, task.ManuscriptID, "summary", "AI摘要", 10, 4, "")
 	summary := "AI generated summary (stub)"
 	key := fmt.Sprintf("manuscripts/%d/videos/%d/summary/ai-summary.txt", task.ManuscriptID, task.VideoID)
-	p.storage.Put(ctx, "mybilibili", key, nil, "text/plain")
-	_ = summary
+	p.storage.Put(ctx, "mybilibili", key, strings.NewReader(summary), "text/plain")
 	p.emitProgress(task.VideoID, task.ManuscriptID, "summary", "AI摘要完成", 100, 4, "")
 }
 
