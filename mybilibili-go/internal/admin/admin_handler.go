@@ -154,6 +154,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 400)
 		return
 	}
+	h.svc.RecordAudit(r.Context(), getAdminID(r), req.Username, "admin", "CREATE_ADMIN", "admin_users", req.Username, 0, "创建管理员", "")
 	w.Write([]byte(`{"status":"ok"}`))
 }
 
@@ -198,6 +199,7 @@ func (h *Handler) handleRolesByID(w http.ResponseWriter, r *http.Request) {
 			}
 			json.NewDecoder(r.Body).Decode(&req)
 			h.svc.SetRolePermissions(r.Context(), id, req.PermissionIDs)
+			h.svc.RecordAudit(r.Context(), getAdminID(r), "", "role", "SET_ROLE_PERMISSIONS", "role_permissions", strconv.FormatInt(id, 10), 0, "设置角色权限", "")
 			w.Write([]byte(`{"status":"ok"}`))
 		}
 		return
@@ -233,6 +235,7 @@ func (h *Handler) handleRolesByID(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), 500)
 			return
 		}
+		h.svc.RecordAudit(r.Context(), getAdminID(r), "", "role", "APPLY_ROLE_TEMPLATE", "role_permissions", strconv.FormatInt(id, 10), 0, "应用岗位模板 "+code, "")
 		w.Write([]byte(`{"status":"ok"}`))
 		return
 	}
@@ -245,9 +248,11 @@ func (h *Handler) handleRolesByID(w http.ResponseWriter, r *http.Request) {
 		}
 		json.NewDecoder(r.Body).Decode(&req)
 		h.svc.UpdateRole(r.Context(), id, req.Name, req.Description)
+		h.svc.RecordAudit(r.Context(), getAdminID(r), "", "role", "UPDATE_ROLE", "roles", strconv.FormatInt(id, 10), 0, "更新角色", "")
 		w.Write([]byte(`{"status":"ok"}`))
 	case "DELETE":
 		h.svc.DeleteRole(r.Context(), id)
+		h.svc.RecordAudit(r.Context(), getAdminID(r), "", "role", "DELETE_ROLE", "roles", strconv.FormatInt(id, 10), 0, "删除角色", "")
 		w.Write([]byte(`{"status":"ok"}`))
 	}
 }
@@ -420,6 +425,7 @@ func (h *Handler) handleAdminByID(w http.ResponseWriter, r *http.Request) {
 			}
 			json.NewDecoder(r.Body).Decode(&req)
 			_ = h.svc.repo.SetAdminRoles(r.Context(), id, req.RoleIDs)
+			h.svc.RecordAudit(r.Context(), getAdminID(r), "", "admin", "SET_ADMIN_ROLES", "admin_user_roles", strconv.FormatInt(id, 10), 0, "设置管理员角色", "")
 			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 		default:
 			http.Error(w, "method not allowed", 405)
@@ -564,6 +570,7 @@ func (h *Handler) handleUserAdminStatus(w http.ResponseWriter, r *http.Request, 
 		http.Error(w, err.Error(), 500)
 		return
 	}
+	h.svc.RecordAudit(r.Context(), getAdminID(r), "", "user", "UPDATE_USER_STATUS", "users", strconv.FormatInt(id, 10), 0, "更新用户状态", "")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
@@ -587,6 +594,7 @@ func (h *Handler) handleUserAdminPassword(w http.ResponseWriter, r *http.Request
 		http.Error(w, err.Error(), 500)
 		return
 	}
+	h.svc.RecordAudit(r.Context(), getAdminID(r), "", "user", "RESET_USER_PASSWORD", "users", strconv.FormatInt(id, 10), 0, "重置用户密码", "")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
@@ -611,4 +619,13 @@ func parsePage(r *http.Request) (int32, int32) {
 		size = 20
 	}
 	return int32(page), int32(size)
+}
+
+func getAdminID(r *http.Request) int64 {
+	idStr := r.Header.Get("X-Admin-Id")
+	if idStr == "" {
+		idStr = r.Header.Get("X-User-Id")
+	}
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+	return id
 }

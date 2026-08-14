@@ -269,6 +269,14 @@ func (r *Repository) CreateAuditLog(ctx context.Context, log *AuditLog) error {
 	return err
 }
 
+// RecordAudit 便捷审计方法（对齐旧版 AuditLogService.record）。
+func (s *Service) RecordAudit(ctx context.Context, operatorID int64, operatorName, module, action, targetType, targetID string, result int32, message, detail string) error {
+	return s.repo.CreateAuditLog(ctx, &AuditLog{
+		OperatorID: operatorID, OperatorName: operatorName, Module: module, Action: action,
+		TargetType: targetType, TargetID: targetID, Result: result, Message: message, Detail: detail,
+	})
+}
+
 func (r *Repository) ListAuditLogs(ctx context.Context, page, size int32) ([]*AuditLog, error) {
 	offset := (page - 1) * size
 	rows, err := r.db.QueryContext(ctx,

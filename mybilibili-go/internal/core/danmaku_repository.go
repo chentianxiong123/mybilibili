@@ -38,6 +38,17 @@ func (r *DanmakuRepository) Create(ctx context.Context, d *Danmaku) (int64, erro
 	return id, err
 }
 
+// UpsertDailyMetric 当日弹幕指标累加（对齐旧版 analytics 每日聚合）。
+func (r *DanmakuRepository) UpsertDailyMetric(ctx context.Context, manuscriptID, userID int64, field string, delta int) error {
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO manuscript_daily_metrics (metric_date, manuscript_id, user_id, `+field+`)
+		 VALUES (CURRENT_DATE, $1, $2, $3)
+		 ON CONFLICT (metric_date, manuscript_id)
+		 DO UPDATE SET `+field+` = manuscript_daily_metrics.`+field+` + $3, updated_at = NOW()`,
+		manuscriptID, userID, delta)
+	return err
+}
+
 func (r *DanmakuRepository) ListByVideo(ctx context.Context, videoID int64) ([]*Danmaku, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, video_id, manuscript_id, user_id, content, time, color, mode, created_at

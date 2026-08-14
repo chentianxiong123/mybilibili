@@ -7,11 +7,16 @@ import (
 )
 
 type InteractionService struct {
-	repo *InteractionRepository
+	repo      *InteractionRepository
+	publisher *EventPublisher
 }
 
 func NewInteractionService(repo *InteractionRepository) *InteractionService {
 	return &InteractionService{repo: repo}
+}
+
+func (s *InteractionService) SetEventPublisher(p *EventPublisher) {
+	s.publisher = p
 }
 
 func (s *InteractionService) LikeManuscript(ctx context.Context, req *pb.LikeManuscriptRequest) (*pb.LikeManuscriptResponse, error) {
@@ -19,6 +24,8 @@ func (s *InteractionService) LikeManuscript(ctx context.Context, req *pb.LikeMan
 	if !liked {
 		s.repo.AddInteraction(ctx, req.UserId, "MANUSCRIPT", "LIKE", req.ManuscriptId)
 		s.repo.IncrementManuscriptCount(ctx, "like_count", req.ManuscriptId)
+		s.repo.UpsertDailyMetric(ctx, req.ManuscriptId, req.UserId, "like_count", 1)
+		s.publishAnalytics(ctx, req.ManuscriptId, req.UserId, "MANUSCRIPT_LIKE", "like_count", 1)
 	}
 	count, _ := s.repo.CountInteraction(ctx, "MANUSCRIPT", "LIKE", req.ManuscriptId)
 	return &pb.LikeManuscriptResponse{Liked: true, LikeCount: count}, nil
@@ -27,6 +34,8 @@ func (s *InteractionService) LikeManuscript(ctx context.Context, req *pb.LikeMan
 func (s *InteractionService) UnlikeManuscript(ctx context.Context, req *pb.UnlikeManuscriptRequest) (*pb.UnlikeManuscriptResponse, error) {
 	s.repo.RemoveInteraction(ctx, req.UserId, "MANUSCRIPT", "LIKE", req.ManuscriptId)
 	s.repo.DecrementManuscriptCount(ctx, "like_count", req.ManuscriptId)
+	s.repo.UpsertDailyMetric(ctx, req.ManuscriptId, req.UserId, "like_count", -1)
+	s.publishAnalytics(ctx, req.ManuscriptId, req.UserId, "MANUSCRIPT_UNLIKE", "like_count", -1)
 	count, _ := s.repo.CountInteraction(ctx, "MANUSCRIPT", "LIKE", req.ManuscriptId)
 	return &pb.UnlikeManuscriptResponse{Liked: false, LikeCount: count}, nil
 }
@@ -34,6 +43,8 @@ func (s *InteractionService) UnlikeManuscript(ctx context.Context, req *pb.Unlik
 func (s *InteractionService) CoinManuscript(ctx context.Context, req *pb.CoinManuscriptRequest) (*pb.CoinManuscriptResponse, error) {
 	s.repo.AddInteraction(ctx, req.UserId, "MANUSCRIPT", "COIN", req.ManuscriptId)
 	s.repo.IncrementManuscriptCount(ctx, "coin_count", req.ManuscriptId)
+	s.repo.UpsertDailyMetric(ctx, req.ManuscriptId, req.UserId, "coin_count", 1)
+	s.publishAnalytics(ctx, req.ManuscriptId, req.UserId, "MANUSCRIPT_COIN", "coin_count", 1)
 	return &pb.CoinManuscriptResponse{Success: true}, nil
 }
 
@@ -42,6 +53,8 @@ func (s *InteractionService) CollectManuscript(ctx context.Context, req *pb.Coll
 	if !collected {
 		s.repo.AddInteraction(ctx, req.UserId, "MANUSCRIPT", "COLLECT", req.ManuscriptId)
 		s.repo.IncrementManuscriptCount(ctx, "collect_count", req.ManuscriptId)
+		s.repo.UpsertDailyMetric(ctx, req.ManuscriptId, req.UserId, "collect_count", 1)
+		s.publishAnalytics(ctx, req.ManuscriptId, req.UserId, "MANUSCRIPT_COLLECT", "collect_count", 1)
 	}
 	return &pb.CollectManuscriptResponse{Collected: true}, nil
 }
@@ -49,12 +62,16 @@ func (s *InteractionService) CollectManuscript(ctx context.Context, req *pb.Coll
 func (s *InteractionService) UncollectManuscript(ctx context.Context, req *pb.UncollectManuscriptRequest) (*pb.UncollectManuscriptResponse, error) {
 	s.repo.RemoveInteraction(ctx, req.UserId, "MANUSCRIPT", "COLLECT", req.ManuscriptId)
 	s.repo.DecrementManuscriptCount(ctx, "collect_count", req.ManuscriptId)
+	s.repo.UpsertDailyMetric(ctx, req.ManuscriptId, req.UserId, "collect_count", -1)
+	s.publishAnalytics(ctx, req.ManuscriptId, req.UserId, "MANUSCRIPT_UNCOLLECT", "collect_count", -1)
 	return &pb.UncollectManuscriptResponse{Collected: false}, nil
 }
 
 func (s *InteractionService) ShareManuscript(ctx context.Context, req *pb.ShareManuscriptRequest) (*pb.ShareManuscriptResponse, error) {
 	s.repo.AddInteraction(ctx, req.UserId, "MANUSCRIPT", "SHARE", req.ManuscriptId)
 	s.repo.IncrementManuscriptCount(ctx, "share_count", req.ManuscriptId)
+	s.repo.UpsertDailyMetric(ctx, req.ManuscriptId, req.UserId, "share_count", 1)
+	s.publishAnalytics(ctx, req.ManuscriptId, req.UserId, "MANUSCRIPT_SHARE", "share_count", 1)
 	return &pb.ShareManuscriptResponse{Success: true}, nil
 }
 
@@ -111,4 +128,10 @@ func (s *InteractionService) GetWatchHistory(ctx context.Context, req *pb.GetWat
 func (s *InteractionService) ClearWatchHistory(ctx context.Context, req *pb.ClearWatchHistoryRequest) (*pb.ClearWatchHistoryResponse, error) {
 	s.repo.ClearWatchHistory(ctx, req.UserId)
 	return &pb.ClearWatchHistoryResponse{}, nil
+}
+
+func (s *InteractionService) publishAnalytics(ctx context.Context, manuscriptID, userID int64, eventType, metricType string, delta int64) {
+	if s.publisher != nil {
+		_ = s.publisher.PublishAnalytics(ctx, manuscriptID, userID, eventType, metricType, delta)
+	}
 }

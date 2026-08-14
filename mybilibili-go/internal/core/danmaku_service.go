@@ -23,6 +23,9 @@ func (s *DanmakuService) Send(ctx context.Context, videoID, manuscriptID, userID
 	if err != nil {
 		return nil, err
 	}
+	if manuscriptID > 0 {
+		s.repo.UpsertDailyMetric(ctx, manuscriptID, userID, "danmaku_count", 1)
+	}
 
 	event := &DanmakuEvent{
 		ID: id, VideoID: videoID, UserID: userID,
