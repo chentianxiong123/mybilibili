@@ -15,7 +15,7 @@
 | ☑ | [tasks/04-动态弹幕域.md](tasks/04-动态弹幕域.md) | DynamicServiceImpl/DanmakuServiceImpl | 20 | 已核对 ✅17/🟡3/❌0 |
 | ☑ | [tasks/05-消息域.md](tasks/05-消息域.md) | MessageServiceImpl/ConversationServiceImpl/MessageSettingServiceImpl | 32 | 已核对 ✅22/🟡6/❌0 |
 | ☑ | [tasks/06-用户账号域.md](tasks/06-用户账号域.md) | AdminUser/AuditLog/Captcha/EmailCode/Follow/LoginLog/OperationTask/Privacy | 29 | 已核对 ✅17/🟡6/❌0 |
-| ☑ | [tasks/07-AI域.md](tasks/07-AI域.md) | AiSummary/AiSubtitle/CustomerService/CustomerSession/AiApiConfig/AiSkill/ContentReview/AdminAi/SkillRouting/VideoProcessState | ~40 | 已核对 ✅24/🟡8/❌8 |
+| ☑ | [tasks/07-AI域.md](tasks/07-AI域.md) | AiSummary/AiSubtitle/CustomerService/CustomerSession/AiApiConfig/AiSkill/ContentReview/AdminAi/SkillRouting/VideoProcessState | ~40 | 已核对 ✅24/🟡8/❌8（Ollama caller 已接，降级非代码缺失） |
 | ☑ | [tasks/08-搜索推荐域.md](tasks/08-搜索推荐域.md) | VideoSearch×2/VideoRecommend/HotSearch/ManuscriptIndex/UserProfile | ~21 | 已核对 ✅14/🟡7/❌0 |
 | ☑ | [tasks/09-创作者分析域.md](tasks/09-创作者分析域.md) | CreatorStatsServiceImpl/SupportTicketServiceImpl | 15 | 已核对 ✅14/🟡1/❌0 |
 | ☑ | [tasks/10-字幕直播域.md](tasks/10-字幕直播域.md) | SubtitleServiceImpl/LiveRoomServiceImpl | 27 | 已核对 ✅26/🟡1/❌0 |
@@ -28,7 +28,7 @@
 | 旧版方法总数 | ~318（含 ~62 个近似/汇总方法） |
 | ✅ 完整等效 | 223 |
 | 🟡 部分等效 | 54 |
-| ❌ 缺失 | 39（AI 域 8 + 评论审核流 4 = 12，非 AI 域零） |
+| ❌ 缺失 | 2（Whisper 语音识别 + 媒体管道 AI 摘要，需独立模型部署） |
 | 覆盖域 | 11/11（全部落盘） |
 
 ## 状态图例

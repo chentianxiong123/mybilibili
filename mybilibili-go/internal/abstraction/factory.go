@@ -111,6 +111,8 @@ func NewServiceCaller(cfg ServiceCallerConfig) (ServiceCaller, error) {
 	switch cfg.Type {
 	case "memory":
 		return newMemoryCaller(), nil
+	case "ollama":
+		return newOllamaCaller(), nil
 	case "grpc":
 		return newGRPCCaller(cfg)
 	case "http":

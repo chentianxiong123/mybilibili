@@ -397,6 +397,17 @@ func (r *CommentRepository) DeleteCommentByCreator(ctx context.Context, commentI
 	return err
 }
 
+func (r *CommentRepository) WriteContentReview(ctx context.Context, typ string, userID int64, content string) error {
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO content_reviews (type, user_id, content) VALUES ($1, $2, $3)`, typ, userID, content)
+	return err
+}
+
+func (r *CommentRepository) UpdateCommentStatus(ctx context.Context, id int64, status int) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE comments SET status = $1 WHERE id = $2`, status, id)
+	return err
+}
+
 func (r *CommentRepository) DeleteReplyByCreator(ctx context.Context, replyID, userID int64) error {
 	_, err := r.db.ExecContext(ctx,
 		`DELETE FROM replies
