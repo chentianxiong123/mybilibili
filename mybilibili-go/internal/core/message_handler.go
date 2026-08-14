@@ -29,6 +29,7 @@ func (h *MessageHTTPHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/message/system", h.handleSystem)
 	mux.HandleFunc("/api/v1/message/settings", h.handleSettings)
 	mux.HandleFunc("/api/v1/message/batch/read", h.handleBatchRead)
+	mux.HandleFunc("/api/v1/message/user/", h.handleMessagesByUser)
 	mux.HandleFunc("/api/v1/message/", h.handleMessageByID)
 	mux.HandleFunc("/api/v1/message/admin/", h.handleAdminBroadcast)
 }
@@ -71,6 +72,17 @@ func (h *MessageHTTPHandler) handleConversationByID(w http.ResponseWriter, r *ht
 			}
 		}
 		http.Error(w, "not found", 404)
+	case "PUT":
+		var req struct {
+			UnreadCount *int32 `json:"unread_count"`
+		}
+		json.NewDecoder(r.Body).Decode(&req)
+		if req.UnreadCount != nil {
+			h.repo.db.ExecContext(r.Context(),
+				`UPDATE conversations SET unread_count = $1 WHERE id = $2 AND user_id = $3`,
+				*req.UnreadCount, id, userID)
+		}
+		w.Write([]byte(`{"status":"ok"}`))
 	case "DELETE":
 		_, err := h.repo.db.ExecContext(r.Context(), `DELETE FROM conversations WHERE id = $1 AND user_id = $2`, id, userID)
 		if err != nil {
@@ -184,6 +196,26 @@ func (h *MessageHTTPHandler) handleMessageByID(w http.ResponseWriter, r *http.Re
 	id, _ := strconv.ParseInt(parts[0], 10, 64)
 
 	switch r.Method {
+	case "GET":
+		userID := getUserIDFromHeader(r)
+		var msg struct {
+			ID          int64  `json:"id"`
+			SenderID    int64  `json:"sender_id"`
+			ReceiverID  int64  `json:"receiver_id"`
+			Content     string `json:"content"`
+			MessageType int32  `json:"message_type"`
+			IsRead      int32  `json:"is_read"`
+			CreatedAt   string `json:"created_at"`
+		}
+		err := h.repo.db.QueryRowContext(r.Context(),
+			`SELECT id, sender_id, receiver_id, content, message_type, is_read, created_at
+			 FROM messages WHERE id = $1 AND receiver_id = $2`, id, userID).Scan(
+			&msg.ID, &msg.SenderID, &msg.ReceiverID, &msg.Content, &msg.MessageType, &msg.IsRead, &msg.CreatedAt)
+		if err != nil {
+			http.Error(w, "not found", 404)
+			return
+		}
+		json.NewEncoder(w).Encode(msg)
 	case "PUT": // mark read
 		userID := getUserIDFromHeader(r)
 		if len(parts) >= 2 && parts[1] == "read" {
@@ -196,7 +228,8 @@ func (h *MessageHTTPHandler) handleMessageByID(w http.ResponseWriter, r *http.Re
 			w.Write([]byte(`{"status":"ok"}`))
 		}
 	case "DELETE":
-		_, err := h.repo.db.ExecContext(r.Context(), `DELETE FROM messages WHERE id = $1`, id)
+		userID := getUserIDFromHeader(r)
+		_, err := h.repo.db.ExecContext(r.Context(), `DELETE FROM messages WHERE id = $1 AND receiver_id = $2`, id, userID)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -268,6 +301,58 @@ func (h *MessageHTTPHandler) handleBatchRead(w http.ResponseWriter, r *http.Requ
 			`UPDATE messages SET is_read = 1 WHERE id = ANY($1) AND receiver_id = $2`, pq.Array(req.IDs), userID)
 	}
 	w.Write([]byte(`{"status":"ok"}`))
+}
+
+// GET|DELETE /api/v1/message/user/{userId} — 查询/清空用户所有消息
+func (h *MessageHTTPHandler) handleMessagesByUser(w http.ResponseWriter, r *http.Request) {
+	userID := getUserIDFromHeader(r)
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/message/user/")
+	targetID, _ := strconv.ParseInt(strings.TrimSuffix(path, "/"), 10, 64)
+	if targetID == 0 {
+		http.Error(w, "invalid user id", 400)
+		return
+	}
+	if targetID != userID {
+		http.Error(w, "forbidden", 403)
+		return
+	}
+	switch r.Method {
+	case "GET":
+		page, _ := strconv.ParseInt(r.URL.Query().Get("page"), 10, 32)
+		size, _ := strconv.ParseInt(r.URL.Query().Get("page_size"), 10, 32)
+		if page < 1 {
+			page = 1
+		}
+		if size < 1 || size > 50 {
+			size = 20
+		}
+		rows, _ := h.repo.db.QueryContext(r.Context(),
+			`SELECT id, sender_id, receiver_id, content, message_type, is_read, created_at
+			 FROM messages WHERE receiver_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+			userID, size, (page-1)*size)
+		defer rows.Close()
+		type msg struct {
+			ID          int64  `json:"id"`
+			SenderID    int64  `json:"sender_id"`
+			ReceiverID  int64  `json:"receiver_id"`
+			Content     string `json:"content"`
+			MessageType int32  `json:"message_type"`
+			IsRead      int32  `json:"is_read"`
+			CreatedAt   string `json:"created_at"`
+		}
+		list := []msg{}
+		for rows.Next() {
+			var m msg
+			rows.Scan(&m.ID, &m.SenderID, &m.ReceiverID, &m.Content, &m.MessageType, &m.IsRead, &m.CreatedAt)
+			list = append(list, m)
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{"list": list, "page": page, "size": size})
+	case "DELETE":
+		h.repo.db.ExecContext(r.Context(), `DELETE FROM messages WHERE receiver_id = $1`, userID)
+		w.Write([]byte(`{"status":"ok"}`))
+	default:
+		http.Error(w, "method not allowed", 405)
+	}
 }
 
 func (h *MessageHTTPHandler) handleAdminBroadcast(w http.ResponseWriter, r *http.Request) {

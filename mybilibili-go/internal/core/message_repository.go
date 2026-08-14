@@ -34,6 +34,10 @@ func NewMessageRepository(db *sql.DB) *MessageRepository {
 	return &MessageRepository{db: db}
 }
 
+func (r *MessageRepository) DB() *sql.DB {
+	return r.db
+}
+
 func (r *MessageRepository) SendMessage(ctx context.Context, senderID, receiverID int64, content string, msgType int32) (*Message, error) {
 	convID, err := r.getOrCreateConversation(ctx, senderID, receiverID)
 	if err != nil {
