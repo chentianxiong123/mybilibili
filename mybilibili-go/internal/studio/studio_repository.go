@@ -3,6 +3,10 @@ package studio
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -87,6 +91,25 @@ func (s *Service) GetTask(ctx context.Context, taskID string) (*ExportTask, erro
 
 func (s *Service) CancelTask(ctx context.Context, taskID string) error {
 	return s.repo.CancelTask(ctx, taskID)
+}
+
+func (s *Service) UploadAsset(ctx context.Context, userID, taskID int64, assetType, filename string, reader io.Reader) (string, error) {
+	dir := filepath.Join(os.TempDir(), "mybilibili-assets", fmt.Sprintf("u%d", userID))
+	os.MkdirAll(dir, 0o755)
+	dst := filepath.Join(dir, fmt.Sprintf("%d_%s", time.Now().UnixNano(), filename))
+	f, err := os.Create(dst)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	_, err = io.Copy(f, reader)
+	if err != nil {
+		return "", err
+	}
+	url := fmt.Sprintf("/assets/studio/%s", filepath.Base(dst))
+	_ = taskID
+	_ = assetType
+	return url, nil
 }
 
 var _ = context.Background

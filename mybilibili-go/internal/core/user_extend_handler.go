@@ -189,8 +189,33 @@ func (h *UserExtendHandler) handleBatch(w http.ResponseWriter, r *http.Request) 
 	}
 	var ids []int64
 	json.NewDecoder(r.Body).Decode(&ids)
-	_ = ids
-	json.NewEncoder(w).Encode([]map[string]interface{}{})
+	if len(ids) == 0 {
+		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		return
+	}
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = id
+	}
+	rows, err := h.svc.repo.db.QueryContext(r.Context(),
+		`SELECT id, username, nickname, avatar, level FROM users WHERE id IN (`+strings.Join(placeholders, ",")+`)`, args...)
+	if err != nil {
+		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		return
+	}
+	defer rows.Close()
+	var list []map[string]interface{}
+	for rows.Next() {
+		var id, level int64
+		var username, nickname, avatar string
+		rows.Scan(&id, &username, &nickname, &avatar, &level)
+		list = append(list, map[string]interface{}{
+			"id": id, "username": username, "nickname": nickname, "avatar": avatar, "level": level,
+		})
+	}
+	json.NewEncoder(w).Encode(list)
 }
 
 func (h *UserExtendHandler) handleDefaultAvatar(w http.ResponseWriter, r *http.Request) {

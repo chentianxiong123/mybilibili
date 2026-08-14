@@ -186,7 +186,8 @@ func (h *Handler) handleRelated(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleForYou(w http.ResponseWriter, r *http.Request) {
-	json.NewEncoder(w).Encode([]map[string]interface{}{})
+	list, _ := h.svc.HotRecommend(r.Context(), 0, 20)
+	json.NewEncoder(w).Encode(list)
 }
 
 func (h *Handler) handleHotRecommend(w http.ResponseWriter, r *http.Request) {

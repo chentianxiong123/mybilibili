@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"mybilibili/internal/abstraction"
 )
@@ -56,7 +57,7 @@ func (p *EventPublisher) PublishVideoProcess(ctx context.Context, manuscriptID, 
 }
 
 func now() string {
-	return "stub-time"
+	return time.Now().Format(time.RFC3339)
 }
 
 var _ = context.Background
