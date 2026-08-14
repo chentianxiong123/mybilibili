@@ -143,7 +143,6 @@ func main() {
 	messageH := core.NewMessageHTTPHandler(messageRepo, notifBroadcaster)
 	creatorCommentH := core.NewCreatorCommentHTTPHandler(commentRepo, commentSvc)
 	favoriteH := core.NewFavoriteHandler(db)
-	adminManuscriptH := admin.NewManuscriptAdminHandler(db)
 
 	abstractionCfg := abstraction.Config{}
 	docStore, _ := abstraction.NewDocumentStore(abstraction.DocumentStoreConfig{Type: "memory"})
@@ -157,7 +156,10 @@ func main() {
 	searchH := search.NewHandler(searchSvc).WithEngine(searchEngine)
 
 	eventPublisher := core.NewEventPublisher(mq)
-	_ = eventPublisher
+
+	adminManuscriptH := admin.NewManuscriptAdminHandler(db)
+	adminManuscriptH.SetEventPublisher(eventPublisher)
+	interactionSvc.SetEventPublisher(eventPublisher)
 
 	indexMgr := search.NewIndexManager(searchEngine, mq)
 	go indexMgr.Start(context.Background())

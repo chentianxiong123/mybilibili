@@ -49,6 +49,17 @@ func (r *CommentRepository) CreateComment(ctx context.Context, c *Comment) (int6
 	return id, err
 }
 
+// UpsertDailyMetric 当日评论/弹幕指标累加（对齐旧版 analytics 每日聚合）。
+func (r *CommentRepository) UpsertDailyMetric(ctx context.Context, manuscriptID, userID int64, field string, delta int) error {
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO manuscript_daily_metrics (metric_date, manuscript_id, user_id, `+field+`)
+		 VALUES (CURRENT_DATE, $1, $2, $3)
+		 ON CONFLICT (metric_date, manuscript_id)
+		 DO UPDATE SET `+field+` = manuscript_daily_metrics.`+field+` + $3, updated_at = NOW()`,
+		manuscriptID, userID, delta)
+	return err
+}
+
 func (r *CommentRepository) FindByID(ctx context.Context, id int64) (*Comment, error) {
 	c := &Comment{}
 	err := r.db.QueryRowContext(ctx,

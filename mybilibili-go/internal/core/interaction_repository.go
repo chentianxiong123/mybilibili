@@ -161,3 +161,15 @@ func (r *InteractionRepository) DecrementManuscriptCount(ctx context.Context, fi
 	_, err := r.db.ExecContext(ctx, `UPDATE manuscripts SET `+field+` = GREATEST(`+field+` - 1, 0) WHERE id = $1`, manuscriptID)
 	return err
 }
+
+// UpsertDailyMetric 当日指标累加（对齐旧版 analytics 每日聚合）。
+// manuscript_daily_metrics 主键 (metric_date, manuscript_id)，存在则累加对应字段。
+func (r *InteractionRepository) UpsertDailyMetric(ctx context.Context, manuscriptID, userID int64, field string, delta int) error {
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO manuscript_daily_metrics (metric_date, manuscript_id, user_id, `+field+`)
+		 VALUES (CURRENT_DATE, $1, $2, $3)
+		 ON CONFLICT (metric_date, manuscript_id)
+		 DO UPDATE SET `+field+` = manuscript_daily_metrics.`+field+` + $3, updated_at = NOW()`,
+		manuscriptID, userID, delta)
+	return err
+}

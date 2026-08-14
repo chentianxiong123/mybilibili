@@ -12,11 +12,30 @@ import (
 
 // ManuscriptAdminHandler 稿件管理后台真 SQL 实现
 type ManuscriptAdminHandler struct {
-	db *sql.DB
+	db        *sql.DB
+	events    ManuscriptEventWriter
+	publisher ManuscriptEventPublisher
 }
 
 func NewManuscriptAdminHandler(db *sql.DB) *ManuscriptAdminHandler {
 	return &ManuscriptAdminHandler{db: db}
+}
+
+// SetEventWriter 注入事件/流水落库器；未注入时惰性创建 SQL 实现。
+func (h *ManuscriptAdminHandler) SetEventWriter(w ManuscriptEventWriter) {
+	h.events = w
+}
+
+// SetEventPublisher 注入跨服务事件发布器（core.EventPublisher 适配）。
+func (h *ManuscriptAdminHandler) SetEventPublisher(p ManuscriptEventPublisher) {
+	h.publisher = p
+}
+
+func (h *ManuscriptAdminHandler) eventWriter() ManuscriptEventWriter {
+	if h.events == nil {
+		h.events = NewManuscriptEventWriter(h.db)
+	}
+	return h.events
 }
 
 func (h *ManuscriptAdminHandler) Register(mux *http.ServeMux) {
@@ -421,6 +440,11 @@ func (h *ManuscriptAdminHandler) reviewManuscript(w http.ResponseWriter, r *http
 		return
 	}
 
+	var fromStatus int32
+	var uid int64
+	_ = h.db.QueryRowContext(r.Context(),
+		`SELECT status, user_id FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&fromStatus, &uid)
+
 	_, err := h.db.ExecContext(r.Context(),
 		`UPDATE manuscripts SET status = $1, review_status = $2, review_time = NOW(),
 		        reviewer_id = $3, review_reason = $4, updated_at = NOW()
@@ -429,6 +453,20 @@ func (h *ManuscriptAdminHandler) reviewManuscript(w http.ResponseWriter, r *http
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
+	}
+
+	action := "REJECT"
+	if approved {
+		action = "APPROVE"
+	}
+	operatorID, _ := strconv.ParseInt(reviewerID, 10, 64)
+	_ = h.eventWriter().RecordStatusEvent(r.Context(), manuscriptID, uid, fromStatus, int32(status),
+		action, "ADMIN", operatorID, reason)
+	if approved {
+		_ = h.eventWriter().RecordEditVersion(r.Context(), manuscriptID, uid, "", reason, "review_status,status")
+		if h.publisher != nil {
+			_ = h.publisher.PublishManuscriptIndex(r.Context(), manuscriptID, "UPSERT", "APPROVE")
+		}
 	}
 
 	// 审核通过(含自动处理)时触发视频处理流程；拒绝时不触发
@@ -458,11 +496,38 @@ func (h *ManuscriptAdminHandler) setManuscriptStatus(w http.ResponseWriter, r *h
 	var title string
 	_ = h.db.QueryRowContext(r.Context(), `SELECT title FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&title)
 
+	var fromStatus int32
+	var uid int64
+	_ = h.db.QueryRowContext(r.Context(),
+		`SELECT status, user_id FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&fromStatus, &uid)
+
 	_, err := h.db.ExecContext(r.Context(),
 		`UPDATE manuscripts SET status = $1, updated_at = NOW() WHERE id = $2`, status, manuscriptID)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
+	}
+
+	action := "UPDATE_STATUS"
+	switch status {
+	case manuscriptStatusPublished:
+		action = "PUBLISH"
+	case manuscriptStatusUnpublished:
+		action = "UNPUBLISH"
+	case manuscriptStatusProcessing:
+		action = "RETRY"
+	}
+	_ = h.eventWriter().RecordStatusEvent(r.Context(), manuscriptID, uid, fromStatus, status,
+		action, "ADMIN", 0, "")
+
+	if h.publisher != nil {
+		switch status {
+		case manuscriptStatusPublished:
+			_ = h.publisher.PublishManuscriptIndex(r.Context(), manuscriptID, "UPSERT", "PUBLISH")
+			_ = h.publisher.PublishAnalytics(r.Context(), manuscriptID, uid, "MANUSCRIPT_PUBLISH", "publish_count", 1)
+		case manuscriptStatusUnpublished:
+			_ = h.publisher.PublishManuscriptIndex(r.Context(), manuscriptID, "DELETE", "UNPUBLISH")
+		}
 	}
 
 	msg := "操作成功"
@@ -510,12 +575,23 @@ func (h *ManuscriptAdminHandler) triggerVideoProcess(w http.ResponseWriter, r *h
 	_ = h.db.QueryRowContext(r.Context(),
 		`SELECT manuscript_id, title FROM videos WHERE id = $1`, videoID).Scan(&manuscriptID, &title)
 
+	var fromProcess int32
+	_ = h.db.QueryRowContext(r.Context(),
+		`SELECT process_status FROM videos WHERE id = $1`, videoID).Scan(&fromProcess)
+
 	_, err = h.db.ExecContext(r.Context(),
 		`UPDATE videos SET process_status = $1, process_stage = $2, updated_at = NOW() WHERE id = $3`,
 		processStatus, stage, videoID)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
+	}
+
+	_ = h.eventWriter().RecordVideoProcessEvent(r.Context(), videoID, manuscriptID,
+		fromProcess, int32(processStatus), stage, 100)
+
+	if h.publisher != nil {
+		_ = h.publisher.PublishVideoProcess(r.Context(), manuscriptID, videoID, stage)
 	}
 
 	// 稿件标记为处理中（对齐旧版 approve 后 status=PROCESSING）
@@ -577,14 +653,24 @@ func (h *ManuscriptAdminHandler) triggerAllVideoProcess(ctx context.Context, man
 	for rows.Next() {
 		var vid int64
 		rows.Scan(&vid)
+		var fromProcess int32
+		_ = h.db.QueryRowContext(ctx,
+			`SELECT process_status FROM videos WHERE id = $1`, vid).Scan(&fromProcess)
 		_, _ = h.db.ExecContext(ctx,
 			`UPDATE videos SET process_status = $1, process_stage = 'TRANSCODING', updated_at = NOW() WHERE id = $2`,
 			videoProcessStatusTranscoding, vid)
+		_ = h.eventWriter().RecordVideoProcessEvent(ctx, vid, manuscriptID,
+			fromProcess, videoProcessStatusTranscoding, "TRANSCODING", 100)
 	}
 }
 
 func (h *ManuscriptAdminHandler) approveWithProcess(w http.ResponseWriter, r *http.Request, manuscriptID int64) {
 	// 审核通过 + 触发转码/字幕/摘要流程（通过更新状态实现）
+	var fromStatus int32
+	var uid int64
+	_ = h.db.QueryRowContext(r.Context(),
+		`SELECT status, user_id FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&fromStatus, &uid)
+
 	_, err := h.db.ExecContext(r.Context(),
 		`UPDATE manuscripts SET review_status = 1, review_time = NOW(), updated_at = NOW()
 		 WHERE id = $1`, manuscriptID)
@@ -592,6 +678,10 @@ func (h *ManuscriptAdminHandler) approveWithProcess(w http.ResponseWriter, r *ht
 		http.Error(w, err.Error(), 500)
 		return
 	}
+
+	_ = h.eventWriter().RecordStatusEvent(r.Context(), manuscriptID, uid, fromStatus,
+		manuscriptStatusProcessing, "APPROVE_WITH_PROCESS", "ADMIN", 0, "")
+	_ = h.eventWriter().RecordEditVersion(r.Context(), manuscriptID, uid, "", "", "review_status,status")
 
 	// 获取稿件关联的视频,逐个更新状态触发处理
 	rows, _ := h.db.QueryContext(r.Context(),

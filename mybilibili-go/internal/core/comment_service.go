@@ -29,6 +29,7 @@ func (s *CommentService) AddComment(ctx context.Context, req *pb.AddCommentReque
 		return nil, ErrInternal("failed to create comment")
 	}
 	c.ID = id
+	s.repo.UpsertDailyMetric(ctx, c.ManuscriptID, c.UserID, "comment_count", 1)
 
 	info := s.buildComment(ctx, c, req.UserId, nil)
 	return &pb.AddCommentResponse{Comment: info}, nil
@@ -75,6 +76,10 @@ func (s *CommentService) AddReply(ctx context.Context, req *pb.AddReplyRequest) 
 	rep.ID = id
 
 	s.repo.IncrementReplyCount(ctx, req.CommentId)
+
+	if parent, perr := s.repo.FindByID(ctx, req.CommentId); perr == nil {
+		s.repo.UpsertDailyMetric(ctx, parent.ManuscriptID, req.UserId, "comment_count", 1)
+	}
 
 	info := s.buildReply(ctx, rep, req.UserId)
 	return &pb.AddReplyResponse{Reply: info}, nil

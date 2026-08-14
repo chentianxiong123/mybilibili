@@ -36,6 +36,8 @@ func (s *ManuscriptService) GetManuscriptWithVideos(ctx context.Context, req *pb
 		}
 		return nil, ErrInternal("database error")
 	}
+	s.repo.IncrementViewCount(ctx, req.Id)
+	s.repo.UpsertDailyMetric(ctx, req.Id, m.UserID, "view_count", 1)
 	return &pb.GetManuscriptResponse{Manuscript: s.buildManuscriptInfo(ctx, m, req.CurrentUserId, true)}, nil
 }
 
