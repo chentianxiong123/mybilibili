@@ -8,6 +8,11 @@ import (
 	"mybilibili/internal/abstraction"
 )
 
+func writeJSON(w http.ResponseWriter, data interface{}) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": data, "message": "ok"})
+}
+
 type Handler struct {
 	svc    *Service
 	engine abstraction.SearchEngine
@@ -187,7 +192,10 @@ func (h *Handler) handleRelated(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleForYou(w http.ResponseWriter, r *http.Request) {
 	list, _ := h.svc.HotRecommend(r.Context(), 0, 20)
-	json.NewEncoder(w).Encode(list)
+	if list == nil {
+		list = []map[string]interface{}{}
+	}
+	writeJSON(w, list)
 }
 
 func (h *Handler) handleHotRecommend(w http.ResponseWriter, r *http.Request) {
@@ -197,7 +205,10 @@ func (h *Handler) handleHotRecommend(w http.ResponseWriter, r *http.Request) {
 		size = 10
 	}
 	list, _ := h.svc.HotRecommend(r.Context(), categoryID, int32(size))
-	json.NewEncoder(w).Encode(list)
+	if list == nil {
+		list = []map[string]interface{}{}
+	}
+	writeJSON(w, list)
 }
 
 func (h *Handler) handleIndexStatus(w http.ResponseWriter, r *http.Request) {

@@ -94,7 +94,7 @@ func (r *ManuscriptRepository) FindByID(ctx context.Context, id int64) (*Manuscr
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id, title, description, cover_url, user_id, category_id,
 		       view_count, like_count, coin_count, collect_count, share_count,
-		       comment_count, danmaku_count, status, review_status, review_reason,
+		       comment_count, danmaku_count, status, review_status, COALESCE(review_reason,''),
 		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds
 		FROM manuscripts WHERE id = $1`, id,
 	).Scan(&m.ID, &m.Title, &m.Description, &m.CoverURL, &m.UserID, &m.CategoryID,
@@ -186,7 +186,7 @@ func (r *ManuscriptRepository) ListByUser(ctx context.Context, userID int64, sta
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, title, description, cover_url, user_id, category_id,
 		       view_count, like_count, coin_count, collect_count, share_count,
-		       comment_count, danmaku_count, status, review_status, review_reason,
+		       comment_count, danmaku_count, status, review_status, COALESCE(review_reason,''),
 		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds
 		FROM manuscripts `+where+order, args...)
 	if err != nil {
@@ -212,7 +212,7 @@ func (r *ManuscriptRepository) ListRecommended(ctx context.Context) ([]*Manuscri
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, title, description, cover_url, user_id, category_id,
 		       view_count, like_count, coin_count, collect_count, share_count,
-		       comment_count, danmaku_count, status, review_status, review_reason,
+		       comment_count, danmaku_count, status, review_status, COALESCE(review_reason,''),
 		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds
 		FROM manuscripts WHERE status = 3 ORDER BY upload_time DESC LIMIT 20`)
 	if err != nil {
@@ -238,7 +238,7 @@ func (r *ManuscriptRepository) ListHot(ctx context.Context) ([]*Manuscript, erro
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, title, description, cover_url, user_id, category_id,
 		       view_count, like_count, coin_count, collect_count, share_count,
-		       comment_count, danmaku_count, status, review_status, review_reason,
+		       comment_count, danmaku_count, status, review_status, COALESCE(review_reason,''),
 		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds
 		FROM manuscripts WHERE status = 3 ORDER BY view_count DESC LIMIT 20`)
 	if err != nil {
@@ -271,7 +271,7 @@ func (r *ManuscriptRepository) ListByCategory(ctx context.Context, categoryID in
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, title, description, cover_url, user_id, category_id,
 		       view_count, like_count, coin_count, collect_count, share_count,
-		       comment_count, danmaku_count, status, review_status, review_reason,
+		       comment_count, danmaku_count, status, review_status, COALESCE(review_reason,''),
 		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds
 		FROM manuscripts WHERE category_id = $1 AND status = 3
 		ORDER BY upload_time DESC LIMIT $2 OFFSET $3`, categoryID, pageSize, offset)
@@ -340,7 +340,7 @@ func (r *ManuscriptRepository) SearchUser(ctx context.Context, userID int64, key
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, title, description, cover_url, user_id, category_id,
 		       view_count, like_count, coin_count, collect_count, share_count,
-		       comment_count, danmaku_count, status, review_status, review_reason,
+		       comment_count, danmaku_count, status, review_status, COALESCE(review_reason,''),
 		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds
 		FROM manuscripts WHERE user_id = $1 AND title ILIKE $2 `+order, userID, "%"+keyword+"%")
 	if err != nil {

@@ -66,6 +66,16 @@ export default defineConfig(({ mode }) => {
           ws: true,
           changeOrigin: true
         },
+        '/ws/notification': {
+          target: 'ws://localhost:8080',
+          ws: true,
+          changeOrigin: true
+        },
+        '/ws/danmaku': {
+          target: 'ws://localhost:8080',
+          ws: true,
+          changeOrigin: true
+        },
         '/uploads': {
           target: 'http://localhost:8080',
           changeOrigin: true

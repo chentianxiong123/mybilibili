@@ -22,10 +22,6 @@ func newSQLiteCache(cfg CacheStoreConfig) (CacheStore, error) {
 	return nil, errors.New("sqlite cache not implemented")
 }
 
-func newRedisCache(cfg CacheStoreConfig) (CacheStore, error) {
-	return nil, errors.New("redis cache not implemented")
-}
-
 func newGRPCCaller(cfg ServiceCallerConfig) (ServiceCaller, error) {
 	return nil, errors.New("grpc caller not implemented")
 }

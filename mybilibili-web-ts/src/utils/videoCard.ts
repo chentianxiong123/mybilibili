@@ -61,28 +61,28 @@ export const normalizeVideoCard = (item) => {
   if (!item) return null
 
   const firstVideo = Array.isArray(item.videos) && item.videos.length > 0 ? item.videos[0] : null
-  const manuscriptId = item.manuscriptId || item.id
+  const manuscriptId = item.manuscriptId || item.manuscript_id || item.id
   if (!manuscriptId) return null
 
   const durationSeconds = toDurationSeconds(
     item.durationSeconds ?? firstVideo?.durationSeconds ?? item.duration ?? firstVideo?.duration
   )
   const uploader = item.uploader || {
-    id: item.userId,
-    name: item.userName || item.username || item.nickname || item.author || '未知UP主',
-    avatar: item.userAvatar || item.avatar
+    id: item.userId || item.user_id,
+    name: item.userName || item.user_name || item.username || item.nickname || item.author || '未知UP主',
+    avatar: item.userAvatar || item.user_avatar || item.avatar
   }
 
-  const uploadTime = item.uploadTime || item.upload_time || item.publishDate || item.publishTime ||
+  const uploadTime = item.uploadTime || item.upload_time || item.created_at || item.publishDate || item.publishTime ||
     item.releaseTime || item.createTime || item.createdAt || item.updatedAt || item.reviewTime ||
     firstVideo?.uploadTime || firstVideo?.createdAt
 
   return {
     id: item.firstVideoId || item.videoId || firstVideo?.id || manuscriptId,
     title: item.title,
-    coverUrl: item.coverUrl || item.cover,
-    viewCount: item.viewCount || item.play || 0,
-    commentCount: item.commentCount || item.videoReview || item.danmakuCount || 0,
+    coverUrl: item.coverUrl || item.cover_url || item.cover,
+    viewCount: item.viewCount || item.view_count || item.play || 0,
+    commentCount: item.commentCount || item.comment_count || item.videoReview || item.danmakuCount || 0,
     uploadTime,
     dateText: formatMonthDay(uploadTime),
     uploader,

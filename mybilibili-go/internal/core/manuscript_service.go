@@ -4,17 +4,25 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"time"
 
+	"mybilibili/internal/abstraction"
 	pb "mybilibili/internal/core/pb"
 )
 
 type ManuscriptService struct {
-	repo     *ManuscriptRepository
-	userRepo *Repository
+	repo       *ManuscriptRepository
+	userRepo   *Repository
+	cacheStore abstraction.CacheStore
 }
 
 func NewManuscriptService(repo *ManuscriptRepository, userRepo *Repository) *ManuscriptService {
 	return &ManuscriptService{repo: repo, userRepo: userRepo}
+}
+
+func (s *ManuscriptService) SetCacheStore(cs abstraction.CacheStore) {
+	s.cacheStore = cs
 }
 
 func (s *ManuscriptService) GetManuscript(ctx context.Context, req *pb.GetManuscriptRequest) (*pb.GetManuscriptResponse, error) {
@@ -36,8 +44,18 @@ func (s *ManuscriptService) GetManuscriptWithVideos(ctx context.Context, req *pb
 		}
 		return nil, ErrInternal("database error")
 	}
-	s.repo.IncrementViewCount(ctx, req.Id)
-	s.repo.UpsertDailyMetric(ctx, req.Id, m.UserID, "view_count", 1)
+	if s.cacheStore != nil && req.CurrentUserId > 0 {
+		dedupKey := fmt.Sprintf("view:dedup:%d:%d", req.Id, req.CurrentUserId)
+		exists, _ := s.cacheStore.Exists(ctx, dedupKey)
+		if !exists {
+			s.repo.IncrementViewCount(ctx, req.Id)
+			s.repo.UpsertDailyMetric(ctx, req.Id, m.UserID, "view_count", 1)
+			s.cacheStore.Set(ctx, dedupKey, []byte("1"), 30*time.Minute)
+		}
+	} else {
+		s.repo.IncrementViewCount(ctx, req.Id)
+		s.repo.UpsertDailyMetric(ctx, req.Id, m.UserID, "view_count", 1)
+	}
 	return &pb.GetManuscriptResponse{Manuscript: s.buildManuscriptInfo(ctx, m, req.CurrentUserId, true)}, nil
 }
 

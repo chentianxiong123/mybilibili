@@ -3,6 +3,7 @@ package search
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"mybilibili/internal/abstraction"
@@ -206,14 +207,16 @@ func (s *Service) Related(ctx context.Context, manuscriptID int64, size int32) (
 }
 
 func (s *Service) HotRecommend(ctx context.Context, categoryID int64, size int32) ([]map[string]interface{}, error) {
-	query := `SELECT id, user_id, title, cover_url, view_count, like_count, created_at
+	query := `SELECT id, user_id, title, cover_url, view_count, like_count, upload_time
 	          FROM manuscripts WHERE status = 3`
 	args := []interface{}{}
+	paramIdx := 1
 	if categoryID > 0 {
 		query += ` AND category_id = $1`
+		paramIdx = 2
 		args = append(args, categoryID)
 	}
-	query += ` ORDER BY view_count DESC, like_count DESC LIMIT $2`
+	query += fmt.Sprintf(` ORDER BY view_count DESC, like_count DESC LIMIT $%d`, paramIdx)
 	args = append(args, size)
 	rows, err := s.repo.db.QueryContext(ctx, query, args...)
 	if err != nil {

@@ -1,8 +1,30 @@
 <template>
-  <router-view />
+  <component :is="layoutComponent">
+    <router-view />
+  </component>
 </template>
 
 <script setup lang="ts">
+import { computed, ref, provide } from 'vue'
+import { useRoute } from 'vue-router'
+import LayoutHome from './layouts/LayoutHome.vue'
+import LayoutSimple from './layouts/LayoutSimple.vue'
+import LayoutNone from './layouts/LayoutNone.vue'
+
+const route = useRoute()
+
+const showLoginDialog = ref(false)
+provide('showLoginDialog', showLoginDialog)
+
+const layoutMap: Record<string, any> = {
+  home: LayoutHome,
+  simple: LayoutSimple,
+  none: LayoutNone,
+}
+
+const layoutComponent = computed(() => {
+  return layoutMap[route.meta.layout as string] || LayoutHome
+})
 </script>
 
 <style>

@@ -9,12 +9,14 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"mybilibili/internal/abstraction"
 	pb "mybilibili/internal/core/pb"
 )
 
 type Service struct {
-	repo *Repository
-	jwt  *JWT
+	repo       *Repository
+	jwt        *JWT
+	cacheStore abstraction.CacheStore
 }
 
 func NewService(repo *Repository, jwtSecret string) *Service {
@@ -22,6 +24,10 @@ func NewService(repo *Repository, jwtSecret string) *Service {
 		repo: repo,
 		jwt:  NewJWT(jwtSecret),
 	}
+}
+
+func (s *Service) SetCacheStore(cs abstraction.CacheStore) {
+	s.cacheStore = cs
 }
 
 func (s *Service) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
@@ -61,14 +67,29 @@ func (s *Service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRes
 	user, err := s.repo.FindByUsername(ctx, req.Username)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			_ = s.recordLoginFailure(ctx, 0)
 			return nil, ErrNotFound("user not found")
 		}
 		return nil, ErrInternal("database error")
 	}
 
+	if s.cacheStore != nil {
+		lockKey := fmt.Sprintf("login:fail:%d:lock", user.ID)
+		locked, _ := s.cacheStore.Exists(ctx, lockKey)
+		if locked {
+			return nil, ErrUnauthenticated("account locked due to too many login attempts, try again later")
+		}
+	}
+
 	hash := sha256.Sum256([]byte(req.Password))
 	if fmt.Sprintf("%x", hash) != user.Password {
+		_ = s.recordLoginFailure(ctx, user.ID)
 		return nil, ErrUnauthenticated("invalid password")
+	}
+
+	if s.cacheStore != nil {
+		s.cacheStore.Delete(ctx, fmt.Sprintf("login:fail:%d", user.ID))
+		s.cacheStore.Delete(ctx, fmt.Sprintf("login:fail:%d:lock", user.ID))
 	}
 
 	token, err := s.jwt.Generate(user.ID)
@@ -77,6 +98,22 @@ func (s *Service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRes
 	}
 
 	return &pb.LoginResponse{Token: token, UserId: user.ID, Nickname: user.Nickname}, nil
+}
+
+func (s *Service) recordLoginFailure(ctx context.Context, userID int64) error {
+	if s.cacheStore == nil {
+		return nil
+	}
+	key := fmt.Sprintf("login:fail:%d", userID)
+	n, err := s.cacheStore.Incr(ctx, key, 15*time.Minute)
+	if err != nil {
+		return err
+	}
+	if n >= 5 && userID > 0 {
+		lockKey := fmt.Sprintf("login:fail:%d:lock", userID)
+		s.cacheStore.Set(ctx, lockKey, []byte("locked"), 15*time.Minute)
+	}
+	return nil
 }
 
 func (s *Service) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.GetUserResponse, error) {
