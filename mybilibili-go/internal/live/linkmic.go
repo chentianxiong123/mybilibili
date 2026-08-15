@@ -119,7 +119,7 @@ func (s *LinkmicService) Apply(ctx context.Context, roomID, userID int64) (*Link
 	if err != nil {
 		return nil, err
 	}
-	lm, err := s.repo.Apply(ctx, roomID, room.HostID, userID)
+	lm, err := s.repo.Apply(ctx, roomID, room.UserID, userID)
 	if err != nil {
 		return nil, err
 	}

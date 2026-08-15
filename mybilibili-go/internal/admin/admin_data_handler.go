@@ -92,7 +92,7 @@ func (h *AdminDataHandler) handleManuscriptAdmin(w http.ResponseWriter, r *http.
 		h.exec(w, r, `UPDATE manuscripts SET review_status=1, status=2, review_time=NOW() WHERE id=$1`, id)
 	case len(parts) >= 2 && parts[1] == "approve-with-process" && r.Method == "POST":
 		id, _ := strconv.ParseInt(parts[0], 10, 64)
-		h.exec(w, r, `UPDATE manuscripts SET review_status=1, status=2, process_status=1, review_time=NOW() WHERE id=$1`, id)
+		h.exec(w, r, `UPDATE manuscripts SET review_status=1, status=2, review_time=NOW() WHERE id=$1`, id)
 	case len(parts) >= 2 && parts[0] == "reject" && r.Method == "POST":
 		id, _ := strconv.ParseInt(parts[1], 10, 64)
 		h.exec(w, r, `UPDATE manuscripts SET review_status=2, status=4, review_time=NOW() WHERE id=$1`, id)
@@ -104,7 +104,7 @@ func (h *AdminDataHandler) handleManuscriptAdmin(w http.ResponseWriter, r *http.
 		h.exec(w, r, `UPDATE manuscripts SET status=-1 WHERE id=$1`, id)
 	case len(parts) >= 2 && parts[0] == "retry" && r.Method == "POST":
 		id, _ := strconv.ParseInt(parts[1], 10, 64)
-		h.exec(w, r, `UPDATE manuscripts SET status=2, process_status=0 WHERE id=$1`, id)
+		h.exec(w, r, `UPDATE manuscripts SET status=2 WHERE id=$1`, id)
 	}
 }
 
@@ -344,7 +344,7 @@ func (h *AdminDataHandler) handleMeetingAdmin(w http.ResponseWriter, r *http.Req
 	switch {
 	case parts[0] == "rooms" && r.Method == "GET":
 		rows, err := h.db.QueryContext(r.Context(),
-			`SELECT id, user_id, title, status, created_at FROM meeting_room ORDER BY created_at DESC LIMIT 50`)
+			`SELECT id, creator_id, room_name, status, create_time FROM meeting_room ORDER BY create_time DESC LIMIT 50`)
 		if err != nil {
 			json.NewEncoder(w).Encode([]map[string]interface{}{})
 			return
@@ -356,13 +356,13 @@ func (h *AdminDataHandler) handleMeetingAdmin(w http.ResponseWriter, r *http.Req
 			var title, t string
 			rows.Scan(&id, &uid, &title, &st, &t)
 			list = append(list, map[string]interface{}{
-				"id": id, "user_id": uid, "title": title, "status": st, "created_at": t,
+				"id": id, "creator_id": uid, "room_name": title, "status": st, "create_time": t,
 			})
 		}
 		json.NewEncoder(w).Encode(list)
 	case parts[0] == "pending" && r.Method == "GET":
 		rows, err := h.db.QueryContext(r.Context(),
-			`SELECT id, user_id, title, status, created_at FROM meeting_room WHERE status = 0 ORDER BY created_at DESC LIMIT 50`)
+			`SELECT id, creator_id, room_name, status, create_time FROM meeting_room WHERE status = 0 ORDER BY create_time DESC LIMIT 50`)
 		if err != nil {
 			json.NewEncoder(w).Encode([]map[string]interface{}{})
 			return

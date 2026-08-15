@@ -54,10 +54,8 @@ type Video struct {
 }
 
 type Category struct {
-	ID        int64
-	Name      string
-	Icon      string
-	SortOrder int32
+	ID   int64
+	Name string
 }
 
 type Tag struct {
@@ -157,8 +155,8 @@ func (r *ManuscriptRepository) FindTagsByVideoID(ctx context.Context, videoID in
 
 func (r *ManuscriptRepository) FindCategoryByID(ctx context.Context, id int64) (*Category, error) {
 	c := &Category{}
-	err := r.db.QueryRowContext(ctx, `SELECT id, name, icon, sort_order FROM categories WHERE id = $1`, id).
-		Scan(&c.ID, &c.Name, &c.Icon, &c.SortOrder)
+	err := r.db.QueryRowContext(ctx, `SELECT id, name FROM categories WHERE id = $1`, id).
+		Scan(&c.ID, &c.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -297,7 +295,7 @@ func (r *ManuscriptRepository) ListByCategory(ctx context.Context, categoryID in
 }
 
 func (r *ManuscriptRepository) ListCategories(ctx context.Context) ([]*Category, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id, name, icon, sort_order FROM categories ORDER BY sort_order`)
+	rows, err := r.db.QueryContext(ctx, `SELECT id, name FROM categories ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +304,7 @@ func (r *ManuscriptRepository) ListCategories(ctx context.Context) ([]*Category,
 	var cats []*Category
 	for rows.Next() {
 		c := &Category{}
-		if err := rows.Scan(&c.ID, &c.Name, &c.Icon, &c.SortOrder); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name); err != nil {
 			return nil, err
 		}
 		cats = append(cats, c)

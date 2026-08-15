@@ -14,7 +14,6 @@ type AdminUser struct {
 	ID         int64
 	Username   string
 	Password   string
-	Nickname   string
 	AdminLevel int32
 }
 
@@ -83,25 +82,25 @@ func (r *Repository) AdminLogin(ctx context.Context, username, password string) 
 	hash := sha256.Sum256([]byte(password))
 	u := &AdminUser{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, username, password, nickname, admin_level FROM admin_users WHERE username = $1 AND password = $2`,
-		username, fmt.Sprintf("%x", hash)).Scan(&u.ID, &u.Username, &u.Password, &u.Nickname, &u.AdminLevel)
+		`SELECT id, username, password, admin_level FROM admin_users WHERE username = $1 AND password = $2`,
+		username, fmt.Sprintf("%x", hash)).Scan(&u.ID, &u.Username, &u.Password, &u.AdminLevel)
 	if err != nil {
 		return nil, err
 	}
 	return u, nil
 }
 
-func (r *Repository) CreateAdmin(ctx context.Context, username, password, nickname string, level int32) (int64, error) {
+func (r *Repository) CreateAdmin(ctx context.Context, username, password string, level int32) (int64, error) {
 	hash := sha256.Sum256([]byte(password))
 	var id int64
 	err := r.db.QueryRowContext(ctx,
-		`INSERT INTO admin_users (username, password, nickname, admin_level) VALUES ($1,$2,$3,$4) RETURNING id`,
-		username, fmt.Sprintf("%x", hash), nickname, level).Scan(&id)
+		`INSERT INTO admin_users (username, password, admin_level) VALUES ($1,$2,$3) RETURNING id`,
+		username, fmt.Sprintf("%x", hash), level).Scan(&id)
 	return id, err
 }
 
 func (r *Repository) ListAdmins(ctx context.Context) ([]*AdminUser, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id, username, password, nickname, admin_level FROM admin_users ORDER BY id`)
+	rows, err := r.db.QueryContext(ctx, `SELECT id, username, password, admin_level FROM admin_users ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +108,7 @@ func (r *Repository) ListAdmins(ctx context.Context) ([]*AdminUser, error) {
 	var list []*AdminUser
 	for rows.Next() {
 		u := &AdminUser{}
-		rows.Scan(&u.ID, &u.Username, &u.Password, &u.Nickname, &u.AdminLevel)
+		rows.Scan(&u.ID, &u.Username, &u.Password, &u.AdminLevel)
 		list = append(list, u)
 	}
 	return list, nil
@@ -118,16 +117,16 @@ func (r *Repository) ListAdmins(ctx context.Context) ([]*AdminUser, error) {
 func (r *Repository) GetAdminByID(ctx context.Context, id int64) (*AdminUser, error) {
 	u := &AdminUser{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, username, nickname, admin_level FROM admin_users WHERE id=$1`, id).
-		Scan(&u.ID, &u.Username, &u.Nickname, &u.AdminLevel)
+		`SELECT id, username, admin_level FROM admin_users WHERE id=$1`, id).
+		Scan(&u.ID, &u.Username, &u.AdminLevel)
 	if err != nil {
 		return nil, err
 	}
 	return u, nil
 }
 
-func (r *Repository) UpdateAdmin(ctx context.Context, id int64, nickname string) error {
-	_, err := r.db.ExecContext(ctx, `UPDATE admin_users SET nickname=$1, updated_at=NOW() WHERE id=$2`, nickname, id)
+func (r *Repository) UpdateAdmin(ctx context.Context, id int64) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE admin_users SET updated_at=NOW() WHERE id=$1`, id)
 	return err
 }
 
@@ -353,8 +352,8 @@ func (s *Service) Login(ctx context.Context, username, password string) (*AdminU
 	return s.repo.AdminLogin(ctx, username, password)
 }
 
-func (s *Service) CreateAdmin(ctx context.Context, username, password, nickname string, level int32) error {
-	_, err := s.repo.CreateAdmin(ctx, username, password, nickname, level)
+func (s *Service) CreateAdmin(ctx context.Context, username, password string, level int32) error {
+	_, err := s.repo.CreateAdmin(ctx, username, password, level)
 	return err
 }
 

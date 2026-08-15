@@ -30,10 +30,8 @@ type Video struct {
 }
 
 type Category struct {
-	ID        int64
-	Name      string
-	Icon      string
-	SortOrder int32
+	ID   int64
+	Name string
 }
 
 type BannerImage struct {
@@ -142,7 +140,7 @@ func (r *Repository) ListBanners(ctx context.Context, bannerType int32) ([]*Bann
 }
 
 func (r *Repository) ListCategories(ctx context.Context) ([]*Category, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id, name, icon, sort_order FROM categories ORDER BY sort_order`)
+	rows, err := r.db.QueryContext(ctx, `SELECT id, name FROM categories ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +148,7 @@ func (r *Repository) ListCategories(ctx context.Context) ([]*Category, error) {
 	var list []*Category
 	for rows.Next() {
 		c := &Category{}
-		rows.Scan(&c.ID, &c.Name, &c.Icon, &c.SortOrder)
+		rows.Scan(&c.ID, &c.Name)
 		list = append(list, c)
 	}
 	return list, nil
@@ -158,26 +156,26 @@ func (r *Repository) ListCategories(ctx context.Context) ([]*Category, error) {
 
 func (r *Repository) GetCategoryByID(ctx context.Context, id int64) (*Category, error) {
 	c := &Category{}
-	err := r.db.QueryRowContext(ctx, `SELECT id, name, icon, sort_order FROM categories WHERE id = $1`, id).
-		Scan(&c.ID, &c.Name, &c.Icon, &c.SortOrder)
+	err := r.db.QueryRowContext(ctx, `SELECT id, name FROM categories WHERE id = $1`, id).
+		Scan(&c.ID, &c.Name)
 	if err != nil {
 		return nil, err
 	}
 	return c, nil
 }
 
-func (r *Repository) CreateCategory(ctx context.Context, name, icon string, sortOrder int32) (int64, error) {
+func (r *Repository) CreateCategory(ctx context.Context, name string) (int64, error) {
 	var id int64
 	err := r.db.QueryRowContext(ctx,
-		`INSERT INTO categories (name, icon, sort_order) VALUES ($1, $2, $3) RETURNING id`,
-		name, icon, sortOrder).Scan(&id)
+		`INSERT INTO categories (name) VALUES ($1) RETURNING id`,
+		name).Scan(&id)
 	return id, err
 }
 
-func (r *Repository) UpdateCategory(ctx context.Context, id int64, name, icon string, sortOrder int32) error {
+func (r *Repository) UpdateCategory(ctx context.Context, id int64, name string) error {
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE categories SET name=$1, icon=$2, sort_order=$3, updated_at=NOW() WHERE id=$4`,
-		name, icon, sortOrder, id)
+		`UPDATE categories SET name=$1, updated_at=NOW() WHERE id=$2`,
+		name, id)
 	return err
 }
 

@@ -72,7 +72,7 @@ func (h *Handler) handleCategory(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "name required", 400)
 			return
 		}
-		h.svc.CreateCategory(r.Context(), req.Name, req.Icon, req.SortOrder)
+		h.svc.CreateCategory(r.Context(), req.Name)
 		w.Write([]byte(`{"status":"ok"}`))
 	}
 }
@@ -89,12 +89,10 @@ func (h *Handler) handleCategoryByID(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(c)
 	case "PUT":
 		var req struct {
-			Name      string `json:"name"`
-			Icon      string `json:"icon"`
-			SortOrder int32  `json:"sort_order"`
+			Name string `json:"name"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
-		h.svc.UpdateCategory(r.Context(), id, req.Name, req.Icon, req.SortOrder)
+		h.svc.UpdateCategory(r.Context(), id, req.Name)
 		w.Write([]byte(`{"status":"ok"}`))
 	case "DELETE":
 		h.svc.DeleteCategory(r.Context(), id)

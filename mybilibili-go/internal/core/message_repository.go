@@ -55,7 +55,7 @@ func (r *MessageRepository) SendMessage(ctx context.Context, senderID, receiverI
 	}
 
 	r.db.ExecContext(ctx,
-		`UPDATE conversations SET last_message_content = $1, last_message_at = NOW(), unread_count = unread_count + 1
+		`UPDATE conversations SET last_message_content = $1, last_message_time = NOW(), unread_count = unread_count + 1
 		 WHERE id = $2`, content, convID)
 
 	return msg, nil
