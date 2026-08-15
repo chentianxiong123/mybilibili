@@ -8,11 +8,29 @@ import (
 )
 
 type Handler struct {
-	svc *Service
+	svc         *Service
+	summarySvc  *SummaryService
+	reviewSvc   *ReviewService
+	customerSvc *CustomerService
 }
 
 func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
+}
+
+func (h *Handler) WithSummary(svc *SummaryService) *Handler {
+	h.summarySvc = svc
+	return h
+}
+
+func (h *Handler) WithReview(svc *ReviewService) *Handler {
+	h.reviewSvc = svc
+	return h
+}
+
+func (h *Handler) WithCustomer(svc *CustomerService) *Handler {
+	h.customerSvc = svc
+	return h
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
@@ -267,9 +285,22 @@ func getAdminID(r *http.Request) int64 {
 }
 
 func (h *Handler) handleSummary(w http.ResponseWriter, r *http.Request) {
-	videoID := strings.TrimPrefix(r.URL.Path, "/api/v1/ai/summary/")
-	_ = videoID
-	w.Write([]byte(`{"summary":"AI summary - not yet implemented"}`))
+	videoIDStr := strings.TrimPrefix(r.URL.Path, "/api/v1/ai/summary/")
+	videoID, _ := strconv.ParseInt(videoIDStr, 10, 64)
+	if videoID == 0 {
+		http.Error(w, "invalid video id", 400)
+		return
+	}
+	if h.summarySvc == nil {
+		w.Write([]byte(`{"summary":"AI summary not available"}`))
+		return
+	}
+	summary, err := h.summarySvc.GetSummary(r.Context(), videoID)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]string{"summary": summary})
 }
 
 func (h *Handler) handleCustomerDefaults(w http.ResponseWriter, r *http.Request) {

@@ -132,7 +132,13 @@ func main() {
 
 	aiRepo := ai.NewRepository(db)
 	aiSvc := ai.NewService(aiRepo)
-	aiH := ai.NewHandler(aiSvc)
+
+	caller, _ := abstraction.NewServiceCaller(abstraction.ServiceCallerConfig{Type: "ollama"})
+	summarySvc := ai.NewSummaryService(caller)
+	reviewSvc := ai.NewReviewService(caller)
+	customerSvc := ai.NewCustomerService(caller)
+
+	aiH := ai.NewHandler(aiSvc).WithSummary(summarySvc).WithReview(reviewSvc).WithCustomer(customerSvc)
 
 	searchRepo := search.NewRepository(db)
 	searchSvc := search.NewService(searchRepo)
@@ -148,14 +154,23 @@ func main() {
 	favoriteH := core.NewFavoriteHandler(db)
 	genericInteractionH := core.NewGenericInteractionHandler(interactionRepo)
 
-	abstractionCfg := abstraction.Config{}
 	docStore, _ := abstraction.NewDocumentStore(abstraction.DocumentStoreConfig{Type: "pg-jsonb", DSN: dsn})
 	searchEngine, _ := abstraction.NewSearchEngine(abstraction.SearchEngineConfig{Type: "pg-fts", DSN: dsn})
-	storageSvc, _ := abstraction.NewStorageService(abstraction.StorageServiceConfig{Type: "memory"})
-	caller, _ := abstraction.NewServiceCaller(abstraction.ServiceCallerConfig{Type: "ollama"})
 	mq, _ := abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: "memory"})
-	_ = abstractionCfg
-	_ = storageSvc
+
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "127.0.0.1:6379"
+	}
+	cacheStore, err := abstraction.NewCacheStore(abstraction.CacheStoreConfig{Type: "redis", Addr: redisAddr})
+	if err != nil {
+		log.Printf("redis cache unavailable (fallback to memory): %v", err)
+		cacheStore, _ = abstraction.NewCacheStore(abstraction.CacheStoreConfig{Type: "memory"})
+	}
+	userSvc.SetCacheStore(cacheStore)
+	manuscriptSvc.SetCacheStore(cacheStore)
+	commentSvc.SetCacheStore(cacheStore)
+	summarySvc.SetCacheStore(cacheStore)
 
 	searchH := search.NewHandler(searchSvc).WithEngine(searchEngine)
 
@@ -209,10 +224,6 @@ func main() {
 	studioSvc := studio.NewService(studioRepo)
 	studioH := studio.NewHandler(studioSvc)
 
-	summarySvc := ai.NewSummaryService(caller)
-	reviewSvc := ai.NewReviewService(caller)
-	customerSvc := ai.NewCustomerService(caller)
-	_ = summarySvc
 	commentSvc.SetReviewService(reviewSvc)
 	aiChatH := ai.NewAIChatHandler(reviewSvc, customerSvc)
 

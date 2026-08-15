@@ -35,16 +35,16 @@ type Category struct {
 }
 
 type BannerImage struct {
-	ID         int64
-	Title      string
-	ImageURL   string
-	LinkURL    string
-	SortOrder  int32
-	Status     int32
-	Type       int32
-	CategoryID int64
-	StartTime  *time.Time
-	EndTime    *time.Time
+	ID         int64      `json:"id"`
+	Title      string     `json:"title"`
+	ImageURL   string     `json:"imageUrl"`
+	LinkURL    string     `json:"linkUrl"`
+	SortOrder  int32      `json:"sortOrder"`
+	Status     int32      `json:"status"`
+	Type       int32      `json:"type"`
+	CategoryID int64      `json:"categoryId"`
+	StartTime  *time.Time `json:"startTime"`
+	EndTime    *time.Time `json:"endTime"`
 }
 
 type Repository struct {

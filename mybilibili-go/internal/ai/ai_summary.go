@@ -12,14 +12,27 @@ import (
 )
 
 type SummaryService struct {
-	caller abstraction.ServiceCaller
+	caller     abstraction.ServiceCaller
+	cacheStore abstraction.CacheStore
 }
 
 func NewSummaryService(caller abstraction.ServiceCaller) *SummaryService {
 	return &SummaryService{caller: caller}
 }
 
+func (s *SummaryService) SetCacheStore(cs abstraction.CacheStore) {
+	s.cacheStore = cs
+}
+
 func (s *SummaryService) GetSummary(ctx context.Context, videoID int64) (string, error) {
+	if s.cacheStore != nil {
+		key := fmt.Sprintf("summary:%d", videoID)
+		data, err := s.cacheStore.Get(ctx, key)
+		if err == nil {
+			return string(data), nil
+		}
+	}
+
 	req := map[string]interface{}{"video_id": videoID}
 	var resp struct {
 		Summary string `json:"summary"`
@@ -29,6 +42,11 @@ func (s *SummaryService) GetSummary(ctx context.Context, videoID int64) (string,
 	}
 	if err := s.caller.Call(ctx, "ai", "Summary", req, &resp); err != nil {
 		return "", err
+	}
+
+	if s.cacheStore != nil && resp.Summary != "" {
+		key := fmt.Sprintf("summary:%d", videoID)
+		s.cacheStore.Set(ctx, key, []byte(resp.Summary), 0)
 	}
 	return resp.Summary, nil
 }

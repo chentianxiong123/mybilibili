@@ -7,6 +7,11 @@ import (
 	"strings"
 )
 
+func writeJSON(w http.ResponseWriter, data interface{}) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": data, "message": "ok"})
+}
+
 type Handler struct {
 	svc *Service
 }
@@ -145,7 +150,10 @@ func (h *Handler) handleBannerHome(w http.ResponseWriter, r *http.Request, parts
 	switch {
 	case r.Method == "GET":
 		list, _ := h.svc.ListBanners(r.Context(), 1)
-		json.NewEncoder(w).Encode(list)
+		if list == nil {
+			list = []*BannerImage{}
+		}
+		writeJSON(w, list)
 	case r.Method == "POST":
 		b := decodeBanner(r)
 		b.Type = 1
@@ -171,7 +179,10 @@ func (h *Handler) handleBannerCategory(w http.ResponseWriter, r *http.Request, p
 	switch {
 	case r.Method == "GET":
 		list, _ := h.svc.ListBannersByCategory(r.Context(), 2, categoryID)
-		json.NewEncoder(w).Encode(list)
+		if list == nil {
+			list = []*BannerImage{}
+		}
+		writeJSON(w, list)
 	case r.Method == "POST":
 		b := decodeBanner(r)
 		b.Type = 2
@@ -202,7 +213,7 @@ func (h *Handler) handleBannerSingle(w http.ResponseWriter, r *http.Request, ban
 		if len(list) > 0 {
 			b = list[0]
 		}
-		json.NewEncoder(w).Encode(b)
+		writeJSON(w, b)
 	case "POST":
 		b := decodeBanner(r)
 		b.Type = bannerType

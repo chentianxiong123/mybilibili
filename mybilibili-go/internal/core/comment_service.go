@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"time"
 
+	"mybilibili/internal/abstraction"
 	pb "mybilibili/internal/core/pb"
 )
 
@@ -15,6 +16,7 @@ type CommentService struct {
 	reviewSvc   interface {
 		ReviewComment(ctx context.Context, content string) (bool, error)
 	}
+	cacheStore abstraction.CacheStore
 }
 
 func NewCommentService(repo *CommentRepository) *CommentService {
@@ -22,6 +24,10 @@ func NewCommentService(repo *CommentRepository) *CommentService {
 		repo:    repo,
 		limiter: newCommentRateLimiter(10*time.Minute, 20),
 	}
+}
+
+func (s *CommentService) SetCacheStore(cs abstraction.CacheStore) {
+	s.cacheStore = cs
 }
 
 func (s *CommentService) SetMessageRepo(mr *MessageRepository) {

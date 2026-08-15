@@ -2,7 +2,9 @@ package core
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -30,6 +32,7 @@ func (h *UserExtendHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/user/me", h.handleMe)
 	mux.HandleFunc("/api/v1/user/me/avatar", h.handleMeAvatar)
 	mux.HandleFunc("/api/v1/user/token/refresh", h.handleRefresh)
+	mux.HandleFunc("/api/v1/user/", h.handleUserByID)
 	mux.HandleFunc("/api/v1/user/email/code", h.handleEmailCode)
 	mux.HandleFunc("/api/v1/user/email/verify", h.handleEmailVerify)
 	mux.HandleFunc("/api/v1/user/batch", h.handleBatch)
@@ -557,6 +560,32 @@ func (h *UserExtendHandler) handleMeAvatar(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	writeOK(w, map[string]interface{}{"status": "ok"})
+}
+
+func (h *UserExtendHandler) handleUserByID(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/api/v1/user/")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || id <= 0 {
+		http.Error(w, "not found", 404)
+		return
+	}
+	user, err := h.svc.repo.FindByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "not found", 404)
+			return
+		}
+		http.Error(w, "database error", 500)
+		return
+	}
+	writeOK(w, map[string]interface{}{
+		"id":         user.ID,
+		"username":   user.Username,
+		"nickname":   user.Nickname,
+		"avatar":     user.Avatar,
+		"level":      user.Level,
+		"created_at": user.CreatedAt,
+	})
 }
 
 func (h *UserExtendHandler) handleCaptcha(w http.ResponseWriter, r *http.Request) {
