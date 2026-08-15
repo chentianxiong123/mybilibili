@@ -447,7 +447,26 @@ func StartHTTPServer(addr string, h *HTTPHandler, jwt *JWT, extras ...LiveHandle
 		uploadDir = filepath.Join(os.TempDir(), "mybilibili-uploads")
 	}
 	_ = os.MkdirAll(uploadDir, 0o755)
-	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
+
+	minioEndpoint := os.Getenv("MINIO_ENDPOINT")
+	if minioEndpoint == "" {
+		minioEndpoint = "http://127.0.0.1:9000"
+	}
+	minioBucket := os.Getenv("MINIO_BUCKET")
+	if minioBucket == "" {
+		minioBucket = "mybilibili"
+	}
+	minioPublicURL := strings.TrimRight(minioEndpoint, "/") + "/" + minioBucket
+
+	localHandler := http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir)))
+	mux.Handle("/uploads/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := strings.TrimPrefix(r.URL.Path, "/uploads/")
+		if key == "" {
+			localHandler.ServeHTTP(w, r)
+			return
+		}
+		http.Redirect(w, r, minioPublicURL+"/"+key, http.StatusMovedPermanently)
+	}))
 
 	var handler http.Handler = mux
 	if jwt != nil {

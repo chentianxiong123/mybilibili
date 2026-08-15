@@ -31,25 +31,16 @@ func NewService(repo *Repository, hub *Hub) *Service {
 	return &Service{repo: repo, hub: hub}
 }
 
-func (s *Service) CreateRoom(ctx context.Context, roomName, cover, category string, hostID int64, maxSeats int32) (*Room, error) {
+func (s *Service) CreateRoom(ctx context.Context, roomName, cover, category string, hostID int64, _ int32) (*Room, error) {
 	if roomName == "" {
 		return nil, ErrInvalidArgument("room name required")
 	}
-	if maxSeats < 1 {
-		maxSeats = 8
-	}
-	if maxSeats > 16 {
-		maxSeats = 16
-	}
 
 	room := &Room{
-		RoomName: roomName, Cover: cover, Category: category,
-		HostID: hostID, MaxSeats: maxSeats, Status: RoomStatusIdle,
+		RoomName: roomName, CoverURL: cover, Category: category,
+		UserID: hostID, Status: RoomStatusIdle,
 	}
 	if err := s.repo.CreateRoom(ctx, room); err != nil {
-		return nil, err
-	}
-	if err := s.repo.InitSeats(ctx, room.ID, maxSeats); err != nil {
 		return nil, err
 	}
 	return room, nil
@@ -60,7 +51,7 @@ func (s *Service) GetRoom(ctx context.Context, roomID int64) (*Room, error) {
 }
 
 func (s *Service) GetRoomByHost(ctx context.Context, hostID int64) (*Room, error) {
-	return s.repo.GetRoomByHostID(ctx, hostID)
+	return s.repo.GetRoomByUserID(ctx, hostID)
 }
 
 func (s *Service) ListLiveRooms(ctx context.Context, page, pageSize int32) ([]*Room, error) {
@@ -78,14 +69,14 @@ func (s *Service) UpdateRoom(ctx context.Context, roomID, userID int64, roomName
 	if err != nil {
 		return ErrNotFound("room not found")
 	}
-	if room.HostID != userID {
+	if room.UserID != userID {
 		return ErrPermissionDenied("only host can update room")
 	}
 	if roomName != "" {
 		room.RoomName = roomName
 	}
 	if cover != "" {
-		room.Cover = cover
+		room.CoverURL = cover
 	}
 	room.Category = category
 	return s.repo.UpdateRoom(ctx, room)
@@ -96,7 +87,7 @@ func (s *Service) UpdateRoomStatus(ctx context.Context, roomID, userID int64, st
 	if err != nil {
 		return ErrNotFound("room not found")
 	}
-	if room.HostID != userID {
+	if room.UserID != userID {
 		return ErrPermissionDenied("only host can update room status")
 	}
 	return s.repo.UpdateRoomStatus(ctx, roomID, status)
@@ -107,7 +98,7 @@ func (s *Service) ScheduleRoom(ctx context.Context, roomID, userID int64, schedu
 	if err != nil {
 		return ErrNotFound("room not found")
 	}
-	if room.HostID != userID {
+	if room.UserID != userID {
 		return ErrPermissionDenied("only host can schedule room")
 	}
 	ts := sql.NullTime{}
@@ -129,7 +120,7 @@ func (s *Service) HandleSRSCallback(ctx context.Context, action, streamKey strin
 		return err
 	}
 	s.hub.BroadcastRoom(room.ID, map[string]interface{}{
-		"type": "room_live", "room_id": room.ID, "host_id": room.HostID,
+		"type": "room_live", "room_id": room.ID, "host_id": room.UserID,
 	})
 	return nil
 }
@@ -172,7 +163,7 @@ func (s *Service) AcceptSeat(ctx context.Context, roomID, hostID, targetUserID i
 	if err != nil {
 		return ErrNotFound("room not found")
 	}
-	if room.HostID != hostID {
+	if room.UserID != hostID {
 		return ErrPermissionDenied("only host can accept seat")
 	}
 
@@ -201,7 +192,7 @@ func (s *Service) RejectSeat(ctx context.Context, roomID, hostID, targetUserID i
 	if err != nil {
 		return ErrNotFound("room not found")
 	}
-	if room.HostID != hostID {
+	if room.UserID != hostID {
 		return ErrPermissionDenied("only host can reject seat")
 	}
 
@@ -254,7 +245,7 @@ func (s *Service) MuteSeat(ctx context.Context, roomID, operatorID int64, seatIn
 	if err != nil {
 		return ErrNotFound("room not found")
 	}
-	if room.HostID != operatorID {
+	if room.UserID != operatorID {
 		return ErrPermissionDenied("only host can mute")
 	}
 
@@ -287,7 +278,7 @@ func (s *Service) LockSeat(ctx context.Context, roomID, operatorID int64, seatIn
 	if err != nil {
 		return ErrNotFound("room not found")
 	}
-	if room.HostID != operatorID {
+	if room.UserID != operatorID {
 		return ErrPermissionDenied("only host can lock seat")
 	}
 
@@ -319,7 +310,7 @@ func (s *Service) KickSeat(ctx context.Context, roomID, operatorID, targetUserID
 	if err != nil {
 		return ErrNotFound("room not found")
 	}
-	if room.HostID != operatorID {
+	if room.UserID != operatorID {
 		return ErrPermissionDenied("only host can kick")
 	}
 

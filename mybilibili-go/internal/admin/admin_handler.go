@@ -157,7 +157,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		Level    int32  `json:"level"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
-	if err := h.svc.CreateAdmin(r.Context(), req.Username, req.Password, req.Nickname, req.Level); err != nil {
+	if err := h.svc.CreateAdmin(r.Context(), req.Username, req.Password, req.Level); err != nil {
 		http.Error(w, err.Error(), 400)
 		return
 	}
@@ -412,8 +412,8 @@ func (h *Handler) handleAdminByID(w http.ResponseWriter, r *http.Request) {
 		case "PUT":
 			var body map[string]interface{}
 			json.NewDecoder(r.Body).Decode(&body)
-			if nickname, ok := body["nickname"].(string); ok && nickname != "" {
-				_ = h.svc.repo.UpdateAdmin(r.Context(), id, nickname)
+			if _, ok := body["nickname"].(string); ok {
+				_ = h.svc.repo.UpdateAdmin(r.Context(), id)
 			}
 			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 		default:

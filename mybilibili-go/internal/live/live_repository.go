@@ -13,12 +13,10 @@ import (
 type Room struct {
 	ID          int64
 	RoomName    string
-	RoomCode    string
-	HostID      int64
+	UserID      int64
 	StreamKey   string
-	Cover       string
+	CoverURL    string
 	Category    string
-	MaxSeats    int32
 	Status      int32
 	ViewerCount int32
 	CreatedAt   time.Time
@@ -66,22 +64,21 @@ func genRoomCode() string {
 
 func (r *Repository) CreateRoom(ctx context.Context, room *Room) error {
 	room.StreamKey = genStreamKey()
-	room.RoomCode = genRoomCode()
 	return r.db.QueryRowContext(ctx,
-		`INSERT INTO live_rooms (room_name, room_code, host_id, stream_key, cover, category, max_seats)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, created_at, updated_at`,
-		room.RoomName, room.RoomCode, room.HostID, room.StreamKey,
-		room.Cover, room.Category, room.MaxSeats,
+		`INSERT INTO live_rooms (room_name, user_id, stream_key, cover_url, category)
+		 VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at, updated_at`,
+		room.RoomName, room.UserID, room.StreamKey,
+		room.CoverURL, room.Category,
 	).Scan(&room.ID, &room.CreatedAt, &room.UpdatedAt)
 }
 
 func (r *Repository) GetRoomByID(ctx context.Context, id int64) (*Room, error) {
 	room := &Room{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, room_name, room_code, host_id, stream_key, cover, category, max_seats, status, viewer_count, created_at, updated_at
+		`SELECT id, room_name, user_id, stream_key, cover_url, category, status, viewer_count, created_at, updated_at
 		 FROM live_rooms WHERE id = $1`, id,
-	).Scan(&room.ID, &room.RoomName, &room.RoomCode, &room.HostID, &room.StreamKey,
-		&room.Cover, &room.Category, &room.MaxSeats, &room.Status, &room.ViewerCount, &room.CreatedAt, &room.UpdatedAt)
+	).Scan(&room.ID, &room.RoomName, &room.UserID, &room.StreamKey,
+		&room.CoverURL, &room.Category, &room.Status, &room.ViewerCount, &room.CreatedAt, &room.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -91,23 +88,23 @@ func (r *Repository) GetRoomByID(ctx context.Context, id int64) (*Room, error) {
 func (r *Repository) GetRoomByStreamKey(ctx context.Context, key string) (*Room, error) {
 	room := &Room{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, room_name, room_code, host_id, stream_key, cover, category, max_seats, status, viewer_count, created_at, updated_at
+		`SELECT id, room_name, user_id, stream_key, cover_url, category, status, viewer_count, created_at, updated_at
 		 FROM live_rooms WHERE stream_key = $1`, key,
-	).Scan(&room.ID, &room.RoomName, &room.RoomCode, &room.HostID, &room.StreamKey,
-		&room.Cover, &room.Category, &room.MaxSeats, &room.Status, &room.ViewerCount, &room.CreatedAt, &room.UpdatedAt)
+	).Scan(&room.ID, &room.RoomName, &room.UserID, &room.StreamKey,
+		&room.CoverURL, &room.Category, &room.Status, &room.ViewerCount, &room.CreatedAt, &room.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	return room, nil
 }
 
-func (r *Repository) GetRoomByHostID(ctx context.Context, hostID int64) (*Room, error) {
+func (r *Repository) GetRoomByUserID(ctx context.Context, userID int64) (*Room, error) {
 	room := &Room{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, room_name, room_code, host_id, stream_key, cover, category, max_seats, status, viewer_count, created_at, updated_at
-		 FROM live_rooms WHERE host_id = $1 ORDER BY created_at DESC LIMIT 1`, hostID,
-	).Scan(&room.ID, &room.RoomName, &room.RoomCode, &room.HostID, &room.StreamKey,
-		&room.Cover, &room.Category, &room.MaxSeats, &room.Status, &room.ViewerCount, &room.CreatedAt, &room.UpdatedAt)
+		`SELECT id, room_name, user_id, stream_key, cover_url, category, status, viewer_count, created_at, updated_at
+		 FROM live_rooms WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`, userID,
+	).Scan(&room.ID, &room.RoomName, &room.UserID, &room.StreamKey,
+		&room.CoverURL, &room.Category, &room.Status, &room.ViewerCount, &room.CreatedAt, &room.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +114,7 @@ func (r *Repository) GetRoomByHostID(ctx context.Context, hostID int64) (*Room, 
 func (r *Repository) ListLiveRooms(ctx context.Context, page, pageSize int32) ([]*Room, error) {
 	offset := (page - 1) * pageSize
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, room_name, room_code, host_id, stream_key, cover, category, max_seats, status, viewer_count, created_at, updated_at
+		`SELECT id, room_name, user_id, stream_key, cover_url, category, status, viewer_count, created_at, updated_at
 		 FROM live_rooms WHERE status = 1 ORDER BY viewer_count DESC LIMIT $1 OFFSET $2`, pageSize, offset)
 	if err != nil {
 		return nil, err
@@ -127,8 +124,8 @@ func (r *Repository) ListLiveRooms(ctx context.Context, page, pageSize int32) ([
 	var list []*Room
 	for rows.Next() {
 		room := &Room{}
-		if err := rows.Scan(&room.ID, &room.RoomName, &room.RoomCode, &room.HostID, &room.StreamKey,
-			&room.Cover, &room.Category, &room.MaxSeats, &room.Status, &room.ViewerCount, &room.CreatedAt, &room.UpdatedAt); err != nil {
+		if err := rows.Scan(&room.ID, &room.RoomName, &room.UserID, &room.StreamKey,
+			&room.CoverURL, &room.Category, &room.Status, &room.ViewerCount, &room.CreatedAt, &room.UpdatedAt); err != nil {
 			return nil, err
 		}
 		list = append(list, room)
@@ -138,8 +135,8 @@ func (r *Repository) ListLiveRooms(ctx context.Context, page, pageSize int32) ([
 
 func (r *Repository) UpdateRoom(ctx context.Context, room *Room) error {
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE live_rooms SET room_name=$1, cover=$2, category=$3, updated_at=NOW() WHERE id=$4`,
-		room.RoomName, room.Cover, room.Category, room.ID)
+		`UPDATE live_rooms SET room_name=$1, cover_url=$2, category=$3, updated_at=NOW() WHERE id=$4`,
+		room.RoomName, room.CoverURL, room.Category, room.ID)
 	return err
 }
 

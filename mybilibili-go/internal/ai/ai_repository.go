@@ -305,24 +305,24 @@ func (r *Repository) UsageDaily(ctx context.Context, startDate string) ([]map[st
 
 func (r *Repository) ListPendingSessions(ctx context.Context) ([]map[string]any, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, user_id, COALESCE(skill_id,0), type, status, created_at
-		 FROM ai_sessions WHERE status = 0 ORDER BY created_at DESC LIMIT 100`)
+		`SELECT id, user_id, title, status, created_at
+		 FROM ai_conversations WHERE status = 0 ORDER BY created_at DESC LIMIT 100`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var result []map[string]any
 	for rows.Next() {
-		var id, userID, skillID int64
-		var typ string
+		var id, userID int64
+		var title string
 		var status int32
 		var createdAt time.Time
-		if err := rows.Scan(&id, &userID, &skillID, &typ, &status, &createdAt); err != nil {
+		if err := rows.Scan(&id, &userID, &title, &status, &createdAt); err != nil {
 			return nil, err
 		}
 		result = append(result, map[string]any{
-			"id": id, "user_id": userID, "skill_id": skillID,
-			"type": typ, "status": status, "created_at": createdAt.Format("2006-01-02T15:04:05Z"),
+			"id": id, "user_id": userID, "title": title,
+			"status": status, "created_at": createdAt.Format("2006-01-02T15:04:05Z"),
 		})
 	}
 	return result, nil
@@ -330,7 +330,7 @@ func (r *Repository) ListPendingSessions(ctx context.Context) ([]map[string]any,
 
 func (r *Repository) GetSessionMessages(ctx context.Context, sessionID int64) ([]map[string]any, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, role, content, token_count, created_at FROM ai_chat_messages WHERE session_id = $1 ORDER BY id`, sessionID)
+		`SELECT id, role, content, token_count, created_at FROM ai_chat_messages WHERE conversation_id = $1 ORDER BY id`, sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -354,23 +354,23 @@ func (r *Repository) GetSessionMessages(ctx context.Context, sessionID int64) ([
 
 func (r *Repository) SendSessionReply(ctx context.Context, sessionID, adminID int64, content string) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO ai_chat_messages (session_id, role, content) VALUES ($1, 'assistant', $2)`,
+		`INSERT INTO ai_chat_messages (conversation_id, role, content) VALUES ($1, 'assistant', $2)`,
 		sessionID, content)
 	if err != nil {
 		return err
 	}
-	_, err = r.db.ExecContext(ctx, `UPDATE ai_sessions SET updated_at = NOW() WHERE id = $1`, sessionID)
+	_, err = r.db.ExecContext(ctx, `UPDATE ai_conversations SET updated_at = NOW() WHERE id = $1`, sessionID)
 	return err
 }
 
 func (r *Repository) MarkSessionProcessed(ctx context.Context, sessionID, adminID int64) error {
-	_, err := r.db.ExecContext(ctx, `UPDATE ai_sessions SET status = 1, updated_at = NOW() WHERE id = $1`, sessionID)
+	_, err := r.db.ExecContext(ctx, `UPDATE ai_conversations SET status = 1, updated_at = NOW() WHERE id = $1`, sessionID)
 	return err
 }
 
 func (r *Repository) CountPendingSessions(ctx context.Context) (int64, error) {
 	var cnt int64
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM ai_sessions WHERE status = 0`).Scan(&cnt)
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM ai_conversations WHERE status = 0`).Scan(&cnt)
 	return cnt, err
 }
 

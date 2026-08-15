@@ -108,7 +108,7 @@ func (s *ManuscriptService) ListCategories(ctx context.Context, req *pb.ListCate
 	var infos []*pb.CategoryInfo
 	for _, c := range cats {
 		infos = append(infos, &pb.CategoryInfo{
-			Id: c.ID, Name: c.Name, Icon: c.Icon, SortOrder: c.SortOrder,
+			Id: c.ID, Name: c.Name,
 		})
 	}
 	return &pb.ListCategoriesResponse{Categories: infos}, nil
