@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"mybilibili/core-service/internal/analytics"
 	"mybilibili/core-service/internal/clients"
 	"mybilibili/core-service/internal/comment"
 	"mybilibili/core-service/internal/coreapi"
@@ -22,7 +21,6 @@ import (
 	"mybilibili/core-service/internal/interaction"
 	"mybilibili/core-service/internal/manuscript"
 	"mybilibili/core-service/internal/moderation"
-	"mybilibili/core-service/internal/profile"
 	"mybilibili/core-service/internal/studio"
 	"mybilibili/core-service/internal/subtitle"
 	"mybilibili/core-service/internal/support"
@@ -204,14 +202,7 @@ func main() {
 	subtitleSvc := subtitle.NewService(subtitleRepo)
 	subtitleH := subtitle.NewHandler(subtitleSvc)
 
-	analyticsRepo := analytics.NewRepository(db)
-	analyticsSvc := analytics.NewService(analyticsRepo)
-	analyticsH := analytics.NewHandler(analyticsSvc)
-
-	profileRepo := profile.NewRepository(docStore)
-	profileSvc := profile.NewService(profileRepo)
-	profileH := profile.NewHandler(profileSvc)
-	interactionSvc.SetProfileRecorder(profileSvc)
+	interactionSvc.SetProfileRecorder(interaction.NewHTTPProfileRecorder())
 
 	studioRepo := studio.NewRepository(db)
 	studioSvc := studio.NewService(studioRepo)
@@ -224,7 +215,7 @@ func main() {
 	coreapi.StartHTTPServer(httpAddr, auth.NewJWT(jwtSecret),
 		liveProxy, followH, socialH, videoH, modH,
 		supportH, userExtH, favoriteH,
-		subtitleH, analyticsH, studioH, profileH, creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH)
+		subtitleH, studioH, creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH)
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {

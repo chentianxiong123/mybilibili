@@ -14,6 +14,8 @@ import (
 
 	"mybilibili/pkg/abstraction"
 	pb "mybilibili/pkg/pb"
+	"mybilibili/search-service/internal/analytics"
+	"mybilibili/search-service/internal/profile"
 	"mybilibili/search-service/internal/search"
 )
 
@@ -53,6 +55,15 @@ func main() {
 	indexMgr := search.NewIndexManager(searchEngine, mq)
 	go indexMgr.Start(context.Background())
 
+	analyticsRepo := analytics.NewRepository(db)
+	analyticsSvc := analytics.NewService(analyticsRepo)
+	analyticsH := analytics.NewHandler(analyticsSvc)
+
+	docStore, _ := abstraction.NewDocumentStore(abstraction.DocumentStoreConfig{Type: "pg-jsonb", DSN: dsn})
+	profileRepo := profile.NewRepository(docStore)
+	profileSvc := profile.NewService(profileRepo)
+	profileH := profile.NewHandler(profileSvc)
+
 	go func() {
 		lis, err := net.Listen("tcp", grpcAddr)
 		if err != nil {
@@ -67,6 +78,8 @@ func main() {
 
 	mux := http.NewServeMux()
 	searchH.Register(mux)
+	analyticsH.Register(mux)
+	profileH.Register(mux)
 	log.Printf("Search HTTP listening on %s", httpAddr)
 	log.Fatal(http.ListenAndServe(httpAddr, mux))
 }
