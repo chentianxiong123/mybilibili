@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"mybilibili/core-service/internal/httputil"
 )
 
 type SocialHandler struct {
@@ -40,7 +42,7 @@ func (h *SocialHandler) handleDynamicCommentList(w http.ResponseWriter, r *http.
 		return
 	}
 	dynamicID, _ := strconv.ParseInt(r.URL.Query().Get("dynamicId"), 10, 64)
-	page, limit := parsePage(r)
+	page, limit := httputil.ParsePageParams(r)
 	list, _ := h.dynamicSvc.ListComments(r.Context(), dynamicID, page, limit)
 	json.NewEncoder(w).Encode(list)
 }
@@ -50,7 +52,7 @@ func (h *SocialHandler) handleDynamicCommentAdd(w http.ResponseWriter, r *http.R
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	dynamicID, _ := strconv.ParseInt(r.URL.Query().Get("dynamicId"), 10, 64)
 	content := r.URL.Query().Get("content")
 	parentID, _ := strconv.ParseInt(r.URL.Query().Get("parentId"), 10, 64)
@@ -79,7 +81,7 @@ func (h *SocialHandler) handleDynamicCommentReplies(w http.ResponseWriter, r *ht
 		return
 	}
 	commentID, _ := strconv.ParseInt(r.URL.Query().Get("commentId"), 10, 64)
-	page, limit := parsePage(r)
+	page, limit := httputil.ParsePageParams(r)
 	list, _ := h.dynamicSvc.ListReplies(r.Context(), commentID, page, limit)
 	json.NewEncoder(w).Encode(list)
 }
@@ -116,14 +118,14 @@ func (h *SocialHandler) handleDynamicAll(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	page, limit := parsePage(r)
+	page, limit := httputil.ParsePageParams(r)
 	list, _ := h.dynamicSvc.ListAll(r.Context(), page, limit)
 	json.NewEncoder(w).Encode(list)
 }
 
 func (h *SocialHandler) handleDynamicLike(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/like/"), 10, 64)
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	switch r.Method {
 	case http.MethodPost:
 		h.dynamicSvc.Like(r.Context(), id, userID)
@@ -139,7 +141,7 @@ func (h *SocialHandler) handleDynamicLike(w http.ResponseWriter, r *http.Request
 func (h *SocialHandler) handleDynamicShare(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/share/"), 10, 64)
 	if r.Method == "POST" && id > 0 {
-		userID := getUserID(r)
+		userID := httputil.GetUserIDFromHeader(r)
 		h.dynamicSvc.ShareDynamic(r.Context(), id, userID)
 		w.Write([]byte(`{"status":"ok"}`))
 	}
@@ -155,7 +157,7 @@ func (h *SocialHandler) handleDynamicCommentIncrement(w http.ResponseWriter, r *
 
 func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/")
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	parts := strings.Split(path, "/")
 
 	switch {
@@ -171,18 +173,18 @@ func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(d)
 
 	case len(parts) == 1 && parts[0] == "list" && r.Method == "GET":
-		page, limit := parsePage(r)
+		page, limit := httputil.ParsePageParams(r)
 		list, _ := h.dynamicSvc.ListFollowing(r.Context(), userID, page, limit)
 		json.NewEncoder(w).Encode(list)
 
 	case len(parts) == 1 && parts[0] == "following" && r.Method == "GET":
-		page, limit := parsePage(r)
+		page, limit := httputil.ParsePageParams(r)
 		list, _ := h.dynamicSvc.ListFollowing(r.Context(), userID, page, limit)
 		json.NewEncoder(w).Encode(list)
 
 	case len(parts) >= 2 && parts[0] == "user" && r.Method == "GET":
 		uid, _ := strconv.ParseInt(parts[1], 10, 64)
-		page, limit := parsePage(r)
+		page, limit := httputil.ParsePageParams(r)
 		list, _ := h.dynamicSvc.ListByUser(r.Context(), uid, page, limit)
 		json.NewEncoder(w).Encode(list)
 
@@ -209,7 +211,7 @@ func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 
 	case len(parts) >= 2 && parts[0] == "comment" && r.Method == "GET":
 		dynamicID, _ := strconv.ParseInt(parts[1], 10, 64)
-		page, limit := parsePage(r)
+		page, limit := httputil.ParsePageParams(r)
 		list, _ := h.dynamicSvc.ListComments(r.Context(), dynamicID, page, limit)
 		json.NewEncoder(w).Encode(list)
 
@@ -225,7 +227,7 @@ func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 
 func (h *SocialHandler) handleCollection(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/collection/")
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	parts := strings.Split(path, "/")
 
 	switch {
@@ -276,7 +278,7 @@ func (h *SocialHandler) handleCollection(w http.ResponseWriter, r *http.Request)
 
 	case len(parts) >= 2 && parts[0] != "" && parts[1] == "manuscripts" && r.Method == "GET":
 		id, _ := strconv.ParseInt(parts[0], 10, 64)
-		page, limit := parsePage(r)
+		page, limit := httputil.ParsePageParams(r)
 		ids, _ := h.collectSvc.ListManuscripts(r.Context(), id, page, limit)
 		json.NewEncoder(w).Encode(ids)
 
@@ -325,7 +327,7 @@ func (h *SocialHandler) handleShare(w http.ResponseWriter, r *http.Request) {
 
 	manuscriptID, _ := strconv.ParseInt(path, 10, 64)
 	if r.Method == "POST" && manuscriptID > 0 {
-		userID := getUserID(r)
+		userID := httputil.GetUserIDFromHeader(r)
 		channel := r.URL.Query().Get("channel")
 		ip := r.Header.Get("X-Forwarded-For")
 		h.shareRepo.Record(r.Context(), userID, manuscriptID, channel, ip)
@@ -334,12 +336,12 @@ func (h *SocialHandler) handleShare(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *SocialHandler) handleWatchHistory(w http.ResponseWriter, r *http.Request) {
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/watch-history/")
 
 	switch r.Method {
 	case "GET":
-		page, limit := parsePage(r)
+		page, limit := httputil.ParsePageParams(r)
 		offset := (page - 1) * limit
 		rows, err := h.shareRepo.db.QueryContext(r.Context(),
 			`SELECT manuscript_id, progress_seconds, watched_at FROM watch_history WHERE user_id = $1 ORDER BY watched_at DESC LIMIT $2 OFFSET $3`,

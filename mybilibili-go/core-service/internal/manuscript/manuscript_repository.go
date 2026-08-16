@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"mybilibili/pkg/models"
 	pb "mybilibili/pkg/pb"
 )
 
@@ -53,11 +54,6 @@ type Video struct {
 	DurationSeconds int32
 }
 
-type Category struct {
-	ID   int64
-	Name string
-}
-
 type Tag struct {
 	ID   int64
 	Name string
@@ -78,16 +74,7 @@ func (r *ManuscriptRepository) IncrementViewCount(ctx context.Context, manuscrip
 	return err
 }
 
-// UpsertDailyMetric 当日观看指标累加（对齐旧版 analytics 每日聚合）。
-func (r *ManuscriptRepository) UpsertDailyMetric(ctx context.Context, manuscriptID, userID int64, field string, delta int) error {
-	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO manuscript_daily_metrics (metric_date, manuscript_id, user_id, `+field+`)
-		 VALUES (CURRENT_DATE, $1, $2, $3)
-		 ON CONFLICT (metric_date, manuscript_id)
-		 DO UPDATE SET `+field+` = manuscript_daily_metrics.`+field+` + $3, updated_at = NOW()`,
-		manuscriptID, userID, delta)
-	return err
-}
+func (r *ManuscriptRepository) DB() *sql.DB { return r.db }
 
 func (r *ManuscriptRepository) FindByID(ctx context.Context, id int64) (*Manuscript, error) {
 	m := &Manuscript{}
@@ -153,8 +140,8 @@ func (r *ManuscriptRepository) FindTagsByVideoID(ctx context.Context, videoID in
 	return tags, nil
 }
 
-func (r *ManuscriptRepository) FindCategoryByID(ctx context.Context, id int64) (*Category, error) {
-	c := &Category{}
+func (r *ManuscriptRepository) FindCategoryByID(ctx context.Context, id int64) (*models.Category, error) {
+	c := &models.Category{}
 	err := r.db.QueryRowContext(ctx, `SELECT id, name FROM categories WHERE id = $1`, id).
 		Scan(&c.ID, &c.Name)
 	if err != nil {
@@ -294,16 +281,16 @@ func (r *ManuscriptRepository) ListByCategory(ctx context.Context, categoryID in
 	return list, total, nil
 }
 
-func (r *ManuscriptRepository) ListCategories(ctx context.Context) ([]*Category, error) {
+func (r *ManuscriptRepository) ListCategories(ctx context.Context) ([]*models.Category, error) {
 	rows, err := r.db.QueryContext(ctx, `SELECT id, name FROM categories ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var cats []*Category
+	var cats []*models.Category
 	for rows.Next() {
-		c := &Category{}
+		c := &models.Category{}
 		if err := rows.Scan(&c.ID, &c.Name); err != nil {
 			return nil, err
 		}

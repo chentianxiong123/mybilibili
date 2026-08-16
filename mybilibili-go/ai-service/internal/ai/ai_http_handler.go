@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"mybilibili/pkg/httputil"
 )
 
 type AIChatHandler struct {
@@ -96,7 +98,7 @@ func (h *AIChatHandler) handleCustomerChat(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	var req struct {
 		Content string `json:"content"`
 	}
@@ -116,7 +118,7 @@ func (h *AIChatHandler) handleCustomerHistory(w http.ResponseWriter, r *http.Req
 	}
 	userID, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/ai/customer/history/"), 10, 64)
 	if userID == 0 {
-		userID = getUserID(r)
+		userID = httputil.GetUserIDFromHeader(r)
 	}
 	history, err := h.customer.History(r.Context(), userID)
 	if err != nil {
@@ -130,7 +132,7 @@ func (h *AIChatHandler) handleCustomerTransfer(w http.ResponseWriter, r *http.Re
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	if err := h.customer.Transfer(r.Context(), userID); err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -138,11 +140,4 @@ func (h *AIChatHandler) handleCustomerTransfer(w http.ResponseWriter, r *http.Re
 	w.Write([]byte(`{"status":"ok"}`))
 }
 
-func getUserID(r *http.Request) int64 {
-	idStr := r.Header.Get("X-User-Id")
-	if idStr == "" {
-		return 0
-	}
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-	return id
-}
+

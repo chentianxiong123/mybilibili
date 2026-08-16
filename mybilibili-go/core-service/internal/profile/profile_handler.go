@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"mybilibili/core-service/internal/httputil"
 )
 
 type Handler struct {
@@ -66,7 +68,7 @@ func (h *Handler) handleRecord(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	action := strings.TrimPrefix(r.URL.Path, "/api/v1/profile/record/")
 	var req struct {
 		CategoryID     int64    `json:"categoryId"`
@@ -94,11 +96,4 @@ func (h *Handler) handleRecord(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"ok"}`))
 }
 
-func getUserID(r *http.Request) int64 {
-	idStr := r.Header.Get("X-User-Id")
-	if idStr == "" {
-		return 0
-	}
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-	return id
-}
+

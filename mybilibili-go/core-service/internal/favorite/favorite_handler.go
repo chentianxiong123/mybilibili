@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"mybilibili/core-service/internal/httputil"
 )
 
 // FavoriteHandler 收藏夹/收藏管理 HTTP 接口
@@ -28,7 +30,7 @@ func (h *FavoriteHandler) Register(mux *http.ServeMux) {
 
 // GET /api/v1/favorites — 用户收藏夹列表
 func (h *FavoriteHandler) handleFavorites(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromReq(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	if userID == 0 {
 		http.Error(w, "unauthorized", 401)
 		return
@@ -131,7 +133,7 @@ func (h *FavoriteHandler) handleByID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid id", 400)
 		return
 	}
-	userID := getUserIDFromReq(r)
+	userID := httputil.GetUserIDFromHeader(r)
 
 	switch r.Method {
 	case "PUT":
@@ -177,7 +179,7 @@ func (h *FavoriteHandler) handleFolderManuscripts(w http.ResponseWriter, r *http
 		http.Error(w, "invalid folder id", 400)
 		return
 	}
-	userID := getUserIDFromReq(r)
+	userID := httputil.GetUserIDFromHeader(r)
 
 	// 确认 folder 属于当前用户
 	var cnt int
@@ -239,7 +241,7 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "invalid folder id", 400)
 		return
 	}
-	userID := getUserIDFromReq(r)
+	userID := httputil.GetUserIDFromHeader(r)
 
 	// 确认 folder 属于当前用户
 	var cnt int
@@ -253,7 +255,7 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 
 	switch r.Method {
 	case "GET":
-		page, size := parsePageFromReq(r)
+		page, size := httputil.ParsePageParams(r)
 		offset := (int(page) - 1) * int(size)
 		rows, err := h.db.QueryContext(r.Context(),
 			`SELECT ffv.manuscript_id, m.title, ffv.created_at
@@ -321,7 +323,7 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 
 // GET /api/v1/favorites/check?manuscript_id=xxx — 检查稿件是否已收藏
 func (h *FavoriteHandler) handleCheck(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromReq(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	msID, _ := strconv.ParseInt(r.URL.Query().Get("manuscript_id"), 10, 64)
 	if msID == 0 {
 		http.Error(w, "manuscript_id required", 400)
@@ -341,12 +343,12 @@ func (h *FavoriteHandler) handleCheck(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/v1/favorites/list — 用户全部收藏（平铺，不分文件夹）
 func (h *FavoriteHandler) handleFlatList(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromReq(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	if userID == 0 {
 		http.Error(w, "unauthorized", 401)
 		return
 	}
-	page, size := parsePageFromReq(r)
+	page, size := httputil.ParsePageParams(r)
 	rows, err := h.db.QueryContext(r.Context(),
 		`SELECT ffv.manuscript_id, ff.name, ffv.created_at
 		 FROM favorite_folder_videos ffv
@@ -386,7 +388,7 @@ func (h *FavoriteHandler) handleManuscriptFolders(w http.ResponseWriter, r *http
 		http.Error(w, "invalid manuscript id", 400)
 		return
 	}
-	userID := getUserIDFromReq(r)
+	userID := httputil.GetUserIDFromHeader(r)
 
 	rows, err := h.db.QueryContext(r.Context(),
 		`SELECT ff.id, ff.name FROM favorite_folders ff
@@ -412,29 +414,4 @@ func (h *FavoriteHandler) handleManuscriptFolders(w http.ResponseWriter, r *http
 	json.NewEncoder(w).Encode(list)
 }
 
-func getUserIDFromReq(r *http.Request) int64 {
-	idStr := r.Header.Get("X-User-Id")
-	if idStr == "" {
-		return 0
-	}
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-	return id
-}
 
-func parsePageFromReq(r *http.Request) (int32, int32) {
-	page, _ := strconv.ParseInt(r.URL.Query().Get("page"), 10, 32)
-	size, _ := strconv.ParseInt(r.URL.Query().Get("page_size"), 10, 32)
-	if size < 1 {
-		size, _ = strconv.ParseInt(r.URL.Query().Get("pageSize"), 10, 32)
-	}
-	if size < 1 {
-		size, _ = strconv.ParseInt(r.URL.Query().Get("size"), 10, 32)
-	}
-	if page < 1 {
-		page = 1
-	}
-	if size < 1 || size > 50 {
-		size = 20
-	}
-	return int32(page), int32(size)
-}

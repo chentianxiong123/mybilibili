@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"mybilibili/pkg/httputil"
 )
 
 type LinkmicHandler struct {
@@ -22,7 +24,7 @@ func (h *LinkmicHandler) Register(mux *http.ServeMux) {
 func (h *LinkmicHandler) handleLinkmic(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/live/linkmic/")
 	parts := strings.Split(path, "/")
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 
 	switch {
 	case len(parts) >= 2 && parts[0] == "apply" && r.Method == "POST":

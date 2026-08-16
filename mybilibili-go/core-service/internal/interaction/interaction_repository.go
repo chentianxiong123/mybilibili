@@ -162,18 +162,6 @@ func (r *InteractionRepository) DecrementManuscriptCount(ctx context.Context, fi
 	return err
 }
 
-// UpsertDailyMetric 当日指标累加（对齐旧版 analytics 每日聚合）。
-// manuscript_daily_metrics 主键 (metric_date, manuscript_id)，存在则累加对应字段。
-func (r *InteractionRepository) UpsertDailyMetric(ctx context.Context, manuscriptID, userID int64, field string, delta int) error {
-	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO manuscript_daily_metrics (metric_date, manuscript_id, user_id, `+field+`)
-		 VALUES (CURRENT_DATE, $1, $2, $3)
-		 ON CONFLICT (metric_date, manuscript_id)
-		 DO UPDATE SET `+field+` = manuscript_daily_metrics.`+field+` + $3, updated_at = NOW()`,
-		manuscriptID, userID, delta)
-	return err
-}
-
 func (r *InteractionRepository) GetUserCoinCount(ctx context.Context, userID int64) (int64, error) {
 	var count int64
 	err := r.db.QueryRowContext(ctx, `SELECT coin_count FROM users WHERE id = $1`, userID).Scan(&count)

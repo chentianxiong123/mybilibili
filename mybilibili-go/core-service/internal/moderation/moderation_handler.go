@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"mybilibili/core-service/internal/httputil"
 )
 
 type Handler struct {
@@ -43,7 +45,7 @@ func (h *Handler) handleBatchImport(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleWords(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		page, size := parsePage(r)
+		page, size := httputil.ParsePageParams(r)
 		list, _ := h.svc.ListWords(r.Context(), page, size)
 		json.NewEncoder(w).Encode(list)
 	case "POST":
@@ -95,7 +97,7 @@ func (h *Handler) handleSubmitReport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	var req struct {
 		TargetType   string `json:"target_type"`
 		TargetID     int64  `json:"target_id"`
@@ -114,7 +116,7 @@ func (h *Handler) handleSubmitReport(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleReports(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/admin/report/")
 	if path == "list" && r.Method == "GET" {
-		page, size := parsePage(r)
+		page, size := httputil.ParsePageParams(r)
 		status := r.URL.Query().Get("status")
 		targetType := r.URL.Query().Get("target_type")
 		_ = targetType
@@ -148,29 +150,4 @@ func (h *Handler) handleReports(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "not found", 404)
 }
 
-func getUserID(r *http.Request) int64 {
-	idStr := r.Header.Get("X-User-Id")
-	if idStr == "" {
-		return 0
-	}
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-	return id
-}
 
-func parsePage(r *http.Request) (int32, int32) {
-	page, _ := strconv.ParseInt(r.URL.Query().Get("page"), 10, 32)
-	size, _ := strconv.ParseInt(r.URL.Query().Get("page_size"), 10, 32)
-	if size < 1 {
-		size, _ = strconv.ParseInt(r.URL.Query().Get("pageSize"), 10, 32)
-	}
-	if size < 1 {
-		size, _ = strconv.ParseInt(r.URL.Query().Get("size"), 10, 32)
-	}
-	if page < 1 {
-		page = 1
-	}
-	if size < 1 || size > 100 {
-		size = 20
-	}
-	return int32(page), int32(size)
-}

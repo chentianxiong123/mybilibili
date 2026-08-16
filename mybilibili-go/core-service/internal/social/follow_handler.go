@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"mybilibili/core-service/internal/httputil"
 )
 
 type FollowHandler struct {
@@ -33,7 +35,7 @@ func (h *FollowHandler) handleFollow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	if userID == 0 {
 		http.Error(w, "unauthorized", 401)
 		return
@@ -67,21 +69,21 @@ func (h *FollowHandler) handleCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	targetID, _ := strconv.ParseInt(parts[0], 10, 64)
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	ok, _ := h.svc.IsFollowing(r.Context(), userID, targetID)
 	json.NewEncoder(w).Encode(map[string]bool{"following": ok})
 }
 
 func (h *FollowHandler) handleMyFollowers(w http.ResponseWriter, r *http.Request) {
-	userID := getUserID(r)
-	page, pageSize := parsePage(r)
+	userID := httputil.GetUserIDFromHeader(r)
+	page, pageSize := httputil.ParsePageParams(r)
 	ids, _ := h.svc.ListFollowers(r.Context(), userID, page, pageSize)
 	json.NewEncoder(w).Encode(ids)
 }
 
 func (h *FollowHandler) handleMyFollowing(w http.ResponseWriter, r *http.Request) {
-	userID := getUserID(r)
-	page, pageSize := parsePage(r)
+	userID := httputil.GetUserIDFromHeader(r)
+	page, pageSize := httputil.ParsePageParams(r)
 	ids, _ := h.svc.ListFollowing(r.Context(), userID, page, pageSize)
 	json.NewEncoder(w).Encode(ids)
 }
@@ -93,7 +95,7 @@ func (h *FollowHandler) handleUserFollows(w http.ResponseWriter, r *http.Request
 		return
 	}
 	userID, _ := strconv.ParseInt(parts[0], 10, 64)
-	page, pageSize := parsePage(r)
+	page, pageSize := httputil.ParsePageParams(r)
 	switch parts[1] {
 	case "following":
 		ids, _ := h.svc.ListFollowing(r.Context(), userID, page, pageSize)
@@ -106,29 +108,4 @@ func (h *FollowHandler) handleUserFollows(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func getUserID(r *http.Request) int64 {
-	idStr := r.Header.Get("X-User-Id")
-	if idStr == "" {
-		return 0
-	}
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-	return id
-}
 
-func parsePage(r *http.Request) (int32, int32) {
-	page, _ := strconv.ParseInt(r.URL.Query().Get("page"), 10, 32)
-	pageSize, _ := strconv.ParseInt(r.URL.Query().Get("page_size"), 10, 32)
-	if pageSize < 1 {
-		pageSize, _ = strconv.ParseInt(r.URL.Query().Get("pageSize"), 10, 32)
-	}
-	if pageSize < 1 {
-		pageSize, _ = strconv.ParseInt(r.URL.Query().Get("size"), 10, 32)
-	}
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 50 {
-		pageSize = 20
-	}
-	return int32(page), int32(pageSize)
-}

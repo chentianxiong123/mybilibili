@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"mybilibili/msg-danmaku-service/internal/httputil"
+	"mybilibili/pkg/httputil"
 )
 
 type HTTPHandler struct {
@@ -52,7 +52,7 @@ func (h *HTTPHandler) handleSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.broadcaster.Broadcast(req.VideoID, event)
-	httputil.WriteJSON(w, event)
+	httputil.WriteJSON(w, http.StatusOK, event)
 }
 
 func (h *HTTPHandler) handleListByVideo(w http.ResponseWriter, r *http.Request) {
@@ -64,11 +64,11 @@ func (h *HTTPHandler) handleListByVideo(w http.ResponseWriter, r *http.Request) 
 		startTime, _ := strconv.ParseFloat(startTimeStr, 64)
 		endTime, _ := strconv.ParseFloat(endTimeStr, 64)
 		events, _ := h.svc.ListByTimeRange(r.Context(), videoID, startTime, endTime)
-		httputil.WriteJSON(w, events)
+		httputil.WriteJSON(w, http.StatusOK, events)
 		return
 	}
 	events, _ := h.svc.ListByVideo(r.Context(), videoID)
-	httputil.WriteJSON(w, events)
+	httputil.WriteJSON(w, http.StatusOK, events)
 }
 
 func (h *HTTPHandler) handleBatchCount(w http.ResponseWriter, r *http.Request) {
@@ -86,7 +86,7 @@ func (h *HTTPHandler) handleBatchCount(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	counts, _ := h.svc.CountByManuscriptIDs(r.Context(), ids)
-	httputil.WriteJSON(w, counts)
+	httputil.WriteJSON(w, http.StatusOK, counts)
 }
 
 func (h *HTTPHandler) handleTrend(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +106,7 @@ func (h *HTTPHandler) handleTrend(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	trend, _ := h.svc.Trend(r.Context(), ids, startDate, endDate)
-	httputil.WriteJSON(w, trend)
+	httputil.WriteJSON(w, http.StatusOK, trend)
 }
 
 func (h *HTTPHandler) handleByPath(w http.ResponseWriter, r *http.Request) {
@@ -142,7 +142,7 @@ func (h *HTTPHandler) handleCreatorList(w http.ResponseWriter, r *http.Request) 
 		videoID, _ = strconv.ParseInt(videoIDStr, 10, 64)
 	}
 	list, total, _ := h.svc.CreatorList(r.Context(), userID, videoID, page, size)
-	httputil.WriteJSON(w, map[string]interface{}{"list": list, "total": total})
+	httputil.WriteJSON(w, http.StatusOK, map[string]interface{}{"list": list, "total": total})
 }
 
 func (h *HTTPHandler) handleCreatorByPath(w http.ResponseWriter, r *http.Request) {

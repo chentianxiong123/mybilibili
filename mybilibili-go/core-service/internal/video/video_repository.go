@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+	"mybilibili/pkg/models"
+	"mybilibili/pkg/repository"
 )
 
 type Video struct {
@@ -27,11 +29,6 @@ type Video struct {
 	ProcessError    string
 	SourceVideoURL  string
 	DurationSeconds int32
-}
-
-type Category struct {
-	ID   int64
-	Name string
 }
 
 type BannerImage struct {
@@ -139,23 +136,23 @@ func (r *Repository) ListBanners(ctx context.Context, bannerType int32) ([]*Bann
 	return r.listBanners(ctx, bannerType, 0)
 }
 
-func (r *Repository) ListCategories(ctx context.Context) ([]*Category, error) {
+func (r *Repository) ListCategories(ctx context.Context) ([]*models.Category, error) {
 	rows, err := r.db.QueryContext(ctx, `SELECT id, name FROM categories ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var list []*Category
+	var list []*models.Category
 	for rows.Next() {
-		c := &Category{}
+		c := &models.Category{}
 		rows.Scan(&c.ID, &c.Name)
 		list = append(list, c)
 	}
 	return list, nil
 }
 
-func (r *Repository) GetCategoryByID(ctx context.Context, id int64) (*Category, error) {
-	c := &Category{}
+func (r *Repository) GetCategoryByID(ctx context.Context, id int64) (*models.Category, error) {
+	c := &models.Category{}
 	err := r.db.QueryRowContext(ctx, `SELECT id, name FROM categories WHERE id = $1`, id).
 		Scan(&c.ID, &c.Name)
 	if err != nil {
@@ -225,14 +222,14 @@ func (r *Repository) CreateBanner(ctx context.Context, b *BannerImage) (int64, e
 	err := r.db.QueryRowContext(ctx,
 		`INSERT INTO banner_images (title, image_url, link_url, sort_order, type, category_id, start_time, end_time)
 		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-		b.Title, b.ImageURL, b.LinkURL, b.SortOrder, b.Type, nullInt64(b.CategoryID), b.StartTime, b.EndTime).Scan(&id)
+		b.Title, b.ImageURL, b.LinkURL, b.SortOrder, b.Type, repository.NullInt64(b.CategoryID), b.StartTime, b.EndTime).Scan(&id)
 	return id, err
 }
 
 func (r *Repository) UpdateBanner(ctx context.Context, id int64, b *BannerImage) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE banner_images SET title=$1, image_url=$2, link_url=$3, sort_order=$4, status=$5, category_id=$6, start_time=$7, end_time=$8 WHERE id=$9`,
-		b.Title, b.ImageURL, b.LinkURL, b.SortOrder, b.Status, nullInt64(b.CategoryID), b.StartTime, b.EndTime, id)
+		b.Title, b.ImageURL, b.LinkURL, b.SortOrder, b.Status, repository.NullInt64(b.CategoryID), b.StartTime, b.EndTime, id)
 	return err
 }
 
@@ -253,9 +250,4 @@ func (r *Repository) GetStatistics(ctx context.Context) (map[string]interface{},
 	}, nil
 }
 
-func nullInt64(v int64) interface{} {
-	if v == 0 {
-		return nil
-	}
-	return v
-}
+

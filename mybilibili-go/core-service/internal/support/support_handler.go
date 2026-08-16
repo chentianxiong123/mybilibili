@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"mybilibili/core-service/internal/httputil"
 )
 
 type Handler struct {
@@ -28,7 +30,7 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	var req struct {
 		Title   string `json:"title"`
 		Content string `json:"content"`
@@ -48,7 +50,7 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
-	page, size := parsePage(r)
+	page, size := httputil.ParsePageParams(r)
 	list, _ := h.svc.List(r.Context(), status, page, size)
 	json.NewEncoder(w).Encode(list)
 }
@@ -79,15 +81,6 @@ func (h *Handler) handleTicketByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getUserID(r *http.Request) int64 {
-	idStr := r.Header.Get("X-User-Id")
-	if idStr == "" {
-		return 0
-	}
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-	return id
-}
-
 func (h *Handler) handleCustomerSession(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "method not allowed", 405)
@@ -101,7 +94,7 @@ func (h *Handler) handleCustomerSession(w http.ResponseWriter, r *http.Request) 
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	if req.UserID == 0 {
-		req.UserID = getUserID(r)
+		req.UserID = httputil.GetUserIDFromHeader(r)
 	}
 	t, err := h.svc.Create(r.Context(), req.UserID, req.Title, req.Content)
 	if err != nil {
@@ -136,26 +129,10 @@ func (h *Handler) handleSessionProcess(w http.ResponseWriter, r *http.Request) {
 func getAdminID(r *http.Request) int64 {
 	idStr := r.Header.Get("X-Admin-Id")
 	if idStr == "" {
-		return getUserID(r)
+		return httputil.GetUserIDFromHeader(r)
 	}
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	return id
 }
 
-func parsePage(r *http.Request) (int32, int32) {
-	page, _ := strconv.ParseInt(r.URL.Query().Get("page"), 10, 32)
-	size, _ := strconv.ParseInt(r.URL.Query().Get("page_size"), 10, 32)
-	if size < 1 {
-		size, _ = strconv.ParseInt(r.URL.Query().Get("pageSize"), 10, 32)
-	}
-	if size < 1 {
-		size, _ = strconv.ParseInt(r.URL.Query().Get("size"), 10, 32)
-	}
-	if page < 1 {
-		page = 1
-	}
-	if size < 1 || size > 50 {
-		size = 20
-	}
-	return int32(page), int32(size)
-}
+

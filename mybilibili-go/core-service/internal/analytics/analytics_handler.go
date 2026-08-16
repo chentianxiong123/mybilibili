@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+
+	"mybilibili/core-service/internal/httputil"
 )
 
 type Handler struct {
@@ -25,13 +27,13 @@ func (h *Handler) Register(mux *http.ServeMux) {
 }
 
 func (h *Handler) handleOverview(w http.ResponseWriter, r *http.Request) {
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	data, _ := h.svc.Overview(r.Context(), userID)
 	json.NewEncoder(w).Encode(data)
 }
 
 func (h *Handler) handleTrend(w http.ResponseWriter, r *http.Request) {
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
 	data, _ := h.svc.Trend(r.Context(), userID, days)
 	json.NewEncoder(w).Encode(data)
@@ -45,38 +47,31 @@ func (h *Handler) handleRanking(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleLatestComments(w http.ResponseWriter, r *http.Request) {
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	data, _ := h.svc.LatestComments(r.Context(), userID, limit)
 	json.NewEncoder(w).Encode(data)
 }
 
 func (h *Handler) handleFansTrend(w http.ResponseWriter, r *http.Request) {
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
 	data, _ := h.svc.FansTrend(r.Context(), userID, days)
 	json.NewEncoder(w).Encode(data)
 }
 
 func (h *Handler) handleFansRanking(w http.ResponseWriter, r *http.Request) {
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	data, _ := h.svc.FansRanking(r.Context(), userID, limit)
 	json.NewEncoder(w).Encode(data)
 }
 
 func (h *Handler) handleManuscriptTrend(w http.ResponseWriter, r *http.Request) {
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
 	data, _ := h.svc.ManuscriptTrend(r.Context(), userID, days)
 	json.NewEncoder(w).Encode(data)
 }
 
-func getUserID(r *http.Request) int64 {
-	idStr := r.Header.Get("X-User-Id")
-	if idStr == "" {
-		return 0
-	}
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-	return id
-}
+

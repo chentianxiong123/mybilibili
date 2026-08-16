@@ -7,6 +7,7 @@ import (
 
 	"mybilibili/pkg/abstraction"
 	"mybilibili/pkg/errors"
+	"mybilibili/pkg/repository"
 	pb "mybilibili/pkg/pb"
 )
 
@@ -88,7 +89,7 @@ func (s *CommentService) AddComment(ctx context.Context, req *pb.AddCommentReque
 		return nil, errors.ErrInternal("failed to create comment")
 	}
 	c.ID = id
-	s.repo.UpsertDailyMetric(ctx, c.ManuscriptID, c.UserID, "comment_count", 1)
+	repository.UpsertDailyMetric(ctx, s.db, c.ManuscriptID, c.UserID, "comment_count", 1)
 
 	s.repo.WriteContentReview(ctx, "comment", req.UserId, req.Content)
 	if s.reviewSvc != nil {
@@ -148,7 +149,7 @@ func (s *CommentService) AddReply(ctx context.Context, req *pb.AddReplyRequest) 
 	s.repo.IncrementReplyCount(ctx, req.CommentId)
 
 	if parent, perr := s.repo.FindByID(ctx, req.CommentId); perr == nil {
-		s.repo.UpsertDailyMetric(ctx, parent.ManuscriptID, req.UserId, "comment_count", 1)
+		repository.UpsertDailyMetric(ctx, s.db, parent.ManuscriptID, req.UserId, "comment_count", 1)
 	}
 
 	s.sendReplyNotification(ctx, req.CommentId, req.UserId)
