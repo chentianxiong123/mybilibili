@@ -23,7 +23,6 @@ func (h *AdminDataHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/video/admin/", h.handleVideoAdmin)
 	mux.HandleFunc("/api/v1/admin/comment/", h.handleCommentAdmin)
 	mux.HandleFunc("/api/v1/admin/live/", h.handleLiveAdmin)
-	mux.HandleFunc("/api/v1/admin/meeting/", h.handleMeetingAdmin)
 	// /api/v1/admin/security-settings is registered in admin_handler.go
 	mux.HandleFunc("/api/v1/admin/content-review/", h.handleContentReview)
 }
@@ -336,54 +335,6 @@ func (h *AdminDataHandler) handleLiveAdmin(w http.ResponseWriter, r *http.Reques
 		_ = h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM live_rooms WHERE status = 1`).Scan(&liveCount)
 		_ = h.db.QueryRowContext(r.Context(), `SELECT COALESCE(SUM(viewer_count), 0) FROM live_rooms WHERE status = 1`).Scan(&totalViewers)
 		json.NewEncoder(w).Encode(map[string]interface{}{"live_count": liveCount, "total_viewers": totalViewers})
-	}
-}
-
-func (h *AdminDataHandler) handleMeetingAdmin(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/admin/meeting/"), "/")
-	switch {
-	case parts[0] == "rooms" && r.Method == "GET":
-		rows, err := h.db.QueryContext(r.Context(),
-			`SELECT id, creator_id, room_name, status, create_time FROM meeting_room ORDER BY create_time DESC LIMIT 50`)
-		if err != nil {
-			json.NewEncoder(w).Encode([]map[string]interface{}{})
-			return
-		}
-		defer rows.Close()
-		var list []map[string]interface{}
-		for rows.Next() {
-			var id, uid, st int64
-			var title, t string
-			rows.Scan(&id, &uid, &title, &st, &t)
-			list = append(list, map[string]interface{}{
-				"id": id, "creator_id": uid, "room_name": title, "status": st, "create_time": t,
-			})
-		}
-		json.NewEncoder(w).Encode(list)
-	case parts[0] == "pending" && r.Method == "GET":
-		rows, err := h.db.QueryContext(r.Context(),
-			`SELECT id, creator_id, room_name, status, create_time FROM meeting_room WHERE status = 0 ORDER BY create_time DESC LIMIT 50`)
-		if err != nil {
-			json.NewEncoder(w).Encode([]map[string]interface{}{})
-			return
-		}
-		defer rows.Close()
-		var list []map[string]interface{}
-		for rows.Next() {
-			var id, uid, st int64
-			var title, t string
-			rows.Scan(&id, &uid, &title, &st, &t)
-			list = append(list, map[string]interface{}{
-				"id": id, "user_id": uid, "title": title, "status": st, "created_at": t,
-			})
-		}
-		json.NewEncoder(w).Encode(list)
-	case len(parts) >= 2 && parts[0] == "approve" && r.Method == "POST":
-		id, _ := strconv.ParseInt(parts[1], 10, 64)
-		h.exec(w, r, `UPDATE meeting_room SET status=0 WHERE id=$1`, id)
-	case len(parts) >= 2 && parts[0] == "reject" && r.Method == "POST":
-		id, _ := strconv.ParseInt(parts[1], 10, 64)
-		h.exec(w, r, `UPDATE meeting_room SET status=4 WHERE id=$1`, id)
 	}
 }
 

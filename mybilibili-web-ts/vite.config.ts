@@ -61,11 +61,6 @@ export default defineConfig(({ mode }) => {
           target: 'http://localhost:8080',
           changeOrigin: true
         },
-        '/ws/meeting': {
-          target: 'ws://localhost:8080',
-          ws: true,
-          changeOrigin: true
-        },
         '/ws/notification': {
           target: 'ws://localhost:8080',
           ws: true,

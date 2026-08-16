@@ -290,8 +290,8 @@ func roleTemplates() map[string]roleTemplate {
 		},
 		"media-manager": {
 			Code: "media-manager", Name: "媒体管理",
-			Description:     "适合维护视频、字幕、分类、轮播图、直播和会议资源",
-			PermissionCodes: []string{"video:manage", "category:manage", "banner:manage", "live:manage", "meeting:manage"},
+			Description:     "适合维护视频、字幕、分类、轮播图、直播资源",
+			PermissionCodes: []string{"video:manage", "category:manage", "banner:manage", "live:manage"},
 		},
 		"system-manager": {
 			Code: "system-manager", Name: "系统管理",
@@ -304,7 +304,7 @@ func roleTemplates() map[string]roleTemplate {
 			PermissionCodes: []string{
 				"user:manage", "video:manage", "comment:manage", "category:manage", "tag:manage",
 				"review:manage", "statistics:manage", "role:manage", "admin:manage", "security:manage",
-				"live:manage", "meeting:manage", "storage:manage", "banner:manage", "search:manage",
+				"live:manage", "storage:manage", "banner:manage", "search:manage",
 				"ai:manage", "message:manage", "audit:manage", "operation:manage",
 			},
 		},
