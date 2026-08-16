@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"mybilibili/core-service/internal/admin"
 	"mybilibili/core-service/internal/analytics"
 	"mybilibili/core-service/internal/clients"
 	"mybilibili/core-service/internal/comment"
@@ -120,11 +119,6 @@ func main() {
 	videoSvc := video.NewService(videoRepo)
 	videoH := video.NewHandler(videoSvc)
 
-	adminRepo := admin.NewRepository(db)
-	adminSvc := admin.NewService(adminRepo)
-	adminH := admin.NewHandler(adminSvc)
-	adminDataH := admin.NewAdminDataHandler(db)
-
 	modRepo := moderation.NewRepository(db)
 	modSvc := moderation.NewService(modRepo)
 	modH := moderation.NewHandler(modSvc)
@@ -179,8 +173,6 @@ func main() {
 
 	eventPublisher := events.NewEventPublisher(mq)
 
-	adminManuscriptH := admin.NewManuscriptAdminHandler(db)
-	adminManuscriptH.SetEventPublisher(eventPublisher)
 	interactionSvc.SetEventPublisher(eventPublisher)
 
 	go func() {
@@ -229,7 +221,7 @@ func main() {
 	publicAPIH := coreapi.NewPublicAPIHandler(commentSvc)
 
 	coreapi.StartHTTPServer(httpAddr, user.NewJWT(jwtSecret),
-		liveProxy, followH, socialH, videoH, adminH, adminDataH, adminManuscriptH, modH,
+		liveProxy, followH, socialH, videoH, modH,
 		supportH, userExtH, favoriteH,
 		subtitleH, analyticsH, studioH, profileH, creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH)
 
