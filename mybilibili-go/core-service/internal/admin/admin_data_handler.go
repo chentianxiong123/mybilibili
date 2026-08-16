@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"mybilibili/core-service/internal/httputil"
+	"mybilibili/pkg/httputil"
 )
 
 type AdminDataHandler struct {

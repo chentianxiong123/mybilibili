@@ -7,7 +7,8 @@ import (
 	"strings"
 
 	"mybilibili/core-service/internal/comment"
-	"mybilibili/core-service/internal/httputil"
+	"mybilibili/pkg/errors"
+	"mybilibili/pkg/httputil"
 	pb "mybilibili/pkg/pb"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -149,7 +150,7 @@ func (h *PublicAPIHandler) handleCommentList(w http.ResponseWriter, r *http.Requ
 		ManuscriptId: manuscriptID, Page: page, PageSize: size, Sort: sort, UserId: uid,
 	})
 	if err != nil {
-		httputil.WriteError(w, err)
+		errors.WriteHTTPError(w, err)
 		return
 	}
 	httputil.WriteOK(w, commentListToJSON(resp.Comments))
@@ -176,7 +177,7 @@ func (h *PublicAPIHandler) handleCommentAdd(w http.ResponseWriter, r *http.Reque
 	}
 	resp, err := h.commentSvc.AddComment(r.Context(), &pb.AddCommentRequest{ManuscriptId: manuscriptID, UserId: uid, Content: content})
 	if err != nil {
-		httputil.WriteError(w, err)
+		errors.WriteHTTPError(w, err)
 		return
 	}
 	httputil.WriteOK(w, commentToMap(resp.Comment))
@@ -204,7 +205,7 @@ func (h *PublicAPIHandler) handleCommentReply(w http.ResponseWriter, r *http.Req
 	}
 	resp, err := h.commentSvc.AddReply(r.Context(), &pb.AddReplyRequest{CommentId: commentID, UserId: uid, Content: content, ReplyToUserId: replyToUserID})
 	if err != nil {
-		httputil.WriteError(w, err)
+		errors.WriteHTTPError(w, err)
 		return
 	}
 	httputil.WriteOK(w, replyToMapJSON(resp.Reply))
@@ -220,13 +221,13 @@ func (h *PublicAPIHandler) handleCommentLike(w http.ResponseWriter, r *http.Requ
 	case http.MethodPost:
 		_, err := h.commentSvc.LikeComment(r.Context(), &pb.LikeCommentRequest{CommentId: id, UserId: uid})
 		if err != nil {
-			httputil.WriteError(w, err)
+			errors.WriteHTTPError(w, err)
 			return
 		}
 	case http.MethodDelete:
 		_, err := h.commentSvc.UnlikeComment(r.Context(), &pb.UnlikeCommentRequest{CommentId: id, UserId: uid})
 		if err != nil {
-			httputil.WriteError(w, err)
+			errors.WriteHTTPError(w, err)
 			return
 		}
 	default:
@@ -242,7 +243,7 @@ func (h *PublicAPIHandler) handleCommentReplies(w http.ResponseWriter, r *http.R
 	uid := httputil.GetUserIDFromHeader(r)
 	resp, err := h.commentSvc.GetReplies(r.Context(), &pb.GetRepliesRequest{CommentId: id, Page: page, PageSize: size, UserId: uid})
 	if err != nil {
-		httputil.WriteError(w, err)
+		errors.WriteHTTPError(w, err)
 		return
 	}
 	httputil.WriteOK(w, replyListToJSON(resp.Replies))
@@ -258,13 +259,13 @@ func (h *PublicAPIHandler) handleReplyLike(w http.ResponseWriter, r *http.Reques
 	case http.MethodPost:
 		_, err := h.commentSvc.LikeReply(r.Context(), &pb.LikeReplyRequest{ReplyId: id, UserId: uid})
 		if err != nil {
-			httputil.WriteError(w, err)
+			errors.WriteHTTPError(w, err)
 			return
 		}
 	case http.MethodDelete:
 		_, err := h.commentSvc.UnlikeReply(r.Context(), &pb.UnlikeReplyRequest{ReplyId: id, UserId: uid})
 		if err != nil {
-			httputil.WriteError(w, err)
+			errors.WriteHTTPError(w, err)
 			return
 		}
 	default:

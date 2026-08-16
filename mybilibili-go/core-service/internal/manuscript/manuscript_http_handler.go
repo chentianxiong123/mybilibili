@@ -16,7 +16,7 @@ import (
 	"strings"
 
 	"mybilibili/core-service/internal/comment"
-	"mybilibili/core-service/internal/httputil"
+	"mybilibili/pkg/httputil"
 	"mybilibili/core-service/internal/interaction"
 	"mybilibili/pkg/errors"
 	pb "mybilibili/pkg/pb"
@@ -358,11 +358,11 @@ func (h *ManuscriptHTTPHandler) handleUploadComplete(w http.ResponseWriter, r *h
 	uploadID := httputil.PathValue(r, "id")
 	var owner int64
 	if err := h.db.QueryRowContext(r.Context(), `SELECT user_id FROM upload_sessions WHERE id=$1`, uploadID).Scan(&owner); err != nil {
-		httputil.WriteError(w, errors.ErrNotFound("upload session not found"))
+		errors.WriteHTTPError(w, errors.ErrNotFound("upload session not found"))
 		return
 	}
 	if owner != uid {
-		httputil.WriteError(w, errors.ErrPermissionDenied("forbidden"))
+		errors.WriteHTTPError(w, errors.ErrPermissionDenied("forbidden"))
 		return
 	}
 	var title, desc, tags, videos string
@@ -370,7 +370,7 @@ func (h *ManuscriptHTTPHandler) handleUploadComplete(w http.ResponseWriter, r *h
 	if err := h.db.QueryRowContext(r.Context(),
 		`SELECT title, description, category_id, tags, videos
 		 FROM upload_sessions WHERE id = $1`, uploadID).Scan(&title, &desc, &catID, &tags, &videos); err != nil {
-		httputil.WriteError(w, errors.ErrInternal("load upload session failed"))
+		errors.WriteHTTPError(w, errors.ErrInternal("load upload session failed"))
 		return
 	}
 
@@ -386,7 +386,7 @@ func (h *ManuscriptHTTPHandler) handleUploadComplete(w http.ResponseWriter, r *h
 		}
 	}
 	if playURL == "" {
-		httputil.WriteError(w, errors.ErrInvalidArgument("no playable video source"))
+		errors.WriteHTTPError(w, errors.ErrInvalidArgument("no playable video source"))
 		return
 	}
 
@@ -399,7 +399,7 @@ func (h *ManuscriptHTTPHandler) handleUploadComplete(w http.ResponseWriter, r *h
 		`INSERT INTO manuscripts (title, description, cover_url, user_id, category_id, status, review_status, upload_time, updated_at)
 		 VALUES ($1,$2,'',$3,$4,0,0,NOW(),NOW()) RETURNING id`,
 		title, desc, uid, categoryID).Scan(&msID); err != nil {
-		httputil.WriteError(w, errors.ErrInternal("create manuscript failed"))
+		errors.WriteHTTPError(w, errors.ErrInternal("create manuscript failed"))
 		return
 	}
 	var vid int64
@@ -407,7 +407,7 @@ func (h *ManuscriptHTTPHandler) handleUploadComplete(w http.ResponseWriter, r *h
 		`INSERT INTO videos (manuscript_id, video_order, title, play_url_hd, source_video_url, process_status, upload_time, updated_at)
 		 VALUES ($1,0,$2,$3,$3,0,NOW(),NOW()) RETURNING id`,
 		msID, title, playURL).Scan(&vid); err != nil {
-		httputil.WriteError(w, errors.ErrInternal("create video failed"))
+		errors.WriteHTTPError(w, errors.ErrInternal("create video failed"))
 		return
 	}
 	for _, t := range strings.Split(tags, ",") {
@@ -514,7 +514,7 @@ func (h *ManuscriptHTTPHandler) handleRecommended(w http.ResponseWriter, r *http
 	uid := httputil.GetUserIDFromHeader(r)
 	resp, err := h.manuscriptSvc.ListRecommended(r.Context(), &pb.ListRecommendedRequest{UserId: uid})
 	if err != nil {
-		httputil.WriteError(w, err)
+		errors.WriteHTTPError(w, err)
 		return
 	}
 	httputil.WriteOK(w, manuscriptListToJSON(resp.Manuscripts))
@@ -524,7 +524,7 @@ func (h *ManuscriptHTTPHandler) handleHot(w http.ResponseWriter, r *http.Request
 	uid := httputil.GetUserIDFromHeader(r)
 	resp, err := h.manuscriptSvc.ListHot(r.Context(), &pb.ListHotRequest{UserId: uid})
 	if err != nil {
-		httputil.WriteError(w, err)
+		errors.WriteHTTPError(w, err)
 		return
 	}
 	httputil.WriteOK(w, manuscriptListToJSON(resp.Manuscripts))
@@ -539,7 +539,7 @@ func (h *ManuscriptHTTPHandler) handleManuscriptDetail(w http.ResponseWriter, r 
 	uid := httputil.GetUserIDFromHeader(r)
 	resp, err := h.manuscriptSvc.GetManuscriptWithVideos(r.Context(), &pb.GetManuscriptWithVideosRequest{Id: id, CurrentUserId: uid})
 	if err != nil {
-		httputil.WriteError(w, err)
+		errors.WriteHTTPError(w, err)
 		return
 	}
 	httputil.WriteOK(w, manuscriptToMap(resp.Manuscript))
@@ -550,7 +550,7 @@ func (h *ManuscriptHTTPHandler) handleCategory(w http.ResponseWriter, r *http.Re
 	page, size := httputil.ParsePageParams(r)
 	resp, err := h.manuscriptSvc.ListByCategory(r.Context(), &pb.ListByCategoryRequest{CategoryId: id, Page: page, PageSize: size})
 	if err != nil {
-		httputil.WriteError(w, err)
+		errors.WriteHTTPError(w, err)
 		return
 	}
 	httputil.WriteOK(w, manuscriptListToJSON(resp.Manuscripts))
@@ -564,7 +564,7 @@ func (h *ManuscriptHTTPHandler) handleUserManuscripts(w http.ResponseWriter, r *
 		UserId: id, Status: int32(status), Page: page, PageSize: size,
 	})
 	if err != nil {
-		httputil.WriteError(w, err)
+		errors.WriteHTTPError(w, err)
 		return
 	}
 	httputil.WriteOK(w, manuscriptListToJSON(resp.Manuscripts))
@@ -576,7 +576,7 @@ func (h *ManuscriptHTTPHandler) handleUserSearch(w http.ResponseWriter, r *http.
 	sort := r.URL.Query().Get("sort")
 	resp, err := h.manuscriptSvc.SearchUserManuscripts(r.Context(), &pb.SearchUserManuscriptsRequest{UserId: id, Keyword: keyword, Sort: sort})
 	if err != nil {
-		httputil.WriteError(w, err)
+		errors.WriteHTTPError(w, err)
 		return
 	}
 	httputil.WriteOK(w, manuscriptListToJSON(resp.Manuscripts))
@@ -593,7 +593,7 @@ func (h *ManuscriptHTTPHandler) handleManuscriptList(w http.ResponseWriter, r *h
 		UserId: uid, Status: int32(status), Page: page, PageSize: size,
 	})
 	if err != nil {
-		httputil.WriteError(w, err)
+		errors.WriteHTTPError(w, err)
 		return
 	}
 	httputil.WriteOK(w, manuscriptListToJSON(resp.Manuscripts))
@@ -644,11 +644,11 @@ func (h *ManuscriptHTTPHandler) handleUpdateManuscript(w http.ResponseWriter, r 
 
 	var owner int64
 	if err := h.db.QueryRowContext(r.Context(), `SELECT user_id FROM manuscripts WHERE id = $1`, id).Scan(&owner); err != nil {
-		httputil.WriteError(w, errors.ErrNotFound("manuscript not found"))
+		errors.WriteHTTPError(w, errors.ErrNotFound("manuscript not found"))
 		return
 	}
 	if owner != uid {
-		httputil.WriteError(w, errors.ErrPermissionDenied("forbidden"))
+		errors.WriteHTTPError(w, errors.ErrPermissionDenied("forbidden"))
 		return
 	}
 	if req.Title != "" {
@@ -698,7 +698,7 @@ func (h *ManuscriptHTTPHandler) handleDeleteManuscript(w http.ResponseWriter, r 
 	}
 	_, err := h.manuscriptSvc.DeleteManuscript(r.Context(), &pb.DeleteManuscriptRequest{Id: id, UserId: uid})
 	if err != nil {
-		httputil.WriteError(w, err)
+		errors.WriteHTTPError(w, err)
 		return
 	}
 	httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
@@ -793,7 +793,7 @@ func (h *ManuscriptHTTPHandler) handleFavoriteFolders(w http.ResponseWriter, r *
 			 LEFT JOIN (SELECT folder_id, COUNT(*) AS cnt FROM favorite_folder_videos GROUP BY folder_id) fc ON fc.folder_id = f.id
 			 WHERE f.user_id = $1 ORDER BY f.created_at DESC`, uid)
 		if err != nil {
-			httputil.WriteError(w, errors.ErrInternal("database error"))
+			errors.WriteHTTPError(w, errors.ErrInternal("database error"))
 			return
 		}
 		defer rows.Close()
@@ -822,7 +822,7 @@ func (h *ManuscriptHTTPHandler) handleFavoriteFolders(w http.ResponseWriter, r *
 		err := h.db.QueryRowContext(r.Context(),
 			`INSERT INTO favorite_folders (user_id, name) VALUES ($1,$2) RETURNING id`, uid, req.Name).Scan(&id)
 		if err != nil {
-			httputil.WriteError(w, errors.ErrInternal("create folder failed"))
+			errors.WriteHTTPError(w, errors.ErrInternal("create folder failed"))
 			return
 		}
 		httputil.WriteOK(w, map[string]interface{}{"id": id, "name": req.Name})
@@ -850,7 +850,7 @@ func (h *ManuscriptHTTPHandler) handleFavoriteFolderByID(w http.ResponseWriter, 
 		_, err := h.db.ExecContext(r.Context(),
 			`UPDATE favorite_folders SET name = $1 WHERE id = $2 AND user_id = $3`, req.Name, id, uid)
 		if err != nil {
-			httputil.WriteError(w, errors.ErrInternal("update failed"))
+			errors.WriteHTTPError(w, errors.ErrInternal("update failed"))
 			return
 		}
 		httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
@@ -859,7 +859,7 @@ func (h *ManuscriptHTTPHandler) handleFavoriteFolderByID(w http.ResponseWriter, 
 		_, err := h.db.ExecContext(r.Context(),
 			`DELETE FROM favorite_folders WHERE id = $1 AND user_id = $2`, id, uid)
 		if err != nil {
-			httputil.WriteError(w, errors.ErrInternal("delete failed"))
+			errors.WriteHTTPError(w, errors.ErrInternal("delete failed"))
 			return
 		}
 		httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
@@ -899,11 +899,11 @@ func (h *ManuscriptHTTPHandler) handleUploadChunk(w http.ResponseWriter, r *http
 	}
 	var owner int64
 	if err := h.db.QueryRowContext(r.Context(), `SELECT user_id FROM upload_sessions WHERE id = $1`, uploadID).Scan(&owner); err != nil {
-		httputil.WriteError(w, errors.ErrNotFound("upload session not found"))
+		errors.WriteHTTPError(w, errors.ErrNotFound("upload session not found"))
 		return
 	}
 	if owner != uid {
-		httputil.WriteError(w, errors.ErrPermissionDenied("forbidden"))
+		errors.WriteHTTPError(w, errors.ErrPermissionDenied("forbidden"))
 		return
 	}
 	partIndex := r.FormValue("partIndex")
@@ -923,17 +923,17 @@ func (h *ManuscriptHTTPHandler) handleUploadChunk(w http.ResponseWriter, r *http
 
 	dir := filepath.Join(uploadWorkDir(), uploadID, partIndex)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		httputil.WriteError(w, errors.ErrInternal("create upload dir failed"))
+		errors.WriteHTTPError(w, errors.ErrInternal("create upload dir failed"))
 		return
 	}
 	dst, err := os.Create(filepath.Join(dir, chunkIndex))
 	if err != nil {
-		httputil.WriteError(w, errors.ErrInternal("create chunk file failed"))
+		errors.WriteHTTPError(w, errors.ErrInternal("create chunk file failed"))
 		return
 	}
 	defer dst.Close()
 	if _, err := io.Copy(dst, file); err != nil {
-		httputil.WriteError(w, errors.ErrInternal("save chunk failed"))
+		errors.WriteHTTPError(w, errors.ErrInternal("save chunk failed"))
 		return
 	}
 	_, _ = h.db.ExecContext(r.Context(),
@@ -962,11 +962,11 @@ func (h *ManuscriptHTTPHandler) handleUploadCompleteWeb(w http.ResponseWriter, r
 	}
 	var owner int64
 	if err := h.db.QueryRowContext(r.Context(), `SELECT user_id FROM upload_sessions WHERE id = $1`, uploadID).Scan(&owner); err != nil {
-		httputil.WriteError(w, errors.ErrNotFound("upload session not found"))
+		errors.WriteHTTPError(w, errors.ErrNotFound("upload session not found"))
 		return
 	}
 	if owner != uid {
-		httputil.WriteError(w, errors.ErrPermissionDenied("forbidden"))
+		errors.WriteHTTPError(w, errors.ErrPermissionDenied("forbidden"))
 		return
 	}
 
@@ -975,7 +975,7 @@ func (h *ManuscriptHTTPHandler) handleUploadCompleteWeb(w http.ResponseWriter, r
 	if err := h.db.QueryRowContext(r.Context(),
 		`SELECT title, description, category_id, tags, videos FROM upload_sessions WHERE id = $1`,
 		uploadID).Scan(&title, &desc, &catID, &tags, &videos); err != nil {
-		httputil.WriteError(w, errors.ErrInternal("load upload session failed"))
+		errors.WriteHTTPError(w, errors.ErrInternal("load upload session failed"))
 		return
 	}
 
@@ -1019,7 +1019,7 @@ func (h *ManuscriptHTTPHandler) handleUploadCompleteWeb(w http.ResponseWriter, r
 	}
 	sort.Ints(parts)
 	if len(parts) == 0 {
-		httputil.WriteError(w, errors.ErrInvalidArgument("no uploaded video parts"))
+		errors.WriteHTTPError(w, errors.ErrInvalidArgument("no uploaded video parts"))
 		return
 	}
 
@@ -1032,7 +1032,7 @@ func (h *ManuscriptHTTPHandler) handleUploadCompleteWeb(w http.ResponseWriter, r
 		`INSERT INTO manuscripts (title, description, cover_url, user_id, category_id, status, review_status, upload_time, updated_at)
 		 VALUES ($1,$2,$3,$4,$5,0,0,NOW(),NOW()) RETURNING id`,
 		title, desc, coverURL, uid, categoryID).Scan(&msID); err != nil {
-		httputil.WriteError(w, errors.ErrInternal("create manuscript failed"))
+		errors.WriteHTTPError(w, errors.ErrInternal("create manuscript failed"))
 		return
 	}
 
@@ -1110,12 +1110,12 @@ func (h *ManuscriptHTTPHandler) handleInteractionStatus(w http.ResponseWriter, r
 	uid := httputil.GetUserIDFromHeader(r)
 	statusResp, err := h.interactionSvc.GetInteractionStatus(r.Context(), &pb.GetInteractionStatusRequest{ManuscriptId: id, UserId: uid})
 	if err != nil {
-		httputil.WriteError(w, err)
+		errors.WriteHTTPError(w, err)
 		return
 	}
 	infoResp, err := h.manuscriptSvc.GetManuscript(r.Context(), &pb.GetManuscriptRequest{Id: id})
 	if err != nil {
-		httputil.WriteError(w, err)
+		errors.WriteHTTPError(w, err)
 		return
 	}
 	coined := false
@@ -1143,13 +1143,13 @@ func (h *ManuscriptHTTPHandler) handleLike(w http.ResponseWriter, r *http.Reques
 	case http.MethodPost:
 		_, err := h.interactionSvc.LikeManuscript(r.Context(), &pb.LikeManuscriptRequest{ManuscriptId: id, UserId: uid})
 		if err != nil {
-			httputil.WriteError(w, err)
+			errors.WriteHTTPError(w, err)
 			return
 		}
 	case http.MethodDelete:
 		_, err := h.interactionSvc.UnlikeManuscript(r.Context(), &pb.UnlikeManuscriptRequest{ManuscriptId: id, UserId: uid})
 		if err != nil {
-			httputil.WriteError(w, err)
+			errors.WriteHTTPError(w, err)
 			return
 		}
 	default:
@@ -1186,7 +1186,7 @@ func (h *ManuscriptHTTPHandler) handleCoin(w http.ResponseWriter, r *http.Reques
 	}
 	_, err := h.interactionSvc.CoinManuscript(r.Context(), &pb.CoinManuscriptRequest{ManuscriptId: id, UserId: uid, CoinCount: count})
 	if err != nil {
-		httputil.WriteError(w, err)
+		errors.WriteHTTPError(w, err)
 		return
 	}
 	httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
@@ -1206,13 +1206,13 @@ func (h *ManuscriptHTTPHandler) handleCollect(w http.ResponseWriter, r *http.Req
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		_, err := h.interactionSvc.CollectManuscript(r.Context(), &pb.CollectManuscriptRequest{ManuscriptId: id, UserId: uid, FolderId: body.FolderId})
 		if err != nil {
-			httputil.WriteError(w, err)
+			errors.WriteHTTPError(w, err)
 			return
 		}
 	case http.MethodDelete:
 		_, err := h.interactionSvc.UncollectManuscript(r.Context(), &pb.UncollectManuscriptRequest{ManuscriptId: id, UserId: uid})
 		if err != nil {
-			httputil.WriteError(w, err)
+			errors.WriteHTTPError(w, err)
 			return
 		}
 	default:
@@ -1238,7 +1238,7 @@ func (h *ManuscriptHTTPHandler) handleShare(w http.ResponseWriter, r *http.Reque
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	_, err := h.interactionSvc.ShareManuscript(r.Context(), &pb.ShareManuscriptRequest{ManuscriptId: id, UserId: uid, Channel: body.Channel})
 	if err != nil {
-		httputil.WriteError(w, err)
+		errors.WriteHTTPError(w, err)
 		return
 	}
 	httputil.WriteOK(w, map[string]interface{}{"status": "ok"})

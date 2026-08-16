@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"mybilibili/core-service/internal/httputil"
+	"mybilibili/pkg/httputil"
 	"mybilibili/pkg/errors"
 	pb "mybilibili/pkg/pb"
 )
@@ -128,7 +128,7 @@ func (h *UserExtendHandler) handleRefresh(w http.ResponseWriter, r *http.Request
 	json.NewDecoder(r.Body).Decode(&req)
 	userID, err := h.svc.jwt.Parse(req.RefreshToken)
 	if err != nil {
-		httputil.WriteError(w, errors.ErrUnauthenticated("invalid or expired refresh token"))
+		errors.WriteHTTPError(w, errors.ErrUnauthenticated("invalid or expired refresh token"))
 		return
 	}
 	newToken, _ := h.svc.jwt.Generate(userID)
@@ -486,7 +486,7 @@ func (h *UserExtendHandler) handleMe(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		user, err := h.svc.repo.FindByID(r.Context(), uid)
 		if err != nil {
-			httputil.WriteError(w, errors.ErrNotFound("user not found"))
+			errors.WriteHTTPError(w, errors.ErrNotFound("user not found"))
 			return
 		}
 		var followerCount, followingCount, likeCount, manuscriptCount int64
@@ -558,7 +558,7 @@ func (h *UserExtendHandler) handleMeAvatar(w http.ResponseWriter, r *http.Reques
 	_, err := h.svc.repo.db.ExecContext(r.Context(),
 		`UPDATE users SET avatar = $1, updated_at = NOW() WHERE id = $2`, body.Avatar, uid)
 	if err != nil {
-		httputil.WriteError(w, errors.ErrInternal("update avatar failed"))
+		errors.WriteHTTPError(w, errors.ErrInternal("update avatar failed"))
 		return
 	}
 	httputil.WriteOK(w, map[string]interface{}{"status": "ok"})

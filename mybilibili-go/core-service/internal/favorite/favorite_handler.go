@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"mybilibili/core-service/internal/httputil"
+	"mybilibili/pkg/httputil"
 )
 
 // FavoriteHandler 收藏夹/收藏管理 HTTP 接口

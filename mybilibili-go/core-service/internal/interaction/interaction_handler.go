@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"mybilibili/core-service/internal/httputil"
+	"mybilibili/pkg/httputil"
 	"mybilibili/pkg/errors"
 )
 
@@ -69,13 +69,13 @@ func (h *GenericInteractionHandler) handleLike(w http.ResponseWriter, r *http.Re
 	switch r.Method {
 	case http.MethodPost:
 		if err := h.repo.AddInteraction(r.Context(), uid, req.TargetType, "like", req.TargetID); err != nil {
-			httputil.WriteError(w, errors.ErrInternal("failed to like"))
+			errors.WriteHTTPError(w, errors.ErrInternal("failed to like"))
 			return
 		}
 		httputil.WriteOK(w, map[string]interface{}{"status": "liked"})
 	case http.MethodDelete:
 		if err := h.repo.RemoveInteraction(r.Context(), uid, req.TargetType, "like", req.TargetID); err != nil {
-			httputil.WriteError(w, errors.ErrInternal("failed to unlike"))
+			errors.WriteHTTPError(w, errors.ErrInternal("failed to unlike"))
 			return
 		}
 		httputil.WriteOK(w, map[string]interface{}{"status": "unliked"})
