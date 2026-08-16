@@ -5,18 +5,20 @@ import (
 	"database/sql"
 	"time"
 
-	"mybilibili/core-service/internal/message"
 	"mybilibili/pkg/abstraction"
 	"mybilibili/pkg/errors"
 	pb "mybilibili/pkg/pb"
 )
 
-type MessageRepository = message.MessageRepository
+type Notifier interface {
+	SendMessage(ctx context.Context, senderID, receiverID int64, content string, msgType int32)
+}
 
 type CommentService struct {
 	repo        *CommentRepository
 	limiter     *commentRateLimiter
-	messageRepo *MessageRepository
+	db          *sql.DB
+	notifier    Notifier
 	reviewSvc   interface {
 		ReviewComment(ctx context.Context, content string) (bool, error)
 	}
@@ -34,12 +36,16 @@ func (s *CommentService) Repo() *CommentRepository {
 	return s.repo
 }
 
+func (s *CommentService) SetDB(db *sql.DB) {
+	s.db = db
+}
+
 func (s *CommentService) SetCacheStore(cs abstraction.CacheStore) {
 	s.cacheStore = cs
 }
 
-func (s *CommentService) SetMessageRepo(mr *MessageRepository) {
-	s.messageRepo = mr
+func (s *CommentService) SetNotifier(n Notifier) {
+	s.notifier = n
 }
 
 func (s *CommentService) SetReviewService(rs interface {
@@ -55,9 +61,9 @@ func (s *CommentService) AddComment(ctx context.Context, req *pb.AddCommentReque
 	if s.limiter.record(req.UserId, time.Now()) {
 		return nil, errors.ErrResourceExhausted("too many comments, please slow down")
 	}
-	if s.messageRepo != nil {
+	if s.db != nil {
 		var cnt int
-		s.messageRepo.DB().QueryRowContext(ctx,
+		s.db.QueryRowContext(ctx,
 			`SELECT COUNT(*) FROM prohibited_words WHERE $1 ILIKE '%' || word || '%'`, req.Content).Scan(&cnt)
 		if cnt > 0 {
 			c := &Comment{
@@ -248,7 +254,7 @@ func (s *CommentService) buildReply(ctx context.Context, rep *Reply, currentUser
 }
 
 func (s *CommentService) sendCommentLikeNotification(ctx context.Context, targetType string, targetID, senderID int64) {
-	if s.messageRepo == nil {
+	if s.db == nil || s.notifier == nil {
 		return
 	}
 	var ownerID int64
@@ -256,23 +262,23 @@ func (s *CommentService) sendCommentLikeNotification(ctx context.Context, target
 	if targetType == "reply" {
 		table = "replies"
 	}
-	_ = s.messageRepo.DB().QueryRowContext(ctx,
+	_ = s.db.QueryRowContext(ctx,
 		`SELECT user_id FROM `+table+` WHERE id = $1`, targetID).Scan(&ownerID)
 	if ownerID == 0 || ownerID == senderID {
 		return
 	}
-	_, _ = s.messageRepo.SendMessage(ctx, senderID, ownerID, "liked your comment", 6)
+	s.notifier.SendMessage(ctx, senderID, ownerID, "liked your comment", 6)
 }
 
 func (s *CommentService) sendReplyNotification(ctx context.Context, commentID, senderID int64) {
-	if s.messageRepo == nil {
+	if s.db == nil || s.notifier == nil {
 		return
 	}
 	var ownerID int64
-	_ = s.messageRepo.DB().QueryRowContext(ctx,
+	_ = s.db.QueryRowContext(ctx,
 		`SELECT user_id FROM comments WHERE id = $1`, commentID).Scan(&ownerID)
 	if ownerID == 0 || ownerID == senderID {
 		return
 	}
-	_, _ = s.messageRepo.SendMessage(ctx, senderID, ownerID, "replied to your comment", 2)
+	s.notifier.SendMessage(ctx, senderID, ownerID, "replied to your comment", 2)
 }

@@ -18,14 +18,12 @@ import (
 	"mybilibili/core-service/internal/clients"
 	"mybilibili/core-service/internal/comment"
 	"mybilibili/core-service/internal/coreapi"
-	"mybilibili/core-service/internal/danmaku"
 	"mybilibili/core-service/internal/events"
 	"mybilibili/core-service/internal/favorite"
 	"mybilibili/core-service/internal/interaction"
 	"mybilibili/core-service/internal/manuscript"
 	"mybilibili/core-service/internal/live"
 	"mybilibili/core-service/internal/meeting"
-	"mybilibili/core-service/internal/message"
 	"mybilibili/core-service/internal/moderation"
 	"mybilibili/core-service/internal/profile"
 	"mybilibili/core-service/internal/studio"
@@ -91,14 +89,21 @@ func main() {
 	interactionSvc := interaction.NewInteractionService(interactionRepo)
 	interactionH := interactionSvc
 
-	danmakuRepo := danmaku.NewDanmakuRepository(db)
-	danmakuBroadcaster := danmaku.NewDanmakuBroadcaster()
-	danmakuSvc := danmaku.NewDanmakuService(danmakuRepo, danmakuBroadcaster)
+	msgDanmakuClient, err := clients.NewMsgDanmakuClient()
+	if err != nil {
+		log.Printf("msg-danmaku gRPC client unavailable: %v", err)
+		msgDanmakuClient = nil
+	}
+	defer func() {
+		if msgDanmakuClient != nil {
+			msgDanmakuClient.Close()
+		}
+	}()
 
-	messageRepo := message.NewMessageRepository(db)
-	notifBroadcaster := message.NewNotificationBroadcaster()
-	commentSvc.SetMessageRepo(messageRepo)
-	interactionSvc.SetMessageRepo(messageRepo)
+	commentSvc.SetDB(db)
+	commentSvc.SetNotifier(msgDanmakuClient)
+	interactionSvc.SetDB(db)
+	interactionSvc.SetNotifier(msgDanmakuClient)
 
 	liveRepo := live.NewRepository(db)
 	liveHub := live.NewHub()
@@ -165,7 +170,6 @@ func main() {
 
 	userExtH := user.NewUserExtendHandler(userSvc)
 	manuscriptHTTPH := manuscript.NewManuscriptHTTPHandler(db, manuscriptSvc, commentSvc, interactionSvc)
-	messageH := message.NewMessageHTTPHandler(messageRepo, notifBroadcaster)
 	creatorCommentH := comment.NewCreatorCommentHTTPHandler(commentRepo, commentSvc)
 	favoriteH := favorite.NewFavoriteHandler(db)
 	genericInteractionH := interaction.NewGenericInteractionHandler(interactionRepo)
@@ -237,10 +241,9 @@ func main() {
 
 	publicAPIH := coreapi.NewPublicAPIHandler(commentSvc)
 
-	httpH := coreapi.NewHTTPHandler(danmakuSvc, messageRepo, notifBroadcaster)
-	coreapi.StartHTTPServer(httpAddr, httpH, user.NewJWT(jwtSecret),
+	coreapi.StartHTTPServer(httpAddr, user.NewJWT(jwtSecret),
 		liveH, linkmicH, followH, socialH, videoH, adminH, adminDataH, adminManuscriptH, modH,
-		meetingH, supportH, userExtH, messageH, favoriteH,
+		meetingH, supportH, userExtH, favoriteH,
 		subtitleH, analyticsH, studioH, profileH, creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH)
 
 	lis, err := net.Listen("tcp", grpcAddr)
