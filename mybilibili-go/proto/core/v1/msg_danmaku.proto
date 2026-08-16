@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package core.v1;
+
+option go_package = "mybilibili/pkg/pb";
+
+service MsgDanmakuService {
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+}
+
+message SendMessageRequest {
+  int64 sender_id = 1;
+  int64 receiver_id = 2;
+  string content = 3;
+  int32 message_type = 4;
+}
+
+message SendMessageResponse {
+  int64 message_id = 1;
+}
