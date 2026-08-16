@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -64,6 +66,23 @@ func (h *HTTPHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 type LiveHandler interface {
 	Register(mux *http.ServeMux)
+}
+
+func NewLiveProxy() *LiveProxy {
+	target := os.Getenv("LIVE_SERVICE_ADDR")
+	if target == "" {
+		target = "http://127.0.0.1:8087"
+	}
+	u, _ := url.Parse(target)
+	return &LiveProxy{proxy: httputil.NewSingleHostReverseProxy(u)}
+}
+
+type LiveProxy struct {
+	proxy *httputil.ReverseProxy
+}
+
+func (p *LiveProxy) Register(mux *http.ServeMux) {
+	mux.HandleFunc("/api/v1/live/", p.proxy.ServeHTTP)
 }
 
 func StartHTTPServer(addr string, jwt *JWT, extras ...LiveHandler) {

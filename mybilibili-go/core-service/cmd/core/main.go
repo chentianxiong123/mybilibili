@@ -22,7 +22,6 @@ import (
 	"mybilibili/core-service/internal/favorite"
 	"mybilibili/core-service/internal/interaction"
 	"mybilibili/core-service/internal/manuscript"
-	"mybilibili/core-service/internal/live"
 	"mybilibili/core-service/internal/moderation"
 	"mybilibili/core-service/internal/profile"
 	"mybilibili/core-service/internal/studio"
@@ -104,14 +103,7 @@ func main() {
 	interactionSvc.SetDB(db)
 	interactionSvc.SetNotifier(msgDanmakuClient)
 
-	liveRepo := live.NewRepository(db)
-	liveHub := live.NewHub()
-	liveSvc := live.NewService(liveRepo, liveHub)
-	liveH := live.NewHTTPHandler(liveSvc, liveHub)
-
-	linkmicRepo := live.NewLinkmicRepository(db)
-	linkmicSvc := live.NewLinkmicService(linkmicRepo, liveHub, liveRepo)
-	linkmicH := live.NewLinkmicHandler(linkmicSvc)
+	liveProxy := coreapi.NewLiveProxy()
 
 	followRepo := social.NewFollowRepository(db)
 	followSvc := social.NewFollowService(followRepo)
@@ -237,7 +229,7 @@ func main() {
 	publicAPIH := coreapi.NewPublicAPIHandler(commentSvc)
 
 	coreapi.StartHTTPServer(httpAddr, user.NewJWT(jwtSecret),
-		liveH, linkmicH, followH, socialH, videoH, adminH, adminDataH, adminManuscriptH, modH,
+		liveProxy, followH, socialH, videoH, adminH, adminDataH, adminManuscriptH, modH,
 		supportH, userExtH, favoriteH,
 		subtitleH, analyticsH, studioH, profileH, creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH)
 
