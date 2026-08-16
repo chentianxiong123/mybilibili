@@ -13,11 +13,14 @@ import (
 	"time"
 
 	"mybilibili/core-service/internal/user"
+	"mybilibili/pkg/auth"
 )
 
-type JWT = user.JWT
+type JWT = auth.JWT
 
-type HTTPHandler struct{}
+type HTTPHandler struct {
+	jwt *auth.JWT
+}
 
 func NewHTTPHandler() *HTTPHandler {
 	return &HTTPHandler{}
@@ -26,6 +29,42 @@ func NewHTTPHandler() *HTTPHandler {
 func (h *HTTPHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/video/process/sse/", h.handleVideoProcessSSE)
 	mux.HandleFunc("/api/v1/health", h.handleHealth)
+}
+
+// SetJWT 注入验签用的 JWT 工具（验证端点 handleAuthVerify 使用）。
+func (h *HTTPHandler) SetJWT(j *auth.JWT) {
+	h.jwt = j
+}
+
+// handleAuthVerify 供 Traefik forwardAuth 全权验签调用。
+// 读 Authorization: Bearer <token>，验签后通过响应头向 Traefik 返回身份，
+// Traefik 将 X-User-Id / X-User-Role / X-Admin-Id 注入转发的请求头（下游全信）。
+func (h *HTTPHandler) handleAuthVerify(w http.ResponseWriter, r *http.Request) {
+	j := h.jwt
+	if j == nil {
+		http.Error(w, "auth not configured", http.StatusInternalServerError)
+		return
+	}
+	tokenStr, ok := auth.BearerToken(r.Header.Get("Authorization"))
+	if !ok {
+		http.Error(w, "missing token", http.StatusUnauthorized)
+		return
+	}
+	claims, err := j.Parse(tokenStr)
+	if err != nil || claims == nil {
+		http.Error(w, "invalid token", http.StatusUnauthorized)
+		return
+	}
+	w.Header().Set("X-User-Id", strconv.FormatInt(claims.UserId, 10))
+	if claims.Role == "" {
+		claims.Role = auth.RoleUser
+	}
+	w.Header().Set("X-User-Role", claims.Role)
+	if claims.IsAdmin {
+		w.Header().Set("X-Admin-Id", strconv.FormatInt(claims.UserId, 10))
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"ok":true}`))
 }
 
 func (h *HTTPHandler) handleVideoProcessSSE(w http.ResponseWriter, r *http.Request) {
@@ -88,6 +127,8 @@ func (p *LiveProxy) Register(mux *http.ServeMux) {
 func StartHTTPServer(addr string, jwt *JWT, extras ...LiveHandler) {
 	mux := http.NewServeMux()
 	h := NewHTTPHandler()
+	h.SetJWT(jwt)
+	mux.HandleFunc("/api/v1/auth/verify", h.handleAuthVerify)
 	h.Register(mux)
 	for _, e := range extras {
 		e.Register(mux)

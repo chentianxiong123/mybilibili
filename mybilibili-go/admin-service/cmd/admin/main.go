@@ -10,6 +10,7 @@ import (
 	_ "github.com/lib/pq"
 
 	"mybilibili/admin-service/internal/admin"
+	"mybilibili/pkg/auth"
 )
 
 func main() {
@@ -38,9 +39,15 @@ func main() {
 	}
 	log.Println("admin service connected to database")
 
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "dev-secret-change-in-production"
+	}
+
 	adminRepo := admin.NewRepository(db)
 	adminSvc := admin.NewService(adminRepo)
-	adminH := admin.NewHandler(adminSvc)
+	jwt := auth.NewJWT(jwtSecret)
+	adminH := admin.NewHandler(adminSvc, jwt)
 	adminDataH := admin.NewAdminDataHandler(db)
 	adminManuscriptH := admin.NewManuscriptAdminHandler(db)
 
