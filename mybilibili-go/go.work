@@ -3,6 +3,7 @@ go 1.26.5
 use (
 	./ai-service
 	./core-service
+	./live-service
 	./media-service
 	./msg-danmaku-service
 	./pkg
