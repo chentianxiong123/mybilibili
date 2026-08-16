@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package core.v1;
+
+option go_package = "mybilibili/pkg/pb";
+
+service AiService {
+  rpc ReviewContent(ReviewContentRequest) returns (ReviewContentResponse);
+  rpc GetSummary(GetSummaryRequest) returns (GetSummaryResponse);
+}
+
+message ReviewContentRequest {
+  string content = 1;
+  string scene = 2;
+}
+
+message ReviewContentResponse {
+  bool passed = 1;
+  string reason = 2;
+  int32 score = 3;
+}
+
+message GetSummaryRequest {
+  int64 video_id = 1;
+  int64 manuscript_id = 2;
+}
+
+message GetSummaryResponse {
+  string summary = 1;
+  bool has_summary = 2;
+}
