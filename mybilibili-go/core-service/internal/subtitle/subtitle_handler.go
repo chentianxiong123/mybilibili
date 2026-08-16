@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"mybilibili/core-service/internal/httputil"
 )
 
 type Handler struct {
@@ -60,7 +62,7 @@ func (h *Handler) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	var req struct {
 		VideoID      int64  `json:"video_id"`
 		Language     string `json:"language"`
@@ -104,7 +106,7 @@ func (h *Handler) handleUploadSRT(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		http.Error(w, "parse form: "+err.Error(), 400)
 		return
@@ -177,7 +179,7 @@ func (h *Handler) handleImport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid srt content", 400)
 		return
 	}
-	sub, err := h.svc.Upload(r.Context(), req.VideoID, getUserID(r), "zh-CN", "中文", req.Srt)
+	sub, err := h.svc.Upload(r.Context(), req.VideoID, httputil.GetUserIDFromHeader(r), "zh-CN", "中文", req.Srt)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -275,11 +277,4 @@ func (h *Handler) handleSubtitleByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getUserID(r *http.Request) int64 {
-	idStr := r.Header.Get("X-User-Id")
-	if idStr == "" {
-		return 0
-	}
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-	return id
-}
+

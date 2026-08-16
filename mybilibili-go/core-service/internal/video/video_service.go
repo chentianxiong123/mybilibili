@@ -2,6 +2,8 @@ package video
 
 import (
 	"context"
+
+	"mybilibili/pkg/models"
 )
 
 type Service struct {
@@ -20,7 +22,7 @@ func (s *Service) ListByManuscript(ctx context.Context, manuscriptID int64) ([]*
 	return s.repo.ListByManuscript(ctx, manuscriptID)
 }
 
-func (s *Service) ListCategories(ctx context.Context) ([]*Category, error) {
+func (s *Service) ListCategories(ctx context.Context) ([]*models.Category, error) {
 	return s.repo.ListCategories(ctx)
 }
 

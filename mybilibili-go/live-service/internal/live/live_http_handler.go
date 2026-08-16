@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"mybilibili/pkg/httputil"
 )
 
 type HTTPHandler struct {
@@ -33,7 +35,7 @@ func (h *HTTPHandler) handleRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 	if userID == 0 {
 		http.Error(w, "unauthorized", 401)
 		return
@@ -76,7 +78,7 @@ func (h *HTTPHandler) handleRoomByID(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "method not allowed", 405)
 			return
 		}
-		userID := getUserID(r)
+		userID := httputil.GetUserIDFromHeader(r)
 		if userID == 0 {
 			http.Error(w, "unauthorized", 401)
 			return
@@ -97,7 +99,7 @@ func (h *HTTPHandler) handleRoomByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := getUserID(r)
+	userID := httputil.GetUserIDFromHeader(r)
 
 	if len(parts) >= 2 {
 		switch parts[1] {
@@ -221,15 +223,6 @@ func (h *HTTPHandler) handleSRSCallback(w http.ResponseWriter, r *http.Request) 
 
 func (h *HTTPHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"live ok"}`))
-}
-
-func getUserID(r *http.Request) int64 {
-	idStr := r.Header.Get("X-User-Id")
-	if idStr == "" {
-		return 0
-	}
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-	return id
 }
 
 var _ = log.Print

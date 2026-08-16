@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"mybilibili/core-service/internal/httputil"
 )
 
 type Handler struct {
@@ -67,7 +69,7 @@ func (h *Handler) handleOperationTasks(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	page, size := parsePage(r)
+	page, size := httputil.ParsePageParams(r)
 	rows, err := h.svc.repo.db.QueryContext(r.Context(),
 		`SELECT id, task_key, task_type, task_name, target_type, COALESCE(target_id,0),
 		        status, COALESCE(progress,0), COALESCE(error_message,''), created_at, updated_at
@@ -317,7 +319,7 @@ func (h *Handler) handlePermissions(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
-	page, size := parsePage(r)
+	page, size := httputil.ParsePageParams(r)
 	list, _ := h.svc.ListAuditLogs(r.Context(), page, size)
 	json.NewEncoder(w).Encode(list)
 }
@@ -342,14 +344,14 @@ func (h *Handler) handleUserLoginLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userID, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/admin/login-logs/user/"), 10, 64)
-	page, size := parsePage(r)
+	page, size := httputil.ParsePageParams(r)
 	list, _ := h.svc.ListLoginLogs(r.Context(), userID, page, size)
 	json.NewEncoder(w).Encode(map[string]interface{}{"list": list, "page": page, "size": size})
 }
 
 func (h *Handler) handleLoginLogs(w http.ResponseWriter, r *http.Request) {
 	userID, _ := strconv.ParseInt(r.URL.Query().Get("user_id"), 10, 64)
-	page, size := parsePage(r)
+	page, size := httputil.ParsePageParams(r)
 	list, _ := h.svc.ListLoginLogs(r.Context(), userID, page, size)
 	json.NewEncoder(w).Encode(list)
 }
@@ -483,7 +485,7 @@ func (h *Handler) handleUserAdminRoute(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleUserAdminList(w http.ResponseWriter, r *http.Request) {
-	page, size := parsePage(r)
+	page, size := httputil.ParsePageParams(r)
 	offset := (page - 1) * size
 	rows, err := h.svc.repo.db.QueryContext(r.Context(),
 		`SELECT id, username, nickname, email, avatar, level, status, created_at
@@ -610,23 +612,7 @@ func sha256hex(s string) string {
 	return fmt.Sprintf("%x", h)
 }
 
-func parsePage(r *http.Request) (int32, int32) {
-	page, _ := strconv.ParseInt(r.URL.Query().Get("page"), 10, 32)
-	size, _ := strconv.ParseInt(r.URL.Query().Get("page_size"), 10, 32)
-	if size < 1 {
-		size, _ = strconv.ParseInt(r.URL.Query().Get("pageSize"), 10, 32)
-	}
-	if size < 1 {
-		size, _ = strconv.ParseInt(r.URL.Query().Get("size"), 10, 32)
-	}
-	if page < 1 {
-		page = 1
-	}
-	if size < 1 || size > 100 {
-		size = 20
-	}
-	return int32(page), int32(size)
-}
+
 
 func getAdminID(r *http.Request) int64 {
 	idStr := r.Header.Get("X-Admin-Id")

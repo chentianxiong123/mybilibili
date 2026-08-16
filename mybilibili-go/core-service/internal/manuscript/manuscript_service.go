@@ -10,6 +10,7 @@ import (
 	"mybilibili/core-service/internal/user"
 	"mybilibili/pkg/abstraction"
 	"mybilibili/pkg/errors"
+	"mybilibili/pkg/repository"
 	pb "mybilibili/pkg/pb"
 )
 
@@ -53,12 +54,12 @@ func (s *ManuscriptService) GetManuscriptWithVideos(ctx context.Context, req *pb
 		exists, _ := s.cacheStore.Exists(ctx, dedupKey)
 		if !exists {
 			s.repo.IncrementViewCount(ctx, req.Id)
-			s.repo.UpsertDailyMetric(ctx, req.Id, m.UserID, "view_count", 1)
+			repository.UpsertDailyMetric(ctx, s.repo.DB(), req.Id, m.UserID, "view_count", 1)
 			s.cacheStore.Set(ctx, dedupKey, []byte("1"), 30*time.Minute)
 		}
 	} else {
 		s.repo.IncrementViewCount(ctx, req.Id)
-		s.repo.UpsertDailyMetric(ctx, req.Id, m.UserID, "view_count", 1)
+		repository.UpsertDailyMetric(ctx, s.repo.DB(), req.Id, m.UserID, "view_count", 1)
 	}
 	return &pb.GetManuscriptResponse{Manuscript: s.buildManuscriptInfo(ctx, m, req.CurrentUserId, true)}, nil
 }

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/lib/pq"
-	"mybilibili/msg-danmaku-service/internal/httputil"
+	"mybilibili/pkg/httputil"
 )
 
 type MessageHTTPHandler struct {

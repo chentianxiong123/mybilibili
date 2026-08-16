@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"mybilibili/core-service/internal/user"
+	"mybilibili/pkg/repository"
 	pb "mybilibili/pkg/pb"
 )
 
@@ -52,17 +53,6 @@ func (r *CommentRepository) CreateComment(ctx context.Context, c *Comment) (int6
 		`INSERT INTO comments (manuscript_id, user_id, content) VALUES ($1, $2, $3) RETURNING id`,
 		c.ManuscriptID, c.UserID, c.Content).Scan(&id)
 	return id, err
-}
-
-// UpsertDailyMetric 当日评论/弹幕指标累加（对齐旧版 analytics 每日聚合）。
-func (r *CommentRepository) UpsertDailyMetric(ctx context.Context, manuscriptID, userID int64, field string, delta int) error {
-	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO manuscript_daily_metrics (metric_date, manuscript_id, user_id, `+field+`)
-		 VALUES (CURRENT_DATE, $1, $2, $3)
-		 ON CONFLICT (metric_date, manuscript_id)
-		 DO UPDATE SET `+field+` = manuscript_daily_metrics.`+field+` + $3, updated_at = NOW()`,
-		manuscriptID, userID, delta)
-	return err
 }
 
 func (r *CommentRepository) FindByID(ctx context.Context, id int64) (*Comment, error) {
@@ -120,7 +110,7 @@ func (r *CommentRepository) CreateReply(ctx context.Context, rep *Reply) (int64,
 	var id int64
 	err := r.db.QueryRowContext(ctx,
 		`INSERT INTO replies (comment_id, user_id, reply_to_user_id, content) VALUES ($1, $2, $3, $4) RETURNING id`,
-		rep.CommentID, rep.UserID, nullInt64(rep.ReplyToUserID), rep.Content).Scan(&id)
+		rep.CommentID, rep.UserID, repository.NullInt64FromSQL(rep.ReplyToUserID), rep.Content).Scan(&id)
 	return id, err
 }
 
@@ -329,13 +319,6 @@ func replyToPB(rep *Reply, userName, userAvatar string, userLevel int32, replyTo
 		ReplyToUserName: replyToUserName,
 		Liked:           liked,
 	}
-}
-
-func nullInt64(n sql.NullInt64) *int64 {
-	if n.Valid {
-		return &n.Int64
-	}
-	return nil
 }
 
 func (r *CommentRepository) ListCommentsByCreator(ctx context.Context, userID, manuscriptID int64, page, pageSize int32, sort, commentType string) ([]*Comment, error) {

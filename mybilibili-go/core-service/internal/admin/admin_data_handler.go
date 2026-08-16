@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"mybilibili/core-service/internal/httputil"
 )
 
 type AdminDataHandler struct {
@@ -109,7 +111,7 @@ func (h *AdminDataHandler) handleManuscriptAdmin(w http.ResponseWriter, r *http.
 
 func (h *AdminDataHandler) listManuscripts(w http.ResponseWriter, r *http.Request, where string) {
 	keyword := r.URL.Query().Get("keyword")
-	page, size := parsePage(r)
+	page, size := httputil.ParsePageParams(r)
 	query := `SELECT m.id, m.user_id, m.title, m.cover_url, m.review_status, m.status, m.process_status, m.created_at
 	          FROM manuscripts m WHERE ` + where
 	args := []interface{}{}
@@ -160,7 +162,7 @@ func (h *AdminDataHandler) handleVideoAdmin(w http.ResponseWriter, r *http.Reque
 	if parts[0] == "list" && r.Method == "GET" {
 		keyword := r.URL.Query().Get("keyword")
 		status := r.URL.Query().Get("status")
-		page, size := parsePage(r)
+		page, size := httputil.ParsePageParams(r)
 		rows, err := h.db.QueryContext(r.Context(),
 			`SELECT v.id, v.manuscript_id, v.title, v.process_status, m.user_id, m.title
 			 FROM videos v LEFT JOIN manuscripts m ON v.manuscript_id = m.id
@@ -230,7 +232,7 @@ func (h *AdminDataHandler) handleCommentAdmin(w http.ResponseWriter, r *http.Req
 	case parts[0] == "list" && r.Method == "GET":
 		status := r.URL.Query().Get("status")
 		keyword := r.URL.Query().Get("keyword")
-		page, size := parsePage(r)
+		page, size := httputil.ParsePageParams(r)
 		offset := (page - 1) * size
 		conds := ""
 		args := []interface{}{}
@@ -350,7 +352,7 @@ func (h *AdminDataHandler) handleContentReview(w http.ResponseWriter, r *http.Re
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/admin/content-review/"), "/")
 	contentType := r.URL.Query().Get("contentType")
 	status := r.URL.Query().Get("status")
-	page, size := parsePage(r)
+	page, size := httputil.ParsePageParams(r)
 	conds := ""
 	args := []interface{}{}
 	if contentType != "" {

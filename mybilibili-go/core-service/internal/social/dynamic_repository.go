@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"mybilibili/pkg/repository"
 )
 
 type Dynamic struct {
@@ -46,7 +48,7 @@ func (r *DynamicRepository) Create(ctx context.Context, d *Dynamic) (int64, erro
 	err := r.db.QueryRowContext(ctx,
 		`INSERT INTO user_dynamics (user_id, content, dynamic_type, image_url, ref_manuscript_id)
 		 VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-		d.UserID, d.Content, d.DynamicType, d.ImageURL, nullInt64(d.RefManuscriptID)).Scan(&id)
+		d.UserID, d.Content, d.DynamicType, d.ImageURL, repository.NullInt64(d.RefManuscriptID)).Scan(&id)
 	return id, err
 }
 
@@ -143,7 +145,7 @@ func (r *DynamicRepository) CreateComment(ctx context.Context, dc *DynamicCommen
 	err := r.db.QueryRowContext(ctx,
 		`INSERT INTO dynamic_comments (dynamic_id, user_id, content, parent_id, reply_user_id)
 		 VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-		dc.DynamicID, dc.UserID, dc.Content, nullInt64(dc.ParentID), nullInt64(dc.ReplyUserID)).Scan(&id)
+		dc.DynamicID, dc.UserID, dc.Content, repository.NullInt64(dc.ParentID), repository.NullInt64(dc.ReplyUserID)).Scan(&id)
 	return id, err
 }
 
@@ -212,9 +214,4 @@ func scanDynamics(rows *sql.Rows) ([]*Dynamic, error) {
 	return list, nil
 }
 
-func nullInt64(v int64) interface{} {
-	if v == 0 {
-		return nil
-	}
-	return v
-}
+

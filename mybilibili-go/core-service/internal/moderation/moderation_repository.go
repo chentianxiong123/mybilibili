@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"mybilibili/pkg/repository"
 )
 
 type ProhibitedWord struct {
@@ -116,7 +118,7 @@ func (r *Repository) CreateReport(ctx context.Context, reporterID int64, targetT
 	err := r.db.QueryRowContext(ctx,
 		`INSERT INTO reports (reporter_id, target_type, target_id, manuscript_id, reason, description)
 		 VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-		reporterID, targetType, targetID, nullInt64(manuscriptID), reason, desc).Scan(&id)
+		reporterID, targetType, targetID, repository.NullInt64(manuscriptID), reason, desc).Scan(&id)
 	return id, err
 }
 
@@ -166,13 +168,6 @@ func (r *Repository) UpdateAIRegReview(ctx context.Context, reportID int64, verd
 		`UPDATE reports SET ai_verdict=$1, ai_risk_level=$2 WHERE id=$3`,
 		verdict, riskLevel, reportID)
 	return err
-}
-
-func nullInt64(v int64) interface{} {
-	if v == 0 {
-		return nil
-	}
-	return v
 }
 
 type Service struct {
