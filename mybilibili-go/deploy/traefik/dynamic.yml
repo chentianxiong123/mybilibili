@@ -48,6 +48,30 @@ routers:
     tls:
       certResolver: letsencrypt
 
+  # ＝＝＝ Admin 服务（管理后台）＝＝＝
+  admin-api:
+    rule: "Host(`mylib.com`) && (PathPrefix(`/api/v1/admin/`) || PathPrefix(`/api/v1/user/admin/`) || PathPrefix(`/api/v1/video/admin/`) || PathPrefix(`/api/v1/manuscript/admin/`))"
+    priority: 15
+    service: admin
+    middlewares:
+      - jwt-auth
+      - rate-limit
+      - security-headers
+    tls:
+      certResolver: letsencrypt
+
+  # ＝＝＝ ord 管理端（禁词/举报，留在 core 的业务域）＝＝＝
+  moderation-admin:
+    rule: "Host(`mylib.com`) && (PathPrefix(`/api/v1/admin/prohibited-words`) || PathPrefix(`/api/v1/admin/report/`))"
+    priority: 20
+    service: core
+    middlewares:
+      - jwt-auth
+      - rate-limit
+      - security-headers
+    tls:
+      certResolver: letsencrypt
+
   # ＝＝＝ API 路由（带 JWT）＝＝＝
   core-api:
     rule: "Host(`mylib.com`) && PathPrefix(`/api/v1/`)"
@@ -112,6 +136,15 @@ services:
     loadBalancer:
       servers:
         - url: "http://localhost:8081"
+      healthCheck:
+        path: /api/v1/health
+        interval: 10s
+        timeout: 3s
+
+  admin:
+    loadBalancer:
+      servers:
+        - url: "http://localhost:8088"
       healthCheck:
         path: /api/v1/health
         interval: 10s
