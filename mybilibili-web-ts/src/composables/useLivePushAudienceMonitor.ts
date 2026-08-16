@@ -16,7 +16,7 @@ export function useLivePushAudienceMonitor({
   createWs = createReconnectingWS,
   getWsUrl = () => {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
-    return `${proto}//${location.host}/ws/meeting`
+    return `${proto}//${location.host}/ws/live`
   },
   now = () => Date.now(),
   random = () => Math.random(),

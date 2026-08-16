@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   Star, House, Search, Bell, Clock, Edit, Upload,
-  Message, User, Lock, Delete, ChatDotRound, Coin, VideoCamera, Monitor
+  Message, User, Lock, Delete, ChatDotRound, Coin, VideoCamera
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { userApi } from '../../api/index.ts'
@@ -475,11 +475,7 @@ onUnmounted(() => {
           <el-icon><VideoCamera /></el-icon>
           <span>直播</span>
         </el-button>
-        <el-button link @click="router.push('/meeting')" class="home-icon">
-          <el-icon><Monitor /></el-icon>
-          <span>会议</span>
-        </el-button>
-      </div>
+        </div>
       
       <!-- 中间：搜索栏（在搜索页面隐藏） -->
       <div class="header-center" v-if="!isSearchPage">

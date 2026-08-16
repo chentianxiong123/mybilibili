@@ -47,17 +47,6 @@ export const showNotification = (title: string, options: Record<string, any> = {
 }
 
 /**
- * 会议邀请通知
- */
-export const notifyMeetingInvite = (meetingName, fromUser, roomCode) => {
-  return showNotification(`会议邀请：${meetingName}`, {
-    body: `${fromUser} 邀请你加入会议`,
-    tag: 'meeting-invite',
-    data: { url: `/meeting/${roomCode}` }
-  })
-}
-
-/**
  * 主播开播通知
  */
 export const notifyStreamLive = (roomName, streamerName) => {

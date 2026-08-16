@@ -178,12 +178,6 @@ const webRoutes = [
     meta: { title: '直播推流 - 哔哩哔哩', layout: 'simple', requiresAuth: true, section: 'web' }
   },
   {
-    path: '/meeting',
-    name: 'meeting',
-    component: () => import('../views/meeting/MeetingView.vue'),
-    meta: { title: '视频会议 - 哔哩哔哩', layout: 'simple', requiresAuth: true, section: 'web' }
-  },
-  {
     path: '/login',
     name: 'login',
     component: () => import('../views/web/LoginView.vue'),
@@ -257,12 +251,6 @@ const adminRoutes = [
         name: 'admin-live-rooms',
         component: () => import('../views/admin/LiveRoomsView.vue'),
         meta: { title: '直播管理 - 管理后台', requiresAuth: true, permission: 'live:manage' }
-      },
-      {
-        path: 'meeting-admin',
-        name: 'admin-meeting',
-        component: () => import('../views/admin/MeetingView.vue'),
-        meta: { title: '会议管理 - 管理后台', requiresAuth: true, permission: 'meeting:manage' }
       },
       {
         path: 'subtitles',

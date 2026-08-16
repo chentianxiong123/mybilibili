@@ -3,7 +3,7 @@ import { createReconnectingWS as defaultCreateReconnectingWS } from '@/utils/rec
 
 const defaultWsUrl = () => {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${proto}//${location.host}/ws/meeting`
+  return `${proto}//${location.host}/ws/live`
 }
 
 export function useLiveRoomRealtime({

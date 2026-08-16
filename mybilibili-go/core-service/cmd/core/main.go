@@ -23,7 +23,6 @@ import (
 	"mybilibili/core-service/internal/interaction"
 	"mybilibili/core-service/internal/manuscript"
 	"mybilibili/core-service/internal/live"
-	"mybilibili/core-service/internal/meeting"
 	"mybilibili/core-service/internal/moderation"
 	"mybilibili/core-service/internal/profile"
 	"mybilibili/core-service/internal/studio"
@@ -138,10 +137,6 @@ func main() {
 	modSvc := moderation.NewService(modRepo)
 	modH := moderation.NewHandler(modSvc)
 
-	meetingRepo := meeting.NewRepository(db)
-	meetingSvc := meeting.NewService(meetingRepo)
-	meetingH := meeting.NewHandler(meetingSvc)
-
 	aiClient, err := clients.NewAiClient()
 	if err != nil {
 		log.Printf("ai gRPC client unavailable: %v", err)
@@ -243,7 +238,7 @@ func main() {
 
 	coreapi.StartHTTPServer(httpAddr, user.NewJWT(jwtSecret),
 		liveH, linkmicH, followH, socialH, videoH, adminH, adminDataH, adminManuscriptH, modH,
-		meetingH, supportH, userExtH, favoriteH,
+		supportH, userExtH, favoriteH,
 		subtitleH, analyticsH, studioH, profileH, creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH)
 
 	lis, err := net.Listen("tcp", grpcAddr)

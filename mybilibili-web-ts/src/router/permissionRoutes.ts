@@ -16,7 +16,7 @@ export const permissionRouteOrder = [
   { path: '/admin/banner-images', permission: 'banner:manage' },
   { path: '/admin/subtitles', permission: 'video:manage' },
   { path: '/admin/live-rooms', permission: 'live:manage' },
-  { path: '/admin/meeting-admin', permission: 'meeting:manage' },
+  
   { path: '/admin/users', permission: 'user:manage' },
   { path: '/admin/login-logs', permission: 'security:manage' }
 ]
