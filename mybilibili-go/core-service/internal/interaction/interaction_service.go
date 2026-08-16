@@ -2,15 +2,18 @@ package interaction
 
 import (
 	"context"
+	"database/sql"
 
 	"mybilibili/core-service/internal/events"
-	"mybilibili/core-service/internal/message"
 	"mybilibili/pkg/errors"
 	pb "mybilibili/pkg/pb"
 )
 
 type EventPublisher = events.EventPublisher
-type MessageRepository = message.MessageRepository
+
+type Notifier interface {
+	SendMessage(ctx context.Context, senderID, receiverID int64, content string, msgType int32)
+}
 
 type ProfileRecorder interface {
 	RecordWatch(ctx context.Context, userID, categoryID int64, tags []string, duration int64) error
@@ -22,7 +25,8 @@ type InteractionService struct {
 	pb.UnimplementedInteractionServiceServer
 	repo            *InteractionRepository
 	publisher       *EventPublisher
-	messageRepo     *MessageRepository
+	db              *sql.DB
+	notifier        Notifier
 	profileRecorder ProfileRecorder
 }
 
@@ -34,8 +38,12 @@ func (s *InteractionService) Repo() *InteractionRepository {
 	return s.repo
 }
 
-func (s *InteractionService) SetMessageRepo(mr *MessageRepository) {
-	s.messageRepo = mr
+func (s *InteractionService) SetDB(db *sql.DB) {
+	s.db = db
+}
+
+func (s *InteractionService) SetNotifier(n Notifier) {
+	s.notifier = n
 }
 
 func (s *InteractionService) SetProfileRecorder(pr ProfileRecorder) {
@@ -54,9 +62,9 @@ func (s *InteractionService) LikeManuscript(ctx context.Context, req *pb.LikeMan
 		s.repo.UpsertDailyMetric(ctx, req.ManuscriptId, req.UserId, "like_count", 1)
 		s.publishAnalytics(ctx, req.ManuscriptId, req.UserId, "MANUSCRIPT_LIKE", "like_count", 1)
 		s.sendLikeNotification(ctx, req.UserId, req.ManuscriptId)
-		if s.profileRecorder != nil {
+		if s.profileRecorder != nil && s.db != nil {
 			var catID int64
-			s.messageRepo.DB().QueryRowContext(ctx, `SELECT category_id FROM manuscripts WHERE id = $1`, req.ManuscriptId).Scan(&catID)
+			s.db.QueryRowContext(ctx, `SELECT category_id FROM manuscripts WHERE id = $1`, req.ManuscriptId).Scan(&catID)
 			s.profileRecorder.RecordLike(ctx, req.UserId, catID, nil)
 		}
 	}
@@ -93,9 +101,9 @@ func (s *InteractionService) CollectManuscript(ctx context.Context, req *pb.Coll
 		s.repo.IncrementManuscriptCount(ctx, "collect_count", req.ManuscriptId)
 		s.repo.UpsertDailyMetric(ctx, req.ManuscriptId, req.UserId, "collect_count", 1)
 		s.publishAnalytics(ctx, req.ManuscriptId, req.UserId, "MANUSCRIPT_COLLECT", "collect_count", 1)
-		if s.profileRecorder != nil {
+		if s.profileRecorder != nil && s.db != nil {
 			var catID int64
-			s.messageRepo.DB().QueryRowContext(ctx, `SELECT category_id FROM manuscripts WHERE id = $1`, req.ManuscriptId).Scan(&catID)
+			s.db.QueryRowContext(ctx, `SELECT category_id FROM manuscripts WHERE id = $1`, req.ManuscriptId).Scan(&catID)
 			s.profileRecorder.RecordCollect(ctx, req.UserId, catID, nil)
 		}
 	}
@@ -180,14 +188,14 @@ func (s *InteractionService) publishAnalytics(ctx context.Context, manuscriptID,
 }
 
 func (s *InteractionService) sendLikeNotification(ctx context.Context, senderID, manuscriptID int64) {
-	if s.messageRepo == nil {
+	if s.db == nil || s.notifier == nil {
 		return
 	}
 	var ownerID int64
-	err := s.messageRepo.DB().QueryRowContext(ctx,
+	err := s.db.QueryRowContext(ctx,
 		`SELECT user_id FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&ownerID)
 	if err != nil || ownerID == 0 {
 		return
 	}
-	_, _ = s.messageRepo.SendMessage(ctx, senderID, ownerID, "liked your manuscript", 4)
+	s.notifier.SendMessage(ctx, senderID, ownerID, "liked your manuscript", 4)
 }

@@ -1,9 +1,10 @@
 go 1.26.5
 
 use (
-	./pkg
-	./core-service
 	./ai-service
-	./search-service
+	./core-service
 	./media-service
+	./msg-danmaku-service
+	./pkg
+	./search-service
 )
