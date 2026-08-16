@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package core.v1;
+
+option go_package = "mybilibili/pkg/pb";
+
+service SearchService {
+  rpc SearchVideos(SearchVideosRequest) returns (SearchVideosResponse);
+  rpc GetHotSearch(GetHotSearchRequest) returns (GetHotSearchResponse);
+  rpc GetSuggestions(GetSuggestionsRequest) returns (GetSuggestionsResponse);
+}
+
+message SearchVideosRequest {
+  string keyword = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  int64 category_id = 4;
+  string order = 5;
+}
+
+message SearchVideoItem {
+  int64 id = 1;
+  string title = 2;
+  string cover = 3;
+  int64 uploader_id = 4;
+  string uploader_name = 5;
+  int64 view_count = 6;
+  int64 like_count = 7;
+  int32 duration = 8;
+  string created_at = 9;
+  string description = 10;
+}
+
+message SearchVideosResponse {
+  repeated SearchVideoItem list = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message GetHotSearchRequest {}
+
+message HotKeyword {
+  string keyword = 1;
+  int64 score = 2;
+  int64 search_count = 3;
+}
+
+message GetHotSearchResponse {
+  repeated HotKeyword list = 1;
+}
+
+message GetSuggestionsRequest {
+  string keyword = 1;
+  int32 limit = 2;
+}
+
+message GetSuggestionsResponse {
+  repeated string suggestions = 1;
+}
