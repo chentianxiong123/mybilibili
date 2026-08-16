@@ -13,9 +13,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"mybilibili/core-service/internal/ai"
 	"mybilibili/core-service/internal/admin"
 	"mybilibili/core-service/internal/analytics"
+	"mybilibili/core-service/internal/clients"
 	"mybilibili/core-service/internal/comment"
 	"mybilibili/core-service/internal/coreapi"
 	"mybilibili/core-service/internal/danmaku"
@@ -36,7 +36,6 @@ import (
 	"mybilibili/pkg/abstraction"
 	"mybilibili/pkg/common/middleware"
 	pb "mybilibili/pkg/pb"
-	"mybilibili/core-service/internal/search"
 	"mybilibili/core-service/internal/social"
 )
 
@@ -138,18 +137,27 @@ func main() {
 	meetingSvc := meeting.NewService(meetingRepo)
 	meetingH := meeting.NewHandler(meetingSvc)
 
-	aiRepo := ai.NewRepository(db)
-	aiSvc := ai.NewService(aiRepo)
+	aiClient, err := clients.NewAiClient()
+	if err != nil {
+		log.Printf("ai gRPC client unavailable: %v", err)
+		aiClient = nil
+	}
+	defer func() {
+		if aiClient != nil {
+			aiClient.Close()
+		}
+	}()
 
-	caller, _ := abstraction.NewServiceCaller(abstraction.ServiceCallerConfig{Type: "ollama"})
-	summarySvc := ai.NewSummaryService(caller)
-	reviewSvc := ai.NewReviewService(caller)
-	customerSvc := ai.NewCustomerService(caller)
-
-	aiH := ai.NewHandler(aiSvc).WithSummary(summarySvc).WithReview(reviewSvc).WithCustomer(customerSvc)
-
-	searchRepo := search.NewRepository(db)
-	searchSvc := search.NewService(searchRepo)
+	searchClient, err := clients.NewSearchClient()
+	if err != nil {
+		log.Printf("search gRPC client unavailable: %v", err)
+		searchClient = nil
+	}
+	defer func() {
+		if searchClient != nil {
+			searchClient.Close()
+		}
+	}()
 
 	supportRepo := support.NewRepository(db)
 	supportSvc := support.NewService(supportRepo)
@@ -163,7 +171,6 @@ func main() {
 	genericInteractionH := interaction.NewGenericInteractionHandler(interactionRepo)
 
 	docStore, _ := abstraction.NewDocumentStore(abstraction.DocumentStoreConfig{Type: "pg-jsonb", DSN: dsn})
-	searchEngine, _ := abstraction.NewSearchEngine(abstraction.SearchEngineConfig{Type: "pg-fts", DSN: dsn})
 	mq, _ := abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: "memory"})
 
 	redisAddr := os.Getenv("REDIS_ADDR")
@@ -178,18 +185,12 @@ func main() {
 	userSvc.SetCacheStore(cacheStore)
 	manuscriptSvc.SetCacheStore(cacheStore)
 	commentSvc.SetCacheStore(cacheStore)
-	summarySvc.SetCacheStore(cacheStore)
-
-	searchH := search.NewHandler(searchSvc).WithEngine(searchEngine)
 
 	eventPublisher := events.NewEventPublisher(mq)
 
 	adminManuscriptH := admin.NewManuscriptAdminHandler(db)
 	adminManuscriptH.SetEventPublisher(eventPublisher)
 	interactionSvc.SetEventPublisher(eventPublisher)
-
-	indexMgr := search.NewIndexManager(searchEngine, mq)
-	go indexMgr.Start(context.Background())
 
 	go func() {
 		ch, err := mq.Subscribe(context.Background(), "video-publish-topic", "auto-publish")
@@ -232,16 +233,15 @@ func main() {
 	studioSvc := studio.NewService(studioRepo)
 	studioH := studio.NewHandler(studioSvc)
 
-	commentSvc.SetReviewService(reviewSvc)
-	aiChatH := ai.NewAIChatHandler(reviewSvc, customerSvc)
+	commentSvc.SetReviewService(aiClient)
 
 	publicAPIH := coreapi.NewPublicAPIHandler(commentSvc)
 
 	httpH := coreapi.NewHTTPHandler(danmakuSvc, messageRepo, notifBroadcaster)
 	coreapi.StartHTTPServer(httpAddr, httpH, user.NewJWT(jwtSecret),
 		liveH, linkmicH, followH, socialH, videoH, adminH, adminDataH, adminManuscriptH, modH,
-		meetingH, aiH, searchH, supportH, userExtH, messageH, favoriteH,
-		subtitleH, analyticsH, studioH, profileH, creatorCommentH, aiChatH, manuscriptHTTPH, publicAPIH, genericInteractionH)
+		meetingH, supportH, userExtH, messageH, favoriteH,
+		subtitleH, analyticsH, studioH, profileH, creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH)
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
