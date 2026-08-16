@@ -29,6 +29,7 @@ import (
 	"mybilibili/core-service/internal/user"
 	"mybilibili/core-service/internal/video"
 	"mybilibili/pkg/abstraction"
+	"mybilibili/pkg/auth"
 	"mybilibili/pkg/common/middleware"
 	pb "mybilibili/pkg/pb"
 	"mybilibili/core-service/internal/social"
@@ -220,7 +221,7 @@ func main() {
 
 	publicAPIH := coreapi.NewPublicAPIHandler(commentSvc)
 
-	coreapi.StartHTTPServer(httpAddr, user.NewJWT(jwtSecret),
+	coreapi.StartHTTPServer(httpAddr, auth.NewJWT(jwtSecret),
 		liveProxy, followH, socialH, videoH, modH,
 		supportH, userExtH, favoriteH,
 		subtitleH, analyticsH, studioH, profileH, creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH)

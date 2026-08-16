@@ -8,22 +8,22 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"mybilibili/pkg/abstraction"
+	"mybilibili/pkg/auth"
 	"mybilibili/pkg/errors"
 	pb "mybilibili/pkg/pb"
 )
 
 type Service struct {
 	repo       *Repository
-	jwt        *JWT
+	jwt        *auth.JWT
 	cacheStore abstraction.CacheStore
 }
 
 func NewService(repo *Repository, jwtSecret string) *Service {
 	return &Service{
 		repo: repo,
-		jwt:  NewJWT(jwtSecret),
+		jwt:  auth.NewJWT(jwtSecret),
 	}
 }
 
@@ -127,56 +127,4 @@ func (s *Service) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.GetU
 	}
 
 	return s.repo.ToPB(user), nil
-}
-
-type JWTClaims struct {
-	UserId int64 `json:"user_id"`
-	jwt.RegisteredClaims
-}
-
-type JWT struct {
-	secret   string
-	duration time.Duration
-}
-
-func NewJWT(secret string) *JWT {
-	return &JWT{secret: secret, duration: 24 * time.Hour}
-}
-
-func (j *JWT) Generate(userID int64) (string, error) {
-	claims := JWTClaims{
-		UserId: userID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.duration)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(j.secret))
-}
-
-func (j *JWT) GenerateRefresh(userID int64) (string, error) {
-	claims := JWTClaims{
-		UserId: userID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(j.secret))
-}
-
-func (j *JWT) Parse(tokenStr string) (int64, error) {
-	token, err := jwt.ParseWithClaims(tokenStr, &JWTClaims{}, func(t *jwt.Token) (interface{}, error) {
-		return []byte(j.secret), nil
-	})
-	if err != nil {
-		return 0, errors.ErrUnauthenticated("invalid or expired token")
-	}
-	claims, ok := token.Claims.(*JWTClaims)
-	if !ok || !token.Valid {
-		return 0, errors.ErrUnauthenticated("invalid token")
-	}
-	return claims.UserId, nil
 }

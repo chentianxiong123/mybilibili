@@ -10,6 +10,7 @@ http:
         authResponseHeaders:
           - X-User-Id
           - X-User-Role
+          - X-Admin-Id
 
     # 限流
     rate-limit:
@@ -48,6 +49,17 @@ routers:
     tls:
       certResolver: letsencrypt
 
+  # ＝＝＝ 验证端点（高 priority，不挂 jwt-auth，避免 forwardAuth 死循环）＝＝＝
+  core-verify:
+    rule: "Host(`mylib.com`) && PathPrefix(`/api/v1/auth/verify`)"
+    priority: 20
+    service: core
+    middlewares:
+      - rate-limit
+      - security-headers
+    tls:
+      certResolver: letsencrypt
+
   # ＝＝＝ Admin 服务（管理后台）＝＝＝
   admin-api:
     rule: "Host(`mylib.com`) && (PathPrefix(`/api/v1/admin/`) || PathPrefix(`/api/v1/user/admin/`) || PathPrefix(`/api/v1/video/admin/`) || PathPrefix(`/api/v1/manuscript/admin/`))"
@@ -60,7 +72,7 @@ routers:
     tls:
       certResolver: letsencrypt
 
-  # ＝＝＝ ord 管理端（禁词/举报，留在 core 的业务域）＝＝＝
+  # ＝＝＝ 管理端（禁词/举报，留在 core 的业务域）＝＝＝
   moderation-admin:
     rule: "Host(`mylib.com`) && (PathPrefix(`/api/v1/admin/prohibited-words`) || PathPrefix(`/api/v1/admin/report/`))"
     priority: 20

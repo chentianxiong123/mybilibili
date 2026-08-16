@@ -8,15 +8,17 @@ import (
 	"strconv"
 	"strings"
 
+	"mybilibili/pkg/auth"
 	"mybilibili/pkg/httputil"
 )
 
 type Handler struct {
 	svc *Service
+	jwt *auth.JWT
 }
 
-func NewHandler(svc *Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc *Service, jwt *auth.JWT) *Handler {
+	return &Handler{svc: svc, jwt: jwt}
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
@@ -144,7 +146,19 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	h.svc.repo.db.ExecContext(r.Context(),
 		`INSERT INTO login_logs (user_id, ip, user_agent, status) VALUES ($1, $2, $3, 0)`,
 		admin.ID, ip, r.UserAgent())
-	json.NewEncoder(w).Encode(admin)
+	token, err := h.jwt.GenerateAdmin(admin.ID)
+	if err != nil {
+		http.Error(w, "token generation failed", 500)
+		return
+	}
+	refreshToken, _ := h.jwt.GenerateRefresh(admin.ID)
+	httputil.WriteOK(w, map[string]interface{}{
+		"token":         token,
+		"refresh_token": refreshToken,
+		"admin_id":      admin.ID,
+		"username":      admin.Username,
+		"admin_level":   admin.AdminLevel,
+	})
 }
 
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {

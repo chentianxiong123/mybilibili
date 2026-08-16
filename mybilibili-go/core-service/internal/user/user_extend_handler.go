@@ -126,7 +126,7 @@ func (h *UserExtendHandler) handleRefresh(w http.ResponseWriter, r *http.Request
 		RefreshToken string `json:"refreshToken"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
-	userID, err := h.svc.jwt.Parse(req.RefreshToken)
+	userID, err := h.svc.jwt.ParseUserID(req.RefreshToken)
 	if err != nil {
 		errors.WriteHTTPError(w, errors.ErrUnauthenticated("invalid or expired refresh token"))
 		return
