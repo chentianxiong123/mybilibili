@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"mybilibili/core-service/internal/httputil"
+	"mybilibili/pkg/httputil"
 )
 
 type Handler struct {

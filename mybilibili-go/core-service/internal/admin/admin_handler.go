@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"mybilibili/core-service/internal/httputil"
+	"mybilibili/pkg/httputil"
 )
 
 type Handler struct {
