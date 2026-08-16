@@ -25,3 +25,6 @@ dist/
 **/.packages
 **/.pub/
 **/pubspec.lock
+
+mybilibili-go/core
+mybilibili-go/media
