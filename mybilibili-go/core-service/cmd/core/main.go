@@ -30,6 +30,7 @@ import (
 	"mybilibili/pkg/auth"
 	"mybilibili/pkg/common/middleware"
 	pb "mybilibili/pkg/pb"
+	"mybilibili/core-service/internal/admin"
 	"mybilibili/core-service/internal/social"
 )
 
@@ -118,6 +119,11 @@ func main() {
 	videoSvc := video.NewService(videoRepo)
 	videoH := video.NewHandler(videoSvc)
 
+	adminRepo := admin.NewRepository(db)
+	adminSvc := admin.NewService(adminRepo)
+	adminH := admin.NewHandler(adminSvc, auth.NewJWT(jwtSecret))
+	adminDataH := admin.NewAdminDataHandler(db)
+
 	modRepo := moderation.NewRepository(db)
 	modSvc := moderation.NewService(modRepo)
 	modH := moderation.NewHandler(modSvc)
@@ -172,6 +178,8 @@ func main() {
 
 	eventPublisher := events.NewEventPublisher(mq)
 
+	adminManuscriptH := admin.NewManuscriptAdminHandler(db)
+	adminManuscriptH.SetEventPublisher(eventPublisher)
 	interactionSvc.SetEventPublisher(eventPublisher)
 
 	go func() {
@@ -213,7 +221,7 @@ func main() {
 	publicAPIH := coreapi.NewPublicAPIHandler(commentSvc)
 
 	coreapi.StartHTTPServer(httpAddr, auth.NewJWT(jwtSecret),
-		liveProxy, followH, socialH, videoH, modH,
+		liveProxy, followH, socialH, videoH, adminH, adminDataH, adminManuscriptH, modH,
 		supportH, userExtH, favoriteH,
 		subtitleH, studioH, creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH)
 

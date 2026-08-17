@@ -2,13 +2,13 @@ BIN      := /tmp
 GO       := go
 LDFLAGS  := -ldflags="-s -w"
 
-.PHONY: run build clean build-core build-ai build-search build-msg-danmaku build-media build-live build-admin
+.PHONY: run build clean build-core build-ai build-search build-msg-danmaku build-media build-live
 
 run:
 	$(GO) build $(LDFLAGS) -o $(BIN)/mybilibili-core ./core-service/cmd/core
 	$(BIN)/mybilibili-core
 
-build: build-core build-ai build-search build-msg-danmaku build-media build-live build-admin
+build: build-core build-ai build-search build-msg-danmaku build-media build-live
 
 build-core:
 	$(GO) build $(LDFLAGS) -o $(BIN)/mybilibili-core ./core-service/cmd/core
@@ -28,8 +28,5 @@ build-media:
 build-live:
 	$(GO) build $(LDFLAGS) -o $(BIN)/mybilibili-live ./live-service/cmd/live
 
-build-admin:
-	$(GO) build $(LDFLAGS) -o $(BIN)/mybilibili-admin ./admin-service/cmd/admin
-
 clean:
-	rm -f $(BIN)/mybilibili-core $(BIN)/mybilibili-ai $(BIN)/mybilibili-search $(BIN)/mybilibili-msg-danmaku $(BIN)/mybilibili-media $(BIN)/mybilibili-live $(BIN)/mybilibili-admin
+	rm -f $(BIN)/mybilibili-core $(BIN)/mybilibili-ai $(BIN)/mybilibili-search $(BIN)/mybilibili-msg-danmaku $(BIN)/mybilibili-media $(BIN)/mybilibili-live
