@@ -24,6 +24,8 @@
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
     "@tanstack/vue-virtual": "^3.13.35",
+    "@vicons/ionicons5": "^0.13.0",
+    "@vicons/tabler": "^0.13.0",
     "artplayer": "^5.1.6",
     "artplayer-plugin-danmuku": "^5.1.4",
     "axios": "^1.7.2",
