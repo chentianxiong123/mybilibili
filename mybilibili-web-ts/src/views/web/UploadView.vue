@@ -1,16 +1,18 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { manuscriptApi } from '@/api/manuscript.ts'
 import { categoryApi } from '@/api/client'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { UploadFilled, Delete, ArrowUp, ArrowDown, VideoPlay, Document, Plus, Loading, CircleCheck } from '@element-plus/icons-vue'
+import { UploadFilled, VideoPlay, Document } from '@element-plus/icons-vue'
 import { useChunkedManuscriptUpload } from '@/composables/useChunkedManuscriptUpload.ts'
 import { hasAuthSession } from '@/utils/auth.ts'
+import ManuscriptForm from '@/components/ManuscriptForm.vue'
+import CoverUploader from '@/components/CoverUploader.vue'
+import VideoPartUploader from '@/components/VideoPartUploader.vue'
+import UploadProgressBar from '@/components/UploadProgressBar.vue'
 
 const router = useRouter()
 
-// 上传表单 - 稿件级别
 const uploadForm = reactive({
   title: '',
   categoryId: null,
@@ -67,20 +69,15 @@ const uploadRules = {
   ],
   categoryId: [
     { required: true, message: '请选择稿件分区', trigger: 'change' }
-  ],
-  coverFile: [
-    { required: true, message: '请上传稿件封面', trigger: 'change' }
   ]
 }
 
-const uploadFormRef = ref()
-const uploadProgress = ref(0)
+const manuscriptFormRef = ref()
+const coverPreview = ref('')
 const showUploadDialog = ref(false)
 const isSubmittingRequest = ref(false)
+const uploadProgress = ref(0)
 const currentUploadingPart = ref('')
-const coverPreview = ref('')
-const tagInput = ref('')
-const videoUploadRef = ref(null)
 
 const {
   stage: uploadStage,
@@ -99,99 +96,39 @@ const {
   UPLOAD_STAGES
 } = useChunkedManuscriptUpload()
 
-const getVideoDuration = (file) => {
-  return new Promise((resolve, reject) => {
-    const video = document.createElement('video')
-    video.preload = 'metadata'
-    video.onloadedmetadata = () => {
-      URL.revokeObjectURL(video.src)
-      resolve(Math.floor(video.duration))
-    }
-    video.onerror = (error) => reject(error)
-    video.src = URL.createObjectURL(file)
+const checkLoginStatus = () => {
+  if (!hasAuthSession()) {
+    ElMessage.warning('请先登录后再上传稿件')
+    return false
+  }
+  return true
+}
+
+const handleCoverChange = (file) => {
+  uploadForm.coverFile = file
+}
+
+const previewUpdate = (preview) => {
+  coverPreview.value = preview
+}
+
+const handleAddVideo = (newPart) => {
+  const part = {
+    ...newPart,
+    sortOrder: videoParts.value.length
+  }
+  videoParts.value.push(part)
+  ElMessage.success(`已添加分P: ${newPart.title}`)
+}
+
+const handleRemovePart = (index) => {
+  videoParts.value.splice(index, 1)
+  videoParts.value.forEach((part, idx) => {
+    part.sortOrder = idx
   })
 }
 
-const handleCoverUpload = (file) => {
-  const isImage = file.raw.type.startsWith('image/')
-  const isLt10M = file.raw.size / 1024 / 1024 < 10
-
-  if (!isImage) {
-    ElMessage.error('封面只能是图片格式!')
-    return false
-  }
-  if (!isLt10M) {
-    ElMessage.error('封面大小不能超过 10MB!')
-    return false
-  }
-
-  uploadForm.coverFile = file.raw
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    coverPreview.value = e.target.result
-  }
-  reader.readAsDataURL(file.raw)
-  return false
-}
-
-const handleVideoUpload = async (file) => {
-  if (!file.raw) {
-    ElMessage.error('视频文件读取失败，请重新选择')
-    return false
-  }
-
-  const isVideo = file.raw.type.startsWith('video/')
-  const isLt4G = file.raw.size / 1024 / 1024 / 1024 < 4
-
-  if (!isVideo) {
-    ElMessage.error('只能上传视频文件!')
-    return false
-  }
-  if (!isLt4G) {
-    ElMessage.error('视频大小不能超过 4GB!')
-    return false
-  }
-
-  let duration = 0
-  try {
-    duration = await getVideoDuration(file.raw)
-  } catch (error) {
-    console.error('获取视频时长失败:', error)
-  }
-
-  const newPart = {
-    id: Date.now(),
-    file: file.raw,
-    title: file.name.replace(/\.[^/.]+$/, ''),
-    sortOrder: videoParts.value.length,
-    size: file.raw.size,
-    duration
-  }
-
-  videoParts.value.push(newPart)
-  ElMessage.success(`已添加分P: ${newPart.title}`)
-  return false
-}
-
-const removeVideoPart = (index) => {
-  ElMessageBox.confirm(
-    `确定要删除分P "${videoParts.value[index].title}" 吗？`,
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(() => {
-    videoParts.value.splice(index, 1)
-    videoParts.value.forEach((part, idx) => {
-      part.sortOrder = idx
-    })
-    ElMessage.success('分P已删除')
-  }).catch(() => {})
-}
-
-const movePartUp = (index) => {
+const handleMovePartUp = (index) => {
   if (index === 0) return
   const temp = videoParts.value[index]
   videoParts.value[index] = videoParts.value[index - 1]
@@ -201,7 +138,7 @@ const movePartUp = (index) => {
   })
 }
 
-const movePartDown = (index) => {
+const handleMovePartDown = (index) => {
   if (index === videoParts.value.length - 1) return
   const temp = videoParts.value[index]
   videoParts.value[index] = videoParts.value[index + 1]
@@ -211,68 +148,6 @@ const movePartDown = (index) => {
   })
 }
 
-const formatFileSize = (bytes) => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-const checkLoginStatus = () => {
-  if (!hasAuthSession()) {
-    ElMessage.warning('请先登录后再上传稿件')
-    return false
-  }
-
-  return true
-}
-
-const addTag = () => {
-  const tag = tagInput.value.trim()
-  if (!tag) return
-  if (uploadForm.tags.length >= 20) {
-    ElMessage.warning('最多只能添加20个标签')
-    return
-  }
-  if (uploadForm.tags.includes(tag)) {
-    ElMessage.warning('标签已存在')
-    return
-  }
-  uploadForm.tags.push(tag)
-  tagInput.value = ''
-}
-
-const removeTag = (index) => {
-  uploadForm.tags.splice(index, 1)
-}
-
-const handleTagInputKeydown = (event) => {
-  if (event.key === 'Enter') {
-    event.preventDefault()
-    addTag()
-  }
-}
-
-const closeUploadDialog = () => {
-  showUploadDialog.value = false
-}
-
-const formatSpeed = (bytesPerSec) => {
-  if (bytesPerSec <= 0) return '--'
-  if (bytesPerSec < 1024) return bytesPerSec + ' B/s'
-  if (bytesPerSec < 1024 * 1024) return (bytesPerSec / 1024).toFixed(1) + ' KB/s'
-  if (bytesPerSec < 1024 * 1024 * 1024) return (bytesPerSec / (1024 * 1024)).toFixed(1) + ' MB/s'
-  return (bytesPerSec / (1024 * 1024 * 1024)).toFixed(2) + ' GB/s'
-}
-
-const formatEta = (seconds) => {
-  if (seconds < 0 || !seconds) return '--'
-  if (seconds < 60) return seconds + '秒'
-  if (seconds < 3600) return Math.floor(seconds / 60) + '分' + (seconds % 60) + '秒'
-  return Math.floor(seconds / 3600) + '时' + Math.floor((seconds % 3600) / 60) + '分'
-}
-
 const handleSubmit = () => {
   if (!checkLoginStatus()) return
   if (videoParts.value.length === 0) {
@@ -280,8 +155,13 @@ const handleSubmit = () => {
     return
   }
 
-  uploadFormRef.value.validate((valid) => {
+  manuscriptFormRef.value.validate((valid) => {
     if (!valid) return false
+
+    if (!uploadForm.coverFile) {
+      ElMessage.error('请上传稿件封面')
+      return
+    }
 
     const invalidParts = videoParts.value.filter(part => !part.file)
     if (invalidParts.length > 0) {
@@ -361,12 +241,6 @@ const cancelUpload = () => {
   }
 }
 
-const triggerVideoUpload = () => {
-  if (videoUploadRef.value) {
-    videoUploadRef.value.$el.querySelector('input').click()
-  }
-}
-
 onMounted(() => {
   loadCategories()
 })
@@ -407,220 +281,30 @@ onMounted(() => {
 
     <!-- 表单区域 -->
     <div class="form-area">
-      <el-form
-        ref="uploadFormRef"
-        :model="uploadForm"
+      <div class="cover-wrapper">
+        <label class="cover-label">封面</label>
+        <CoverUploader
+          :cover-preview="coverPreview"
+          @cover-change="handleCoverChange"
+          @update:cover-preview="previewUpdate"
+        />
+      </div>
+      <ManuscriptForm
+        ref="manuscriptFormRef"
+        :form="uploadForm"
+        :categories="categories"
         :rules="uploadRules"
-        label-width="100px"
-        class="upload-form"
-      >
-        <!-- 封面上传 - 稿件级别 -->
-        <el-form-item label="封面" prop="coverFile">
-          <div class="cover-upload-section">
-            <el-upload
-              class="cover-uploader"
-              action="#"
-              :on-change="handleCoverUpload"
-              :auto-upload="false"
-              accept="image/*"
-              :show-file-list="false"
-            >
-              <div v-if="coverPreview" class="cover-preview">
-                <img loading="lazy" decoding="async" :src="coverPreview" alt="封面预览">
-                <div class="cover-overlay">
-                  <el-icon><UploadFilled /></el-icon>
-                  <span>更换封面</span>
-                </div>
-              </div>
-              <div v-else class="cover-placeholder">
-                <el-icon class="placeholder-icon"><Plus /></el-icon>
-                <span>点击上传封面</span>
-              </div>
-            </el-upload>
-            <div class="cover-tip">
-              <p>建议尺寸：16:9（1920×1080）</p>
-              <p>最大 10MB，支持 JPG、PNG 格式</p>
-              <p class="cover-tip-highlight">清晰的封面能吸引更多观众</p>
-            </div>
-          </div>
-        </el-form-item>
-
-        <!-- 稿件标题 -->
-        <el-form-item label="标题" prop="title">
-          <el-input
-            v-model="uploadForm.title"
-            placeholder="请输入稿件标题（最多100字）"
-            maxlength="100"
-            show-word-limit
-            class="title-input"
-          ></el-input>
-        </el-form-item>
-
-        <!-- 稿件类型 -->
-        <el-form-item label="类型">
-          <el-radio-group v-model="uploadForm.type">
-            <el-radio value="original">自制</el-radio>
-            <el-radio value="repost">转载</el-radio>
-          </el-radio-group>
-        </el-form-item>
-
-        <!-- 稿件分区 -->
-        <el-form-item label="分区" prop="categoryId">
-          <el-select
-            v-model="uploadForm.categoryId"
-            placeholder="请选择分区"
-            class="category-select"
-          >
-            <el-option
-              v-for="category in categories"
-              :key="category.value"
-              :label="category.label"
-              :value="category.value"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-
-        <!-- 稿件标签 -->
-        <el-form-item label="标签">
-          <div class="tag-section">
-            <div class="tag-input-section">
-              <el-input
-                v-model="tagInput"
-                placeholder="输入标签，按回车创建"
-                @keydown="handleTagInputKeydown"
-                class="tag-input"
-                maxlength="20"
-              >
-                <template #append>
-                  <el-button @click="addTag" :disabled="!tagInput || uploadForm.tags.length >= 20">添加</el-button>
-                </template>
-              </el-input>
-              <span class="tag-count">{{ uploadForm.tags.length }}/20</span>
-            </div>
-            <div class="tags-container">
-              <el-tag
-                v-for="(tag, index) in uploadForm.tags"
-                :key="index"
-                closable
-                @close="removeTag(index)"
-                class="tag-item"
-                effect="plain"
-              >
-                {{ tag }}
-              </el-tag>
-            </div>
-          </div>
-        </el-form-item>
-
-        <!-- 稿件简介 -->
-        <el-form-item label="简介">
-          <el-input
-            v-model="uploadForm.description"
-            type="textarea"
-            placeholder="请输入稿件简介（最多2000字）"
-            rows="4"
-            maxlength="2000"
-            show-word-limit
-            class="description-input"
-          ></el-input>
-        </el-form-item>
-      </el-form>
+      />
     </div>
 
-    <!-- 视频分P上传区域 -->
-    <div class="video-parts-section">
-      <div class="section-header">
-        <h3 class="section-title">
-          <el-icon><VideoPlay /></el-icon>
-          视频分P
-          <span class="part-count">({{ videoParts.length }}个视频)</span>
-        </h3>
-        <el-upload
-          ref="videoUploadRef"
-          class="video-upload-trigger"
-          action="#"
-          :on-change="handleVideoUpload"
-          :auto-upload="false"
-          accept="video/*"
-          :show-file-list="false"
-          multiple
-        >
-          <el-button type="primary" :icon="UploadFilled">
-            添加视频
-          </el-button>
-        </el-upload>
-      </div>
-
-      <!-- 视频分P列表 -->
-      <div v-if="videoParts.length > 0" class="video-parts-list">
-        <div
-          v-for="(part, index) in videoParts"
-          :key="part.id"
-          class="video-part-item"
-        >
-          <div class="part-number">P{{ index + 1 }}</div>
-          <div class="part-info">
-            <el-input
-              v-model="part.title"
-              placeholder="请输入分P标题"
-              maxlength="100"
-              class="part-title-input"
-            ></el-input>
-            <div class="part-meta">
-              <span class="part-size">{{ formatFileSize(part.size) }}</span>
-              <span class="part-filename">{{ part.file.name }}</span>
-            </div>
-          </div>
-          <div class="part-actions">
-            <el-button
-              type="primary"
-              text
-              :icon="ArrowUp"
-              :disabled="index === 0"
-              @click="movePartUp(index)"
-              title="上移"
-            ></el-button>
-            <el-button
-              type="primary"
-              text
-              :icon="ArrowDown"
-              :disabled="index === videoParts.length - 1"
-              @click="movePartDown(index)"
-              title="下移"
-            ></el-button>
-            <el-button
-              type="danger"
-              text
-              :icon="Delete"
-              @click="removeVideoPart(index)"
-              title="删除"
-            ></el-button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 空状态 -->
-      <div v-else class="video-empty-state">
-        <el-icon class="empty-icon"><UploadFilled /></el-icon>
-        <p class="empty-text">还没有添加视频</p>
-        <p class="empty-subtext">点击上方"添加视频"按钮或拖拽视频文件到此处</p>
-        <el-upload
-          class="video-upload-area"
-          action="#"
-          :on-change="handleVideoUpload"
-          :auto-upload="false"
-          accept="video/*"
-          :show-file-list="false"
-          drag
-          multiple
-        >
-          <div class="upload-drag-content">
-            <el-icon class="drag-icon"><UploadFilled /></el-icon>
-            <div class="drag-text">将视频文件拖到此处，或点击上传</div>
-          </div>
-        </el-upload>
-      </div>
-    </div>
+    <!-- 视频分P -->
+    <VideoPartUploader
+      :video-parts="videoParts"
+      @add-video="handleAddVideo"
+      @remove-part="handleRemovePart"
+      @move-up="handleMovePartUp"
+      @move-down="handleMovePartDown"
+    />
 
     <!-- 底部操作按钮 -->
     <div class="form-actions">
@@ -638,65 +322,24 @@ onMounted(() => {
     </div>
 
     <!-- 上传进度对话框 -->
-    <el-dialog
-      v-model="showUploadDialog"
-      title="稿件上传进度"
-      width="560px"
-      class="upload-progress-dialog"
-      :close-on-click-modal="!isSubmittingRequest"
-      :close-on-press-escape="!isSubmittingRequest"
-    >
-      <div class="progress-content">
-        <el-progress
-          :percentage="chunkedPercentage"
-          :stroke-width="20"
-          :status="uploadStage === UPLOAD_STAGES.COMPLETED ? 'success' : uploadStage === UPLOAD_STAGES.FAILED ? 'exception' : ''"
-          class="upload-progress-bar"
-        ></el-progress>
-        <div class="upload-status">
-          <el-icon v-if="!isChunkedFinished" class="status-icon loading"><Loading /></el-icon>
-          <el-icon v-else-if="uploadStage === UPLOAD_STAGES.COMPLETED" class="status-icon success"><CircleCheck /></el-icon>
-          <el-icon v-else class="status-icon" style="color: #f56c6c"><CircleCheck /></el-icon>
-          <span class="status-text">{{ uploadStageLabel }}</span>
-        </div>
-        <div v-if="isChunkedUploading" class="upload-stats">
-          <span class="stat-item">{{ formatFileSize(uploadedBytes) }} / {{ formatFileSize(totalBytes) }}</span>
-          <span class="stat-item">{{ formatSpeed(uploadSpeed) }}</span>
-          <span class="stat-item" v-if="etaSeconds > 0">剩余 {{ formatEta(etaSeconds) }}</span>
-        </div>
-        <div v-if="isChunkedUploading && chunkPartProgress.length > 1" class="part-progress-list">
-          <div v-for="(pp, idx) in chunkPartProgress" :key="idx" class="part-progress-item">
-            <span class="part-progress-label">{{ pp.title }}</span>
-            <el-progress
-              :percentage="pp.total > 0 ? Math.round((pp.uploaded / pp.total) * 100) : 0"
-              :stroke-width="6"
-              :show-text="false"
-              class="part-mini-progress"
-            />
-            <span class="part-progress-count">{{ pp.uploaded }}/{{ pp.total }}</span>
-          </div>
-        </div>
-        <div v-if="uploadStage === UPLOAD_STAGES.COMPLETED" class="upload-hint">
-          稿件已提交，正在等待审核/转码处理
-        </div>
-        <div v-if="uploadError" class="upload-error">
-          {{ uploadError }}
-        </div>
-      </div>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button
-            v-if="isChunkedUploading"
-            type="danger"
-            @click="handleCancelUpload"
-          >取消上传</el-button>
-          <el-button
-            v-if="isChunkedFinished"
-            @click="showUploadDialog = false"
-          >关闭</el-button>
-        </div>
-      </template>
-    </el-dialog>
+    <UploadProgressBar
+      :show="showUploadDialog"
+      :stage="uploadStage"
+      :stage-label="uploadStageLabel"
+      :percentage="chunkedPercentage"
+      :uploaded-bytes="uploadedBytes"
+      :total-bytes="totalBytes"
+      :speed="uploadSpeed"
+      :eta-seconds="etaSeconds"
+      :part-progress="chunkPartProgress"
+      :error="uploadError"
+      :is-uploading="isChunkedUploading"
+      :is-finished="isChunkedFinished"
+      :is-submitting="isSubmittingRequest"
+      :upload_stages="UPLOAD_STAGES"
+      @close="showUploadDialog = false"
+      @cancel="handleCancelUpload"
+    />
   </div>
 </template>
 
@@ -708,7 +351,6 @@ onMounted(() => {
   min-height: 100vh;
 }
 
-/* 页面标题 */
 .page-header {
   margin-bottom: 24px;
 }
@@ -726,7 +368,6 @@ onMounted(() => {
   margin: 0;
 }
 
-/* 信息卡片 */
 .info-cards {
   display: flex;
   gap: 16px;
@@ -772,7 +413,6 @@ onMounted(() => {
   margin: 0;
 }
 
-/* 表单区域 */
 .form-area {
   background-color: #fff;
   border-radius: 12px;
@@ -781,300 +421,22 @@ onMounted(() => {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
-.upload-form {
-  max-width: 800px;
-}
-
-/* 封面上传 */
-.cover-upload-section {
+.cover-wrapper {
   display: flex;
   align-items: flex-start;
-  gap: 20px;
+  margin-bottom: 22px;
 }
 
-.cover-uploader {
-  width: 240px;
-  height: 135px;
-  border: 2px dashed #dcdfe6;
-  border-radius: 8px;
-  cursor: pointer;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f5f7fa;
-  transition: all 0.3s;
-}
-
-.cover-uploader:hover {
-  border-color: #409eff;
-  background-color: #ecf5ff;
-}
-
-.cover-preview {
-  width: 100%;
-  height: 100%;
-  position: relative;
-}
-
-.cover-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.cover-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.cover-preview:hover .cover-overlay {
-  opacity: 1;
-}
-
-.cover-overlay .el-icon {
-  font-size: 24px;
-  margin-bottom: 4px;
-}
-
-.cover-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #909399;
-}
-
-.placeholder-icon {
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
-.cover-tip {
-  font-size: 13px;
+.cover-label {
+  width: 100px;
+  padding-right: 12px;
+  font-size: 14px;
   color: #606266;
-  line-height: 1.8;
-}
-
-.cover-tip p {
-  margin: 0;
-}
-
-.cover-tip-highlight {
-  color: #409eff;
-  font-weight: 500;
-}
-
-/* 输入框样式 */
-.title-input,
-.category-select,
-.description-input {
-  width: 100%;
-  max-width: 600px;
-}
-
-/* 标签输入 */
-.tag-section {
-  width: 100%;
-  max-width: 600px;
-}
-
-.tag-input-section {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.tag-input {
-  flex: 1;
-}
-
-.tag-count {
-  font-size: 13px;
-  color: #909399;
-  white-space: nowrap;
-}
-
-.tags-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.tag-item {
-  margin: 0;
-}
-
-/* 视频分P区域 */
-.video-parts-section {
-  background-color: #fff;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #ebeef5;
-}
-
-.section-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.section-title .el-icon {
-  color: #409eff;
-}
-
-.part-count {
-  font-size: 14px;
-  color: #909399;
-  font-weight: normal;
-}
-
-/* 视频分P列表 */
-.video-parts-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.video-part-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px;
-  background-color: #f5f7fa;
-  border-radius: 8px;
-  border: 1px solid #ebeef5;
-  transition: all 0.3s;
-}
-
-.video-part-item:hover {
-  border-color: #409eff;
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.1);
-}
-
-.part-number {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #409eff 0%, #1677ff 100%);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-weight: 600;
-  font-size: 14px;
+  text-align: right;
   flex-shrink: 0;
+  line-height: 32px;
 }
 
-.part-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.part-title-input {
-  width: 100%;
-  margin-bottom: 8px;
-}
-
-.part-meta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 13px;
-  color: #909399;
-}
-
-.part-size {
-  background-color: #e6f7ff;
-  color: #1890ff;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
-.part-filename {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.part-actions {
-  display: flex;
-  gap: 4px;
-}
-
-/* 空状态 */
-.video-empty-state {
-  text-align: center;
-  padding: 60px 20px;
-}
-
-.empty-icon {
-  font-size: 64px;
-  color: #dcdfe6;
-  margin-bottom: 16px;
-}
-
-.empty-text {
-  font-size: 16px;
-  color: #606266;
-  margin: 0 0 8px 0;
-}
-
-.empty-subtext {
-  font-size: 13px;
-  color: #909399;
-  margin: 0 0 24px 0;
-}
-
-.video-upload-area {
-  max-width: 500px;
-  margin: 0 auto;
-}
-
-.upload-drag-content {
-  padding: 40px;
-}
-
-.drag-icon {
-  font-size: 48px;
-  color: #409eff;
-  margin-bottom: 16px;
-}
-
-.drag-text {
-  font-size: 14px;
-  color: #606266;
-}
-
-/* 底部操作按钮 */
 .form-actions {
   display: flex;
   justify-content: center;
@@ -1087,124 +449,6 @@ onMounted(() => {
   bottom: 20px;
 }
 
-/* 上传进度对话框 */
-.progress-content {
-  padding: 20px;
-}
-
-.upload-progress-bar {
-  margin-bottom: 20px;
-}
-
-.upload-status {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.status-icon {
-  font-size: 20px;
-}
-
-.status-icon.loading {
-  color: #409eff;
-  animation: rotating 2s linear infinite;
-}
-
-.status-icon.success {
-  color: #67c23a;
-}
-
-@keyframes rotating {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.status-text {
-  font-size: 14px;
-  color: #606266;
-}
-
-
-.upload-hint {
-  text-align: center;
-  font-size: 13px;
-  color: #909399;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: center;
-}
-
-
-.upload-stats {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin-bottom: 16px;
-  font-size: 13px;
-  color: #909399;
-}
-
-.stat-item {
-  white-space: nowrap;
-}
-
-.part-progress-list {
-  margin-top: 16px;
-  padding: 12px;
-  background-color: #f5f7fa;
-  border-radius: 8px;
-}
-
-.part-progress-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.part-progress-item:last-child {
-  margin-bottom: 0;
-}
-
-.part-progress-label {
-  width: 80px;
-  font-size: 12px;
-  color: #606266;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.part-mini-progress {
-  flex: 1;
-}
-
-.part-progress-count {
-  width: 48px;
-  font-size: 11px;
-  color: #909399;
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.upload-error {
-  text-align: center;
-  font-size: 13px;
-  color: #f56c6c;
-  margin-top: 8px;
-}
-
-/* 响应式设计 */
 @media (max-width: 768px) {
   .upload-container {
     padding: 12px;
@@ -1214,24 +458,14 @@ onMounted(() => {
     flex-direction: column;
   }
 
-  .cover-upload-section {
+  .cover-wrapper {
     flex-direction: column;
-    align-items: flex-start;
   }
 
-  .cover-uploader {
-    width: 100%;
-    height: 180px;
-  }
-
-  .video-part-item {
-    flex-wrap: wrap;
-  }
-
-  .part-actions {
-    width: 100%;
-    justify-content: flex-end;
-    margin-top: 8px;
+  .cover-label {
+    width: auto;
+    text-align: left;
+    margin-bottom: 8px;
   }
 
   .form-actions {
