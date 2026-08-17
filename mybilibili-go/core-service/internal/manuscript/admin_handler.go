@@ -572,8 +572,14 @@ func (h *ManuscriptAdminHandler) triggerVideoProcess(w http.ResponseWriter, r *h
 		http.Error(w, "视频不存在", 404)
 		return
 	}
+	var sourceURL string
+	var uploaderID int64
 	_ = h.db.QueryRowContext(r.Context(),
 		`SELECT manuscript_id, title FROM videos WHERE id = $1`, videoID).Scan(&manuscriptID, &title)
+	_ = h.db.QueryRowContext(r.Context(),
+		`SELECT COALESCE(source_video_url,'') FROM videos WHERE id = $1`, videoID).Scan(&sourceURL)
+	_ = h.db.QueryRowContext(r.Context(),
+		`SELECT user_id FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&uploaderID)
 
 	var fromProcess int32
 	_ = h.db.QueryRowContext(r.Context(),
@@ -591,7 +597,7 @@ func (h *ManuscriptAdminHandler) triggerVideoProcess(w http.ResponseWriter, r *h
 		fromProcess, int32(processStatus), stage, 100)
 
 	if h.publisher != nil {
-		_ = h.publisher.PublishVideoProcess(r.Context(), manuscriptID, videoID, stage)
+		_ = h.publisher.PublishVideoProcess(r.Context(), manuscriptID, videoID, stage, sourceURL, uploaderID)
 	}
 
 	// 稿件标记为处理中（对齐旧版 approve 后 status=PROCESSING）

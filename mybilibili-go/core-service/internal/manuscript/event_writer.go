@@ -11,7 +11,7 @@ import (
 type ManuscriptEventPublisher interface {
 	PublishManuscriptIndex(ctx context.Context, manuscriptID int64, operation, trigger string) error
 	PublishAnalytics(ctx context.Context, manuscriptID, userID int64, eventType, metricType string, delta int64) error
-	PublishVideoProcess(ctx context.Context, manuscriptID, videoID int64, processType string) error
+	PublishVideoProcess(ctx context.Context, manuscriptID, videoID int64, processType, sourceURL string, uploaderID int64) error
 }
 
 // ManuscriptEventWriter 稿件域事件/流水落库接口。
