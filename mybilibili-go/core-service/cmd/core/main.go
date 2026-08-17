@@ -24,7 +24,6 @@ import (
 	"mybilibili/core-service/internal/moderation"
 	"mybilibili/core-service/internal/social"
 	"mybilibili/core-service/internal/studio"
-	"mybilibili/core-service/internal/subtitle"
 	"mybilibili/core-service/internal/support"
 	"mybilibili/core-service/internal/user"
 	"mybilibili/core-service/internal/video"
@@ -126,7 +125,6 @@ func main() {
 	videoAdminH := video.NewAdminHandler(db)
 	commentAdminH := comment.NewAdminHandler(db)
 	moderationAdminH := moderation.NewAdminHandler(db)
-	liveAdminH := coreapi.NewLiveAdminHandler(db)
 
 	modRepo := moderation.NewRepository(db)
 	modSvc := moderation.NewService(modRepo)
@@ -164,7 +162,6 @@ func main() {
 	favoriteH := favorite.NewFavoriteHandler(db)
 	genericInteractionH := interaction.NewGenericInteractionHandler(interactionRepo)
 
-	docStore, _ := abstraction.NewDocumentStore(abstraction.DocumentStoreConfig{Type: "pg-jsonb", DSN: dsn})
 	mq, _ := abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: "memory"})
 
 	redisAddr := os.Getenv("REDIS_ADDR")
@@ -210,11 +207,8 @@ func main() {
 		}
 	}()
 
-	subtitleRepo := subtitle.NewRepository(docStore)
-	subtitleSvc := subtitle.NewService(subtitleRepo)
-	subtitleH := subtitle.NewHandler(subtitleSvc)
 
-	interactionSvc.SetProfileRecorder(interaction.NewHTTPProfileRecorder())
+	interactionSvc.SetProfileRecorder(clients.NewHTTPProfileRecorder())
 
 	studioRepo := studio.NewRepository(db)
 	studioSvc := studio.NewService(studioRepo)
@@ -222,13 +216,13 @@ func main() {
 
 	commentSvc.SetReviewService(aiClient)
 
-	publicAPIH := coreapi.NewPublicAPIHandler(commentSvc)
+	publicAPIH := comment.NewPublicAPIHandler(commentSvc)
 
 	coreapi.StartHTTPServer(httpAddr, auth.NewJWT(jwtSecret),
 		liveProxy, followH, socialH, videoH, adminH, modH,
 		supportH, userExtH, favoriteH,
-		subtitleH, studioH, creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH,
-		userAdminH, manuscriptAdminH, videoAdminH, commentAdminH, moderationAdminH, liveAdminH)
+		studioH, creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH,
+		userAdminH, manuscriptAdminH, videoAdminH, commentAdminH, moderationAdminH)
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {

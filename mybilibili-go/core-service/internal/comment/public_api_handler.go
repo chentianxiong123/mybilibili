@@ -1,4 +1,4 @@
-package coreapi
+package comment
 
 import (
 	"encoding/json"
@@ -6,14 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"mybilibili/core-service/internal/comment"
+	"google.golang.org/protobuf/encoding/protojson"
 	"mybilibili/pkg/errors"
 	"mybilibili/pkg/httputil"
 	pb "mybilibili/pkg/pb"
-	"google.golang.org/protobuf/encoding/protojson"
 )
-
-type CommentService = comment.CommentService
 
 // PublicAPIHandler 提供评论的公开 HTTP JSON 端点（Flutter App 与 web-ts 直接消费），
 // 内部复用现有 gRPC service 的逻辑，不经过 gRPC 二进制协议。

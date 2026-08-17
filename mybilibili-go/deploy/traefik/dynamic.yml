@@ -84,6 +84,18 @@ routers:
     tls:
       certResolver: letsencrypt
 
+  # ＝＝＝ 字幕（AI 服务）＝＝＝
+  subtitle-api:
+    rule: "Host(`mylib.com`) && PathPrefix(`/api/v1/subtitle/`)"
+    priority: 15
+    service: ai
+    middlewares:
+      - jwt-auth
+      - rate-limit
+      - security-headers
+    tls:
+      certResolver: letsencrypt
+
   # ＝＝＝ SSE 推送（不需要 JWT，前端 EventSource 不带自定义头）＝＝＝
   core-sse:
     rule: "Host(`mylib.com`) && PathPrefix(`/sse/`)"
@@ -145,6 +157,15 @@ services:
     loadBalancer:
       servers:
         - url: "http://localhost:8084"
+      healthCheck:
+        path: /api/v1/health
+        interval: 10s
+        timeout: 3s
+
+  ai:
+    loadBalancer:
+      servers:
+        - url: "http://localhost:8088"
       healthCheck:
         path: /api/v1/health
         interval: 10s
