@@ -8,4 +8,5 @@ use (
 	./msg-danmaku-service
 	./pkg
 	./search-service
+	./studio-service
 )
