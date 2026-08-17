@@ -43,11 +43,6 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             'vendor-vue': ['vue', 'vue-router', 'pinia'],
-            ...(isWeb ? {
-              'vendor-player': ['artplayer', 'artplayer-plugin-danmuku'],
-              'vendor-flv': ['flv.js'],
-              'vendor-hls': ['hls.js']
-            } : {}),
             'vendor-charts': ['echarts'],
             'vendor-utils': ['axios']
           }
