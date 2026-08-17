@@ -386,7 +386,7 @@ onMounted(() => {
       <aside class="left-sidebar">
         <div class="user-card" v-if="userStore.isLoggedIn && currentUser.id">
           <div class="user-avatar-section" @click="goToUserProfile(currentUser.id)">
-            <img :src="currentUser.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" alt="头像" class="user-avatar">
+            <img loading="lazy" decoding="async" :src="currentUser.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" alt="头像" class="user-avatar">
             <div class="user-level" v-if="currentUser.level">LV{{ currentUser.level }}</div>
           </div>
           <div class="user-name">{{ currentUser.username }}</div>
@@ -420,7 +420,7 @@ onMounted(() => {
           
           <div class="image-preview" v-if="imagePreviewUrls.length > 0">
             <div v-for="(url, index) in imagePreviewUrls" :key="index" class="preview-item">
-              <img :src="url" alt="预览">
+              <img loading="lazy" decoding="async" :src="url" alt="预览">
               <button class="remove-btn" @click="removeImage(index)">×</button>
             </div>
           </div>
@@ -479,7 +479,7 @@ onMounted(() => {
             :class="['following-user-item', { active: selectedUserId === user.id }]"
             @click="selectUser(user.id)"
           >
-            <img v-if="user.avatar" :src="user.avatar" :alt="user.name" class="following-avatar">
+            <img loading="lazy" decoding="async" v-if="user.avatar" :src="user.avatar" :alt="user.name" class="following-avatar">
             <div v-else class="following-avatar default-avatar">全</div>
             <span class="following-name">{{ user.name }}</span>
           </div>
@@ -488,7 +488,7 @@ onMounted(() => {
         <div class="dynamic-list">
           <div v-for="item in dynamicList" :key="item.id" class="dynamic-card">
             <div class="dynamic-header">
-              <img :src="item.user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" alt="" class="dynamic-avatar" @click="goToUserProfile(item.userId)">
+              <img loading="lazy" decoding="async" :src="item.user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" alt="" class="dynamic-avatar" @click="goToUserProfile(item.userId)">
               <div class="dynamic-user-info">
                 <div class="dynamic-username" @click="goToUserProfile(item.userId)">
                   {{ item.user?.username || '用户' }}
@@ -504,11 +504,11 @@ onMounted(() => {
               <div class="dynamic-text">{{ item.content }}</div>
 
               <div v-if="item.imageUrls && item.imageUrls.length > 0" class="dynamic-images">
-                <img v-for="(url, index) in item.imageUrls" :key="index" :src="url" alt="" class="dynamic-image" @click="() => {}">
+                <img loading="lazy" decoding="async" v-for="(url, index) in item.imageUrls" :key="index" :src="url" alt="" class="dynamic-image" @click="() => {}">
               </div>
 
               <div v-if="item.refManuscriptId" class="video-card" @click="goToManuscript(item.refManuscriptId)">
-                <img v-if="item.refVideo?.cover" :src="item.refVideo.cover" alt="稿件封面" class="video-cover">
+                <img loading="lazy" decoding="async" v-if="item.refVideo?.cover" :src="item.refVideo.cover" alt="稿件封面" class="video-cover">
                 <div v-else class="video-cover-placeholder">
                   <el-icon><VideoPlay /></el-icon>
                 </div>
@@ -572,7 +572,7 @@ onMounted(() => {
 
       <aside class="right-sidebar">
         <div class="ad-banner">
-          <img src="https://picsum.photos/300/150?random=ad" alt="广告">
+          <img loading="lazy" decoding="async" src="https://picsum.photos/300/150?random=ad" alt="广告">
           <div class="ad-overlay">
             <div class="ad-title">社区中心</div>
           </div>

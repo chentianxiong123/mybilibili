@@ -646,7 +646,7 @@ onUnmounted(() => {
     </div>
 
     <div class="comment-input-wrapper" ref="commentInputWrapper">
-      <img :src="currentUserAvatar()" alt="用户头像" class="comment-input-avatar">
+      <img loading="lazy" decoding="async" :src="currentUserAvatar()" alt="用户头像" class="comment-input-avatar">
 
       <div
         class="comment-input-collapsed"
@@ -701,7 +701,7 @@ onUnmounted(() => {
       </div>
       <div v-else>
         <div v-for="comment in comments" :key="comment.id" class="comment-item">
-          <img
+          <img loading="lazy" decoding="async"
             :src="comment.avatar || '/default-avatar.svg'"
             alt="用户头像"
             class="comment-avatar"
@@ -729,7 +729,7 @@ onUnmounted(() => {
 
             <div class="replies-list" v-if="getReplyTotal(comment) > 0">
               <div v-for="reply in getUploaderReplies(comment)" :key="reply.id" class="reply-item">
-                <img :src="reply.avatar || '/default-avatar.svg'" alt="用户头像" class="reply-avatar" @click="goToAuthor(reply.userId)">
+                <img loading="lazy" decoding="async" :src="reply.avatar || '/default-avatar.svg'" alt="用户头像" class="reply-avatar" @click="goToAuthor(reply.userId)">
                 <div class="reply-content">
                   <div class="reply-text">
                     <span class="reply-author" @click="goToAuthor(reply.userId)">{{ reply.author }}</span>
@@ -760,7 +760,7 @@ onUnmounted(() => {
 
                 <div v-if="replyExpanded[comment.id]">
                   <div v-for="reply in getOtherReplies(comment)" :key="reply.id" class="reply-item">
-                    <img :src="reply.avatar || '/default-avatar.svg'" alt="用户头像" class="reply-avatar" @click="goToAuthor(reply.userId)">
+                    <img loading="lazy" decoding="async" :src="reply.avatar || '/default-avatar.svg'" alt="用户头像" class="reply-avatar" @click="goToAuthor(reply.userId)">
                     <div class="reply-content">
                       <div class="reply-text">
                         <span class="reply-author" @click="goToAuthor(reply.userId)">{{ reply.author }}</span>
@@ -805,7 +805,7 @@ onUnmounted(() => {
             </div>
 
             <div class="reply-input-wrapper" v-if="comment.showReplyInput" @click.stop>
-              <img :src="currentUserAvatar()" alt="用户头像" class="reply-input-avatar">
+              <img loading="lazy" decoding="async" :src="currentUserAvatar()" alt="用户头像" class="reply-input-avatar">
               <div class="reply-input-content">
                 <div v-if="replyTargets[comment.id]" class="reply-target-info">
                   回复 @{{ replyTargets[comment.id].targetAuthor }}

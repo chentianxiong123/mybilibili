@@ -47,14 +47,14 @@ onMounted(() => {
     <div class="user-header">
       <!-- 封面图 -->
       <div class="user-cover">
-        <img :src="userInfo.cover" alt="用户封面">
+        <img loading="lazy" decoding="async" :src="userInfo.cover" alt="用户封面">
       </div>
       
       <!-- 用户信息卡片 -->
       <div class="user-info-card">
         <!-- 头像和名称 -->
         <div class="user-avatar-section">
-          <img :src="userInfo.avatar" alt="用户头像" class="user-avatar">
+          <img loading="lazy" decoding="async" :src="userInfo.avatar" alt="用户头像" class="user-avatar">
           <div class="user-meta">
             <h1 class="user-name">{{ userInfo.name }}</h1>
             <div class="user-stats">
@@ -99,7 +99,7 @@ onMounted(() => {
         <div v-for="video in userVideos" :key="video.id" class="video-item">
           <a :href="'/manuscript/' + video.id" class="video-link">
             <div class="video-cover">
-              <img :src="video.cover" alt="视频封面">
+              <img loading="lazy" decoding="async" :src="video.cover" alt="视频封面">
               <span class="video-duration">{{ video.duration }}</span>
             </div>
             <div class="video-info">

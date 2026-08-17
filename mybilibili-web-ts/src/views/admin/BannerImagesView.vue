@@ -420,7 +420,7 @@ const loadCategories = async () => {
             :on-change="handleUpload"
             accept="image/*"
           >
-            <img v-if="formData.imageUrl" :src="formData.imageUrl" class="avatar" />
+            <img loading="lazy" decoding="async" v-if="formData.imageUrl" :src="formData.imageUrl" class="avatar" />
             <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
           </el-upload>
           <div class="upload-tip">建议尺寸：首页轮播图 1200x400，分类轮播图 800x300，背景图 1920x150</div>

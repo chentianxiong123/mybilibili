@@ -29,7 +29,7 @@
           :class="['video-item', { selected: selectedId === video.id }]"
           @click="handleSelect(video)"
         >
-          <img
+          <img loading="lazy" decoding="async"
             :src="video.coverUrl || 'https://picsum.photos/160/100'"
             alt="封面"
             class="video-cover"

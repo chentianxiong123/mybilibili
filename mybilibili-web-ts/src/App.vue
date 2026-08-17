@@ -1,6 +1,10 @@
 <template>
   <component :is="layoutComponent">
-    <router-view />
+    <router-view v-slot="{ Component: RouteComponent }">
+      <keep-alive :include="['HomeView', 'CategoryView']">
+        <component :is="RouteComponent" />
+      </keep-alive>
+    </router-view>
   </component>
 </template>
 

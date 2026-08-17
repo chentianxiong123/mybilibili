@@ -246,7 +246,7 @@ onMounted(() => {
           @click="viewFolderVideos(folder)"
         >
           <div class="folder-cover">
-            <img v-if="folder.cover" :src="folder.cover" alt="封面" />
+            <img loading="lazy" decoding="async" v-if="folder.cover" :src="folder.cover" alt="封面" />
             <div v-else class="folder-cover-placeholder">
               <el-icon :size="48"><VideoPlay /></el-icon>
             </div>
@@ -300,7 +300,7 @@ onMounted(() => {
           class="video-card"
         >
           <div class="video-cover">
-            <img :src="video.cover" alt="封面" />
+            <img loading="lazy" decoding="async" :src="video.cover" alt="封面" />
             <div class="video-duration">{{ formatDuration(video.duration) }}</div>
             <div class="video-actions">
               <el-button link @click="removeVideo(video)">

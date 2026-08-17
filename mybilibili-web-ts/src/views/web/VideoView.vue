@@ -1364,7 +1364,7 @@ watch(
           @mouseenter="handleAuthorMouseEnter"
           @mouseleave="handleAuthorMouseLeave"
         >
-          <img 
+          <img loading="lazy" decoding="async" 
             ref="authorAvatarRef"
             :src="videoInfo.uploader.avatar || '/default-avatar.svg'" 
             alt="作者头像" 

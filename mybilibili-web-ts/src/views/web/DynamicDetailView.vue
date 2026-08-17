@@ -6,7 +6,7 @@
         <div class="dynamic-card" v-if="dynamic">
           <!-- 动态头部 -->
           <div class="dynamic-header">
-            <img
+            <img loading="lazy" decoding="async"
               :src="dynamic.user?.avatar || defaultAvatar"
               alt=""
               class="user-avatar"
@@ -26,7 +26,7 @@
 
             <!-- 图片 -->
             <div v-if="dynamic.imageUrls && dynamic.imageUrls.length > 0" class="dynamic-images">
-              <img
+              <img loading="lazy" decoding="async"
                 v-for="(url, index) in dynamic.imageUrls"
                 :key="index"
                 :src="url"
@@ -94,7 +94,7 @@
       <!-- 右侧：推荐/其他 -->
       <div class="sidebar">
         <div class="user-card" v-if="dynamic?.user">
-          <img
+          <img loading="lazy" decoding="async"
             :src="dynamic.user.avatar || defaultAvatar"
             alt=""
             class="card-avatar"

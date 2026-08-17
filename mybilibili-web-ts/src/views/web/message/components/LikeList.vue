@@ -144,7 +144,7 @@ onMounted(() => {
       >
         <div class="item-left">
           <div class="user-avatars">
-            <img 
+            <img loading="lazy" decoding="async" 
               v-for="(avatar, index) in item.userAvatars?.slice(0, 3)" 
               :key="index"
               :src="avatar || '/default-avatar.svg'" 
@@ -163,7 +163,7 @@ onMounted(() => {
           </div>
         </div>
         <div class="item-right" v-if="item.videoCover || item.commentContent">
-          <img v-if="item.videoCover" :src="item.videoCover" class="video-cover" />
+          <img loading="lazy" decoding="async" v-if="item.videoCover" :src="item.videoCover" class="video-cover" />
           <div v-else class="comment-preview">{{ item.commentContent }}</div>
         </div>
       </div>

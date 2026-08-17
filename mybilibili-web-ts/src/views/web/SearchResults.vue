@@ -401,7 +401,7 @@ onUnmounted(() => {
           @click="goToVideo(video)"
         >
           <div class="video-cover">
-            <img :src="video.coverUrl || video.cover || '/assets/placeholder-cover.svg'" :alt="video.title">
+            <img loading="lazy" decoding="async" :src="video.coverUrl || video.cover || '/assets/placeholder-cover.svg'" :alt="video.title">
             <!-- 播放量 -->
             <div class="video-stats-overlay">
               <span class="stat-item">

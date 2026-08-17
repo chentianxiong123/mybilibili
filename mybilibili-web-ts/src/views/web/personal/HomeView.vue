@@ -86,7 +86,7 @@ const goToSpace = () => {
     <div class="user-card">
       <!-- 头像 -->
       <div class="avatar-wrapper" @click="goToSpace" title="点击查看个人空间">
-        <img :src="userInfo.avatar" alt="头像" class="user-avatar">
+        <img loading="lazy" decoding="async" :src="userInfo.avatar" alt="头像" class="user-avatar">
         <div class="avatar-overlay">
           <el-icon :size="24"><Edit /></el-icon>
         </div>

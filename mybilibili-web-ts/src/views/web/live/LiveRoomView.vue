@@ -241,7 +241,7 @@ onUnmounted(() => {
                     <div v-else class="replay-grid">
                       <div v-for="r in replayList" :key="r.id" class="replay-item" @click="playReplay(r)">
                         <div class="replay-cover">
-                          <img :src="r.coverUrl || '/live-placeholder.svg'" alt="cover" />
+                          <img loading="lazy" decoding="async" :src="r.coverUrl || '/live-placeholder.svg'" alt="cover" />
                           <span class="replay-duration">{{ r.duration }}</span>
                         </div>
                         <div class="replay-info">

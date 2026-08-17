@@ -300,7 +300,7 @@ onMounted(() => {
         @click="goToCollectionDetail(collection.id)"
       >
         <div class="collection-cover">
-          <img
+          <img loading="lazy" decoding="async"
             :src="collection.coverUrl || getDefaultCover()"
             :alt="collection.name"
           />
@@ -363,7 +363,7 @@ onMounted(() => {
         @click="goToCollectionDetail(collection.id)"
       >
         <div class="list-cover">
-          <img
+          <img loading="lazy" decoding="async"
             :src="collection.coverUrl || getDefaultCover()"
             :alt="collection.name"
           />
@@ -482,7 +482,7 @@ onMounted(() => {
                 >
                   <el-checkbox :label="manuscript.id">
                     <div class="manuscript-content">
-                      <img
+                      <img loading="lazy" decoding="async"
                         :src="manuscript.coverUrl || getDefaultCover()"
                         :alt="manuscript.title"
                         class="manuscript-cover"

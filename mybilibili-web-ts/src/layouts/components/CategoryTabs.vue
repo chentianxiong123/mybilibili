@@ -110,7 +110,7 @@ const handleHotTabClick = () => {
         @click="handleDynamicTabClick"
       >
         <div class="dynamic-icon">
-          <img v-if="showAvatar && firstDynamicAvatar" :src="firstDynamicAvatar" alt="动态头像" class="dynamic-avatar-img">
+          <img loading="lazy" decoding="async" v-if="showAvatar && firstDynamicAvatar" :src="firstDynamicAvatar" alt="动态头像" class="dynamic-avatar-img">
           <el-icon v-else class="dynamic-default-icon"><Bell /></el-icon>
         </div>
         <span class="dynamic-text">{{ dynamicTab.name }}</span>

@@ -36,7 +36,7 @@ const handleFollow = (user) => {
     <div v-else class="fans-user-list">
       <div v-for="user in users" :key="user.id" class="fans-user-item">
         <div class="fans-user-avatar">
-          <img :src="user.avatar || '/assets/placeholder-avatar.svg'" :alt="user.nickname || user.name" />
+          <img loading="lazy" decoding="async" :src="user.avatar || '/assets/placeholder-avatar.svg'" :alt="user.nickname || user.name" />
         </div>
         <div class="fans-user-info">
           <div class="fans-user-name">{{ user.nickname || user.name || '未知用户' }}</div>
