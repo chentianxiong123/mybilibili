@@ -4,7 +4,7 @@ use (
 	./ai-service
 	./core-service
 	./live-service
-	./media-service
+	./work-service
 	./msg-danmaku-service
 	./pkg
 	./search-service

@@ -8,7 +8,7 @@ import (
 	"syscall"
 
 	"mybilibili/pkg/abstraction"
-	"mybilibili/media-service/internal/media"
+	"mybilibili/work-service/internal/work"
 )
 
 func main() {
@@ -44,9 +44,9 @@ func main() {
 		log.Fatalf("search: %v", err)
 	}
 
-	workDir := getEnv("MEDIA_WORK_DIR", "/tmp/media-work")
+	workDir := getEnv("WORK_DIR", "/tmp/work")
 
-	pipeline := media.NewPipeline(mq, storage, docStore, search, workDir)
+	pipeline := work.NewPipeline(mq, storage, docStore, search, workDir)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -58,7 +58,7 @@ func main() {
 		cancel()
 	}()
 
-	log.Println("media service starting (independent FFmpeg pipeline)")
+	log.Println("work service starting (FFmpeg pipeline)")
 	if err := pipeline.Start(ctx); err != nil {
 		log.Fatalf("pipeline: %v", err)
 	}
