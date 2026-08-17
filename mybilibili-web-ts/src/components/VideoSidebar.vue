@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { ElSkeleton } from 'element-plus'
+import { useVirtualizer } from '@tanstack/vue-virtual'
 
-defineProps<{
+const props = defineProps<{
   danmuList: any[]
   loadingDanmus: boolean
   manuscriptInfo: any
@@ -21,6 +22,15 @@ const formatTime = (seconds: number) => {
   const secs = Math.floor(seconds % 60)
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
+
+const danmuScrollRef = ref<HTMLElement | null>(null)
+const virtualizer = useVirtualizer({
+  count: () => props.danmuList.length,
+  getScrollElement: () => danmuScrollRef.value,
+  estimateSize: () => 38,
+  overscan: 10
+} as any)
+const virtualRows = computed(() => virtualizer.value.getVirtualItems())
 </script>
 
 <template>
@@ -33,25 +43,33 @@ const formatTime = (seconds: number) => {
           <ArrowDown />
         </el-icon>
       </div>
-      <div class="danmu-items" :class="{ 'is-hidden': isDanmuListCollapsed }">
+      <div ref="danmuScrollRef" class="danmu-items" :class="{ 'is-hidden': isDanmuListCollapsed }">
         <div v-if="loadingDanmus" class="loading-danmus">
           <el-skeleton :rows="5" animated />
         </div>
         <div v-else-if="danmuList.length === 0" class="no-danmus">
           <p>暂无弹幕</p>
         </div>
-        <div v-else class="danmu-list-content">
+        <template v-else>
           <div class="danmu-header">
             <span class="header-time">时间</span>
             <span class="header-content">弹幕内容</span>
             <span class="header-send-time">发送时间</span>
           </div>
-          <div v-for="(danmu, index) in danmuList" :key="index" class="danmu-item" @click="emit('jumpToDanmuTime', danmu.time)">
-            <span class="danmu-time">{{ formatTime(danmu.time) }}</span>
-            <span class="danmu-text">{{ danmu.text }}</span>
-            <span class="danmu-send-time">{{ danmu.sendTime }}</span>
+          <div class="danmu-list-content" :style="{ height: virtualizer.getTotalSize() + 'px' }">
+            <div
+              v-for="row in virtualRows"
+              :key="String(row.key)"
+              class="danmu-item"
+              :style="{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${row.start}px)` }"
+              @click="emit('jumpToDanmuTime', danmuList[row.index].time)"
+            >
+              <span class="danmu-time">{{ formatTime(danmuList[row.index].time) }}</span>
+              <span class="danmu-text">{{ danmuList[row.index].text }}</span>
+              <span class="danmu-send-time">{{ danmuList[row.index].sendTime }}</span>
+            </div>
           </div>
-        </div>
+        </template>
       </div>
     </div>
 
@@ -163,6 +181,10 @@ const formatTime = (seconds: number) => {
 }
 .danmu-items {
   max-height: 400px;
+}
+.danmu-list-content {
+  position: relative;
+  width: 100%;
 }
 .danmu-header {
   display: flex;
