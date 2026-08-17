@@ -1,15 +1,14 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ChatDotRound, Share, Star, Picture, Link, MoreFilled, ArrowDown, VideoPlay, Clock, View } from '@element-plus/icons-vue'
-import CommentSystem from '@/components/CommentSystem.vue'
-import EmojiPopover from '@/components/EmojiPopover.vue'
-import VideoSelectDialog from '@/components/VideoSelectDialog.vue'
+import { ArrowDown } from '@element-plus/icons-vue'
 import { dynamicApi } from '@/api/dynamic.ts'
 import { useUserStore } from '@/stores/user.ts'
 import { ElMessage } from 'element-plus'
 import api from '@/api/client'
 import { searchApi } from '@/api/search.ts'
+import DynamicPublishPanel from '@/components/DynamicPublishPanel.vue'
+import DynamicCard from '@/components/DynamicCard.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -17,19 +16,7 @@ const userStore = useUserStore()
 
 const currentUser = computed(() => userStore.userInfo || {})
 
-const dynamicContent = ref('')
-const selectedImages = ref([])
-const imagePreviewUrls = ref([])
-const showVideoRefDialog = ref(false)
-const refVideoId = ref(null)
-const refVideoInfo = ref(null)
-
-// 表情选择器状态
-const showEmojiPicker = ref(false)
-const emojiBtnRef = ref(null)
-
-// 视频选择弹窗状态
-const showVideoSelectDialog = ref(false)
+const publishPanelRef = ref(null)
 
 const followingUsers = ref([
   { id: null, name: '全部动态', avatar: '', isAll: true }
@@ -44,7 +31,6 @@ const loading = ref(false)
 
 const hotSearchList = ref([])
 
-// 获取热搜榜
 const fetchHotSearch = async () => {
   try {
     const response = await searchApi.getHotSearch()
@@ -62,61 +48,20 @@ const fetchHotSearch = async () => {
   }
 }
 
-const handleImageSelect = (event) => {
-  const files = Array.from(event.target.files)
-  if (files.length + selectedImages.value.length > 9) {
-    ElMessage.warning('最多只能上传9张图片')
-    return
-  }
-  
-  files.forEach(file => {
-    if (!file.type.startsWith('image/')) {
-      ElMessage.error('只能上传图片文件')
-      return
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      ElMessage.error('图片大小不能超过5MB')
-      return
-    }
-    selectedImages.value.push(file)
-    imagePreviewUrls.value.push(URL.createObjectURL(file))
-  })
-  
-  event.target.value = ''
-}
-
-const removeImage = (index) => {
-  URL.revokeObjectURL(imagePreviewUrls.value[index])
-  selectedImages.value.splice(index, 1)
-  imagePreviewUrls.value.splice(index, 1)
-}
-
-const handlePublish = async () => {
-  if (!dynamicContent.value.trim() && selectedImages.value.length === 0 && !refVideoId.value) {
-    ElMessage.warning('请输入动态内容或添加图片')
-    return
-  }
-
+const handlePublish = async (payload) => {
   try {
     const formData = new FormData()
-    formData.append('content', dynamicContent.value)
-    
-    if (refVideoId.value) {
-      formData.append('refVideoId', refVideoId.value)
+    formData.append('content', payload.content)
+    if (payload.refVideoId) {
+      formData.append('refVideoId', payload.refVideoId)
     }
-    
-    selectedImages.value.forEach((file, index) => {
+    payload.images.forEach((file) => {
       formData.append('images', file)
     })
-
     const res = await dynamicApi.publishDynamic(formData)
     if (res.code === 200) {
       ElMessage.success('发布成功，经验值+5')
-      dynamicContent.value = ''
-      selectedImages.value = []
-      imagePreviewUrls.value = []
-      refVideoId.value = null
-      refVideoInfo.value = null
+      publishPanelRef.value?.reset()
       await fetchDynamics()
     } else {
       ElMessage.error(res.message || '发布失败')
@@ -126,41 +71,8 @@ const handlePublish = async () => {
   }
 }
 
-const openVideoRefDialog = () => {
-  if (!userStore.isLoggedIn) {
-    ElMessage.warning('请先登录')
-    return
-  }
-  showVideoSelectDialog.value = true
-}
-
-const handleVideoSelect = (video) => {
-  refVideoId.value = video.id
-  refVideoInfo.value = {
-    id: video.id,
-    title: video.title,
-    cover: video.coverUrl
-  }
-  showVideoSelectDialog.value = false
-  ElMessage.success('已选择视频：' + video.title)
-}
-
-const toggleEmojiPicker = () => {
-  showEmojiPicker.value = !showEmojiPicker.value
-}
-
-const insertEmoji = (emoji) => {
-  dynamicContent.value += emoji
-}
-
-const clearVideoRef = () => {
-  refVideoId.value = null
-  refVideoInfo.value = null
-}
-
 const fetchFollowingUsers = async () => {
   try {
-    // 使用当前登录用户的ID获取关注列表
     const currentUserId = userStore.userInfo?.id
     if (!currentUserId) {
       console.log('用户未登录，不获取关注列表')
@@ -178,7 +90,6 @@ const fetchFollowingUsers = async () => {
       ]
     }
   } catch (error) {
-    // 接口不存在时不输出错误日志，避免控制台报错
     if (error.response?.status !== 404) {
       console.error('获取关注列表失败:', error)
     }
@@ -199,7 +110,6 @@ const fetchDynamics = async () => {
 
     if (res.code === 200) {
       const list = res.data.list || res.data
-      // 映射数据，确保 stats 对象存在
       const mappedList = (list || []).map(item => ({
         ...item,
         stats: {
@@ -239,7 +149,6 @@ const loadMore = () => {
 
 const handleLike = async (item) => {
   try {
-    // 确保 stats 对象存在
     if (!item.stats) {
       item.stats = {
         isLiked: false,
@@ -248,15 +157,12 @@ const handleLike = async (item) => {
     }
 
     if (item.stats.isLiked) {
-      // 取消点赞
       const res = await dynamicApi.unlikeDynamic(item.id)
       if (res.code === 200) {
-        // 使用后端返回的真实数据，如果后端没有返回数据，则前端自行切换状态
         if (res.data) {
           item.stats.isLiked = res.data.isLiked ?? false
           item.stats.likeCount = res.data.likeCount ?? Math.max(0, item.stats.likeCount - 1)
         } else {
-          // 后端没有返回具体数据，前端自行更新状态
           item.stats.isLiked = false
           item.stats.likeCount = Math.max(0, item.stats.likeCount - 1)
         }
@@ -265,15 +171,12 @@ const handleLike = async (item) => {
         ElMessage.error(res.message || '取消点赞失败')
       }
     } else {
-      // 点赞
       const res = await dynamicApi.likeDynamic(item.id)
       if (res.code === 200) {
-        // 使用后端返回的真实数据，如果后端没有返回数据，则前端自行切换状态
         if (res.data) {
           item.stats.isLiked = res.data.isLiked ?? true
           item.stats.likeCount = res.data.likeCount ?? item.stats.likeCount + 1
         } else {
-          // 后端没有返回具体数据，前端自行更新状态
           item.stats.isLiked = true
           item.stats.likeCount = item.stats.likeCount + 1
         }
@@ -300,7 +203,6 @@ const handleForward = async (item) => {
   }
 }
 
-// 切换评论区展开/收起
 const toggleComment = (item) => {
   item.showComments = !item.showComments
 }
@@ -333,33 +235,10 @@ const goToSearch = (keyword) => {
   router.push(`/search?keyword=${encodeURIComponent(keyword)}`)
 }
 
-const formatTime = (dateStr) => {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diff = now - date
-  const minutes = Math.floor(diff / 60000)
-  const hours = Math.floor(diff / 3600000)
-  const days = Math.floor(diff / 86400000)
-  
-  if (minutes < 1) return '刚刚'
-  if (minutes < 60) return `${minutes}分钟前`
-  if (hours < 24) return `${hours}小时前`
-  if (days < 30) return `${days}天前`
-  return date.toLocaleDateString()
-}
-
-const formatNumber = (num) => {
-  if (num >= 10000) {
-    return (num / 10000).toFixed(1) + '万'
-  }
-  return num.toString()
-}
-
-// 初始化用户信息
 const initUserInfo = () => {
   const token = localStorage.getItem('token')
   const userData = localStorage.getItem('user')
-  
+
   if (token && userData) {
     try {
       const user = JSON.parse(userData)
@@ -408,68 +287,9 @@ onMounted(() => {
       </aside>
 
       <main class="main-content">
-        <div class="publish-box">
-          <div class="publish-input-wrapper">
-            <textarea
-              v-model="dynamicContent"
-              class="publish-input"
-              placeholder="有什么想和大家分享的？"
-              rows="3"
-            ></textarea>
-          </div>
-          
-          <div class="image-preview" v-if="imagePreviewUrls.length > 0">
-            <div v-for="(url, index) in imagePreviewUrls" :key="index" class="preview-item">
-              <img loading="lazy" decoding="async" :src="url" alt="预览">
-              <button class="remove-btn" @click="removeImage(index)">×</button>
-            </div>
-          </div>
-
-          <div class="video-ref-preview" v-if="refVideoInfo">
-            <div class="video-ref-card">
-              <span>引用视频：{{ refVideoInfo.title }}</span>
-              <button class="clear-btn" @click="clearVideoRef">×</button>
-            </div>
-          </div>
-
-          <div class="publish-toolbar">
-            <div class="toolbar-left">
-              <button
-                ref="emojiBtnRef"
-                class="tool-btn"
-                :class="{ active: showEmojiPicker }"
-                title="表情"
-                @click="toggleEmojiPicker"
-              >
-                <el-icon><ChatDotRound /></el-icon>
-              </button>
-              <EmojiPopover
-                v-model:visible="showEmojiPicker"
-                :trigger-ref="emojiBtnRef"
-                @select="insertEmoji"
-              />
-              <label class="tool-btn" title="图片">
-                <el-icon><Picture /></el-icon>
-                <input type="file" accept="image/*" multiple hidden @change="handleImageSelect">
-              </label>
-              <button class="tool-btn" title="引用视频" @click="openVideoRefDialog">
-                <el-icon><Link /></el-icon>
-              </button>
-            </div>
-            <div class="toolbar-right">
-              <span class="word-count">{{ dynamicContent.length }}/200</span>
-              <button class="publish-btn" :disabled="!dynamicContent.trim() && selectedImages.length === 0 && !refVideoId" @click="handlePublish">
-                发布
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- 视频选择弹窗 -->
-        <VideoSelectDialog
-          v-model:visible="showVideoSelectDialog"
-          :user-id="currentUser.id"
-          @select="handleVideoSelect"
+        <DynamicPublishPanel
+          ref="publishPanelRef"
+          @publish="handlePublish"
         />
 
         <div class="following-users-bar">
@@ -486,78 +306,16 @@ onMounted(() => {
         </div>
 
         <div class="dynamic-list">
-          <div v-for="item in dynamicList" :key="item.id" class="dynamic-card">
-            <div class="dynamic-header">
-              <img loading="lazy" decoding="async" :src="item.user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" alt="" class="dynamic-avatar" @click="goToUserProfile(item.userId)">
-              <div class="dynamic-user-info">
-                <div class="dynamic-username" @click="goToUserProfile(item.userId)">
-                  {{ item.user?.username || '用户' }}
-                </div>
-                <div class="dynamic-time">{{ formatTime(item.createdAt) }}</div>
-              </div>
-              <button class="more-btn">
-                <el-icon><MoreFilled /></el-icon>
-              </button>
-            </div>
-
-            <div class="dynamic-body">
-              <div class="dynamic-text">{{ item.content }}</div>
-
-              <div v-if="item.imageUrls && item.imageUrls.length > 0" class="dynamic-images">
-                <img loading="lazy" decoding="async" v-for="(url, index) in item.imageUrls" :key="index" :src="url" alt="" class="dynamic-image" @click="() => {}">
-              </div>
-
-              <div v-if="item.refManuscriptId" class="video-card" @click="goToManuscript(item.refManuscriptId)">
-                <img loading="lazy" decoding="async" v-if="item.refVideo?.cover" :src="item.refVideo.cover" alt="稿件封面" class="video-cover">
-                <div v-else class="video-cover-placeholder">
-                  <el-icon><VideoPlay /></el-icon>
-                </div>
-                <div class="video-info">
-                  <div class="video-title">{{ item.refVideo?.title || '引用稿件 #' + item.refManuscriptId }}</div>
-                  <div class="video-meta" v-if="item.refVideo">
-                    <span v-if="item.refVideo.duration" class="video-duration">
-                      <el-icon><Clock /></el-icon>
-                      {{ item.refVideo.duration }}
-                    </span>
-                    <span v-if="item.refVideo.viewCount" class="video-views">
-                      <el-icon><View /></el-icon>
-                      {{ formatNumber(item.refVideo.viewCount) }}次观看
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="dynamic-footer">
-              <button class="action-btn" @click="handleForward(item)">
-                <el-icon><Share /></el-icon>
-                <span>{{ item.shareCount || '转发' }}</span>
-              </button>
-              <button class="action-btn" :class="{ active: item.showComments }" @click="toggleComment(item)">
-                <el-icon><ChatDotRound /></el-icon>
-                <span>{{ item.commentCount || '评论' }}</span>
-              </button>
-              <button class="action-btn" :class="{ liked: item.stats?.isLiked }" @click="handleLike(item)">
-                <el-icon><Star /></el-icon>
-                <span>{{ item.stats?.likeCount > 0 ? item.stats.likeCount : '点赞' }}</span>
-              </button>
-            </div>
-
-            <!-- 评论区 - 展开栏形式 -->
-            <el-collapse-transition>
-              <div v-show="item.showComments" class="comment-section">
-                <div class="comment-section-content">
-                  <CommentSystem
-                    :target-type="'DYNAMIC'"
-                    :target-id="item.id"
-                    :placeholder="'发一条友善的评论吧~'"
-                    :total-count="item.commentCount"
-                    @update:totalCount="val => item.commentCount = val"
-                  />
-                </div>
-              </div>
-            </el-collapse-transition>
-          </div>
+          <DynamicCard
+            v-for="item in dynamicList"
+            :key="item.id"
+            :item="item"
+            @like="handleLike"
+            @forward="handleForward"
+            @toggle-comment="toggleComment"
+            @go-to-user="goToUserProfile"
+            @go-to-manuscript="goToManuscript"
+          />
 
           <div v-if="hasMore" class="load-more" @click="loadMore">
             <span v-if="!loading">加载更多</span>
@@ -685,152 +443,6 @@ onMounted(() => {
   min-width: 0;
 }
 
-.publish-box {
-  background: #fff;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.publish-input {
-  width: 100%;
-  border: 1px solid #e3e5e7;
-  border-radius: 8px;
-  padding: 12px;
-  font-size: 14px;
-  resize: none;
-  outline: none;
-  transition: border-color 0.3s;
-  font-family: inherit;
-  box-sizing: border-box;
-}
-
-.publish-input:focus {
-  border-color: #00aeec;
-}
-
-.image-preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.preview-item {
-  position: relative;
-  width: 80px;
-  height: 80px;
-}
-
-.preview-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 6px;
-}
-
-.remove-btn {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #ff2442;
-  color: #fff;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.video-ref-preview {
-  margin-top: 12px;
-}
-
-.video-ref-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: #f6f7f8;
-  border-radius: 6px;
-  font-size: 13px;
-}
-
-.clear-btn {
-  background: none;
-  border: none;
-  color: #9499a0;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.publish-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 12px;
-}
-
-.toolbar-left {
-  display: flex;
-  gap: 8px;
-}
-
-.tool-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: transparent;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #9499a0;
-  transition: all 0.3s;
-}
-
-.tool-btn:hover {
-  background: #f1f2f3;
-  color: #00aeec;
-}
-
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.word-count {
-  font-size: 12px;
-  color: #9499a0;
-}
-
-.publish-btn {
-  padding: 8px 24px;
-  background: #00aeec;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.publish-btn:hover:not(:disabled) {
-  background: #00a0d8;
-}
-
-.publish-btn:disabled {
-  background: #e3e5e7;
-  cursor: not-allowed;
-}
-
 .following-users-bar {
   background: #fff;
   border-radius: 8px;
@@ -887,204 +499,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.dynamic-card {
-  background: #fff;
-  border-radius: 8px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.dynamic-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.dynamic-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  object-fit: cover;
-  cursor: pointer;
-}
-
-.dynamic-user-info {
-  flex: 1;
-}
-
-.dynamic-username {
-  font-size: 14px;
-  font-weight: 500;
-  color: #fb7299;
-  cursor: pointer;
-}
-
-.dynamic-time {
-  font-size: 12px;
-  color: #9499a0;
-  margin-top: 4px;
-}
-
-.more-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: transparent;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #9499a0;
-}
-
-.dynamic-body {
-  margin-bottom: 16px;
-}
-
-.dynamic-text {
-  font-size: 14px;
-  color: #18191c;
-  line-height: 1.6;
-  white-space: pre-line;
-}
-
-.dynamic-images {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.dynamic-image {
-  width: 120px;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.video-card {
-  display: flex;
-  gap: 12px;
-  margin-top: 12px;
-  padding: 12px;
-  background: #f6f7f8;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.video-card:hover {
-  background: #e8e9ea;
-}
-
-.video-cover {
-  width: 120px;
-  height: 75px;
-  object-fit: cover;
-  border-radius: 6px;
-  flex-shrink: 0;
-}
-
-.video-cover-placeholder {
-  width: 120px;
-  height: 75px;
-  background: #e3e5e7;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #9499a0;
-  font-size: 24px;
-  flex-shrink: 0;
-}
-
-.video-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-width: 0;
-}
-
-.video-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: #18191c;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-all;
-}
-
-.video-meta {
-  display: flex;
-  gap: 16px;
-  margin-top: 8px;
-  font-size: 12px;
-  color: #9499a0;
-}
-
-.video-duration,
-.video-views {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.dynamic-footer {
-  display: flex;
-  border-top: 1px solid #e3e5e7;
-  padding-top: 12px;
-}
-
-.dynamic-footer .action-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px;
-  border: none;
-  background: transparent;
-  color: #61666d;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.3s;
-  border-radius: 6px;
-}
-
-.dynamic-footer .action-btn:hover {
-  background: #f1f2f3;
-  color: #00aeec;
-}
-
-.dynamic-footer .action-btn.liked {
-  color: #00a1d6;
-}
-
-.dynamic-footer .action-btn.active {
-  color: #00aeec;
-}
-
-/* 评论区 - 展开栏形式 */
-.comment-section {
-  margin-top: 12px;
-  border-top: 1px solid #e3e5e7;
-  background: #f6f7f8;
-  border-radius: 0 0 8px 8px;
-  overflow: hidden;
-}
-
-.comment-section-content {
-  padding: 16px;
-  background: #fff;
 }
 
 .load-more {
@@ -1206,12 +620,6 @@ onMounted(() => {
   color: #fff;
   padding: 2px 6px;
   border-radius: 4px;
-}
-
-/* 表情按钮激活状态 */
-.tool-btn.active {
-  color: #00aeec;
-  background: #e6f7ff;
 }
 
 @media (max-width: 1200px) {
