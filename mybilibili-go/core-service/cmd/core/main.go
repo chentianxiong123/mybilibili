@@ -19,7 +19,6 @@ import (
 	"mybilibili/core-service/internal/coreapi"
 	"mybilibili/core-service/internal/events"
 	"mybilibili/core-service/internal/favorite"
-	"mybilibili/core-service/internal/interaction"
 	"mybilibili/core-service/internal/manuscript"
 	"mybilibili/core-service/internal/moderation"
 	"mybilibili/core-service/internal/social"
@@ -80,8 +79,8 @@ func main() {
 	commentSvc := comment.NewCommentService(commentRepo)
 	commentH := comment.NewCommentHandler(commentSvc)
 
-	interactionRepo := interaction.NewInteractionRepository(db)
-	interactionSvc := interaction.NewInteractionService(interactionRepo)
+	interactionRepo := social.NewInteractionRepository(db)
+	interactionSvc := social.NewInteractionService(interactionRepo)
 	interactionH := interactionSvc
 
 	msgDanmakuClient, err := clients.NewMsgDanmakuClient()
@@ -105,6 +104,7 @@ func main() {
 	followRepo := social.NewFollowRepository(db)
 	followSvc := social.NewFollowService(followRepo)
 	followH := social.NewFollowHandler(followSvc)
+	interactionSvc.SetFollowService(followSvc)
 
 	dynamicRepo := social.NewDynamicRepository(db)
 	dynamicSvc := social.NewDynamicService(dynamicRepo)
@@ -159,7 +159,7 @@ func main() {
 	manuscriptHTTPH := manuscript.NewManuscriptHTTPHandler(db, manuscriptSvc, commentSvc, interactionSvc)
 	creatorCommentH := comment.NewCreatorCommentHTTPHandler(commentRepo, commentSvc)
 	favoriteH := favorite.NewFavoriteHandler(db)
-	genericInteractionH := interaction.NewGenericInteractionHandler(interactionRepo)
+	genericInteractionH := social.NewGenericInteractionHandler(interactionRepo)
 
 	mqType := os.Getenv("MQ_TYPE")
 	if mqType == "" {

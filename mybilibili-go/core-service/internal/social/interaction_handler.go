@@ -1,4 +1,4 @@
-package interaction
+package social
 
 import (
 	"encoding/json"
