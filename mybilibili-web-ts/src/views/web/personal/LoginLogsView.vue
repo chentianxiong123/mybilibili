@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { userApi } from '@/api/index.ts'
+import { userApi } from '@/api/client'
 
 const loading = ref(false)
 const tableData = ref([])

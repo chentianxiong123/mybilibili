@@ -1,4 +1,4 @@
-import api from './index.ts'
+import api from './client'
 
 /**
  * 推荐相关API

@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Upload, Picture } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { userApi } from '@/api/index'
+import { userApi } from '@/api/client'
 import { getStoredUser, setAuthSession } from '@/utils/auth.ts'
 
 // 当前用户信息

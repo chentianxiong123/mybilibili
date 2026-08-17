@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { FolderAdd, MoreFilled, VideoPlay } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { interactionApi } from '@/api/index.ts'
+import { interactionApi } from '@/api/client'
 
 // 收藏夹列表
 const favoriteFolders = ref([])

@@ -2,8 +2,8 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { userApi, emailCodeApi, captchaApi } from '@/api/index.ts'
-import api from '@/api/index.ts'
+import { userApi, emailCodeApi, captchaApi } from '@/api/client'
+import api from '@/api/client'
 import { Close, VideoPlay } from '@element-plus/icons-vue'
 
 const router = useRouter()

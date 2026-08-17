@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { Search, Delete, List, Grid, VideoPlay, Clock } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { watchHistoryApi } from '@/api/watchHistory.ts'
-import { videoApi } from '@/api/index.ts'
+import { videoApi } from '@/api/client'
 
 const router = useRouter()
 

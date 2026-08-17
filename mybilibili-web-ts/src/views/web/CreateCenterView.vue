@@ -1472,7 +1472,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ref, reactive, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { creatorApi, manuscriptApi, collectionApi, followApi, statsApi } from '@/api/creator'
-import { categoryApi, commentApi } from '@/api/index'
+import { categoryApi, commentApi } from '@/api/client'
 import { useUserStore } from '@/stores/user'
 import echarts from '@/utils/echartsCore'
 import {

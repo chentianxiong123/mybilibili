@@ -9,22 +9,19 @@ import {
   clearAdminSession
 } from '../utils/auth'
 
-// ====== Axios 实例 ======
 const api = axios.create({
   baseURL: '/api/v1',
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true
-})
+}) as any
 
-// ====== 请求拦截器 ======
 api.interceptors.request.use(
   config => {
     const url = config.url || ''
     const isImageRequest = url.includes('/covers/') || url.includes('/images/') || url.match(/\.(jpg|jpeg|png|gif|mp4)$/i)
     if (isImageRequest) return config
 
-    // 优先用 admin_token，其次用 user token
     const adminToken = getAdminToken()
     const userToken = getToken()
     const token = adminToken || userToken
@@ -36,7 +33,6 @@ api.interceptors.request.use(
   error => Promise.reject(error)
 )
 
-// ====== Token 刷新 ======
 let isRefreshing = false
 let failedQueue: Array<{ resolve: (token: string) => void; reject: (error: any) => void }> = []
 
@@ -48,25 +44,21 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = []
 }
 
-// ====== 响应拦截器 ======
 api.interceptors.response.use(
   response => response.data,
   error => {
     const originalRequest = error.config
 
-    // 401 处理 - token 刷新（仅 user token）
     if (error.response?.status === 401 && !originalRequest._retry) {
       const refreshToken = getRefreshToken()
       const adminToken = getAdminToken()
 
-      // admin 401 直接跳登录
       if (adminToken) {
         clearAdminSession()
         window.location.href = '/admin/login'
         return Promise.reject(error)
       }
 
-      // user token 刷新
       if (!refreshToken || originalRequest.url === '/user/token/refresh') {
         clearAuthSession()
         return Promise.reject(error)
@@ -108,7 +100,6 @@ api.interceptors.response.use(
       })
     }
 
-    // 通用错误提示
     if (error.response) {
       switch (error.response.status) {
         case 401: clearAuthSession(); break
@@ -123,6 +114,234 @@ api.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+function decodeJwtPayload(token: string) {
+  try {
+    const part = token.split('.')[1]
+    if (!part) return null
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/')
+    const pad = b64.length % 4
+    const padded = pad ? b64 + '='.repeat(4 - pad) : b64
+    return JSON.parse(atob(padded))
+  } catch (e) {
+    return null
+  }
+}
+
+function getAccessTokenRemainingMs() {
+  const token = getToken()
+  if (!token) return -1
+  const payload = decodeJwtPayload(token)
+  if (!payload || !payload.exp) return -1
+  return payload.exp * 1000 - Date.now()
+}
+
+async function silentRefreshOnce() {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) {
+    stopSilentRefresh()
+    return false
+  }
+  try {
+    const res = await api.post('/user/token/refresh', { refreshToken })
+    if (res && res.code === 200 && res.data && res.data.token) {
+      setAuthSession({
+        token: res.data.token,
+        refreshToken: res.data.refreshToken || refreshToken
+      })
+      return true
+    }
+    clearAuthSession()
+    stopSilentRefresh()
+    return false
+  } catch (e) {
+    return false
+  }
+}
+
+let silentRefreshTimer: ReturnType<typeof setInterval> | null = null
+
+export function startSilentRefresh() {
+  if (silentRefreshTimer) return
+  silentRefreshTimer = setInterval(async () => {
+    if (!getRefreshToken()) {
+      stopSilentRefresh()
+      return
+    }
+    const remaining = getAccessTokenRemainingMs()
+    if (remaining < 10 * 60 * 1000) {
+      await silentRefreshOnce()
+    }
+  }, 60 * 1000)
+}
+
+export function stopSilentRefresh() {
+  if (silentRefreshTimer) {
+    clearInterval(silentRefreshTimer)
+    silentRefreshTimer = null
+  }
+}
+
+export const captchaApi = {
+  newCaptcha: () => api.post('/captcha/new'),
+  verifyCaptcha: (captchaId: string, answer: string) => api.post('/captcha/verify', { captchaId, answer })
+}
+
+export const emailCodeApi = {
+  sendCode: (email: string) => api.post('/user/email/code', { email }),
+  verifyCode: (email: string, code: string) => api.post('/user/email/verify', { email, code })
+}
+
+export const userApi = {
+  register: (userData: any) => api.post('/user/register', userData),
+  login: (username: string, password: string, loginType: string, email: string, emailCode: string) => {
+    const data: Record<string, any> = {}
+    if (loginType === 'email_code') {
+      data.loginType = 'email_code'
+      data.email = email
+      data.emailCode = emailCode
+    } else {
+      data.username = username
+      data.password = password
+    }
+    data.loginIp = localStorage.getItem('clientIp') || ''
+    return api.post('/user/login', data)
+  },
+  forgotPassword: (email: string, code: string, newPassword: string) => api.post('/user/password/forgot', { email, code, newPassword }),
+  getLoginLogs: (page: number, size: number) => api.get('/user/login-logs', { params: { page, size } }),
+  getUserById: (id: number) => api.get(`/user/${id}`),
+  updateUser: (id: number, userData: any) => api.put(`/user/${id}`, userData),
+  uploadAvatar: (id: number, formData: FormData) => api.post(`/user/${id}/avatar`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  follow: (userId: number, follow: boolean) => follow ? api.post(`/follow/${userId}`) : api.delete(`/follow/${userId}`),
+  checkFollow: (userId: number) => api.get(`/follow/check/${userId}`),
+  getFollowingList: (userId: number) => api.get(`/user/${userId}/following`),
+  getFollowerList: (userId: number) => api.get(`/user/${userId}/followers`),
+  getPinnedVideo: (userId: number) => api.get(`/user/${userId}/pinned-video`),
+  setPinnedVideo: (videoId: number) => api.post(`/user/pinned-video`, { videoId }),
+  removePinnedVideo: () => api.delete(`/user/pinned-video`)
+}
+
+export const adminLoginLogApi = {
+  getLoginLogs: (params: any) => api.get('/admin/login-logs/list', { params }),
+  getUserLoginLogs: (userId: number, page: number, size: number) => api.get(`/admin/login-logs/user/${userId}`, { params: { page, size } })
+}
+
+export const videoApi = {
+  getRecommendedVideos: () => api.get('/manuscript/recommended'),
+  getHotVideos: () => api.get('/manuscript/hot'),
+  getVideoById: (id: number) => api.get(`/manuscript/${id}`),
+  getVideoByManuscriptId: (manuscriptId: number, params: any) => api.get(`/manuscript/${manuscriptId}`, { params }),
+  getVideosByCategoryId: (id: number) => api.get(`/manuscript/category/${id}`),
+  getVideosByUserId: (id: number, sort: string, status: number) => {
+    let url = `/manuscript/user/${id}`
+    const params = []
+    if (sort) params.push(`sort=${sort}`)
+    if (status !== undefined) params.push(`status=${status}`)
+    if (params.length > 0) url += `?${params.join('&')}`
+    return api.get(url)
+  },
+  searchUserVideos: (userId: number, keyword: string, sort: string) => api.get(`/manuscript/user/${userId}/search?keyword=${encodeURIComponent(keyword)}${sort ? `&sort=${sort}` : ''}`),
+  getVideoList: (page: number, size: number) => api.get(`/manuscript/list?page=${page}&size=${size}`),
+  uploadVideo: (formData: FormData, onProgress?: (pct: number) => void) => api.post('/manuscript/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: onProgress ? (progressEvent: any) => {
+      const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+      onProgress(percentCompleted)
+    } : undefined
+  })
+}
+
+export const commentApi = {
+  getComments: (targetType: string, targetId: number, page = 1, size = 20, sort = 'time') =>
+    targetType === 'DYNAMIC'
+      ? api.get(`/dynamic/comment/list?dynamicId=${targetId}&page=${page}&size=${size}&sort=${sort}`)
+      : api.get(`/comment/list?manuscriptId=${targetId}&page=${page}&size=${size}&sort=${sort}`),
+
+  postComment: (targetType: string, targetId: number, content: string) => {
+    const encodedContent = encodeURIComponent(content)
+    if (targetType === 'DYNAMIC') {
+      return api.post(`/dynamic/comment/add?dynamicId=${targetId}&content=${encodedContent}`, null, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      })
+    } else {
+      return api.post(`/comment/add`, `manuscriptId=${targetId}&content=${encodedContent}`, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      })
+    }
+  },
+
+  replyComment: (commentId: number, content: string, replyToUserId?: number) => api.post('/comment/reply', `commentId=${commentId}&content=${encodeURIComponent(content)}${replyToUserId ? `&replyToUserId=${replyToUserId}` : ''}`, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  }),
+
+  replyDynamicComment: (dynamicId: number, commentId: number, content: string, replyToUserId?: number) => api.post('/dynamic/comment/add', `dynamicId=${dynamicId}&content=${encodeURIComponent(content)}&parentId=${commentId}${replyToUserId ? `&replyUserId=${replyToUserId}` : ''}`, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  }),
+
+  likeComment: (commentId: number) => api.post(`/comment/${commentId}/like`),
+  likeDynamicComment: (commentId: number) => api.post(`/dynamic/comment/like/${commentId}`),
+  unlikeComment: (commentId: number) => api.delete(`/comment/${commentId}/like`),
+  unlikeDynamicComment: (commentId: number) => api.delete(`/dynamic/comment/like/${commentId}`),
+  getRepliesByCommentId: (commentId: number, page: number, size: number) => api.get(`/comment/${commentId}/replies?page=${page}&size=${size}`),
+  getDynamicRepliesByCommentId: (commentId: number) => api.get(`/dynamic/comment/replies?commentId=${commentId}`),
+  likeReply: (replyId: number) => api.post(`/comment/reply/${replyId}/like`),
+  likeDynamicReply: (replyId: number) => api.post(`/dynamic/comment/like/${replyId}`),
+  unlikeReply: (replyId: number) => api.delete(`/comment/reply/${replyId}/like`),
+  unlikeDynamicReply: (replyId: number) => api.delete(`/dynamic/comment/like/${replyId}`)
+}
+
+const requireAuthResult = (data: any) => (
+  getToken()
+    ? null
+    : Promise.resolve({ code: 401, message: '请先登录', data })
+)
+
+export const interactionApi = {
+  likeManuscript: (manuscriptId: number, liked: boolean) => liked ? api.post(`/manuscript/${manuscriptId}/like`) : api.delete(`/manuscript/${manuscriptId}/like`),
+  coinManuscript: (manuscriptId: number, coinCount: number) => api.post(`/manuscript/${manuscriptId}/coin?coinCount=${coinCount}`),
+  collectManuscript: (manuscriptId: number, collected: boolean) => collected ? api.post(`/manuscript/${manuscriptId}/collect`) : api.delete(`/manuscript/${manuscriptId}/collect`),
+  shareManuscript: (manuscriptId: number, channel?: string) => api.post(`/manuscript/${manuscriptId}/share`, { channel: channel || 'clipboard' }),
+  getShareStatistics: (manuscriptId: number) => api.get(`/manuscript/${manuscriptId}/share/statistics`),
+  sendDanmaku: (videoId: number, content: string, time: number, color: string, mode: number) => api.post(`/manuscript/${videoId}/danmaku`, {
+    videoId, content, time, color: color || '#ffffff', mode: mode || 0
+  }),
+  getDanmakus: (videoId: number) => api.get(`/danmaku/video/${videoId}`),
+  getInteractionStatus: (manuscriptId: number) => api.get(`/manuscript/${manuscriptId}/status`),
+  getLikedVideos: () => requireAuthResult([]) || api.get('/manuscript/user/likes'),
+  getCollectedVideos: () => requireAuthResult([]) || api.get('/manuscript/user/collections'),
+  getFavoriteFolders: () => requireAuthResult([]) || api.get('/manuscript/favorite/folders'),
+  createFavoriteFolder: (folderData: any) => api.post('/manuscript/favorite/folders', folderData),
+  updateFavoriteFolder: (folderId: number, name: string) => api.put(`/manuscript/favorite/folders/${folderId}`, { name }),
+  deleteFavoriteFolder: (folderId: number) => api.delete(`/manuscript/favorite/folders/${folderId}`),
+  getFavoriteFolderVideos: (folderId: number, page = 1, size = 12, sortOrder = 'desc') =>
+    api.get(`/manuscript/favorite/folders/${folderId}/videos`, { params: { page, size, sortOrder } }),
+  addToFavoriteFolders: (manuscriptId: number, folderIds: number[]) => api.post(`/manuscript/${manuscriptId}/favorite`, { folderIds }),
+  removeVideoFromFavoriteFolder: (folderId: number, manuscriptId: number) =>
+    api.delete(`/manuscript/favorite/folders/${folderId}/videos/${manuscriptId}`),
+  getVideoFavoriteFolders: (manuscriptId: number) => api.get(`/manuscript/${manuscriptId}/favorite/folders`),
+  updateVideoFavoriteFolders: (manuscriptId: number, folderIds: number[]) => api.put(`/manuscript/${manuscriptId}/favorite/folders`, { folderIds })
+}
+
+export const historyApi = {
+  getHistoryList: (page = 1, size = 20) => requireAuthResult([]) || api.get('/watch-history', { params: { page, size } }),
+  clearHistory: () => api.delete('/watch-history'),
+  deleteHistoryItem: (id: number) => api.delete(`/watch-history/${id}`)
+}
+
+export const categoryApi = {
+  getCategoryList: () => api.get('/category')
+}
+
+export const reportApi = {
+  submitReport: (data: any) => api.post('/report/submit', data)
+}
+
+export const getUserList = (params: Record<string, any>) => api.get('/user/admin/list', { params })
+export const getUserById = (id: number) => api.get(`/user/admin/${id}`)
+export const updateUserStatus = (id: number, status: string) => api.put(`/user/admin/${id}/status`, { status })
+export const resetPassword = (id: number, newPassword: string) => api.put(`/user/admin/${id}/password`, { newPassword })
 
 export default api as {
   (config: any): Promise<any>

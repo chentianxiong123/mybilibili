@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, Edit } from '@element-plus/icons-vue'
-import { userApi } from '@/api/index.ts'
+import { userApi } from '@/api/client'
 import { getCurrentUserId, getStoredUser, getToken, setAuthSession } from '@/utils/auth.ts'
 
 const router = useRouter()

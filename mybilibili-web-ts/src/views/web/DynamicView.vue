@@ -8,7 +8,7 @@ import VideoSelectDialog from '@/components/VideoSelectDialog.vue'
 import { dynamicApi } from '@/api/dynamic.ts'
 import { useUserStore } from '@/stores/user.ts'
 import { ElMessage } from 'element-plus'
-import api from '@/api/index.ts'
+import api from '@/api/client'
 import { searchApi } from '@/api/search.ts'
 
 const router = useRouter()

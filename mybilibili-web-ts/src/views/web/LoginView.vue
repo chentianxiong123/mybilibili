@@ -2,8 +2,8 @@
 import { ref, reactive, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { userApi, captchaApi, emailCodeApi } from '@/api/index.ts'
-import api from '@/api/index.ts'
+import { userApi, captchaApi, emailCodeApi } from '@/api/client'
+import api from '@/api/client'
 import { setAuthSession } from '@/utils/auth.ts'
 import { Close, VideoPlay } from '@element-plus/icons-vue'
 

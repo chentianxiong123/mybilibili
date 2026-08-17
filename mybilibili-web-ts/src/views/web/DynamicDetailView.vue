@@ -119,7 +119,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Star, ChatDotRound, Share, VideoPlay, ArrowDown } from '@element-plus/icons-vue'
 import { dynamicApi } from '@/api/dynamic.ts'
-import { userApi } from '@/api/index.ts'
+import { userApi } from '@/api/client'
 import CommentSystem from '@/components/CommentSystem.vue'
 
 const route = useRoute()

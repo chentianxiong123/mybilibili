@@ -1,4 +1,4 @@
-import api from './index.ts'
+import api from './client'
 
 export const historyApi = {
   getHistoryList: (page = 1, size = 10) => {
@@ -9,7 +9,7 @@ export const historyApi = {
     return api.delete('/history/clear')
   },
 
-  deleteHistoryItem: (id) => {
+  deleteHistoryItem: (id: number) => {
     return api.delete(`/history/${id}`)
   }
 }

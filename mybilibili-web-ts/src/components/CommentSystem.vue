@@ -190,7 +190,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Star, ChatDotRound, ArrowDown } from '@element-plus/icons-vue'
-import { commentApi } from '@/api/index.ts'
+import { commentApi } from '@/api/client'
 import EmojiPopover from './EmojiPopover.vue'
 import LevelBadge from './LevelBadge.vue'
 

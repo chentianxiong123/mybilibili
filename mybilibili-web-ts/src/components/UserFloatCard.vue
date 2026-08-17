@@ -79,7 +79,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { userApi } from '@/api/index.ts'
+import { userApi } from '@/api/client'
 import { getUserProfileBackground } from '@/api/banner.ts'
 
 const props = defineProps({
