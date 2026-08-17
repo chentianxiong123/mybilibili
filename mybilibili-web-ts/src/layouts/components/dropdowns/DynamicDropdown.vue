@@ -112,7 +112,7 @@ onMounted(() => {
           <div class="content-text">{{ item.content }}</div>
           <div class="item-time">{{ item.time }}</div>
         </div>
-        <img
+        <img loading="lazy" decoding="async"
           v-if="item.thumbnail"
           :src="item.thumbnail"
           class="item-thumbnail"

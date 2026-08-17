@@ -174,7 +174,7 @@ const updateAvatar = async () => {
       <!-- 右侧当前头像 -->
       <div class="current-avatar-section">
         <div class="avatar-preview">
-          <img :src="previewUrl || currentAvatar" alt="当前头像" class="avatar-img">
+          <img loading="lazy" decoding="async" :src="previewUrl || currentAvatar" alt="当前头像" class="avatar-img">
         </div>
         <div class="avatar-label">当前头像</div>
       </div>

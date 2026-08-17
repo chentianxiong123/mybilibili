@@ -201,7 +201,7 @@ const goToAuthor = (authorId) => {
           <el-carousel ref="carouselRef" :autoplay="true" :interval="3000" arrow="never" indicator-position="none" @change="handleBannerChange">
             <el-carousel-item v-for="(banner, index) in bannerList" :key="banner.id">
               <a :href="banner.link" class="banner-item">
-                <img :src="banner.img" alt="轮播图" class="banner-img">
+                <img loading="lazy" decoding="async" :src="banner.img" alt="轮播图" class="banner-img">
               </a>
             </el-carousel-item>
           </el-carousel>
@@ -238,7 +238,7 @@ const goToAuthor = (authorId) => {
       <div v-for="video in videoList" :key="video.id" class="video-item">
         <div class="video-cover">
           <a :href="'/manuscript/' + (video.manuscriptId || video.id)" class="video-cover-link">
-            <img :src="video.coverUrl || '/assets/placeholder-cover.svg'" alt="视频封面">
+            <img loading="lazy" decoding="async" :src="video.coverUrl || '/assets/placeholder-cover.svg'" alt="视频封面">
           </a>
           <!-- 左下角：播放量和评论量 -->
           <div class="video-stats-overlay">

@@ -425,7 +425,7 @@ onUnmounted(() => {
           <div class="video-grid" v-loading="loading">
             <div v-for="video in searchResults" :key="video.manuscriptId" class="video-item">
               <div class="video-cover" @click="goToVideo(video.manuscriptId)">
-                <img :src="video.cover" alt="视频封面">
+                <img loading="lazy" decoding="async" :src="video.cover" alt="视频封面">
                 <!-- 左下角：播放量和评论量 -->
                 <div class="video-stats-overlay">
                   <span class="stat-item">

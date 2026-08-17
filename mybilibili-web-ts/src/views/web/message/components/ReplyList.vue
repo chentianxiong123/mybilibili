@@ -197,7 +197,7 @@ onMounted(() => {
         @click="handleItemClick(item)"
       >
         <div class="item-left">
-          <img :src="item.userAvatar || '/default-avatar.svg'" class="user-avatar" />
+          <img loading="lazy" decoding="async" :src="item.userAvatar || '/default-avatar.svg'" class="user-avatar" />
           <div class="item-content">
             <div class="user-info">
               <span class="username">{{ item.username }}</span>
@@ -227,7 +227,7 @@ onMounted(() => {
           </div>
         </div>
         <div class="item-right" v-if="item.videoCover">
-          <img :src="item.videoCover" class="video-cover" />
+          <img loading="lazy" decoding="async" :src="item.videoCover" class="video-cover" />
         </div>
       </div>
       

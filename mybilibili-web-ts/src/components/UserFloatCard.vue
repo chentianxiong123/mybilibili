@@ -11,14 +11,14 @@
       >
         <!-- 顶部背景图 -->
         <div class="card-header-bg">
-          <img :src="userBanner || userInfo.banner || defaultBanner" alt="背景">
+          <img loading="lazy" decoding="async" :src="userBanner || userInfo.banner || defaultBanner" alt="背景">
         </div>
         
         <!-- 用户信息区域 -->
         <div class="card-content">
           <!-- 用户头像和基本信息 -->
           <div class="user-basic-info">
-            <img 
+            <img loading="lazy" decoding="async" 
               :src="userInfo.avatar || defaultAvatar" 
               class="user-avatar-large"
               @click="goToUserProfile"

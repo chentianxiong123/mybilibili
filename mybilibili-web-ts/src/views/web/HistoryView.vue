@@ -456,7 +456,7 @@ onMounted(() => {
 
               <!-- 视频封面 -->
               <div class="video-cover">
-                <img :src="item.cover" :alt="item.title" />
+                <img loading="lazy" decoding="async" :src="item.cover" :alt="item.title" />
 
                 <!-- 进度条 -->
                 <div v-if="!item.isFinished && item.progress > 0" class="progress-bar">

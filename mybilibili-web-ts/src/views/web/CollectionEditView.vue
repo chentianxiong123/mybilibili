@@ -462,7 +462,7 @@ onMounted(() => {
 
             <!-- 封面 -->
             <div class="item-cover">
-              <img
+              <img loading="lazy" decoding="async"
                 :src="manuscript.coverUrl || getDefaultCover()"
                 :alt="manuscript.title"
               />
@@ -549,7 +549,7 @@ onMounted(() => {
           >
             <el-checkbox :value="manuscript.id">
               <div class="checkbox-content">
-                <img
+                <img loading="lazy" decoding="async"
                   :src="manuscript.coverUrl || getDefaultCover()"
                   :alt="manuscript.title"
                   class="checkbox-cover"

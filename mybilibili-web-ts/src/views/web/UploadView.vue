@@ -426,7 +426,7 @@ onMounted(() => {
               :show-file-list="false"
             >
               <div v-if="coverPreview" class="cover-preview">
-                <img :src="coverPreview" alt="封面预览">
+                <img loading="lazy" decoding="async" :src="coverPreview" alt="封面预览">
                 <div class="cover-overlay">
                   <el-icon><UploadFilled /></el-icon>
                   <span>更换封面</span>

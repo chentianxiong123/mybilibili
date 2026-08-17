@@ -160,7 +160,7 @@ onMounted(() => {
           @click="handleVideoClick(video)"
         >
           <div class="thumbnail-wrapper">
-            <img :src="video.thumbnail" class="video-thumbnail" />
+            <img loading="lazy" decoding="async" :src="video.thumbnail" class="video-thumbnail" />
             <span class="video-duration">{{ video.duration }}</span>
           </div>
           <div class="video-info">

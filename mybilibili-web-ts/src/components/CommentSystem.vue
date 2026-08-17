@@ -19,7 +19,7 @@
       <!-- 评论输入区 -->
       <div class="comment-input-section" ref="commentInputWrapper">
         <div class="comment-input-header">
-          <img :src="currentUserAvatar" alt="" class="user-avatar">
+          <img loading="lazy" decoding="async" :src="currentUserAvatar" alt="" class="user-avatar">
           <div class="input-wrapper" :class="{ 'collapsed': isInputCollapsed && !newComment }">
             <textarea
               v-model="newComment"
@@ -50,7 +50,7 @@
         <div v-for="comment in comments" :key="comment.id" class="comment-item">
           <!-- 评论内容 -->
           <div class="comment-main">
-            <img :src="comment.userAvatar || defaultAvatar" alt="" class="comment-avatar" @click="goToUser(comment.userId)">
+            <img loading="lazy" decoding="async" :src="comment.userAvatar || defaultAvatar" alt="" class="comment-avatar" @click="goToUser(comment.userId)">
             <div class="comment-content">
               <div class="comment-user" @click="goToUser(comment.userId)">
                 <span>{{ comment.userName }}</span>
@@ -107,7 +107,7 @@
                   :key="reply.id"
                   class="reply-item"
                 >
-                  <img :src="reply.userAvatar || defaultAvatar" alt="" class="reply-avatar" @click="goToUser(reply.userId)">
+                  <img loading="lazy" decoding="async" :src="reply.userAvatar || defaultAvatar" alt="" class="reply-avatar" @click="goToUser(reply.userId)">
                   <div class="reply-content">
                     <div class="reply-user">
                       <span @click="goToUser(reply.userId)">{{ reply.userName }}</span>

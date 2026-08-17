@@ -106,7 +106,7 @@ onUnmounted(() => {
         </div>
         <div class="live-card my-live-card" @click="isLiveRoomStatus(myRoom.status) ? enterMyRoom() : startLive()">
           <div class="card-cover">
-            <img :src="myRoom.coverUrl || '/live-placeholder.svg'" alt="cover" />
+            <img loading="lazy" decoding="async" :src="myRoom.coverUrl || '/live-placeholder.svg'" alt="cover" />
             <span v-if="isLiveRoomStatus(myRoom.status)" class="live-badge">LIVE</span>
             <span v-else class="offline-badge">未开播</span>
             <span v-if="isLiveRoomStatus(myRoom.status)" class="viewer-count">
@@ -143,7 +143,7 @@ onUnmounted(() => {
             @click="goToRoom(room.id)"
           >
             <div class="card-cover">
-              <img :src="room.coverUrl || '/live-placeholder.svg'" alt="cover" />
+              <img loading="lazy" decoding="async" :src="room.coverUrl || '/live-placeholder.svg'" alt="cover" />
               <span class="live-badge">LIVE</span>
               <span class="viewer-count">{{ room.viewerCount || 0 }} 人观看</span>
             </div>

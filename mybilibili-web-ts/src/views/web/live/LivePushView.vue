@@ -290,7 +290,7 @@ onUnmounted(() => {
           </template>
           <div class="cover-body">
             <div class="cover-preview">
-              <img v-if="room.coverUrl" :src="room.coverUrl" alt="cover" />
+              <img loading="lazy" decoding="async" v-if="room.coverUrl" :src="room.coverUrl" alt="cover" />
               <div v-else class="cover-placeholder">
                 <el-icon><Picture /></el-icon>
                 <span>暂未上传封面</span>

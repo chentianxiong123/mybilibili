@@ -16,7 +16,7 @@
         <el-table-column prop="title" label="稿件名称" min-width="200">
           <template #default="scope">
             <div class="manuscript-title-cell">
-              <img :src="scope.row.coverUrl || '/default-cover.jpg'" class="manuscript-cover">
+              <img loading="lazy" decoding="async" :src="scope.row.coverUrl || '/default-cover.jpg'" class="manuscript-cover">
               <span class="manuscript-title">{{ scope.row.title }}</span>
             </div>
           </template>

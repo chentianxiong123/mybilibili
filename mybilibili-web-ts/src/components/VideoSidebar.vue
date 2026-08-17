@@ -88,7 +88,7 @@ const formatTime = (seconds: number) => {
         <div v-for="video in relatedVideos" :key="video.id" class="related-video-item">
           <div class="video-cover">
             <a :href="video.manuscriptId ? '/manuscript/' + video.manuscriptId : '/manuscript/' + video.id" class="video-cover-link">
-              <img :src="video.cover || '/assets/placeholder-cover.svg'" alt="视频封面">
+              <img loading="lazy" decoding="async" :src="video.cover || '/assets/placeholder-cover.svg'" alt="视频封面">
             </a>
             <span class="video-duration">{{ video.duration }}</span>
           </div>

@@ -205,7 +205,7 @@ onMounted(() => {
       <div class="info-container">
         <!-- 封面 -->
         <div class="collection-cover">
-          <img
+          <img loading="lazy" decoding="async"
             :src="collection.coverUrl || getDefaultCover()"
             :alt="collection.name"
           />
@@ -227,7 +227,7 @@ onMounted(() => {
           
           <!-- 作者信息 -->
           <div class="author-info" @click="goToUserProfile">
-            <img
+            <img loading="lazy" decoding="async"
               :src="collection.userAvatar || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'"
               :alt="collection.userName"
               class="author-avatar"
@@ -305,7 +305,7 @@ onMounted(() => {
 
           <!-- 封面 -->
           <div class="item-cover">
-            <img
+            <img loading="lazy" decoding="async"
               :src="manuscript.coverUrl || getDefaultCover()"
               :alt="manuscript.title"
             />
