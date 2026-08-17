@@ -23,7 +23,6 @@ import (
 	"mybilibili/core-service/internal/manuscript"
 	"mybilibili/core-service/internal/moderation"
 	"mybilibili/core-service/internal/social"
-	"mybilibili/core-service/internal/studio"
 	"mybilibili/core-service/internal/support"
 	"mybilibili/core-service/internal/user"
 	"mybilibili/core-service/internal/video"
@@ -267,9 +266,6 @@ func main() {
 
 	interactionSvc.SetProfileRecorder(clients.NewHTTPProfileRecorder())
 
-	studioRepo := studio.NewRepository(db)
-	studioSvc := studio.NewService(studioRepo)
-	studioH := studio.NewHandler(studioSvc)
 
 	commentSvc.SetReviewService(aiClient)
 
@@ -278,7 +274,7 @@ func main() {
 	coreapi.StartHTTPServer(httpAddr, auth.NewJWT(jwtSecret),
 		liveProxy, followH, socialH, videoH, adminH, modH,
 		supportH, userExtH, favoriteH,
-		studioH, creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH,
+		creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH,
 		userAdminH, manuscriptAdminH, videoAdminH, commentAdminH, moderationAdminH)
 
 	lis, err := net.Listen("tcp", grpcAddr)

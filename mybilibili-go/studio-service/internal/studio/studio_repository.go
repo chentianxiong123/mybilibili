@@ -99,9 +99,16 @@ func (s *Service) CancelTask(ctx context.Context, taskID string) error {
 }
 
 func (s *Service) UploadAsset(ctx context.Context, userID, taskID int64, assetType, filename string, reader io.Reader) (string, error) {
-	dir := filepath.Join(os.TempDir(), "mybilibili-assets", fmt.Sprintf("u%d", userID))
-	os.MkdirAll(dir, 0o755)
-	dst := filepath.Join(dir, fmt.Sprintf("%d_%s", time.Now().UnixNano(), filename))
+	base := os.Getenv("STUDIO_DATA_DIR")
+	if base == "" {
+		base = "/tmp/studio-data"
+	}
+	dir := filepath.Join(base, "assets", fmt.Sprintf("u%d", userID))
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	safeName := filepath.Base(filename)
+	dst := filepath.Join(dir, fmt.Sprintf("%d_%s", time.Now().UnixNano(), safeName))
 	f, err := os.Create(dst)
 	if err != nil {
 		return "", err
@@ -111,7 +118,7 @@ func (s *Service) UploadAsset(ctx context.Context, userID, taskID int64, assetTy
 	if err != nil {
 		return "", err
 	}
-	url := fmt.Sprintf("/assets/studio/%s", filepath.Base(dst))
+	url := fmt.Sprintf("/assets/studio/u%d/%s", userID, filepath.Base(dst))
 	_ = taskID
 	_ = assetType
 	return url, nil
