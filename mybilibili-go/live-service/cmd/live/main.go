@@ -41,9 +41,12 @@ func main() {
 	linkmicSvc := live.NewLinkmicService(linkmicRepo, liveHub, liveRepo)
 	linkmicH := live.NewLinkmicHandler(linkmicSvc)
 
+	liveAdminH := live.NewAdminHandler(db)
+
 	mux := http.NewServeMux()
 	liveH.Register(mux)
 	linkmicH.Register(mux)
+	liveAdminH.Register(mux)
 
 	log.Printf("Live service HTTP listening on %s", httpAddr)
 	log.Fatal(http.ListenAndServe(httpAddr, mux))

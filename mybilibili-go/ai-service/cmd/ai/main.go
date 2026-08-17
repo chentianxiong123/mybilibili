@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"mybilibili/ai-service/internal/ai"
+	"mybilibili/ai-service/internal/subtitle"
 	"mybilibili/pkg/abstraction"
 	pb "mybilibili/pkg/pb"
 )
@@ -45,6 +46,11 @@ func main() {
 	aiRepo := ai.NewRepository(db)
 	aiSvc := ai.NewService(aiRepo)
 
+	docStore, _ := abstraction.NewDocumentStore(abstraction.DocumentStoreConfig{Type: "pg-jsonb", DSN: dsn})
+	subtitleRepo := subtitle.NewRepository(docStore)
+	subtitleSvc := subtitle.NewService(subtitleRepo)
+	subtitleH := subtitle.NewHandler(subtitleSvc)
+
 	caller, _ := abstraction.NewServiceCaller(abstraction.ServiceCallerConfig{Type: "ollama"})
 	summarySvc := ai.NewSummaryService(caller)
 	reviewSvc := ai.NewReviewService(caller)
@@ -66,6 +72,10 @@ func main() {
 	}()
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"status":"ok"}`))
+	})
+	subtitleH.Register(mux)
 	aiH.Register(mux)
 	aiChatH.Register(mux)
 	log.Printf("AI HTTP listening on %s", httpAddr)

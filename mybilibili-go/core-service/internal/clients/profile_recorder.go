@@ -1,4 +1,4 @@
-package interaction
+package clients
 
 import (
 	"bytes"
@@ -38,8 +38,8 @@ func (r *HTTPProfileRecorder) RecordCollect(ctx context.Context, userID, categor
 
 func (r *HTTPProfileRecorder) record(ctx context.Context, action string, userID, categoryID int64, tags []string, duration int64) error {
 	body, _ := json.Marshal(map[string]interface{}{
-		"categoryId":     categoryID,
-		"tags":           tags,
+		"categoryId":      categoryID,
+		"tags":            tags,
 		"durationSeconds": duration,
 	})
 	req, _ := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/api/v1/profile/record/%s", r.baseURL, action), bytes.NewReader(body))
