@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { interactionApi, userApi, videoApi } from '@/api/client'
-import { manuscriptApi } from '@/api/manuscript.ts'
 import { recommendApi } from '@/api/recommend.ts'
 import { Message } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -245,7 +244,6 @@ const currentUser = ref(JSON.parse(localStorage.getItem('user') || 'null'))
 // 浮动用户卡片相关
 const showUserFloatCard = ref(false)
 const authorAvatarRef = ref(null)
-const authorNameRef = ref(null)
 const floatCardTimer = ref(null)
 const authorBridgeRef = ref(null)
 

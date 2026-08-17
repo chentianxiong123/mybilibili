@@ -1,6 +1,9 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { User, Lock, Coin, Upload } from '@element-plus/icons-vue'
+import { usePrefetch as _usePrefetch } from '@/composables/usePrefetch'
+
+const prefetch = _usePrefetch().prefetch
 
 const props = defineProps({
   userInfo: {
@@ -64,12 +67,12 @@ const handleLogout = () => {
         </div>
         
         <div class="profile-options">
-          <div class="option-item" @click="router.push('/personal-center/home')">
+          <div class="option-item" @click="router.push('/personal-center/home')" @mouseenter="prefetch('/personal-center/home')">
             <el-icon><User /></el-icon>
             <span>个人中心</span>
             <span class="option-arrow">></span>
           </div>
-          <div class="option-item" @click="router.push('/create-center')">
+          <div class="option-item" @click="router.push('/create-center')" @mouseenter="prefetch('/create-center')">
             <el-icon><Upload /></el-icon>
             <span>投稿管理</span>
             <span class="option-arrow">></span>

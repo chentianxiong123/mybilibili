@@ -1,4 +1,4 @@
-import { ref, reactive, computed } from 'vue'
+import { ref, computed } from 'vue'
 import { manuscriptApi } from '@/api/manuscript.ts'
 
 const CHUNK_SIZE = 8 * 1024 * 1024
@@ -84,10 +84,6 @@ export function useChunkedManuscriptUpload({
 
   function computeTotalBytes(videos) {
     return videos.reduce((sum, v) => sum + v.file.size, 0)
-  }
-
-  function computeTotalChunks(videos) {
-    return videos.reduce((sum, v) => sum + computeChunkCount(v.file.size), 0)
   }
 
   function reset() {

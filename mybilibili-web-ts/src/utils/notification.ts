@@ -3,17 +3,13 @@
  * 用于后台运行时的新消息提醒
  */
 
-let permission = 'default'
-
 export const requestNotificationPermission = async () => {
   if (!('Notification' in window)) return false
   if (Notification.permission === 'granted') {
-    permission = 'granted'
     return true
   }
   if (Notification.permission !== 'denied') {
     const res = await Notification.requestPermission()
-    permission = res
     return res === 'granted'
   }
   return false

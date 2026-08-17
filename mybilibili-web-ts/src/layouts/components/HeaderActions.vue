@@ -5,6 +5,7 @@ import { Star, Clock, ChatDotRound, Upload } from '@element-plus/icons-vue'
 import FavoriteDropdown from './dropdowns/FavoriteDropdown.vue'
 import HistoryDropdown from './dropdowns/HistoryDropdown.vue'
 import DynamicDropdown from './dropdowns/DynamicDropdown.vue'
+import { usePrefetch } from '@/composables/usePrefetch'
 
 defineProps({
   isZoomed: {
@@ -18,6 +19,7 @@ defineProps({
 })
 
 const router = useRouter()
+const { prefetch } = usePrefetch()
 
 const showFavoriteDropdown = ref(false)
 const showHistoryDropdown = ref(false)
@@ -30,7 +32,7 @@ const showDynamicDropdown = ref(false)
     @mouseenter="showFavoriteDropdown = true"
     @mouseleave="showFavoriteDropdown = false"
   >
-    <div :class="['action-btn', { 'hide-text-on-small': isZoomed }]" @click="router.push('/profile/favorites')">
+    <div :class="['action-btn', { 'hide-text-on-small': isZoomed }]" @click="router.push('/profile/favorites')" @mouseenter="prefetch('/profile/favorites')">
       <el-icon><Star /></el-icon>
       <span>收藏</span>
     </div>
@@ -43,7 +45,7 @@ const showDynamicDropdown = ref(false)
     @mouseenter="showHistoryDropdown = true"
     @mouseleave="showHistoryDropdown = false"
   >
-    <div :class="['action-btn', { 'hide-text-on-small': isZoomed }]" @click="router.push('/history')">
+    <div :class="['action-btn', { 'hide-text-on-small': isZoomed }]" @click="router.push('/history')" @mouseenter="prefetch('/history')">
       <el-icon><Clock /></el-icon>
       <span>历史</span>
     </div>
@@ -56,7 +58,7 @@ const showDynamicDropdown = ref(false)
     @mouseenter="showDynamicDropdown = true"
     @mouseleave="showDynamicDropdown = false"
   >
-    <div :class="['action-btn', { 'hide-text-on-small': isZoomed }]" @click="router.push('/dynamic')">
+    <div :class="['action-btn', { 'hide-text-on-small': isZoomed }]" @click="router.push('/dynamic')" @mouseenter="prefetch('/dynamic')">
       <div class="icon-with-badge">
         <el-icon><ChatDotRound /></el-icon>
         <span v-if="dynamicUnreadCount > 0" class="badge">{{ dynamicUnreadCount > 99 ? '99+' : dynamicUnreadCount }}</span>
@@ -67,7 +69,7 @@ const showDynamicDropdown = ref(false)
     <DynamicDropdown v-show="showDynamicDropdown" />
   </div>
 
-  <el-button type="primary" @click="router.push('/create-center')" class="upload-btn upload-btn-right">
+  <el-button type="primary" @click="router.push('/create-center')" @mouseenter="prefetch('/create-center')" class="upload-btn upload-btn-right">
     <el-icon><Upload /></el-icon>
     <span>投稿</span>
   </el-button>
