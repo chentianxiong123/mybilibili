@@ -1,4 +1,4 @@
-package interaction
+package social
 
 import (
 	"context"
@@ -71,40 +71,6 @@ func (r *InteractionRepository) GetInteractionIDs(ctx context.Context, userID in
 		ids = append(ids, id)
 	}
 	return ids, nil
-}
-
-func (r *InteractionRepository) Follow(ctx context.Context, followerID, followingID int64) (bool, error) {
-	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO follows (follower_id, following_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-		followerID, followingID)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func (r *InteractionRepository) Unfollow(ctx context.Context, followerID, followingID int64) (bool, error) {
-	res, err := r.db.ExecContext(ctx, `DELETE FROM follows WHERE follower_id = $1 AND following_id = $2`, followerID, followingID)
-	if err != nil {
-		return false, err
-	}
-	n, _ := res.RowsAffected()
-	return n > 0, nil
-}
-
-func (r *InteractionRepository) IsFollowing(ctx context.Context, followerID, followingID int64) (bool, error) {
-	var count int
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM follows WHERE follower_id = $1 AND following_id = $2`, followerID, followingID).Scan(&count)
-	return count > 0, err
-}
-
-func (r *InteractionRepository) CountFollows(ctx context.Context, userID int64) (following, followers int32, err error) {
-	err = r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM follows WHERE follower_id = $1`, userID).Scan(&following)
-	if err != nil {
-		return
-	}
-	err = r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM follows WHERE following_id = $1`, userID).Scan(&followers)
-	return
 }
 
 func (r *InteractionRepository) UpsertWatchHistory(ctx context.Context, userID, manuscriptID int64, progressSeconds int32) error {

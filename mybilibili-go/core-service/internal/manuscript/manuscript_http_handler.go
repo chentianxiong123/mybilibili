@@ -17,13 +17,13 @@ import (
 
 	"mybilibili/core-service/internal/comment"
 	"mybilibili/pkg/httputil"
-	"mybilibili/core-service/internal/interaction"
+	"mybilibili/core-service/internal/social"
 	"mybilibili/pkg/errors"
 	pb "mybilibili/pkg/pb"
 )
 
 type CommentService = comment.CommentService
-type InteractionService = interaction.InteractionService
+type InteractionService = social.InteractionService
 
 // ManuscriptHTTPHandler 提供稿件域的 HTTP JSON 端点（Flutter App 与 web-ts 直接消费），
 // 覆盖公开稿件列表/详情、互动、以及上传会话等内部兜底路由。

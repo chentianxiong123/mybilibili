@@ -1,4 +1,4 @@
-package interaction
+package social
 
 import (
 	"context"
@@ -29,10 +29,15 @@ type InteractionService struct {
 	db              *sql.DB
 	notifier        Notifier
 	profileRecorder ProfileRecorder
+	followSvc       *FollowService
 }
 
 func NewInteractionService(repo *InteractionRepository) *InteractionService {
 	return &InteractionService{repo: repo}
+}
+
+func (s *InteractionService) SetFollowService(fs *FollowService) {
+	s.followSvc = fs
 }
 
 func (s *InteractionService) Repo() *InteractionRepository {
@@ -138,22 +143,35 @@ func (s *InteractionService) GetInteractionStatus(ctx context.Context, req *pb.G
 }
 
 func (s *InteractionService) FollowUser(ctx context.Context, req *pb.FollowUserRequest) (*pb.FollowUserResponse, error) {
-	s.repo.Follow(ctx, req.UserId, req.TargetUserId)
+	if s.followSvc != nil {
+		_ = s.followSvc.Follow(ctx, req.UserId, req.TargetUserId)
+	}
 	return &pb.FollowUserResponse{Following: true}, nil
 }
 
 func (s *InteractionService) UnfollowUser(ctx context.Context, req *pb.UnfollowUserRequest) (*pb.UnfollowUserResponse, error) {
-	s.repo.Unfollow(ctx, req.UserId, req.TargetUserId)
+	if s.followSvc != nil {
+		_ = s.followSvc.Unfollow(ctx, req.UserId, req.TargetUserId)
+	}
 	return &pb.UnfollowUserResponse{Following: false}, nil
 }
 
 func (s *InteractionService) CheckFollow(ctx context.Context, req *pb.CheckFollowRequest) (*pb.CheckFollowResponse, error) {
-	following, _ := s.repo.IsFollowing(ctx, req.UserId, req.TargetUserId)
+	following := false
+	if s.followSvc != nil {
+		following, _ = s.followSvc.IsFollowing(ctx, req.UserId, req.TargetUserId)
+	}
 	return &pb.CheckFollowResponse{Following: following}, nil
 }
 
 func (s *InteractionService) GetFollowCount(ctx context.Context, req *pb.GetFollowCountRequest) (*pb.GetFollowCountResponse, error) {
-	following, followers, _ := s.repo.CountFollows(ctx, req.UserId)
+	var following, followers int32
+	if s.followSvc != nil {
+		f, _ := s.followSvc.FollowingCount(ctx, req.UserId)
+		fol, _ := s.followSvc.FollowerCount(ctx, req.UserId)
+		following = int32(f)
+		followers = int32(fol)
+	}
 	return &pb.GetFollowCountResponse{FollowingCount: following, FollowerCount: followers}, nil
 }
 
