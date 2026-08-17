@@ -209,7 +209,7 @@ routeRules: {
 
 ## 总结
 
-SSR 迁移是前端性能优化的终极手段，但也是架构级变更。Nuxt 4 + Bun 二进制提供了最小的迁移代价和最佳的运行效果。核心思路是：**Go 后端不改，前端逐步迁移，部署只多一个 64MB 的二进制文件。**
+SSR 迁移是前端性能优化的终极手段，但也是架构级变更。**是否执行必须以实测数据为前提，而不是默认选择。**
 
 ## 其他讨论过的方案
 
@@ -224,7 +224,7 @@ Nginx → Go 后端（Go 模板渲染标题/描述/封面）
 - 只解决 SEO，不解决首屏速度
 - 用户仍需等 JS 加载完才能交互
 
-### 方案 B：继续压 CSR（已否决）
+### 方案 B：继续压 CSR（采用，见最终决定）
 
 ```
 Nginx → 静态文件
@@ -232,11 +232,26 @@ Nginx → 静态文件
 
 - 不需要额外进程
 - 首屏优化空间有限（170K → 目标 80-100K）
-- 无法达到 SSR 的 30K 级别
+- 无法达到 SSR 的 30K 级别，但对玩具项目已够用
 
-## 最终决定
+### 方案 C：Nuxt 4 SSR + Bun 二进制（备选，等数据触发）
 
-**采用 Nuxt 4 SSR + Bun 二进制部署。** 首屏从 170K 降到 30K，镜像仅多 64MB，Go 后端一分不改。
+```
+Nginx → Nuxt（Bun 二进制，64MB）→ Go 后端
+```
+
+- 首屏 170K → 30K，SSR/SSG/ISR/CSR 混合渲染
+- 前提条件：实测 LCP 不达标，且性能影响业务
+
+## 最终决定（2026-08-17 更新）
+
+**暂不采用 SSR。** 依据企业级方法论（详见 06 文档）：
+
+1. 玩具项目 + 无 SEO 需求 + 无 CDN = SSR 收益递减区
+2. 权威指南：月访客 < 1 万、不依赖搜索排名 → 达到 CWV 阈值即停止
+3. 正确路径：先接 RUM 看真实 LCP/INP/CLS 数据 → 达标则继续 CSR 优化路线（图片、缓存头、关键 CSS、虚拟滚动）→ 全做完了还慢且影响业务才触发 SSR
+
+**已完成的 CSR 优化**（170K gzip 首屏）已是比多数生产项目更强的基线。SSR 作为"最后手段"，由实测数据触发，不主动执行。
 
 ## 参考
 
@@ -244,3 +259,6 @@ Nginx → 静态文件
 - [Bun 文档 - 单文件可执行文件](https://bun.com/docs/bundler/executables)
 - [nuxt-bun-compile](https://github.com/jprando/nuxt-bun-compile)
 - [Element Plus 升级变化](https://github.com/element-plus/element-plus/issues/15834)
+- [Vue 官方性能指南](https://cn.vuejs.org/guide/best-practices/performance)
+- [web.dev 性能预算](https://web.dev/articles/performance-budgets-101?hl=zh-cn)
+- [企业级性能优化方法论](06-企业级性能优化方法论.md)
