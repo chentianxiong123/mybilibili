@@ -2,3 +2,5 @@ node_modules/
 dist/
 .pnpm-store/
 *.local
+.env.production
+.env.*.local
