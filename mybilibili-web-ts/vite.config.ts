@@ -6,6 +6,8 @@ import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import { VitePWA } from 'vite-plugin-pwa'
+import viteCompression from 'vite-plugin-compression'
+
 
 export default defineConfig(({ mode }) => {
   const isWeb = mode !== 'admin'
@@ -51,8 +53,14 @@ export default defineConfig(({ mode }) => {
         devOptions: {
           enabled: false
         }
+      }),
+      viteCompression({
+        algorithm: 'brotliCompress',
+        ext: '.br',
+        threshold: 1024,
+        deleteOriginalAssets: false
       })
-    ],
+      ],
     css: {
       preprocessorOptions: {
         scss: {
@@ -71,6 +79,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: isWeb ? 'dist/web' : 'dist/admin',
+      cssMinify: 'lightningcss',
       rollupOptions: {
         input: isWeb ? 'index.html' : 'index.html',
         output: {
