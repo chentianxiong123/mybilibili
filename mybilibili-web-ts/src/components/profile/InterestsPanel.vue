@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { profileApi } from '../../api/profile.ts'
-import { categoryApi } from '../../api/index.ts'
+import { profileApi } from '@/api/profile'
+import { categoryApi } from '@/api/client'
 
 const props = defineProps({
   userId: {

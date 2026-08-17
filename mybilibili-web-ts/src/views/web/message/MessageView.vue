@@ -13,7 +13,7 @@ import SystemList from './components/SystemList.vue'
 import MessageSettings from './components/MessageSettings.vue'
 import AiChatWindow from './components/AiChatWindow.vue'
 import { messageApi } from '@/api/message.ts'
-import { userApi } from '@/api/index.ts'
+import { userApi } from '@/api/client'
 
 const route = useRoute()
 const router = useRouter()

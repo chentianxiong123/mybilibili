@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Calendar } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { userApi } from '@/api/index.ts'
+import { userApi } from '@/api/client'
 import { setAuthSession } from '@/utils/auth.ts'
 
 const router = useRouter()

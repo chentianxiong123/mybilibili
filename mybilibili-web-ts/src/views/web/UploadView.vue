@@ -2,7 +2,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { manuscriptApi } from '@/api/manuscript.ts'
-import { categoryApi } from '@/api/index.ts'
+import { categoryApi } from '@/api/client'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled, Delete, ArrowUp, ArrowDown, VideoPlay, Document, Plus, Loading, CircleCheck } from '@element-plus/icons-vue'
 import { useChunkedManuscriptUpload } from '@/composables/useChunkedManuscriptUpload.ts'

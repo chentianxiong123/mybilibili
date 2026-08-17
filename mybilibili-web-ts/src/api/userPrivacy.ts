@@ -1,68 +1,34 @@
-import axios from 'axios'
+import api from './client'
 
-// 创建axios实例
-const api = axios.create({
-  baseURL: '/api/v1',
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  withCredentials: true
-}) as any
-
-// 请求拦截器
-api.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  error => {
-    return Promise.reject(error)
+const defaultPrivacySettings = {
+  code: 200,
+  message: '接口不存在，返回默认设置',
+  data: {
+    publicCollection: true,
+    publicBirthdayTags: false,
+    publicCoinVideos: false,
+    publicLikeVideos: false,
+    publicFollowingList: false,
+    publicFollowersList: false,
+    tags: []
   }
-)
+}
 
-// 响应拦截器
-api.interceptors.response.use(
-  response => {
-    return response.data
-  },
-  error => {
-    // 处理隐私设置接口404错误，返回默认值
-    if (error.response?.status === 404 && error.config?.url?.includes('/user/privacy/')) {
-      // 返回默认的隐私设置数据
-      return {
-        code: 200,
-        message: '接口不存在，返回默认设置',
-        data: {
-          publicCollection: true,
-          publicBirthdayTags: false,
-          publicCoinVideos: false,
-          publicLikeVideos: false,
-          publicFollowingList: false,
-          publicFollowersList: false,
-          tags: []
-        }
-      }
-    }
-    return Promise.reject(error)
-  }
-)
-
-// 用户隐私设置相关API
 export const userPrivacyApi = {
-  // 获取隐私设置
-  getPrivacySettings: () => api.get('/user/privacy/settings'),
-  // 更新隐私设置
-  updatePrivacySettings: (data) => api.put('/user/privacy/settings', data),
-  // 获取个人标签
+  getPrivacySettings: async () => {
+    try {
+      return await api.get('/user/privacy/settings')
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        return defaultPrivacySettings
+      }
+      throw err
+    }
+  },
+  updatePrivacySettings: (data: any) => api.put('/user/privacy/settings', data),
   getUserTags: () => api.get('/user/privacy/tags'),
-  // 添加个人标签
-  addUserTag: (tagName) => api.post('/user/privacy/tags', null, { params: { tagName } }),
-  // 删除个人标签
-  removeUserTag: (tagName) => api.delete('/user/privacy/tags', { params: { tagName } })
+  addUserTag: (tagName: string) => api.post('/user/privacy/tags', null, { params: { tagName } }),
+  removeUserTag: (tagName: string) => api.delete('/user/privacy/tags', { params: { tagName } })
 }
 
 export default userPrivacyApi

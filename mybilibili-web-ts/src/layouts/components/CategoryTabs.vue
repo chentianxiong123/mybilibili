@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Star, Bell, ArrowDown } from '@element-plus/icons-vue'
 import { dynamicApi } from '@/api/dynamic.ts'
-import api from '@/api/index.ts'
+import api from '@/api/client'
 
 const router = useRouter()
 

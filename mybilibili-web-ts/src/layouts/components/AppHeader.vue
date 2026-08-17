@@ -6,7 +6,7 @@ import {
   Message, User, Lock, Delete, ChatDotRound, Coin, VideoCamera
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { userApi } from '../../api/index.ts'
+import { userApi } from '@/api/client'
 import { messageApi } from '../../api/message.ts'
 import { searchApi } from '../../api/search.ts'
 import {

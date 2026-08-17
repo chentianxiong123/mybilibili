@@ -1,11 +1,11 @@
-import api from './index.ts'
+import api from './client'
 
 export const dynamicApi = {
   getDynamicList: (page = 1, size = 10) => {
     return api.get('/dynamic/list', { params: { page, size } })
   },
 
-  getFollowingDynamics: (page = 1, size = 10, userId = null) => {
+  getFollowingDynamics: (page = 1, size = 10, userId: number | null = null) => {
     const params: Record<string, any> = { page, size }
     if (userId) {
       params.userId = userId
@@ -13,62 +13,60 @@ export const dynamicApi = {
     return api.get('/dynamic/following', { params })
   },
 
-  getUserDynamics: (userId, page = 1, limit = 10) => {
+  getUserDynamics: (userId: number, page = 1, limit = 10) => {
     return api.get(`/dynamic/user/${userId}`, { params: { page, limit } })
   },
 
-  getDynamicById: (id) => {
+  getDynamicById: (id: number) => {
     return api.get(`/dynamic/${id}`)
   },
 
-  publishDynamic: (formData) => {
+  publishDynamic: (formData: FormData) => {
     return api.post('/dynamic/publish', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
+      headers: { 'Content-Type': 'multipart/form-data' }
     })
   },
 
-  deleteDynamic: (id) => {
+  deleteDynamic: (id: number) => {
     return api.delete(`/dynamic/${id}`)
   },
 
-  likeDynamic: (id) => {
+  likeDynamic: (id: number) => {
     return api.post(`/dynamic/like/${id}`)
   },
 
-  unlikeDynamic: (id) => {
+  unlikeDynamic: (id: number) => {
     return api.delete(`/dynamic/like/${id}`)
   },
 
-  checkLikeStatus: (id) => {
+  checkLikeStatus: (id: number) => {
     return api.get(`/dynamic/like/status/${id}`)
   },
 
-  shareDynamic: (id) => {
+  shareDynamic: (id: number) => {
     return api.post(`/dynamic/share/${id}`)
   },
 
-  getComments: (dynamicId, page = 1, limit = 10) => {
+  getComments: (dynamicId: number, page = 1, limit = 10) => {
     return api.get('/dynamic/comment/list', { params: { dynamicId, page, size: limit } })
   },
 
-  addComment: (dynamicId, content, parentId = null, replyUserId = null) => {
+  addComment: (dynamicId: number, content: string, parentId: number | null = null, replyUserId: number | null = null) => {
     const params: Record<string, any> = { dynamicId, content }
     if (parentId) params.parentId = parentId
     if (replyUserId) params.replyUserId = replyUserId
     return api.post('/dynamic/comment/add', null, { params })
   },
 
-  deleteComment: (commentId) => {
+  deleteComment: (commentId: number) => {
     return api.delete(`/dynamic/comment/delete/${commentId}`)
   },
 
-  likeComment: (commentId) => {
+  likeComment: (commentId: number) => {
     return api.post(`/dynamic/comment/like/${commentId}`)
   },
 
-  unlikeComment: (commentId) => {
+  unlikeComment: (commentId: number) => {
     return api.delete(`/dynamic/comment/like/${commentId}`)
   }
 }

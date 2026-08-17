@@ -2,7 +2,7 @@
 import { ref, onMounted, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowLeft, ArrowRight, View, Star } from '@element-plus/icons-vue'
-import { videoApi, categoryApi } from '@/api/index.ts'
+import { videoApi, categoryApi } from '@/api/client'
 import { getCategoryBanners } from '@/api/banner.ts'
 import { formatDuration, formatMonthDay, normalizeVideoCard } from '@/utils/videoCard.ts'
 

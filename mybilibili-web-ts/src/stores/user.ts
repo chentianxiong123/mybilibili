@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { userApi } from '@/api/index.ts'
+import { userApi } from '@/api/client'
 import {
   clearAuthSession,
   getCurrentUserId,

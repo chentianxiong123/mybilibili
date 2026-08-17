@@ -1,4 +1,4 @@
-import api from './index.ts'
+import api from './client'
 
 // ====== Admin 直播管理 ======
 export function getLiveRooms(page = 1, size = 10, status = '') {
