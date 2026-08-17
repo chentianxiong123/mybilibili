@@ -164,13 +164,21 @@ func main() {
 
 	mqType := os.Getenv("MQ_TYPE")
 	if mqType == "" {
-		mqType = "file"
+		mqType = "nats"
 	}
 	mqPath := os.Getenv("MQ_PATH")
 	if mqPath == "" {
 		mqPath = "/tmp/mybilibili-mq"
 	}
-	mq, _ := abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: mqType, Path: mqPath})
+	natsURL := os.Getenv("NATS_URL")
+	if natsURL == "" {
+		natsURL = "nats://127.0.0.1:4222"
+	}
+	mq, err := abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: mqType, Path: mqPath, NATSURL: natsURL})
+	if err != nil {
+		log.Printf("message queue %q unavailable (fallback to file): %v", mqType, err)
+		mq, _ = abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: "file", Path: mqPath})
+	}
 
 	redisAddr := os.Getenv("REDIS_ADDR")
 	if redisAddr == "" {

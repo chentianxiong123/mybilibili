@@ -14,10 +14,6 @@ func newRedisStreamQueue(cfg MessageQueueConfig) (MessageQueue, error) {
 	return nil, errors.New("redis stream queue not implemented")
 }
 
-func newNATSQueue(cfg MessageQueueConfig) (MessageQueue, error) {
-	return nil, errors.New("nats queue not implemented")
-}
-
 func newSQLiteCache(cfg CacheStoreConfig) (CacheStore, error) {
 	return nil, errors.New("sqlite cache not implemented")
 }

@@ -12,12 +12,17 @@ import (
 )
 
 func main() {
-	mqType := getEnv("MQ_TYPE", "file")
+	mqType := getEnv("MQ_TYPE", "nats")
 	mqPath := getEnv("MQ_PATH", "/tmp/mybilibili-mq")
+	natsURL := getEnv("NATS_URL", "nats://127.0.0.1:4222")
 
-	mq, err := abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: mqType, Path: mqPath})
+	mq, err := abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: mqType, Path: mqPath, NATSURL: natsURL})
 	if err != nil {
-		log.Fatalf("message queue: %v", err)
+		log.Printf("message queue %q unavailable (fallback to file): %v", mqType, err)
+		mq, err = abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: "file", Path: mqPath})
+		if err != nil {
+			log.Fatalf("message queue fallback: %v", err)
+		}
 	}
 	defer mq.Close()
 

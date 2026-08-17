@@ -1,4 +1,17 @@
 services:
+  nats:
+    image: nats:latest
+    container_name: nats
+    restart: unless-stopped
+    command: ["-js", "--store_dir=/data"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats-data:/data
+    networks:
+      - mylib
+
   traefik:
     image: traefik:v3.3
     container_name: traefik
@@ -15,6 +28,7 @@ services:
 
 volumes:
   acme:
+  nats-data:
 
 networks:
   mylib:
