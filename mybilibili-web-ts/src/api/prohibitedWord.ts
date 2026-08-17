@@ -3,7 +3,7 @@ import request from './client'
 // 获取违禁词列表
 export const getProhibitedWordList = (params) => {
   return request({
-    url: '/admin/prohibited-words',
+    url: '/moderation/admin/prohibited-words',
     method: 'get',
     params
   })
@@ -12,7 +12,7 @@ export const getProhibitedWordList = (params) => {
 // 获取违禁词详情
 export const getProhibitedWordById = (id) => {
   return request({
-    url: `/admin/prohibited-words/${id}`,
+    url: `/moderation/admin/prohibited-words/${id}`,
     method: 'get'
   })
 }
@@ -20,7 +20,7 @@ export const getProhibitedWordById = (id) => {
 // 添加违禁词
 export const addProhibitedWord = (data) => {
   return request({
-    url: '/admin/prohibited-words',
+    url: '/moderation/admin/prohibited-words',
     method: 'post',
     data
   })
@@ -29,7 +29,7 @@ export const addProhibitedWord = (data) => {
 // 更新违禁词
 export const updateProhibitedWord = (id, data) => {
   return request({
-    url: `/admin/prohibited-words/${id}`,
+    url: `/moderation/admin/prohibited-words/${id}`,
     method: 'put',
     data
   })
@@ -38,7 +38,7 @@ export const updateProhibitedWord = (id, data) => {
 // 删除违禁词
 export const deleteProhibitedWord = (id) => {
   return request({
-    url: `/admin/prohibited-words/${id}`,
+    url: `/moderation/admin/prohibited-words/${id}`,
     method: 'delete'
   })
 }
@@ -46,7 +46,7 @@ export const deleteProhibitedWord = (id) => {
 // 批量导入违禁词
 export const batchImportProhibitedWords = (formData) => {
   return request({
-    url: '/admin/prohibited-words/batch-import',
+    url: '/moderation/admin/prohibited-words/batch-import',
     method: 'post',
     data: formData,
     headers: {

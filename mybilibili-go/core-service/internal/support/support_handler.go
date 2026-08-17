@@ -19,8 +19,8 @@ func NewHandler(svc *Service) *Handler {
 
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/operation/tickets", h.handleCreate)
-	mux.HandleFunc("/api/v1/operation/admin/tickets", h.handleList)
-	mux.HandleFunc("/api/v1/operation/admin/tickets/", h.handleTicketByID)
+	mux.HandleFunc("/api/v1/support/admin/tickets", h.handleList)
+	mux.HandleFunc("/api/v1/support/admin/tickets/", h.handleTicketByID)
 	mux.HandleFunc("/api/v1/operation/internal/tickets/customer-session", h.handleCustomerSession)
 	mux.HandleFunc("/api/v1/operation/internal/tickets/session/", h.handleSessionProcess)
 }
@@ -56,7 +56,7 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleTicketByID(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/api/v1/operation/admin/tickets/")
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/support/admin/tickets/")
 	parts := strings.Split(path, "/")
 	id, _ := strconv.ParseInt(parts[0], 10, 64)
 	switch {
@@ -72,7 +72,7 @@ func (h *Handler) handleTicketByID(w http.ResponseWriter, r *http.Request) {
 			AdminReply string `json:"adminReply"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
-		adminID := getAdminID(r)
+		adminID := httputil.GetAdminIDFromHeader(r)
 		h.svc.Process(r.Context(), id, adminID, req.AdminReply)
 		w.Write([]byte(`{"status":"ok"}`))
 	case r.Method == "DELETE":
@@ -125,14 +125,3 @@ func (h *Handler) handleSessionProcess(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write([]byte(`{"status":"ok"}`))
 }
-
-func getAdminID(r *http.Request) int64 {
-	idStr := r.Header.Get("X-Admin-Id")
-	if idStr == "" {
-		return httputil.GetUserIDFromHeader(r)
-	}
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-	return id
-}
-
-

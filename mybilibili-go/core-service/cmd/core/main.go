@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
+	"mybilibili/core-service/internal/admin"
 	"mybilibili/core-service/internal/clients"
 	"mybilibili/core-service/internal/comment"
 	"mybilibili/core-service/internal/coreapi"
@@ -21,6 +22,7 @@ import (
 	"mybilibili/core-service/internal/interaction"
 	"mybilibili/core-service/internal/manuscript"
 	"mybilibili/core-service/internal/moderation"
+	"mybilibili/core-service/internal/social"
 	"mybilibili/core-service/internal/studio"
 	"mybilibili/core-service/internal/subtitle"
 	"mybilibili/core-service/internal/support"
@@ -30,8 +32,6 @@ import (
 	"mybilibili/pkg/auth"
 	"mybilibili/pkg/common/middleware"
 	pb "mybilibili/pkg/pb"
-	"mybilibili/core-service/internal/admin"
-	"mybilibili/core-service/internal/social"
 )
 
 func main() {
@@ -122,7 +122,11 @@ func main() {
 	adminRepo := admin.NewRepository(db)
 	adminSvc := admin.NewService(adminRepo)
 	adminH := admin.NewHandler(adminSvc, auth.NewJWT(jwtSecret))
-	adminDataH := admin.NewAdminDataHandler(db)
+	userAdminH := user.NewUserAdminHandler(db, adminSvc)
+	videoAdminH := video.NewAdminHandler(db)
+	commentAdminH := comment.NewAdminHandler(db)
+	moderationAdminH := moderation.NewAdminHandler(db)
+	liveAdminH := coreapi.NewLiveAdminHandler(db)
 
 	modRepo := moderation.NewRepository(db)
 	modSvc := moderation.NewService(modRepo)
@@ -178,8 +182,8 @@ func main() {
 
 	eventPublisher := events.NewEventPublisher(mq)
 
-	adminManuscriptH := admin.NewManuscriptAdminHandler(db)
-	adminManuscriptH.SetEventPublisher(eventPublisher)
+	manuscriptAdminH := manuscript.NewManuscriptAdminHandler(db)
+	manuscriptAdminH.SetEventPublisher(eventPublisher)
 	interactionSvc.SetEventPublisher(eventPublisher)
 
 	go func() {
@@ -221,9 +225,10 @@ func main() {
 	publicAPIH := coreapi.NewPublicAPIHandler(commentSvc)
 
 	coreapi.StartHTTPServer(httpAddr, auth.NewJWT(jwtSecret),
-		liveProxy, followH, socialH, videoH, adminH, adminDataH, adminManuscriptH, modH,
+		liveProxy, followH, socialH, videoH, adminH, modH,
 		supportH, userExtH, favoriteH,
-		subtitleH, studioH, creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH)
+		subtitleH, studioH, creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH,
+		userAdminH, manuscriptAdminH, videoAdminH, commentAdminH, moderationAdminH, liveAdminH)
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {

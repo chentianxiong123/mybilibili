@@ -2,16 +2,16 @@ import api from './index.ts'
 
 // ====== Admin 直播管理 ======
 export function getLiveRooms(page = 1, size = 10, status = '') {
-  return api.get('/admin/live/rooms', { params: { page, size, status } })
+  return api.get('/live/admin/rooms', { params: { page, size, status } })
 }
 export function getLiveRoom(id: number) {
-  return api.get(`/admin/live/rooms/${id}`)
+  return api.get(`/live/admin/rooms/${id}`)
 }
 export function updateLiveRoomStatus(id: number, status: string) {
-  return api.put(`/admin/live/rooms/${id}/status`, { status })
+  return api.put(`/live/admin/rooms/${id}/status`, { status })
 }
 export function getLiveStats() {
-  return api.get('/admin/live/stats')
+  return api.get('/live/admin/stats')
 }
 
 export const liveApi = {

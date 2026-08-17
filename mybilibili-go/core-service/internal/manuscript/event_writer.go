@@ -1,4 +1,4 @@
-package admin
+package manuscript
 
 import (
 	"context"

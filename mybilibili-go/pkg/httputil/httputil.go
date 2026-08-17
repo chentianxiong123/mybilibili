@@ -18,6 +18,21 @@ func GetUserIDFromHeader(r *http.Request) int64 {
 	return id
 }
 
+func GetAdminIDFromHeader(r *http.Request) int64 {
+	idStr := r.Header.Get("X-Admin-Id")
+	if idStr == "" {
+		idStr = r.Header.Get("X-User-Id")
+	}
+	if idStr == "" {
+		return 0
+	}
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return id
+}
+
 func ParsePageParams(r *http.Request) (int32, int32) {
 	page, _ := strconv.ParseInt(r.URL.Query().Get("page"), 10, 32)
 	sizeStr := r.URL.Query().Get("page_size")

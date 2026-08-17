@@ -2,7 +2,7 @@ import request from './client'
 
 export const getReportList = (params) => {
   return request({
-    url: '/admin/report/list',
+    url: '/moderation/admin/report/list',
     method: 'get',
     params
   })
@@ -10,7 +10,7 @@ export const getReportList = (params) => {
 
 export const processReport = (id, data) => {
   return request({
-    url: `/admin/report/process/${id}`,
+    url: `/moderation/admin/report/process/${id}`,
     method: 'put',
     data
   })

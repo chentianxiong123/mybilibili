@@ -18,11 +18,11 @@ func NewHandler(svc *Service) *Handler {
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
-	mux.HandleFunc("/api/v1/admin/prohibited-words/batch-import", h.handleBatchImport)
-	mux.HandleFunc("/api/v1/admin/prohibited-words", h.handleWords)
-	mux.HandleFunc("/api/v1/admin/prohibited-words/", h.handleWordByID)
+	mux.HandleFunc("/api/v1/moderation/admin/prohibited-words/batch-import", h.handleBatchImport)
+	mux.HandleFunc("/api/v1/moderation/admin/prohibited-words", h.handleWords)
+	mux.HandleFunc("/api/v1/moderation/admin/prohibited-words/", h.handleWordByID)
 	mux.HandleFunc("/api/v1/report/submit", h.handleSubmitReport)
-	mux.HandleFunc("/api/v1/admin/report/", h.handleReports)
+	mux.HandleFunc("/api/v1/moderation/admin/report/", h.handleReports)
 }
 
 func (h *Handler) handleBatchImport(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +61,7 @@ func (h *Handler) handleWords(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleWordByID(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/api/v1/admin/prohibited-words/")
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/moderation/admin/prohibited-words/")
 	id, _ := strconv.ParseInt(path, 10, 64)
 	switch r.Method {
 	case "GET":
@@ -114,7 +114,7 @@ func (h *Handler) handleSubmitReport(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleReports(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/api/v1/admin/report/")
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/moderation/admin/report/")
 	if path == "list" && r.Method == "GET" {
 		page, size := httputil.ParsePageParams(r)
 		status := r.URL.Query().Get("status")
@@ -149,5 +149,3 @@ func (h *Handler) handleReports(w http.ResponseWriter, r *http.Request) {
 	}
 	http.Error(w, "not found", 404)
 }
-
-
