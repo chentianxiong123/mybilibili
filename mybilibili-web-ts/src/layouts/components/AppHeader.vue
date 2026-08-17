@@ -15,6 +15,7 @@ import {
   setAuthSession
 } from '../../utils/auth.ts'
 import { useNotificationWs } from '../../composables/useNotificationWs.ts'
+import { usePrefetch } from '../../composables/usePrefetch'
 import SearchBar from './SearchBar.vue'
 import UserMenu from './UserMenu.vue'
 import NotificationBell from './NotificationBell.vue'
@@ -32,6 +33,7 @@ const emit = defineEmits(['showLogin', 'logout'])
 
 const router = useRouter()
 const route = useRoute()
+const { prefetch } = usePrefetch()
 
 const { unreadCounts: wsUnreadCounts, connect: wsConnect, disconnect: wsDisconnect } = useNotificationWs()
 
@@ -251,11 +253,11 @@ onUnmounted(() => {
   <header :class="['app-header', { 'scrolled': shouldShowScrolled, 'white-mode': mode === 'white' }]">
     <div class="header-container">
       <div class="header-left">
-        <el-button link @click="router.push('/')" class="home-icon">
+        <el-button link @click="router.push('/')" @mouseenter="prefetch('/')" class="home-icon">
           <el-icon><House /></el-icon>
           <span>首页</span>
         </el-button>
-        <el-button link @click="router.push('/live')" class="home-icon">
+        <el-button link @click="router.push('/live')" @mouseenter="prefetch('/live')" class="home-icon">
           <el-icon><VideoCamera /></el-icon>
           <span>直播</span>
         </el-button>

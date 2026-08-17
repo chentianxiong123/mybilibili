@@ -27,6 +27,12 @@ http:
         customRequestHeaders:
           X-Forwarded-Proto: "https"
 
+    # Brotli/Gzip 压缩（排除 SSE）
+    compress:
+      compress:
+        excludedContentTypes:
+          - text/event-stream
+
     # 安全头
     security-headers:
       headers:
@@ -45,6 +51,7 @@ routers:
     priority: 1
     service: core
     middlewares:
+      - compress
       - security-headers
     tls:
       certResolver: letsencrypt

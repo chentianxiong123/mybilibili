@@ -26,24 +26,6 @@ export function useCreatorStats() {
     currentFollowers: 0, newFollowersToday: 0, unfollowsToday: 0, growthRate: 0
   })
 
-  const cache = new Map()
-  const CACHE_TTL = 5 * 60 * 1000
-
-  function isCacheValid(key) {
-    const entry = cache.get(key)
-    if (!entry) return false
-    return Date.now() - entry.time < CACHE_TTL
-  }
-
-  async function fetchWithCache(key, fetcher) {
-    if (isCacheValid(key)) {
-      return cache.get(key).data
-    }
-    const data = await fetcher()
-    cache.set(key, { data, time: Date.now() })
-    return data
-  }
-
   async function loadOverview(force = true) {
     if (loading.overview) return
     loading.overview = true
@@ -109,10 +91,6 @@ export function useCreatorStats() {
     }
   }
 
-  function clearCache() {
-    cache.clear()
-  }
-
   return {
     loading,
     overview,
@@ -125,6 +103,5 @@ export function useCreatorStats() {
     loadRanking,
     loadFansTrend,
     loadManuscriptTrend,
-    clearCache
   }
 }

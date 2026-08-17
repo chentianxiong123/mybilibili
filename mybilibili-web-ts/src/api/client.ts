@@ -16,6 +16,22 @@ const api = axios.create({
   withCredentials: true
 }) as any
 
+// ====== 短期 GET 缓存（仅公开只读接口，TTL 30s） ======
+const cacheStore = new Map<string, { data: any; expires: number }>()
+const CACHE_TTL = 30 * 1000
+const CACHE_PATHS = ['/category', '/manuscript/recommended', '/manuscript/hot']
+
+const cacheEnabled = (url: string) => CACHE_PATHS.some(p => url.includes(p))
+const cacheKeyFor = (method: string, url: string, params: any) =>
+  `${method}:${url}:${params ? JSON.stringify(params) : ''}`
+
+const clearCacheFor = (url: string) => {
+  if (!cacheEnabled(url)) return
+  ;[...cacheStore.keys()].forEach(key => {
+    if (key.includes(url)) cacheStore.delete(key)
+  })
+}
+
 api.interceptors.request.use(
   config => {
     const url = config.url || ''
@@ -27,6 +43,14 @@ api.interceptors.request.use(
     const token = adminToken || userToken
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+    }
+
+    if ((config.method || 'get').toLowerCase() === 'get' && cacheEnabled(url)) {
+      const key = cacheKeyFor('get', url, config.params)
+      const hit = cacheStore.get(key)
+      if (hit && hit.expires > Date.now()) {
+        config.adapter = async (opts: any) => ({ data: hit.data, status: 200, statusText: 'OK', headers: {}, config: opts, request: {} })
+      }
     }
     return config
   },
@@ -45,7 +69,18 @@ const processQueue = (error: any, token: string | null = null) => {
 }
 
 api.interceptors.response.use(
-  response => response.data,
+  response => {
+    const config = response.config
+    const url = config?.url || ''
+    const method = (config?.method || 'get').toLowerCase()
+    if (method === 'get' && cacheEnabled(url) && !(config as any).fromCache) {
+      cacheStore.set(cacheKeyFor('get', url, config.params), { data: response.data, expires: Date.now() + CACHE_TTL })
+    }
+    if (method !== 'get') {
+      clearCacheFor(url)
+    }
+    return response.data
+  },
   error => {
     const originalRequest = error.config
 

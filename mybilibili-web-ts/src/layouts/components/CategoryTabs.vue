@@ -4,8 +4,10 @@ import { useRouter } from 'vue-router'
 import { Star, Bell, ArrowDown } from '@element-plus/icons-vue'
 import { dynamicApi } from '@/api/dynamic.ts'
 import api from '@/api/client'
+import { usePrefetch } from '@/composables/usePrefetch'
 
 const router = useRouter()
+const { prefetch } = usePrefetch()
 
 const activeTab = ref('热门')
 const hotTab = { name: '热门', special: true, id: 0 }
@@ -108,6 +110,7 @@ const handleHotTabClick = () => {
       <div
         :class="['dynamic-tab', { 'active': activeTab === dynamicTab.name }]"
         @click="handleDynamicTabClick"
+        @mouseenter="prefetch('/dynamic')"
       >
         <div class="dynamic-icon">
           <img loading="lazy" decoding="async" v-if="showAvatar && firstDynamicAvatar" :src="firstDynamicAvatar" alt="动态头像" class="dynamic-avatar-img">
@@ -120,6 +123,7 @@ const handleHotTabClick = () => {
       <div
         :class="['hot-tab', { 'active': activeTab === hotTab.name }]"
         @click="handleHotTabClick"
+        @mouseenter="prefetch(`/category/${hotTab.id}`)"
       >
         <el-icon class="hot-icon"><Star /></el-icon>
         <span class="hot-text">{{ hotTab.name }}</span>
@@ -133,6 +137,7 @@ const handleHotTabClick = () => {
               :key="tab.id"
               :class="['tab-item', { 'active': activeTab === tab.name }]"
               @click="handleTabClick(tab)"
+              @mouseenter="prefetch(`/category/${tab.id}`)"
             >
               {{ tab.name }}
             </div>
@@ -143,6 +148,7 @@ const handleHotTabClick = () => {
               :key="tab.id"
               :class="['tab-item', { 'active': activeTab === tab.name }]"
               @click="handleTabClick(tab)"
+              @mouseenter="prefetch(`/category/${tab.id}`)"
             >
               {{ tab.name }}
             </div>

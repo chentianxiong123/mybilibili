@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import Artplayer from 'artplayer'
-import ArtplayerPluginDanmuku from 'artplayer-plugin-danmuku'
 import { ElMessage } from 'element-plus'
-import Hls from 'hls.js'
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 
 import { subtitleApi } from '@/api/subtitle.ts'
 import SubtitleDisplay from '@/components/SubtitleDisplay.vue'
-import SubtitleUploader from '@/components/SubtitleUploader.vue'
 import { useDanmakuWs } from '@/composables/useDanmakuWs.ts'
 import { interactionApi } from '@/api/client'
 import { ChatDotRound, CircleClose, View } from '@element-plus/icons-vue'
@@ -41,10 +38,6 @@ let art: any = null
 const currentVideoTime = ref(0)
 const pendingResumeTime = ref(props.resumeTime)
 const hasAppliedResume = ref(false)
-
-const getResumeTimeFromRoute = () => {
-  return props.resumeTime
-}
 
 const applyResumeTime = (time: number) => {
   if (!art || !time || time <= 0 || hasAppliedResume.value) return
@@ -92,7 +85,6 @@ const currentSubtitle = ref<any>(null)
 const currentSubtitleContent = ref<any[]>([])
 const SUBTITLE_ENABLED_KEY = 'mybilibili_subtitle_enabled'
 const subtitleEnabled = ref(localStorage.getItem(SUBTITLE_ENABLED_KEY) !== 'false')
-const subtitleUploaderRef = ref<any>(null)
 const subtitleDisplayRef = ref<any>(null)
 const subtitleSettingsPanelRef = ref<HTMLDivElement | null>(null)
 const subtitleSettingsVisible = ref(false)
@@ -231,31 +223,6 @@ const loadSubtitleContent = async (language: string) => {
   }
 }
 
-const switchSubtitle = (language: string) => {
-  loadSubtitleContent(language)
-}
-
-const toggleSubtitle = () => {
-  subtitleEnabled.value = !subtitleEnabled.value
-}
-
-const openSubtitleUploader = () => {
-  if (subtitleUploaderRef.value) {
-    subtitleUploaderRef.value.openDialog()
-  }
-}
-
-const handleSubtitleUploadSuccess = (subtitle: any) => {
-  subtitleList.value.push(subtitle)
-  loadSubtitleContent(subtitle.language)
-}
-
-const formatTime = (seconds: number) => {
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
-
 const formatDate = (dateStr: any) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
@@ -319,62 +286,6 @@ const loadDanmakus = async () => {
   }
 }
 
-const danmuInput = ref('')
-const danmuColor = ref('#ffffff')
-const showDanmuInput = ref(false)
-
-const sendDanmaku = async () => {
-  const token = localStorage.getItem('token')
-  if (!token) {
-    ElMessage.warning('请先登录')
-    return
-  }
-  if (!danmuInput.value.trim()) {
-    ElMessage.warning('弹幕内容不能为空')
-    return
-  }
-  const currentVideo = props.manuscriptInfo?.videos?.[props.currentVideoIndex]
-  if (!currentVideo) return
-  try {
-    const currentTime = art ? art.currentTime : 0
-    const response = await interactionApi.sendDanmaku(
-      currentVideo.id,
-      danmuInput.value.trim(),
-      currentTime.toString(),
-      danmuColor.value,
-      0
-    )
-    if (response.code === 200) {
-      const newDanmu = {
-        text: danmuInput.value.trim(),
-        time: currentTime,
-        color: danmuColor.value,
-        sendTime: formatDate(new Date())
-      }
-      localDanmuList.value.push(newDanmu)
-      emitDanmuList()
-      const updatedVideoInfo = { ...props.videoInfo, danmuLoadedCount: localDanmuList.value.length }
-      emit('update:videoInfo', updatedVideoInfo)
-      if (art) {
-        art.plugins.artplayerPluginDanmuku.emit({
-          text: newDanmu.text,
-          time: newDanmu.time,
-          color: newDanmu.color,
-          mode: 0
-        })
-      }
-      danmuInput.value = ''
-      showDanmuInput.value = false
-      ElMessage.success('发送成功')
-    } else {
-      ElMessage.error(response.message || '发送失败')
-    }
-  } catch (error) {
-    console.error('发送弹幕失败:', error)
-    ElMessage.error('发送失败，请稍后重试')
-  }
-}
-
 const handleVideoTimeUpdate = () => {
   if (art) {
     const currentTime = art.currentTime || 0
@@ -386,9 +297,11 @@ const handleVideoTimeUpdate = () => {
 let playerInitialized = false
 let lastAppliedUrl = ''
 
-const initPlayer = () => {
+const initPlayer = async () => {
   if (playerInitialized) return
   playerInitialized = true
+
+  const { default: ArtplayerPluginDanmuku } = await import('artplayer-plugin-danmuku')
 
   let defaultUrl = ''
   const qualityOptions: any[] = []
@@ -452,10 +365,11 @@ const initPlayer = () => {
     lang: 'zh-cn',
     type: defaultUrl.endsWith('.m3u8') ? 'm3u8' : 'mp4',
     customType: {
-      m3u8: (video: any, url: string, art: any) => {
+      m3u8: async (video: any, url: string, art: any) => {
         if (video.canPlayType('application/x-mpegURL')) {
           video.src = url
         } else {
+          const { default: Hls } = await import('hls.js')
           const hls = new Hls()
           hls.loadSource(url)
           hls.attachMedia(video)
@@ -633,11 +547,11 @@ const initPlayer = () => {
   window.addEventListener('resize', handleSubtitlePlayerResize)
 }
 
-const updatePlayer = () => {
+const updatePlayer = async () => {
   if (!art) {
     hasAppliedResume.value = false
     pendingResumeTime.value = props.resumeTime
-    initPlayer()
+    await initPlayer()
     return
   }
 
