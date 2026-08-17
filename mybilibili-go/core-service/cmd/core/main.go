@@ -162,7 +162,15 @@ func main() {
 	favoriteH := favorite.NewFavoriteHandler(db)
 	genericInteractionH := interaction.NewGenericInteractionHandler(interactionRepo)
 
-	mq, _ := abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: "memory"})
+	mqType := os.Getenv("MQ_TYPE")
+	if mqType == "" {
+		mqType = "file"
+	}
+	mqPath := os.Getenv("MQ_PATH")
+	if mqPath == "" {
+		mqPath = "/tmp/mybilibili-mq"
+	}
+	mq, _ := abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: mqType, Path: mqPath})
 
 	redisAddr := os.Getenv("REDIS_ADDR")
 	if redisAddr == "" {
@@ -203,6 +211,47 @@ func main() {
 			if remaining == 0 {
 				_, _ = db.Exec(`UPDATE manuscripts SET status = 3 WHERE id = $1 AND status = 0`, evt.ManuscriptID)
 				log.Printf("auto-published manuscript %d (all videos completed)", evt.ManuscriptID)
+			}
+		}
+	}()
+
+	// 订阅 media worker 的处理进度，回写 videos 表（process_status/stage/progress/has_subtitle/has_summary）
+	go func() {
+		ch, err := mq.Subscribe(context.Background(), "video-process-progress-topic", "core-writer")
+		if err != nil {
+			log.Printf("progress subscribe: %v", err)
+			return
+		}
+		for msg := range ch {
+			var evt struct {
+				VideoID      int64  `json:"video_id"`
+				ManuscriptID int64  `json:"manuscript_id"`
+				Stage        string `json:"stage"`
+				StageText    string `json:"stage_text"`
+				Progress     int32  `json:"progress"`
+				Status       int32  `json:"status"`
+				Done         bool   `json:"done"`
+				Error        string `json:"error"`
+			}
+			json.Unmarshal(msg.Payload, &evt)
+			if evt.VideoID == 0 {
+				continue
+			}
+			stage := evt.Stage
+			if stage == "failed" {
+				_, _ = db.Exec(`UPDATE videos SET process_status = $1, process_stage = 'FAILED', process_error = $2, updated_at = NOW() WHERE id = $3`,
+					evt.Status, evt.Error, evt.VideoID)
+				continue
+			}
+			_, _ = db.Exec(`UPDATE videos SET process_status = $1, process_stage = $2, process_progress = $3, updated_at = NOW() WHERE id = $4`,
+				evt.Status, stage, evt.Progress, evt.VideoID)
+			if evt.Done {
+				switch stage {
+				case "subtitle":
+					_, _ = db.Exec(`UPDATE videos SET has_subtitle = 1 WHERE id = $1`, evt.VideoID)
+				case "summary":
+					_, _ = db.Exec(`UPDATE videos SET has_summary = 1 WHERE id = $1`, evt.VideoID)
+				}
 			}
 		}
 	}()

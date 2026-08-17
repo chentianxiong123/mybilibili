@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -210,13 +212,48 @@ func (p *Pipeline) emitProgress(videoID, manuscriptID int64, stage, stageText st
 }
 
 func (p *Pipeline) downloadSource(ctx context.Context, sourceURL, dest string) error {
-	// For now, stub: assumes source is already local or downloadable
-	_ = sourceURL
-	f, err := os.Create(dest)
+	if sourceURL == "" {
+		return fmt.Errorf("empty source url")
+	}
+	var body io.ReadCloser
+	switch {
+	case strings.HasPrefix(sourceURL, "http://"), strings.HasPrefix(sourceURL, "https://"):
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, sourceURL, nil)
+		if err != nil {
+			return err
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return fmt.Errorf("download source: http %d", resp.StatusCode)
+		}
+		body = resp.Body
+	case strings.HasPrefix(sourceURL, "file://"):
+		f, err := os.Open(strings.TrimPrefix(sourceURL, "file://"))
+		if err != nil {
+			return err
+		}
+		body = f
+	default:
+		f, err := os.Open(sourceURL)
+		if err != nil {
+			return err
+		}
+		body = f
+	}
+	defer body.Close()
+
+	out, err := os.Create(dest)
 	if err != nil {
 		return err
 	}
-	f.Close()
+	defer out.Close()
+	if _, err := io.Copy(out, body); err != nil {
+		return err
+	}
 	return nil
 }
 

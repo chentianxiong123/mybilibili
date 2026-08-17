@@ -12,9 +12,10 @@ import (
 )
 
 func main() {
-	mqType := getEnv("MQ_TYPE", "memory")
+	mqType := getEnv("MQ_TYPE", "file")
+	mqPath := getEnv("MQ_PATH", "/tmp/mybilibili-mq")
 
-	mq, err := abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: mqType})
+	mq, err := abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: mqType, Path: mqPath})
 	if err != nil {
 		log.Fatalf("message queue: %v", err)
 	}
@@ -25,7 +26,10 @@ func main() {
 		log.Fatalf("storage: %v", err)
 	}
 
-	docStore, err := abstraction.NewDocumentStore(abstraction.DocumentStoreConfig{Type: getEnv("DOC_STORE_TYPE", "memory")})
+	docStore, err := abstraction.NewDocumentStore(abstraction.DocumentStoreConfig{
+		Type: getEnv("DOC_STORE_TYPE", "memory"),
+		DSN:  getEnv("PG_DSN", ""),
+	})
 	if err != nil {
 		log.Fatalf("doc store: %v", err)
 	}

@@ -22,7 +22,8 @@ type ServiceDiscoveryConfig struct {
 }
 
 type MessageQueueConfig struct {
-	Type         string `yaml:"type"` // memory / redis-stream / nats
+	Type         string `yaml:"type"` // memory / file / redis-stream / nats
+	Path         string `yaml:"path"` // file 队列目录
 	RedisAddr    string `yaml:"redis_addr"`
 	StreamPrefix string `yaml:"stream_prefix"`
 	NATSURL      string `yaml:"nats_url"`
@@ -85,6 +86,8 @@ func NewMessageQueue(cfg MessageQueueConfig) (MessageQueue, error) {
 	switch cfg.Type {
 	case "memory":
 		return newMemoryQueue(), nil
+	case "file":
+		return newFileQueue(cfg)
 	case "redis-stream":
 		return newRedisStreamQueue(cfg)
 	case "nats":

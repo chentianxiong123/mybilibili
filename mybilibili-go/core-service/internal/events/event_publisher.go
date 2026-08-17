@@ -43,12 +43,14 @@ func (p *EventPublisher) PublishAnalytics(ctx context.Context, manuscriptID, use
 	})
 }
 
-func (p *EventPublisher) PublishVideoProcess(ctx context.Context, manuscriptID, videoID int64, processType string) error {
+func (p *EventPublisher) PublishVideoProcess(ctx context.Context, manuscriptID, videoID int64, processType, sourceURL string, uploaderID int64) error {
 	evt := map[string]interface{}{
 		"manuscript_id": manuscriptID,
 		"video_id":      videoID,
 		"process_type":  processType,
 		"process_mode":  "AUTO_CHAIN",
+		"source_url":    sourceURL,
+		"uploader_id":   uploaderID,
 	}
 	data, _ := json.Marshal(evt)
 	return p.mq.Publish(ctx, "video-process-topic", abstraction.Message{
