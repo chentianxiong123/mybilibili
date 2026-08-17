@@ -81,7 +81,12 @@ declare module 'vue' {
     SubtitleUploader: typeof import('./src/components/SubtitleUploader.vue')['default']
     TrendChart: typeof import('./src/components/datacenter/TrendChart.vue')['default']
     UserFloatCard: typeof import('./src/components/UserFloatCard.vue')['default']
+    VideoCommentSection: typeof import('./src/components/VideoCommentSection.vue')['default']
+    VideoDescription: typeof import('./src/components/VideoDescription.vue')['default']
+    VideoInteractionBar: typeof import('./src/components/VideoInteractionBar.vue')['default']
+    VideoReportDialog: typeof import('./src/components/VideoReportDialog.vue')['default']
     VideoSelectDialog: typeof import('./src/components/VideoSelectDialog.vue')['default']
+    VideoSidebar: typeof import('./src/components/VideoSidebar.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']
