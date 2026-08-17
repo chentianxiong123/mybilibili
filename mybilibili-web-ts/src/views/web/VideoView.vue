@@ -2,26 +2,20 @@
 import { interactionApi, userApi, videoApi } from '@/api/client'
 import { manuscriptApi } from '@/api/manuscript.ts'
 import { recommendApi } from '@/api/recommend.ts'
-import { ChatDotRound, CircleClose, Message, View } from '@element-plus/icons-vue'
-import Artplayer from 'artplayer'
-import ArtplayerPluginDanmuku from 'artplayer-plugin-danmuku'
+import { Message } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import Hls from 'hls.js'
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { subtitleApi } from '@/api/subtitle.ts'
 import AiAssistantPanel from '@/components/AiAssistantPanel.vue'
 import LevelBadge from '@/components/LevelBadge.vue'
-import SubtitleDisplay from '@/components/SubtitleDisplay.vue'
-import SubtitleUploader from '@/components/SubtitleUploader.vue'
 import UserFloatCard from '@/components/UserFloatCard.vue'
 import VideoCommentSection from '@/components/VideoCommentSection.vue'
 import VideoDescription from '@/components/VideoDescription.vue'
 import VideoInteractionBar from '@/components/VideoInteractionBar.vue'
+import VideoPlayer from '@/components/VideoPlayer.vue'
 import VideoReportDialog from '@/components/VideoReportDialog.vue'
 import VideoSidebar from '@/components/VideoSidebar.vue'
-import { useDanmakuWs } from '@/composables/useDanmakuWs.ts'
 
 const route = useRoute()
 const router = useRouter()
@@ -42,8 +36,6 @@ const props = defineProps({
 const currentManuscriptId = ref(Number.parseInt(String(route.params.id)))
 const currentP = ref(Number.parseInt(String(route.query.p)) || 1)
 const resumeTime = ref(Number.parseInt(String(route.query.t)) || 0)
-const pendingResumeTime = ref(Number.parseInt(String(route.query.t)) || 0)
-const hasAppliedResume = ref(false)
 
 // 兼容旧代码 - videoId用于某些API调用
 const videoId = ref(null)
@@ -100,249 +92,6 @@ const getResumeTimeFromRoute = () => {
   return Number.isFinite(t) && t > 0 ? t : 0
 }
 
-// 应用一次续播时间
-const applyResumeTime = time => {
-  if (!art || !time || time <= 0 || hasAppliedResume.value) return
-  const duration =
-    Number(art.duration) ||
-    Number(videoInfo.value.duration?.split(':').reduce((acc, cur) => acc * 60 + Number(cur), 0)) ||
-    0
-  const safeTime = duration > 0 ? Math.min(time, Math.max(0, duration - 1)) : time
-  art.currentTime = safeTime
-  currentVideoTime.value = safeTime
-  hasAppliedResume.value = true
-  pendingResumeTime.value = 0
-}
-
-// 弹幕列表
-const danmuList = ref([])
-// 弹幕加载状态
-const loadingDanmus = ref(false)
-
-// 弹幕列表折叠状态
-const isDanmuListCollapsed = ref(false)
-
-// 弹幕实时 WebSocket
-const { connect: connectDanmakuWs, disconnect: disconnectDanmakuWs, onDanmaku } = useDanmakuWs()
-onDanmaku(msg => {
-  if (art && art.plugins && art.plugins.artplayerPluginDanmuku) {
-    art.plugins.artplayerPluginDanmuku.emit({
-      text: msg.content,
-      time: msg.time,
-      color: msg.color || '#ffffff',
-      mode: msg.mode || 0
-    })
-  }
-  danmuList.value.push({
-    text: msg.content,
-    time: msg.time,
-    color: msg.color || '#ffffff',
-    sendTime: formatDate(new Date())
-  })
-})
-
-// 视频分P列表折叠状态
-const isVideoPartsCollapsed = ref(false)
-
-// 字幕相关
-const subtitleList = ref([])
-const currentSubtitle = ref(null)
-const currentSubtitleContent = ref([])
-const SUBTITLE_ENABLED_KEY = 'mybilibili_subtitle_enabled'
-const subtitleEnabled = ref(localStorage.getItem(SUBTITLE_ENABLED_KEY) !== 'false')
-const currentVideoTime = ref(0)
-const subtitleUploaderRef = ref(null)
-const subtitleDisplayRef = ref(null)
-const subtitleSettingsPanelRef = ref(null)
-const subtitleSettingsVisible = ref(false)
-
-// 字幕设置默认值
-const SUBTITLE_SETTINGS_KEY = 'mybilibili_subtitle_settings'
-const FULLSCREEN_FONT_SCALE = 1.5
-const defaultSubtitleSettings = {
-  fontSize: 32,
-  color: '#ffffff',
-  backgroundColor: 'rgba(0, 0, 0, 0.75)',
-  backgroundOpacity: 0.75,
-  textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)',
-  borderRadius: 4,
-  padding: '8px 16px',
-  lineHeight: 1.5
-}
-
-const loadSubtitleSettings = () => {
-  try {
-    const saved = localStorage.getItem(SUBTITLE_SETTINGS_KEY)
-    if (saved) {
-      return { ...defaultSubtitleSettings, ...JSON.parse(saved) }
-    }
-  } catch (e) {
-    /* ignore */
-  }
-  return { ...defaultSubtitleSettings }
-}
-
-const subtitleSettings = ref(loadSubtitleSettings())
-
-const saveSubtitleSettings = () => {
-  try {
-    localStorage.setItem(SUBTITLE_SETTINGS_KEY, JSON.stringify(subtitleSettings.value))
-  } catch (e) {
-    /* ignore */
-  }
-}
-
-// 全屏状态
-const isNativeFullscreen = ref(false)
-const isWebFullscreen = ref(false)
-const isFullscreenMode = ref(false)
-
-const updateFullscreenMode = () => {
-  isFullscreenMode.value = isNativeFullscreen.value || isWebFullscreen.value
-}
-
-// 推送设置到字幕组件（考虑全屏缩放）
-const pushSettingsToSubtitle = () => {
-  if (!subtitleDisplayRef.value) return
-  const scale = isFullscreenMode.value ? FULLSCREEN_FONT_SCALE : 1
-  subtitleDisplayRef.value.updateSettings({
-    ...subtitleSettings.value,
-    fontSize: Math.round(subtitleSettings.value.fontSize * scale)
-  })
-}
-
-const refreshSubtitleLayout = (resetPosition = false) => {
-  nextTick(() => {
-    pushSettingsToSubtitle()
-
-    if (!subtitleDisplayRef.value) return
-
-    if (resetPosition) {
-      subtitleDisplayRef.value.centerSubtitle()
-    } else {
-      subtitleDisplayRef.value.updatePosition()
-    }
-
-    requestAnimationFrame(() => {
-      subtitleDisplayRef.value?.updatePosition()
-    })
-  })
-}
-
-const handleSubtitlePlayerResize = () => {
-  refreshSubtitleLayout(false)
-}
-
-const updateSubtitleSettings = settings => {
-  subtitleSettings.value = { ...subtitleSettings.value, ...settings }
-  saveSubtitleSettings()
-  pushSettingsToSubtitle()
-}
-
-// 深度监听设置变化，自动保存并同步到字幕组件
-watch(
-  subtitleSettings,
-  () => {
-    saveSubtitleSettings()
-    pushSettingsToSubtitle()
-  },
-  { deep: true }
-)
-
-// 重置字幕位置
-const resetSubtitlePosition = () => {
-  if (subtitleDisplayRef.value) {
-    subtitleDisplayRef.value.resetPosition()
-  }
-}
-
-// 恢复默认字幕设置
-const resetSubtitleSettings = () => {
-  subtitleSettings.value = { ...defaultSubtitleSettings }
-  saveSubtitleSettings()
-  pushSettingsToSubtitle()
-  if (subtitleDisplayRef.value) {
-    subtitleDisplayRef.value.resetPosition()
-  }
-  ElMessage.success('已恢复默认设置')
-}
-
-// 加载字幕列表
-const loadSubtitles = async () => {
-  try {
-    console.log('[字幕] 开始加载字幕列表, videoId:', videoId.value)
-    const response = await subtitleApi.getSubtitles(videoId.value)
-    console.log('[字幕] 字幕列表响应:', response)
-    if (response.code === 200) {
-      subtitleList.value = response.data || []
-      console.log('[字幕] 字幕列表:', subtitleList.value)
-      // 如果有默认字幕，自动加载
-      const defaultSub = subtitleList.value.find(sub => sub.isDefault)
-      if (defaultSub) {
-        console.log('[字幕] 加载默认字幕:', defaultSub.language)
-        await loadSubtitleContent(defaultSub.language)
-      } else if (subtitleList.value.length > 0) {
-        console.log('[字幕] 加载第一个字幕:', subtitleList.value[0].language)
-        await loadSubtitleContent(subtitleList.value[0].language)
-      } else {
-        console.log('[字幕] 没有可用字幕')
-      }
-    }
-  } catch (error) {
-    console.error('[字幕] 加载字幕列表失败:', error)
-  }
-}
-
-// 加载指定语言字幕内容
-const loadSubtitleContent = async language => {
-  try {
-    console.log('[字幕] 开始加载字幕内容, language:', language)
-    const response = await subtitleApi.getSubtitle(videoId.value, language)
-    console.log('[字幕] 字幕内容响应:', response)
-    if (response.code === 200 && response.data) {
-      currentSubtitle.value = response.data
-      currentSubtitleContent.value = response.data.content || []
-      console.log('[字幕] 字幕内容已加载, 条数:', currentSubtitleContent.value.length)
-      console.log('[字幕] 第一条:', currentSubtitleContent.value[0])
-      console.log('[字幕] 第二条:', currentSubtitleContent.value[1])
-    } else {
-      console.log('[字幕] 字幕内容为空')
-    }
-  } catch (error) {
-    console.error('[字幕] 加载字幕内容失败:', error)
-  }
-}
-
-// 切换字幕语言
-const switchSubtitle = language => {
-  loadSubtitleContent(language)
-}
-
-// 切换字幕显示/隐藏
-const toggleSubtitle = () => {
-  subtitleEnabled.value = !subtitleEnabled.value
-}
-
-// 打开字幕上传对话框
-const openSubtitleUploader = () => {
-  if (subtitleUploaderRef.value) {
-    subtitleUploaderRef.value.openDialog()
-  }
-}
-
-// 字幕上传成功回调
-const handleSubtitleUploadSuccess = subtitle => {
-  subtitleList.value.push(subtitle)
-  loadSubtitleContent(subtitle.language)
-}
-
-// 格式化时间
-const formatTime = seconds => {
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
-
 // 格式化日期
 const formatDate = dateStr => {
   if (!dateStr) return ''
@@ -356,23 +105,16 @@ const formatDate = dateStr => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
-// 跳转到弹幕时间
-const jumpToDanmuTime = time => {
-  if (art) {
-    art.currentTime = time
-    console.log('跳转到时间:', time)
-  }
-}
+// 弹幕列表
+const danmuList = ref([])
+// 弹幕加载状态
+const loadingDanmus = ref(false)
 
-// 切换弹幕列表折叠状态
-const toggleDanmuList = () => {
-  isDanmuListCollapsed.value = !isDanmuListCollapsed.value
-}
+// 弹幕列表折叠状态
+const isDanmuListCollapsed = ref(false)
 
-// 切换视频分P列表折叠状态
-const toggleVideoParts = () => {
-  isVideoPartsCollapsed.value = !isVideoPartsCollapsed.value
-}
+// 视频分P列表折叠状态
+const isVideoPartsCollapsed = ref(false)
 
 // 处理发消息
 const handleSendMessage = () => {
@@ -466,17 +208,31 @@ const recordWatchHistorySync = () => {
   }
 }
 
-// 处理视频时间更新，仅用于更新进度变量
-const handleVideoTimeUpdate = () => {
-  if (art) {
-    watchProgress.value = art.currentTime || 0
-    videoDuration.value = art.duration || 0
-  }
+// 处理视频时间更新，仅用于更新进度变量（由 VideoPlayer 的 timeUpdate 事件驱动）
+const handleVideoTimeUpdate = ({ currentTime, duration }) => {
+  watchProgress.value = currentTime || 0
+  videoDuration.value = duration || 0
 }
 
 // 视频播放器引用
-const playerRef = ref(null)
-let art = null
+const videoPlayerRef = ref(null)
+
+// 跳转到弹幕时间（转发给 VideoPlayer）
+const jumpToDanmuTime = time => {
+  if (videoPlayerRef.value) {
+    videoPlayerRef.value.seekTo(time)
+  }
+}
+
+// 切换弹幕列表折叠状态
+const toggleDanmuList = () => {
+  isDanmuListCollapsed.value = !isDanmuListCollapsed.value
+}
+
+// 切换视频分P列表折叠状态
+const toggleVideoParts = () => {
+  isVideoPartsCollapsed.value = !isVideoPartsCollapsed.value
+}
 
 // 关注相关状态
 const isFollowing = ref(false)
@@ -611,107 +367,6 @@ const loadInteractionStatus = async () => {
   console.log('=== 互动状态获取结束 ===')
 }
 
-// 加载弹幕
-const loadDanmakus = async () => {
-  try {
-    loadingDanmus.value = true
-    const currentVideo = manuscriptInfo.value.videos[currentVideoIndex.value]
-    if (!currentVideo) return
-
-    const danmakuResponse = await interactionApi.getDanmakus(currentVideo.id)
-    if (danmakuResponse.code === 200) {
-      const danmakuData = danmakuResponse.data
-      // 更新弹幕列表
-      danmuList.value = danmakuData.map(danmaku => ({
-        text: danmaku.content,
-        time: Number.parseFloat(danmaku.time) || 0,
-        color: danmaku.color || '#ffffff',
-        sendTime: formatDate(danmaku.createTime)
-      }))
-      // 更新弹幕数量
-      videoInfo.value.danmuLoadedCount = danmuList.value.length
-
-      // 更新播放器弹幕
-      if (art) {
-        art.plugins.artplayerPluginDanmuku.config({
-          danmuku: danmuList.value
-        })
-      }
-    }
-  } catch (error) {
-    console.error('获取弹幕失败:', error)
-  } finally {
-    loadingDanmus.value = false
-  }
-}
-
-// 弹幕输入相关（UI 控件已移除，保留状态兼容）
-const danmuInput = ref('')
-const danmuColor = ref('#ffffff')
-const showDanmuInput = ref(false)
-
-// 发送弹幕
-const sendDanmaku = async () => {
-  const token = localStorage.getItem('token')
-  if (!token) {
-    ElMessage.warning('请先登录')
-    return
-  }
-
-  if (!danmuInput.value.trim()) {
-    ElMessage.warning('弹幕内容不能为空')
-    return
-  }
-
-  const currentVideo = manuscriptInfo.value.videos[currentVideoIndex.value]
-  if (!currentVideo) return
-
-  try {
-    const currentTime = art ? art.currentTime : 0
-    const response = await interactionApi.sendDanmaku(
-      currentVideo.id,
-      danmuInput.value.trim(),
-      currentTime.toString(),
-      danmuColor.value,
-      0
-    )
-
-    if (response.code === 200) {
-      // 创建新弹幕对象
-      const newDanmu = {
-        text: danmuInput.value.trim(),
-        time: currentTime,
-        color: danmuColor.value,
-        sendTime: formatDate(new Date())
-      }
-
-      // 添加到弹幕列表
-      danmuList.value.push(newDanmu)
-      videoInfo.value.danmuLoadedCount = danmuList.value.length
-
-      // 发送到播放器
-      if (art) {
-        art.plugins.artplayerPluginDanmuku.emit({
-          text: newDanmu.text,
-          time: newDanmu.time,
-          color: newDanmu.color,
-          mode: 0
-        })
-      }
-
-      // 清空输入
-      danmuInput.value = ''
-      showDanmuInput.value = false
-      ElMessage.success('发送成功')
-    } else {
-      ElMessage.error(response.message || '发送失败')
-    }
-  } catch (error) {
-    console.error('发送弹幕失败:', error)
-    ElMessage.error('发送失败，请稍后重试')
-  }
-}
-
 // 跳转到作者主页
 const goToAuthor = authorId => {
   window.open(`/profile/${authorId}/home`, '_blank')
@@ -822,8 +477,6 @@ onMounted(async () => {
   currentManuscriptId.value = manuscriptIdFromRoute
   currentP.value = pFromRoute
   resumeTime.value = getResumeTimeFromRoute()
-  pendingResumeTime.value = resumeTime.value
-  hasAppliedResume.value = false
 
   try {
     // 使用新的API获取视频数据
@@ -916,14 +569,6 @@ onMounted(async () => {
       // 获取视频互动状态
       await loadInteractionStatus()
 
-      // 获取视频弹幕
-      await loadDanmakus()
-
-      // 连接弹幕实时 WebSocket
-      if (currentVideo) {
-        connectDanmakuWs(currentVideo.id)
-      }
-
       // 加载相关视频推荐
       await loadRelatedVideos()
 
@@ -937,276 +582,10 @@ onMounted(async () => {
     ElMessage.error('获取视频信息失败')
   }
 
-  let defaultUrl = ''
-
-  const qualityOptions = []
-
-  if (videoInfo.value.playUrlHd) {
-    qualityOptions.push({
-      default: true,
-      name: '1080P 高清',
-      html: '1080P 高清',
-      url: videoInfo.value.playUrlHd
-    })
-  }
-
-  if (videoInfo.value.playUrlSd) {
-    qualityOptions.push({
-      default: !videoInfo.value.playUrlHd,
-      name: '720P 标清',
-      html: '720P 标清',
-      url: videoInfo.value.playUrlSd
-    })
-  }
-
-  if (videoInfo.value.playUrlLd) {
-    qualityOptions.push({
-      default: !videoInfo.value.playUrlHd && !videoInfo.value.playUrlSd,
-      name: '480P 流畅',
-      html: '480P 流畅',
-      url: videoInfo.value.playUrlLd
-    })
-  }
-
-  if (qualityOptions.length === 0) {
-    ElMessage.error('视频播放地址缺失')
-    return
-  }
-  defaultUrl = qualityOptions[0].url
-
-  // 字幕数据已从MongoDB加载，不需要再构建SRT选项
-  // 使用 SubtitleDisplay 组件显示字幕
-
-  // 构建播放器配置
-  const playerConfig: any = {
-    container: playerRef.value,
-    url: defaultUrl,
-    poster: videoInfo.value.coverUrl,
-    volume: 0.7,
-    isLive: false,
-    muted: false,
-    autoplay: false,
-    pip: true,
-    autoSize: false,
-    autoMini: true,
-    screenshot: false,
-    setting: true,
-    loop: false,
-    flip: true,
-    playbackRate: true,
-    aspectRatio: true,
-    fullscreen: true,
-    fullscreenWeb: true,
-    miniProgressBar: true,
-    quality: qualityOptions,
-    theme: '#23ade5',
-    lang: 'zh-cn',
-    type: defaultUrl.endsWith('.m3u8') ? 'm3u8' : 'mp4',
-    customType: {
-      m3u8: (video, url, art) => {
-        if (video.canPlayType('application/x-mpegURL')) {
-          video.src = url
-        } else {
-          const hls = new Hls()
-          hls.loadSource(url)
-          hls.attachMedia(video)
-        }
-      }
-    },
-    plugins: [
-      ArtplayerPluginDanmuku({
-        danmuku: danmuList.value,
-        speed: 5,
-        opacity: 1,
-        color: '#ffffff',
-        fontSize: 25,
-        synchronousPlayback: true,
-        maxlength: 50,
-        margin: [10, 10, 10, 10],
-        // 启用弹幕发射器
-        emitter: true,
-        // 弹幕发送前的过滤器
-        beforeEmit: async danmu => {
-          const token = localStorage.getItem('token')
-          if (!token) {
-            ElMessage.warning('请先登录')
-            return false
-          }
-
-          const currentVideo = manuscriptInfo.value.videos[currentVideoIndex.value]
-          if (!currentVideo) return false
-
-          try {
-            const response = await interactionApi.sendDanmaku(
-              currentVideo.id,
-              danmu.text,
-              danmu.time.toString(),
-              danmu.color || '#ffffff',
-              danmu.mode || 0
-            )
-
-            if (response.code === 200) {
-              // 添加到弹幕列表
-              danmuList.value.push({
-                text: danmu.text,
-                time: danmu.time,
-                color: danmu.color || '#ffffff',
-                sendTime: formatDate(new Date())
-              })
-              videoInfo.value.danmuLoadedCount = danmuList.value.length
-              ElMessage.success('发送成功')
-              return true
-            } else {
-              ElMessage.error(response.message || '发送失败')
-              return false
-            }
-          } catch (error) {
-            console.error('发送弹幕失败:', error)
-            ElMessage.error('发送失败，请稍后重试')
-            return false
-          }
-        }
-      })
-    ]
-  }
-
-  // 添加字幕控制按钮（使用自定义字幕组件）
-  playerConfig.controls = [
-    {
-      position: 'right',
-      html: '<span class="art-icon">字幕</span>',
-      tooltip: '字幕设置',
-      click: () => {
-        // 切换设置面板显示
-        subtitleSettingsVisible.value = !subtitleSettingsVisible.value
-      },
-      mounted: function () {
-        this.innerHTML = `<span class="art-icon">字幕</span>`
-      }
-    }
-  ]
-
-  // 添加字幕图层 - 使用 Artplayer 的 layers 配置
-  playerConfig.layers = [
-    {
-      name: 'customSubtitle',
-      html: '',
-      style: {
-        position: 'absolute',
-        inset: '0',
-        overflow: 'hidden',
-        pointerEvents: 'none',
-        zIndex: 42
-      },
-      mounted: layer => {
-        if (subtitleDisplayRef.value) {
-          layer.appendChild(subtitleDisplayRef.value.$el)
-          refreshSubtitleLayout(false)
-        }
-      }
-    },
-    {
-      name: 'subtitleSettingsPanel',
-      html: '',
-      style: {
-        position: 'absolute',
-        inset: '0',
-        zIndex: 100,
-        pointerEvents: 'none',
-        overflow: 'hidden'
-      },
-      mounted: layer => {
-        if (subtitleSettingsPanelRef.value) {
-          layer.appendChild(subtitleSettingsPanelRef.value)
-        }
-      }
-    }
-  ]
-
-  art = new Artplayer(playerConfig)
-
-  // 播放器准备好后推送字幕设置并更新位置
-  art.on('ready', () => {
-    refreshSubtitleLayout(true)
-    if (resumeTime.value > 0) {
-      setTimeout(() => applyResumeTime(resumeTime.value), 100)
-    }
-  })
-
-  // 监听播放时间更新 - 使用 setInterval 作为备选方案
-  let timeUpdateInterval = null
-  let lastLoggedSecond = -1
-
-  const updateCurrentTime = () => {
-    if (art && art.currentTime !== undefined) {
-      const time = art.currentTime
-      currentVideoTime.value = time
-      // 每秒输出一次时间，用于调试
-      const currentSecond = Math.floor(time)
-      if (currentSecond !== lastLoggedSecond) {
-        console.log('[字幕] 时间更新, 当前时间:', time.toFixed(2))
-        lastLoggedSecond = currentSecond
-      }
-      // 处理浏览历史记录
-      handleVideoTimeUpdate()
-    }
-  }
-
-  // 尝试使用 timeupdate 事件
-  art.on('timeupdate', () => {
-    updateCurrentTime()
-  })
-
-  // 同时启动 setInterval 作为备选
-  timeUpdateInterval = setInterval(updateCurrentTime, 100)
-
-  // 监听播放事件
-  art.on('play', () => {
-    console.log('[字幕] 视频开始播放')
-    if (!timeUpdateInterval) {
-      timeUpdateInterval = setInterval(updateCurrentTime, 100)
-    }
-  })
-
-  // 监听暂停事件
-  art.on('pause', () => {
-    console.log('[字幕] 视频暂停, 当前时间:', art.currentTime)
-  })
-
-  // 监听全屏事件 - 进入全屏时重置字幕位置并缩放字体
-  art.on('fullscreen', isFullscreen => {
-    isNativeFullscreen.value = isFullscreen
-    updateFullscreenMode()
-    setTimeout(() => refreshSubtitleLayout(true), 100)
-  })
-
-  // 监听网页全屏事件
-  art.on('fullscreenWeb', isFullscreen => {
-    isWebFullscreen.value = isFullscreen
-    updateFullscreenMode()
-    setTimeout(() => refreshSubtitleLayout(true), 100)
-  })
-
-  art.on('resize', () => {
-    refreshSubtitleLayout(false)
-  })
-
-  // 组件卸载时清理定时器
-  onUnmounted(() => {
-    if (timeUpdateInterval) {
-      clearInterval(timeUpdateInterval)
-    }
-  })
-
-  // 加载字幕
-  await loadSubtitles()
-
-  window.addEventListener('resize', handleSubtitlePlayerResize)
-
   // 添加页面离开时记录浏览历史的监听
   window.addEventListener('beforeunload', recordWatchHistorySync)
 
-  console.log('视频播放器初始化完成')
+  console.log('视频信息加载完成，播放器初始化由 VideoPlayer 组件负责')
 })
 
 onUnmounted(() => {
@@ -1215,24 +594,6 @@ onUnmounted(() => {
 
   // 移除页面离开监听
   window.removeEventListener('beforeunload', recordWatchHistorySync)
-  window.removeEventListener('resize', handleSubtitlePlayerResize)
-
-  // 断开弹幕 WebSocket
-  disconnectDanmakuWs()
-
-  // 销毁视频播放器
-  if (art) {
-    art.destroy()
-  }
-})
-
-// 监听字幕开关变化，持久化到 localStorage
-watch(subtitleEnabled, val => {
-  try {
-    localStorage.setItem(SUBTITLE_ENABLED_KEY, String(val))
-  } catch (e) {
-    /* ignore */
-  }
 })
 
 // 监听稿件ID变化
@@ -1252,8 +613,6 @@ watch(
     const p = Number.parseInt(String(newP)) || 1
     const t = Number.parseInt(String(newT)) || 0
     resumeTime.value = t > 0 ? t : 0
-    pendingResumeTime.value = resumeTime.value
-    hasAppliedResume.value = false
     if (p !== currentP.value && manuscriptInfo.value.videos.length > 0) {
       // 切换到对应的分P（注意：p是1-based，index是0-based）
       const index = p - 1
@@ -1275,70 +634,9 @@ watch(
         videoInfo.value.sourceVideoUrl = video.sourceVideoUrl || ''
         videoInfo.value.duration = video.duration || '00:00'
 
-        // 更新播放器
-        if (art) {
-          const qualityOptions = []
-
-          if (video.playUrlHd) {
-            qualityOptions.push({
-              default: true,
-              name: '1080P 高清',
-              html: '1080P 高清',
-              url: video.playUrlHd
-            })
-          }
-
-          if (video.playUrlSd) {
-            qualityOptions.push({
-              default: !video.playUrlHd,
-              name: '720P 标清',
-              html: '720P 标清',
-              url: video.playUrlSd
-            })
-          }
-
-          if (video.playUrlLd) {
-            qualityOptions.push({
-              default: !video.playUrlHd && !video.playUrlSd,
-              name: '480P 流畅',
-              html: '480P 流畅',
-              url: video.playUrlLd
-            })
-          }
-
-          if (qualityOptions.length === 0) {
-            ElMessage.error('视频播放地址缺失')
-            return
-          }
-
-          // 切换视频源
-          art.switchUrl(qualityOptions[0].url)
-
-          // 更新画质选项
-          if (qualityOptions.length > 0) {
-            art.quality = qualityOptions
-          }
-
-          // 重置播放时间，若路由带 t 则恢复到指定时间
-          art.currentTime = 0
-          if (resumeTime.value > 0) {
-            setTimeout(() => applyResumeTime(resumeTime.value), 100)
-          }
-        }
-
-        // 重新加载弹幕、字幕和互动状态
-        loadDanmakus()
+        // 重新获取互动状态（播放器切换、弹幕/字幕重载由 VideoPlayer 播放 props 自行处理）
         loadInteractionStatus()
-        loadSubtitles()
-
-        // 重连弹幕 WebSocket 到新视频
-        const switchedVideo = manuscriptInfo.value.videos[currentVideoIndex.value]
-        if (switchedVideo) {
-          connectDanmakuWs(switchedVideo.id)
-        }
       }
-    } else if (resumeTime.value > 0 && art) {
-      setTimeout(() => applyResumeTime(resumeTime.value), 100)
     }
   }
 )
@@ -1407,71 +705,21 @@ watch(
         <!-- 左侧内容 -->
         <div class="left-section">
           <!-- 视频播放器 -->
-          <div class="video-player-wrapper">
-            <div ref="playerRef" class="video-player"></div>
-            <!-- 字幕显示组件 -->
-            <SubtitleDisplay
-              ref="subtitleDisplayRef"
-              :subtitles="currentSubtitleContent"
-              :current-time="currentVideoTime"
-              :enabled="subtitleEnabled"
-            />
-            <!-- 字幕设置面板（会通过 layer 移入播放器内部） -->
-            <div ref="subtitleSettingsPanelRef" v-show="subtitleSettingsVisible" class="subtitle-settings-panel" @click.stop>
-              <div class="settings-header">
-                <span>字幕设置</span>
-                <el-button link size="small" @click="subtitleSettingsVisible = false">
-                  <el-icon><CircleClose /></el-icon>
-                </el-button>
-              </div>
-              <div class="settings-content">
-                <div class="setting-item">
-                  <span class="setting-label">字幕开关</span>
-                  <el-switch v-model="subtitleEnabled" />
-                </div>
-                <div class="setting-item">
-                  <span class="setting-label">字体大小</span>
-                  <el-slider v-model="subtitleSettings.fontSize" :min="12" :max="40" :step="1" @change="updateSubtitleSettings({ fontSize: $event })" />
-                  <span class="setting-value">{{ subtitleSettings.fontSize }}px</span>
-                </div>
-                <div class="setting-item">
-                  <span class="setting-label">字体颜色</span>
-                  <el-color-picker :teleported="false" v-model="subtitleSettings.color" @change="updateSubtitleSettings({ color: $event })" />
-                </div>
-                <div class="setting-item">
-                  <span class="setting-label">背景透明度</span>
-                  <el-slider v-model="subtitleSettings.backgroundOpacity" :min="0" :max="1" :step="0.1" @change="updateSubtitleSettings({ backgroundColor: `rgba(0, 0, 0, ${$event})` })" />
-                </div>
-                <div class="setting-item">
-                  <span class="setting-label">圆角大小</span>
-                  <el-slider v-model="subtitleSettings.borderRadius" :min="0" :max="20" :step="1" @change="updateSubtitleSettings({ borderRadius: $event })" />
-                </div>
-                <div class="setting-actions">
-                  <el-button size="small" @click="resetSubtitleSettings">恢复默认</el-button>
-                  <div style="display:flex;gap:8px;">
-                    <el-button size="small" @click="resetSubtitlePosition">重置位置</el-button>
-                    <el-button size="small" type="primary" @click="subtitleSettingsVisible = false">完成</el-button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 字幕控制栏已移除，通过播放器内按钮控制 -->
-
-          <!-- 视频状态栏 -->
-          <div class="video-status-bar-simple">
-            <div class="status-info">
-              <span class="status-item">
-                <el-icon><View /></el-icon>
-                {{ Math.max(1, videoInfo.watchingCount || 0).toLocaleString() }}人正在看
-              </span>
-              <span class="status-item">
-                <el-icon><ChatDotRound /></el-icon>
-                已装载{{ (videoInfo.danmuLoadedCount || 0).toLocaleString() }}条弹幕
-              </span>
-            </div>
-          </div>
+          <VideoPlayer
+            ref="videoPlayerRef"
+            :current-manuscript-id="currentManuscriptId"
+            :manuscript-info="manuscriptInfo"
+            :video-info="videoInfo"
+            :current-p="currentP"
+            :current-video-index="currentVideoIndex"
+            :resume-time="resumeTime"
+            :danmu-list="danmuList"
+            :loading-danmus="loadingDanmus"
+            @update:video-info="videoInfo = $event"
+            @update:danmu-list="danmuList = $event"
+            @update:loading-danmus="loadingDanmus = $event"
+            @time-update="handleVideoTimeUpdate"
+          />
           
           <VideoInteractionBar
             :manuscript-id="currentManuscriptId"
@@ -1693,72 +941,7 @@ watch(
   gap: 0;
 }
 
-/* 字幕设置面板 */
-.subtitle-settings-panel {
-  position: absolute;
-  bottom: 50px;
-  right: 10px;
-  width: 280px;
-  max-width: calc(100% - 20px);
-  max-height: calc(100% - 70px);
-  background: rgba(28, 28, 28, 0.95);
-  border-radius: 8px;
-  padding: 16px;
-  z-index: 120;
-  color: #fff;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  overflow: auto;
-  pointer-events: auto;
-}
-
-.subtitle-settings-panel .settings-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.subtitle-settings-panel .settings-header span {
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.subtitle-settings-panel .setting-item {
-  margin-bottom: 16px;
-}
-
-.subtitle-settings-panel .setting-label {
-  display: block;
-  font-size: 13px;
-  color: #ccc;
-  margin-bottom: 8px;
-}
-
-.subtitle-settings-panel .setting-value {
-  font-size: 12px;
-  color: #999;
-  margin-left: 8px;
-}
-
-.subtitle-settings-panel .setting-actions {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* 视频播放器 */
-.video-player {
-  flex: 1;
-  aspect-ratio: 16/9;
-  background-color: #000;
-  min-height: 450px;
-  position: relative;
-  overflow: hidden;
-}
+/* 字幕设置面板和播放器样式已移至 VideoPlayer.vue */
 
 /* 右侧弹幕列表 */
 .side-danmu-list {
@@ -1893,29 +1076,7 @@ watch(
   color: #999;
 }
 
-/* 视频状态栏（简单版） */
-.video-status-bar-simple {
-  background-color: #fff;
-  padding: 20px 0;
-}
-
-.video-status-bar-simple .status-info {
-  display: flex;
-  gap: 20px;
-  padding-left: 10px;
-}
-
-.video-status-bar-simple .status-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  color: #666;
-}
-
-.video-status-bar-simple .status-item .el-icon {
-  font-size: 16px;
-}
+/* 视频状态栏样式已移至 VideoPlayer.vue */
 
 /* 互动按钮栏 */
 .interaction-bar {
@@ -2554,11 +1715,6 @@ watch(
 }
 
 /* 字幕相关样式 */
-.video-player-wrapper {
-  position: relative;
-  width: 100%;
-}
-
 .subtitle-control-bar {
   display: flex;
   justify-content: space-between;
