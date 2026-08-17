@@ -1,4 +1,4 @@
-package media
+package work
 
 import (
 	"context"
@@ -43,11 +43,11 @@ func NewPipeline(
 }
 
 func (p *Pipeline) Start(ctx context.Context) error {
-	ch, err := p.mq.Subscribe(ctx, TopicVideoProcess, "media-worker")
+	ch, err := p.mq.Subscribe(ctx, TopicVideoProcess, "work-worker")
 	if err != nil {
 		return fmt.Errorf("subscribe: %w", err)
 	}
-	log.Println("media worker started, waiting for tasks...")
+	log.Println("work worker started, waiting for tasks...")
 
 	for msg := range ch {
 		var task ProcessMessage

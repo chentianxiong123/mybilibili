@@ -1,4 +1,4 @@
-module mybilibili/media-service
+module mybilibili/work-service
 
 go 1.26.5
 
