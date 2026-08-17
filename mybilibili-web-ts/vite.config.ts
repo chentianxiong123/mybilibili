@@ -43,7 +43,6 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             'vendor-vue': ['vue', 'vue-router', 'pinia'],
-            'vendor-element': ['element-plus', '@element-plus/icons-vue'],
             ...(isWeb ? {
               'vendor-player': ['artplayer', 'artplayer-plugin-danmuku'],
               'vendor-flv': ['flv.js'],
