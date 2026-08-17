@@ -1,9 +1,7 @@
 package admin
 
 import (
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -38,7 +36,6 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/admin/operation-tasks", h.handleOperationTasks)
 	mux.HandleFunc("/api/v1/admin/operation-tasks/", h.handleOperationTaskByID)
 	mux.HandleFunc("/api/v1/admin/", h.handleAdminByID)
-	mux.HandleFunc("/api/v1/user/admin/", h.handleUserAdminRoute)
 }
 
 func (h *Handler) handleStorageMigrate(w http.ResponseWriter, r *http.Request) {
@@ -177,7 +174,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 400)
 		return
 	}
-	h.svc.RecordAudit(r.Context(), getAdminID(r), req.Username, "admin", "CREATE_ADMIN", "admin_users", req.Username, 0, "创建管理员", "")
+	h.svc.RecordAudit(r.Context(), httputil.GetAdminIDFromHeader(r), req.Username, "admin", "CREATE_ADMIN", "admin_users", req.Username, 0, "创建管理员", "")
 	w.Write([]byte(`{"status":"ok"}`))
 }
 
@@ -222,7 +219,7 @@ func (h *Handler) handleRolesByID(w http.ResponseWriter, r *http.Request) {
 			}
 			json.NewDecoder(r.Body).Decode(&req)
 			h.svc.SetRolePermissions(r.Context(), id, req.PermissionIDs)
-			h.svc.RecordAudit(r.Context(), getAdminID(r), "", "role", "SET_ROLE_PERMISSIONS", "role_permissions", strconv.FormatInt(id, 10), 0, "设置角色权限", "")
+			h.svc.RecordAudit(r.Context(), httputil.GetAdminIDFromHeader(r), "", "role", "SET_ROLE_PERMISSIONS", "role_permissions", strconv.FormatInt(id, 10), 0, "设置角色权限", "")
 			w.Write([]byte(`{"status":"ok"}`))
 		}
 		return
@@ -258,7 +255,7 @@ func (h *Handler) handleRolesByID(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), 500)
 			return
 		}
-		h.svc.RecordAudit(r.Context(), getAdminID(r), "", "role", "APPLY_ROLE_TEMPLATE", "role_permissions", strconv.FormatInt(id, 10), 0, "应用岗位模板 "+code, "")
+		h.svc.RecordAudit(r.Context(), httputil.GetAdminIDFromHeader(r), "", "role", "APPLY_ROLE_TEMPLATE", "role_permissions", strconv.FormatInt(id, 10), 0, "应用岗位模板 "+code, "")
 		w.Write([]byte(`{"status":"ok"}`))
 		return
 	}
@@ -271,11 +268,11 @@ func (h *Handler) handleRolesByID(w http.ResponseWriter, r *http.Request) {
 		}
 		json.NewDecoder(r.Body).Decode(&req)
 		h.svc.UpdateRole(r.Context(), id, req.Name, req.Description)
-		h.svc.RecordAudit(r.Context(), getAdminID(r), "", "role", "UPDATE_ROLE", "roles", strconv.FormatInt(id, 10), 0, "更新角色", "")
+		h.svc.RecordAudit(r.Context(), httputil.GetAdminIDFromHeader(r), "", "role", "UPDATE_ROLE", "roles", strconv.FormatInt(id, 10), 0, "更新角色", "")
 		w.Write([]byte(`{"status":"ok"}`))
 	case "DELETE":
 		h.svc.DeleteRole(r.Context(), id)
-		h.svc.RecordAudit(r.Context(), getAdminID(r), "", "role", "DELETE_ROLE", "roles", strconv.FormatInt(id, 10), 0, "删除角色", "")
+		h.svc.RecordAudit(r.Context(), httputil.GetAdminIDFromHeader(r), "", "role", "DELETE_ROLE", "roles", strconv.FormatInt(id, 10), 0, "删除角色", "")
 		w.Write([]byte(`{"status":"ok"}`))
 	}
 }
@@ -448,7 +445,7 @@ func (h *Handler) handleAdminByID(w http.ResponseWriter, r *http.Request) {
 			}
 			json.NewDecoder(r.Body).Decode(&req)
 			_ = h.svc.repo.SetAdminRoles(r.Context(), id, req.RoleIDs)
-			h.svc.RecordAudit(r.Context(), getAdminID(r), "", "admin", "SET_ADMIN_ROLES", "admin_user_roles", strconv.FormatInt(id, 10), 0, "设置管理员角色", "")
+			h.svc.RecordAudit(r.Context(), httputil.GetAdminIDFromHeader(r), "", "admin", "SET_ADMIN_ROLES", "admin_user_roles", strconv.FormatInt(id, 10), 0, "设置管理员角色", "")
 			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 		default:
 			http.Error(w, "method not allowed", 405)
@@ -456,183 +453,4 @@ func (h *Handler) handleAdminByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Error(w, "not found", 404)
-}
-
-// handleUserAdminRoute 分派 /api/v1/user/admin/ 下的子路径
-func (h *Handler) handleUserAdminRoute(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/api/v1/user/admin/")
-	parts := strings.Split(path, "/")
-	if len(parts) == 1 && parts[0] == "list" {
-		h.handleUserAdminList(w, r)
-		return
-	}
-	if len(parts) >= 1 {
-		id, err := strconv.ParseInt(parts[0], 10, 64)
-		if err != nil {
-			http.Error(w, "invalid user id", 400)
-			return
-		}
-		if len(parts) == 1 {
-			switch r.Method {
-			case "GET":
-				h.handleUserAdminGet(w, r, id)
-			case "PUT":
-				h.handleUserAdminUpdate(w, r, id)
-			default:
-				http.Error(w, "method not allowed", 405)
-			}
-			return
-		}
-		if len(parts) == 2 {
-			switch parts[1] {
-			case "status":
-				h.handleUserAdminStatus(w, r, id)
-			case "password":
-				h.handleUserAdminPassword(w, r, id)
-			default:
-				http.Error(w, "not found", 404)
-			}
-			return
-		}
-	}
-	http.Error(w, "not found", 404)
-}
-
-func (h *Handler) handleUserAdminList(w http.ResponseWriter, r *http.Request) {
-	page, size := httputil.ParsePageParams(r)
-	offset := (page - 1) * size
-	rows, err := h.svc.repo.db.QueryContext(r.Context(),
-		`SELECT id, username, nickname, email, avatar, level, status, created_at
-		 FROM users ORDER BY id DESC LIMIT $1 OFFSET $2`, size, offset)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	defer rows.Close()
-	type userItem struct {
-		ID        int64  `json:"id"`
-		Username  string `json:"username"`
-		Nickname  string `json:"nickname"`
-		Email     string `json:"email"`
-		Avatar    string `json:"avatar"`
-		Level     int32  `json:"level"`
-		Status    int32  `json:"status"`
-		CreatedAt string `json:"created_at"`
-	}
-	list := []userItem{}
-	for rows.Next() {
-		var u userItem
-		var createdAt string
-		rows.Scan(&u.ID, &u.Username, &u.Nickname, &u.Email, &u.Avatar, &u.Level, &u.Status, &createdAt)
-		u.CreatedAt = createdAt
-		list = append(list, u)
-	}
-	var total int64
-	_ = h.svc.repo.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM users`).Scan(&total)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"list": list, "total": total, "page": page, "size": size,
-	})
-}
-
-func (h *Handler) handleUserAdminGet(w http.ResponseWriter, r *http.Request, id int64) {
-	var uid, level, status int32
-	var username, nickname, email, avatar, createdAt string
-	err := h.svc.repo.db.QueryRowContext(r.Context(),
-		`SELECT id, username, nickname, email, avatar, level, status, created_at FROM users WHERE id=$1`, id).
-		Scan(&uid, &username, &nickname, &email, &avatar, &level, &status, &createdAt)
-	if err != nil {
-		http.Error(w, "user not found", 404)
-		return
-	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"id": uid, "username": username, "nickname": nickname, "email": email,
-		"avatar": avatar, "level": level, "status": status, "created_at": createdAt,
-	})
-}
-
-func (h *Handler) handleUserAdminUpdate(w http.ResponseWriter, r *http.Request, id int64) {
-	var body map[string]interface{}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid body", 400)
-		return
-	}
-	for k, v := range body {
-		switch k {
-		case "nickname":
-			if s, ok := v.(string); ok && s != "" {
-				_, _ = h.svc.repo.db.ExecContext(r.Context(),
-					`UPDATE users SET nickname=$1, updated_at=NOW() WHERE id=$2`, s, id)
-			}
-		case "email":
-			if s, ok := v.(string); ok {
-				_, _ = h.svc.repo.db.ExecContext(r.Context(),
-					`UPDATE users SET email=$1, updated_at=NOW() WHERE id=$2`, s, id)
-			}
-		case "level":
-			if n, ok := v.(float64); ok && n > 0 {
-				_, _ = h.svc.repo.db.ExecContext(r.Context(),
-					`UPDATE users SET level=$1, updated_at=NOW() WHERE id=$2`, int32(n), id)
-			}
-		}
-	}
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-}
-
-func (h *Handler) handleUserAdminStatus(w http.ResponseWriter, r *http.Request, id int64) {
-	if r.Method != "PUT" {
-		http.Error(w, "method not allowed", 405)
-		return
-	}
-	var body struct {
-		Status int32 `json:"status"`
-	}
-	json.NewDecoder(r.Body).Decode(&body)
-	_, err := h.svc.repo.db.ExecContext(r.Context(),
-		`UPDATE users SET status=$1, updated_at=NOW() WHERE id=$2`, body.Status, id)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	h.svc.RecordAudit(r.Context(), getAdminID(r), "", "user", "UPDATE_USER_STATUS", "users", strconv.FormatInt(id, 10), 0, "更新用户状态", "")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-}
-
-func (h *Handler) handleUserAdminPassword(w http.ResponseWriter, r *http.Request, id int64) {
-	if r.Method != "PUT" {
-		http.Error(w, "method not allowed", 405)
-		return
-	}
-	var body struct {
-		NewPassword string `json:"newPassword"`
-	}
-	json.NewDecoder(r.Body).Decode(&body)
-	if body.NewPassword == "" {
-		http.Error(w, "newPassword required", 400)
-		return
-	}
-	hash := sha256hex(body.NewPassword)
-	_, err := h.svc.repo.db.ExecContext(r.Context(),
-		`UPDATE users SET password=$1, updated_at=NOW() WHERE id=$2`, hash, id)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	h.svc.RecordAudit(r.Context(), getAdminID(r), "", "user", "RESET_USER_PASSWORD", "users", strconv.FormatInt(id, 10), 0, "重置用户密码", "")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-}
-
-func sha256hex(s string) string {
-	h := sha256.Sum256([]byte(s))
-	return fmt.Sprintf("%x", h)
-}
-
-
-
-func getAdminID(r *http.Request) int64 {
-	idStr := r.Header.Get("X-Admin-Id")
-	if idStr == "" {
-		idStr = r.Header.Get("X-User-Id")
-	}
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-	return id
 }

@@ -1,4 +1,4 @@
-package admin
+package manuscript
 
 import (
 	"context"
@@ -356,7 +356,7 @@ func (h *ManuscriptAdminHandler) handleByID(w http.ResponseWriter, r *http.Reque
 	d.UpdatedAt = updatedAt.Format("2006-01-02T15:04:05Z")
 
 	// 附带视频列表
-视频列表 := []map[string]interface{}{}
+	视频列表 := []map[string]interface{}{}
 	vrows, _ := h.db.QueryContext(r.Context(),
 		`SELECT id, video_order, title, play_url_hd, upload_time FROM videos WHERE manuscript_id = $1 ORDER BY video_order`, id)
 	if vrows != nil {
@@ -397,14 +397,14 @@ func (h *ManuscriptAdminHandler) getVideos(w http.ResponseWriter, r *http.Reques
 	defer rows.Close()
 
 	type video struct {
-		ID         int64  `json:"id"`
-		VideoOrder int    `json:"video_order"`
-		Title      string `json:"title"`
+		ID          int64  `json:"id"`
+		VideoOrder  int    `json:"video_order"`
+		Title       string `json:"title"`
 		Description string `json:"description"`
-		PlayURLHD  string `json:"play_url_hd"`
-		PlayURLSD  string `json:"play_url_sd"`
-		PlayURLLD  string `json:"play_url_ld"`
-		UploadTime string `json:"upload_time"`
+		PlayURLHD   string `json:"play_url_hd"`
+		PlayURLSD   string `json:"play_url_sd"`
+		PlayURLLD   string `json:"play_url_ld"`
+		UploadTime  string `json:"upload_time"`
 	}
 	list := []video{}
 	for rows.Next() {
@@ -698,10 +698,10 @@ func (h *ManuscriptAdminHandler) approveWithProcess(w http.ResponseWriter, r *ht
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":         "ok",
-		"manuscript_id":  manuscriptID,
-		"review_status":  1,
-		"message":        "审核通过，已触发处理流程",
+		"status":        "ok",
+		"manuscript_id": manuscriptID,
+		"review_status": 1,
+		"message":       "审核通过，已触发处理流程",
 	})
 }
 
