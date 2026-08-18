@@ -141,7 +141,7 @@ const loadHistory = async () => {
       pagination.value.currentPage,
       pagination.value.pageSize
     )
-    if (response.code === 200) {
+    if (response && response.code === 200) {
       // 转换后端数据为前端格式
       historyList.value = (response.data || []).map(item => {
         const video = item.video || {}
@@ -164,7 +164,7 @@ const loadHistory = async () => {
       })
       pagination.value.total = historyList.value.length
     } else {
-      ElMessage.error(response.message || '加载历史记录失败')
+      ElMessage.error(response?.message || '加载历史记录失败')
     }
   } catch (error) {
     console.error('加载历史记录失败:', error)
@@ -919,52 +919,9 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
-  .video-list.grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  }
-}
 
-@media (max-width: 768px) {
-  .toolbar {
-    flex-direction: column;
-    gap: 16px;
-    align-items: stretch;
-  }
 
-  .toolbar-left,
-  .toolbar-right {
-    justify-content: space-between;
-  }
 
-  .video-list.grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 12px;
-    padding-left: 0;
-  }
 
-  .group-header {
-    padding-left: 16px;
-  }
 
-  .video-list.list .video-cover {
-    width: 140px;
-    padding-top: 78px;
-  }
-}
-
-@media (max-width: 480px) {
-  .history-page {
-    padding: 12px;
-  }
-
-  .video-list.grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-
-  .video-title {
-    font-size: 13px;
-  }
-}
 </style>
