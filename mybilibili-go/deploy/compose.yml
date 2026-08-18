@@ -12,12 +12,25 @@ services:
     networks:
       - mylib
 
-  nuxt:
-    build: ../../mybilibili-nuxt
-    container_name: nuxt
+  web:
+    build:
+      context: ../../mybilibili-front
+      dockerfile: apps/web/Dockerfile
+    container_name: web
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3200:3200"
+    networks:
+      - mylib
+
+  admin:
+    build:
+      context: ../../mybilibili-front
+      dockerfile: apps/admin/Dockerfile
+    container_name: admin
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
     networks:
       - mylib
 
@@ -26,7 +39,8 @@ services:
     container_name: traefik
     restart: unless-stopped
     depends_on:
-      - nuxt
+      - web
+      - admin
     ports:
       - "80:80"
       - "443:443"
