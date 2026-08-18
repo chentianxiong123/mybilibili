@@ -1691,27 +1691,11 @@ watch(
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
-  .right-section {
-    width: 300px;
-  }
-}
 
-@media (max-width: 1024px) {
-  .main-content {
-    flex-direction: column;
-  }
-  
-  .right-section {
-    width: 100%;
-  }
-}
 
-@media (max-width: 768px) {
-  .video-container {
-    padding: 10px;
-  }
-}
+
+
+
 
 /* 字幕相关样式 */
 .subtitle-control-bar {

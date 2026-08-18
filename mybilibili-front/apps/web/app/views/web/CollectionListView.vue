@@ -945,48 +945,11 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
-  .collections-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
 
-@media (max-width: 992px) {
-  .collections-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
 
-@media (max-width: 768px) {
-  .collections-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 
-  .page-header {
-    flex-direction: column;
-    gap: 16px;
-    align-items: flex-start;
-  }
 
-  .header-right {
-    width: 100%;
-    justify-content: space-between;
-  }
 
-  .collection-list-item {
-    flex-wrap: wrap;
-  }
 
-  .list-actions {
-    width: 100%;
-    justify-content: flex-end;
-    margin-top: 8px;
-  }
-}
 
-@media (max-width: 576px) {
-  .collections-grid {
-    grid-template-columns: 1fr;
-  }
-}
 </style>

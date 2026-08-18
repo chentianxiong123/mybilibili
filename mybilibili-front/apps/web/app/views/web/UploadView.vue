@@ -450,32 +450,5 @@ onMounted(() => {
   bottom: 20px;
 }
 
-@media (max-width: 768px) {
-  .upload-container {
-    padding: 12px;
-  }
 
-  .info-cards {
-    flex-direction: column;
-  }
-
-  .cover-wrapper {
-    flex-direction: column;
-  }
-
-  .cover-label {
-    width: auto;
-    text-align: left;
-    margin-bottom: 8px;
-  }
-
-  .form-actions {
-    flex-direction: column;
-    position: static;
-  }
-
-  .form-actions .el-button {
-    width: 100%;
-  }
-}
 </style>

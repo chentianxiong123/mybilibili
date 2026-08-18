@@ -356,42 +356,5 @@ const goToSpace = () => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
-  .user-card {
-    flex-direction: column;
-    gap: 20px;
-    padding: 20px;
-  }
-  
-  .user-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  
-  .left-section {
-    flex-wrap: wrap;
-  }
-  
-  .level-bar {
-    flex-wrap: wrap;
-  }
-  
-  .progress-container {
-    max-width: 100%;
-  }
-  
-  .coins-section {
-    flex-wrap: wrap;
-  }
-  
-  .action-buttons {
-    width: 100%;
-  }
-  
-  .edit-btn,
-  .space-btn {
-    flex: 1;
-  }
-}
+
 </style>

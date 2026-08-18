@@ -208,32 +208,5 @@ const handleNavClick = (item) => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
-  .content-container {
-    flex-direction: column;
-  }
-  
-  .side-nav {
-    width: 100%;
-    min-width: auto;
-    margin-bottom: 20px;
-  }
-  
-  .nav-list {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-  
-  .nav-item {
-    flex: 1;
-    min-width: 120px;
-    justify-content: center;
-    border-left: none;
-  }
-  
-  .nav-item.active {
-    border-left: none;
-    border-bottom: 3px solid #00aeec;
-  }
-}
+
 </style>

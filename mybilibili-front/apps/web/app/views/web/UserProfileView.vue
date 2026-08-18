@@ -926,42 +926,9 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
-  .profile-content {
-    padding: 0 20px 40px;
-  }
 
-  .side-content {
-    width: 250px;
-    min-width: 250px;
-  }
-}
 
-@media (max-width: 992px) {
-  .profile-content {
-    flex-direction: column;
-  }
 
-  .side-content {
-    width: 100%;
-    min-width: auto;
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
 
-  .side-content .content-section {
-    flex: 1;
-    min-width: 300px;
-  }
-}
 
-@media (max-width: 768px) {
-  .side-content {
-    flex-direction: column;
-  }
-
-  .side-content .content-section {
-    min-width: auto;
-  }
-}
 </style>

@@ -440,49 +440,7 @@ const handleFollowSearch = () => {
 }
 
 /* 关注/粉丝列表响应式设计 */
-@media (max-width: 992px) {
-  .follow-list-container {
-    flex-direction: column;
-  }
 
-  .follow-sidebar {
-    width: 100%;
-    min-width: auto;
-    display: flex;
-    padding: 10px;
-    border-right: none;
-    border-bottom: 1px solid #e0e0e0;
-  }
 
-  .sidebar-item {
-    flex: 1;
-    justify-content: center;
-  }
 
-  .follow-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .follow-filters {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-}
-
-@media (max-width: 576px) {
-  .user-list-item {
-    padding: 12px 0;
-  }
-
-  .user-list-avatar {
-    width: 48px;
-    height: 48px;
-  }
-
-  .follow-search {
-    width: 120px;
-  }
-}
 </style>

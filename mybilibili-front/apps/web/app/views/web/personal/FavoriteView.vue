@@ -620,17 +620,5 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
-  .folders-grid,
-  .videos-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 15px;
-  }
-  
-  .section-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 15px;
-  }
-}
+
 </style>

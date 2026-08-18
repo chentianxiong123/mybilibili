@@ -615,47 +615,11 @@ watch(() => props.userId, () => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
-  .videos-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
 
-@media (max-width: 992px) {
-  .videos-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
 
-@media (max-width: 768px) {
-  .videos-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 
-  .section-controls-wrapper {
-    flex-direction: column;
-    align-items: flex-start;
-  }
 
-  .left-controls {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-}
 
-@media (max-width: 576px) {
-  .videos-grid {
-    grid-template-columns: 1fr;
-  }
 
-  .sort-options {
-    width: 100%;
-    flex-wrap: wrap;
-  }
 
-  .sort-btn {
-    flex: 1;
-    min-width: 80px;
-  }
-}
 </style>

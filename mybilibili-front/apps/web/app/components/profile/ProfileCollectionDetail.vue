@@ -557,21 +557,7 @@ const handleVideoCommand = (command, manuscript) => {
 }
 
 /* 响应式设计 */
-@media (max-width: 992px) {
-  .collection-info-section .info-container {
-    flex-direction: column;
-  }
 
-  .collection-cover-large {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 16 / 9;
-  }
-}
 
-@media (max-width: 768px) {
-  .collection-detail-header .header-left {
-    flex-wrap: wrap;
-  }
-}
+
 </style>

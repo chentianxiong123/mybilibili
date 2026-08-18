@@ -666,68 +666,15 @@ const goToAuthor = (authorId) => {
   }
 }
 
-@media (max-width: 1400px) {
-  .main-section,
-  .hot-videos-section {
-    padding-left: 40px;
-    padding-right: 40px;
-  }
 
-  .hot-videos-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
 
-@media (max-width: 1200px) {
-  .main-section,
-  .hot-videos-section {
-    padding-left: 20px;
-    padding-right: 20px;
-  }
 
-  .hot-videos-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
 
-@media (max-width: 1000px) {
-  .main-section,
-  .hot-videos-section {
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-}
 
-@media (max-width: 768px) {
-  .main-section,
-  .hot-videos-section {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
 
-  .hot-videos-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
-}
 
-@media (max-width: 480px) {
-  .main-section,
-  .hot-videos-section {
-    padding-left: 12px;
-    padding-right: 12px;
-  }
 
-  .section-title h2 {
-    font-size: 18px;
-  }
-}
 
-@media (max-width: 360px) {
-  .main-section,
-  .hot-videos-section {
-    padding-left: 8px;
-    padding-right: 8px;
-  }
-}
+
+
 </style>

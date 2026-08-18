@@ -589,9 +589,7 @@ onUnmounted(() => {
   gap: 20px;
   align-items: start;
 }
-@media (max-width: 900px) {
-  .content-grid { grid-template-columns: 1fr; }
-}
+
 .config-card {
   border: 1px solid #e3e5e7;
   border-radius: 12px;

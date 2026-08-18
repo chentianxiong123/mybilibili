@@ -442,165 +442,17 @@ const handleHotTabClick = () => {
   }
 }
 
-@media (max-width: 1400px) {
-  .tabs-main-container {
-    padding-left: 40px;
-    padding-right: 40px;
-  }
-  
-  .tab-item {
-    padding: 5px 14px;
-    font-size: 13px;
-  }
-}
 
-@media (max-width: 1200px) {
-  .tabs-main-container {
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-  
-  .tab-item {
-    padding: 5px 12px;
-    font-size: 13px;
-  }
-}
 
-@media (max-width: 1000px) {
-  .tabs-main-container {
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-}
 
-@media (max-width: 768px) {
-  .tabs-main-container {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-  
-  .tab-item {
-    padding: 2px 8px;
-    font-size: 10px;
-  }
-  
-  .dynamic-tab {
-    width: 45px;
-    height: 45px;
-  }
-  
-  .dynamic-icon {
-    width: 24px;
-    height: 24px;
-  }
-  
-  .dynamic-default-icon {
-    font-size: 14px;
-  }
-  
-  .dynamic-text {
-    font-size: 9px;
-  }
-  
-  .hot-tab {
-    width: 45px;
-    height: 45px;
-  }
-  
-  .hot-icon {
-    font-size: 16px;
-  }
-  
-  .hot-text {
-    font-size: 9px;
-  }
-}
 
-@media (max-width: 480px) {
-  .tabs-main-container {
-    padding-left: 12px;
-    padding-right: 12px;
-  }
-  
-  .tab-item {
-    padding: 2px 6px;
-    font-size: 9px;
-  }
-  
-  .dynamic-tab {
-    width: 40px;
-    height: 40px;
-  }
-  
-  .dynamic-icon {
-    width: 20px;
-    height: 20px;
-  }
-  
-  .dynamic-default-icon {
-    font-size: 12px;
-  }
-  
-  .dynamic-text {
-    font-size: 8px;
-  }
-  
-  .hot-tab {
-    width: 40px;
-    height: 40px;
-  }
-  
-  .hot-icon {
-    font-size: 14px;
-  }
-  
-  .hot-text {
-    font-size: 8px;
-  }
-}
 
-@media (max-width: 360px) {
-  .tabs-main-container {
-    padding-left: 8px;
-    padding-right: 8px;
-  }
-  
-  .tab-item {
-    padding: 1px 4px;
-    font-size: 8px;
-  }
-  
-  .dynamic-tab {
-    width: 35px;
-    height: 35px;
-  }
-  
-  .dynamic-icon {
-    width: 18px;
-    height: 18px;
-  }
-  
-  .dynamic-default-icon {
-    font-size: 10px;
-  }
-  
-  .dynamic-text {
-    font-size: 7px;
-  }
-  
-  .hot-tab {
-    width: 35px;
-    height: 35px;
-  }
-  
-  .hot-icon {
-    font-size: 12px;
-  }
-  
-  .hot-text {
-    font-size: 7px;
-  }
-}
+
+
+
+
+
+
 </style>
 
 <style>
