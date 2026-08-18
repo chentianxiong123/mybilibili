@@ -12,10 +12,21 @@ services:
     networks:
       - mylib
 
+  nuxt:
+    build: ../../mybilibili-nuxt
+    container_name: nuxt
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - mylib
+
   traefik:
     image: traefik:v3.3
     container_name: traefik
     restart: unless-stopped
+    depends_on:
+      - nuxt
     ports:
       - "80:80"
       - "443:443"
