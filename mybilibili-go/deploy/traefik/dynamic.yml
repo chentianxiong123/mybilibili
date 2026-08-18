@@ -57,6 +57,18 @@ http:
 
 # 路由规则
 routers:
+  # ＝＝＝ Nuxt 静态资源（hash 文件，永久缓存）＝＝＝
+  nuxt-static:
+    rule: "Host(`mylib.com`) && PathPrefix(`/_nuxt/`)"
+    priority: 20
+    service: nuxt
+    middlewares:
+      - static-cache
+      - compress
+      - security-headers
+    tls:
+      certResolver: letsencrypt
+
   # ＝＝＝ 静态资源（hash 文件，永久缓存）＝＝＝
   core-static:
     rule: "Host(`mylib.com`) && PathPrefix(`/assets/`)"
@@ -69,11 +81,11 @@ routers:
     tls:
       certResolver: letsencrypt
 
-  # ＝＝＝ Core 胖单体（前端 + API）＝＝＝
+  # ＝＝＝ Nuxt SSR（HTML 页面）＝＝＝
   core-web:
     rule: "Host(`mylib.com`)"
     priority: 1
-    service: core
+    service: nuxt
     middlewares:
       - html-no-cache
       - compress
@@ -170,6 +182,15 @@ routers:
 
 # 服务
 services:
+  nuxt:
+    loadBalancer:
+      servers:
+        - url: "http://localhost:3000"
+      healthCheck:
+        path: /api/v1/health
+        interval: 10s
+        timeout: 3s
+
   core:
     loadBalancer:
       servers:
