@@ -656,62 +656,15 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 1400px) {
-  .main-section {
-    padding-left: 40px;
-    padding-right: 40px;
-  }
-}
 
-@media (max-width: 1200px) {
-  .main-section {
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-}
 
-@media (max-width: 1000px) {
-  .main-section {
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-}
 
-@media (max-width: 768px) {
-  .main-section {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-  
-  .category-title {
-    font-size: 24px;
-  }
-  
-  .banner-section {
-    grid-column: 1 / 6;
-    grid-row: 1 / 2;
-  }
-  
-  .video-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
 
-@media (max-width: 480px) {
-  .main-section {
-    padding-left: 12px;
-    padding-right: 12px;
-  }
-  
-  .video-grid {
-    grid-template-columns: 1fr;
-  }
-}
 
-@media (max-width: 360px) {
-  .main-section {
-    padding-left: 8px;
-    padding-right: 8px;
-  }
-}
+
+
+
+
+
+
 </style>

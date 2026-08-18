@@ -326,31 +326,5 @@ const saveChanges = async () => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
-  .info-container {
-    padding: 20px;
-  }
-  
-  .form-item {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .form-label {
-    width: 100%;
-    line-height: normal;
-  }
-  
-  .input-field {
-    width: 100%;
-  }
-  
-  .textarea-field {
-    max-width: 100%;
-  }
-  
-  .date-picker {
-    width: 100%;
-  }
-}
+
 </style>

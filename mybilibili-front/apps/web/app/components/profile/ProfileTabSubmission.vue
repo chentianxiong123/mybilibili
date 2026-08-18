@@ -633,75 +633,11 @@ const playAllSubmissions = () => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
-  .videos-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
 
-@media (max-width: 992px) {
-  .submissions-section {
-    flex-direction: column;
-  }
 
-  .submissions-sidebar {
-    width: 100%;
-    min-width: auto;
-    flex-direction: row;
-    padding-right: 0;
-    border-right: none;
-    border-bottom: 1px solid #f0f0f0;
-    padding-bottom: 15px;
-  }
 
-  .category-item.active {
-    border-right: none;
-    border-bottom: none;
-    padding-right: 12px;
-    padding-bottom: 8px;
-    background-color: #00aeec;
-    color: #fff;
-  }
 
-  .videos-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
 
-@media (max-width: 768px) {
-  .videos-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 
-  .submissions-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 15px;
-  }
 
-  .submissions-controls {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-}
-
-@media (max-width: 576px) {
-  .videos-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .submissions-sidebar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .category-item.active {
-    border-right: none;
-    border-bottom: none;
-    padding-right: 12px;
-    padding-bottom: 8px;
-    background-color: #00aeec;
-    color: #fff;
-  }
-}
 </style>

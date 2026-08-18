@@ -18,9 +18,11 @@ const handleLogout = () => {
 
 <template>
   <div class="layout-home">
-    <TopBackground />
-    <CategoryTabs />
     <AppHeader mode="transparent" @show-login="handleShowLogin" @logout="handleLogout" />
+    <div class="home-hero">
+      <TopBackground />
+      <CategoryTabs />
+    </div>
     <div class="layout-content">
       <slot />
     </div>
@@ -35,6 +37,10 @@ const handleLogout = () => {
   background-color: #fff;
   max-width: 2560px;
   margin: 0 auto;
+}
+
+.home-hero {
+  margin-top: -80px;
 }
 
 .layout-content {

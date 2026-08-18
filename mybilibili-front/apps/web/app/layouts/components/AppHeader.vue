@@ -291,10 +291,9 @@ onUnmounted(() => {
 
 <style scoped>
 .app-header {
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
+  width: 100%;
   height: 80px;
   background: transparent;
   display: flex;
@@ -384,49 +383,5 @@ onUnmounted(() => {
 .app-header.scrolled :deep(.action-btn),
 .app-header.white-mode :deep(.action-btn) {
   color: #333;
-}
-
-@media (max-width: 1200px) {
-  .header-right {
-    gap: 2px;
-  }
-  
-  :deep(.action-btn) {
-    padding: 6px 12px;
-    font-size: 13px;
-  }
-}
-
-@media (max-width: 768px) {
-  .header-container {
-    padding: 0 16px;
-  }
-  
-  .header-center {
-    padding: 0 16px;
-  }
-  
-  :deep(.search-box) {
-    max-width: 300px;
-  }
-  
-  :deep(.action-btn) {
-    padding: 6px 4px;
-    min-width: 40px;
-  }
-  
-  :deep(.upload-btn) {
-    padding: 6px 12px;
-  }
-}
-
-@media (max-width: 480px) {
-  .header-right {
-    gap: 2px;
-  }
-  
-  :deep(.search-box) {
-    max-width: 200px;
-  }
 }
 </style>

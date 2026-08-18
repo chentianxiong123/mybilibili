@@ -36,6 +36,5 @@ const handleLogout = () => {
 .layout-content {
   flex: 1;
   min-height: calc(100vh - 80px);
-  padding-top: 80px;
 }
 </style>

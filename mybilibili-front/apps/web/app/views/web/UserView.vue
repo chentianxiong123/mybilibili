@@ -314,27 +314,5 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
-  .user-avatar-section {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 15px;
-  }
-  
-  .user-avatar {
-    margin-top: -40px;
-    width: 80px;
-    height: 80px;
-  }
-  
-  .user-stats {
-    gap: 20px;
-  }
-  
-  .video-list {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 15px;
-    padding: 15px;
-  }
-}
+
 </style>

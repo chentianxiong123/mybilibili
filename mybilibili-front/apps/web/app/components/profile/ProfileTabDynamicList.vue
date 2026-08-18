@@ -634,36 +634,7 @@ watch(() => props.userId, () => {
 }
 
 /* 动态页面响应式设计 */
-@media (max-width: 768px) {
-  .dynamic-content-new {
-    margin-left: 0;
-  }
 
-  .dynamic-type-label {
-    margin-left: 0;
-  }
-
-  .dynamic-actions-new {
-    margin-left: 0;
-  }
-
-  .share-image,
-  .original-image {
-    width: calc(33.333% - 6px);
-    height: auto;
-    aspect-ratio: 1;
-  }
-
-  .video-card {
-    flex-direction: column;
-  }
-
-  .video-cover-wrapper {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 16/9;
-  }
-}
 
 /* 动态页面样式 */
 .dynamic-section {

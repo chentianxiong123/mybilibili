@@ -568,33 +568,11 @@ const getDefaultCover = () => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
-  .collections-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
 
-@media (max-width: 992px) {
-  .collections-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
 
-@media (max-width: 768px) {
-  .collections-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 
-  .collection-horizontal-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-}
 
-@media (max-width: 576px) {
-  .collections-grid {
-    grid-template-columns: 1fr;
-  }
-}
+
+
+
 </style>

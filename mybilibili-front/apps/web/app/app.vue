@@ -338,10 +338,24 @@ const handleCloseDialog = () => {
   registerForm.value = { username: '', email: '', emailCode: '', password: '', confirmPassword: '', agreeTerms: false }
 }
 
+const syncZoomBase = () => {
+  const root = document.documentElement
+  const current = window.innerWidth
+  const base = parseFloat(root.style.getPropertyValue('--zoom-base')) || 0
+  if (current > base) {
+    root.style.setProperty('--zoom-base', `${current}px`)
+  }
+}
+
 onMounted(() => {
   if (getRefreshToken()) startSilentRefresh()
+  syncZoomBase()
+  window.addEventListener('resize', syncZoomBase)
 })
-onUnmounted(stopSilentRefresh)
+onUnmounted(() => {
+  window.removeEventListener('resize', syncZoomBase)
+  stopSilentRefresh()
+})
 </script>
 
 <style>
@@ -351,6 +365,11 @@ onUnmounted(stopSilentRefresh)
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+html,
+body {
+  min-width: var(--zoom-base, 1440px);
 }
 
 body {

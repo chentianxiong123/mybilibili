@@ -866,53 +866,9 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 992px) {
-  .edit-content {
-    grid-template-columns: 1fr;
-  }
 
-  .form-section {
-    order: -1;
-  }
-}
 
-@media (max-width: 768px) {
-  .manuscript-item {
-    flex-wrap: wrap;
-  }
 
-  .item-actions {
-    width: 100%;
-    justify-content: flex-end;
-    margin-top: 8px;
-  }
 
-  .edit-header {
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
-  }
 
-  .header-right {
-    width: 100%;
-    justify-content: flex-end;
-  }
-}
-
-@media (max-width: 576px) {
-  .item-cover {
-    width: 100px;
-    height: 56px;
-  }
-
-  .checkbox-content {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .checkbox-cover {
-    width: 100%;
-    height: 80px;
-  }
-}
 </style>

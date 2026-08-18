@@ -710,58 +710,9 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 992px) {
-  .info-container {
-    flex-direction: column;
-  }
 
-  .collection-cover {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 16 / 9;
-  }
 
-  .action-buttons {
-    margin-top: 12px;
-  }
-}
 
-@media (max-width: 768px) {
-  .section-header {
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
-  }
 
-  .manuscript-item {
-    flex-wrap: wrap;
-  }
 
-  .item-play {
-    opacity: 1;
-    width: 100%;
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 8px;
-  }
-}
-
-@media (max-width: 576px) {
-  .collection-title {
-    font-size: 18px;
-  }
-
-  .stats-info {
-    flex-wrap: wrap;
-  }
-
-  .item-cover {
-    width: 120px;
-    height: 68px;
-  }
-
-  .item-index {
-    width: 30px;
-  }
-}
 </style>

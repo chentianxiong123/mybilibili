@@ -281,25 +281,7 @@ const playAllSearchVideos = () => {
 }
 
 /* 搜索页面响应式设计 */
-@media (max-width: 992px) {
-  .search-section {
-    flex-direction: column;
-  }
 
-  .search-sidebar {
-    width: 100%;
-    min-width: auto;
-    flex-direction: row;
-    padding-right: 0;
-    border-right: none;
-    border-bottom: 1px solid #f0f0f0;
-    padding-bottom: 15px;
-  }
-
-  .search-content {
-    padding-top: 15px;
-  }
-}
 
 /* 分类导航项 */
 .category-item {
@@ -646,33 +628,11 @@ const playAllSearchVideos = () => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
-  .videos-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
 
-@media (max-width: 992px) {
-  .videos-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
 
-@media (max-width: 768px) {
-  .videos-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 
-  .search-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 15px;
-  }
-}
 
-@media (max-width: 576px) {
-  .videos-grid {
-    grid-template-columns: 1fr;
-  }
-}
+
+
+
 </style>

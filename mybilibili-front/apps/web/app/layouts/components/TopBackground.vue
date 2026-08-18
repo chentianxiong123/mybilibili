@@ -80,38 +80,13 @@ onMounted(() => {
   }
 }
 
-@media (max-width: 1400px) {
-  .top-background {
-    padding-left: 40px;
-    padding-right: 40px;
-  }
-}
 
-@media (max-width: 1200px) {
-  .top-background {
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-}
 
-@media (max-width: 768px) {
-  .top-background {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-}
 
-@media (max-width: 480px) {
-  .top-background {
-    padding-left: 12px;
-    padding-right: 12px;
-  }
-}
 
-@media (max-width: 360px) {
-  .top-background {
-    padding-left: 8px;
-    padding-right: 8px;
-  }
-}
+
+
+
+
+
 </style>

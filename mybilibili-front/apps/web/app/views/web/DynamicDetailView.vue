@@ -576,9 +576,5 @@ onMounted(() => {
 }
 
 /* 响应式 */
-@media (max-width: 900px) {
-  .sidebar {
-    display: none;
-  }
-}
+
 </style>

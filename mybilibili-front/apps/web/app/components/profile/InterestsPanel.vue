@@ -459,32 +459,7 @@ watch(
   color: #9499a0;
 }
 
-@media (max-width: 900px) {
-  .panel-head,
-  .insight-grid {
-    grid-template-columns: 1fr;
-  }
 
-  .panel-head {
-    display: grid;
-  }
 
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
 
-@media (max-width: 560px) {
-  .interests-panel {
-    padding: 16px;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .hours-chart {
-    gap: 2px;
-  }
-}
 </style>

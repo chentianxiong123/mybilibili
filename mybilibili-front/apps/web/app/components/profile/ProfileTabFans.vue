@@ -131,23 +131,5 @@ const emit = defineEmits(['sidebar-click', 'follow-user'])
 }
 
 /* 关注/粉丝列表响应式设计 */
-@media (max-width: 992px) {
-  .follow-list-container {
-    flex-direction: column;
-  }
 
-  .follow-sidebar {
-    width: 100%;
-    min-width: auto;
-    display: flex;
-    padding: 10px;
-    border-right: none;
-    border-bottom: 1px solid #e0e0e0;
-  }
-
-  .sidebar-item {
-    flex: 1;
-    justify-content: center;
-  }
-}
 </style>

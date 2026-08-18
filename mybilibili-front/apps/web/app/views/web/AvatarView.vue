@@ -311,27 +311,5 @@ const updateAvatar = async () => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
-  .avatar-container {
-    flex-direction: column;
-    gap: 40px;
-    padding: 20px;
-  }
-  
-  .upload-options {
-    flex: none;
-  }
-  
-  .upload-card,
-  .update-btn {
-    width: 100%;
-  }
-  
-  .current-avatar-section {
-    border-left: none;
-    padding-left: 0;
-    padding-top: 20px;
-    border-top: 1px solid #e4e7ed;
-  }
-}
+
 </style>
