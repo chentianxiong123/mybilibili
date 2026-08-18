@@ -21,11 +21,11 @@ func NewAdminHandler(db *sql.DB) *AdminHandler {
 }
 
 func (h *AdminHandler) Register(mux *http.ServeMux) {
-	mux.HandleFunc("/api/v1/comment/admin/", h.handleRoute)
+	mux.HandleFunc("/api/v1/admin/comments/", h.handleRoute)
 }
 
 func (h *AdminHandler) handleRoute(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/comment/admin/"), "/")
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/admin/comments/"), "/")
 	switch {
 	case parts[0] == "list" && r.Method == "GET":
 		status := r.URL.Query().Get("status")
