@@ -57,11 +57,11 @@ http:
 
 # 路由规则
 routers:
-  # ＝＝＝ Nuxt 静态资源（hash 文件，永久缓存）＝＝＝
-  nuxt-static:
+  # ＝＝＝ web 静态资源（hash 文件，永久缓存）＝＝＝
+  web-static:
     rule: "Host(`mylib.com`) && PathPrefix(`/_nuxt/`)"
     priority: 20
-    service: nuxt
+    service: web
     middlewares:
       - static-cache
       - compress
@@ -81,11 +81,23 @@ routers:
     tls:
       certResolver: letsencrypt
 
-  # ＝＝＝ Nuxt SSR（HTML 页面）＝＝＝
+  # ＝＝＝ 管理后台（CSR，base /admin/）＝＝＝
+  admin-web:
+    rule: "Host(`mylib.com`) && PathPrefix(`/admin/`)"
+    priority: 15
+    service: admin
+    middlewares:
+      - html-no-cache
+      - compress
+      - security-headers
+    tls:
+      certResolver: letsencrypt
+
+  # ＝＝＝ web SSR（HTML 页面）＝＝＝
   core-web:
     rule: "Host(`mylib.com`)"
     priority: 1
-    service: nuxt
+    service: web
     middlewares:
       - html-no-cache
       - compress
@@ -182,12 +194,21 @@ routers:
 
 # 服务
 services:
-  nuxt:
+  web:
     loadBalancer:
       servers:
-        - url: "http://localhost:3000"
+        - url: "http://localhost:3200"
       healthCheck:
-        path: /api/v1/health
+        path: /
+        interval: 10s
+        timeout: 3s
+
+  admin:
+    loadBalancer:
+      servers:
+        - url: "http://localhost:3100"
+      healthCheck:
+        path: /admin/
         interval: 10s
         timeout: 3s
 
