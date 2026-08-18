@@ -319,9 +319,9 @@ onMounted(() => {
         </div>
 
         <div class="dynamic-list" ref="scrollContainer">
-          <div v-if="virtualizer" :style="{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }">
+          <div v-if="virtualizer && dynamicList.length > 0" :style="{ height: `${virtualizer.value.getTotalSize()}px`, position: 'relative' }">
             <div
-              v-for="vItem in virtualizer.getVirtualItems()"
+              v-for="vItem in virtualizer.value.getVirtualItems()"
               :key="vItem.key"
               :data-index="vItem.index"
               :ref="vItem.measureElement"
@@ -665,19 +665,7 @@ onMounted(() => {
   border-radius: 4px;
 }
 
-@media (max-width: 1200px) {
-  .right-sidebar {
-    display: none;
-  }
-}
 
-@media (max-width: 768px) {
-  .dynamic-container {
-    flex-direction: column;
-  }
 
-  .left-sidebar {
-    width: 100%;
-  }
-}
+
 </style>
