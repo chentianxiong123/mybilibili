@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Close, Loading, MagicStick, DocumentCopy, RefreshRight } from '@element-plus/icons-vue'
+import { Close, Loading, MagicStick, DocumentCopy, RefreshRight, CircleClose } from '@element-plus/icons-vue'
 import { aiSummaryApi } from '@/api/aiSummary.ts'
 
 const props = defineProps({
