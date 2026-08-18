@@ -1,0 +1,12 @@
+{
+  "name": "mybilibili-front",
+  "private": true,
+  "packageManager": "pnpm@11.18.0",
+  "scripts": {
+    "dev:web": "pnpm --filter @mybilibili/web dev",
+    "dev:admin": "pnpm --filter @mybilibili/admin dev",
+    "build:web": "pnpm --filter @mybilibili/web build",
+    "build:admin": "pnpm --filter @mybilibili/admin build",
+    "build": "pnpm -r build"
+  }
+}

@@ -1,0 +1,16 @@
+:root {
+  --bili-pink: #fb7299;
+  --bili-pink-hover: #fc8bab;
+  --bili-bg: #f4f5f7;
+  --bili-text: #212121;
+  --bili-text-secondary: #999;
+  --bili-border: #e3e5e7;
+
+  --el-color-primary: #fb7299;
+  --el-color-primary-light-3: #fc8bab;
+  --el-color-primary-light-5: #fda3bc;
+  --el-color-primary-light-7: #febbd0;
+  --el-color-primary-light-8: #ffd3e0;
+  --el-color-primary-light-9: #ffebf0;
+  --el-color-primary-dark-2: #c95b7a;
+}
