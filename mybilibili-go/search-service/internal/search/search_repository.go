@@ -207,16 +207,18 @@ func (s *Service) Related(ctx context.Context, manuscriptID int64, size int32) (
 }
 
 func (s *Service) HotRecommend(ctx context.Context, categoryID int64, size int32) ([]map[string]interface{}, error) {
-	query := `SELECT id, user_id, title, cover_url, view_count, like_count, upload_time
-	          FROM manuscripts WHERE status = 3`
+	query := `SELECT m.id, m.user_id, m.title, m.cover_url, m.view_count, m.like_count, m.upload_time, m.duration_seconds,
+	                 u.id, u.username, u.nickname, u.avatar, u.level
+	          FROM manuscripts m LEFT JOIN users u ON m.user_id = u.id
+	          WHERE m.status = 3`
 	args := []interface{}{}
 	paramIdx := 1
 	if categoryID > 0 {
-		query += ` AND category_id = $1`
+		query += ` AND m.category_id = $1`
 		paramIdx = 2
 		args = append(args, categoryID)
 	}
-	query += fmt.Sprintf(` ORDER BY view_count DESC, like_count DESC LIMIT $%d`, paramIdx)
+	query += fmt.Sprintf(` ORDER BY m.view_count DESC, m.like_count DESC LIMIT $%d`, paramIdx)
 	args = append(args, size)
 	rows, err := s.repo.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -225,13 +227,32 @@ func (s *Service) HotRecommend(ctx context.Context, categoryID int64, size int32
 	defer rows.Close()
 	var out []map[string]interface{}
 	for rows.Next() {
-		var id, userID, views, likes int64
+		var id, userID, views, likes, durSec int64
 		var title, cover string
 		var created time.Time
-		rows.Scan(&id, &userID, &title, &cover, &views, &likes, &created)
+		var uid, ulevel int64
+		var uname, unick, uavatar string
+		rows.Scan(&id, &userID, &title, &cover, &views, &likes, &created, &durSec,
+			&uid, &uname, &unick, &uavatar, &ulevel)
+		uploader := map[string]interface{}{
+			"id": uid, "name": unick, "username": uname, "nickname": unick,
+			"avatar": uavatar, "level": ulevel,
+		}
+		hours := durSec / 3600
+		mins := (durSec % 3600) / 60
+		secs := durSec % 60
+		var duration string
+		if hours > 0 {
+			duration = fmt.Sprintf("%d:%02d:%02d", hours, mins, secs)
+		} else {
+			duration = fmt.Sprintf("%d:%02d", mins, secs)
+		}
 		out = append(out, map[string]interface{}{
-			"manuscript_id": id, "user_id": userID, "title": title, "cover_url": cover,
-			"view_count": views, "like_count": likes, "created_at": created.Format("2006-01-02 15:04:05"),
+			"manuscript_id": id, "user_id": userID, "title": title,
+			"cover_url": cover, "view_count": views, "like_count": likes,
+			"created_at": created.Format("2006-01-02 15:04:05"),
+			"duration": duration, "duration_seconds": durSec,
+			"uploader": uploader,
 		})
 	}
 	return out, nil
