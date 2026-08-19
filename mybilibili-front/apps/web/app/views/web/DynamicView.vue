@@ -48,7 +48,14 @@ const hotSearchList = ref([])
 const fetchHotSearch = async () => {
   try {
     const response = await searchApi.getHotSearch()
-    if (response.code === 200 && response.data) {
+    if (Array.isArray(response)) {
+      hotSearchList.value = response.map(item => ({
+        rank: item.rank,
+        title: item.keyword,
+        hot: item.rank <= 3 ? '热' : (item.rank <= 5 ? '新' : ''),
+        color: item.rank <= 3 ? '#ff2442' : '#ff6699'
+      }))
+    } else if (response && response.code === 200 && response.data) {
       hotSearchList.value = response.data.map(item => ({
         rank: item.rank,
         title: item.keyword,
