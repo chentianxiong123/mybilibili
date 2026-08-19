@@ -47,7 +47,7 @@
 
         <div class="form-actions">
           <el-checkbox v-model="loginForm.rememberMe">记住我</el-checkbox>
-          <el-button type="text" class="forget-password" @click="router.push('/forgot-password'); showLoginDialog = false">忘记密码？</el-button>
+          <el-button link class="forget-password" @click="router.push('/forgot-password'); showLoginDialog = false">忘记密码？</el-button>
         </div>
 
         <div class="action-buttons">
@@ -62,7 +62,7 @@
           </el-button>
           <div class="switch-mode">
             <span>还没有账号？</span>
-            <el-button type="text" @click="switchToRegister()" class="switch-btn">立即注册</el-button>
+            <el-button link @click="switchToRegister()" class="switch-btn">立即注册</el-button>
           </div>
         </div>
       </div>
@@ -167,7 +167,7 @@
           </el-button>
           <div class="switch-mode">
             <span>已有账号？</span>
-            <el-button type="text" @click="switchToLogin()" class="switch-btn">立即登录</el-button>
+            <el-button link @click="switchToLogin()" class="switch-btn">立即登录</el-button>
           </div>
         </div>
       </div>
