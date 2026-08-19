@@ -486,6 +486,35 @@ func (h *ManuscriptHTTPHandler) handleDecrementComment(w http.ResponseWriter, r 
 
 // manuscriptToMap 将 pb 稿件编码为 snake_case JSON map，
 // 并给 uploader 补 nickname/username（Flutter 读取）。
+func snakeToCamel(s string) string {
+	parts := strings.Split(s, "_")
+	for i := 1; i < len(parts); i++ {
+		if len(parts[i]) > 0 {
+			parts[i] = strings.ToUpper(parts[i][:1]) + parts[i][1:]
+		}
+	}
+	return strings.Join(parts, "")
+}
+
+func convertKeysToCamel(v interface{}) interface{} {
+	switch val := v.(type) {
+	case map[string]interface{}:
+		out := make(map[string]interface{}, len(val))
+		for k, vv := range val {
+			ck := snakeToCamel(k)
+			out[ck] = convertKeysToCamel(vv)
+		}
+		return out
+	case []interface{}:
+		for i, e := range val {
+			val[i] = convertKeysToCamel(e)
+		}
+		return val
+	default:
+		return v
+	}
+}
+
 func manuscriptToMap(info *pb.ManuscriptInfo) map[string]interface{} {
 	b, _ := json.Marshal(info)
 	var m map[string]interface{}
@@ -493,6 +522,7 @@ func manuscriptToMap(info *pb.ManuscriptInfo) map[string]interface{} {
 	if m == nil {
 		m = map[string]interface{}{}
 	}
+	m = convertKeysToCamel(m).(map[string]interface{})
 	if up, ok := m["uploader"].(map[string]interface{}); ok {
 		if name, ok := up["name"].(string); ok {
 			up["nickname"] = name

@@ -38,7 +38,6 @@ type Video struct {
 	ManuscriptID    int64
 	VideoOrder      int32
 	Title           string
-	Description     string
 	PlayURLHd       string
 	PlayURLSd       string
 	PlayURLld       string
@@ -96,9 +95,9 @@ func (r *ManuscriptRepository) FindByID(ctx context.Context, id int64) (*Manuscr
 
 func (r *ManuscriptRepository) FindVideosByManuscriptID(ctx context.Context, manuscriptID int64) ([]*Video, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, manuscript_id, video_order, title, description, play_url_hd, play_url_sd, play_url_ld,
-		       upload_time, updated_at, process_progress, process_stage, has_subtitle, has_summary,
-		       process_status, process_error, source_video_url, duration_seconds
+		SELECT id, manuscript_id, video_order, title, play_url_hd, play_url_sd, play_url_ld,
+		       upload_time, updated_at, process_progress, COALESCE(process_stage,''), has_subtitle, has_summary,
+		       process_status, COALESCE(process_error,''), source_video_url, duration_seconds
 		FROM videos WHERE manuscript_id = $1 ORDER BY video_order`, manuscriptID)
 	if err != nil {
 		return nil, err
@@ -108,7 +107,7 @@ func (r *ManuscriptRepository) FindVideosByManuscriptID(ctx context.Context, man
 	var list []*Video
 	for rows.Next() {
 		v := &Video{}
-		if err := rows.Scan(&v.ID, &v.ManuscriptID, &v.VideoOrder, &v.Title, &v.Description,
+		if err := rows.Scan(&v.ID, &v.ManuscriptID, &v.VideoOrder, &v.Title,
 			&v.PlayURLHd, &v.PlayURLSd, &v.PlayURLld, &v.UploadTime, &v.UpdatedAt,
 			&v.ProcessProgress, &v.ProcessStage, &v.HasSubtitle, &v.HasSummary,
 			&v.ProcessStatus, &v.ProcessError, &v.SourceVideoURL, &v.DurationSeconds); err != nil {
@@ -393,7 +392,6 @@ func videoToPB(v *Video) *pb.VideoItem {
 	return &pb.VideoItem{
 		Id:              v.ID,
 		Title:           v.Title,
-		Description:     v.Description,
 		PlayUrl:         v.PlayURLHd,
 		PlayUrlHd:       v.PlayURLHd,
 		PlayUrlSd:       v.PlayURLSd,

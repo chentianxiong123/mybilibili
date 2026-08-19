@@ -388,7 +388,7 @@ func (h *ManuscriptAdminHandler) handleByID(w http.ResponseWriter, r *http.Reque
 
 func (h *ManuscriptAdminHandler) getVideos(w http.ResponseWriter, r *http.Request, manuscriptID int64) {
 	rows, err := h.db.QueryContext(r.Context(),
-		`SELECT id, video_order, title, description, play_url_hd, play_url_sd, play_url_ld, upload_time
+		`SELECT id, video_order, title, play_url_hd, play_url_sd, play_url_ld, upload_time
 		 FROM videos WHERE manuscript_id = $1 ORDER BY video_order`, manuscriptID)
 	if err != nil {
 		json.NewEncoder(w).Encode([]interface{}{})
@@ -400,7 +400,6 @@ func (h *ManuscriptAdminHandler) getVideos(w http.ResponseWriter, r *http.Reques
 		ID          int64  `json:"id"`
 		VideoOrder  int    `json:"video_order"`
 		Title       string `json:"title"`
-		Description string `json:"description"`
 		PlayURLHD   string `json:"play_url_hd"`
 		PlayURLSD   string `json:"play_url_sd"`
 		PlayURLLD   string `json:"play_url_ld"`
@@ -410,7 +409,7 @@ func (h *ManuscriptAdminHandler) getVideos(w http.ResponseWriter, r *http.Reques
 	for rows.Next() {
 		var v video
 		var t time.Time
-		if err := rows.Scan(&v.ID, &v.VideoOrder, &v.Title, &v.Description,
+		if err := rows.Scan(&v.ID, &v.VideoOrder, &v.Title,
 			&v.PlayURLHD, &v.PlayURLSD, &v.PlayURLLD, &t); err != nil {
 			continue
 		}
