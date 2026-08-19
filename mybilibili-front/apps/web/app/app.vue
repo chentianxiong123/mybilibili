@@ -342,12 +342,9 @@ const ZOOM_FREEZE_RATIO = 1.5
 
 const syncZoomBase = () => {
   const root = document.documentElement
-  const current = window.innerWidth
-  const base = parseFloat(root.style.getPropertyValue('--zoom-base')) || 0
-  const target = Math.floor(current / ZOOM_FREEZE_RATIO)
-  if (target > base) {
-    root.style.setProperty('--zoom-base', `${target}px`)
-  }
+  const zoom = window.outerWidth / window.innerWidth
+  if (zoom > ZOOM_FREEZE_RATIO) return
+  root.style.setProperty('--zoom-base', `${window.innerWidth}px`)
 }
 
 onMounted(() => {
