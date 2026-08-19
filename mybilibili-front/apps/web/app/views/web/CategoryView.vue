@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, View, Star } from '@element-plus/icons-vue'
 import { videoApi, categoryApi } from '@/api/client'
 import { getCategoryBanners } from '@/api/banner.ts'
 import { formatDuration, formatMonthDay, normalizeVideoCard } from '@/utils/videoCard.ts'
+import { useTabsVideoAlign } from '@/composables/useTabsVideoAlign'
 
 const route = useRoute()
 const categoryId = ref(route.params.id)
@@ -51,6 +52,8 @@ const videoList = ref([])
 const hasLoadedVideos = ref(false)
 // 加载状态
 const loading = ref(false)
+
+const { apply: applyTabsVideoAlign } = useTabsVideoAlign()
 
 // 动态设置轮播图高度，使其与第一行视频格子的下边对齐
 const adjustBannerHeight = () => {
@@ -219,12 +222,14 @@ watch(() => route.params.id, (newId) => {
 
     nextTick(() => {
       adjustBannerHeight()
+      applyTabsVideoAlign()
     })
 }, { immediate: true })
 
 onMounted(async () => {
   await fetchCategoryName()
   adjustBannerHeight()
+  applyTabsVideoAlign()
   
   window.addEventListener('resize', adjustBannerHeight)
 })
