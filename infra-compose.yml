@@ -56,24 +56,6 @@ services:
     networks:
       - mylib
 
-  napcat:
-    image: mlikiowa/napcat-docker:latest
-    container_name: napcat
-    restart: unless-stopped
-    environment:
-      NAPCAT_UID: 1000
-      NAPCAT_GID: 1000
-      TZ: Asia/Shanghai
-    ports:
-      - "3000:3000"
-      - "3001:3001"
-      - "6099:6099"
-    volumes:
-      - napcat-qq:/app/.config/QQ
-      - napcat-config:/app/napcat/config
-    networks:
-      - mylib
-
 volumes:
   pg16-data:
     external: true
@@ -85,8 +67,6 @@ volumes:
   nats-data:
     external: true
     name: deploy_nats-data
-  napcat-qq:
-  napcat-config:
 
 networks:
   mylib:
