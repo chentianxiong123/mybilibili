@@ -27,11 +27,12 @@ export default defineNuxtConfig({
     '/api/v1/recommend/**': { proxy: 'http://localhost:8084/api/v1/recommend/**' },
     '/api/v1/creator/stats/**': { proxy: 'http://localhost:8084/api/v1/creator/stats/**' },
     '/api/v1/profile/**': { proxy: 'http://localhost:8084/api/v1/profile/**' },
+    '/api/v1/message/**': { proxy: 'http://localhost:8086/api/v1/message/**' },
     '/api/**': { proxy: 'http://localhost:8080/api/**' },
     '/uploads/**': { proxy: 'http://localhost:8080/uploads/**' },
     '/covers/**': { proxy: 'http://localhost:8080/covers/**' },
     '/videos/**': { proxy: 'http://localhost:8080/videos/**' },
-    '/ws/**': { proxy: 'http://localhost:8080/ws/**' }
+    '/ws/**': { proxy: 'http://localhost:8086/ws/**' }
   },
   vite: {
     css: {
