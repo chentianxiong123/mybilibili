@@ -239,8 +239,12 @@ const isFollowing = ref(false)
 const followerCount = ref(0)
 const loadingFollow = ref(false)
 
-// 当前用户信息
-const currentUser = ref(JSON.parse(safeStorage.getItem('user') || 'null'))
+// 当前用户信息（hydration-safe：SSR 阶段不读 localStorage）
+const currentUser = ref(null)
+onMounted(() => {
+  const u = safeStorage.getItem('user')
+  if (u) currentUser.value = JSON.parse(u)
+})
 
 // 浮动用户卡片相关
 const showUserFloatCard = ref(false)

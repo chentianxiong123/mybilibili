@@ -9,12 +9,10 @@ import {
   clearAuthSession,
   getCurrentUserId,
   getStoredUser,
-  getToken,
   hasAuthSession,
   hasValidAccessToken,
   setAuthSession
 } from '../../utils/auth.ts'
-import { useNotificationWs } from '../../composables/useNotificationWs.ts'
 import { usePrefetch } from '../../composables/usePrefetch'
 import SearchBar from './SearchBar.vue'
 import UserMenu from './UserMenu.vue'
@@ -34,8 +32,6 @@ const emit = defineEmits(['showLogin', 'logout'])
 const router = useRouter()
 const route = useRoute()
 const { prefetch } = usePrefetch()
-
-const { unreadCounts: wsUnreadCounts, connect: wsConnect, disconnect: wsDisconnect } = useNotificationWs()
 
 const isLogged = ref(false)
 const userInfo = ref(null)
@@ -71,12 +67,6 @@ const fetchUnreadCounts = async () => {
     }
   }
 }
-
-watch(wsUnreadCounts, (counts) => {
-  if (counts) {
-    unreadCounts.value = { ...unreadCounts.value, ...counts }
-  }
-}, { deep: true })
 
 const shouldShowScrolled = computed(() => {
   if (props.mode === 'white') return true
@@ -223,13 +213,8 @@ onMounted(() => {
   fetchUnreadCounts()
   const unreadInterval = setInterval(fetchUnreadCounts, 60000)
 
-  if (getToken()) {
-    wsConnect()
-  }
-  
   onUnmounted(() => {
     clearInterval(unreadInterval)
-    wsDisconnect()
   })
 })
 

@@ -24,7 +24,11 @@ const props = defineProps({
 
 const emit = defineEmits(['update:commentCount'])
 
-const currentUser = ref(JSON.parse(safeStorage.getItem('user') || 'null'))
+const currentUser = ref(null)
+onMounted(() => {
+  const u = safeStorage.getItem('user')
+  if (u) currentUser.value = JSON.parse(u)
+})
 
 const comments = ref([])
 const loadingComments = ref(false)
