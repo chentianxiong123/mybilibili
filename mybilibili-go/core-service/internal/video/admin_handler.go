@@ -63,25 +63,25 @@ func (h *AdminHandler) handleRoute(w http.ResponseWriter, r *http.Request) {
 	} else if len(parts) >= 1 && r.Method == "GET" {
 		id, _ := strconv.ParseInt(parts[0], 10, 64)
 		row := h.db.QueryRowContext(r.Context(),
-			`SELECT id, manuscript_id, video_order, title, description, play_url_hd, play_url_sd, play_url_ld,
-			        duration_seconds, process_progress, process_stage, has_subtitle, has_summary
+			`SELECT id, manuscript_id, video_order, title, play_url_hd, play_url_sd, play_url_ld,
+			        duration_seconds, process_progress, COALESCE(process_stage,''), has_subtitle, has_summary
 			 FROM videos WHERE id=$1`, id)
 		var vid int64
 		var msID int64
 		var order int32
-		var title, desc, hd, sd, ld string
+		var title, hd, sd, ld string
 		var dur int32
 		var progress int32
 		var stage string
 		var hasSub, hasSum bool
-		if err := row.Scan(&vid, &msID, &order, &title, &desc, &hd, &sd, &ld,
+		if err := row.Scan(&vid, &msID, &order, &title, &hd, &sd, &ld,
 			&dur, &progress, &stage, &hasSub, &hasSum); err != nil {
 			http.Error(w, "not found", 404)
 			return
 		}
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"id": vid, "manuscript_id": msID, "video_order": order, "title": title,
-			"description": desc, "play_url_hd": hd, "play_url_sd": sd, "play_url_ld": ld,
+			"play_url_hd": hd, "play_url_sd": sd, "play_url_ld": ld,
 			"duration_seconds": dur, "process_progress": progress, "process_stage": stage,
 			"has_subtitle": hasSub, "has_summary": hasSum,
 		})
