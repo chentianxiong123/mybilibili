@@ -6,7 +6,6 @@ import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 
 import { subtitleApi } from '@/api/subtitle.ts'
 import SubtitleDisplay from '@/components/SubtitleDisplay.vue'
-import { useDanmakuWs } from '@/composables/useDanmakuWs.ts'
 import { interactionApi } from '@/api/client'
 import { ChatDotRound, CircleClose, View } from '@element-plus/icons-vue'
 
@@ -236,25 +235,6 @@ const formatDate = (dateStr: any) => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
-const { connect: connectDanmakuWs, disconnect: disconnectDanmakuWs, onDanmaku } = useDanmakuWs()
-onDanmaku((msg: any) => {
-  if (art && art.plugins && art.plugins.artplayerPluginDanmuku) {
-    art.plugins.artplayerPluginDanmuku.emit({
-      text: msg.content,
-      time: msg.time,
-      color: msg.color || '#ffffff',
-      mode: msg.mode || 0
-    })
-  }
-  localDanmuList.value.push({
-    text: msg.content,
-    time: msg.time,
-    color: msg.color || '#ffffff',
-    sendTime: formatDate(new Date())
-  })
-  emitDanmuList()
-})
-
 const loadDanmakus = async () => {
   try {
     localLoadingDanmus.value = true
@@ -268,7 +248,7 @@ const loadDanmakus = async () => {
         text: danmaku.content,
         time: Number.parseFloat(danmaku.time) || 0,
         color: danmaku.color || '#ffffff',
-        sendTime: formatDate(danmaku.createTime)
+        sendTime: formatDate(danmaku.created_at || danmaku.createTime)
       }))
       emitDanmuList()
       const updatedVideoInfo = { ...props.videoInfo, danmuLoadedCount: localDanmuList.value.length }
@@ -399,6 +379,7 @@ const initPlayer = async () => {
           try {
             const response = await interactionApi.sendDanmaku(
               currentVideo.id,
+              props.manuscriptInfo?.id,
               danmu.text,
               danmu.time.toString(),
               danmu.color || '#ffffff',
@@ -609,11 +590,6 @@ const updatePlayer = async () => {
 
   loadDanmakus()
   loadSubtitles()
-
-  const switchedVideo = props.manuscriptInfo?.videos?.[props.currentVideoIndex]
-  if (switchedVideo) {
-    connectDanmakuWs(switchedVideo.id)
-  }
 }
 
 watch(() => props.videoInfo?.playUrl, (newUrl) => {
@@ -621,10 +597,6 @@ watch(() => props.videoInfo?.playUrl, (newUrl) => {
   if (!playerInitialized) {
     initPlayer()
     loadDanmakus()
-    const currentVideo = props.manuscriptInfo?.videos?.[props.currentVideoIndex]
-    if (currentVideo) {
-      connectDanmakuWs(currentVideo.id)
-    }
   }
 })
 
@@ -660,7 +632,6 @@ defineExpose({
 })
 
 onUnmounted(() => {
-  disconnectDanmakuWs()
   window.removeEventListener('resize', handleSubtitlePlayerResize)
   if (art) {
     art.destroy()
