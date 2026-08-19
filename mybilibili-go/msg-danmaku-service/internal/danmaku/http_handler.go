@@ -64,11 +64,11 @@ func (h *HTTPHandler) handleListByVideo(w http.ResponseWriter, r *http.Request) 
 		startTime, _ := strconv.ParseFloat(startTimeStr, 64)
 		endTime, _ := strconv.ParseFloat(endTimeStr, 64)
 		events, _ := h.svc.ListByTimeRange(r.Context(), videoID, startTime, endTime)
-		httputil.WriteJSON(w, http.StatusOK, events)
+		httputil.WriteOK(w, events)
 		return
 	}
 	events, _ := h.svc.ListByVideo(r.Context(), videoID)
-	httputil.WriteJSON(w, http.StatusOK, events)
+	httputil.WriteOK(w, events)
 }
 
 func (h *HTTPHandler) handleBatchCount(w http.ResponseWriter, r *http.Request) {

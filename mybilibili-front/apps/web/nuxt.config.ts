@@ -30,6 +30,8 @@ export default defineNuxtConfig({
     '/api/v1/message/**': { proxy: 'http://localhost:8086/api/v1/message/**' },
     '/api/v1/danmaku/**': { proxy: 'http://localhost:8086/api/v1/danmaku/**' },
     '/api/v1/creator/danmaku/**': { proxy: 'http://localhost:8086/api/v1/creator/danmaku/**' },
+    '/api/v1/subtitle/**': { proxy: 'http://localhost:8088/api/v1/subtitle/**' },
+    '/api/v1/ai/**': { proxy: 'http://localhost:8088/api/v1/ai/**' },
     '/api/**': { proxy: 'http://localhost:8080/api/**' },
     '/uploads/**': { proxy: 'http://localhost:8080/uploads/**' },
     '/covers/**': { proxy: 'http://localhost:8080/covers/**' },
@@ -74,6 +76,14 @@ export default defineNuxtConfig({
         },
         '/api/v1/creator/danmaku': {
           target: 'http://localhost:8086',
+          changeOrigin: true
+        },
+        '/api/v1/subtitle': {
+          target: 'http://localhost:8088',
+          changeOrigin: true
+        },
+        '/api/v1/ai': {
+          target: 'http://localhost:8088',
           changeOrigin: true
         },
         '/api': {
