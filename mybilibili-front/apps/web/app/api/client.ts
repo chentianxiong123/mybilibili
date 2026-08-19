@@ -261,9 +261,9 @@ export const userApi = {
   }),
   follow: (userId: number, follow: boolean) => follow ? api.post(`/follow/${userId}`) : api.delete(`/follow/${userId}`),
   checkFollow: (userId: number) => api.get(`/follow/check/${userId}`),
-  getFollowingList: (userId: number) => api.get(`/user/${userId}/following`),
-  getFollowerList: (userId: number) => api.get(`/user/${userId}/followers`),
-  getPinnedVideo: (userId: number) => api.get(`/user/${userId}/pinned-video`),
+  getFollowingList: (userId: number) => api.get(`/follow/user/${userId}/following`),
+  getFollowerList: (userId: number) => api.get(`/follow/user/${userId}/followers`),
+  getPinnedVideo: () => api.get('/user/pinned-video'),
   setPinnedVideo: (videoId: number) => api.post(`/user/pinned-video`, { videoId }),
   removePinnedVideo: () => api.delete(`/user/pinned-video`)
 }

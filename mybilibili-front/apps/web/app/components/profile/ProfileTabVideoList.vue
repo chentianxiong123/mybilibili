@@ -43,7 +43,7 @@ const pinnedVideoSelection = ref(null)
 const loadPinnedVideo = async () => {
   if (!props.userId) return
   try {
-    const response = await userApi.getPinnedVideo(props.userId)
+    const response = await userApi.getPinnedVideo()
     if (response.code === 200 && response.data) {
       pinnedVideo.value = response.data
     } else {
