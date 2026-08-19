@@ -344,16 +344,20 @@ const syncZoomBase = () => {
   const root = document.documentElement
   const zoom = window.outerWidth / window.innerWidth
   if (zoom > ZOOM_FREEZE_RATIO) return
-  root.style.setProperty('--zoom-base', `${window.innerWidth}px`)
+  root.style.setProperty('--zoom-base', `${root.clientWidth}px`)
 }
 
+let zoomBaseObserver
 onMounted(() => {
   if (getRefreshToken()) startSilentRefresh()
   syncZoomBase()
   window.addEventListener('resize', syncZoomBase)
+  zoomBaseObserver = new ResizeObserver(syncZoomBase)
+  zoomBaseObserver.observe(document.documentElement)
 })
 onUnmounted(() => {
   window.removeEventListener('resize', syncZoomBase)
+  zoomBaseObserver?.disconnect()
   stopSilentRefresh()
 })
 </script>
