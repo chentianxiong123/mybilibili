@@ -186,7 +186,7 @@ const fetchSearchSuggestions = async (keyword) => {
 const fetchHotSearch = async () => {
   try {
     const response = await searchApi.getHotSearch()
-    if (response.code === 200 && response.data) {
+    if (response && response.code === 200 && response.data) {
       hotSearchList.value = response.data.map(item => ({
         rank: item.rank,
         keyword: item.keyword,

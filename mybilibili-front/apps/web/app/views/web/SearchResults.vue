@@ -154,7 +154,7 @@ const loadSearchHistory = async () => {
 const loadHotSearch = async () => {
   try {
     const response = await searchApi.getHotSearch(10)
-    if (response.code === 200) {
+    if (response && response.code === 200) {
       hotSearchList.value = response.data || []
     }
   } catch (error) {
