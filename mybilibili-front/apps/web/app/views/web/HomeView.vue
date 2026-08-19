@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, View, Star } from '@element-plus/icons-vue'
 import { recommendApi } from '@/api/recommend.ts'
 import { getHomeBanners } from '@/api/banner.ts'
 import { formatDuration, formatMonthDay, normalizeVideoCard } from '@/utils/videoCard.ts'
+import { useTabsVideoAlign } from '@/composables/useTabsVideoAlign'
 
 // 轮播图数据
 const bannerList = ref([])
@@ -33,6 +34,8 @@ const prevBanner = () => {
     carouselRef.value.prev()
   }
 }
+
+const { apply: applyTabsVideoAlign } = useTabsVideoAlign()
 
 const nextBanner = () => {
   currentBannerIndex.value = (currentBannerIndex.value + 1) % bannerList.value.length
@@ -134,8 +137,9 @@ const fetchVideoList = async () => {
     console.error('获取稿件列表失败:', error)
   } finally {
     loading.value = false
-    // 视频列表加载完成后，调整轮播图高度
+    // 视频列表加载完成后，调整轮播图高度并重新对齐分类栏与视频栏
     adjustBannerHeight()
+    alignAfterLoad()
   }
 }
 
@@ -169,6 +173,12 @@ onMounted(() => {
   // 监听窗口大小变化，重新调整高度
   window.addEventListener('resize', adjustBannerHeight)
 })
+
+// 视频列表加载完成后重新对齐分类栏与视频栏
+const alignAfterLoad = async () => {
+  await nextTick()
+  applyTabsVideoAlign()
+}
 
 // 跳转到视频详情页（使用稿件ID）
 const goToVideo = (item) => {
