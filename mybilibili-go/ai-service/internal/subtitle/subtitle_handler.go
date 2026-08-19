@@ -40,20 +40,26 @@ func (h *Handler) handleVideoSubtitle(w http.ResponseWriter, r *http.Request) {
 		lang := parts[1]
 		sub, err := h.svc.GetByLanguage(r.Context(), videoID, lang)
 		if err != nil || sub == nil {
-			http.Error(w, "not found", 404)
+			httputil.WriteOK(w, map[string]interface{}{})
 			return
 		}
-		json.NewEncoder(w).Encode(sub)
+		httputil.WriteOK(w, sub)
 		return
 	}
 
 	list, _ := h.svc.ListByVideo(r.Context(), videoID)
-	json.NewEncoder(w).Encode(list)
+	if list == nil {
+		list = []*Subtitle{}
+	}
+	httputil.WriteOK(w, list)
 }
 
 func (h *Handler) handlePending(w http.ResponseWriter, r *http.Request) {
 	list, _ := h.svc.ListPending(r.Context())
-	json.NewEncoder(w).Encode(list)
+	if list == nil {
+		list = []*Subtitle{}
+	}
+	httputil.WriteOK(w, list)
 }
 
 func (h *Handler) handleUpload(w http.ResponseWriter, r *http.Request) {

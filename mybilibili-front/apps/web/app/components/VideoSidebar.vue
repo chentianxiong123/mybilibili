@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { ElSkeleton } from 'element-plus'
-import { useVirtualizer } from '@tanstack/vue-virtual'
 
 const props = defineProps<{
   danmuList: any[]
@@ -24,13 +23,6 @@ const formatTime = (seconds: number) => {
 }
 
 const danmuScrollRef = ref<HTMLElement | null>(null)
-const virtualizer = useVirtualizer({
-  count: () => props.danmuList.length,
-  getScrollElement: () => danmuScrollRef.value,
-  estimateSize: () => 38,
-  overscan: 10
-} as any)
-const virtualRows = computed(() => virtualizer.value.getVirtualItems())
 </script>
 
 <template>
@@ -56,17 +48,16 @@ const virtualRows = computed(() => virtualizer.value.getVirtualItems())
             <span class="header-content">弹幕内容</span>
             <span class="header-send-time">发送时间</span>
           </div>
-          <div class="danmu-list-content" :style="{ height: virtualizer.getTotalSize() + 'px' }">
+          <div class="danmu-list-content">
             <div
-              v-for="row in virtualRows"
-              :key="String(row.key)"
+              v-for="(danmaku, index) in danmuList"
+              :key="index"
               class="danmu-item"
-              :style="{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${row.start}px)` }"
-              @click="emit('jumpToDanmuTime', danmuList[row.index].time)"
+              @click="emit('jumpToDanmuTime', danmaku.time)"
             >
-              <span class="danmu-time">{{ formatTime(danmuList[row.index].time) }}</span>
-              <span class="danmu-text">{{ danmuList[row.index].text }}</span>
-              <span class="danmu-send-time">{{ danmuList[row.index].sendTime }}</span>
+              <span class="danmu-time">{{ formatTime(danmaku.time) }}</span>
+              <span class="danmu-text">{{ danmaku.text }}</span>
+              <span class="danmu-send-time">{{ danmaku.sendTime }}</span>
             </div>
           </div>
         </template>
