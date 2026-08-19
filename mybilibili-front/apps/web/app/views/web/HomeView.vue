@@ -57,21 +57,19 @@ const adjustBannerHeight = () => {
   nextTick(() => {
     // 获取第二行的video-cover元素（第4-6个video-item中的video-cover）
     const videoCovers = document.querySelectorAll('.video-cover')
+    const bannerSection = document.querySelector('.banner-section')
+    if (!bannerSection) return
     if (videoCovers.length >= 6) {
-      // 获取第二行第一个video-cover的底部位置
       const secondRowCover = videoCovers[3]
-      const bannerSection = document.querySelector('.banner-section')
-
-      if (secondRowCover && bannerSection) {
-        // 计算第二行video-cover的底部位置（相对于video-grid）
-        const videoGrid = document.querySelector('.video-grid')
+      const videoGrid = document.querySelector('.video-grid')
+      if (secondRowCover && videoGrid) {
         const gridRect = videoGrid.getBoundingClientRect()
         const coverRect = secondRowCover.getBoundingClientRect()
-
-        // banner-section的高度 = 第二行video-cover的底部位置 - grid的顶部位置
         const bannerHeight = coverRect.bottom - gridRect.top
         bannerSection.style.height = `${bannerHeight}px`
       }
+    } else {
+      bannerSection.style.height = '400px'
     }
   })
 }
@@ -367,9 +365,7 @@ const goToAuthor = (authorId) => {
   display: flex;
   flex-direction: column;
   position: relative;
-  /* 默认最小高度，防止JS设置前高度为0 */
-  min-height: 400px;
-  height: auto;
+  height: 400px;
 }
 
 .video-item {
