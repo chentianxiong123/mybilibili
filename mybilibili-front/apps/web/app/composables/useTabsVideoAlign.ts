@@ -9,20 +9,28 @@ export function useTabsVideoAlign() {
     const tabs = document.querySelector('.tabs-main-container')
     const main = document.querySelector('.main-section')
     if (!tabs || !main) return
-    // 必须以"未变换"位置为准：先清掉自身 transform 再测量
-    if (main.style.transform) main.style.transform = ''
+    const parent = main.parentElement
+    if (!parent) return
     const tabsRect = tabs.getBoundingClientRect()
-    const mainRect = main.getBoundingClientRect()
-    const delta = tabsRect.left - mainRect.left
-    if (Math.abs(delta) < 0.5) {
-      if (applied !== 0) {
-        applied = 0
-        main.style.transform = ''
-      }
+    const parentRect = parent.getBoundingClientRect()
+    // 目标：main-section 左缘与分类栏内容容器左缘对齐。
+    // margin-left 相对父容器（.layout-content，与 .layout-home 同左缘），
+    // 因此目标 margin = tabs 相对父容器内容框左缘的距离。
+    const targetMargin = tabsRect.left - parentRect.left
+    if (Math.abs(targetMargin - applied) < 0.5) return
+    if (Math.abs(targetMargin) < 0.5) {
+      applied = 0
+      main.style.marginLeft = ''
+      main.style.marginRight = ''
+      main.style.width = ''
       return
     }
-    main.style.transform = `translateX(${delta}px)`
-    applied = delta
+    // .main-section CSS 为 width:100% + margin:0 auto,max-width:1980;
+    // 覆盖为 width:auto 后 margin-left 生效、右缘由 max-width 约束不外溢。
+    main.style.width = 'auto'
+    main.style.marginLeft = `${targetMargin}px`
+    main.style.marginRight = 'auto'
+    applied = targetMargin
   }
 
   const onResize = () => apply()
@@ -32,7 +40,7 @@ export function useTabsVideoAlign() {
     window.addEventListener('resize', onResize)
     if (typeof ResizeObserver !== 'undefined') {
       ro = new ResizeObserver(onResize)
-      const root = document.querySelector('.layout-home') || document.documentElement
+      const root = document.documentElement
       ro.observe(root)
     }
   })
