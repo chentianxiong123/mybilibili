@@ -41,7 +41,7 @@ func (r *Repository) Create(ctx context.Context, u *User) (int64, error) {
 func (r *Repository) FindByUsername(ctx context.Context, username string) (*User, error) {
 	u := &User{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, username, password, nickname, email, avatar, level, status, created_at, updated_at FROM users WHERE username = $1`,
+		`SELECT id, username, password, nickname, COALESCE(email,''), COALESCE(avatar,''), level, status, created_at, updated_at FROM users WHERE username = $1`,
 		username,
 	).Scan(&u.ID, &u.Username, &u.Password, &u.Nickname, &u.Email, &u.Avatar, &u.Level, &u.Status, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
@@ -53,7 +53,7 @@ func (r *Repository) FindByUsername(ctx context.Context, username string) (*User
 func (r *Repository) FindByID(ctx context.Context, id int64) (*User, error) {
 	u := &User{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, username, password, nickname, email, avatar, level, status, created_at, updated_at FROM users WHERE id = $1`,
+		`SELECT id, username, password, nickname, COALESCE(email,''), COALESCE(avatar,''), level, status, created_at, updated_at FROM users WHERE id = $1`,
 		id,
 	).Scan(&u.ID, &u.Username, &u.Password, &u.Nickname, &u.Email, &u.Avatar, &u.Level, &u.Status, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
