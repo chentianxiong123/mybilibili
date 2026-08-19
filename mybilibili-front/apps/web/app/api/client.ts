@@ -349,8 +349,8 @@ export const interactionApi = {
   collectManuscript: (manuscriptId: number, collected: boolean) => collected ? api.post(`/manuscript/${manuscriptId}/collect`) : api.delete(`/manuscript/${manuscriptId}/collect`),
   shareManuscript: (manuscriptId: number, channel?: string) => api.post(`/manuscript/${manuscriptId}/share`, { channel: channel || 'clipboard' }),
   getShareStatistics: (manuscriptId: number) => api.get(`/manuscript/${manuscriptId}/share/statistics`),
-  sendDanmaku: (videoId: number, content: string, time: number, color: string, mode: number) => api.post(`/manuscript/${videoId}/danmaku`, {
-    videoId, content, time, color: color || '#ffffff', mode: mode || 0
+  sendDanmaku: (videoId: number, manuscriptId: number, content: string, time: number, color: string, mode: number) => api.post('/danmaku/send', {
+    video_id: videoId, manuscript_id: manuscriptId, content, time, color: color || '#ffffff', mode: mode || 0
   }),
   getDanmakus: (videoId: number) => api.get(`/danmaku/video/${videoId}`),
   getInteractionStatus: (manuscriptId: number) => api.get(`/manuscript/${manuscriptId}/status`),
