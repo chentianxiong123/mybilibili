@@ -16,7 +16,8 @@ const dynamicTab = { name: '动态', special: true, id: -1 }
 // 第一条动态的用户头像
 const firstDynamicAvatar = ref('')
 // 是否显示头像（false则显示默认图标），每次刷新页面随机决定
-const showAvatar = ref(Math.random() > 0.5)
+// 用 useState 保证 SSR 与客户端水合时值一致，避免 hydration mismatch
+const showAvatar = useState('categoryTabsShowAvatar', () => Math.random() > 0.5)
 
 // 分类列表
 const categories = ref([])

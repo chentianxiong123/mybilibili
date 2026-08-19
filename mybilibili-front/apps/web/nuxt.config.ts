@@ -32,7 +32,8 @@ export default defineNuxtConfig({
     '/uploads/**': { proxy: 'http://localhost:8080/uploads/**' },
     '/covers/**': { proxy: 'http://localhost:8080/covers/**' },
     '/videos/**': { proxy: 'http://localhost:8080/videos/**' },
-    '/ws/**': { proxy: 'http://localhost:8086/ws/**' }
+    '/ws/**': { proxy: 'http://localhost:8086/ws/**' },
+    '/sse/**': { proxy: 'http://localhost:8086/sse/**' }
   },
   vite: {
     css: {
@@ -61,18 +62,12 @@ export default defineNuxtConfig({
           target: 'http://localhost:8084',
           changeOrigin: true
         },
+        '/api/v1/message': {
+          target: 'http://localhost:8086',
+          changeOrigin: true
+        },
         '/api': {
           target: 'http://localhost:8080',
-          changeOrigin: true
-        },
-        '/ws/notification': {
-          target: 'ws://localhost:8080',
-          ws: true,
-          changeOrigin: true
-        },
-        '/ws/danmaku': {
-          target: 'ws://localhost:8080',
-          ws: true,
           changeOrigin: true
         },
         '/uploads': {

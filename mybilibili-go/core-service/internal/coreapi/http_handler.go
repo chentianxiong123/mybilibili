@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"mybilibili/core-service/internal/user"
 	"mybilibili/pkg/auth"
 )
 
@@ -162,7 +161,7 @@ func StartHTTPServer(addr string, jwt *JWT, extras ...LiveHandler) {
 
 	var handler http.Handler = mux
 	if jwt != nil {
-		handler = user.AuthMiddleware(jwt)(mux)
+		handler = auth.IdentityMiddleware(jwt)(mux)
 	}
 
 	log.Printf("HTTP server listening on %s", addr)

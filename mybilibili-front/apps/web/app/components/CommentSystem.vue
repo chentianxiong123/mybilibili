@@ -224,13 +224,15 @@ const emit = defineEmits(['update:totalCount'])
 const router = useRouter()
 
 // 当前用户信息
-const currentUser = computed(() => {
+const currentUser = ref(null)
+const currentUserAvatar = ref('/default-avatar.svg')
+onMounted(() => {
   const userStr = safeStorage.getItem('user')
-  return userStr ? JSON.parse(userStr) : null
-})
-
-const currentUserAvatar = computed(() => {
-  return currentUser.value?.avatar || '/default-avatar.svg'
+  if (userStr) {
+    const u = JSON.parse(userStr)
+    currentUser.value = u
+    currentUserAvatar.value = u?.avatar || '/default-avatar.svg'
+  }
 })
 
 const defaultAvatar = '/default-avatar.svg'

@@ -78,14 +78,20 @@ func (h *FollowHandler) handleMyFollowers(w http.ResponseWriter, r *http.Request
 	userID := httputil.GetUserIDFromHeader(r)
 	page, pageSize := httputil.ParsePageParams(r)
 	ids, _ := h.svc.ListFollowers(r.Context(), userID, page, pageSize)
-	json.NewEncoder(w).Encode(ids)
+	if ids == nil {
+		ids = []int64{}
+	}
+	json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": ids})
 }
 
 func (h *FollowHandler) handleMyFollowing(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
 	page, pageSize := httputil.ParsePageParams(r)
 	ids, _ := h.svc.ListFollowing(r.Context(), userID, page, pageSize)
-	json.NewEncoder(w).Encode(ids)
+	if ids == nil {
+		ids = []int64{}
+	}
+	json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": ids})
 }
 
 func (h *FollowHandler) handleUserFollows(w http.ResponseWriter, r *http.Request) {
@@ -99,10 +105,16 @@ func (h *FollowHandler) handleUserFollows(w http.ResponseWriter, r *http.Request
 	switch parts[1] {
 	case "following":
 		ids, _ := h.svc.ListFollowing(r.Context(), userID, page, pageSize)
-		json.NewEncoder(w).Encode(ids)
+		if ids == nil {
+			ids = []int64{}
+		}
+		json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": ids})
 	case "followers":
 		ids, _ := h.svc.ListFollowers(r.Context(), userID, page, pageSize)
-		json.NewEncoder(w).Encode(ids)
+		if ids == nil {
+			ids = []int64{}
+		}
+		json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": ids})
 	default:
 		http.Error(w, "not found", 404)
 	}

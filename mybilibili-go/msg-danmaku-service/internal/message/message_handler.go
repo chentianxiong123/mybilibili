@@ -2,21 +2,29 @@ package message
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/lib/pq"
+	"mybilibili/pkg/auth"
 	"mybilibili/pkg/httputil"
 )
 
 type MessageHTTPHandler struct {
 	repo  *MessageRepository
 	notif *NotificationBroadcaster
+	jwt   *auth.JWT
 }
 
-func NewMessageHTTPHandler(repo *MessageRepository, notif *NotificationBroadcaster) *MessageHTTPHandler {
-	return &MessageHTTPHandler{repo: repo, notif: notif}
+func NewMessageHTTPHandler(repo *MessageRepository, notif *NotificationBroadcaster, opts ...*auth.JWT) *MessageHTTPHandler {
+	var j *auth.JWT
+	if len(opts) > 0 {
+		j = opts[0]
+	}
+	return &MessageHTTPHandler{repo: repo, notif: notif, jwt: j}
 }
 
 func (h *MessageHTTPHandler) Register(mux *http.ServeMux) {
@@ -34,6 +42,59 @@ func (h *MessageHTTPHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/message/user/", h.handleMessagesByUser)
 	mux.HandleFunc("/api/v1/message/", h.handleMessageByID)
 	mux.HandleFunc("/api/v1/message/admin/", h.handleAdminBroadcast)
+	mux.HandleFunc("/sse/notification", h.handleNotificationSSE)
+}
+
+func (h *MessageHTTPHandler) handleNotificationSSE(w http.ResponseWriter, r *http.Request) {
+	var userID int64
+	if h.jwt != nil {
+		tokenStr := strings.TrimPrefix(r.URL.Query().Get("token"), "Bearer ")
+		if tokenStr != "" {
+			if uid, err := h.jwt.ParseUserID(tokenStr); err == nil {
+				userID = uid
+			}
+		}
+	}
+	if userID == 0 {
+		userID = httputil.GetUserIDFromHeader(r)
+	}
+	if userID == 0 {
+		http.Error(w, "unauthorized", 401)
+		return
+	}
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", 500)
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	ch := h.notif.Subscribe(userID)
+	defer h.notif.Unsubscribe(userID, ch)
+
+	fmt.Fprintf(w, "data: {\"type\":\"connected\"}\n\n")
+	flusher.Flush()
+
+	ctx := r.Context()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case event, ok := <-ch:
+			if !ok {
+				return
+			}
+			data, _ := json.Marshal(event)
+			fmt.Fprintf(w, "data: %s\n\n", data)
+			flusher.Flush()
+		case <-time.After(25 * time.Second):
+			fmt.Fprintf(w, ": keepalive\n\n")
+			flusher.Flush()
+		}
+	}
 }
 
 func (h *MessageHTTPHandler) handleConversations(w http.ResponseWriter, r *http.Request) {

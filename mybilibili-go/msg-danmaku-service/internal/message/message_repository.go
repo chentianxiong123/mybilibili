@@ -164,6 +164,12 @@ func (b *NotificationBroadcaster) Subscribe(userID int64) <-chan *NotificationEv
 	return b.channels[userID]
 }
 
+func (b *NotificationBroadcaster) Unsubscribe(userID int64, ch <-chan *NotificationEvent) {
+	if b.channels[userID] == ch {
+		delete(b.channels, userID)
+	}
+}
+
 func (b *NotificationBroadcaster) Send(userID int64, event *NotificationEvent) {
 	if b.channels[userID] != nil {
 		select {

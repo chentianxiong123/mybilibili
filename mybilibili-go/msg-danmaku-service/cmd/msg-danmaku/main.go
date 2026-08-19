@@ -13,6 +13,7 @@ import (
 
 	"mybilibili/msg-danmaku-service/internal/danmaku"
 	"mybilibili/msg-danmaku-service/internal/message"
+	"mybilibili/pkg/auth"
 	pb "mybilibili/pkg/pb"
 )
 
@@ -49,7 +50,14 @@ func main() {
 
 	messageRepo := message.NewMessageRepository(db)
 	notifBroadcaster := message.NewNotificationBroadcaster()
-	messageH := message.NewMessageHTTPHandler(messageRepo, notifBroadcaster)
+
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "dev-secret-change-in-production"
+	}
+	jwt := auth.NewJWT(jwtSecret)
+
+	messageH := message.NewMessageHTTPHandler(messageRepo, notifBroadcaster, jwt)
 
 	go func() {
 		lis, err := net.Listen("tcp", grpcAddr)
@@ -66,6 +74,8 @@ func main() {
 	mux := http.NewServeMux()
 	danmakuH.Register(mux)
 	messageH.Register(mux)
+	var handler http.Handler = mux
+	handler = auth.IdentityMiddleware(jwt)(mux)
 	log.Printf("MsgDanmaku HTTP listening on %s", httpAddr)
-	log.Fatal(http.ListenAndServe(httpAddr, mux))
+	log.Fatal(http.ListenAndServe(httpAddr, handler))
 }
