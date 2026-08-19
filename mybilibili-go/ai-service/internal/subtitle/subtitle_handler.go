@@ -31,6 +31,33 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/subtitle/", h.handleSubtitleByID)
 }
 
+func subtitleToMap(sub *Subtitle) map[string]interface{} {
+	m := map[string]interface{}{
+		"id":            sub.ID,
+		"video_id":      sub.VideoID,
+		"videoId":       sub.VideoID,
+		"language":      sub.Language,
+		"language_name": sub.LanguageName,
+		"languageName":  sub.LanguageName,
+		"format":        sub.Format,
+		"is_default":    sub.IsDefault,
+		"isDefault":     sub.IsDefault,
+		"uploaded_by":   sub.UploadedBy,
+		"status":        sub.Status,
+		"source":        sub.Source,
+		"upload_time":   sub.UploadTime,
+	}
+	var cues []map[string]interface{}
+	if json.Unmarshal([]byte(sub.Content), &cues) == nil {
+		m["content"] = cues
+		m["cues"] = cues
+	} else {
+		m["content"] = []interface{}{}
+		m["cues"] = []interface{}{}
+	}
+	return m
+}
+
 func (h *Handler) handleVideoSubtitle(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/subtitle/video/")
 	parts := strings.Split(path, "/")
@@ -43,7 +70,7 @@ func (h *Handler) handleVideoSubtitle(w http.ResponseWriter, r *http.Request) {
 			httputil.WriteOK(w, map[string]interface{}{})
 			return
 		}
-		httputil.WriteOK(w, sub)
+		httputil.WriteOK(w, subtitleToMap(sub))
 		return
 	}
 
@@ -51,7 +78,11 @@ func (h *Handler) handleVideoSubtitle(w http.ResponseWriter, r *http.Request) {
 	if list == nil {
 		list = []*Subtitle{}
 	}
-	httputil.WriteOK(w, list)
+	out := make([]map[string]interface{}, 0, len(list))
+	for _, sub := range list {
+		out = append(out, subtitleToMap(sub))
+	}
+	httputil.WriteOK(w, out)
 }
 
 func (h *Handler) handlePending(w http.ResponseWriter, r *http.Request) {
