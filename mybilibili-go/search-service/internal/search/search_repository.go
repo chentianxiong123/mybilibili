@@ -297,8 +297,79 @@ func (s *Service) DeleteOne(ctx context.Context, keyword string) error {
 
 func (s *Service) CountIndexed(ctx context.Context) (int64, error) {
 	var count int64
-	err := s.repo.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscripts WHERE status = 3`).Scan(&count)
+	err := s.repo.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscripts WHERE search_vector IS NOT NULL`).Scan(&count)
 	return count, err
+}
+
+type IndexStatus struct {
+	Engine         string  `json:"engine"`
+	Config         string  `json:"config"`
+	IndexName      string  `json:"indexName"`
+	TotalCount     int64   `json:"totalCount"`
+	PublishedCount int64   `json:"publishedCount"`
+	IndexedCount   int64   `json:"indexedCount"`
+	NullCount      int64   `json:"nullCount"`
+	Coverage       float64 `json:"coverage"`
+	GINIndex       bool    `json:"ginIndex"`
+	Trigger        bool    `json:"trigger"`
+	Health         string  `json:"health"`
+}
+
+func (s *Service) GetIndexStatus(ctx context.Context) (*IndexStatus, error) {
+	st := &IndexStatus{
+		Engine:    "postgres-fts",
+		Config:    "zh_cn (zhparser)",
+		IndexName: "manuscripts",
+	}
+	var total, published, indexed, nullCount int64
+	err := s.repo.db.QueryRowContext(ctx, `
+		SELECT
+			(SELECT COUNT(*) FROM manuscripts),
+			(SELECT COUNT(*) FROM manuscripts WHERE status = 3),
+			(SELECT COUNT(*) FROM manuscripts WHERE search_vector IS NOT NULL),
+			(SELECT COUNT(*) FROM manuscripts WHERE search_vector IS NULL)`).Scan(&total, &published, &indexed, &nullCount)
+	if err != nil {
+		return nil, err
+	}
+	st.TotalCount = total
+	st.PublishedCount = published
+	st.IndexedCount = indexed
+	st.NullCount = nullCount
+	if total > 0 {
+		st.Coverage = float64(indexed) / float64(total) * 100
+	}
+
+	var ginCount int
+	_ = s.repo.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM pg_indexes
+		WHERE tablename = 'manuscripts' AND indexname = 'idx_manuscripts_search'`).Scan(&ginCount)
+	st.GINIndex = ginCount > 0
+
+	var trgCount int
+	_ = s.repo.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM pg_trigger
+		WHERE tgname = 'trg_manuscript_search_vector'`).Scan(&trgCount)
+	st.Trigger = trgCount > 0
+
+	switch {
+	case !st.GINIndex || !st.Trigger:
+		st.Health = "warning"
+	case nullCount > 0:
+		st.Health = "degraded"
+	default:
+		st.Health = "active"
+	}
+	return st, nil
+}
+
+func (s *Service) RebuildSearchVector(ctx context.Context) (int64, error) {
+	res, err := s.repo.db.ExecContext(ctx, `
+		UPDATE manuscripts
+		SET search_vector = to_tsvector('zh_cn', COALESCE(title, '') || ' ' || COALESCE(description, ''))`)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }
 
 func (s *Service) BulkIndex(ctx context.Context, engine abstraction.SearchEngine) (int, error) {

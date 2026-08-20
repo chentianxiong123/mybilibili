@@ -36,10 +36,11 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/recommend/for-you", h.handleForYou)
 	mux.HandleFunc("/api/v1/recommend/hot", h.handleHotRecommend)
 	mux.HandleFunc("/api/v1/search/admin/index/status", h.handleIndexStatus)
-	mux.HandleFunc("/api/v1/search/admin/index/bulk", h.handleIndexBulk)
+	mux.HandleFunc("/api/v1/search/admin/index/bulk", h.handleIndexNotNeeded)
 	mux.HandleFunc("/api/v1/search/admin/index/rebuild", h.handleIndexRebuild)
 	mux.HandleFunc("/api/v1/search/admin/index/refresh", h.handleIndexRefresh)
-	mux.HandleFunc("/api/v1/search/admin/index/incremental", h.handleIndexIncremental)
+	mux.HandleFunc("/api/v1/search/admin/index/validate", h.handleIndexValidate)
+	mux.HandleFunc("/api/v1/search/admin/index/incremental", h.handleIndexNotNeeded)
 	mux.HandleFunc("/api/v1/search/admin/recommend-config", h.handleRecommendConfig)
 	mux.HandleFunc("/api/v1/search/admin/recommend-config/reset", h.handleRecommendConfigReset)
 	mux.HandleFunc("/api/v1/search/hot/increment", h.handleHotIncrement)
@@ -213,38 +214,25 @@ func (h *Handler) handleHotRecommend(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleIndexStatus(w http.ResponseWriter, r *http.Request) {
-	count, _ := h.svc.CountIndexed(r.Context())
-	status := "active"
-	engineStatus := "memory"
-	if h.engine == nil {
-		status = "not_found"
-		engineStatus = "unavailable"
-	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"indexName": "manuscripts",
-		"status":    status,
-		"engine":    engineStatus,
-		"indexedCount": count,
-	})
-}
-
-func (h *Handler) handleIndexBulk(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
-		return
-	}
-	if h.engine == nil {
-		http.Error(w, "search engine unavailable", 500)
-		return
-	}
-	count, err := h.svc.BulkIndex(r.Context(), h.engine)
+	st, err := h.svc.GetIndexStatus(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "success", "message": "批量索引完成", "indexedCount": count,
-	})
+	writeJSON(w, st)
+}
+
+func (h *Handler) handleIndexValidate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	st, err := h.svc.GetIndexStatus(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	writeJSON(w, st)
 }
 
 func (h *Handler) handleIndexRebuild(w http.ResponseWriter, r *http.Request) {
@@ -252,17 +240,24 @@ func (h *Handler) handleIndexRebuild(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	if h.engine == nil {
-		http.Error(w, "search engine unavailable", 500)
-		return
-	}
-	count, err := h.svc.BulkIndex(r.Context(), h.engine)
+	count, err := h.svc.RebuildSearchVector(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "success", "message": "索引重建完成", "indexedCount": count,
+	writeJSON(w, map[string]interface{}{
+		"status": "success", "message": "全文索引重建完成", "updatedCount": count,
+	})
+}
+
+func (h *Handler) handleIndexNotNeeded(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	writeJSON(w, map[string]interface{}{
+		"status": "success",
+		"message": "当前引擎为 PostgreSQL 全文搜索，索引由数据库触发器自动维护，无需手动批量索引",
 	})
 }
 
@@ -271,27 +266,8 @@ func (h *Handler) handleIndexRefresh(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "success", "message": "索引刷新成功",
-	})
-}
-
-func (h *Handler) handleIndexIncremental(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
-		return
-	}
-	if h.engine == nil {
-		http.Error(w, "search engine unavailable", 500)
-		return
-	}
-	count, err := h.svc.BulkIndex(r.Context(), h.engine)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "success", "message": "增量索引完成", "indexedCount": count,
+	writeJSON(w, map[string]interface{}{
+		"status": "success", "message": "索引状态已刷新",
 	})
 }
 
