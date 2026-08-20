@@ -4,5 +4,5 @@
 
 <script setup lang="ts">
 import DashboardView from '~/views/admin/DashboardView.vue'
-definePageMeta({ layout: 'none' })
+definePageMeta({ layout: 'default' })
 </script>

@@ -4,5 +4,5 @@
 
 <script setup lang="ts">
 import SubtitleManagementView from '~/views/admin/SubtitleManagementView.vue'
-definePageMeta({ layout: 'none' })
+definePageMeta({ layout: 'default' })
 </script>

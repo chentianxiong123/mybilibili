@@ -4,5 +4,5 @@
 
 <script setup lang="ts">
 import RecommendConfigView from '~/views/admin/RecommendConfigView.vue'
-definePageMeta({ layout: 'none' })
+definePageMeta({ layout: 'default' })
 </script>

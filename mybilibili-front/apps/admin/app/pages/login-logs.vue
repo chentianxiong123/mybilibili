@@ -4,5 +4,5 @@
 
 <script setup lang="ts">
 import LoginLogsView from '~/views/admin/LoginLogsView.vue'
-definePageMeta({ layout: 'none' })
+definePageMeta({ layout: 'default' })
 </script>

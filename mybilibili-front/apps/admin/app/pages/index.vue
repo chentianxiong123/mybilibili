@@ -1,5 +1,5 @@
 <template></template>
 
 <script setup lang="ts">
-definePageMeta({ redirect: '/dashboard', layout: 'none' })
+definePageMeta({ redirect: '/dashboard', layout: 'default' })
 </script>

@@ -4,5 +4,5 @@
 
 <script setup lang="ts">
 import CategoriesView from '~/views/admin/CategoriesView.vue'
-definePageMeta({ layout: 'none' })
+definePageMeta({ layout: 'default' })
 </script>
