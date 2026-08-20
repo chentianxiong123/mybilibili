@@ -8,12 +8,16 @@ import {
   Tickets, User, UserFilled, VideoPlay, Warning
 } from '@element-plus/icons-vue'
 import { useAdminStore } from '~/stores/admin'
+import AdminAiFloatingButton from '~/components/AdminAiFloatingButton.vue'
+import AdminAiChatPanel from '~/components/AdminAiChatPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
 const adminStore = useAdminStore()
 const isSuperAdmin = computed(() => adminStore.role === '超级管理员')
+const canUseAdminAssistant = computed(() => adminStore.hasPermission('ai:manage'))
 const isCollapse = ref(false)
+const showAiAssistant = ref(false)
 
 const iconMap: Record<string, any> = {
   Connection, Cpu, DataAnalysis, DataBoard, DataLine, Document, DocumentChecked,
@@ -170,6 +174,9 @@ const handleCommand = (command: string) => {
         </el-main>
       </el-container>
     </el-container>
+
+    <AdminAiFloatingButton v-if="canUseAdminAssistant" v-model:visible="showAiAssistant" />
+    <AdminAiChatPanel v-if="canUseAdminAssistant" v-model:visible="showAiAssistant" />
   </div>
 </template>
 

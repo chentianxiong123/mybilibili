@@ -345,11 +345,16 @@ func (h *Handler) handleAssistantSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Message string `json:"message"`
+		Message string `json:"message,omitempty"`
+		Content string `json:"content,omitempty"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
+	msg := req.Message
+	if msg == "" {
+		msg = req.Content
+	}
 	json.NewEncoder(w).Encode(map[string]any{
-		"reply": "已收到: " + req.Message,
+		"reply": "已收到: " + msg,
 	})
 }
 
