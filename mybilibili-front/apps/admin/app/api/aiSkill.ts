@@ -2,7 +2,7 @@ import request from './client'
 
 export function getAiSkills() {
   return request({
-    url: '/ai/admin/skills',
+    url: '/ai/skills',
     method: 'get'
   })
 }
@@ -23,7 +23,7 @@ export function getAiSkill(id) {
 
 export function createAiSkill(data) {
   return request({
-    url: '/ai/admin/skills',
+    url: '/ai/skills',
     method: 'post',
     data
   })
@@ -53,14 +53,14 @@ export function toggleAiSkill(id) {
 
 export function initializeCustomerServiceSkills() {
   return request({
-    url: '/ai/admin/skills/customer-service/defaults',
+    url: '/ai/skills/customer-service/defaults',
     method: 'post'
   })
 }
 
 export function testCustomerServiceSkillRoute(question) {
   return request({
-    url: '/ai/admin/skills/customer-service/route-test',
+    url: '/ai/skills/customer-service/route-test',
     method: 'post',
     data: { question }
   })

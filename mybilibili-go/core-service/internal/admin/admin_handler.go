@@ -34,7 +34,9 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/admin/security-settings", h.handleSecuritySettings)
 	mux.HandleFunc("/api/v1/admin/storage/migrate", h.handleStorageMigrate)
 	mux.HandleFunc("/api/v1/admin/operation-tasks", h.handleOperationTasks)
+	mux.HandleFunc("/api/v1/admin/operation-tasks/list", h.handleOperationTasks)
 	mux.HandleFunc("/api/v1/admin/operation-tasks/", h.handleOperationTaskByID)
+	mux.HandleFunc("/api/v1/admin/audit-logs/list", h.handleAuditLogs)
 	mux.HandleFunc("/api/v1/admin/", h.handleAdminByID)
 }
 
@@ -149,12 +151,25 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	refreshToken, _ := h.jwt.GenerateRefresh(admin.ID)
+	role := "管理员"
+	if admin.AdminLevel >= 2 {
+		role = "超级管理员"
+	}
+	permissions := []string{}
+	if role == "超级管理员" {
+		perms, _ := h.svc.repo.ListPermissions(r.Context())
+		for _, p := range perms {
+			permissions = append(permissions, p.Code)
+		}
+	}
 	httputil.WriteOK(w, map[string]interface{}{
 		"token":         token,
 		"refresh_token": refreshToken,
 		"admin_id":      admin.ID,
 		"username":      admin.Username,
 		"admin_level":   admin.AdminLevel,
+		"role":          role,
+		"permissions":   permissions,
 	})
 }
 
@@ -364,7 +379,19 @@ func (h *Handler) handleLoginLogs(w http.ResponseWriter, r *http.Request) {
 	userID, _ := strconv.ParseInt(r.URL.Query().Get("user_id"), 10, 64)
 	page, size := httputil.ParsePageParams(r)
 	list, _ := h.svc.ListLoginLogs(r.Context(), userID, page, size)
-	json.NewEncoder(w).Encode(list)
+	if list == nil {
+		list = []map[string]interface{}{}
+	}
+	var total int64
+	if userID > 0 {
+		h.svc.repo.db.QueryRowContext(r.Context(),
+			`SELECT COUNT(*) FROM login_logs WHERE user_id = $1`, userID).Scan(&total)
+	} else {
+		h.svc.repo.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM login_logs`).Scan(&total)
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"list": list, "total": total, "page": page, "size": size,
+	})
 }
 
 func (h *Handler) handleSecuritySettings(w http.ResponseWriter, r *http.Request) {

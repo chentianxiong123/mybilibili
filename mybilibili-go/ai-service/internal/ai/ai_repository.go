@@ -49,7 +49,7 @@ func (r *Repository) ListConfigs(ctx context.Context) ([]*ApiConfig, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	var list []*ApiConfig
+	list := make([]*ApiConfig, 0)
 	for rows.Next() {
 		c := &ApiConfig{}
 		rows.Scan(&c.ID, &c.Name, &c.Type, &c.BaseURL, &c.APIKey, &c.Model, &c.MaxTokens, &c.Temperature, &c.Enabled, &c.ExtraConfig, &c.CreatedAt)
@@ -66,7 +66,7 @@ func (r *Repository) ListConfigsByType(ctx context.Context, typ string) ([]*ApiC
 		return nil, err
 	}
 	defer rows.Close()
-	var list []*ApiConfig
+	list := make([]*ApiConfig, 0)
 	for rows.Next() {
 		c := &ApiConfig{}
 		rows.Scan(&c.ID, &c.Name, &c.Type, &c.BaseURL, &c.APIKey, &c.Model, &c.MaxTokens, &c.Temperature, &c.Enabled, &c.ExtraConfig, &c.CreatedAt)
@@ -152,7 +152,7 @@ func (r *Repository) ListSkills(ctx context.Context) ([]*Skill, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	var list []*Skill
+	list := make([]*Skill, 0)
 	for rows.Next() {
 		s := &Skill{}
 		if err := rows.Scan(&s.ID, &s.Name, &s.Description, &s.SystemPrompt, &s.FewShotExamples, &s.Type, &s.Enabled, &s.CreatedAt); err != nil {
@@ -170,7 +170,7 @@ func (r *Repository) ListSkillsByType(ctx context.Context, typ string) ([]*Skill
 		return nil, err
 	}
 	defer rows.Close()
-	var list []*Skill
+	list := make([]*Skill, 0)
 	for rows.Next() {
 		s := &Skill{}
 		if err := rows.Scan(&s.ID, &s.Name, &s.Description, &s.SystemPrompt, &s.FewShotExamples, &s.Type, &s.Enabled, &s.CreatedAt); err != nil {
@@ -268,7 +268,7 @@ func (r *Repository) UsageByFeature(ctx context.Context) ([]map[string]any, erro
 		return nil, err
 	}
 	defer rows.Close()
-	var result []map[string]any
+	result := make([]map[string]any, 0)
 	for rows.Next() {
 		var f string
 		var calls int64
@@ -291,7 +291,7 @@ func (r *Repository) UsageDaily(ctx context.Context, startDate string) ([]map[st
 		return nil, err
 	}
 	defer rows.Close()
-	var result []map[string]any
+	result := make([]map[string]any, 0)
 	for rows.Next() {
 		var day string
 		var calls, tokens int64
@@ -311,7 +311,7 @@ func (r *Repository) ListPendingSessions(ctx context.Context) ([]map[string]any,
 		return nil, err
 	}
 	defer rows.Close()
-	var result []map[string]any
+	result := make([]map[string]any, 0)
 	for rows.Next() {
 		var id, userID int64
 		var title string
@@ -335,7 +335,7 @@ func (r *Repository) GetSessionMessages(ctx context.Context, sessionID int64) ([
 		return nil, err
 	}
 	defer rows.Close()
-	var result []map[string]any
+	result := make([]map[string]any, 0)
 	for rows.Next() {
 		var id int64
 		var role, content string

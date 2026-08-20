@@ -51,10 +51,10 @@ async function loadData() {
       getAvailableTypes(),
       getAvailableFeatures()
     ])
-    if (chRes.code === 200) channels.value = chRes.data || []
-    if (bindRes.code === 200) bindings.value = bindRes.data || {}
-    if (typeRes.code === 200) availableTypes.value = typeRes.data || ['LLM', 'ASR', 'TTS', 'IMAGE']
-    if (featureRes.code === 200) availableFeatures.value = featureRes.data || []
+    channels.value = Array.isArray(chRes) ? chRes : (chRes?.data || [])
+    bindings.value = bindRes && typeof bindRes === 'object' && !Array.isArray(bindRes) ? bindRes : (bindRes?.data || {})
+    availableTypes.value = Array.isArray(typeRes) ? typeRes : (typeRes?.data || ['LLM', 'ASR', 'TTS', 'IMAGE'])
+    availableFeatures.value = Array.isArray(featureRes) ? featureRes : (featureRes?.data || [])
   } catch (e) { console.error(e) }
   finally { loading.value = false }
 }

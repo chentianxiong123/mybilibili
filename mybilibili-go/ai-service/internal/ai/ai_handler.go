@@ -84,6 +84,21 @@ func (h *Handler) handleConfigs(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleConfigByID(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/ai/configs/")
 	parts := strings.Split(path, "/")
+	if parts[0] == "types" {
+		json.NewEncoder(w).Encode([]string{"LLM", "ASR", "TTS", "IMAGE", "MODERATION"})
+		return
+	}
+	if parts[0] == "features" {
+		json.NewEncoder(w).Encode([]map[string]string{
+			{"feature": "chat", "type": "LLM"},
+			{"feature": "summary", "type": "LLM"},
+			{"feature": "transcribe", "type": "ASR"},
+			{"feature": "tts", "type": "TTS"},
+			{"feature": "image_generation", "type": "IMAGE"},
+			{"feature": "content_review", "type": "MODERATION"},
+		})
+		return
+	}
 	id, _ := strconv.ParseInt(parts[0], 10, 64)
 	switch {
 	case len(parts) >= 2 && parts[1] == "toggle" && r.Method == "PUT":

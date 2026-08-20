@@ -18,7 +18,7 @@ const actionLoading = ref(false)
 const fetchIndexStatus = async () => {
   loading.value = true
   try {
-    const response = await fetch('/api/search/admin/index/status')
+    const response = await fetch('/api/v1/search/admin/index/status')
     const result = await response.json()
     if (result.code === 200) {
       indexStatus.value = result.data
@@ -47,7 +47,7 @@ const handleBulkIndex = async () => {
     )
 
     actionLoading.value = true
-    const response = await fetch('/api/search/admin/index/bulk', {
+    const response = await fetch('/api/v1/search/admin/index/bulk', {
       method: 'POST'
     })
     const result = await response.json()
@@ -82,7 +82,7 @@ const handleRebuildIndex = async () => {
     )
 
     actionLoading.value = true
-    const response = await fetch('/api/search/admin/index/rebuild', {
+    const response = await fetch('/api/v1/search/admin/index/rebuild', {
       method: 'POST'
     })
     const result = await response.json()
@@ -117,7 +117,7 @@ const handleIncrementalIndex = async () => {
     )
 
     actionLoading.value = true
-    const response = await fetch('/api/search/admin/index/incremental?minutes=60', {
+    const response = await fetch('/api/v1/search/admin/index/incremental?minutes=60', {
       method: 'POST'
     })
     const result = await response.json()

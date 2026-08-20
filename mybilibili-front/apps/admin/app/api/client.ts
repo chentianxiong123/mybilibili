@@ -80,7 +80,21 @@ api.interceptors.response.use(
     if (method !== 'get') {
       clearCacheFor(url)
     }
-    return response.data
+    // 归一化响应：兼容裸数据/裸数组/null → {code,data} 结构
+    const raw = response.data
+    let data = raw
+    const isEnvelope = raw !== null && raw !== undefined && typeof raw === 'object' &&
+      !Array.isArray(raw) && (raw as any).code !== undefined
+    if (isEnvelope) {
+      data = raw
+    } else if (Array.isArray(raw)) {
+      data = { code: 200, data: raw }
+    } else if (raw === null || raw === undefined) {
+      data = { code: 200, data: null }
+    } else if (typeof raw === 'object') {
+      data = { code: 200, data: raw }
+    }
+    return data
   },
   error => {
     const originalRequest = error.config
