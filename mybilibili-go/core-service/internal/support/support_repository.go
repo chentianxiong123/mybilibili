@@ -93,7 +93,7 @@ func (r *Repository) List(ctx context.Context, status string, page, size int32) 
 		return nil, err
 	}
 	defer rows.Close()
-	var list []*Ticket
+	list := make([]*Ticket, 0)
 	for rows.Next() {
 		t := &Ticket{}
 		rows.Scan(&t.ID, &t.TicketNo, &t.UserID, &t.Status, &t.Title, &t.Content, &t.CreatedAt)

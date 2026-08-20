@@ -27,6 +27,8 @@ export default defineNuxtConfig({
     '/api/v1/recommend/**': { proxy: 'http://localhost:8084/api/v1/recommend/**' },
     '/api/v1/creator/stats/**': { proxy: 'http://localhost:8084/api/v1/creator/stats/**' },
     '/api/v1/profile/**': { proxy: 'http://localhost:8084/api/v1/profile/**' },
+    '/api/v1/ai/**': { proxy: 'http://localhost:8088/api/v1/ai/**' },
+    '/api/v1/subtitle/**': { proxy: 'http://localhost:8088/api/v1/subtitle/**' },
     '/api/**': { proxy: 'http://localhost:8080/api/**' },
     '/uploads/**': { proxy: 'http://localhost:8080/uploads/**' },
     '/covers/**': { proxy: 'http://localhost:8080/covers/**' },
@@ -62,6 +64,14 @@ export default defineNuxtConfig({
         },
         '/api/v1/profile': {
           target: 'http://localhost:8084',
+          changeOrigin: true
+        },
+        '/api/v1/ai': {
+          target: 'http://localhost:8088',
+          changeOrigin: true
+        },
+        '/api/v1/subtitle': {
+          target: 'http://localhost:8088',
           changeOrigin: true
         },
         '/api': {

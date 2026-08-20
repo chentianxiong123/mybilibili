@@ -3,7 +3,7 @@ import request from './client'
 // 获取待处理会话列表
 export const getPendingSessions = () => {
   return request({
-    url: '/ai/admin/customer/sessions',
+    url: '/ai/customer/sessions',
     method: 'get'
   })
 }
@@ -36,7 +36,7 @@ export const resolveSession = (sessionId) => {
 // 获取待处理会话数量
 export const getPendingCount = () => {
   return request({
-    url: '/ai/admin/customer/sessions/pending/count',
+    url: '/ai/customer/sessions/pending/count',
     method: 'get'
   })
 }

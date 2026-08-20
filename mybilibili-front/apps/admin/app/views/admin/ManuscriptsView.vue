@@ -66,7 +66,7 @@ const loadManuscripts = async () => {
     }
 
     if (res.code === 200 || res.success) {
-      let list = res.data || []
+      let list = Array.isArray(res.data) ? res.data : (res.data?.list || [])
       if (keyword.value) {
         list = list.filter(item =>
           item.title?.includes(keyword.value) ||
