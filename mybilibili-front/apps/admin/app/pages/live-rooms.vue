@@ -4,5 +4,5 @@
 
 <script setup lang="ts">
 import LiveRoomsView from '~/views/admin/LiveRoomsView.vue'
-definePageMeta({ layout: 'none' })
+definePageMeta({ layout: 'default' })
 </script>

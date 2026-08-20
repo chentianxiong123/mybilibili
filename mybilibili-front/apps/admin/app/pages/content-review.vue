@@ -4,5 +4,5 @@
 
 <script setup lang="ts">
 import ContentReviewView from '~/views/admin/ContentReviewView.vue'
-definePageMeta({ layout: 'none' })
+definePageMeta({ layout: 'default' })
 </script>

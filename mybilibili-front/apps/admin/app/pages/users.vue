@@ -4,5 +4,5 @@
 
 <script setup lang="ts">
 import UsersView from '~/views/admin/UsersView.vue'
-definePageMeta({ layout: 'none' })
+definePageMeta({ layout: 'default' })
 </script>

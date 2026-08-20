@@ -4,5 +4,5 @@
 
 <script setup lang="ts">
 import NoPermissionView from '~/views/admin/NoPermissionView.vue'
-definePageMeta({ layout: 'none' })
+definePageMeta({ layout: 'default' })
 </script>
