@@ -77,6 +77,7 @@ func main() {
 	}()
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{"status":"ok"}`)) })
 	searchH.Register(mux)
 	analyticsH.Register(mux)
 	profileH.Register(mux)
