@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"mybilibili/pkg/abstraction"
 	"mybilibili/pkg/httputil"
 )
 
@@ -15,17 +14,11 @@ func writeJSON(w http.ResponseWriter, data interface{}) {
 }
 
 type Handler struct {
-	svc    *Service
-	engine abstraction.SearchEngine
+	svc *Service
 }
 
 func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
-}
-
-func (h *Handler) WithEngine(engine abstraction.SearchEngine) *Handler {
-	h.engine = engine
-	return h
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {

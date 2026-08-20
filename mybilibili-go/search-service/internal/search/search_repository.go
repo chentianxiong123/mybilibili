@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
-
-	"mybilibili/pkg/abstraction"
 )
 
 type Repository struct {
@@ -370,30 +368,4 @@ func (s *Service) RebuildSearchVector(ctx context.Context) (int64, error) {
 		return 0, err
 	}
 	return res.RowsAffected()
-}
-
-func (s *Service) BulkIndex(ctx context.Context, engine abstraction.SearchEngine) (int, error) {
-	rows, err := s.repo.db.QueryContext(ctx,
-		`SELECT id, title FROM manuscripts WHERE status = 3`)
-	if err != nil {
-		return 0, err
-	}
-	defer rows.Close()
-	docs := make(map[string]interface{})
-	count := 0
-	for rows.Next() {
-		var id int64
-		var title string
-		if err := rows.Scan(&id, &title); err != nil {
-			continue
-		}
-		docs[formatID(id)] = map[string]interface{}{"id": id, "title": title, "status": 3}
-		count++
-	}
-	if len(docs) > 0 {
-		if err := engine.BulkIndex(ctx, "manuscripts", docs); err != nil {
-			return 0, err
-		}
-	}
-	return count, nil
 }

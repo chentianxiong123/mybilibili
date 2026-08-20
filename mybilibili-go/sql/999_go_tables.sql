@@ -217,15 +217,8 @@ CREATE TABLE IF NOT EXISTS content_reviews (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 19. search_documents
-CREATE TABLE IF NOT EXISTS search_documents (
-    id TEXT NOT NULL,
-    index_name TEXT NOT NULL,
-    doc_json JSONB NOT NULL,
-    search_vector TSVECTOR,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (index_name, id)
-);
+-- 19. 已废弃：search_documents（旧 SearchEngine 抽象层，真实搜索走 manuscripts.search_vector）
+--     该表定义/索引已在迁移中移除（DROP 见 019）
 
 -- 20. jsonb_documents
 CREATE TABLE IF NOT EXISTS jsonb_documents (

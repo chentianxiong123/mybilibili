@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"log"
 	"net"
@@ -48,12 +47,7 @@ func main() {
 	searchRepo := search.NewRepository(db)
 	searchSvc := search.NewService(searchRepo)
 
-	searchEngine, _ := abstraction.NewSearchEngine(abstraction.SearchEngineConfig{Type: "pg-fts", DSN: dsn})
-	mq, _ := abstraction.NewMessageQueue(abstraction.MessageQueueConfig{Type: "memory"})
-
-	searchH := search.NewHandler(searchSvc).WithEngine(searchEngine)
-	indexMgr := search.NewIndexManager(searchEngine, mq)
-	go indexMgr.Start(context.Background())
+	searchH := search.NewHandler(searchSvc)
 
 	analyticsRepo := analytics.NewRepository(db)
 	analyticsSvc := analytics.NewService(analyticsRepo)
