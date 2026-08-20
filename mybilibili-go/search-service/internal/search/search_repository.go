@@ -21,27 +21,24 @@ func (r *Repository) SearchManuscripts(ctx context.Context, keyword string, cate
 	offset := (page - 1) * size
 	query := `SELECT id, title, description, cover_url, user_id, category_id, view_count, like_count,
 	          COALESCE(duration,''), status, upload_time FROM manuscripts WHERE status = 3`
-	args := []interface{}{size, offset}
+	var args []interface{}
+	kwIdx := 0
 	if keyword != "" {
-		query += ` AND (title ILIKE '%' || $3 || '%' OR description ILIKE '%' || $3 || '%')`
-		args = append([]interface{}{keyword}, args...)
+		args = append(args, keyword)
+		kwIdx = len(args)
+		query += ` AND search_vector @@ plainto_tsquery('zh_cn', $1)`
 	}
 	if categoryID > 0 {
-		query += ` AND category_id = $0`
+		args = append(args, categoryID)
+		query += fmt.Sprintf(` AND category_id = $%d`, len(args))
 	}
-	query += ` ORDER BY upload_time DESC LIMIT $1 OFFSET $2`
-
-	// rebuild args safely
-	args = []interface{}{size, offset}
-	filterCount := 2
-	if keyword != "" {
-		filterCount++
-		query = `SELECT id, title, description, cover_url, user_id, category_id, view_count, like_count,
-		         COALESCE(duration,''), status, upload_time FROM manuscripts WHERE status = 3
-		         AND (title ILIKE '%' || $3 || '%' OR description ILIKE '%' || $3 || '%')
-		         ORDER BY upload_time DESC LIMIT $2 OFFSET $1`
-		args = []interface{}{size, offset, keyword}
+	if kwIdx > 0 {
+		query += fmt.Sprintf(` ORDER BY ts_rank_cd(search_vector, plainto_tsquery('zh_cn', $%d)) DESC, view_count DESC, upload_time DESC`, kwIdx)
+	} else {
+		query += ` ORDER BY upload_time DESC`
 	}
+	query += fmt.Sprintf(` LIMIT $%d OFFSET $%d`, len(args)+1, len(args)+2)
+	args = append(args, size, offset)
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -187,7 +184,7 @@ func (s *Service) Suggest(ctx context.Context, keyword string, size int32) ([]st
 		return []string{}, nil
 	}
 	rows, err := s.repo.db.QueryContext(ctx,
-		`SELECT title FROM manuscripts WHERE status = 3 AND title ILIKE '%'||$1||'%'
+		`SELECT title FROM manuscripts WHERE status = 3 AND search_vector @@ to_tsquery('zh_cn', $1 || ':*')
 		 ORDER BY view_count DESC LIMIT $2`, keyword, size)
 	if err != nil {
 		return nil, err
