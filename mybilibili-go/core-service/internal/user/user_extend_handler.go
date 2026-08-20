@@ -6,17 +6,20 @@ import (
 	"encoding/json"
 	stderrors "errors"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
 	"net/smtp"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"mybilibili/pkg/httputil"
 	"mybilibili/pkg/errors"
+	"mybilibili/pkg/imageutil"
 	pb "mybilibili/pkg/pb"
 )
 
@@ -566,6 +569,11 @@ func (h *UserExtendHandler) handleMeAvatar(w http.ResponseWriter, r *http.Reques
 
 func (h *UserExtendHandler) handleUserByID(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimPrefix(r.URL.Path, "/api/v1/user/")
+	// Handle avatar upload: /api/v1/user/{id}/avatar
+	if strings.HasSuffix(idStr, "/avatar") {
+		h.handleAvatarUpload(w, r)
+		return
+	}
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || id <= 0 {
 		http.Error(w, "not found", 404)
@@ -588,6 +596,53 @@ func (h *UserExtendHandler) handleUserByID(w http.ResponseWriter, r *http.Reques
 		"level":      user.Level,
 		"created_at": user.CreatedAt,
 	})
+}
+
+func (h *UserExtendHandler) handleAvatarUpload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	idStr := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/v1/user/"), "/avatar")
+	uid, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || uid <= 0 {
+		http.Error(w, "invalid user id", 400)
+		return
+	}
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		http.Error(w, "parse form: "+err.Error(), 400)
+		return
+	}
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "file required", 400)
+		return
+	}
+	defer file.Close()
+	dir := "/tmp/mybilibili-uploads/avatars"
+	os.MkdirAll(dir, 0o755)
+	ext := filepath.Ext(header.Filename)
+	if ext == "" {
+		ext = ".jpg"
+	}
+	name := fmt.Sprintf("u%d_%d%s", uid, time.Now().Unix(), ext)
+	dst := filepath.Join(dir, name)
+	f, err := os.Create(dst)
+	if err != nil {
+		http.Error(w, "create file: "+err.Error(), 500)
+		return
+	}
+	io.Copy(f, file)
+	f.Close()
+	imageutil.CompressAndReplace(dst)
+	avatarURL := "/uploads/avatars/" + filepath.Base(dst)
+	_, dbErr := h.svc.repo.db.ExecContext(r.Context(),
+		`UPDATE users SET avatar = $1, updated_at = NOW() WHERE id = $2`, avatarURL, uid)
+	if dbErr != nil {
+		http.Error(w, "update avatar: "+dbErr.Error(), 500)
+		return
+	}
+	httputil.WriteOK(w, map[string]interface{}{"url": avatarURL})
 }
 
 func (h *UserExtendHandler) handleCaptcha(w http.ResponseWriter, r *http.Request) {

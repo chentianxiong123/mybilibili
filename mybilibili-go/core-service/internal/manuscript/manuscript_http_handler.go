@@ -19,6 +19,7 @@ import (
 	"mybilibili/pkg/httputil"
 	"mybilibili/core-service/internal/social"
 	"mybilibili/pkg/errors"
+	"mybilibili/pkg/imageutil"
 	pb "mybilibili/pkg/pb"
 )
 
@@ -1026,6 +1027,10 @@ func (h *ManuscriptHTTPHandler) handleUploadCompleteWeb(w http.ResponseWriter, r
 			_ = f.Close()
 		}
 		cover.Close()
+		// 压缩为 WebP
+		if webpPath, err := imageutil.CompressAndReplace(coverPath); err == nil {
+			coverPath = filepath.Join(dir, webpPath)
+		}
 	}
 	coverURL := ""
 	if coverPath != "" {

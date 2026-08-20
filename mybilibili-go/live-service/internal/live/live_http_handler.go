@@ -2,13 +2,18 @@ package live
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"mybilibili/pkg/httputil"
+	"mybilibili/pkg/imageutil"
 )
 
 type HTTPHandler struct {
@@ -90,6 +95,11 @@ func (h *HTTPHandler) handleRoomByID(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(room)
+		return
+	}
+
+	if parts[0] == "cover" {
+		h.handleCoverUpload(w, r)
 		return
 	}
 
@@ -219,6 +229,46 @@ func (h *HTTPHandler) handleSRSCallback(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"code":0}`))
+}
+
+func (h *HTTPHandler) handleCoverUpload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		http.Error(w, "parse form: "+err.Error(), 400)
+		return
+	}
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "file required", 400)
+		return
+	}
+	defer file.Close()
+	roomIDStr := r.FormValue("roomId")
+	roomID, _ := strconv.ParseInt(roomIDStr, 10, 64)
+	dir := "/tmp/mybilibili-uploads/live-covers"
+	os.MkdirAll(dir, 0o755)
+	ext := filepath.Ext(header.Filename)
+	if ext == "" {
+		ext = ".jpg"
+	}
+	name := fmt.Sprintf("room_%s_%d%s", roomIDStr, time.Now().UnixNano(), ext)
+	dst := filepath.Join(dir, name)
+	f, err := os.Create(dst)
+	if err != nil {
+		http.Error(w, "create file: "+err.Error(), 500)
+		return
+	}
+	io.Copy(f, file)
+	f.Close()
+	imageutil.CompressAndReplace(dst)
+	coverURL := "/uploads/live-covers/" + filepath.Base(dst)
+	if roomID > 0 {
+		h.svc.UpdateRoom(r.Context(), roomID, 0, "", coverURL, "")
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{"status": "uploaded", "url": coverURL})
 }
 
 func (h *HTTPHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
