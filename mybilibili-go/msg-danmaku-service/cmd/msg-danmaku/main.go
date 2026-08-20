@@ -72,6 +72,7 @@ func main() {
 	}()
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{"status":"ok"}`)) })
 	danmakuH.Register(mux)
 	messageH.Register(mux)
 	var handler http.Handler = mux

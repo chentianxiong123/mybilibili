@@ -44,6 +44,7 @@ func main() {
 	liveAdminH := live.NewAdminHandler(db)
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{"status":"ok"}`)) })
 	liveH.Register(mux)
 	linkmicH.Register(mux)
 	liveAdminH.Register(mux)
