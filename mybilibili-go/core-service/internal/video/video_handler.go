@@ -2,9 +2,15 @@ package video
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
+
+	"mybilibili/pkg/imageutil"
 )
 
 func writeJSON(w http.ResponseWriter, data interface{}) {
@@ -127,13 +133,34 @@ func (h *Handler) handleBanner(w http.ResponseWriter, r *http.Request) {
 		h.handleBannerSingle(w, r, 4)
 	case "upload":
 		if r.Method == "POST" {
-			var req struct {
-				Title    string `json:"title"`
-				ImageURL string `json:"image_url"`
-				LinkURL  string `json:"link_url"`
+			if err := r.ParseMultipartForm(32 << 20); err != nil {
+				http.Error(w, "parse form: "+err.Error(), 400)
+				return
 			}
-			json.NewDecoder(r.Body).Decode(&req)
-			json.NewEncoder(w).Encode(map[string]string{"url": req.ImageURL})
+			file, header, err := r.FormFile("file")
+			if err != nil {
+				http.Error(w, "file required", 400)
+				return
+			}
+			dir := "/tmp/mybilibili-uploads/images"
+			os.MkdirAll(dir, 0o755)
+			ext := filepath.Ext(header.Filename)
+			if ext == "" {
+				ext = ".jpg"
+			}
+			name := time.Now().Format("20060102150405") + "_" + strconv.FormatInt(time.Now().UnixNano(), 36) + ext
+			dst := filepath.Join(dir, name)
+			f, err := os.Create(dst)
+			if err != nil {
+				file.Close()
+				http.Error(w, "create file: "+err.Error(), 500)
+				return
+			}
+			io.Copy(f, file)
+			f.Close()
+			file.Close()
+			imageutil.CompressAndReplace(dst)
+			writeJSON(w, map[string]string{"url": "/uploads/images/" + filepath.Base(dst)})
 			return
 		}
 		http.Error(w, "method not allowed", 405)

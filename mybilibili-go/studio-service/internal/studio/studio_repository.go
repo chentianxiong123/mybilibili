@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"mybilibili/pkg/imageutil"
 )
 
 type ExportTask struct {
@@ -118,6 +120,9 @@ func (s *Service) UploadAsset(ctx context.Context, userID, taskID int64, assetTy
 	if err != nil {
 		return "", err
 	}
+	f.Close()
+	// compress image assets to WebP
+	imageutil.CompressAndReplace(dst)
 	url := fmt.Sprintf("/assets/studio/u%d/%s", userID, filepath.Base(dst))
 	_ = taskID
 	_ = assetType
