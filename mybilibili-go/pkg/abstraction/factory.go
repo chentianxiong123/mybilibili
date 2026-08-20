@@ -144,8 +144,6 @@ func NewSearchEngine(cfg SearchEngineConfig) (SearchEngine, error) {
 	switch cfg.Type {
 	case "memory":
 		return newMemorySearch(), nil
-	case "pg-fts":
-		return newPGFTS(cfg)
 	case "bleve":
 		return newBleveSearch(cfg)
 	case "elasticsearch":
