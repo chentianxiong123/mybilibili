@@ -185,8 +185,15 @@ func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 	case len(parts) >= 2 && parts[0] == "user" && r.Method == "GET":
 		uid, _ := strconv.ParseInt(parts[1], 10, 64)
 		page, limit := httputil.ParsePageParams(r)
-		list, _ := h.dynamicSvc.ListByUser(r.Context(), uid, page, limit)
-		json.NewEncoder(w).Encode(list)
+		list, err := h.dynamicSvc.ListByUser(r.Context(), uid, page, limit)
+		if err != nil {
+			httputil.WriteError(w, http.StatusInternalServerError, "database error")
+			return
+		}
+		if list == nil {
+			list = []*Dynamic{}
+		}
+		httputil.WriteOK(w, list)
 
 	case len(parts) >= 2 && parts[0] == "like":
 		id, _ := strconv.ParseInt(parts[1], 10, 64)
@@ -253,7 +260,23 @@ func (h *SocialHandler) handleCollection(w http.ResponseWriter, r *http.Request)
 	case len(parts) >= 2 && parts[0] == "user" && r.Method == "GET":
 		uid, _ := strconv.ParseInt(parts[1], 10, 64)
 		list, _ := h.collectSvc.ListByUser(r.Context(), uid)
-		json.NewEncoder(w).Encode(list)
+		if list == nil {
+			list = []map[string]interface{}{}
+		}
+		httputil.WriteOK(w, list)
+
+	case len(parts) >= 2 && parts[0] != "" && parts[1] == "manuscripts" && r.Method == "GET":
+		id, _ := strconv.ParseInt(parts[0], 10, 64)
+		page, limit := httputil.ParsePageParams(r)
+		ids, err := h.collectSvc.ListManuscripts(r.Context(), id, page, limit)
+		if err != nil {
+			httputil.WriteError(w, http.StatusInternalServerError, "database error")
+			return
+		}
+		if ids == nil {
+			ids = []int64{}
+		}
+		httputil.WriteOK(w, ids)
 
 	case len(parts) >= 1 && parts[0] != "" && r.Method == "GET" && !strings.Contains(parts[0], "manuscript"):
 		id, _ := strconv.ParseInt(parts[0], 10, 64)
@@ -276,13 +299,7 @@ func (h *SocialHandler) handleCollection(w http.ResponseWriter, r *http.Request)
 		h.collectSvc.Delete(r.Context(), id, userID)
 		w.Write([]byte(`{"status":"ok"}`))
 
-	case len(parts) >= 2 && parts[0] != "" && parts[1] == "manuscripts" && r.Method == "GET":
-		id, _ := strconv.ParseInt(parts[0], 10, 64)
-		page, limit := httputil.ParsePageParams(r)
-		ids, _ := h.collectSvc.ListManuscripts(r.Context(), id, page, limit)
-		json.NewEncoder(w).Encode(ids)
-
-	case len(parts) >= 3 && parts[1] == "manuscript" && r.Method == "POST":
+	case len(parts) >= 3 && parts[0] != "" && parts[1] == "manuscript" && r.Method == "POST":
 		collectionID, _ := strconv.ParseInt(parts[0], 10, 64)
 		manuscriptID, _ := strconv.ParseInt(parts[2], 10, 64)
 		h.collectSvc.AddManuscript(r.Context(), collectionID, manuscriptID, userID)

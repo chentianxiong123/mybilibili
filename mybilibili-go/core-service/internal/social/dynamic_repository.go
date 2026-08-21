@@ -9,17 +9,17 @@ import (
 )
 
 type Dynamic struct {
-	ID              int64
-	UserID          int64
-	Content         string
-	DynamicType     int32
-	ImageURL        string
-	RefManuscriptID int64
-	LikeCount       int32
-	CommentCount    int32
-	ShareCount      int32
-	Status          int32
-	CreatedAt       time.Time
+	ID              int64     `json:"id"`
+	UserID          int64     `json:"userId"`
+	Content         string    `json:"content"`
+	DynamicType     int32     `json:"dynamicType"`
+	ImageURL        string    `json:"imageUrl"`
+	RefManuscriptID int64     `json:"refManuscriptId"`
+	LikeCount       int32     `json:"likeCount"`
+	CommentCount    int32     `json:"commentCount"`
+	ShareCount      int32     `json:"shareCount"`
+	Status          int32     `json:"-"`
+	CreatedAt       time.Time `json:"createdAt"`
 }
 
 type DynamicComment struct {
