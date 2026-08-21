@@ -3,6 +3,7 @@ import { safeStorage } from '@/utils/safeStorage'
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ArrowDown } from '@element-plus/icons-vue'
+import { useVirtualizer } from '@tanstack/vue-virtual'
 import { dynamicApi } from '@/api/dynamic.ts'
 import { useUserStore } from '@/stores/user.ts'
 import { ElMessage } from 'element-plus'
@@ -30,12 +31,11 @@ const pageSize = ref(10)
 const hasMore = ref(true)
 const loading = ref(false)
 
-// 虚拟滚动（仅客户端动态加载，避免 SSR 引入 window）
+// 虚拟滚动（客户端挂载后再创建，避免 SSR 引入 window）
 const scrollContainer = ref(null)
 const virtualizer = ref(null)
-onMounted(async () => {
-  const { createVirtualizer } = await import('@tanstack/vue-virtual')
-  virtualizer.value = createVirtualizer({
+onMounted(() => {
+  virtualizer.value = useVirtualizer({
     count: computed(() => dynamicList.value.length),
     getScrollElement: () => scrollContainer.value,
     estimateSize: () => 200,
