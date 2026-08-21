@@ -103,6 +103,9 @@ func (h *ManuscriptHTTPHandler) handleManuscriptRoute(w http.ResponseWriter, r *
 	case "favoriteFolderByID":
 		r.SetPathValue("id", parts[2])
 		h.handleFavoriteFolderByID(w, r)
+	case "favoriteFolderVideos":
+		r.SetPathValue("id", parts[2])
+		h.handleFavoriteFolderVideos(w, r)
 	case "detail":
 		r.SetPathValue("id", parts[0])
 		h.handleManuscriptDetail(w, r)
@@ -224,6 +227,9 @@ func manuscriptRouteName(parts []string) string {
 		}
 		if len(parts) == 3 && parts[1] == "folders" {
 			return "favoriteFolderByID"
+		}
+		if len(parts) == 4 && parts[1] == "folders" && parts[3] == "videos" {
+			return "favoriteFolderVideos"
 		}
 		return ""
 	default:
@@ -897,6 +903,55 @@ func (h *ManuscriptHTTPHandler) handleFavoriteFolderByID(w http.ResponseWriter, 
 	default:
 		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
 	}
+}
+
+// handleFavoriteFolderVideos GET /api/v1/manuscript/favorite/folders/{id}/videos — 收藏夹内稿件列表。
+func (h *ManuscriptHTTPHandler) handleFavoriteFolderVideos(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(httputil.PathValue(r, "id"), 10, 64)
+	uid, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	if r.Method != http.MethodGet {
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	// 校验收藏夹归属
+	var owner int64
+	err := h.db.QueryRowContext(r.Context(), `SELECT user_id FROM favorite_folders WHERE id = $1`, id).Scan(&owner)
+	if err == sql.ErrNoRows {
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]interface{}{"code": 404, "message": "folder not found", "data": nil})
+		return
+	}
+	if err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal("database error"))
+		return
+	}
+	if owner != uid {
+		httputil.WriteJSON(w, http.StatusForbidden, map[string]interface{}{"code": 403, "message": "forbidden", "data": nil})
+		return
+	}
+	sortOrder := r.URL.Query().Get("sortOrder")
+	order := "DESC"
+	if strings.EqualFold(sortOrder, "asc") {
+		order = "ASC"
+	}
+	rows, err := h.db.QueryContext(r.Context(),
+		`SELECT manuscript_id, created_at FROM favorite_folder_videos WHERE folder_id = $1 ORDER BY created_at `+order, id)
+	if err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal("database error"))
+		return
+	}
+	defer rows.Close()
+	ids := []int64{}
+	for rows.Next() {
+		var mid int64
+		var createdAt any
+		_ = rows.Scan(&mid, &createdAt)
+		ids = append(ids, mid)
+	}
+	list := h.manuscriptsByIDs(r.Context(), ids)
+	httputil.WriteOK(w, list)
 }
 
 // ---- 上传分片（web-ts 直传兼容） ----
