@@ -44,8 +44,10 @@ const userInfo = ref({
 // 当前用户ID，从路由参数或本地存储获取
 const userId = ref(route.params.id || JSON.parse(safeStorage.getItem('user'))?.id)
 
-// 获取当前登录用户ID
+// 获取当前登录用户ID（服务端渲染时始终返回 null，避免水合不一致）
+const hydrated = ref(false)
 const currentUserId = computed(() => {
+  if (!hydrated.value) return null
   const user = JSON.parse(safeStorage.getItem('user') || '{}')
   return user.id
 })
@@ -532,6 +534,7 @@ watch(() => route.params.id, (newId) => {
 
 // 在组件挂载时加载数据
 onMounted(() => {
+  hydrated.value = true
   // 如果watch已经触发，这里不再重复加载
   if (!userId.value) {
     loadUserInfo()
