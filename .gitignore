@@ -28,3 +28,6 @@ dist/
 
 mybilibili-go/core
 mybilibili-go/media
+
+# NFS temporary files
+.nfs*
