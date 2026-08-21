@@ -588,8 +588,7 @@ onMounted(() => {
                 v-model="videoSearch.keyword"
                 @keyup.enter="handleVideoSearch"
               >
-              >
-            </div>
+              </div>
           </div>
         </div>
 
