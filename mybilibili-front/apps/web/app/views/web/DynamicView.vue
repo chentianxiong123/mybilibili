@@ -18,6 +18,8 @@ const userStore = useUserStore()
 
 const currentUser = computed(() => userStore.userInfo || {})
 
+const hydrated = ref(false)
+
 const publishPanelRef = ref(null)
 
 const followingUsers = ref([
@@ -272,6 +274,7 @@ const initUserInfo = () => {
 }
 
 onMounted(() => {
+  hydrated.value = true
   initUserInfo()
   fetchFollowingUsers()
   fetchDynamics()
@@ -283,7 +286,7 @@ onMounted(() => {
   <div class="dynamic-page">
     <div class="dynamic-container">
       <aside class="left-sidebar">
-        <div class="user-card" v-if="userStore.isLoggedIn && currentUser.id">
+        <div class="user-card" v-if="hydrated && userStore.isLoggedIn && currentUser.id">
           <div class="user-avatar-section" @click="goToUserProfile(currentUser.id)">
             <img loading="lazy" decoding="async" :src="currentUser.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" alt="头像" class="user-avatar">
             <div class="user-level" v-if="currentUser.level">LV{{ currentUser.level }}</div>
