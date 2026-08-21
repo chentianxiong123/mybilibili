@@ -89,15 +89,15 @@ func (w *TranscodeWorker) Transcode(ctx context.Context, srcFile, outDir string,
 	return err
 }
 
-// ExtractAudio extracts the audio track into WAV format for Whisper.
+// ExtractAudio extracts the audio track into MP3 format (Cloudflare Whisper compatible).
 func (w *TranscodeWorker) ExtractAudio(ctx context.Context, srcFile, outDir string) error {
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return err
 	}
-	out := filepath.Join(outDir, "audio.wav")
+	out := filepath.Join(outDir, "audio.mp3")
 	_, err := w.ffmpeg.Run(ctx,
-		"-i", srcFile, "-vn", "-acodec", "pcm_s16le",
-		"-ar", "16000", "-ac", "1", out)
+		"-i", srcFile, "-vn", "-acodec", "libmp3lame",
+		"-b:a", "64k", "-ar", "44100", "-ac", "1", out)
 	return err
 }
 
