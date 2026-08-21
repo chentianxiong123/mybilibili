@@ -21,6 +21,13 @@ export default defineNuxtConfig({
     }
   },
   routeRules: {
+    // === 私有/个性化页面关闭 SSR（避免 hydration 不一致；业界标准做法，见 docs/decisions） ===
+    '/dynamic/**': { ssr: false },
+    '/profile/**': { ssr: false },
+    '/personal-center/**': { ssr: false },
+    '/message/**': { ssr: false },
+    '/history': { ssr: false },
+    '/avatar': { ssr: false },
     '/live/**': { ssr: false },
     '/create-center/**': { ssr: false },
     '/api/v1/search/**': { proxy: 'http://localhost:8084/api/v1/search/**' },
