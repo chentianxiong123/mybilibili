@@ -126,21 +126,21 @@ func (p *Pipeline) doExtractAudio(ctx context.Context, task ProcessMessage, dir 
 		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "音频提取失败", 0, 7, err.Error())
 		return
 	}
-	audioFile := filepath.Join(dir, "audio.wav")
-	key := fmt.Sprintf("manuscripts/%d/videos/%d/audio/audio.wav", task.ManuscriptID, task.VideoID)
+	audioFile := filepath.Join(dir, "audio.mp3")
+	key := fmt.Sprintf("manuscripts/%d/videos/%d/audio/audio.mp3", task.ManuscriptID, task.VideoID)
 	f, err := os.Open(audioFile)
 	if err != nil {
 		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "读取音频失败", 0, 7, err.Error())
 		return
 	}
 	defer f.Close()
-	p.storage.Put(ctx, "mybilibili", key, f, "audio/wav")
+	p.storage.Put(ctx, "mybilibili", key, f, "audio/mpeg")
 	p.emitProgress(task.VideoID, task.ManuscriptID, "audio", "音频提取完成", 100, 2, "")
 }
 
 func (p *Pipeline) doGenerateSubtitle(ctx context.Context, task ProcessMessage, dir string) {
 	p.emitProgress(task.VideoID, task.ManuscriptID, "subtitle", "生成字幕", 10, 3, "")
-	audioFile := filepath.Join(dir, "audio.wav")
+	audioFile := filepath.Join(dir, "audio.mp3")
 	_ = audioFile
 	// Whisper stub: in production, call whisper.cpp or OpenAI Whisper API via ServiceCaller
 	subContent := `[{"index":1,"startTime":0,"endTime":1,"text":"..."}]`
