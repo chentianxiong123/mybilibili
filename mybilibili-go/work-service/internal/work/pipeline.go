@@ -31,9 +31,10 @@ func NewPipeline(
 	docStore abstraction.DocumentStore,
 	search abstraction.SearchEngine,
 	workDir string,
+	encoder string,
 ) *Pipeline {
 	return &Pipeline{
-		transcoder: NewTranscodeWorker(storage),
+		transcoder: NewTranscodeWorker(storage, encoder),
 		mq:         mq,
 		storage:    storage,
 		docStore:   docStore,

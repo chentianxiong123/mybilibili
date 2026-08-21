@@ -67,6 +67,7 @@ const allMenuItems = [
       { path: '/users', icon: 'User', title: '用户管理', permission: 'user:manage' },
       { path: '/login-logs', icon: 'List', title: '登录日志', permission: 'security:manage' },
       { path: '/audit-logs', icon: 'Tickets', title: '审计日志', permission: 'audit:manage' },
+      { path: '/transcode-config', icon: 'Cpu', title: '转码配置', permission: 'video:manage' },
       { path: '/admins', icon: 'Lock', title: '管理员与角色权限', permission: 'role:manage', superAdminOnly: true }
     ]
   }

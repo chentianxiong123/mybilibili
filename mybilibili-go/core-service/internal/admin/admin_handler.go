@@ -3,6 +3,8 @@ package admin
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -32,6 +34,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/admin/login-logs/list", h.handleLoginLogs)
 	mux.HandleFunc("/api/v1/admin/login-logs/user/", h.handleUserLoginLogs)
 	mux.HandleFunc("/api/v1/admin/security-settings", h.handleSecuritySettings)
+	mux.HandleFunc("/api/v1/admin/transcode-config", h.handleTranscodeConfig)
 	mux.HandleFunc("/api/v1/admin/storage/migrate", h.handleStorageMigrate)
 	mux.HandleFunc("/api/v1/admin/operation-tasks", h.handleOperationTasks)
 	mux.HandleFunc("/api/v1/admin/operation-tasks/list", h.handleOperationTasks)
@@ -421,6 +424,61 @@ func (h *Handler) handleSecuritySettings(w http.ResponseWriter, r *http.Request)
 	}
 }
 
+// handleTranscodeConfig 读取/更新转码编码器配置。
+// GET：返回当前保存的 encoder 配置 + 本机硬件探测结果（是否可用 VAAPI 硬编）；
+// PUT：保存 encoder 配置（auto | vaapi | x264）。
+func (h *Handler) handleTranscodeConfig(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		var cfg string
+		err := h.svc.repo.db.QueryRowContext(r.Context(),
+			`SELECT config_value FROM system_configs WHERE config_key='transcode_encoder'`).Scan(&cfg)
+		if err != nil {
+			cfg = "auto"
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"encoder":  cfg,
+			"vaapi":    h.detectVAAPI(),
+			"vaapiDev": os.Getenv("VAAPI_DEVICE"),
+			"options":  []string{"auto", "vaapi", "x264"},
+		})
+	case "PUT":
+		var req struct {
+			Encoder string `json:"encoder"`
+		}
+		json.NewDecoder(r.Body).Decode(&req)
+		if req.Encoder != "auto" && req.Encoder != "vaapi" && req.Encoder != "x264" {
+			http.Error(w, "invalid encoder, must be auto|vaapi|x264", 400)
+			return
+		}
+		_, err := h.svc.repo.db.ExecContext(r.Context(),
+			`INSERT INTO system_configs (config_key, config_value, updated_at, updated_by)
+			 VALUES ('transcode_encoder', $1, NOW(), $2)
+			 ON CONFLICT (config_key) DO UPDATE SET config_value=$1, updated_at=NOW(), updated_by=$2`,
+			req.Encoder, httputil.GetAdminIDFromHeader(r))
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{"status": "ok", "encoder": req.Encoder})
+	default:
+		http.Error(w, "method not allowed", 405)
+	}
+}
+
+// detectVAAPI 探测本机是否有可用的 VAAPI 硬件编码（/dev/dri 设备 + ffmpeg 支持 h264_vaapi）。
+func (h *Handler) detectVAAPI() bool {
+	if _, err := os.Stat("/dev/dri/renderD128"); err != nil {
+		return false
+	}
+	cmd := exec.Command("ffmpeg", "-hide_banner", "-encoders")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(out), "h264_vaapi")
+}
+
 // handleAdminByID 分派 /api/v1/admin/{id} 及子路径
 func (h *Handler) handleAdminByID(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/admin/")
@@ -431,7 +489,7 @@ func (h *Handler) handleAdminByID(w http.ResponseWriter, r *http.Request) {
 	}
 	// 跳过已知的有独立 handler 的子路径
 	switch parts[0] {
-	case "roles", "permissions", "login", "register", "list", "login-logs", "audit-logs", "storage", "operation-tasks", "security-settings":
+	case "roles", "permissions", "login", "register", "list", "login-logs", "audit-logs", "storage", "operation-tasks", "security-settings", "transcode-config":
 		http.Error(w, "not found", 404)
 		return
 	}

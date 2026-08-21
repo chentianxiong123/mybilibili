@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
+	_ "github.com/lib/pq"
 	"mybilibili/pkg/abstraction"
 	"mybilibili/work-service/internal/work"
 )
@@ -45,8 +47,9 @@ func main() {
 	}
 
 	workDir := getEnv("WORK_DIR", "/tmp/work")
+	encoder := loadTranscodeEncoder(getEnv("PG_DSN", ""), getEnv("TRANSCODE_ENCODER", "auto"))
 
-	pipeline := work.NewPipeline(mq, storage, docStore, search, workDir)
+	pipeline := work.NewPipeline(mq, storage, docStore, search, workDir, encoder)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -69,4 +72,26 @@ func getEnv(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// loadTranscodeEncoder 优先读取后台配置的 system_configs.transcode_encoder，
+// 便于运营在后台切换转码编码器而无需改环境变量；读不到时回退到 env 或 auto。
+func loadTranscodeEncoder(dsn, fallback string) string {
+	if dsn == "" {
+		return fallback
+	}
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return fallback
+	}
+	defer db.Close()
+	var val string
+	if err := db.QueryRow(`SELECT config_value FROM system_configs WHERE config_key='transcode_encoder'`).Scan(&val); err != nil {
+		return fallback
+	}
+	if val == "auto" || val == "vaapi" || val == "x264" {
+		log.Printf("transcode encoder from config center: %s", val)
+		return val
+	}
+	return fallback
 }
