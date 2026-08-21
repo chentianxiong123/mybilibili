@@ -39,7 +39,7 @@ class LiveRoom {
 
   bool get isLive => status == 1;
 
-  String get streamUrl => 'http://localhost:8080/live/$roomCode.flv';
+  String get streamUrl => 'http://192.168.31.204:8080/live/$roomCode.flv';
 }
 
 class LiveApi {
