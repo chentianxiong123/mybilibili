@@ -34,6 +34,10 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
+      '/api/v1/search/history': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      },
       '/api/v1/search/': {
         target: 'http://localhost:8084',
         changeOrigin: true

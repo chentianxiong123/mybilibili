@@ -116,6 +116,18 @@ routers:
     tls:
       certResolver: letsencrypt
 
+  # ＝＝＝ 搜索历史（core 处理，优先级高于 search-api）＝＝＝
+  search-history-api:
+    rule: "Host(`mylib.com`) && PathPrefix(`/api/v1/search/history`)"
+    priority: 20
+    service: core
+    middlewares:
+      - jwt-auth
+      - rate-limit
+      - security-headers
+    tls:
+      certResolver: letsencrypt
+
   # ＝＝＝ 搜索推荐 + 创作者分析 + 用户画像（搜索推荐服务）＝＝＝
   search-api:
     rule: "Host(`mylib.com`) && (PathPrefix(`/api/v1/search/`) || PathPrefix(`/api/v1/recommend/`) || PathPrefix(`/api/v1/creator/stats/`) || PathPrefix(`/api/v1/profile/`))"
