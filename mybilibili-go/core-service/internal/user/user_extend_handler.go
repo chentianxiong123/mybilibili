@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/smtp"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -54,6 +55,24 @@ func (h *UserExtendHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/captcha/", h.handleCaptcha)
 }
 
+func (h *UserExtendHandler) setSessionCookies(w http.ResponseWriter, token, refreshToken string, userID int64, nickname, avatar string) {
+	http.SetCookie(w, &http.Cookie{
+		Name: "token", Value: token, Path: "/",
+		MaxAge: 86400 * 7, HttpOnly: false, SameSite: http.SameSiteLaxMode,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name: "refresh_token", Value: refreshToken, Path: "/",
+		MaxAge: 86400 * 30, HttpOnly: false, SameSite: http.SameSiteLaxMode,
+	})
+	userJSON, _ := json.Marshal(map[string]interface{}{
+		"id": userID, "nickname": nickname, "avatar": avatar,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name: "user_info", Value: url.QueryEscape(string(userJSON)), Path: "/",
+		MaxAge: 86400 * 7, HttpOnly: false, SameSite: http.SameSiteLaxMode,
+	})
+}
+
 func (h *UserExtendHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "method not allowed", 405)
@@ -85,6 +104,7 @@ func (h *UserExtendHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 	if user != nil {
 		avatar = user.Avatar
 	}
+	h.setSessionCookies(w, resp.Token, refreshToken, resp.UserId, resp.Nickname, avatar)
 	httputil.WriteOK(w, map[string]interface{}{
 		"token":         resp.Token,
 		"refresh_token": refreshToken,
@@ -118,6 +138,7 @@ func (h *UserExtendHandler) handleRegister(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	refreshToken, _ := h.svc.jwt.GenerateRefresh(resp.UserId)
+	h.setSessionCookies(w, resp.Token, refreshToken, resp.UserId, req.Nickname, "")
 	httputil.WriteOK(w, map[string]interface{}{
 		"token":         resp.Token,
 		"refresh_token": refreshToken,
@@ -148,6 +169,7 @@ func (h *UserExtendHandler) handleRefresh(w http.ResponseWriter, r *http.Request
 	}
 	newToken, _ := h.svc.jwt.Generate(userID)
 	newRefresh, _ := h.svc.jwt.GenerateRefresh(userID)
+	h.setSessionCookies(w, newToken, newRefresh, userID, user.Nickname, user.Avatar)
 	httputil.WriteOK(w, map[string]interface{}{
 		"token":         newToken,
 		"refresh_token": newRefresh,
