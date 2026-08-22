@@ -34,6 +34,7 @@ func (h *SocialHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/collection/", h.handleCollection)
 	mux.HandleFunc("/api/v1/share/", h.handleShare)
 	mux.HandleFunc("/api/v1/watch-history/", h.handleWatchHistory)
+	mux.HandleFunc("/api/v1/watch-history", h.handleWatchHistory)
 }
 
 func (h *SocialHandler) handleDynamicCommentList(w http.ResponseWriter, r *http.Request) {
@@ -355,31 +356,54 @@ func (h *SocialHandler) handleShare(w http.ResponseWriter, r *http.Request) {
 func (h *SocialHandler) handleWatchHistory(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/watch-history/")
+	if path == r.URL.Path {
+		path = ""
+	}
 
 	switch r.Method {
 	case "GET":
 		page, limit := httputil.ParsePageParams(r)
 		offset := (page - 1) * limit
 		rows, err := h.shareRepo.db.QueryContext(r.Context(),
-			`SELECT manuscript_id, progress_seconds, watched_at FROM watch_history WHERE user_id = $1 ORDER BY watched_at DESC LIMIT $2 OFFSET $3`,
+			`SELECT wh.id, wh.manuscript_id, wh.progress_seconds, wh.watched_at,
+			        m.title, m.cover_url, u.nickname, u.avatar
+			 FROM watch_history wh
+			 JOIN manuscripts m ON m.id = wh.manuscript_id
+			 JOIN users u ON u.id = m.user_id
+			 WHERE wh.user_id = $1
+			 ORDER BY wh.watched_at DESC LIMIT $2 OFFSET $3`,
 			userID, limit, offset)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			httputil.WriteError(w, 500, err.Error())
 			return
 		}
 		defer rows.Close()
-		type WH struct {
-			ManuscriptID int64  `json:"manuscript_id"`
-			Progress     int    `json:"progress_seconds"`
-			WatchedAt    string `json:"watched_at"`
+		type WHItem struct {
+			ID              int64  `json:"id"`
+			VideoID         int64  `json:"videoId"`
+			ManuscriptID    int64  `json:"manuscriptId"`
+			ProgressSeconds int    `json:"progressSeconds"`
+			WatchedAt       string `json:"watchedAt"`
+			Video           struct {
+				Title        string `json:"title"`
+				CoverURL     string `json:"coverUrl"`
+				ManuscriptID int64  `json:"manuscriptId"`
+				Uploader     struct {
+					Name   string `json:"name"`
+					Avatar string `json:"avatar"`
+				} `json:"uploader"`
+			} `json:"video"`
 		}
-		var list []WH
+		var list []WHItem = []WHItem{}
 		for rows.Next() {
-			var wh WH
-			rows.Scan(&wh.ManuscriptID, &wh.Progress, &wh.WatchedAt)
-			list = append(list, wh)
+			var item WHItem
+			rows.Scan(&item.ID, &item.ManuscriptID, &item.ProgressSeconds, &item.WatchedAt,
+				&item.Video.Title, &item.Video.CoverURL, &item.Video.Uploader.Name, &item.Video.Uploader.Avatar)
+			item.VideoID = item.ManuscriptID
+			item.Video.ManuscriptID = item.ManuscriptID
+			list = append(list, item)
 		}
-		json.NewEncoder(w).Encode(list)
+		httputil.WriteOK(w, list)
 
 	case "POST":
 		manuscriptID, _ := strconv.ParseInt(r.URL.Query().Get("manuscript_id"), 10, 64)
@@ -391,11 +415,14 @@ func (h *SocialHandler) handleWatchHistory(w http.ResponseWriter, r *http.Reques
 		w.Write([]byte(`{"status":"ok"}`))
 
 	case "DELETE":
-		if manuscriptID, err := strconv.ParseInt(path, 10, 64); err == nil && manuscriptID > 0 {
-			h.shareRepo.db.ExecContext(r.Context(), `DELETE FROM watch_history WHERE user_id = $1 AND manuscript_id = $2`, userID, manuscriptID)
-		} else {
-			h.shareRepo.db.ExecContext(r.Context(), `DELETE FROM watch_history WHERE user_id = $1`, userID)
+		if path != "" {
+			if id, err := strconv.ParseInt(path, 10, 64); err == nil && id > 0 {
+				h.shareRepo.db.ExecContext(r.Context(), `DELETE FROM watch_history WHERE id = $1 AND user_id = $2`, id, userID)
+				w.Write([]byte(`{"status":"ok"}`))
+				return
+			}
 		}
+		h.shareRepo.db.ExecContext(r.Context(), `DELETE FROM watch_history WHERE user_id = $1`, userID)
 		w.Write([]byte(`{"status":"ok"}`))
 	}
 }
