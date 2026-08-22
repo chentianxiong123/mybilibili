@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<script src="https://cdn.jsdelivr.net/npm/artplayer@5.1.6/dist/artplayer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/artplayer-plugin-danmuku@5.1.4/dist/artplayer-plugin-danmuku.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; overflow: hidden; }
+#player { width: 100%; aspect-ratio: 16/9; }
+</style>
+</head>
+<body>
+<div id="player"></div>
+<script>
+let art = null;
+let barrages = [];
+let currentTime = 0;
+
+function sendToNative(action, data) {
+  window.location.href = 'native://' + action + '?' + new URLSearchParams(data || {});
+}
+
+function buildQualityOptions(video) {
+  const opts = [];
+  if (video.playUrlHd) opts.push({ default: true, name: '1080P 高清', html: '1080P 高清', url: video.playUrlHd });
+  if (video.playUrlSd) opts.push({ default: !video.playUrlHd, name: '720P 标清', html: '720P 标清', url: video.playUrlSd });
+  if (video.playUrlLd) opts.push({ default: !video.playUrlHd && !video.playUrlSd, name: '480P 流畅', html: '480P 流畅', url: video.playUrlLd });
+  if (opts.length === 0 && video.playUrl) opts.push({ default: true, name: '默认', html: '默认', url: video.playUrl });
+  return opts;
+}
+
+function initVideo(video) {
+  if (art) { art.destroy(); art = null; }
+  if (!video || !video.playUrl) return;
+
+  const defaultUrl = video.playUrl || video.playUrlHd || '';
+  const qualityOptions = buildQualityOptions(video);
+  const isHls = defaultUrl.endsWith('.m3u8');
+
+  const config = {
+    container: '#player',
+    url: defaultUrl,
+    poster: video.pic || '',
+    volume: 0.7,
+    isLive: false,
+    muted: false,
+    autoplay: false,
+    pip: false,
+    autoSize: false,
+    autoMini: false,
+    screenshot: false,
+    setting: true,
+    loop: false,
+    flip: false,
+    playbackRate: true,
+    aspectRatio: false,
+    fullscreen: true,
+    fullscreenWeb: false,
+    miniProgressBar: false,
+    quality: qualityOptions,
+    theme: '#fb7299',
+    lang: 'zh-cn',
+    type: isHls ? 'm3u8' : 'mp4',
+    customType: {
+      m3u8: function(video, url) {
+        if (video.canPlayType('application/x-mpegURL')) {
+          video.src = url;
+        } else if (Hls.isSupported()) {
+          var hls = new Hls();
+          hls.loadSource(url);
+          hls.attachMedia(video);
+        }
+      }
+    }
+  };
+
+  if (barrages.length > 0) {
+    config.plugins = [
+      ArtplayerPluginDanmuku({
+        danmuku: barrages,
+        speed: 5,
+        opacity: 1,
+        color: '#ffffff',
+        fontSize: 20,
+        synchronousPlayback: true,
+        maxLength: 50,
+        margin: [6, 6, 6, 6],
+        theme: 'dark',
+        width: 0,
+        lockTime: 3
+      })
+    ];
+  }
+
+  art = new Artplayer(config);
+
+  art.on('ready', function() {
+    sendToNative('ready', { duration: art.duration });
+  });
+  art.on('play', function() { sendToNative('play', {}); });
+  art.on('pause', function() { sendToNative('pause', {}); });
+  art.on('ended', function() { sendToNative('ended', {}); });
+  art.on('timeupdate', function() {
+    currentTime = art.currentTime;
+    sendToNative('timeupdate', { time: art.currentTime, duration: art.duration });
+  });
+}
+
+function setBarrages(data) {
+  barrages = data || [];
+}
+
+function seek(time) {
+  if (art) art.currentTime = time;
+}
+
+function play() {
+  if (art) art.play();
+}
+
+function pause() {
+  if (art) art.pause();
+}
+</script>
+</body>
+</html>
