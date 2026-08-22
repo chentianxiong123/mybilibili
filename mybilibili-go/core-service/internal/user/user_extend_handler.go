@@ -134,6 +134,11 @@ func (h *UserExtendHandler) handleRefresh(w http.ResponseWriter, r *http.Request
 		errors.WriteHTTPError(w, errors.ErrUnauthenticated("invalid or expired refresh token"))
 		return
 	}
+	user, err := h.svc.repo.FindByID(r.Context(), userID)
+	if err != nil || user.Status != 1 {
+		errors.WriteHTTPError(w, errors.ErrUnauthenticated("account is disabled"))
+		return
+	}
 	newToken, _ := h.svc.jwt.Generate(userID)
 	newRefresh, _ := h.svc.jwt.GenerateRefresh(userID)
 	httputil.WriteOK(w, map[string]interface{}{
@@ -526,6 +531,13 @@ func (h *UserExtendHandler) handleMe(w http.ResponseWriter, r *http.Request) {
 			switch k {
 			case "nickname":
 				if s, ok := v.(string); ok && s != "" {
+					var exists int
+					_ = h.svc.repo.db.QueryRowContext(r.Context(),
+						`SELECT COUNT(*) FROM users WHERE nickname = $1 AND id != $2`, s, uid).Scan(&exists)
+					if exists > 0 {
+						httputil.WriteJSON(w, http.StatusConflict, map[string]interface{}{"code": 409, "message": "昵称已存在", "data": nil})
+						return
+					}
 					_, _ = h.svc.repo.db.ExecContext(r.Context(),
 						`UPDATE users SET nickname = $1, updated_at = NOW() WHERE id = $2`, s, uid)
 				}
