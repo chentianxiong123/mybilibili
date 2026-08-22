@@ -120,42 +120,6 @@ func NewLiveProxy() *LiveProxy {
 	return &LiveProxy{proxy: httputil.NewSingleHostReverseProxy(u), prefix: "/api/v1/live/"}
 }
 
-func NewSearchProxy() *LiveProxy {
-	target := os.Getenv("SEARCH_SERVICE_ADDR")
-	if target == "" {
-		target = "http://127.0.0.1:8084"
-	}
-	u, _ := url.Parse(target)
-	return &LiveProxy{proxy: httputil.NewSingleHostReverseProxy(u), prefix: "/api/v1/search/"}
-}
-
-func NewRecommendProxy() *LiveProxy {
-	target := os.Getenv("SEARCH_SERVICE_ADDR")
-	if target == "" {
-		target = "http://127.0.0.1:8084"
-	}
-	u, _ := url.Parse(target)
-	return &LiveProxy{proxy: httputil.NewSingleHostReverseProxy(u), prefix: "/api/v1/recommend/"}
-}
-
-func NewDanmakuProxy() *LiveProxy {
-	target := os.Getenv("MSG_DANMAKU_SERVICE_ADDR")
-	if target == "" {
-		target = "http://127.0.0.1:8086"
-	}
-	u, _ := url.Parse(target)
-	return &LiveProxy{proxy: httputil.NewSingleHostReverseProxy(u), prefix: "/api/v1/danmaku/"}
-}
-
-func NewMessageProxy() *LiveProxy {
-	target := os.Getenv("MSG_DANMAKU_SERVICE_ADDR")
-	if target == "" {
-		target = "http://127.0.0.1:8086"
-	}
-	u, _ := url.Parse(target)
-	return &LiveProxy{proxy: httputil.NewSingleHostReverseProxy(u), prefix: "/api/v1/message/"}
-}
-
 func isImageKey(key string) bool {
 	return strings.HasPrefix(key, "manuscripts/") &&
 		(strings.HasSuffix(key, ".webp") || strings.HasSuffix(key, ".png") ||

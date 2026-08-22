@@ -128,6 +128,30 @@ routers:
     tls:
       certResolver: letsencrypt
 
+  # ＝＝＝ 弹幕 + 消息（msg-danmaku 服务）＝＝＝
+  msg-danmaku-api:
+    rule: "Host(`mylib.com`) && (PathPrefix(`/api/v1/danmaku/`) || PathPrefix(`/api/v1/message/`))"
+    priority: 15
+    service: msg-danmaku
+    middlewares:
+      - jwt-auth
+      - rate-limit
+      - security-headers
+    tls:
+      certResolver: letsencrypt
+
+  # ＝＝＝ 直播 API（live 服务）＝＝＝
+  live-api:
+    rule: "Host(`mylib.com`) && PathPrefix(`/api/v1/live/`)"
+    priority: 15
+    service: live
+    middlewares:
+      - jwt-auth
+      - rate-limit
+      - security-headers
+    tls:
+      certResolver: letsencrypt
+
   # ＝＝＝ API 路由（带 JWT）＝＝＝
   core-api:
     rule: "Host(`mylib.com`) && PathPrefix(`/api/v1/`)"
@@ -233,9 +257,18 @@ services:
   live:
     loadBalancer:
       servers:
-        - url: "http://localhost:8081"
+        - url: "http://localhost:8087"
       healthCheck:
-        path: /api/v1/health
+        path: /api/v1/live/health
+        interval: 10s
+        timeout: 3s
+
+  msg-danmaku:
+    loadBalancer:
+      servers:
+        - url: "http://localhost:8086"
+      healthCheck:
+        path: /health
         interval: 10s
         timeout: 3s
 
