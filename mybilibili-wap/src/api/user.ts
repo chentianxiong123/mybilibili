@@ -6,7 +6,7 @@ export function normalizeUser(raw: any) {
   const user = raw?.user || raw?.data?.user || raw?.data || raw || {}
   return {
     ...user,
-    id: user.id || user.userId || user.mid,
+    id: user.id || user.userId || user.mid || user.user_id,
     username: user.username || user.name || '',
     nickname: user.nickname || user.username || user.name || '',
     avatar: user.avatar || user.avatarUrl || user.face || '',

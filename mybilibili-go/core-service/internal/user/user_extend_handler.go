@@ -80,11 +80,17 @@ func (h *UserExtendHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 		`INSERT INTO login_logs (user_id, ip, user_agent, status) VALUES ($1, $2, $3, 0)`,
 		resp.UserId, ip, r.UserAgent())
 	refreshToken, _ := h.svc.jwt.GenerateRefresh(resp.UserId)
+	user, _ := h.svc.repo.FindByID(r.Context(), resp.UserId)
+	avatar := ""
+	if user != nil {
+		avatar = user.Avatar
+	}
 	httputil.WriteOK(w, map[string]interface{}{
 		"token":         resp.Token,
 		"refresh_token": refreshToken,
 		"user_id":       resp.UserId,
 		"nickname":      resp.Nickname,
+		"avatar":        avatar,
 	})
 }
 
@@ -117,6 +123,7 @@ func (h *UserExtendHandler) handleRegister(w http.ResponseWriter, r *http.Reques
 		"refresh_token": refreshToken,
 		"user_id":       resp.UserId,
 		"nickname":      req.Nickname,
+		"avatar":        "",
 	})
 }
 
