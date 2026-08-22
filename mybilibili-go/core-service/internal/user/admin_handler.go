@@ -132,6 +132,13 @@ func (h *UserAdminHandler) handleUpdate(w http.ResponseWriter, r *http.Request, 
 		switch k {
 		case "nickname":
 			if s, ok := v.(string); ok && s != "" {
+				var exists int
+				_ = h.db.QueryRowContext(r.Context(),
+					`SELECT COUNT(*) FROM users WHERE nickname = $1 AND id != $2`, s, id).Scan(&exists)
+				if exists > 0 {
+					http.Error(w, "昵称已存在", 409)
+					return
+				}
 				_, _ = h.db.ExecContext(r.Context(),
 					`UPDATE users SET nickname=$1, updated_at=NOW() WHERE id=$2`, s, id)
 			}

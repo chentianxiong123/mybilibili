@@ -50,6 +50,18 @@ func (r *Repository) FindByUsername(ctx context.Context, username string) (*User
 	return u, nil
 }
 
+func (r *Repository) FindByNickname(ctx context.Context, nickname string) (*User, error) {
+	u := &User{}
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, username, password, nickname, COALESCE(email,''), COALESCE(avatar,''), level, status, created_at, updated_at FROM users WHERE nickname = $1 AND nickname != ''`,
+		nickname,
+	).Scan(&u.ID, &u.Username, &u.Password, &u.Nickname, &u.Email, &u.Avatar, &u.Level, &u.Status, &u.CreatedAt, &u.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return u, nil
+}
+
 func (r *Repository) FindByID(ctx context.Context, id int64) (*User, error) {
 	u := &User{}
 	err := r.db.QueryRowContext(ctx,

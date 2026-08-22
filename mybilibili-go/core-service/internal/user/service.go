@@ -47,6 +47,10 @@ func (s *Service) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.Re
 		user.Nickname = user.Username
 	}
 
+	if _, err := s.repo.FindByNickname(ctx, user.Nickname); err == nil {
+		return nil, errors.ErrAlreadyExists("nickname already exists")
+	}
+
 	id, err := s.repo.Create(ctx, user)
 	if err != nil {
 		return nil, errors.ErrAlreadyExists("username already exists")
@@ -72,6 +76,10 @@ func (s *Service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRes
 			return nil, errors.ErrNotFound("user not found")
 		}
 		return nil, errors.ErrInternal("database error")
+	}
+
+	if user.Status != 1 {
+		return nil, errors.ErrUnauthenticated("account is disabled")
 	}
 
 	if s.cacheStore != nil {
