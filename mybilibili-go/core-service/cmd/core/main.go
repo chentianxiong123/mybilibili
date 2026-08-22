@@ -272,7 +272,9 @@ func main() {
 	publicAPIH := comment.NewPublicAPIHandler(commentSvc)
 
 	coreapi.StartHTTPServer(httpAddr, auth.NewJWT(jwtSecret),
-		liveProxy, followH, socialH, videoH, adminH, modH,
+		liveProxy, coreapi.NewSearchProxy(), coreapi.NewRecommendProxy(),
+		coreapi.NewDanmakuProxy(), coreapi.NewMessageProxy(),
+		followH, socialH, videoH, adminH, modH,
 		supportH, userExtH, favoriteH,
 		creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH,
 		userAdminH, manuscriptAdminH, videoAdminH, commentAdminH, moderationAdminH,

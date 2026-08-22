@@ -11,16 +11,16 @@ import (
 )
 
 type Room struct {
-	ID          int64
-	RoomName    string
-	UserID      int64
-	StreamKey   string
-	CoverURL    string
-	Category    string
-	Status      int32
-	ViewerCount int32
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID          int64     `json:"id"`
+	RoomName    string    `json:"roomName"`
+	UserID      int64     `json:"userId"`
+	StreamKey   string    `json:"-"`
+	CoverURL    string    `json:"coverUrl"`
+	Category    string    `json:"category"`
+	Status      string    `json:"status"`
+	ViewerCount int32     `json:"viewerCount"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
 type Seat struct {
@@ -75,7 +75,7 @@ func (r *Repository) CreateRoom(ctx context.Context, room *Room) error {
 func (r *Repository) GetRoomByID(ctx context.Context, id int64) (*Room, error) {
 	room := &Room{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, room_name, user_id, stream_key, cover_url, category, status, viewer_count, created_at, updated_at
+		`SELECT id, room_name, user_id, stream_key, COALESCE(cover_url,''), COALESCE(category,''), status, viewer_count, created_at, updated_at
 		 FROM live_rooms WHERE id = $1`, id,
 	).Scan(&room.ID, &room.RoomName, &room.UserID, &room.StreamKey,
 		&room.CoverURL, &room.Category, &room.Status, &room.ViewerCount, &room.CreatedAt, &room.UpdatedAt)
@@ -88,7 +88,7 @@ func (r *Repository) GetRoomByID(ctx context.Context, id int64) (*Room, error) {
 func (r *Repository) GetRoomByStreamKey(ctx context.Context, key string) (*Room, error) {
 	room := &Room{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, room_name, user_id, stream_key, cover_url, category, status, viewer_count, created_at, updated_at
+		`SELECT id, room_name, user_id, stream_key, COALESCE(cover_url,''), COALESCE(category,''), status, viewer_count, created_at, updated_at
 		 FROM live_rooms WHERE stream_key = $1`, key,
 	).Scan(&room.ID, &room.RoomName, &room.UserID, &room.StreamKey,
 		&room.CoverURL, &room.Category, &room.Status, &room.ViewerCount, &room.CreatedAt, &room.UpdatedAt)
@@ -101,7 +101,7 @@ func (r *Repository) GetRoomByStreamKey(ctx context.Context, key string) (*Room,
 func (r *Repository) GetRoomByUserID(ctx context.Context, userID int64) (*Room, error) {
 	room := &Room{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, room_name, user_id, stream_key, cover_url, category, status, viewer_count, created_at, updated_at
+		`SELECT id, room_name, user_id, stream_key, COALESCE(cover_url,''), COALESCE(category,''), status, viewer_count, created_at, updated_at
 		 FROM live_rooms WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`, userID,
 	).Scan(&room.ID, &room.RoomName, &room.UserID, &room.StreamKey,
 		&room.CoverURL, &room.Category, &room.Status, &room.ViewerCount, &room.CreatedAt, &room.UpdatedAt)
@@ -114,8 +114,8 @@ func (r *Repository) GetRoomByUserID(ctx context.Context, userID int64) (*Room, 
 func (r *Repository) ListLiveRooms(ctx context.Context, page, pageSize int32) ([]*Room, error) {
 	offset := (page - 1) * pageSize
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, room_name, user_id, stream_key, cover_url, category, status, viewer_count, created_at, updated_at
-		 FROM live_rooms WHERE status = 1 ORDER BY viewer_count DESC LIMIT $1 OFFSET $2`, pageSize, offset)
+		`SELECT id, room_name, user_id, stream_key, COALESCE(cover_url,''), COALESCE(category,''), status, viewer_count, created_at, updated_at
+		 FROM live_rooms WHERE status = 'live' ORDER BY viewer_count DESC LIMIT $1 OFFSET $2`, pageSize, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func (r *Repository) UpdateRoom(ctx context.Context, room *Room) error {
 	return err
 }
 
-func (r *Repository) UpdateRoomStatus(ctx context.Context, id int64, status int32) error {
+func (r *Repository) UpdateRoomStatus(ctx context.Context, id int64, status string) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE live_rooms SET status=$1, updated_at=NOW() WHERE id=$2`, status, id)
 	return err

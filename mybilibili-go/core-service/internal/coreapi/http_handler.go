@@ -106,17 +106,54 @@ type LiveHandler interface {
 	Register(mux *http.ServeMux)
 }
 
+type LiveProxy struct {
+	proxy  *httputil.ReverseProxy
+	prefix string
+}
+
 func NewLiveProxy() *LiveProxy {
 	target := os.Getenv("LIVE_SERVICE_ADDR")
 	if target == "" {
 		target = "http://127.0.0.1:8087"
 	}
 	u, _ := url.Parse(target)
-	return &LiveProxy{proxy: httputil.NewSingleHostReverseProxy(u)}
+	return &LiveProxy{proxy: httputil.NewSingleHostReverseProxy(u), prefix: "/api/v1/live/"}
 }
 
-type LiveProxy struct {
-	proxy *httputil.ReverseProxy
+func NewSearchProxy() *LiveProxy {
+	target := os.Getenv("SEARCH_SERVICE_ADDR")
+	if target == "" {
+		target = "http://127.0.0.1:8084"
+	}
+	u, _ := url.Parse(target)
+	return &LiveProxy{proxy: httputil.NewSingleHostReverseProxy(u), prefix: "/api/v1/search/"}
+}
+
+func NewRecommendProxy() *LiveProxy {
+	target := os.Getenv("SEARCH_SERVICE_ADDR")
+	if target == "" {
+		target = "http://127.0.0.1:8084"
+	}
+	u, _ := url.Parse(target)
+	return &LiveProxy{proxy: httputil.NewSingleHostReverseProxy(u), prefix: "/api/v1/recommend/"}
+}
+
+func NewDanmakuProxy() *LiveProxy {
+	target := os.Getenv("MSG_DANMAKU_SERVICE_ADDR")
+	if target == "" {
+		target = "http://127.0.0.1:8086"
+	}
+	u, _ := url.Parse(target)
+	return &LiveProxy{proxy: httputil.NewSingleHostReverseProxy(u), prefix: "/api/v1/danmaku/"}
+}
+
+func NewMessageProxy() *LiveProxy {
+	target := os.Getenv("MSG_DANMAKU_SERVICE_ADDR")
+	if target == "" {
+		target = "http://127.0.0.1:8086"
+	}
+	u, _ := url.Parse(target)
+	return &LiveProxy{proxy: httputil.NewSingleHostReverseProxy(u), prefix: "/api/v1/message/"}
 }
 
 func isImageKey(key string) bool {
@@ -139,7 +176,7 @@ func (c *cacheControlWriter) WriteHeader(code int) {
 }
 
 func (p *LiveProxy) Register(mux *http.ServeMux) {
-	mux.HandleFunc("/api/v1/live/", p.proxy.ServeHTTP)
+	mux.HandleFunc(p.prefix, p.proxy.ServeHTTP)
 }
 
 func StartHTTPServer(addr string, jwt *JWT, extras ...LiveHandler) {
