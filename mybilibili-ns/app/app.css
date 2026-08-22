@@ -1,0 +1,47 @@
+ActionBar {
+    background-color: #fb7299;
+    color: white;
+    font-size: 18;
+    font-weight: bold;
+}
+
+.page {
+    background-color: #f4f4f4;
+}
+
+.card {
+    background-color: white;
+    border-radius: 6;
+}
+
+.text-primary {
+    color: #18191c;
+}
+
+.text-secondary {
+    color: #61666d;
+}
+
+.text-muted {
+    color: #9499a0;
+}
+
+.theme-pink {
+    color: #fb7299;
+}
+
+.theme-pink-bg {
+    background-color: #fb7299;
+}
+
+.separator {
+    background-color: #f1f2f3;
+    height: 1;
+}
+
+.loading {
+    text-align: center;
+    padding: 40;
+    color: #9499a0;
+    font-size: 14;
+}
