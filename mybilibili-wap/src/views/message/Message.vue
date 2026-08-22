@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getConversations, getUnreadCounts } from '../../api/message'
 import noface from '../../assets/noface.gif'
+import { getToken } from '../../utils/session'
 
 const router = useRouter()
 const conversations = ref<any[]>([])
@@ -15,7 +16,7 @@ const unreadCounts = ref<any>({
 const loading = ref(true)
 
 onMounted(async () => {
-  const token = localStorage.getItem('token')
+  const token = getToken()
   if (!token) {
     router.replace('/m/login')
     return

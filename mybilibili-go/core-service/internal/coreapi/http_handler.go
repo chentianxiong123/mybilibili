@@ -119,6 +119,25 @@ type LiveProxy struct {
 	proxy *httputil.ReverseProxy
 }
 
+func isImageKey(key string) bool {
+	return strings.HasPrefix(key, "manuscripts/") &&
+		(strings.HasSuffix(key, ".webp") || strings.HasSuffix(key, ".png") ||
+			strings.HasSuffix(key, ".jpg") || strings.HasSuffix(key, ".jpeg") ||
+			strings.HasSuffix(key, ".gif") || strings.HasSuffix(key, ".avif")) ||
+		(strings.HasPrefix(key, "avatars/") && (strings.HasSuffix(key, ".webp") ||
+			strings.HasSuffix(key, ".png") || strings.HasSuffix(key, ".jpg") || strings.HasSuffix(key, ".jpeg")))
+}
+
+type cacheControlWriter struct {
+	http.ResponseWriter
+	cacheControl string
+}
+
+func (c *cacheControlWriter) WriteHeader(code int) {
+	c.Header().Set("Cache-Control", c.cacheControl)
+	c.ResponseWriter.WriteHeader(code)
+}
+
 func (p *LiveProxy) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/live/", p.proxy.ServeHTTP)
 }
@@ -147,16 +166,23 @@ func StartHTTPServer(addr string, jwt *JWT, extras ...LiveHandler) {
 	if minioBucket == "" {
 		minioBucket = "mybilibili"
 	}
-	minioPublicURL := strings.TrimRight(minioEndpoint, "/") + "/" + minioBucket
-
 	localHandler := http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir)))
+	minioURL, _ := url.Parse(strings.TrimRight(minioEndpoint, "/"))
+	minioProxy := httputil.NewSingleHostReverseProxy(minioURL)
 	mux.Handle("/uploads/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := strings.TrimPrefix(r.URL.Path, "/uploads/")
 		if key == "" {
 			localHandler.ServeHTTP(w, r)
 			return
 		}
-		http.Redirect(w, r, minioPublicURL+"/"+key, http.StatusMovedPermanently)
+		// 图片类（封面/头像）强缓存；m3u8/ts 视频沿用默认（会被转码替换）
+		cacheControl := "public, max-age=600"
+		if isImageKey(key) {
+			cacheControl = "public, max-age=31536000, immutable"
+		}
+		r.URL.Path = "/" + minioBucket + "/" + key
+		r.Host = minioURL.Host
+		minioProxy.ServeHTTP(&cacheControlWriter{ResponseWriter: w, cacheControl: cacheControl}, r)
 	}))
 
 	var handler http.Handler = mux

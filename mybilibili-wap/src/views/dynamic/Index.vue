@@ -5,6 +5,7 @@ import Header from '../../components/Header.vue'
 import dynamicApi from '../../api/dynamic'
 import api from '../../api/client'
 import { getLiveListData } from '../../api/live'
+import { getToken, getLocalUser } from '../../utils/session'
 
 const router = useRouter()
 
@@ -20,16 +21,8 @@ const hasMore = ref(true)
 const searchPlaceholder = ref('搜搜看...')
 
 // Current logged in user info
-const isLoggedIn = computed(() => !!localStorage.getItem('token'))
-const currentUser = computed(() => {
-  const userStr = localStorage.getItem('user')
-  if (!userStr) return null
-  try {
-    return JSON.parse(userStr)
-  } catch (e) {
-    return null
-  }
-})
+const isLoggedIn = computed(() => !!getToken())
+const currentUser = computed(() => getLocalUser())
 
 // Post Dynamic Modal state
 const showPublishModal = ref(false)

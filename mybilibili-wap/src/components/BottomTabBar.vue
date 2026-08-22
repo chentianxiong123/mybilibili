@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getToken } from '../utils/session'
 
 const route = useRoute()
 const router = useRouter()
@@ -8,7 +9,7 @@ const router = useRouter()
 const currentPath = computed(() => route.path)
 
 const isLoggedIn = computed(() => {
-  return !!localStorage.getItem('token')
+  return !!getToken()
 })
 
 const tabs = [

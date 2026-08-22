@@ -4,6 +4,7 @@
 // /category → 分类列表
 // /banner-images/home → 轮播图
 import api from './client'
+import { readCache, writeCache } from '../utils/cache'
 
 // 视频字段统一适配（兼容 VideoRecommendVO、ManuscriptVO、ManuscriptDocument）
 const adaptVideo = (v) => ({
@@ -33,7 +34,7 @@ export async function getHomeContent() {
     const hotList = Array.isArray(hotRaw) ? hotRaw : (hotRaw?.list || [])
     console.log('[getHomeContent] hotRes:', hotRes, 'hotList:', hotList)
 
-    return {
+    const result = {
       code: '1',
       data: {
         oneLevelPartitions: (catRes?.data || catRes || []).map?.(c => ({ id: c.id, name: c.name })) || [],
@@ -41,10 +42,17 @@ export async function getHomeContent() {
         rankingVideos: hotList.map(adaptVideo)
       }
     }
+    writeCache('list', 'recommended', result.data)
+    return result
   } catch (e) {
     console.error('getHomeContent error:', e)
     return { code: '0', data: {} }
   }
+}
+
+// 读首页本地缓存（离线/弱网时先渲染）
+export function getCachedHome() {
+  return readCache('list', 'recommended')
 }
 
 // 轮播图 - 复用 getHomeBanners() → /banner-images/home

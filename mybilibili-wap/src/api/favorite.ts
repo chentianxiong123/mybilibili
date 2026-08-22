@@ -1,7 +1,8 @@
 import api from './client'
+import { getToken } from '../utils/session'
 
 function hasToken() {
-  return !!localStorage.getItem('token')
+  return !!getToken()
 }
 
 export async function getCollectedVideos() {

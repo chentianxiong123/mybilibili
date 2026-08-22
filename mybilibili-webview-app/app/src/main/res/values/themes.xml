@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MyBilibili" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">#FB7299</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#FFD9E6</item>
+        <item name="colorSecondary">#00A1D6</item>
+    </style>
+</resources>

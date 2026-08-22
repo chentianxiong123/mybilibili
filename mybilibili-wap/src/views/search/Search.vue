@@ -2,8 +2,10 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Result from './Result.vue'
-import { getHotwords, getSuggests } from '../../api/search'
+import { getHotwords, getSuggests, fetchSearchHistory, pushSearchHistory, clearSearchHistory } from '../../api/search'
+import storage, { K } from '../../utils/storage_layer'
 
+const SEARCH_HISTORY_MAX = 20
 const router = useRouter()
 const route = useRoute()
 const searchValue = ref('')
@@ -12,6 +14,8 @@ const hotwords = ref([])
 const suggestList = ref([])
 const showSuggest = ref(false)
 const searchHistories = ref([])
+
+const isLogin = () => !!storage.get(K.token)
 
 const discoveryWords = computed(() => {
   const fromHot = hotwords.value.map(item => item.keyword).filter(Boolean)
@@ -27,9 +31,21 @@ onMounted(async () => {
     hotwords.value = []
   }
   try {
-    searchHistories.value = JSON.parse(localStorage.getItem('searchHistories') || '[]')
+    searchHistories.value = storage.get(K.searchHistory) || []
   } catch (e) {
     searchHistories.value = []
+  }
+  // 登录用户用服务端(Redis)历史合并本地
+  if (isLogin()) {
+    const remote = await fetchSearchHistory()
+    if (remote.code === '1' && remote.data.length) {
+      const merged = [...remote.data]
+      for (const kw of searchHistories.value) {
+        if (!merged.includes(kw)) merged.push(kw)
+      }
+      searchHistories.value = merged.slice(0, SEARCH_HISTORY_MAX)
+      storage.set(K.searchHistory, searchHistories.value)
+    }
   }
   if (route.query.keyword) {
     onSearch(route.query.keyword)
@@ -54,21 +70,23 @@ const onInput = async () => {
   }
 }
 
-const onSearch = (value = searchValue.value) => {
+const onSearch = async (value = searchValue.value) => {
   const v = String(value || '').trim()
   if (!v) return
   searchValue.value = v
   keyword.value = v
   const next = searchHistories.value.filter(x => x !== v)
   next.unshift(v)
-  searchHistories.value = next.slice(0, 20)
-  localStorage.setItem('searchHistories', JSON.stringify(searchHistories.value))
+  searchHistories.value = next.slice(0, SEARCH_HISTORY_MAX)
+  storage.set(K.searchHistory, searchHistories.value)
+  if (isLogin()) pushSearchHistory(v)
   showSuggest.value = false
 }
 
 const clearHistory = () => {
   searchHistories.value = []
-  localStorage.removeItem('searchHistories')
+  storage.remove(K.searchHistory)
+  if (isLogin()) clearSearchHistory()
 }
 
 const goBack = () => {
