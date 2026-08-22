@@ -1,5 +1,5 @@
 <script setup>
-import { safeStorage } from '@/utils/safeStorage'
+import { useAuth } from '@/composables/useAuth'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Plus, Delete, Rank, Search, Close } from '@element-plus/icons-vue'
@@ -15,10 +15,8 @@ const collectionId = ref(route.params.id)
 const isEditMode = computed(() => !!collectionId.value)
 
 // 当前用户ID
-const currentUserId = computed(() => {
-  const user = JSON.parse(safeStorage.getItem('user') || '{}')
-  return user.id
-})
+const { user: currentUser } = useAuth()
+const currentUserId = computed(() => currentUser.value?.id)
 
 // 加载状态
 const loading = ref(false)

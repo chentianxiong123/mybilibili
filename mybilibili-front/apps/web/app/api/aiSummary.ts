@@ -5,8 +5,8 @@ export const aiSummaryApi = {
   streamSummary(videoId: number, callbacks: Record<string, any> = {}) {
     const { onStart, onData, onDone, onError, onMeta } = callbacks
 
-    const baseURL = window.location.origin
-    const url = `${baseURL}/api/ai/summary/stream/${videoId}`
+    const baseURL = typeof window !== 'undefined' ? window.location.origin : ''
+    const url = `${baseURL}/api/v1/ai/summary/stream/${videoId}`
 
     const token = getToken()
 

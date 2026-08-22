@@ -84,7 +84,7 @@ const subtitleList = ref<any[]>([])
 const currentSubtitle = ref<any>(null)
 const currentSubtitleContent = ref<any[]>([])
 const SUBTITLE_ENABLED_KEY = 'mybilibili_subtitle_enabled'
-const subtitleEnabled = ref(safeStorage.getItem(SUBTITLE_ENABLED_KEY) !== 'false')
+const subtitleEnabled = ref(true)
 const subtitleDisplayRef = ref<any>(null)
 const subtitleSettingsPanelRef = ref<HTMLDivElement | null>(null)
 const subtitleSettingsVisible = ref(false)
@@ -101,18 +101,17 @@ const defaultSubtitleSettings = {
   lineHeight: 1.5
 }
 
-const loadSubtitleSettings = () => {
-  try {
-    const saved = safeStorage.getItem(SUBTITLE_SETTINGS_KEY)
-    if (saved) {
-      return { ...defaultSubtitleSettings, ...JSON.parse(saved) }
-    }
-  } catch (e) {
-  }
-  return { ...defaultSubtitleSettings }
-}
+const subtitleSettings = ref({ ...defaultSubtitleSettings })
 
-const subtitleSettings = ref(loadSubtitleSettings())
+if (import.meta.client) {
+  subtitleEnabled.value = safeStorage.getItem(SUBTITLE_ENABLED_KEY) !== 'false'
+  const saved = safeStorage.getItem(SUBTITLE_SETTINGS_KEY)
+  if (saved) {
+    try {
+      subtitleSettings.value = { ...defaultSubtitleSettings, ...JSON.parse(saved) }
+    } catch {}
+  }
+}
 
 const saveSubtitleSettings = () => {
   try {

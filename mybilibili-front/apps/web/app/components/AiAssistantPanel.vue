@@ -11,7 +11,8 @@ const props = defineProps({
   },
   videoId: {
     type: Number,
-    required: true
+    required: false,
+    default: null
   },
   videoTitle: {
     type: String,

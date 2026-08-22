@@ -1,5 +1,5 @@
 <script setup>
-import { safeStorage } from '@/utils/safeStorage'
+import { useAuth } from '@/composables/useAuth'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, VideoPlay, Clock, View, Edit, Share, More } from '@element-plus/icons-vue'
@@ -13,10 +13,8 @@ const router = useRouter()
 const collectionId = ref(route.params.id)
 
 // 当前用户ID
-const currentUserId = computed(() => {
-  const user = JSON.parse(safeStorage.getItem('user') || '{}')
-  return user.id
-})
+const { user: currentUser } = useAuth()
+const currentUserId = computed(() => currentUser.value?.id)
 
 // 加载状态
 const loading = ref(false)
