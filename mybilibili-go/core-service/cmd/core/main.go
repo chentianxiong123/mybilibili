@@ -275,7 +275,8 @@ func main() {
 		liveProxy, followH, socialH, videoH, adminH, modH,
 		supportH, userExtH, favoriteH,
 		creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH,
-		userAdminH, manuscriptAdminH, videoAdminH, commentAdminH, moderationAdminH)
+		userAdminH, manuscriptAdminH, videoAdminH, commentAdminH, moderationAdminH,
+		social.NewSearchHistoryHandler(cacheStore))
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {

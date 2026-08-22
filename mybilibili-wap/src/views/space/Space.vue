@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { getMyInfo } from '../../api/user'
 import { getWapTheme, toggleWapTheme } from '../../utils/theme'
 import noface from '../../assets/noface.gif'
+import { getToken, getLocalUser, clearSession } from '../../utils/session'
 
 const router = useRouter()
 const userInfo = ref<any>(null)
@@ -11,7 +12,7 @@ const isLoggedIn = ref(false)
 const isDarkMode = ref(getWapTheme() === 'dark')
 
 onMounted(async () => {
-  const token = localStorage.getItem('token')
+  const token = getToken()
   if (!token) {
     // 未登录，跳转登录页
     router.replace('/m/login')
@@ -24,7 +25,7 @@ onMounted(async () => {
     userInfo.value = res.data
   } else {
     // 降级使用本地存储
-    const userStr = localStorage.getItem('user')
+    const userStr = JSON.stringify(getLocalUser())
     if (userStr) {
       const localObj = JSON.parse(userStr)
       userInfo.value = localObj.user || localObj
@@ -34,8 +35,7 @@ onMounted(async () => {
 
 // 退出登录
 const handleLogout = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
+  clearSession()
   router.push('/m/login')
 }
 

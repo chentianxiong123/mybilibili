@@ -1,4 +1,6 @@
 import api from './client'
+import { getLocalUser } from '../utils/session'
+import storage, { K } from '../utils/storage_layer'
 
 export function normalizeUser(raw: any) {
   const user = raw?.user || raw?.data?.user || raw?.data || raw || {}
@@ -20,11 +22,10 @@ export function normalizeUser(raw: any) {
 }
 
 export function getLocalUserId() {
-  const userStr = localStorage.getItem('user')
-  if (!userStr) return null
+  const localUser = getLocalUser()
+  if (!localUser) return null
   try {
-    const localUser = normalizeUser(JSON.parse(userStr))
-    return localUser.id || null
+    return normalizeUser(localUser).id || null
   } catch (e) {
     return null
   }
@@ -32,27 +33,27 @@ export function getLocalUserId() {
 
 export async function getMyInfo() {
   try {
-    const userStr = localStorage.getItem('user')
-    if (!userStr) return { code: '0', data: null }
-    const localUser = normalizeUser(JSON.parse(userStr))
+    const localUser = getLocalUser()
+    if (!localUser) return { code: '0', data: null }
+    const normalized = normalizeUser(localUser)
     // 兼容可能存在的 id 或 userId 或 user.id 嵌套结构
-    const userId = localUser.id
+    const userId = normalized.id
     if (!userId) return { code: '0', data: null }
 
     const res = await api.get(`/user/${userId}`)
     // 兼容后端 Result 统一封装格式
     const data = normalizeUser(res?.data || res)
     if (data) {
-      localStorage.setItem('user', JSON.stringify(data))
+      storage.set(K.user, data)
     }
     return {
       code: '1',
       data: data
     }
   } catch (e) {
-    const userStr = localStorage.getItem('user')
-    if (userStr) {
-      return { code: '1', data: normalizeUser(JSON.parse(userStr)) }
+    const local = getLocalUser()
+    if (local) {
+      return { code: '1', data: normalizeUser(local) }
     }
     return { code: '0', data: null }
   }
@@ -83,7 +84,7 @@ export async function updateMyInfo(userId: number, payload: Record<string, any>)
     const res = await api.put(`/user/${userId}`, payload)
     const data = normalizeUser(res?.data || res)
     if (data) {
-      localStorage.setItem('user', JSON.stringify(data))
+      storage.set(K.user, data)
     }
     return { code: '1', data }
   } catch (e) {

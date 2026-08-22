@@ -1,18 +1,16 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import noface from '../assets/noface.gif'
+import { getLocalUser } from '../utils/session'
 defineProps({
   placeholder: { type: String, default: '搜索...' }
 })
 
 const avatar = ref('')
 onMounted(() => {
-  const userStr = localStorage.getItem('user')
-  if (userStr) {
-    try {
-      const user = JSON.parse(userStr)
-      avatar.value = user.avatar || user.avatarUrl || ''
-    } catch (e) {}
+  const user = getLocalUser()
+  if (user) {
+    avatar.value = user.avatar || user.avatarUrl || ''
   }
 })
 </script>

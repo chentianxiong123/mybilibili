@@ -1,5 +1,7 @@
 // API 客户端 - 与 mybilibili-web/src/api/index.js 保持一致
 import axios from 'axios'
+import storage, { K } from '../utils/storage_layer'
+import { getToken, getLocalUserId, clearSession, tryRefresh } from '../utils/session'
 
 // 简单 toast 提示（原项目不用 Element Plus）
 function showToast(msg: string) {
@@ -20,23 +22,15 @@ const api = axios.create({
 // 请求拦截器：添加token + 用户ID
 api.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('token')
+    const token = getToken()
     const url = config.url || ''
     const isImageRequest = url.includes('/covers/') || url.includes('/images/')
     if (token && !isImageRequest) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    const userStr = localStorage.getItem('user')
-    if (userStr && !isImageRequest) {
-      try {
-        const localUser = JSON.parse(userStr)
-        const userId = localUser.id || localUser.userId || localUser.user?.id
-        if (userId) {
-          config.headers['X-User-Id'] = String(userId)
-        }
-      } catch (e) {
-        // ignore malformed local user cache
-      }
+    const userId = getLocalUserId()
+    if (userId && !isImageRequest) {
+      config.headers['X-User-Id'] = String(userId)
     }
     config.headers['X-Client-Platform'] = 'wap'
     return config
@@ -51,8 +45,10 @@ api.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
+          // token 过期：尝试静默续期一次；失败才清登录态
+          tryRefresh().then(ok => {
+            if (!ok) clearSession()
+          })
           break
         case 403:
           showToast('没有权限访问该资源')

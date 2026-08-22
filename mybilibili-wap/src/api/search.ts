@@ -60,3 +60,34 @@ export async function getSearchResult(params) {
     return { code: '0', data: [] }
   }
 }
+
+// 搜索历史 - 登录用户存 Redis（带 TTL），匿名走本地
+export async function fetchSearchHistory() {
+  try {
+    const res = await api.get('/search/history')
+    const data = res?.data || []
+    return { code: '1', data: Array.isArray(data) ? data : [] }
+  } catch (e) {
+    return { code: '0', data: [] }
+  }
+}
+
+export async function pushSearchHistory(keyword) {
+  if (!keyword) return { code: '0', data: [] }
+  try {
+    const res = await api.post('/search/history', { keyword }, { headers: { 'Content-Type': 'application/json' } })
+    const data = res?.data || []
+    return { code: '1', data: Array.isArray(data) ? data : [] }
+  } catch (e) {
+    return { code: '0', data: [] }
+  }
+}
+
+export async function clearSearchHistory() {
+  try {
+    await api.delete('/search/history')
+    return { code: '1' }
+  } catch (e) {
+    return { code: '0' }
+  }
+}

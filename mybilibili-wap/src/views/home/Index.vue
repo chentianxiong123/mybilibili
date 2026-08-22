@@ -7,7 +7,7 @@ import Drawer from '../../components/Drawer.vue'
 import VideoItem from '../../components/VideoItem.vue'
 import LiveInfo from '../live/LiveInfo.vue'
 import ScrollToTop from '../../components/ScrollToTop.vue'
-import { getHomeContent, getBanners, getVideosByCategory } from '../../api/index'
+import { getHomeContent, getBanners, getVideosByCategory, getCachedHome } from '../../api/index'
 import api from '../../api/client'
 import { getHotwords } from '../../api/search'
 import { getLiveIndexData } from '../../api/live'
@@ -38,6 +38,13 @@ onMounted(async () => {
       activeTabId.value = -1
     } else {
       activeTabId.value = 0
+    }
+    // SWR：先用本地缓存渲染首页内容，再等待网络请求覆盖
+    const cachedHome = getCachedHome()
+    if (cachedHome) {
+      partitions.value = cachedHome.oneLevelPartitions || []
+      additionalVideos.value = cachedHome.additionalVideos || []
+      rankingVideos.value = cachedHome.rankingVideos || []
     }
     const [contentRes, bannerRes, hotRes, liveRes] = await Promise.all([
       getHomeContent(),
