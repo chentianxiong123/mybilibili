@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { saveSession } from '../utils/session'
+import { saveSession, getLocalUser } from '../utils/session'
+import { getMyInfo } from '../api/user'
 
 const router = useRouter()
 const username = ref('')
@@ -28,6 +29,11 @@ const login = async () => {
       const userObj = data.data.user || data.data
       const tokenStr = data.data.token || data.data
       saveSession(tokenStr, data.data.refresh_token || '', userObj)
+      // 拉取完整用户信息（含最新头像/昵称）写回本地
+      const info = await getMyInfo()
+      if (info && info.code === '1' && info.data) {
+        saveSession(tokenStr, data.data.refresh_token || '', { ...userObj, ...info.data })
+      }
       router.push('/m/index')
     } else {
       errorMsg.value = data.message || '登录失败'
