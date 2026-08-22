@@ -188,6 +188,18 @@ routers:
     tls:
       certResolver: letsencrypt
 
+  # ＝＝＝ AI 客服（AI 服务）＝＝＝
+  ai-api:
+    rule: "Host(`mylib.com`) && PathPrefix(`/api/v1/ai/`)"
+    priority: 15
+    service: ai
+    middlewares:
+      - jwt-auth
+      - rate-limit
+      - security-headers
+    tls:
+      certResolver: letsencrypt
+
   # ＝＝＝ 创作中心（studio 服务）＝＝＝
   studio-api:
     rule: "Host(`mylib.com`) && (PathPrefix(`/api/v1/studio/`) || PathPrefix(`/assets/studio/`))"

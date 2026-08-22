@@ -57,7 +57,7 @@ const currentUserId = computed(() => {
 const fetchConversations = async () => {
   try {
     const res = await messageApi.getConversations()
-    if (res.code === 200) {
+    if (res && res.code === 200) {
       conversations.value = res.data || []
     }
   } catch (error) {
@@ -68,7 +68,7 @@ const fetchConversations = async () => {
 const fetchUnreadCounts = async () => {
   try {
     const res = await messageApi.getUnreadCounts()
-    if (res.code === 200) {
+    if (res && res.code === 200) {
       unreadCounts.value = res.data || {}
     }
   } catch (error) {
@@ -81,7 +81,7 @@ const fetchMessages = async (conversationId) => {
   loading.value = true
   try {
     const res = await messageApi.getMessages(conversationId)
-    if (res.code === 200) {
+    if (res && res.code === 200) {
       currentMessages.value = res.data || []
     }
   } catch (error) {
@@ -153,7 +153,7 @@ const handleSendMessage = async (content) => {
       messageType: 1
     })
     console.log('发送消息响应:', res)
-    if (res.code === 200) {
+    if (res && res.code === 200) {
       currentMessages.value.unshift(res.data)
       // 刷新会话列表，获取新创建的会话ID
       await fetchConversations()
@@ -193,7 +193,7 @@ const handleOpenConversationWithUser = async (targetUserId) => {
     // 没有会话，需要先获取用户信息，然后创建临时会话
     try {
       const res = await userApi.getUserById(targetUserId)
-      if (res.code === 200) {
+      if (res && res.code === 200) {
         const user = res.data
         // 创建临时会话对象
         const newConversation = {

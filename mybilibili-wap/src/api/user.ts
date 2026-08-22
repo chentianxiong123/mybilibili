@@ -61,7 +61,7 @@ export async function getMyInfo() {
 
 export async function getFollowingList(userId: number) {
   try {
-    const res = await api.get(`/user/${userId}/following`)
+    const res = await api.get(`/follow/user/${userId}/following`)
     const list = res?.data || res || []
     return { code: '1', data: Array.isArray(list) ? list.map(normalizeUser) : [] }
   } catch (e) {
@@ -71,7 +71,7 @@ export async function getFollowingList(userId: number) {
 
 export async function getFollowerList(userId: number) {
   try {
-    const res = await api.get(`/user/${userId}/followers`)
+    const res = await api.get(`/follow/user/${userId}/followers`)
     const list = res?.data || res || []
     return { code: '1', data: Array.isArray(list) ? list.map(normalizeUser) : [] }
   } catch (e) {

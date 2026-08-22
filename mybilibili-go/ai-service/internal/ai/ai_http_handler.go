@@ -124,7 +124,9 @@ func (h *AIChatHandler) handleCustomerHistory(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		history = []map[string]interface{}{}
 	}
-	json.NewEncoder(w).Encode(history)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"code": 200, "data": history,
+	})
 }
 
 func (h *AIChatHandler) handleCustomerTransfer(w http.ResponseWriter, r *http.Request) {
