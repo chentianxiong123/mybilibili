@@ -190,11 +190,11 @@ const recordWatchHistorySync = () => {
     const token = safeStorage.getItem("token")
     if (!token) return
     const params = new URLSearchParams({
-      videoId: String(videoId.value),
-      progressSeconds: String(progress),
+      manuscript_id: String(videoId.value),
+      progress_seconds: String(progress),
       videoDuration: String(duration || progress || 0)
     })
-    const url = `/api/watch-history?${params.toString()}`
+    const url = `/api/v1/watch-history?${params.toString()}`
     fetch(url, {
       method: 'POST',
       headers: {
