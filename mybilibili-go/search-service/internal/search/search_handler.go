@@ -51,12 +51,12 @@ func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 	categoryID, _ := strconv.ParseInt(r.URL.Query().Get("category_id"), 10, 64)
 	page, size := httputil.ParsePageParams(r)
 	list, _ := h.svc.Search(r.Context(), keyword, categoryID, page, size)
-	json.NewEncoder(w).Encode(list)
+	writeJSON(w, map[string]interface{}{"list": list, "total": len(list)})
 }
 
 func (h *Handler) handleHot(w http.ResponseWriter, r *http.Request) {
 	list, _ := h.svc.Hot(r.Context())
-	json.NewEncoder(w).Encode(list)
+	writeJSON(w, list)
 }
 
 func (h *Handler) handleHotIncrement(w http.ResponseWriter, r *http.Request) {
@@ -172,7 +172,7 @@ func (h *Handler) handleSuggest(w http.ResponseWriter, r *http.Request) {
 		size = 10
 	}
 	list, _ := h.svc.Suggest(r.Context(), keyword, int32(size))
-	json.NewEncoder(w).Encode(list)
+	writeJSON(w, list)
 }
 
 func (h *Handler) handleRelated(w http.ResponseWriter, r *http.Request) {
@@ -182,7 +182,7 @@ func (h *Handler) handleRelated(w http.ResponseWriter, r *http.Request) {
 		size = 10
 	}
 	list, _ := h.svc.Related(r.Context(), videoID, int32(size))
-	json.NewEncoder(w).Encode(list)
+	writeJSON(w, list)
 }
 
 func (h *Handler) handleForYou(w http.ResponseWriter, r *http.Request) {

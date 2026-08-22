@@ -73,8 +73,8 @@ func (h *AdminHandler) handleRooms(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 	var list []map[string]interface{}
 	for rows.Next() {
-		var id, uid, st, vc int64
-		var title, t string
+		var id, vc int64
+		var uid, st, title, t string
 		rows.Scan(&id, &uid, &title, &st, &vc, &t)
 		list = append(list, map[string]interface{}{
 			"id": id, "user_id": uid, "title": title, "status": st, "viewer_count": vc, "created_at": t,
@@ -84,8 +84,8 @@ func (h *AdminHandler) handleRooms(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AdminHandler) handleRoomByID(w http.ResponseWriter, r *http.Request, id int64) {
-	var rid, uid, st, vc int64
-	var title, t string
+	var rid, vc int64
+	var uid, st, title, t string
 	err := h.db.QueryRowContext(r.Context(),
 		`SELECT id, user_id, title, status, viewer_count, created_at
 		 FROM live_rooms WHERE id = $1`, id).Scan(&rid, &uid, &title, &st, &vc, &t)
@@ -100,7 +100,7 @@ func (h *AdminHandler) handleRoomByID(w http.ResponseWriter, r *http.Request, id
 
 func (h *AdminHandler) handleRoomStatus(w http.ResponseWriter, r *http.Request, id int64) {
 	var req struct {
-		Status int32 `json:"status"`
+		Status string `json:"status"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	if _, err := h.db.ExecContext(r.Context(),

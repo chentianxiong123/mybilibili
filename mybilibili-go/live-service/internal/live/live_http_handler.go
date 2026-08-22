@@ -16,6 +16,11 @@ import (
 	"mybilibili/pkg/imageutil"
 )
 
+func writeJSON(w http.ResponseWriter, data interface{}) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": data, "message": "ok"})
+}
+
 type HTTPHandler struct {
 	svc *Service
 	hub *Hub
@@ -27,6 +32,7 @@ func NewHTTPHandler(svc *Service, hub *Hub) *HTTPHandler {
 
 func (h *HTTPHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/live/room", h.handleRoom)
+	mux.HandleFunc("/api/v1/live/room/list", h.handleListRooms)
 	mux.HandleFunc("/api/v1/live/room/", h.handleRoomByID)
 	mux.HandleFunc("/api/v1/live/rooms", h.handleListRooms)
 	mux.HandleFunc("/api/v1/live/srs/hook", h.handleSRSCallback)
@@ -67,8 +73,8 @@ func (h *HTTPHandler) handleRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(room)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	writeJSON(w, room)
 }
 
 func (h *HTTPHandler) handleRoomByID(w http.ResponseWriter, r *http.Request) {
@@ -93,8 +99,7 @@ func (h *HTTPHandler) handleRoomByID(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "no room", 404)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(room)
+		writeJSON(w, room)
 		return
 	}
 
@@ -119,7 +124,7 @@ func (h *HTTPHandler) handleRoomByID(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			var req struct {
-				Status int32 `json:"status"`
+				Status string `json:"status"`
 			}
 			json.NewDecoder(r.Body).Decode(&req)
 			if err := h.svc.UpdateRoomStatus(r.Context(), roomID, userID, req.Status); err != nil {
@@ -158,8 +163,7 @@ func (h *HTTPHandler) handleRoomByID(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "room not found", 404)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(room)
+		writeJSON(w, room)
 	case "PUT":
 		if userID == 0 {
 			http.Error(w, "unauthorized", 401)
@@ -200,8 +204,7 @@ func (h *HTTPHandler) handleListRooms(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(rooms)
+	writeJSON(w, rooms)
 }
 
 func (h *HTTPHandler) handleSRSCallback(w http.ResponseWriter, r *http.Request) {

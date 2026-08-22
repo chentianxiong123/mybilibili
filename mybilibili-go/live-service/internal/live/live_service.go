@@ -8,9 +8,9 @@ import (
 )
 
 const (
-	RoomStatusIdle  int32 = 0
-	RoomStatusLive  int32 = 1
-	RoomStatusEnded int32 = 2
+	RoomStatusIdle  = "offline"
+	RoomStatusLive  = "live"
+	RoomStatusEnded = "ended"
 
 	SeatStatusEmpty    int32 = 0
 	SeatStatusPending  int32 = 1
@@ -82,7 +82,7 @@ func (s *Service) UpdateRoom(ctx context.Context, roomID, userID int64, roomName
 	return s.repo.UpdateRoom(ctx, room)
 }
 
-func (s *Service) UpdateRoomStatus(ctx context.Context, roomID, userID int64, status int32) error {
+func (s *Service) UpdateRoomStatus(ctx context.Context, roomID, userID int64, status string) error {
 	room, err := s.repo.GetRoomByID(ctx, roomID)
 	if err != nil {
 		return ErrNotFound("room not found")
