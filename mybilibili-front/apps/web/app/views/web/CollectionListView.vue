@@ -1,5 +1,5 @@
 <script setup>
-import { safeStorage } from '@/utils/safeStorage'
+import { useAuth } from '@/composables/useAuth'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Plus, Grid, List, Edit, Delete, VideoPlay, Search } from '@element-plus/icons-vue'
@@ -10,11 +10,9 @@ import { manuscriptApi } from '@/api/manuscript.ts'
 const route = useRoute()
 const router = useRouter()
 
-const userId = ref(route.params.userId || JSON.parse(safeStorage.getItem('user'))?.id)
-const currentUserId = computed(() => {
-  const user = JSON.parse(safeStorage.getItem('user') || '{}')
-  return user.id
-})
+const { user: currentUser } = useAuth()
+const userId = ref(route.params.userId || currentUser.value?.id)
+const currentUserId = computed(() => currentUser.value?.id)
 
 const isOwnSpace = computed(() => {
   return currentUserId.value && userId.value && String(currentUserId.value) === String(userId.value)

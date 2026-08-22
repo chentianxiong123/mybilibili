@@ -3,6 +3,17 @@ const TOKEN_KEY = 'token'
 const REFRESH_TOKEN_KEY = 'refreshToken'
 const USER_KEY = 'user'
 
+// ====== Cookie 同步（SSR 读取用，与 localStorage 保持一致） ======
+function setClientCookie(name: string, value: string, maxAge: number) {
+  if (typeof document === 'undefined') return
+  document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
+}
+
+function removeClientCookie(name: string) {
+  if (typeof document === 'undefined') return
+  document.cookie = `${name}=; Path=/; Max-Age=0`
+}
+
 function readJson(value) {
   if (!value) return null
   try {
@@ -74,14 +85,18 @@ export function setAuthSession(session: {
 } = {}) {
   if (session.token) {
     safeStorage.setItem(TOKEN_KEY, session.token)
+    setClientCookie('token', session.token, 86400 * 7)
   }
 
   if (session.refreshToken) {
     safeStorage.setItem(REFRESH_TOKEN_KEY, session.refreshToken)
+    setClientCookie('refresh_token', session.refreshToken, 86400 * 30)
   }
 
   if (session.user) {
-    safeStorage.setItem(USER_KEY, JSON.stringify(session.user))
+    const userStr = JSON.stringify(session.user)
+    safeStorage.setItem(USER_KEY, userStr)
+    setClientCookie('user_info', encodeURIComponent(userStr), 86400 * 7)
   }
 }
 
@@ -89,6 +104,9 @@ export function clearAuthSession() {
   safeStorage.removeItem(TOKEN_KEY)
   safeStorage.removeItem(REFRESH_TOKEN_KEY)
   safeStorage.removeItem(USER_KEY)
+  removeClientCookie('token')
+  removeClientCookie('refresh_token')
+  removeClientCookie('user_info')
 }
 
 // ====== Admin Auth ======

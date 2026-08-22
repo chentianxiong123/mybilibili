@@ -1,4 +1,5 @@
 <script setup>
+import { useAuth } from '@/composables/useAuth'
 import { safeStorage } from '@/utils/safeStorage'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -31,7 +32,7 @@ const userInfo = ref({
   cover: 'https://picsum.photos/id/1025/1920/200',
   uid: '',
   birthday: '',
-  gender: 0, // 0-保密, 1-男, 2-女
+  gender: 0,
   stats: {
     following: 0,
     followers: 0,
@@ -41,14 +42,14 @@ const userInfo = ref({
   tags: []
 })
 
-// 当前用户ID，从路由参数或本地存储获取
-const userId = ref(route.params.id || JSON.parse(safeStorage.getItem('user'))?.id)
+// 当前用户
+const { user: currentUser } = useAuth()
 
-// 获取当前登录用户ID
-const currentUserId = computed(() => {
-  const user = JSON.parse(safeStorage.getItem('user') || '{}')
-  return user.id
-})
+// 当前用户ID，从路由参数或本地存储获取
+const userId = ref(route.params.id || currentUser.value?.id)
+
+// 当前登录用户ID
+const currentUserId = computed(() => currentUser.value?.id)
 
 // 判断是否是自己的空间
 const isOwnSpace = computed(() => {
