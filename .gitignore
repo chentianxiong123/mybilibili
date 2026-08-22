@@ -31,3 +31,11 @@ mybilibili-go/media
 
 # NFS temporary files
 .nfs*
+
+# NativeScript
+mybilibili-ns/platforms/
+mybilibili-ns/hooks/.cache/
+mybilibili-ns/webpack.config.js
+mybilibili-ns/v8.json
+mybilibili-ns/report.nginx
+mybilibili-ns/package-lock.json
