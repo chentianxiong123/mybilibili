@@ -173,140 +173,8 @@ const openConversation = (item: any) => {
         </div>
       </div>
 
-      <!-- 骨架屏 / 兜底初始聊天记录（一比一复刻 B站 真实聊天列表风格） -->
-      <div v-else class="chat-list">
-        <!-- UP主小助手 -->
-        <div class="chat-item">
-          <div class="avatar-wrap system-avatar blue-light">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="#fff">
-              <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-            </svg>
-            <span class="dot"></span>
-          </div>
-          <div class="chat-content">
-            <div class="chat-header">
-              <span class="name system-title">UP主小助手</span>
-              <span class="time">2天前</span>
-            </div>
-            <div class="last-msg">UP主荣誉周报</div>
-          </div>
-        </div>
-
-        <!-- PCD沈和璧 -->
-        <div class="chat-item">
-          <div class="avatar-wrap">
-            <img src="https://picsum.photos/id/1025/48/48" class="avatar" />
-          </div>
-          <div class="chat-content">
-            <div class="chat-header">
-              <span class="name">PCD沈和璧</span>
-              <span class="time">5月15日</span>
-            </div>
-            <div class="last-msg">[tv_冷漠][热词系列_谢谢老师]还在偷摸的看.....</div>
-          </div>
-        </div>
-
-        <!-- 陌生人消息 -->
-        <div class="chat-item">
-          <div class="avatar-wrap system-avatar pink-light">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="#fff">
-              <rect x="3" y="4" width="18" height="16" rx="2" />
-              <path d="M2 10h20" />
-            </svg>
-          </div>
-          <div class="chat-content">
-            <div class="chat-header">
-              <span class="name">陌生人消息</span>
-              <span class="time">5月12日</span>
-            </div>
-            <div class="last-msg">暂无新的陌生人消息</div>
-          </div>
-        </div>
-
-        <!-- 大模型论文解读 -->
-        <div class="chat-item">
-          <div class="avatar-wrap">
-            <img src="https://picsum.photos/id/1012/48/48" class="avatar" />
-          </div>
-          <div class="chat-content">
-            <div class="chat-header">
-              <span class="name">大模型论文解读</span>
-              <span class="time">5月8日</span>
-            </div>
-            <div class="last-msg">谢谢你的喜欢～</div>
-          </div>
-        </div>
-
-        <!-- 玩转Code -->
-        <div class="chat-item">
-          <div class="avatar-wrap">
-            <img src="https://picsum.photos/id/1015/48/48" class="avatar" />
-          </div>
-          <div class="chat-content">
-            <div class="chat-header">
-              <span class="name">玩转Code</span>
-              <span class="time">5月5日</span>
-            </div>
-            <div class="last-msg">[自动回复] 感谢关注 程序员陈师兄 qq30414...</div>
-          </div>
-        </div>
-
-        <!-- AI_小波 -->
-        <div class="chat-item">
-          <div class="avatar-wrap">
-            <img src="https://picsum.photos/id/1018/48/48" class="avatar" />
-          </div>
-          <div class="chat-content">
-            <div class="chat-header">
-              <span class="name">AI_小波</span>
-              <span class="time">5月4日</span>
-            </div>
-            <div class="last-msg">[自动回复] 谢谢支持和关注❤️ 教程+入口：...</div>
-          </div>
-        </div>
-
-        <!-- 山河江川美 -->
-        <div class="chat-item">
-          <div class="avatar-wrap">
-            <img src="https://picsum.photos/id/1019/48/48" class="avatar" />
-          </div>
-          <div class="chat-content">
-            <div class="chat-header">
-              <span class="name">山河江川美</span>
-              <span class="time">5月3日</span>
-            </div>
-            <div class="last-msg">[自动回复] thu.chatopens.vip/ 这是我自己...</div>
-          </div>
-        </div>
-
-        <!-- QLHazycoder -->
-        <div class="chat-item">
-          <div class="avatar-wrap">
-            <img src="https://picsum.photos/id/1020/48/48" class="avatar" />
-          </div>
-          <div class="chat-content">
-            <div class="chat-header">
-              <span class="name">QLHazycoder</span>
-              <span class="time">5月3日</span>
-            </div>
-            <div class="last-msg">https://apikey.qzz.io/, 这里看哦</div>
-          </div>
-        </div>
-
-        <!-- 大海资源 -->
-        <div class="chat-item">
-          <div class="avatar-wrap">
-            <img src="https://picsum.photos/id/1021/48/48" class="avatar" />
-          </div>
-          <div class="chat-content">
-            <div class="chat-header">
-              <span class="name">大海资源</span>
-              <span class="time">4月16日</span>
-            </div>
-            <div class="last-msg">[自动回复] 我是大海，谢谢你的支持和关注～ ...</div>
-          </div>
-        </div>
+      <div v-else class="empty-state">
+        <p>暂无消息</p>
       </div>
     </div>
   </div>
@@ -527,5 +395,12 @@ const openConversation = (item: any) => {
       text-overflow: ellipsis;
     }
   }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #9499a0;
+  font-size: 14px;
 }
 </style>

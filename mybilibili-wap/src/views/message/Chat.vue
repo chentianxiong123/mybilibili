@@ -1,26 +1,50 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import api from '../../api/client'
 import noface from '../../assets/noface.gif'
 
 const route = useRoute()
 const router = useRouter()
 const draft = ref('')
-const localMessages = ref<any[]>([])
+const messages = ref<any[]>([])
+const loading = ref(true)
+const targetUserId = computed(() => Number(route.params.id))
 
-const title = computed(() => String(route.query.name || route.params.id || '私信'))
+const title = computed(() => String(route.query.name || '私信'))
 const avatar = computed(() => String(route.query.avatar || ''))
-const firstTime = computed(() => String(route.query.time || '2026年5月27日 22:08'))
-const lastMessage = computed(() => String(route.query.last || '欢迎关注，我会在这里接收你的私信。'))
 
-const send = () => {
+onMounted(async () => {
+  try {
+    const res = await api.get(`/message/conversations`)
+    const list = res?.data || res || []
+    const conv = Array.isArray(list) ? list.find((c: any) => c.target_user_id === targetUserId.value) : null
+    if (conv) {
+      const msgsRes = await api.get(`/message/conversations/${conv.id}/messages?page=1&page_size=50`)
+      const msgs = msgsRes?.data || msgsRes || []
+      if (Array.isArray(msgs)) {
+        messages.value = msgs
+      }
+    }
+  } catch (e) {
+    console.error('加载聊天记录失败:', e)
+  } finally {
+    loading.value = false
+  }
+})
+
+const send = async () => {
   const text = draft.value.trim()
   if (!text) return
-  localMessages.value.push({
-    id: Date.now(),
-    content: text,
-    createdAt: new Date()
-  })
+  try {
+    const res = await api.post('/message/send', { receiver_id: targetUserId.value, content: text })
+    const msg = res?.data || res
+    if (msg && msg.id) {
+      messages.value.push(msg)
+    }
+  } catch (e) {
+    console.error('发送失败:', e)
+  }
   draft.value = ''
 }
 
@@ -29,6 +53,10 @@ const formatTime = (value: any) => {
   if (Number.isNaN(d.getTime())) return String(value || '')
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+const isMine = (msg: any) => {
+  return msg.sender_id && msg.sender_id === Number(localStorage.getItem('user_id'))
 }
 </script>
 
@@ -45,23 +73,18 @@ const formatTime = (value: any) => {
     </header>
 
     <main class="chat-body">
-      <time>{{ firstTime }}</time>
-      <section class="message-row other">
-        <img :src="avatar || noface" alt="" />
-        <div class="bubble">
-          <p>{{ lastMessage }}</p>
-          <i>此条消息为自动回复</i>
-        </div>
-      </section>
-
-      <time>2026年5月27日 22:32</time>
-      <p class="notice">对方主动回复或关注你前，最多发送1条消息</p>
-
-      <template v-for="msg in localMessages" :key="msg.id">
-        <time>{{ formatTime(msg.createdAt) }}</time>
-        <section class="message-row mine">
-          <div class="bubble">{{ msg.content }}</div>
-        </section>
+      <div v-if="loading" class="loading">加载中...</div>
+      <template v-else>
+        <template v-for="msg in messages" :key="msg.id">
+          <time>{{ formatTime(msg.created_at) }}</time>
+          <section :class="['message-row', isMine(msg) ? 'mine' : 'other']">
+            <img v-if="!isMine(msg)" :src="avatar || noface" alt="" />
+            <div class="bubble">
+              <p>{{ msg.content }}</p>
+            </div>
+          </section>
+        </template>
+        <p v-if="messages.length === 0" class="notice">暂无消息，发个消息聊聊吧</p>
       </template>
     </main>
 
@@ -133,6 +156,12 @@ const formatTime = (value: any) => {
     color: #9499a0;
     font-size: 18px;
   }
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #9499a0;
 }
 
 .message-row {

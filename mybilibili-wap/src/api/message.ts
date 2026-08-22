@@ -22,7 +22,7 @@ export async function getConversations() {
 export async function getUnreadCounts() {
   if (!hasToken()) return { code: '0', data: {} }
   try {
-    const res = await api.get('/message/unread/counts')
+    const res = await api.get('/message/unread/')
     return {
       code: '1',
       data: res?.data || res || {}

@@ -100,6 +100,9 @@ func (h *MessageHTTPHandler) handleNotificationSSE(w http.ResponseWriter, r *htt
 func (h *MessageHTTPHandler) handleConversations(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
 	list, _ := h.repo.GetConversations(r.Context(), userID)
+	if list == nil {
+		list = []*Conversation{}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(list)
 }
@@ -187,7 +190,12 @@ func (h *MessageHTTPHandler) handleSend(w http.ResponseWriter, r *http.Request) 
 func (h *MessageHTTPHandler) handleUnread(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
 	cnt, _ := h.repo.GetUnreadCount(r.Context(), userID)
-	json.NewEncoder(w).Encode(map[string]int32{"unread_count": cnt})
+	json.NewEncoder(w).Encode(map[string]int32{
+		"reply":  cnt,
+		"at":     cnt,
+		"like":   cnt,
+		"system": cnt,
+	})
 }
 
 func (h *MessageHTTPHandler) handleConversationUnread(w http.ResponseWriter, r *http.Request) {
@@ -213,6 +221,9 @@ func (h *MessageHTTPHandler) handleReplies(w http.ResponseWriter, r *http.Reques
 		rows.Scan(&id, &sID, &content, &t)
 		list = append(list, map[string]interface{}{"id": id, "sender_id": sID, "content": content, "created_at": t})
 	}
+	if list == nil {
+		list = []map[string]interface{}{}
+	}
 	json.NewEncoder(w).Encode(list)
 }
 
@@ -228,6 +239,9 @@ func (h *MessageHTTPHandler) handleAt(w http.ResponseWriter, r *http.Request) {
 		var content, t string
 		rows.Scan(&id, &sID, &content, &t)
 		list = append(list, map[string]interface{}{"id": id, "sender_id": sID, "content": content, "created_at": t})
+	}
+	if list == nil {
+		list = []map[string]interface{}{}
 	}
 	json.NewEncoder(w).Encode(list)
 }
@@ -245,6 +259,9 @@ func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request)
 		rows.Scan(&id, &sID, &content, &t)
 		list = append(list, map[string]interface{}{"id": id, "sender_id": sID, "content": content, "created_at": t})
 	}
+	if list == nil {
+		list = []map[string]interface{}{}
+	}
 	json.NewEncoder(w).Encode(list)
 }
 
@@ -260,6 +277,9 @@ func (h *MessageHTTPHandler) handleSystem(w http.ResponseWriter, r *http.Request
 		var content, t string
 		rows.Scan(&id, &content, &t)
 		list = append(list, map[string]interface{}{"id": id, "content": content, "created_at": t})
+	}
+	if list == nil {
+		list = []map[string]interface{}{}
 	}
 	json.NewEncoder(w).Encode(list)
 }

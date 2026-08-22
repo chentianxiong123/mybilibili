@@ -111,7 +111,7 @@ func (r *MessageRepository) GetMessages(ctx context.Context, conversationID int6
 	}
 	defer rows.Close()
 
-	var list []*Message
+	list := make([]*Message, 0)
 	for rows.Next() {
 		m := &Message{}
 		if err := rows.Scan(&m.ID, &m.SenderID, &m.ReceiverID, &m.ConversationID, &m.Content, &m.MessageType, &m.IsRead, &m.CreatedAt); err != nil {
