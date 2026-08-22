@@ -82,6 +82,8 @@ func (h *ManuscriptHTTPHandler) handleManuscriptRoute(w http.ResponseWriter, r *
 		h.handleHot(w, r)
 	case "list", "meList":
 		h.handleManuscriptList(w, r)
+	case "meStats":
+		h.handleMyManuscriptStats(w, r)
 	case "category":
 		r.SetPathValue("id", parts[1])
 		h.handleCategory(w, r)
@@ -197,6 +199,9 @@ func manuscriptRouteName(parts []string) string {
 	case "me":
 		if len(parts) == 2 && parts[1] == "list" {
 			return "meList"
+		}
+		if len(parts) == 2 && parts[1] == "stats" {
+			return "meStats"
 		}
 		return ""
 	case "category":
@@ -756,6 +761,15 @@ func (h *ManuscriptHTTPHandler) handleUserManuscriptStats(w http.ResponseWriter,
 	httputil.WriteOK(w, map[string]interface{}{
 		"total": total, "published": published, "views": views, "likes": likes,
 	})
+}
+
+func (h *ManuscriptHTTPHandler) handleMyManuscriptStats(w http.ResponseWriter, r *http.Request) {
+	uid, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	r.SetPathValue("id", strconv.FormatInt(uid, 10))
+	h.handleUserManuscriptStats(w, r)
 }
 
 // manuscriptsByIDs 按 id 集合返回完整稿件列表（保持 id 顺序）。

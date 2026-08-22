@@ -199,8 +199,9 @@ const loadSubtitles = async () => {
         console.log('[字幕] 没有可用字幕')
       }
     }
-  } catch (error) {
+} catch (error) {
     console.error('[字幕] 加载字幕列表失败:', error)
+    ElMessage.warning('字幕服务暂时不可用')
   }
 }
 
@@ -209,7 +210,7 @@ const loadSubtitleContent = async (language: string) => {
     console.log('[字幕] 开始加载字幕内容, language:', language)
     const response = await subtitleApi.getSubtitle(videoId.value, language)
     console.log('[字幕] 字幕内容响应:', response)
-    if (response.code === 200 && response.data) {
+    if (response && response.code === 200 && response.data) {
       currentSubtitle.value = response.data
       currentSubtitleContent.value = response.data.content || []
       console.log('[字幕] 字幕内容已加载, 条数:', currentSubtitleContent.value.length)
@@ -220,6 +221,7 @@ const loadSubtitleContent = async (language: string) => {
     }
   } catch (error) {
     console.error('[字幕] 加载字幕内容失败:', error)
+    ElMessage.warning('字幕内容加载失败')
   }
 }
 
