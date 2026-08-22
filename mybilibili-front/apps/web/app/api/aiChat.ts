@@ -62,10 +62,17 @@ export const aiChatApi = {
     if (!user?.id) {
       return Promise.resolve({ code: 401, message: '请先登录', data: [] })
     }
-    return fetch(`${BASE_URL}/api/ai/customer/history/${user.id}`, {
+    return fetch(`${BASE_URL}/api/v1/ai/customer/history/${user.id}`, {
       headers: getAuthHeaders()
     })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        const ct = r.headers.get('content-type') || ''
+        if (!ct.includes('application/json') && !ct.includes('text/json')) {
+          return r.text().then(t => { throw new Error('non-JSON response: ' + t.substring(0, 80)) })
+        }
+        return r.json()
+      })
       .then(res => {
         const messages = res.data || []
         return {
@@ -100,10 +107,17 @@ export const aiChatApi = {
     if (!user?.id) {
       return Promise.resolve({ code: 401, message: '请先登录', data: [] })
     }
-    return fetch(`${BASE_URL}/api/ai/customer/history/${user.id}`, {
+    return fetch(`${BASE_URL}/api/v1/ai/customer/history/${user.id}`, {
       headers: getAuthHeaders()
     })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        const ct = r.headers.get('content-type') || ''
+        if (!ct.includes('application/json') && !ct.includes('text/json')) {
+          return r.text().then(t => { throw new Error('non-JSON response: ' + t.substring(0, 80)) })
+        }
+        return r.json()
+      })
       .then(res => ({
         code: res.code,
         message: res.message,
@@ -121,7 +135,7 @@ export const aiChatApi = {
       return { abort: () => controller.abort() }
     }
 
-    fetch(`${BASE_URL}/api/ai/customer/chat`, {
+    fetch(`${BASE_URL}/api/v1/ai/customer/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ userId: user.id, content }),
@@ -163,10 +177,13 @@ export const aiChatApi = {
     if (!user?.id) {
       return Promise.resolve({ code: 401, message: '请先登录', data: null })
     }
-    return fetch(`${BASE_URL}/api/ai/customer/transfer`, {
+    return fetch(`${BASE_URL}/api/v1/ai/customer/transfer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ userId: user.id, reason })
-    }).then(r => r.json())
+    }).then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      return r.json()
+    })
   }
 }
