@@ -153,13 +153,13 @@ api.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401: clearAuthSession(); break
-        case 403: if (import.meta.client) ElMessage.error('没有权限访问该资源'); break
-        case 404: if (import.meta.client) ElMessage.error('请求的资源不存在'); break
-        case 500: if (import.meta.client) ElMessage.error('服务器内部错误'); break
-        default: if (import.meta.client) ElMessage.error(error.response.data?.message || '请求失败')
+        case 403: if (typeof window !== 'undefined') ElMessage.error('没有权限访问该资源'); break
+        case 404: if (typeof window !== 'undefined') ElMessage.error('请求的资源不存在'); break
+        case 500: if (typeof window !== 'undefined') ElMessage.error('服务器内部错误'); break
+        default: if (typeof window !== 'undefined') ElMessage.error(error.response.data?.message || '请求失败')
       }
     } else {
-      if (import.meta.client) ElMessage.error('网络错误，请检查网络连接')
+      if (typeof window !== 'undefined') ElMessage.error('网络错误，请检查网络连接')
     }
     return Promise.reject(error)
   }
