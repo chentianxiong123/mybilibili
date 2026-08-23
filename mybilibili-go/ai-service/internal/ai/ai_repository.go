@@ -9,28 +9,28 @@ import (
 )
 
 type ApiConfig struct {
-	ID          int64
-	Name        string
-	Type        string
-	BaseURL     string
-	APIKey      string
-	Model       string
-	MaxTokens   int32
-	Temperature float64
-	Enabled     int32
-	ExtraConfig string
-	CreatedAt   time.Time
+	ID          int64     `json:"id"`
+	Name        string    `json:"name"`
+	Type        string    `json:"type"`
+	BaseURL     string    `json:"base_url"`
+	APIKey      string    `json:"api_key"`
+	Model       string    `json:"model"`
+	MaxTokens   int32     `json:"max_tokens"`
+	Temperature float64   `json:"temperature"`
+	Enabled     int32     `json:"enabled"`
+	ExtraConfig string    `json:"extra_config"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type Skill struct {
-	ID              int64
-	Name            string
-	Description     string
-	SystemPrompt    string
-	FewShotExamples string
-	Type            string
-	Enabled         int32
-	CreatedAt       time.Time
+	ID              int64     `json:"id"`
+	Name            string    `json:"name"`
+	Description     string    `json:"description"`
+	SystemPrompt    string    `json:"system_prompt"`
+	FewShotExamples string    `json:"few_shot_examples"`
+	Type            string    `json:"type"`
+	Enabled         int32     `json:"enabled"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 type Repository struct {

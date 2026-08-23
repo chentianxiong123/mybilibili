@@ -13,18 +13,18 @@ import (
 )
 
 type ExportTask struct {
-	ID           string
-	TaskKey      string
-	TaskName     string
-	UserID       int64
-	ProjectID    string
-	Status       string
-	Progress     int32
-	Message      string
-	OutputURL    string
-	ErrorMessage string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID           string    `json:"id"`
+	TaskKey      string    `json:"task_key"`
+	TaskName     string    `json:"task_name"`
+	UserID       int64     `json:"user_id"`
+	ProjectID    string    `json:"project_id"`
+	Status       string    `json:"status"`
+	Progress     int32     `json:"progress"`
+	Message      string    `json:"message"`
+	OutputURL    string    `json:"output_url"`
+	ErrorMessage string    `json:"error_message"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type Repository struct {

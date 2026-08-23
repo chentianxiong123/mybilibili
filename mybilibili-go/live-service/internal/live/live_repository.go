@@ -34,12 +34,12 @@ type Seat struct {
 }
 
 type Linkmic struct {
-	ID         int64
-	RoomID     int64
-	StreamerID int64
-	ViewerID   int64
-	Status     int32
-	CreatedAt  time.Time
+	ID         int64     `json:"id"`
+	RoomID     int64     `json:"room_id"`
+	StreamerID int64     `json:"streamer_id"`
+	ViewerID   int64     `json:"viewer_id"`
+	Status     int32     `json:"status"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type Repository struct {
