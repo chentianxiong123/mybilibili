@@ -17,23 +17,29 @@ func NewRepository(db *sql.DB) *Repository {
 
 func (r *Repository) SearchManuscripts(ctx context.Context, keyword string, categoryID int64, page, size int32) ([]map[string]interface{}, error) {
 	offset := (page - 1) * size
-	query := `SELECT id, title, description, cover_url, user_id, category_id, view_count, like_count,
-	          COALESCE(duration,''), status, upload_time FROM manuscripts WHERE status = 3`
+	query := `SELECT m.id, m.title, m.description, m.cover_url, m.user_id, m.category_id,
+	                 m.view_count, m.like_count,
+	                 COALESCE(m.comment_count,0), COALESCE(m.danmaku_count,0),
+	                 COALESCE(m.duration,''), m.status, m.upload_time,
+	                 COALESCE(u.id,0), COALESCE(u.username,''), COALESCE(u.nickname,''),
+	                 COALESCE(u.avatar,''), COALESCE(u.level,0)
+	          FROM manuscripts m LEFT JOIN users u ON m.user_id = u.id
+	          WHERE m.status = 3`
 	var args []interface{}
 	kwIdx := 0
 	if keyword != "" {
 		args = append(args, keyword)
 		kwIdx = len(args)
-		query += ` AND search_vector @@ plainto_tsquery('zh_cn', $1)`
+		query += ` AND m.search_vector @@ plainto_tsquery('zh_cn', $1)`
 	}
 	if categoryID > 0 {
 		args = append(args, categoryID)
-		query += fmt.Sprintf(` AND category_id = $%d`, len(args))
+		query += fmt.Sprintf(` AND m.category_id = $%d`, len(args))
 	}
 	if kwIdx > 0 {
-		query += fmt.Sprintf(` ORDER BY ts_rank_cd(search_vector, plainto_tsquery('zh_cn', $%d)) DESC, view_count DESC, upload_time DESC`, kwIdx)
+		query += fmt.Sprintf(` ORDER BY ts_rank_cd(m.search_vector, plainto_tsquery('zh_cn', $%d)) DESC, m.view_count DESC, m.upload_time DESC`, kwIdx)
 	} else {
-		query += ` ORDER BY upload_time DESC`
+		query += ` ORDER BY m.upload_time DESC`
 	}
 	query += fmt.Sprintf(` LIMIT $%d OFFSET $%d`, len(args)+1, len(args)+2)
 	args = append(args, size, offset)
@@ -44,13 +50,24 @@ func (r *Repository) SearchManuscripts(ctx context.Context, keyword string, cate
 	defer rows.Close()
 	var list []map[string]interface{}
 	for rows.Next() {
-		var id, userID, catID, viewCount, likeCount, status int64
+		var id, userID, catID, viewCount, likeCount, commentCount, danmakuCount, status int64
 		var title, desc, cover, duration, uploadTime string
-		rows.Scan(&id, &title, &desc, &cover, &userID, &catID, &viewCount, &likeCount, &duration, &status, &uploadTime)
+		var uid, ulevel int64
+		var uname, unick, uavatar string
+		rows.Scan(&id, &title, &desc, &cover, &userID, &catID,
+			&viewCount, &likeCount, &commentCount, &danmakuCount,
+			&duration, &status, &uploadTime,
+			&uid, &uname, &unick, &uavatar, &ulevel)
+		uploader := map[string]interface{}{
+			"id": uid, "name": unick, "username": uname, "nickname": unick,
+			"avatar": uavatar, "level": ulevel,
+		}
 		list = append(list, map[string]interface{}{
 			"id": id, "title": title, "description": desc, "cover_url": cover,
 			"user_id": userID, "category_id": catID, "view_count": viewCount,
-			"like_count": likeCount, "duration": duration, "status": status, "upload_time": uploadTime,
+			"like_count": likeCount, "comment_count": commentCount, "danmaku_count": danmakuCount,
+			"duration": duration, "status": status, "upload_time": uploadTime,
+			"uploader": uploader,
 		})
 	}
 	return list, nil

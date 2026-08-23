@@ -151,14 +151,14 @@ const loadRelatedVideos = async () => {
     const response = await recommendApi.getRelatedVideos(videoId.value, 8)
     if (response.code === 200) {
       relatedVideos.value = (response.data || []).map(video => ({
-        id: video.videoId,
-        manuscriptId: video.manuscriptId,
+        id: video.id ?? video.videoId,
+        manuscriptId: video.manuscriptId ?? video.manuscript_id ?? video.id,
         title: video.title,
-        cover: video.coverUrl,
-        author: video.userName,
-        authorId: video.userId,
-        viewCount: video.viewCount || 0,
-        commentCount: video.commentCount || 0,
+        cover: video.cover_url || video.coverUrl || video.cover,
+        author: video.userName || video.user_name || video.uploader?.name || video.uploader?.nickname || '未知UP主',
+        authorId: video.userId ?? video.user_id ?? video.uploader?.id,
+        viewCount: video.viewCount ?? video.view_count ?? 0,
+        commentCount: video.commentCount ?? video.comment_count ?? video.danmakuCount ?? video.danmaku_count ?? 0,
         duration: video.duration || '00:00'
       }))
     }
