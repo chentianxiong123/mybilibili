@@ -36,40 +36,40 @@ type Permission struct {
 }
 
 type AuditLog struct {
-	ID            int64
-	OperatorID    int64
-	OperatorName  string
-	OperatorRole  string
-	Module        string
-	Action        string
-	TargetType    string
-	TargetID      string
-	RequestMethod string
-	RequestURI    string
-	ClientIP      string
-	UserAgent     string
-	Result        int32
-	Message       string
-	Detail        string
-	CreatedAt     time.Time
+	ID            int64     `json:"id"`
+	OperatorID    int64     `json:"operator_id"`
+	OperatorName  string    `json:"operator_name"`
+	OperatorRole  string    `json:"operator_role"`
+	Module        string    `json:"module"`
+	Action        string    `json:"action"`
+	TargetType    string    `json:"target_type"`
+	TargetID      string    `json:"target_id"`
+	RequestMethod string    `json:"request_method"`
+	RequestURI    string    `json:"request_uri"`
+	ClientIP      string    `json:"client_ip"`
+	UserAgent     string    `json:"user_agent"`
+	Result        int32     `json:"result"`
+	Message       string    `json:"message"`
+	Detail        string    `json:"detail"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 type OperationTask struct {
-	ID           int64
-	TaskKey      string
-	TaskType     string
-	TaskName     string
-	TargetType   string
-	TargetID     string
-	Status       string
-	Progress     int32
-	Stage        string
-	Message      string
-	ErrorMessage string
-	OperatorID   int64
-	OperatorName string
-	StartedAt    *time.Time
-	FinishedAt   *time.Time
+	ID           int64      `json:"id"`
+	TaskKey      string     `json:"task_key"`
+	TaskType     string     `json:"task_type"`
+	TaskName     string     `json:"task_name"`
+	TargetType   string     `json:"target_type"`
+	TargetID     string     `json:"target_id"`
+	Status       string     `json:"status"`
+	Progress     int32      `json:"progress"`
+	Stage        string     `json:"stage"`
+	Message      string     `json:"message"`
+	ErrorMessage string     `json:"error_message"`
+	OperatorID   int64      `json:"operator_id"`
+	OperatorName string     `json:"operator_name"`
+	StartedAt    *time.Time `json:"started_at"`
+	FinishedAt   *time.Time `json:"finished_at"`
 }
 
 type Repository struct {

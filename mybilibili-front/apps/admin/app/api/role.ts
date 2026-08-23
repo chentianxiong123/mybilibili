@@ -55,7 +55,7 @@ export const setRolePermissions = (id, permissionIds) => {
   return request({
     url: `/admin/roles/${id}/permissions`,
     method: 'put',
-    data: permissionIds
+    data: { permission_ids: permissionIds }
   })
 }
 

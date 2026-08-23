@@ -18,6 +18,16 @@ const searchForm = reactive({
   endTime: ''
 })
 
+const normalizeLoginLog = (d) => ({
+  id: d.id,
+  userId: d.user_id ?? d.userId ?? null,
+  ip: d.ip || '',
+  location: d.location || '',
+  loginTime: d.login_time || d.loginTime || '',
+  status: d.status,
+  userAgent: d.user_agent || d.userAgent || ''
+})
+
 // 加载数据
 const loadData = () => {
   loading.value = true
@@ -28,7 +38,8 @@ const loadData = () => {
   }
   adminLoginLogApi.getLoginLogs(params).then(res => {
     if (res.code === 200) {
-      tableData.value = res.data.list
+      const list = res.data.list || []
+      tableData.value = list.map(normalizeLoginLog)
       total.value = res.data.total
     }
   }).finally(() => { loading.value = false })

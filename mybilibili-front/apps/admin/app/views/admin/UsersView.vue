@@ -21,6 +21,25 @@ const detailDialogVisible = ref(false)
 const userDetail = ref({})
 
 // 加载用户列表
+const normalizeUser = (d) => ({
+  id: d.id,
+  username: d.username || '',
+  nickname: d.nickname || '',
+  email: d.email || '',
+  avatar: d.avatar || '',
+  level: d.level ?? d.userLevel ?? 1,
+  status: d.status !== undefined && d.status !== null ? d.status : 0,
+  followerCount: d.follower_count ?? d.followerCount ?? 0,
+  followingCount: d.following_count ?? d.followingCount ?? 0,
+  manuscriptCount: d.manuscript_count ?? d.manuscriptCount ?? 0,
+  phone: d.phone || '',
+  gender: d.gender ?? 0,
+  birthdate: d.birthdate || d.birth_date || '',
+  bio: d.bio || '',
+  signature: d.signature || '',
+  announcement: d.announcement || ''
+})
+
 const loadUsers = async () => {
   loading.value = true
   try {
@@ -31,18 +50,7 @@ const loadUsers = async () => {
     })
     if (res.code === 200 || res.success) {
       const list = res.data?.list || res.data || []
-      
-      // 简单验证status字段是否存在
-      const hasStatusField = list.length > 0 && list[0].status !== undefined
-      console.log(`获取用户列表成功，共${list.length}条记录，status字段${hasStatusField ? '存在' : '不存在'}`)
-      
-      // 如果status字段不存在，添加默认值（兼容性处理）
-      const processedList = list.map(user => ({
-        ...user,
-        status: user.status !== undefined && user.status !== null ? user.status : 0
-      }))
-      
-      tableData.value = processedList
+      tableData.value = list.map(normalizeUser)
       total.value = res.data?.total || res.total || 0
     }
   } catch (error) {
@@ -119,7 +127,7 @@ const openDetailDialog = async (userId) => {
     loading.value = true
     const res = await getUserById(userId)
     if (res.code === 200 || res.success) {
-      userDetail.value = res.data || {}
+      userDetail.value = normalizeUser(res.data || {})
       detailDialogVisible.value = true
     } else {
       ElMessage.error('获取用户详情失败')

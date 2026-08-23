@@ -39,11 +39,24 @@ const manuscriptVideos = ref([])
 const currentVideo = ref(null)
 const videoPlayerUrl = ref('')
 
+const normalizeManuscriptStatistics = (d) => ({
+  total: d.total ?? 0,
+  pending: d.pending ?? 0,
+  processing: d.processing ?? 0,
+  ready: d.approved ?? d.ready ?? 0,
+  published: d.published ?? 0,
+  failed: d.rejected ?? d.failed ?? 0,
+  draft: d.draft ?? 0,
+  totalViews: d.total_views ?? d.totalViews ?? 0,
+  totalLikes: d.total_likes ?? d.totalLikes ?? 0,
+  totalVideos: d.total_videos ?? d.totalVideos ?? 0
+})
+
 const loadStatistics = async () => {
   try {
     const res = await getManuscriptStatistics()
     if (res.code === 200 || res.success) {
-      statistics.value = res.data || {}
+      statistics.value = normalizeManuscriptStatistics(res.data || {})
     }
   } catch (error) {
     console.error('获取统计数据失败:', error)
