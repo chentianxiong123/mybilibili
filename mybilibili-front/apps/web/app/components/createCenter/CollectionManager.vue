@@ -146,6 +146,26 @@ const availableVideos = ref([])
 const selectedVideos = ref([])
 const addingVideo = ref(false)
 
+// 合集 API 返回 snake_case，归一化到 camelCase
+const normalizeCollection = (d) => ({
+  id: d.id,
+  title: d.title || '',
+  name: d.title || d.name || '',
+  description: d.description || '',
+  coverUrl: d.cover_url || d.coverUrl || '',
+  isPublic: d.status === 1 || d.isPublic === true,
+  status: d.status,
+  videoCount: d.manuscript_count || d.videoCount || 0,
+  viewCount: d.view_count || d.viewCount || 0,
+  createTime: d.created_at || d.createTime || '',
+  updateTime: d.updated_at || d.updateTime || '',
+  createdAt: d.created_at || d.createTime || '',
+  updatedAt: d.updated_at || d.updateTime || '',
+  userId: d.user_id || d.userId || null,
+  userName: d.user_name || d.userName || '',
+  userAvatar: d.user_avatar || d.userAvatar || ''
+})
+
 const loadUserCollections = async () => {
   const userId = getCurrentUserId()
   if (!userId) return
@@ -154,7 +174,7 @@ const loadUserCollections = async () => {
   try {
     const response = await collectionApi.getUserCollections(userId, 1, 100)
     if (response.code === 200) {
-      const list = response.data || []
+      const list = (response.data || []).map(normalizeCollection)
       for (const collection of list) {
         try {
           const videoResponse = await collectionApi.getCollectionManuscripts(collection.id, 1, 10)
@@ -189,7 +209,7 @@ const goToCollectionDetail = async (collectionId) => {
   try {
     const response = await collectionApi.getCollectionById(collectionId)
     if (response.code === 200) {
-      collectionDetail.value.collection = response.data
+      collectionDetail.value.collection = normalizeCollection(response.data)
     }
 
     const videoResponse = await collectionApi.getCollectionManuscripts(collectionId, 1, 20)

@@ -50,6 +50,23 @@ const loadStatistics = async () => {
   }
 }
 
+// 管理员 API 返回 snake_case，归一化到 camelCase
+const normalizeManuscript = (d) => ({
+  id: d.id,
+  title: d.title || '',
+  userId: d.user_id || d.userId || null,
+  categoryId: d.category_id || d.categoryId || null,
+  status: d.status,
+  reviewStatus: d.review_status || d.reviewStatus,
+  viewCount: d.view_count ?? d.viewCount ?? 0,
+  likeCount: d.like_count ?? d.likeCount ?? 0,
+  commentCount: d.comment_count ?? d.commentCount ?? 0,
+  uploadTime: d.upload_time || d.uploadTime || '',
+  updatedAt: d.updated_at || d.updatedAt || '',
+  processProgress: d.processProgress || d.process_progress || 0,
+  durationSeconds: d.duration_seconds ?? d.durationSeconds ?? 0
+})
+
 const loadManuscripts = async () => {
   loading.value = true
   try {
@@ -67,6 +84,7 @@ const loadManuscripts = async () => {
 
     if (res.code === 200 || res.success) {
       let list = Array.isArray(res.data) ? res.data : (res.data?.list || [])
+      list = list.map(normalizeManuscript)
       if (keyword.value) {
         list = list.filter(item =>
           item.title?.includes(keyword.value) ||

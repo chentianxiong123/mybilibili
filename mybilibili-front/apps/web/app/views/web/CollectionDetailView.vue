@@ -80,13 +80,29 @@ const getDefaultCover = () => {
   return 'https://picsum.photos/id/1025/400/225'
 }
 
+// 合集 API 返回 snake_case，归一化到 camelCase
+const normalizeCollection = (d) => ({
+  id: d.id,
+  name: d.title || d.name || '',
+  description: d.description || '',
+  coverUrl: d.cover_url || d.coverUrl || '',
+  isPublic: d.status === 1 || d.isPublic === true,
+  userId: d.user_id || d.userId || null,
+  userName: d.user_name || d.userName || '',
+  userAvatar: d.user_avatar || d.userAvatar || '',
+  videoCount: d.manuscript_count || d.videoCount || 0,
+  viewCount: d.view_count || d.viewCount || 0,
+  createTime: d.created_at || d.createTime || '',
+  updateTime: d.updated_at || d.updateTime || ''
+})
+
 // 加载合集详情
 const loadCollectionDetail = async () => {
   loading.value = true
   try {
     const response = await collectionApi.getCollectionById(collectionId.value)
     if (response.code === 200) {
-      collection.value = response.data
+      collection.value = normalizeCollection(response.data)
     }
   } catch (error) {
     console.error('获取合集详情失败:', error)

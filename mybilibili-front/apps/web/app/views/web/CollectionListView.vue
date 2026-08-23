@@ -58,6 +58,22 @@ const getDefaultCover = () => {
   return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225" viewBox="0 0 400 225"><rect fill="#e5e9ef" width="400" height="225"/><text fill="#9499a0" font-family="sans-serif" font-size="16" x="50%" y="50%" text-anchor="middle" dy=".3em">暂无封面</text></svg>')
 }
 
+// 合集 API 返回 snake_case，归一化到 camelCase
+const normalizeCollection = (d) => ({
+  id: d.id,
+  name: d.title || d.name || '',
+  description: d.description || '',
+  coverUrl: d.cover_url || d.coverUrl || '',
+  isPublic: d.status === 1 || d.isPublic === true,
+  videoCount: d.manuscript_count || d.videoCount || 0,
+  viewCount: d.view_count || d.viewCount || 0,
+  createTime: d.created_at || d.createTime || '',
+  updateTime: d.updated_at || d.updateTime || '',
+  userId: d.user_id || d.userId || null,
+  userName: d.user_name || d.userName || '',
+  userAvatar: d.user_avatar || d.userAvatar || ''
+})
+
 // 加载合集列表
 const loadCollections = async () => {
   if (!userId.value) return
@@ -70,7 +86,7 @@ const loadCollections = async () => {
       pagination.value.pageSize
     )
     if (response.code === 200) {
-      collections.value = response.data?.list || []
+      collections.value = (response.data?.list || []).map(normalizeCollection)
       pagination.value.total = response.data?.total || 0
     }
   } catch (error) {
