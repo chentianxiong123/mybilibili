@@ -90,6 +90,7 @@ func (s *CommentService) AddComment(ctx context.Context, req *pb.AddCommentReque
 	}
 	c.ID = id
 	repository.UpsertDailyMetric(ctx, s.db, c.ManuscriptID, c.UserID, "comment_count", 1)
+	_, _ = s.db.ExecContext(ctx, `UPDATE manuscripts SET comment_count = comment_count + 1 WHERE id = $1`, c.ManuscriptID)
 
 	s.repo.WriteContentReview(ctx, "comment", req.UserId, req.Content)
 	if s.reviewSvc != nil {
@@ -150,6 +151,7 @@ func (s *CommentService) AddReply(ctx context.Context, req *pb.AddReplyRequest) 
 
 	if parent, perr := s.repo.FindByID(ctx, req.CommentId); perr == nil {
 		repository.UpsertDailyMetric(ctx, s.db, parent.ManuscriptID, req.UserId, "comment_count", 1)
+		_, _ = s.db.ExecContext(ctx, `UPDATE manuscripts SET comment_count = comment_count + 1 WHERE id = $1`, parent.ManuscriptID)
 	}
 
 	s.sendReplyNotification(ctx, req.CommentId, req.UserId)

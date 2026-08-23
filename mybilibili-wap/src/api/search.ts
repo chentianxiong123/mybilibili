@@ -5,12 +5,13 @@
 import api from './client'
 
 const adaptVideo = (v) => ({
-  aId: v.manuscriptId || v.id,
+  aId: v.manuscript_id || v.id || v.manuscriptId,
   title: v.title,
-  pic: v.coverUrl,
-  author: v.username || v.nickname || '',
-  play: v.viewCount || 0,
-  videoReview: v.danmakuCount || 0
+  pic: v.cover_url || v.coverUrl || v.cover,
+  author: v.uploader?.name || v.uploader?.nickname || v.uploader?.username || v.username || v.nickname || v.author || '',
+  play: v.view_count || v.viewCount || 0,
+  videoReview: v.comment_count || v.danmaku_count || v.commentCount || v.danmakuCount || 0,
+  duration: v.duration || ''
 })
 
 // 热搜榜 - 复用 searchApi.getHotSearch() → /search/hot

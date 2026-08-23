@@ -8,13 +8,13 @@ import { readCache, writeCache } from '../utils/cache'
 
 // 推荐视频适配
 const adaptRecommend = (v: any) => ({
-  aId: v.manuscriptId || v.id,
+  aId: v.manuscript_id || v.id || v.manuscriptId,
   title: v.title,
-  pic: v.coverUrl,
-  author: v.username || v.nickname || v.author || '',
-  mid: v.userId,
-  play: v.viewCount || 0,
-  videoReview: v.danmakuCount || 0,
+  pic: v.cover_url || v.coverUrl || v.cover,
+  author: v.uploader?.name || v.uploader?.nickname || v.uploader?.username || v.username || v.nickname || v.author || '',
+  mid: v.user_id || v.userId || v.uploader?.id,
+  play: v.view_count || v.viewCount || 0,
+  videoReview: v.comment_count || v.danmaku_count || v.commentCount || v.danmakuCount || 0,
   duration: v.duration
 })
 

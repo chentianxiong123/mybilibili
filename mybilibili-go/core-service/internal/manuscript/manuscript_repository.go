@@ -3,6 +3,7 @@ package manuscript
 import (
 	"context"
 	"database/sql"
+	"strconv"
 
 	"mybilibili/pkg/models"
 	pb "mybilibili/pkg/pb"
@@ -406,10 +407,5 @@ func videoToPB(v *Video) *pb.VideoItem {
 }
 
 func itoa(n int) string {
-	return string(rune('0'+n%10)) + func() string {
-		if n >= 10 {
-			return string(rune('0' + n/10%10))
-		}
-		return ""
-	}()
+	return strconv.Itoa(n)
 }
