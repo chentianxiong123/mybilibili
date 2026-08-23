@@ -76,6 +76,15 @@ const rules = {
 }
 
 // 加载违禁词列表
+const normalizeWord = (d) => ({
+  id: d.id,
+  word: d.word || '',
+  matchType: d.match_type || d.matchType || 'CONTAINS',
+  category: d.category || '',
+  isEnabled: d.is_enabled ?? d.isEnabled ?? 1,
+  createdAt: d.created_at || d.createdAt || ''
+})
+
 const loadWords = async () => {
   loading.value = true
   try {
@@ -85,7 +94,8 @@ const loadWords = async () => {
       keyword: keyword.value
     })
     if (res.code === 200 || res.success) {
-      tableData.value = res.data?.list || res.data || []
+      const list = res.data?.list || res.data || []
+      tableData.value = (Array.isArray(list) ? list : []).map(normalizeWord)
       total.value = res.data?.total || res.total || 0
     }
   } catch (error) {

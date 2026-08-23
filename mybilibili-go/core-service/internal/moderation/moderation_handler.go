@@ -47,7 +47,14 @@ func (h *Handler) handleWords(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		page, size := httputil.ParsePageParams(r)
 		list, _ := h.svc.ListWords(r.Context(), page, size)
-		json.NewEncoder(w).Encode(list)
+		if list == nil {
+			list = []*ProhibitedWord{}
+		}
+		var total int64
+		h.svc.repo.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM prohibited_words`).Scan(&total)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"list": list, "total": total, "page": page, "size": size,
+		})
 	case "POST":
 		var req struct {
 			Word      string `json:"word"`

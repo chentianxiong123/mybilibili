@@ -48,7 +48,8 @@ async function loadData() {
     const params = statusFilter.value ? { status: statusFilter.value } : {}
     const res = await getTicketList(params)
     if (res.code === 200) {
-      ticketList.value = res.data
+      const list = res.data?.list || res.data || []
+      ticketList.value = (Array.isArray(list) ? list : []).map(normalizeTicket)
     }
   } catch (e) {
     console.error('加载工单列表失败', e)
@@ -56,6 +57,24 @@ async function loadData() {
     loading.value = false
   }
 }
+
+const normalizeTicket = (d) => ({
+  id: d.id,
+  ticketNo: d.ticket_no || d.ticketNo || '',
+  userId: d.user_id ?? d.userId ?? null,
+  sessionId: d.session_id ?? d.sessionId ?? null,
+  source: d.source || '',
+  category: d.category || '',
+  priority: d.priority || '',
+  status: d.status || '',
+  title: d.title || '',
+  content: d.content || '',
+  entryReply: d.entry_reply || d.entryReply || '',
+  adminReply: d.admin_reply || d.adminReply || '',
+  assigneeAdminId: d.assignee_admin_id ?? d.assigneeAdminId ?? null,
+  processedAt: d.processed_at || d.processedAt || '',
+  createdAt: d.created_at || d.createdAt || ''
+})
 
 function handleFilter() {
   loadData()

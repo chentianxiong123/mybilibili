@@ -10,21 +10,21 @@ import (
 )
 
 type Ticket struct {
-	ID              int64
-	TicketNo        string
-	UserID          int64
-	SessionID       int64
-	Source          string
-	Category        string
-	Priority        string
-	Status          string
-	Title           string
-	Content         string
-	EntryReply      string
-	AdminReply      string
-	AssigneeAdminID int64
-	ProcessedAt     *time.Time
-	CreatedAt       time.Time
+	ID              int64      `json:"id"`
+	TicketNo        string     `json:"ticket_no"`
+	UserID          int64      `json:"user_id"`
+	SessionID       int64      `json:"session_id"`
+	Source          string     `json:"source"`
+	Category        string     `json:"category"`
+	Priority        string     `json:"priority"`
+	Status          string     `json:"status"`
+	Title           string     `json:"title"`
+	Content         string     `json:"content"`
+	EntryReply      string     `json:"entry_reply"`
+	AdminReply      string     `json:"admin_reply"`
+	AssigneeAdminID int64      `json:"assignee_admin_id"`
+	ProcessedAt     *time.Time `json:"processed_at"`
+	CreatedAt       time.Time  `json:"created_at"`
 }
 
 type Repository struct {
@@ -79,27 +79,33 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*Ticket, error) {
 	return t, nil
 }
 
-func (r *Repository) List(ctx context.Context, status string, page, size int32) ([]*Ticket, error) {
+func (r *Repository) List(ctx context.Context, status string, page, size int32) ([]*Ticket, int64, error) {
 	offset := (page - 1) * size
-	query := `SELECT id, ticket_no, COALESCE(user_id,0), status, title, COALESCE(content,''), created_at FROM support_tickets`
+	query := `SELECT id, ticket_no, COALESCE(user_id,0), COALESCE(session_id,0), COALESCE(source,''), COALESCE(category,''), COALESCE(priority,''), status, title, COALESCE(content,''), COALESCE(entry_reply,''), COALESCE(admin_reply,''), COALESCE(assignee_admin_id,0), created_at, processed_at FROM support_tickets`
+	countQuery := `SELECT COUNT(*) FROM support_tickets`
 	args := []interface{}{size, offset}
+	countArgs := []interface{}{}
 	if status != "" {
 		query += ` WHERE status = $1`
+		countQuery += ` WHERE status = $1`
 		args = append([]interface{}{status}, args...)
+		countArgs = []interface{}{status}
 	}
 	query += ` ORDER BY created_at DESC LIMIT $1 OFFSET $2`
+	var total int64
+	r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total)
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 	list := make([]*Ticket, 0)
 	for rows.Next() {
 		t := &Ticket{}
-		rows.Scan(&t.ID, &t.TicketNo, &t.UserID, &t.Status, &t.Title, &t.Content, &t.CreatedAt)
+		rows.Scan(&t.ID, &t.TicketNo, &t.UserID, &t.SessionID, &t.Source, &t.Category, &t.Priority, &t.Status, &t.Title, &t.Content, &t.EntryReply, &t.AdminReply, &t.AssigneeAdminID, &t.CreatedAt, &t.ProcessedAt)
 		list = append(list, t)
 	}
-	return list, nil
+	return list, total, nil
 }
 
 func (r *Repository) Process(ctx context.Context, id int64, adminID int64, reply string) error {
@@ -121,7 +127,7 @@ func (s *Service) Create(ctx context.Context, userID int64, title, content strin
 	return s.repo.Create(ctx, userID, "USER_FEEDBACK", "GENERAL", "NORMAL", title, content)
 }
 
-func (s *Service) List(ctx context.Context, status string, page, size int32) ([]*Ticket, error) {
+func (s *Service) List(ctx context.Context, status string, page, size int32) ([]*Ticket, int64, error) {
 	return s.repo.List(ctx, status, page, size)
 }
 
