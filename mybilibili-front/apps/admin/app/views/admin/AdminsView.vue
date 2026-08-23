@@ -93,12 +93,28 @@ const groupedPermissions = computed(() => {
   return groups.filter(group => group.permissions.length > 0)
 })
 
+// 管理员 API 返回 PascalCase，归一化到 camelCase
+const normalizeAdmin = (d) => ({
+  id: d.id ?? d.ID,
+  username: d.username ?? d.Username || '',
+  adminLevel: d.admin_level ?? d.adminLevel ?? d.AdminLevel ?? 0,
+  roles: d.roles || [],
+  createdAt: d.created_at || d.createdAt || d.CreatedAt || ''
+})
+
+const normalizeRole = (d) => ({
+  id: d.id ?? d.ID,
+  name: d.name ?? d.Name || '',
+  description: d.description ?? d.Description || '',
+  createTime: d.create_time || d.created_at || d.createTime || d.createdAt || d.CreatedAt || ''
+})
+
 // ==================== 加载数据 ====================
 const loadAdmins = async () => {
   adminLoading.value = true
   try {
     const res = await getAdminList()
-    if (res.code === 200 || res.success) admins.value = res.data || []
+    if (res.code === 200 || res.success) admins.value = (res.data || []).map(normalizeAdmin)
   } catch { ElMessage.error('获取管理员列表失败') }
   finally { adminLoading.value = false }
 }
@@ -107,7 +123,7 @@ const loadRoles = async () => {
   roleLoading.value = true
   try {
     const res = await getRoleList()
-    if (res.code === 200 || res.success) roles.value = res.data || []
+    if (res.code === 200 || res.success) roles.value = (res.data || []).map(normalizeRole)
   } catch { ElMessage.error('获取角色列表失败') }
   finally { roleLoading.value = false }
 }

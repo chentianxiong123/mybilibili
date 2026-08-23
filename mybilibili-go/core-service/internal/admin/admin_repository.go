@@ -11,16 +11,16 @@ import (
 )
 
 type AdminUser struct {
-	ID         int64
-	Username   string
-	Password   string
-	AdminLevel int32
+	ID         int64  `json:"id"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	AdminLevel int32  `json:"admin_level"`
 }
 
 type Role struct {
-	ID          int64
-	Name        string
-	Description string
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 type Permission struct {
