@@ -17,6 +17,21 @@ const manuscriptStatus = ref([])
 const recentManuscripts = ref([])
 const loading = ref(false)
 
+const normalizeStatistics = (d) => ({
+  userCount: d.user_count ?? d.userCount ?? 0,
+  manuscriptCount: d.manuscript_count ?? d.manuscriptCount ?? 0,
+  videoCount: d.video_count ?? d.videoCount ?? 0,
+  viewCount: d.view_count ?? d.viewCount ?? 0,
+  pendingManuscriptCount: d.pending_count ?? d.pendingManuscriptCount ?? 0
+})
+
+const normalizeRecentManuscript = (d) => ({
+  id: d.id,
+  title: d.title || '',
+  status: d.status,
+  uploadTime: d.upload_time || d.uploadTime || d.created_at || d.createdAt || ''
+})
+
 const loadStatistics = async () => {
   loading.value = true
   try {
@@ -27,15 +42,17 @@ const loadStatistics = async () => {
     ])
     
     if (overviewRes.code === 200 || overviewRes.success) {
-      statistics.value = overviewRes.data
+      statistics.value = normalizeStatistics(overviewRes.data)
     }
     
     if (statusRes.code === 200 || statusRes.success) {
-      manuscriptStatus.value = statusRes.data || []
+      const data = statusRes.data || {}
+      manuscriptStatus.value = Object.entries(data).map(([status, count]) => ({ status, count }))
     }
     
     if (recentRes.code === 200 || recentRes.success) {
-      recentManuscripts.value = recentRes.data || []
+      const list = recentRes.data || []
+      recentManuscripts.value = Array.isArray(list) ? list.map(normalizeRecentManuscript) : []
     }
   } catch (error) {
     console.error('加载统计数据失败:', error)

@@ -61,6 +61,17 @@ const formData = ref({
 // 图片上传加载状态
 const uploadLoading = ref(false)
 
+const normalizeBanner = (d) => ({
+  id: d.id,
+  title: d.title || '',
+  imageUrl: d.image_url || d.imageUrl || '',
+  linkUrl: d.link_url || d.linkUrl || '',
+  sortOrder: d.sort_order ?? d.sortOrder ?? 1,
+  status: d.status,
+  startTime: d.start_time || d.startTime || null,
+  endTime: d.end_time || d.endTime || null
+})
+
 // 根据类型获取数据
 const loadData = async () => {
   loading.value = true
@@ -68,22 +79,24 @@ const loadData = async () => {
     if (currentType.value === 'home') {
       const res = await getHomeBanners()
       if (res.code === 200) {
-        bannerList.value = res.data || []
+        const list = res.data || []
+        bannerList.value = Array.isArray(list) ? list.map(normalizeBanner) : []
       }
     } else if (currentType.value === 'category') {
       const res = await getCategoryBanners(currentCategoryId.value)
       if (res.code === 200) {
-        bannerList.value = res.data || []
+        const list = res.data || []
+        bannerList.value = Array.isArray(list) ? list.map(normalizeBanner) : []
       }
     } else if (currentType.value === 'background') {
       const res = await getBackgroundImage()
       if (res.code === 200) {
-        backgroundData.value = res.data
+        backgroundData.value = res.data ? normalizeBanner(res.data) : null
       }
     } else if (currentType.value === 'userProfile') {
       const res = await getUserProfileBackground()
       if (res.code === 200) {
-        userProfileBackgroundData.value = res.data
+        userProfileBackgroundData.value = res.data ? normalizeBanner(res.data) : null
       }
     }
   } catch (error) {

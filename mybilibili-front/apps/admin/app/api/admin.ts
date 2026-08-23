@@ -41,7 +41,7 @@ export const setAdminRoles = (id, roleIds) => {
   return request({
     url: `/admin/${id}/roles`,
     method: 'put',
-    data: roleIds
+    data: { role_ids: roleIds }
   })
 }
 

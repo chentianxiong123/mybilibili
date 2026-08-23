@@ -35,13 +35,29 @@ export function useAdminLiveRooms({
     { label: '离线', value: LIVE_ROOM_STATUS.OFFLINE }
   ]
 
-  const loadRooms = async () => {
+  const normalizeRoom = (d) => ({
+  id: d.id,
+  roomName: d.title || d.roomName || '',
+  userId: d.user_id ?? d.userId ?? null,
+  status: d.status,
+  viewerCount: d.viewer_count ?? d.viewerCount ?? 0,
+  category: d.category || '',
+  createdAt: d.created_at || d.createdAt || ''
+})
+
+const normalizeStats = (d) => ({
+  totalRooms: d.total_rooms ?? d.totalRooms ?? 0,
+  onlineRooms: d.live_count ?? d.onlineRooms ?? 0,
+  totalViewers: d.total_viewers ?? d.totalViewers ?? 0
+})
+
+const loadRooms = async () => {
     loading.value = true
     try {
       const res = await fetchRooms(page.value, pageSize.value, statusFilter.value)
       if (res.code === 200) {
         const pageResult = normalizePage(res.data)
-        rooms.value = pageResult.records
+        rooms.value = (pageResult.records || []).map(normalizeRoom)
         total.value = pageResult.total
         return true
       }
@@ -58,7 +74,7 @@ export function useAdminLiveRooms({
     try {
       const res = await fetchStats()
       if (res.code === 200) {
-        stats.value = { ...DEFAULT_STATS, ...(res.data || {}) }
+        stats.value = { ...DEFAULT_STATS, ...normalizeStats(res.data || {}) }
         return true
       }
       return false

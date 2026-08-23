@@ -41,7 +41,7 @@ export const adminAiApi = {
     const { onData, onDone, onError, onToolCall } = callbacks
     const controller = new AbortController()
 
-    fetch(`${BASE_URL}/api/ai/admin/assistant/send`, {
+    fetch(`${BASE_URL}/api/v1/ai/assistant/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ content }),

@@ -59,7 +59,12 @@ const loadCategories = async () => {
       keyword: keyword.value
     })
     if (res.code === 200 || res.success) {
-      tableData.value = res.data?.list || res.data || []
+      const list = res.data?.list || res.data || []
+      tableData.value = Array.isArray(list) ? list.map(d => ({
+        id: d.id,
+        name: d.name || '',
+        createdAt: d.created_at || d.createdAt || d.create_time || ''
+      })) : []
       total.value = res.data?.total || res.total || 0
     }
   } catch (error) {
