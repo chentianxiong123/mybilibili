@@ -152,11 +152,25 @@ const getLanguageDisplayName = (language) => {
   return languageMap[language] || language
 }
 
+// 字幕 API 返回 snake_case (upload_time/uploaded_by)，归一化
+const normalizeSubtitle = (d) => ({
+  id: d.id,
+  videoId: d.video_id ?? d.videoId,
+  language: d.language,
+  languageName: d.language_name || d.languageName || '',
+  format: d.format || '',
+  isDefault: d.is_default ?? d.isDefault ?? false,
+  uploadId: d.uploaded_by ?? d.uploadId ?? d.uploadedBy ?? null,
+  status: d.status,
+  source: d.source || '',
+  createTime: d.upload_time || d.createTime || d.created_at || d.uploadTime || ''
+})
+
 const loadVideoSubtitles = async (videoId) => {
   try {
     const res = await getVideoSubtitles(videoId)
     if (res.code === 200 || res.success) {
-      videoSubtitles.value = res.data || []
+      videoSubtitles.value = (res.data || []).map(normalizeSubtitle)
     } else {
       ElMessage.error(res.message || '获取字幕列表失败')
     }

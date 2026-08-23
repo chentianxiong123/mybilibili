@@ -83,13 +83,21 @@ const rules = {
   ]
 }
 
+// 管理员 API 返回 PascalCase (ID/Name)，归一化到 camelCase
+const normalizeRole = (d) => ({
+  id: d.id ?? d.ID,
+  name: d.name ?? d.Name || '',
+  description: d.description ?? d.Description || '',
+  createTime: d.create_time || d.created_at || d.createTime || d.createdAt || d.CreatedAt || ''
+})
+
 // 加载角色列表
 const loadRoles = async () => {
   loading.value = true
   try {
     const res = await getRoleList()
     if (res.code === 200 || res.success) {
-      tableData.value = res.data || []
+      tableData.value = (res.data || []).map(normalizeRole)
     }
   } catch (error) {
     ElMessage.error('获取角色列表失败')
