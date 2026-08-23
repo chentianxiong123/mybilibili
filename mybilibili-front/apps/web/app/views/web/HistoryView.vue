@@ -153,7 +153,7 @@ const video = item.video || {}
           author: uploader.name || uploader.nickname || video.author || video.userName || video.user_name || '未知UP主',
           cover: video.coverUrl || video.cover_url || video.cover || '',
           duration: item.progressSeconds || item.progress_seconds || 0,
-          watchedAt: item.watchedAt || item.watched_at ? new Date(item.watchedAt || item.watched_at) : new Date(),
+          watchedAt: (item.watchedAt || item.watched_at) ? new Date(item.watchedAt || item.watched_at) : new Date(),
           progress: item.progressSeconds || item.progress_seconds || 0,
           totalDuration: item.videoDuration || item.video_duration || 0,
           watchPercentage: item.watchPercentage || item.watch_percentage || 0,
