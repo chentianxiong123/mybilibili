@@ -78,7 +78,7 @@ const loadHistory = async () => {
       .map(item => {
         const video = item.video || {}
         const uploader = video.uploader || {}
-        const watchedAt = item.watchedAt || item.watched_at ? new Date(item.watchedAt || item.watched_at) : new Date()
+        const watchedAt = (item.watchedAt || item.watched_at) ? new Date(item.watchedAt || item.watched_at) : new Date()
 
         return {
           id: item.id,
