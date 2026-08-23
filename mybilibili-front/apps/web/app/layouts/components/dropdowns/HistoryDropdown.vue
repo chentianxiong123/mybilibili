@@ -78,19 +78,19 @@ const loadHistory = async () => {
       .map(item => {
         const video = item.video || {}
         const uploader = video.uploader || {}
-        const watchedAt = item.watchedAt ? new Date(item.watchedAt) : new Date()
+        const watchedAt = item.watchedAt || item.watched_at ? new Date(item.watchedAt || item.watched_at) : new Date()
 
         return {
           id: item.id,
-          videoId: item.videoId,
-          manuscriptId: video.manuscriptId,
+          videoId: item.videoId || item.video_id,
+          manuscriptId: video.manuscriptId || video.manuscript_id || video.id,
           title: video.title || '未知视频',
-          thumbnail: video.coverUrl || '',
-          duration: formatDuration(item.videoDuration),
+          thumbnail: video.coverUrl || video.cover_url || video.cover || '',
+          duration: formatDuration(item.videoDuration || item.video_duration),
           watchedAt: watchedAt,
           dateKey: formatDate(watchedAt),
           time: formatTime(watchedAt),
-          uploader: uploader.name || '未知UP主'
+          uploader: uploader.name || uploader.nickname || video.author || video.userName || video.user_name || '未知UP主'
         }
       })
 

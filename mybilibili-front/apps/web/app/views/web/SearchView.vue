@@ -108,16 +108,16 @@ const performSearch = async (isLoadMore = false) => {
       
       // 转换后端数据为前端展示格式
       const formattedResults = content.map(item => ({
-        manuscriptId: item.manuscriptId,
+        manuscriptId: item.manuscriptId ?? item.manuscript_id ?? item.id,
         title: item.title,
-        cover: item.coverUrl || '/default-cover.jpg',
-        author: item.userName || '未知UP主',
-        userId: item.userId,
-        viewCount: item.viewCount || 0,
-        commentCount: item.commentCount || 0,
+        cover: item.coverUrl || item.cover_url || item.cover || '/default-cover.jpg',
+        author: item.userName || item.user_name || item.uploader?.name || item.uploader?.nickname || '未知UP主',
+        userId: item.userId ?? item.user_id ?? item.uploader?.id,
+        viewCount: item.viewCount ?? item.view_count ?? 0,
+        commentCount: item.commentCount ?? item.comment_count ?? 0,
         duration: item.duration || '00:00',
-        publishDate: item.uploadTime,
-        videoCount: item.videoCount || 1
+        publishDate: item.uploadTime || item.upload_time || item.createdAt || item.created_at,
+        videoCount: item.videoCount || item.video_count || 1
       }))
 
       if (isLoadMore) {

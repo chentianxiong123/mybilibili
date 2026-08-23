@@ -99,7 +99,20 @@ const performSearch = async () => {
     })
 
     if (response.code === 200) {
-      searchResults.value = response.data.list || []
+      searchResults.value = (response.data.list || []).map(item => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        coverUrl: item.coverUrl || item.cover_url || item.cover,
+        viewCount: item.viewCount ?? item.view_count ?? 0,
+        commentCount: item.commentCount ?? item.comment_count ?? 0,
+        durationSeconds: item.durationSeconds ?? item.duration_seconds ?? 0,
+        duration: item.duration || '00:00',
+        uploader: item.uploader || { id: item.userId || item.user_id, name: item.userName || item.user_name || item.author || '未知UP主' },
+        author: item.userName || item.user_name || item.author || '未知UP主',
+        uploadTime: item.uploadTime || item.upload_time || item.createdAt || item.created_at,
+        publishDate: item.publishDate || item.publish_date || item.uploadTime || item.upload_time
+      }))
       pagination.value.total = response.data.total || 0
       totalResults.value = response.data.total || 0
     } else {
