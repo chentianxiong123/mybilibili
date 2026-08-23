@@ -7,23 +7,23 @@ import (
 )
 
 type Message struct {
-	ID             int64
-	SenderID       int64
-	ReceiverID     int64
-	ConversationID int64
-	Content        string
-	MessageType    int32
-	IsRead         int32
-	CreatedAt      time.Time
+	ID             int64     `json:"id"`
+	SenderID       int64     `json:"sender_id"`
+	ReceiverID     int64     `json:"receiver_id"`
+	ConversationID int64     `json:"conversation_id"`
+	Content        string    `json:"content"`
+	MessageType    int32     `json:"message_type"`
+	IsRead         int32     `json:"is_read"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 type Conversation struct {
-	ID                 int64
-	UserID             int64
-	TargetUserID       int64
-	LastMessageContent string
-	LastMessageAt      sql.NullTime
-	UnreadCount        int32
+	ID                 int64        `json:"id"`
+	UserID             int64        `json:"user_id"`
+	TargetUserID       int64        `json:"target_user_id"`
+	LastMessageContent string       `json:"last_message_content"`
+	LastMessageAt      sql.NullTime `json:"last_message_at"`
+	UnreadCount        int32        `json:"unread_count"`
 }
 
 type MessageRepository struct {

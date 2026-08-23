@@ -672,9 +672,9 @@ onUnmounted(() => {
           <el-select v-model="currentLanguage" placeholder="选择语言" size="small" @change="switchLanguage">
             <el-option
               v-for="sub in subtitleList"
-              :key="sub.language || sub.language_name"
+              :key="sub.language"
               :label="sub.languageName || sub.language_name || sub.language"
-              :value="sub.language || sub.language_name"
+              :value="sub.language"
             />
           </el-select>
         </div>

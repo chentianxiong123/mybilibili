@@ -29,8 +29,8 @@ export const subtitleApi = {
     return api.delete(`/subtitle/${subtitleId}`)
   },
 
-  setDefaultSubtitle(videoId: number, language: string) {
-    return api.post('/subtitle/set-default', { video_id: videoId, id: language })
+  setDefaultSubtitle(videoId: number, subtitleId: string) {
+    return api.post('/subtitle/set-default', { video_id: videoId, id: subtitleId })
   }
 }
 

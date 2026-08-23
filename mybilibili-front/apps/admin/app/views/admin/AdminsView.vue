@@ -96,7 +96,7 @@ const groupedPermissions = computed(() => {
 // 管理员 API 返回 PascalCase，归一化到 camelCase
 const normalizeAdmin = (d) => ({
   id: d.id ?? d.ID,
-  username: d.username ?? d.Username || '',
+  username: (d.username ?? d.Username) || '',
   adminLevel: d.admin_level ?? d.adminLevel ?? d.AdminLevel ?? 0,
   roles: d.roles || [],
   createdAt: d.created_at || d.createdAt || d.CreatedAt || ''
@@ -104,8 +104,8 @@ const normalizeAdmin = (d) => ({
 
 const normalizeRole = (d) => ({
   id: d.id ?? d.ID,
-  name: d.name ?? d.Name || '',
-  description: d.description ?? d.Description || '',
+  name: (d.name ?? d.Name) || '',
+  description: (d.description ?? d.Description) || '',
   createTime: d.create_time || d.created_at || d.createTime || d.createdAt || d.CreatedAt || ''
 })
 
