@@ -39,6 +39,7 @@ export default defineNuxtConfig({
     '/api/v1/creator/danmaku/**': { proxy: 'http://localhost:8086/api/v1/creator/danmaku/**' },
     '/api/v1/subtitle/**': { proxy: 'http://localhost:8088/api/v1/subtitle/**' },
     '/api/v1/ai/**': { proxy: 'http://localhost:8088/api/v1/ai/**' },
+    '/api/v1/live/**': { proxy: 'http://localhost:8087/api/v1/live/**' },
     '/api/**': { proxy: 'http://localhost:8080/api/**' },
     '/uploads/**': { proxy: 'http://localhost:8080/uploads/**' },
     '/covers/**': { proxy: 'http://localhost:8080/covers/**' },

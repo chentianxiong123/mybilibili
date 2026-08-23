@@ -34,15 +34,19 @@ export async function getHomeContent() {
     const hotList = Array.isArray(hotRaw) ? hotRaw : (hotRaw?.list || [])
     console.log('[getHomeContent] hotRes:', hotRes, 'hotList:', hotList)
 
+    const rawRecommended = recRes?.data || recRes || []
+    const rawHot = hotList
+
     const result = {
       code: '1',
       data: {
         oneLevelPartitions: (catRes?.data || catRes || []).map?.(c => ({ id: c.id, name: c.name })) || [],
-        additionalVideos: (recRes?.data || recRes || []).map(adaptVideo),
-        rankingVideos: hotList.map(adaptVideo)
+        additionalVideos: rawRecommended.map(adaptVideo),
+        rankingVideos: rawHot.map(adaptVideo)
       }
     }
-    writeCache('list', 'recommended', result.data)
+    // 缓存原始数据，`adaptVideo` 字段变更时缓存不会过期
+    writeCache('list', 'recommended', { rawRecommended, rawHot, oneLevelPartitions: result.data.oneLevelPartitions })
     return result
   } catch (e) {
     console.error('getHomeContent error:', e)
@@ -50,9 +54,15 @@ export async function getHomeContent() {
   }
 }
 
-// 读首页本地缓存（离线/弱网时先渲染）
+// 读首页本地缓存（离线/弱网时先渲染），从原始数据实时 adapt
 export function getCachedHome() {
-  return readCache('list', 'recommended')
+  const cached = readCache<{ rawRecommended: any[]; rawHot: any[]; oneLevelPartitions: any[] }>('list', 'recommended')
+  if (!cached) return null
+  return {
+    additionalVideos: (cached.rawRecommended || []).map(adaptVideo),
+    rankingVideos: (cached.rawHot || []).map(adaptVideo),
+    oneLevelPartitions: cached.oneLevelPartitions || []
+  }
 }
 
 // 轮播图 - 复用 getHomeBanners() → /banner-images/home

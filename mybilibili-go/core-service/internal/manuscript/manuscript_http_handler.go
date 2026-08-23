@@ -528,11 +528,50 @@ func convertKeysToCamel(v interface{}) interface{} {
 }
 
 func manuscriptToMap(info *pb.ManuscriptInfo) map[string]interface{} {
-	b, _ := json.Marshal(info)
-	var m map[string]interface{}
-	_ = json.Unmarshal(b, &m)
-	if m == nil {
-		m = map[string]interface{}{}
+	m := map[string]interface{}{
+		"id": info.Id, "title": info.Title, "description": info.Description,
+		"cover_url": info.CoverUrl, "user_id": info.UserId,
+		"category_id": info.CategoryId, "category_name": info.CategoryName,
+		"view_count": info.ViewCount, "like_count": info.LikeCount,
+		"coin_count": info.CoinCount, "collect_count": info.CollectCount,
+		"share_count": info.ShareCount, "comment_count": info.CommentCount,
+		"danmaku_count": info.DanmakuCount,
+		"duration": info.Duration, "duration_seconds": info.DurationSeconds,
+		"status": info.Status, "review_status": info.ReviewStatus,
+		"review_reason": info.ReviewReason,
+		"created_at": info.CreatedAt, "updated_at": info.UpdatedAt,
+		"first_video_id": info.FirstVideoId,
+		"first_video_play_url": info.FirstVideoPlayUrl,
+	}
+	if info.Uploader != nil {
+		m["uploader"] = map[string]interface{}{
+			"id": info.Uploader.Id, "name": info.Uploader.Name,
+			"avatar": info.Uploader.Avatar, "level": info.Uploader.Level,
+			"bio": info.Uploader.Bio, "signature": info.Uploader.Signature,
+			"follower_count": info.Uploader.FollowerCount,
+			"following_count": info.Uploader.FollowingCount,
+			"liked_count": info.Uploader.LikedCount,
+			"following": info.Uploader.Following,
+		}
+	}
+	if info.Tags != nil {
+		m["tags"] = info.Tags
+	}
+	if info.Videos != nil {
+		videos := make([]map[string]interface{}, 0, len(info.Videos))
+		for _, v := range info.Videos {
+			videos = append(videos, map[string]interface{}{
+				"id": v.Id, "title": v.Title, "description": v.Description,
+				"play_url": v.PlayUrl, "play_url_hd": v.PlayUrlHd,
+				"play_url_sd": v.PlayUrlSd, "play_url_ld": v.PlayUrlLd,
+				"duration": v.Duration, "duration_seconds": v.DurationSeconds,
+				"video_order": v.VideoOrder, "status": v.Status,
+				"process_status": v.ProcessStatus,
+				"process_progress": v.ProcessProgress,
+				"process_stage": v.ProcessStage, "process_error": v.ProcessError,
+			})
+		}
+		m["videos"] = videos
 	}
 	m = convertKeysToCamel(m).(map[string]interface{})
 	if up, ok := m["uploader"].(map[string]interface{}); ok {
