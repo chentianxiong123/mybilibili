@@ -54,25 +54,36 @@ const previewData = ref({
 // 待入库字幕
 const pendingImportSubtitles = ref([])
 
+const normalizeSubtitleRecord = (d) => ({
+  id: d.id,
+  videoId: d.video_id ?? d.videoId ?? null,
+  language: d.language || '',
+  languageName: d.language_name || d.languageName || '',
+  status: d.status,
+  source: d.source || '',
+  createdAt: d.created_at || d.createdAt || ''
+})
+
 const loadVideos = async () => {
   loading.value = true
   try {
     const res = await getVideosWithSubtitleInfo()
     if (res.code === 200 || res.success) {
-      // 处理分页响应格式 { list: [], total: number, page: number, size: number }
       let list = res.data?.list || res.data || []
       if (keyword.value) {
         list = list.filter(item =>
-          item.title?.includes(keyword.value) ||
+          item.language?.includes(keyword.value) ||
+          item.language_name?.includes(keyword.value) ||
+          item.video_id?.toString().includes(keyword.value) ||
           item.id?.toString().includes(keyword.value)
         )
       }
-      tableData.value = list
+      tableData.value = (Array.isArray(list) ? list : []).map(normalizeSubtitleRecord)
     } else {
-      ElMessage.error(res.message || '获取视频列表失败')
+      ElMessage.error(res.message || '获取字幕列表失败')
     }
   } catch (error) {
-    ElMessage.error('获取视频列表失败: ' + (error.message || '未知错误'))
+    ElMessage.error('获取字幕列表失败: ' + (error.message || '未知错误'))
   } finally {
     loading.value = false
   }
@@ -88,11 +99,11 @@ const handleReset = () => {
 }
 
 // 查看字幕详情
-const handleViewSubtitles = async (row) => {
-  currentVideo.value = row
+const handleViewSubtitles = async (videoId) => {
+  currentVideo.value = { id: videoId, title: `视频 #${videoId}` }
   subtitleDialogVisible.value = true
-  await loadVideoSubtitles(row.id)
-  await loadPendingImportSubtitles(row.id)
+  await loadVideoSubtitles(videoId)
+  await loadPendingImportSubtitles(videoId)
 }
 
 // 加载待入库字幕
@@ -181,9 +192,9 @@ const loadVideoSubtitles = async (videoId) => {
 }
 
 // 打开上传弹窗
-const handleOpenUpload = (row) => {
+const handleOpenUpload = (videoId) => {
   uploadForm.value = {
-    videoId: row.id,
+    videoId: videoId,
     language: 'zh-CN',
     isDefault: false
   }
@@ -235,9 +246,9 @@ const handleUploadSubmit = async () => {
 }
 
 // 打开导入SRT弹窗
-const handleOpenImport = (row) => {
+const handleOpenImport = (videoId) => {
   importForm.value = {
-    videoId: row.id,
+    videoId: videoId,
     srtFilePath: '',
     language: 'zh-CN',
     isDefault: false
@@ -358,14 +369,6 @@ const formatTime = (time) => {
   return new Date(time).toLocaleString('zh-CN')
 }
 
-// 格式化时长
-const formatDuration = (seconds) => {
-  if (!seconds) return '00:00'
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-}
-
 onMounted(() => {
   loadVideos()
 })
@@ -392,48 +395,32 @@ onMounted(() => {
       <el-button type="primary" @click="loadVideos">刷新</el-button>
     </div>
 
-    <!-- 视频列表 -->
+    <!-- 字幕列表 -->
     <el-table
       v-loading="loading"
       :data="tableData"
       style="width: 100%"
     >
-      <el-table-column prop="id" label="ID" width="80" />
-      <el-table-column prop="title" label="视频标题" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="durationSeconds" label="时长" width="100">
+      <el-table-column prop="id" label="字幕ID" width="100" />
+      <el-table-column prop="videoId" label="视频ID" width="80" />
+      <el-table-column prop="language" label="语言代码" width="100" />
+      <el-table-column prop="languageName" label="语言名称" width="120" />
+      <el-table-column label="状态" width="100">
         <template #default="{ row }">
-          <span>{{ formatDuration(row.durationSeconds) }}</span>
+          <el-tag :type="getStatusType(row.status)" size="small">
+            {{ getStatusText(row.status) }}
+          </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="字幕统计" width="200">
+      <el-table-column label="来源" width="80">
         <template #default="{ row }">
-          <div class="subtitle-stats">
-            <el-tag size="small" type="success">通过: {{ row.approvedCount || 0 }}</el-tag>
-            <el-tag size="small" type="warning">待审: {{ row.pendingCount || 0 }}</el-tag>
-            <el-tag size="small" type="info">系统: {{ row.systemCount || 0 }}</el-tag>
-          </div>
+          <el-tag v-if="row.source === 'system'" type="info" size="small">系统</el-tag>
+          <el-tag v-else type="primary" size="small">用户</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="默认字幕" width="100">
+      <el-table-column prop="createdAt" label="创建时间" width="170">
         <template #default="{ row }">
-          <el-tag v-if="row.hasDefaultSubtitle" type="success" size="small">有</el-tag>
-          <el-tag v-else type="info" size="small">无</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="待入库字幕" width="120">
-        <template #default="{ row }">
-          <div v-if="row.pendingImportCount > 0" class="pending-import-tags">
-            <el-tag 
-              v-for="sub in row.pendingImportSubtitles?.filter(s => s.status === 'pending')" 
-              :key="sub.language"
-              type="warning" 
-              size="small"
-              class="pending-tag"
-            >
-              {{ getLanguageDisplayName(sub.language) }}
-            </el-tag>
-          </div>
-          <span v-else class="no-pending">-</span>
+          {{ formatTime(row.createdAt) }}
         </template>
       </el-table-column>
       <el-table-column label="操作" fixed="right" width="280">
@@ -441,23 +428,23 @@ onMounted(() => {
           <el-button
             type="primary"
             size="small"
-            @click="handleViewSubtitles(row)"
+            @click="handleViewSubtitles(row.videoId)"
           >
             <el-icon><View /></el-icon>
-            查看字幕
+            视频字幕
           </el-button>
           <el-button
             type="success"
             size="small"
-            @click="handleOpenUpload(row)"
+            @click="handleOpenUpload(row.videoId)"
           >
             <el-icon><Upload /></el-icon>
-            上传字幕
+            上传
           </el-button>
           <el-button
             type="warning"
             size="small"
-            @click="handleOpenImport(row)"
+            @click="handleOpenImport(row.videoId)"
           >
             <el-icon><Document /></el-icon>
             导入SRT
