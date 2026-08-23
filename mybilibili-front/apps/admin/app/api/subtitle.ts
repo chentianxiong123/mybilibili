@@ -22,7 +22,7 @@ export const subtitleApi = {
   },
 
   setDefaultSubtitle(videoId: number, language: string) {
-    return api.post('/subtitle/set-default', { videoId, language })
+    return api.post('/subtitle/set-default', { video_id: videoId, id: language })
   }
 }
 
@@ -32,20 +32,21 @@ export const getVideosWithSubtitleInfo = () => api.get('/subtitle/videos')
 export const getVideoSubtitles = (videoId: number) => api.get(`/subtitle/video/${videoId}`)
 export const uploadSubtitle = (videoId: number, file: File, language: string, isDefault: boolean) => {
   const formData = new FormData()
+  formData.append('video_id', String(videoId))
   formData.append('file', file)
   formData.append('language', language)
-  formData.append('isDefault', String(isDefault))
-  return api.post(`/subtitle/upload?videoId=${videoId}`, formData, {
+  formData.append('language_name', language === 'zh-CN' ? '中文' : language)
+  return api.post('/subtitle/upload-srt', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
 }
 export const importSrtToMongo = (videoId: number, srtFilePath: string, language: string, isDefault: boolean) =>
-  api.post('/subtitle/import-srt', { videoId, srtFilePath, language, isDefault })
-export const setDefaultSubtitle = (subtitleId: number) => api.post(`/subtitle/${subtitleId}/set-default`)
+  api.post('/subtitle/import-srt', { video_id: videoId, srt: srtFilePath })
+export const setDefaultSubtitle = (subtitleId: number, videoId: number) => api.post(`/subtitle/${subtitleId}/set-default?video_id=${videoId}`)
 export const deleteSubtitle = (subtitleId: number) => api.delete(`/subtitle/${subtitleId}`)
 export const getPendingSubtitles = () => api.get('/subtitle/pending')
 export const approveSubtitle = (subtitleId: number) => api.post(`/subtitle/${subtitleId}/approve`)
 export const rejectSubtitle = (subtitleId: number, reason: string) => api.post(`/subtitle/${subtitleId}/reject`, { reason })
 export const previewSubtitle = (subtitleId: number) => api.get(`/subtitle/${subtitleId}/preview`)
 export const scanSystemSubtitles = (videoId: number) => api.get(`/subtitle/scan/${videoId}`)
-export const importSystemSubtitle = (videoId: number, language: string) => api.post('/subtitle/import-system', { videoId, language })
+export const importSystemSubtitle = (videoId: number, language: string) => api.post('/subtitle/import-system', { video_id: videoId, srt: language })
