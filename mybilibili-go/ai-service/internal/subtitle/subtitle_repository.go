@@ -195,6 +195,13 @@ func (s *Service) Preview(ctx context.Context, id string) ([]map[string]interfac
 		return nil, err
 	}
 	var cues []map[string]interface{}
-	json.Unmarshal([]byte(st.Content), &cues)
+	if json.Unmarshal([]byte(st.Content), &cues) != nil {
+		if parsed, err := ParseSRT(st.Content); err == nil {
+			cues = make([]map[string]interface{}, 0, len(parsed))
+			for _, c := range parsed {
+				cues = append(cues, c.ToCueMap())
+			}
+		}
+	}
 	return cues, nil
 }

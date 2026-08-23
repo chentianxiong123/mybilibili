@@ -1,8 +1,8 @@
 <script setup>
-import { safeStorage } from '@/utils/safeStorage'
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Upload } from '@element-plus/icons-vue'
+import { uploadSubtitle } from '@/api/subtitle.ts'
 
 const props = defineProps({
   videoId: {
@@ -15,9 +15,10 @@ const emit = defineEmits(['upload-success'])
 
 const dialogVisible = ref(false)
 const uploading = ref(false)
-const fileContent = ref('')
 const language = ref('zh-CN')
 const languageName = ref('简体中文')
+const isDefault = ref(false)
+const selectedFile = ref<File | null>(null)
 
 const languageOptions = [
   { value: 'zh-CN', label: '简体中文' },
@@ -39,40 +40,29 @@ const handleLanguageChange = (value) => {
 }
 
 const handleFileChange = (file) => {
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    fileContent.value = e.target.result
-    ElMessage.success('文件读取成功')
-  }
-  reader.onerror = () => {
-    ElMessage.error('文件读取失败')
-  }
-  reader.readAsText(file.raw)
+  selectedFile.value = file.raw
+  ElMessage.success('文件已选择')
 }
 
 const handleUpload = async () => {
-  if (!fileContent.value.trim()) {
+  if (!selectedFile.value) {
     ElMessage.warning('请选择字幕文件')
     return
   }
 
   uploading.value = true
   try {
-    const user = JSON.parse(safeStorage.getItem('user') || '{}')
-    const { subtitleApi } = await import('../api/subtitle.ts')
-
-    const response = await subtitleApi.uploadSrt(
+    const response = await uploadSubtitle(
       props.videoId,
-      fileContent.value,
+      selectedFile.value,
       language.value,
-      languageName.value,
-      user.id
+      isDefault.value
     )
 
     if (response.code === 200) {
       ElMessage.success('字幕上传成功')
       dialogVisible.value = false
-      fileContent.value = ''
+      selectedFile.value = null
       emit('upload-success', response.data)
     } else {
       ElMessage.error(response.message || '上传失败')
@@ -139,14 +129,8 @@ defineExpose({
           </el-upload>
         </el-form-item>
 
-        <el-form-item label="文件预览" v-if="fileContent">
-          <el-input
-            v-model="fileContent"
-            type="textarea"
-            :rows="6"
-            readonly
-            placeholder="字幕内容预览"
-          />
+        <el-form-item label="设为默认">
+          <el-switch v-model="isDefault" />
         </el-form-item>
       </el-form>
 
