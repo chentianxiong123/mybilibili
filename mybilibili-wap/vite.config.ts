@@ -3,7 +3,15 @@ import vue from '@vitejs/plugin-vue'
 import path from 'path'
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(), {
+    name: 'healthz',
+    configureServer(server) {
+      server.middlewares.use('/healthz', (_req, res) => {
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify({ status: 'ok', service: 'wap', ts: Date.now() }))
+      })
+    }
+  }],
   base: '/wap/',
   css: {
     preprocessorOptions: {
@@ -32,6 +40,7 @@ export default defineConfig({
     }
   },
   server: {
+    host: '0.0.0.0',
     port: 5174,
     proxy: {
       '/api/v1/search/history': {
