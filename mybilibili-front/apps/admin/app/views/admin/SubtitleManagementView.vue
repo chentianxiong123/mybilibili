@@ -280,7 +280,7 @@ const handleImportSubmit = async () => {
 const handleSetDefault = async (subtitle) => {
   try {
     await ElMessageBox.confirm('确定将该字幕设为默认吗？', '设置默认字幕', { type: 'warning' })
-    const res = await setDefaultSubtitle(subtitle.id)
+    const res = await setDefaultSubtitle(subtitle.id, subtitle.videoId)
     if (res.code === 200 || res.success) {
       ElMessage.success('设置成功')
       loadVideoSubtitles(subtitle.videoId)

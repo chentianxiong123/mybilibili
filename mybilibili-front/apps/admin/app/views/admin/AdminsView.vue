@@ -215,7 +215,7 @@ const handlePermissions = async (row) => {
   try {
     const [allRes, roleRes, templateRes] = await Promise.all([getAllPermissions(), getRolePermissions(row.id), getRoleTemplates()])
     if (allRes.code === 200 || allRes.success) allPermissions.value = allRes.data || []
-    if (roleRes.code === 200 || roleRes.success) selectedPermIds.value = (roleRes.data || []).map(p => p.id)
+    if (roleRes.code === 200 || roleRes.success) selectedPermIds.value = roleRes.data || []
     if (templateRes.code === 200 || templateRes.success) roleTemplates.value = templateRes.data || []
   } catch { ElMessage.error('获取权限失败') }
   finally { permLoading.value = false }
@@ -242,7 +242,7 @@ const handleApplyTemplate = async () => {
     const res = await applyRoleTemplate(permRoleId.value, selectedTemplateCode.value)
     if (res.code === 200 || res.success) {
       const roleRes = await getRolePermissions(permRoleId.value)
-      if (roleRes.code === 200 || roleRes.success) selectedPermIds.value = (roleRes.data || []).map(p => p.id)
+if (roleRes.code === 200 || roleRes.success) selectedPermIds.value = roleRes.data || []
       ElMessage.success('岗位模板已套用')
     } else {
       ElMessage.error(res.message || '套用失败')

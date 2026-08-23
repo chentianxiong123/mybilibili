@@ -78,7 +78,7 @@ export const applyRoleTemplate = (id, templateCode) => {
 // 获取所有权限
 export const getAllPermissions = () => {
   return request({
-    url: '/admin/roles/permissions/all',
+    url: '/admin/permissions',
     method: 'get'
   })
 }

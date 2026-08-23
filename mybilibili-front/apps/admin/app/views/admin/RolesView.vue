@@ -195,8 +195,7 @@ const handlePermissions = async (row) => {
       roleTemplates.value = templateRes.data || []
     }
     if (roleRes.code === 200 || roleRes.success) {
-      const permissions = roleRes.data || []
-      rolePermissions.value = permissions.map(p => p.id)
+      rolePermissions.value = roleRes.data || []
     }
   } catch (error) {
     ElMessage.error('获取权限失败')

@@ -11,26 +11,28 @@ import (
 )
 
 type AdminUser struct {
-	ID         int64  `json:"id"`
-	Username   string `json:"username"`
-	Password   string `json:"password"`
-	AdminLevel int32  `json:"admin_level"`
+	ID         int64     `json:"id"`
+	Username   string    `json:"username"`
+	Password   string    `json:"password"`
+	AdminLevel int32     `json:"admin_level"`
+	CreatedAt  string    `json:"created_at"`
 }
 
 type Role struct {
-	ID          int64  `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	ID          int64     `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	CreateTime  string    `json:"create_time"`
 }
 
 type Permission struct {
-	ID          int64
-	Name        string
-	Code        string
-	URL         string
-	Method      string
-	ParentID    int64
-	Description string
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	Code        string `json:"code"`
+	URL         string `json:"url"`
+	Method      string `json:"method"`
+	ParentID    int64  `json:"parent_id"`
+	Description string `json:"description"`
 }
 
 type AuditLog struct {
@@ -100,7 +102,7 @@ func (r *Repository) CreateAdmin(ctx context.Context, username, password string,
 }
 
 func (r *Repository) ListAdmins(ctx context.Context) ([]*AdminUser, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id, username, password, admin_level FROM admin_users ORDER BY id`)
+	rows, err := r.db.QueryContext(ctx, `SELECT id, username, password, admin_level, COALESCE(created_at::text,'') FROM admin_users ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +110,7 @@ func (r *Repository) ListAdmins(ctx context.Context) ([]*AdminUser, error) {
 	var list []*AdminUser
 	for rows.Next() {
 		u := &AdminUser{}
-		rows.Scan(&u.ID, &u.Username, &u.Password, &u.AdminLevel)
+		rows.Scan(&u.ID, &u.Username, &u.Password, &u.AdminLevel, &u.CreatedAt)
 		list = append(list, u)
 	}
 	return list, nil
@@ -131,7 +133,7 @@ func (r *Repository) UpdateAdmin(ctx context.Context, id int64) error {
 }
 
 func (r *Repository) ListRoles(ctx context.Context) ([]*Role, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id, name, COALESCE(description,'') FROM roles ORDER BY id`)
+	rows, err := r.db.QueryContext(ctx, `SELECT id, name, COALESCE(description,''), COALESCE(create_time::text,'') FROM roles ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +141,7 @@ func (r *Repository) ListRoles(ctx context.Context) ([]*Role, error) {
 	var list []*Role
 	for rows.Next() {
 		role := &Role{}
-		rows.Scan(&role.ID, &role.Name, &role.Description)
+		rows.Scan(&role.ID, &role.Name, &role.Description, &role.CreateTime)
 		list = append(list, role)
 	}
 	return list, nil
