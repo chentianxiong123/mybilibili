@@ -51,8 +51,13 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
 	page, size := httputil.ParsePageParams(r)
-	list, _ := h.svc.List(r.Context(), status, page, size)
-	json.NewEncoder(w).Encode(list)
+	list, total, _ := h.svc.List(r.Context(), status, page, size)
+	if list == nil {
+		list = []*Ticket{}
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"list": list, "total": total, "page": page, "size": size,
+	})
 }
 
 func (h *Handler) handleTicketByID(w http.ResponseWriter, r *http.Request) {
