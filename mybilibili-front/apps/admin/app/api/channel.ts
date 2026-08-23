@@ -1,5 +1,13 @@
 import request from './client'
 
+function toSnake(data: Record<string, any>): Record<string, any> {
+  const out: Record<string, any> = {}
+  for (const [k, v] of Object.entries(data)) {
+    out[k.replace(/([A-Z])/g, '_$1').toLowerCase()] = v
+  }
+  return out
+}
+
 // ========== 渠道管理 ==========
 export function getChannels() {
   return request({ url: '/ai/configs', method: 'get' })
@@ -10,11 +18,11 @@ export function getChannel(id) {
 }
 
 export function createChannel(data) {
-  return request({ url: '/ai/configs', method: 'post', data })
+  return request({ url: '/ai/configs', method: 'post', data: toSnake(data) })
 }
 
 export function updateChannel(id, data) {
-  return request({ url: `/ai/configs/${id}`, method: 'put', data })
+  return request({ url: `/ai/configs/${id}`, method: 'put', data: toSnake(data) })
 }
 
 export function deleteChannel(id) {
@@ -41,7 +49,7 @@ export function bindFeature(feature, configId) {
 
 // ========== 测试连接 ==========
 export function testConnection(data) {
-  return request({ url: '/ai/config/test', method: 'post', data })
+  return request({ url: '/ai/config/test', method: 'post', data: toSnake(data) })
 }
 
 // ========== 可用类型和功能 ==========

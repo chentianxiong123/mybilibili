@@ -14,7 +14,20 @@ import {
 
 const loading = ref(false)
 const tableData = ref([])
-const activeTypeFilter = ref('CUSTOMER_SERVICE') // 默认显示客服技能
+const activeTypeFilter = ref('CUSTOMER_SERVICE')
+
+function normalizeSkill(d) {
+  return {
+    id: d.id,
+    name: d.name,
+    description: d.description || '',
+    type: d.type,
+    enabled: d.enabled,
+    systemPrompt: d.systemPrompt || d.system_prompt || '',
+    fewShotExamples: d.fewShotExamples || d.few_shot_examples || '',
+    createdAt: d.createdAt || d.created_at || ''
+  }
+}
 
 // 弹窗
 const dialogVisible = ref(false)
@@ -80,7 +93,7 @@ async function loadData() {
   try {
     const res = await getAiSkills()
     if (res.code === 200 || res.success) {
-      tableData.value = res.data || []
+      tableData.value = (res.data || []).map(normalizeSkill)
     }
   } catch (e) {
     ElMessage.error('获取技能列表失败')
@@ -97,7 +110,7 @@ async function handleTypeFilterChange(type) {
     try {
       const res = await getAiSkillsByType(type)
       if (res.code === 200 || res.success) {
-        tableData.value = res.data || []
+        tableData.value = (res.data || []).map(normalizeSkill)
       }
     } catch (e) {
       ElMessage.error('获取技能列表失败')

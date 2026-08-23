@@ -13,6 +13,21 @@ const availableTypes = ref(['LLM', 'ASR', 'TTS', 'IMAGE'])
 const availableFeatures = ref([])
 const activeType = ref('LLM')
 
+function normalizeChannel(d) {
+  return {
+    id: d.id,
+    name: d.name,
+    type: d.type,
+    baseUrl: d.baseUrl || d.base_url || '',
+    apiKey: d.apiKey || d.api_key || '',
+    model: d.model,
+    maxTokens: d.maxTokens ?? d.max_tokens ?? 2000,
+    temperature: d.temperature ?? d.temperature ?? 0.7,
+    enabled: d.enabled,
+    createdAt: d.createdAt || d.created_at || ''
+  }
+}
+
 // 抽屉
 const drawerVisible = ref(false)
 const drawerMode = ref('view')
@@ -51,7 +66,7 @@ async function loadData() {
       getAvailableTypes(),
       getAvailableFeatures()
     ])
-    channels.value = Array.isArray(chRes) ? chRes : (chRes?.data || [])
+    channels.value = (Array.isArray(chRes) ? chRes : (chRes?.data || [])).map(normalizeChannel)
     bindings.value = bindRes && typeof bindRes === 'object' && !Array.isArray(bindRes) ? bindRes : (bindRes?.data || {})
     availableTypes.value = Array.isArray(typeRes) ? typeRes : (typeRes?.data || ['LLM', 'ASR', 'TTS', 'IMAGE'])
     availableFeatures.value = Array.isArray(featureRes) ? featureRes : (featureRes?.data || [])
