@@ -79,7 +79,7 @@ func (h *Handler) handleOperationTasks(w http.ResponseWriter, r *http.Request) {
 		        status, COALESCE(progress,0), COALESCE(error_message,''), created_at, updated_at
 		 FROM operation_tasks ORDER BY id DESC LIMIT $1 OFFSET $2`, size, (page-1)*size)
 	if err != nil {
-		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		json.NewEncoder(w).Encode(map[string]interface{}{"list": []map[string]interface{}{}, "total": 0, "page": page, "size": size})
 		return
 	}
 	defer rows.Close()
@@ -97,7 +97,11 @@ func (h *Handler) handleOperationTasks(w http.ResponseWriter, r *http.Request) {
 			"progress": progress, "error_message": errMsg, "created_at": created, "updated_at": updated,
 		})
 	}
-	json.NewEncoder(w).Encode(list)
+	var total int64
+	h.svc.repo.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM operation_tasks`).Scan(&total)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"list": list, "total": total, "page": page, "size": size,
+	})
 }
 
 func (h *Handler) handleOperationTaskByID(w http.ResponseWriter, r *http.Request) {
@@ -350,7 +354,14 @@ func (h *Handler) handlePermissions(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 	page, size := httputil.ParsePageParams(r)
 	list, _ := h.svc.ListAuditLogs(r.Context(), page, size)
-	json.NewEncoder(w).Encode(list)
+	if list == nil {
+		list = []*AuditLog{}
+	}
+	var total int64
+	h.svc.repo.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM audit_logs`).Scan(&total)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"list": list, "total": total, "page": page, "size": size,
+	})
 }
 
 func (h *Handler) handleAuditLogByID(w http.ResponseWriter, r *http.Request) {

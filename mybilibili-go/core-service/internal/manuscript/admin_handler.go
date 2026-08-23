@@ -421,11 +421,16 @@ func (h *ManuscriptAdminHandler) getVideos(w http.ResponseWriter, r *http.Reques
 
 // reviewManuscript 审核通过/拒绝稿件，对齐旧版 approveManuscript/rejectManuscript 的状态流转。
 func (h *ManuscriptAdminHandler) reviewManuscript(w http.ResponseWriter, r *http.Request, manuscriptID int64, approved bool, autoProcess bool) {
-	reviewerID := r.URL.Query().Get("reviewerId")
+	var req struct {
+		ReviewerID string `json:"reviewerId"`
+		Reason     string `json:"reason"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	reviewerID := req.ReviewerID
 	if reviewerID == "" {
 		reviewerID = "0"
 	}
-	reason := r.URL.Query().Get("reason")
+	reason := req.Reason
 
 	var status, reviewStatus = manuscriptStatusProcessing, manuscriptReviewStatusApproved
 	if !approved {
