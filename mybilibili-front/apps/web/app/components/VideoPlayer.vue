@@ -83,6 +83,7 @@ const updateFullscreenMode = () => {
 const subtitleList = ref<any[]>([])
 const currentSubtitle = ref<any>(null)
 const currentSubtitleContent = ref<any[]>([])
+const currentLanguage = ref('')
 const SUBTITLE_ENABLED_KEY = 'mybilibili_subtitle_enabled'
 const subtitleEnabled = ref(true)
 const subtitleDisplayRef = ref<any>(null)
@@ -211,10 +212,9 @@ const loadSubtitleContent = async (language: string) => {
     console.log('[字幕] 字幕内容响应:', response)
     if (response && response.code === 200 && response.data) {
       currentSubtitle.value = response.data
-      currentSubtitleContent.value = response.data.content || []
+      currentSubtitleContent.value = response.data.content || response.data.cues || []
+      currentLanguage.value = language
       console.log('[字幕] 字幕内容已加载, 条数:', currentSubtitleContent.value.length)
-      console.log('[字幕] 第一条:', currentSubtitleContent.value[0])
-      console.log('[字幕] 第二条:', currentSubtitleContent.value[1])
     } else {
       console.log('[字幕] 字幕内容为空')
     }
@@ -222,6 +222,11 @@ const loadSubtitleContent = async (language: string) => {
     console.error('[字幕] 加载字幕内容失败:', error)
     ElMessage.warning('字幕内容加载失败')
   }
+}
+
+const switchLanguage = async (language: string) => {
+  if (language === currentLanguage.value || !language) return
+  await loadSubtitleContent(language)
 }
 
 const formatDate = (dateStr: any) => {
@@ -661,6 +666,17 @@ onUnmounted(() => {
         <div class="setting-item">
           <span class="setting-label">字幕开关</span>
           <el-switch v-model="subtitleEnabled" />
+        </div>
+        <div class="setting-item" v-if="subtitleList.length > 1">
+          <span class="setting-label">字幕语言</span>
+          <el-select v-model="currentLanguage" placeholder="选择语言" size="small" @change="switchLanguage">
+            <el-option
+              v-for="sub in subtitleList"
+              :key="sub.language || sub.language_name"
+              :label="sub.languageName || sub.language_name || sub.language"
+              :value="sub.language || sub.language_name"
+            />
+          </el-select>
         </div>
         <div class="setting-item">
           <span class="setting-label">字体大小</span>

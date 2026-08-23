@@ -51,6 +51,13 @@ func subtitleToMap(sub *Subtitle) map[string]interface{} {
 	if json.Unmarshal([]byte(sub.Content), &cues) == nil {
 		m["content"] = cues
 		m["cues"] = cues
+	} else if parsed, err := ParseSRT(sub.Content); err == nil {
+		cues = make([]map[string]interface{}, 0, len(parsed))
+		for _, c := range parsed {
+			cues = append(cues, c.ToCueMap())
+		}
+		m["content"] = cues
+		m["cues"] = cues
 	} else {
 		m["content"] = []interface{}{}
 		m["cues"] = []interface{}{}
@@ -90,7 +97,11 @@ func (h *Handler) handlePending(w http.ResponseWriter, r *http.Request) {
 	if list == nil {
 		list = []*Subtitle{}
 	}
-	httputil.WriteOK(w, list)
+	out := make([]map[string]interface{}, 0, len(list))
+	for _, sub := range list {
+		out = append(out, subtitleToMap(sub))
+	}
+	httputil.WriteOK(w, out)
 }
 
 func (h *Handler) handleUpload(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +136,14 @@ func (h *Handler) handleUpload(w http.ResponseWriter, r *http.Request) {
 		req.LanguageName = "中文"
 	}
 
-	sub, err := h.svc.Upload(r.Context(), req.VideoID, userID, req.Language, req.LanguageName, content)
+	storeContent := content
+	if req.Content == "" && req.SRTContent != "" {
+		if cues, err := ParseSRT(req.SRTContent); err == nil {
+			storeContent = SRTCuesToJSON(cues)
+		}
+	}
+
+	sub, err := h.svc.Upload(r.Context(), req.VideoID, userID, req.Language, req.LanguageName, storeContent)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -135,7 +153,7 @@ func (h *Handler) handleUpload(w http.ResponseWriter, r *http.Request) {
 		h.svc.SetDefault(r.Context(), req.VideoID, sub.ID)
 	}
 
-	json.NewEncoder(w).Encode(sub)
+	json.NewEncoder(w).Encode(subtitleToMap(sub))
 }
 
 func (h *Handler) handleUploadSRT(w http.ResponseWriter, r *http.Request) {
@@ -168,12 +186,16 @@ func (h *Handler) handleUploadSRT(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "empty file", 400)
 		return
 	}
-	sub, err := h.svc.Upload(r.Context(), videoID, userID, language, languageName, string(content))
+	storeContent := string(content)
+	if cues, err := ParseSRT(storeContent); err == nil {
+		storeContent = SRTCuesToJSON(cues)
+	}
+	sub, err := h.svc.Upload(r.Context(), videoID, userID, language, languageName, storeContent)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	json.NewEncoder(w).Encode(sub)
+	json.NewEncoder(w).Encode(subtitleToMap(sub))
 }
 
 func (h *Handler) handleAllVideos(w http.ResponseWriter, r *http.Request) {
@@ -188,11 +210,9 @@ func (h *Handler) handleAllVideos(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]map[string]interface{}, 0, len(list))
 	for _, s := range list {
-		out = append(out, map[string]interface{}{
-			"id": s.ID, "video_id": s.VideoID, "language": s.Language,
-			"language_name": s.LanguageName, "status": s.Status,
-			"created_at": s.UploadTime.Format("2006-01-02 15:04:05"),
-		})
+		m := subtitleToMap(s)
+		m["created_at"] = s.UploadTime.Format("2006-01-02 15:04:05")
+		out = append(out, m)
 	}
 	json.NewEncoder(w).Encode(out)
 }
@@ -216,12 +236,13 @@ func (h *Handler) handleImport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid srt content", 400)
 		return
 	}
-	sub, err := h.svc.Upload(r.Context(), req.VideoID, httputil.GetUserIDFromHeader(r), "zh-CN", "中文", req.Srt)
+	storeContent := SRTCuesToJSON(cues)
+	sub, err := h.svc.Upload(r.Context(), req.VideoID, httputil.GetUserIDFromHeader(r), "zh-CN", "中文", storeContent)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	json.NewEncoder(w).Encode(sub)
+	json.NewEncoder(w).Encode(subtitleToMap(sub))
 }
 
 func (h *Handler) handleScan(w http.ResponseWriter, r *http.Request) {
@@ -237,10 +258,7 @@ func (h *Handler) handleScan(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]map[string]interface{}, 0, len(list))
 	for _, s := range list {
-		out = append(out, map[string]interface{}{
-			"id": s.ID, "video_id": s.VideoID, "language": s.Language,
-			"language_name": s.LanguageName, "status": s.Status,
-		})
+		out = append(out, subtitleToMap(s))
 	}
 	json.NewEncoder(w).Encode(out)
 }
@@ -259,13 +277,17 @@ func (h *Handler) handleImportSystem(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "video_id and srt required", 400)
 		return
 	}
-	sub, err := h.svc.Upload(r.Context(), req.VideoID, 0, "zh-CN", "中文", req.Srt)
+	storeContent := req.Srt
+	if cues, err := ParseSRT(req.Srt); err == nil {
+		storeContent = SRTCuesToJSON(cues)
+	}
+	sub, err := h.svc.Upload(r.Context(), req.VideoID, 0, "zh-CN", "中文", storeContent)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 	h.svc.Approve(r.Context(), sub.ID)
-	json.NewEncoder(w).Encode(sub)
+	json.NewEncoder(w).Encode(subtitleToMap(sub))
 }
 
 func (h *Handler) handleSetDefault(w http.ResponseWriter, r *http.Request) {
@@ -279,7 +301,7 @@ func (h *Handler) handleSetDefault(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	h.svc.SetDefault(r.Context(), req.VideoID, req.ID)
-	w.Write([]byte(`{"status":"ok"}`))
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
 func (h *Handler) handleSubtitleByID(w http.ResponseWriter, r *http.Request) {
@@ -307,7 +329,7 @@ func (h *Handler) handleSubtitleByID(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", 404)
 			return
 		}
-		json.NewEncoder(w).Encode(sub)
+		json.NewEncoder(w).Encode(subtitleToMap(sub))
 	case r.Method == "DELETE":
 		h.svc.Delete(r.Context(), id)
 		w.Write([]byte(`{"status":"ok"}`))

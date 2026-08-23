@@ -1,6 +1,7 @@
 package subtitle
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -72,6 +73,24 @@ func parseTime(s string) (time.Duration, error) {
 		ms, _ = strconv.Atoi(secParts[1])
 	}
 	return time.Duration(h)*time.Hour + time.Duration(m)*time.Minute + time.Duration(sec)*time.Second + time.Duration(ms)*time.Millisecond, nil
+}
+
+func (c SRTCue) ToCueMap() map[string]interface{} {
+	return map[string]interface{}{
+		"index":     c.Index,
+		"startTime": c.Start.Seconds(),
+		"endTime":   c.End.Seconds(),
+		"text":      c.Text,
+	}
+}
+
+func SRTCuesToJSON(cues []SRTCue) string {
+	out := make([]map[string]interface{}, 0, len(cues))
+	for _, c := range cues {
+		out = append(out, c.ToCueMap())
+	}
+	b, _ := json.Marshal(out)
+	return string(b)
 }
 
 func (c SRTCue) ToJSON() map[string]interface{} {

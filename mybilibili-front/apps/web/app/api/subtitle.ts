@@ -13,8 +13,16 @@ export const subtitleApi = {
     return api.post('/subtitle/upload', data)
   },
 
-  uploadSrt(videoId: number, srtContent: string, language: string, languageName: string, uploadedBy: string) {
-    return api.post('/subtitle/upload-srt', { videoId, srtContent, language, languageName, uploadedBy })
+  uploadSrt(videoId: number, file: File, language: string, languageName: string, isDefault: boolean) {
+    const formData = new FormData()
+    formData.append('video_id', String(videoId))
+    formData.append('file', file)
+    formData.append('language', language)
+    formData.append('language_name', languageName)
+    if (isDefault) formData.append('is_default', 'true')
+    return api.post('/subtitle/upload-srt', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
   },
 
   deleteSubtitle(subtitleId: number) {
