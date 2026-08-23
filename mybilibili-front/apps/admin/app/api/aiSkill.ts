@@ -1,5 +1,13 @@
 import request from './client'
 
+function toSnake(data: Record<string, any>): Record<string, any> {
+  const out: Record<string, any> = {}
+  for (const [k, v] of Object.entries(data)) {
+    out[k.replace(/([A-Z])/g, '_$1').toLowerCase()] = v
+  }
+  return out
+}
+
 export function getAiSkills() {
   return request({
     url: '/ai/skills',
@@ -25,7 +33,7 @@ export function createAiSkill(data) {
   return request({
     url: '/ai/skills',
     method: 'post',
-    data
+    data: toSnake(data)
   })
 }
 
@@ -33,7 +41,7 @@ export function updateAiSkill(id, data) {
   return request({
     url: `/ai/admin/skills/${id}`,
     method: 'put',
-    data
+    data: toSnake(data)
   })
 }
 

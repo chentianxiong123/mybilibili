@@ -31,11 +31,11 @@ export default defineConfig({
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-vue': ['vue', 'vue-router', 'pinia'],
-          'vendor-element': ['element-plus', '@element-plus/icons-vue'],
-          'vendor-charts': ['echarts'],
-          'vendor-utils': ['axios']
+        manualChunks(id) {
+          if (id.includes('node_modules/vue') || id.includes('node_modules/pinia') || id.includes('node_modules/vue-router')) return 'vendor-vue'
+          if (id.includes('node_modules/element-plus')) return 'vendor-element'
+          if (id.includes('node_modules/echarts')) return 'vendor-charts'
+          if (id.includes('node_modules/axios')) return 'vendor-utils'
         }
       }
     }
