@@ -136,7 +136,12 @@ const fetchVideoList = async () => {
       pageSize.value
     )
     if (res.code === 200) {
-      videoList.value = res.data?.list || res.data || []
+      videoList.value = (res.data?.list || res.data || []).map(v => ({
+      id: v.id,
+      title: v.title,
+      coverUrl: v.coverUrl || v.cover_url || v.cover,
+      createdAt: v.createdAt || v.created_at || v.uploadTime || v.upload_time
+    }))
       total.value = res.data?.total || videoList.value.length
     } else {
       ElMessage.error(res.message || '获取视频列表失败')

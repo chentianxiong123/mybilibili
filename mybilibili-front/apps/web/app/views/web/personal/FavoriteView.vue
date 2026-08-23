@@ -157,7 +157,14 @@ const loadFolderVideos = async () => {
       videoPagination.value.currentPage,
       videoPagination.value.pageSize
     )
-    folderVideos.value = response.data.videos || []
+    folderVideos.value = (response.data.videos || []).map(v => ({
+      id: v.id,
+      title: v.title,
+      cover: v.coverUrl || v.cover_url || v.cover || '/assets/placeholder-cover.svg',
+      duration: v.duration || '00:00',
+      author: v.uploader?.name || v.uploader?.nickname || v.author || v.userName || v.user_name || '未知UP主',
+      playCount: v.viewCount ?? v.view_count ?? v.playCount ?? v.play_count ?? 0
+    }))
     videoPagination.value.total = response.data.total || 0
   } catch (error) {
     console.error('加载视频列表失败:', error)

@@ -65,9 +65,9 @@ const fetchFavoriteVideos = async (folderId) => {
       favoriteVideos.value = response.data.map(video => ({
         id: video.id,
         title: video.title,
-        thumbnail: video.coverUrl || '/assets/placeholder-cover.svg',
+        thumbnail: video.coverUrl || video.cover_url || video.cover || '/assets/placeholder-cover.svg',
         duration: video.duration || '00:00',
-        uploader: video.uploader?.name || '未知UP主'
+        uploader: video.uploader?.name || video.uploader?.nickname || video.userName || video.user_name || video.author || '未知UP主'
       }))
     } else {
       favoriteVideos.value = []

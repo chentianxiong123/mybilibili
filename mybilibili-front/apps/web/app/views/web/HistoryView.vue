@@ -144,22 +144,22 @@ const loadHistory = async () => {
     if (response && response.code === 200) {
       // 转换后端数据为前端格式
       historyList.value = (response.data || []).map(item => {
-        const video = item.video || {}
+const video = item.video || {}
         const uploader = video.uploader || {}
         return {
           id: item.id,
-          videoId: item.videoId,
+          videoId: item.videoId || item.video_id,
           title: video.title || '未知视频',
-          author: uploader.name || '未知UP主',
-          cover: video.coverUrl || '',
-          duration: item.progressSeconds || 0,
-          watchedAt: item.watchedAt ? new Date(item.watchedAt) : new Date(),
-          progress: item.progressSeconds || 0,
-          totalDuration: item.videoDuration || 0,
-          watchPercentage: item.watchPercentage || 0,
-          isFinished: (item.watchPercentage || 0) >= 90, // 90%以上算看完
+          author: uploader.name || uploader.nickname || video.author || video.userName || video.user_name || '未知UP主',
+          cover: video.coverUrl || video.cover_url || video.cover || '',
+          duration: item.progressSeconds || item.progress_seconds || 0,
+          watchedAt: item.watchedAt || item.watched_at ? new Date(item.watchedAt || item.watched_at) : new Date(),
+          progress: item.progressSeconds || item.progress_seconds || 0,
+          totalDuration: item.videoDuration || item.video_duration || 0,
+          watchPercentage: item.watchPercentage || item.watch_percentage || 0,
+          isFinished: (item.watchPercentage || item.watch_percentage || 0) >= 90,
           authorAvatar: uploader.avatar || '/default-avatar.svg',
-          manuscriptId: video.manuscriptId
+          manuscriptId: video.manuscriptId || video.manuscript_id || video.id
         }
       })
       pagination.value.total = historyList.value.length
