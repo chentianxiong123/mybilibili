@@ -70,6 +70,25 @@ const actionLabels = {
   recommend_config_reset: '重置推荐配置'
 }
 
+const normalizeAuditLog = (d) => ({
+  id: d.id,
+  operatorId: d.operator_id ?? d.operatorId ?? null,
+  operatorName: d.operator_name || d.operatorName || '',
+  operatorRole: d.operator_role || d.operatorRole || '',
+  module: d.module || '',
+  action: d.action || '',
+  targetType: d.target_type || d.targetType || '',
+  targetId: d.target_id ?? d.targetId ?? null,
+  requestMethod: d.request_method || d.requestMethod || '',
+  requestUri: d.request_uri || d.requestUri || '',
+  clientIp: d.client_ip || d.clientIp || '',
+  userAgent: d.user_agent || d.userAgent || '',
+  result: d.result,
+  message: d.message || '',
+  detail: d.detail || '',
+  createdAt: d.created_at || d.createdAt || ''
+})
+
 const loadData = async () => {
   loading.value = true
   try {
@@ -79,7 +98,8 @@ const loadData = async () => {
       ...searchForm
     })
     if (res.code === 200) {
-      tableData.value = res.data?.list || []
+      const list = res.data?.list || []
+      tableData.value = list.map(normalizeAuditLog)
       total.value = res.data?.total || 0
       return
     }
@@ -124,7 +144,7 @@ const showDetail = async (row) => {
   try {
     const res = await getAuditLogDetail(row.id)
     if (res.code === 200) {
-      currentDetail.value = res.data
+      currentDetail.value = normalizeAuditLog(res.data)
       return
     }
     ElMessage.error(res.message || '加载审计详情失败')

@@ -36,6 +36,7 @@ export const uploadSubtitle = (videoId: number, file: File, language: string, is
   formData.append('file', file)
   formData.append('language', language)
   formData.append('language_name', language === 'zh-CN' ? '中文' : language)
+  if (isDefault) formData.append('is_default', 'true')
   return api.post('/subtitle/upload-srt', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
@@ -49,4 +50,4 @@ export const approveSubtitle = (subtitleId: number) => api.post(`/subtitle/${sub
 export const rejectSubtitle = (subtitleId: number, reason: string) => api.post(`/subtitle/${subtitleId}/reject`, { reason })
 export const previewSubtitle = (subtitleId: number) => api.get(`/subtitle/${subtitleId}/preview`)
 export const scanSystemSubtitles = (videoId: number) => api.get(`/subtitle/scan/${videoId}`)
-export const importSystemSubtitle = (videoId: number, language: string) => api.post('/subtitle/import-system', { video_id: videoId, srt: language })
+export const importSystemSubtitle = (videoId: number, srtContent: string) => api.post('/subtitle/import-system', { video_id: videoId, srt: srtContent })
