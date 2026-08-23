@@ -19,19 +19,19 @@ type ProhibitedWord struct {
 }
 
 type Report struct {
-	ID           int64
-	ReporterID   int64
-	TargetType   string
-	TargetID     int64
-	ManuscriptID int64
-	Reason       string
-	Description  string
-	Status       string
-	AdminRemark  string
-	ProcessedAt  *time.Time
-	AIVerdict    string
-	AIRiskLevel  string
-	CreatedAt    time.Time
+	ID           int64      `json:"id"`
+	ReporterID   int64      `json:"reporter_id"`
+	TargetType   string     `json:"target_type"`
+	TargetID     int64      `json:"target_id"`
+	ManuscriptID int64      `json:"manuscript_id"`
+	Reason       string     `json:"reason"`
+	Description  string     `json:"description"`
+	Status       string     `json:"status"`
+	AdminRemark  string     `json:"admin_remark"`
+	ProcessedAt  *time.Time `json:"processed_at"`
+	AIVerdict    string     `json:"ai_verdict"`
+	AIRiskLevel  string     `json:"ai_risk_level"`
+	CreatedAt    time.Time  `json:"created_at"`
 }
 
 type Repository struct {
