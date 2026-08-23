@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search, View, Upload, Document, Warning, Download } from '@element-plus/icons-vue'
 import {
   getVideosWithSubtitleInfo,
   getVideoSubtitles,
@@ -110,16 +111,16 @@ const loadPendingImportSubtitles = async (videoId) => {
 }
 
 // 处理字幕入库
-const handleImportSystemSubtitle = async (language) => {
+const handleImportSystemSubtitle = async (sub) => {
   try {
     await ElMessageBox.confirm(
-      `确定将 ${language} 字幕入库到数据库吗？`,
+      `确定将 ${sub.language_name || sub.language} 字幕入库到数据库吗？`,
       '字幕入库确认',
       { type: 'warning' }
     )
     
     importLoading.value = true
-    const res = await importSystemSubtitle(currentVideo.value.id, language)
+    const res = await approveSubtitle(sub.id)
     
     if (res.code === 200 || res.success) {
       ElMessage.success('字幕入库成功')
@@ -319,7 +320,8 @@ const handlePreview = async (subtitle) => {
   try {
     const res = await previewSubtitle(subtitle.id)
     if (res.code === 200 || res.success) {
-      previewData.value = res.data || { subtitle: {}, content: [] }
+      const cues = Array.isArray(res.data) ? res.data : (res.data?.cues || [])
+      previewData.value = { subtitle, content: cues }
       previewDialogVisible.value = true
     } else {
       ElMessage.error(res.message || '获取字幕内容失败')
@@ -484,14 +486,14 @@ onMounted(() => {
           >
             <div class="pending-info">
               <span class="language">{{ getLanguageDisplayName(sub.language) }}</span>
-              <span class="file-name">{{ sub.fileName }}</span>
-              <span class="file-size">({{ (sub.fileSize / 1024).toFixed(1) }} KB)</span>
+              <span class="file-name">{{ sub.file_name || sub.fileName || sub.language_name || '' }}</span>
+              <span class="file-size" v-if="sub.file_size || sub.fileSize">({{ ((sub.file_size || sub.fileSize) / 1024).toFixed(1) }} KB)</span>
             </div>
             <el-button 
               type="primary" 
               size="small"
               :loading="importLoading"
-              @click="handleImportSystemSubtitle(sub.language)"
+              @click="handleImportSystemSubtitle(sub)"
             >
               <el-icon><Download /></el-icon>
               入库

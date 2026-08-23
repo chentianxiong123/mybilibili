@@ -142,6 +142,26 @@ const statusOptions = [
   { label: '已取消', value: 'CANCELLED' }
 ]
 
+const normalizeOperationTask = (d) => ({
+  id: d.id,
+  taskKey: d.task_key || d.taskKey || '',
+  taskType: d.task_type || d.taskType || '',
+  taskName: d.task_name || d.taskName || '',
+  targetType: d.target_type || d.targetType || '',
+  targetId: d.target_id ?? d.targetId ?? null,
+  status: d.status || '',
+  progress: d.progress ?? 0,
+  stage: d.stage || '',
+  message: d.message || '',
+  errorMessage: d.error_message || d.errorMessage || '',
+  operatorId: d.operator_id ?? d.operatorId ?? null,
+  operatorName: d.operator_name || d.operatorName || '',
+  startedAt: d.started_at || d.startedAt || '',
+  finishedAt: d.finished_at || d.finishedAt || '',
+  createdAt: d.created_at || d.createdAt || '',
+  updatedAt: d.updated_at || d.updatedAt || ''
+})
+
 const loadData = async () => {
   loading.value = true
   try {
@@ -151,7 +171,8 @@ const loadData = async () => {
       ...searchForm
     })
     if (res.code === 200) {
-      tableData.value = res.data?.list || []
+      const list = res.data?.list || []
+      tableData.value = list.map(normalizeOperationTask)
       total.value = res.data?.total || 0
       return
     }
@@ -195,7 +216,7 @@ const showDetail = async (row) => {
   try {
     const res = await getOperationTaskDetail(row.id)
     if (res.code === 200) {
-      currentDetail.value = res.data
+      currentDetail.value = normalizeOperationTask(res.data)
       return
     }
     ElMessage.error(res.message || '加载任务详情失败')
