@@ -772,40 +772,46 @@ watch(
     </div>
   </div>
   
-  <VideoReportDialog
-    v-model:visible="reportDialogVisible"
-    :manuscript-id="currentManuscriptId"
-  />
+  <ClientOnly>
+    <VideoReportDialog
+      v-model:visible="reportDialogVisible"
+      :manuscript-id="currentManuscriptId"
+    />
+  </ClientOnly>
 
   <!-- 浮动用户卡片 - 作者头像 -->
-  <UserFloatCard
-    v-model:visible="showUserFloatCard"
-    :trigger-ref="authorAvatarRef"
-    :bridge-ref="authorBridgeRef"
-    :user-info="{
-      id: videoInfo.uploader.id,
-      name: videoInfo.uploader.name,
-      avatar: videoInfo.uploader.avatar,
-      bio: videoInfo.uploader.bio,
-      signature: videoInfo.uploader.bio,
-      following: isFollowing,
-      followerCount: followerCount,
-      followingCount: videoInfo.uploader.followingCount || 0,
-      likeCount: videoInfo.uploader.likeCount || 0,
-      level: videoInfo.uploader.level || 0
-    }"
-    placement="bottom"
-    @follow-change="handleFollowChange"
-    @mouseenter="handleAuthorCardMouseEnter"
-    @mouseleave="handleAuthorCardMouseLeave"
-  />
+  <ClientOnly>
+    <UserFloatCard
+      v-model:visible="showUserFloatCard"
+      :trigger-ref="authorAvatarRef"
+      :bridge-ref="authorBridgeRef"
+      :user-info="{
+        id: videoInfo.uploader.id,
+        name: videoInfo.uploader.name,
+        avatar: videoInfo.uploader.avatar,
+        bio: videoInfo.uploader.bio,
+        signature: videoInfo.uploader.bio,
+        following: isFollowing,
+        followerCount: followerCount,
+        followingCount: videoInfo.uploader.followingCount || 0,
+        likeCount: videoInfo.uploader.likeCount || 0,
+        level: videoInfo.uploader.level || 0
+      }"
+      placement="bottom"
+      @follow-change="handleFollowChange"
+      @mouseenter="handleAuthorCardMouseEnter"
+      @mouseleave="handleAuthorCardMouseLeave"
+    />
+  </ClientOnly>
   
   <!-- AI助手侧边面板 -->
-  <AiAssistantPanel
-    v-model:visible="showAiAssistantDialog"
-    :video-id="videoId"
-    :video-title="videoInfo.title"
-  />
+  <ClientOnly>
+    <AiAssistantPanel
+      v-model:visible="showAiAssistantDialog"
+      :video-id="videoId"
+      :video-title="videoInfo.title"
+    />
+  </ClientOnly>
 </template>
 
 <style scoped>

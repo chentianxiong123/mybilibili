@@ -3,6 +3,7 @@
     <NuxtPage />
   </NuxtLayout>
 
+  <ClientOnly>
   <el-dialog
     v-model="showLoginDialog"
     :title="''"
@@ -173,6 +174,7 @@
       </div>
     </div>
   </el-dialog>
+</ClientOnly>
 </template>
 
 <script setup lang="ts">
