@@ -1,6 +1,7 @@
 export const permissionRouteOrder = [
   { path: '/dashboard', permission: 'statistics:manage' },
   { path: '/operation-tasks', permission: 'operation:manage' },
+  { path: '/scheduled-tasks', permission: 'operation:manage' },
   { path: '/support-tickets', permission: 'operation:manage' },
   { path: '/index-manager', permission: 'search:manage' },
   { path: '/recommend-config', permission: 'search:manage' },

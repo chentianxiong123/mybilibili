@@ -249,7 +249,7 @@ const loadDanmakus = async () => {
     if (!currentVideo) return
     const danmakuResponse = await interactionApi.getDanmakus(currentVideo.id)
     if (danmakuResponse.code === 200) {
-      const danmakuData = danmakuResponse.data
+      const danmakuData = danmakuResponse.data || []
       localDanmuList.value = danmakuData.map((danmaku: any) => ({
         text: danmaku.content,
         time: Number.parseFloat(danmaku.time) || 0,

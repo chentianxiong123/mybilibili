@@ -320,7 +320,6 @@ onUnmounted(() => {
               @focus="handleSearchFocus"
               @blur="handleSearchBlur"
             >
-            >
             <button class="search-button" @click="handleSearch">
               搜索
             </button>
@@ -481,7 +480,6 @@ onUnmounted(() => {
               @keyup.enter="handleSearch"
               @focus="handleSearchFocus"
               @blur="handleSearchBlur"
-            >
             >
             <button class="search-button" @click="handleSearch">
               搜索
