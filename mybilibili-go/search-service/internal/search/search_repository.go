@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
+
+	"mybilibili/search-service/internal/hot"
 )
 
 type Repository struct {
@@ -73,9 +75,49 @@ func (r *Repository) SearchManuscripts(ctx context.Context, keyword string, cate
 	return list, nil
 }
 
-func (r *Repository) HotSearch(ctx context.Context) ([]string, error) {
+func (r *Repository) HotSearch(ctx context.Context) ([]map[string]interface{}, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT title FROM manuscripts WHERE status = 3 ORDER BY view_count DESC LIMIT 10`)
+		`SELECT keyword, score FROM hot_search
+		 WHERE expires_at IS NULL OR expires_at > NOW()
+		 ORDER BY score DESC LIMIT 10`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var list []map[string]interface{}
+	for rows.Next() {
+		var keyword string
+		var score int64
+		if err := rows.Scan(&keyword, &score); err != nil {
+			return nil, err
+		}
+		list = append(list, map[string]interface{}{
+			"rank":    len(list) + 1,
+			"keyword": keyword,
+			"score":   score,
+		})
+	}
+	if len(list) > 0 {
+		return list, nil
+	}
+	// 兜底：按播放量取已发布稿件标题
+	titles, err := r.TopTitles(ctx, 10)
+	if err != nil {
+		return nil, err
+	}
+	for i, t := range titles {
+		list = append(list, map[string]interface{}{
+			"rank":    i + 1,
+			"keyword": t,
+			"score":   0,
+		})
+	}
+	return list, nil
+}
+
+func (r *Repository) TopTitles(ctx context.Context, limit int) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT title FROM manuscripts WHERE status = 3 ORDER BY view_count DESC LIMIT $1`, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +125,9 @@ func (r *Repository) HotSearch(ctx context.Context) ([]string, error) {
 	var list []string
 	for rows.Next() {
 		var t string
-		rows.Scan(&t)
+		if err := rows.Scan(&t); err != nil {
+			return nil, err
+		}
 		list = append(list, t)
 	}
 	return list, nil
@@ -179,18 +223,28 @@ func (r *Repository) DeleteOne(ctx context.Context, keyword string) error {
 }
 
 type Service struct {
-	repo *Repository
+	repo    *Repository
+	hotRepo *hot.Repository
 }
 
-func NewService(repo *Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo *Repository, hotRepo *hot.Repository) *Service {
+	return &Service{repo: repo, hotRepo: hotRepo}
 }
 
 func (s *Service) Search(ctx context.Context, keyword string, categoryID int64, page, size int32) ([]map[string]interface{}, error) {
+	if keyword != "" && s.hotRepo != nil {
+		_ = s.hotRepo.Increment(ctx, keyword)
+	}
 	return s.repo.SearchManuscripts(ctx, keyword, categoryID, page, size)
 }
 
-func (s *Service) Hot(ctx context.Context) ([]string, error) {
+func (s *Service) Hot(ctx context.Context) ([]map[string]interface{}, error) {
+	if s.hotRepo != nil {
+		if list, err := s.hotRepo.Top(ctx, 10); err == nil && len(list) > 0 {
+			return list, nil
+		}
+	}
+	// 兜底：按播放量取已发布稿件标题
 	return s.repo.HotSearch(ctx)
 }
 
@@ -279,35 +333,69 @@ func (s *Service) UpdateRecommendConfig(ctx context.Context, configJSON, updated
 }
 
 func (s *Service) IncrementHotSearch(ctx context.Context, keyword string) error {
-	return s.repo.IncrementHotSearch(ctx, keyword)
+	if s.hotRepo == nil {
+		return nil
+	}
+	return s.hotRepo.Increment(ctx, keyword)
 }
 
 func (s *Service) SetKeyword(ctx context.Context, keyword string, score, rank int) error {
-	return s.repo.SetKeyword(ctx, keyword, score, rank)
+	if s.hotRepo == nil {
+		return nil
+	}
+	_ = s.hotRepo.UpdateScore(ctx, keyword, float64(score))
+	return s.hotRepo.SetRank(ctx, keyword, int64(rank))
 }
 
 func (s *Service) SetRank(ctx context.Context, keyword string, rank int) error {
-	return s.repo.SetRank(ctx, keyword, rank)
+	if s.hotRepo == nil {
+		return nil
+	}
+	return s.hotRepo.SetRank(ctx, keyword, int64(rank))
 }
 
 func (s *Service) SetScore(ctx context.Context, keyword string, score int) error {
-	return s.repo.SetScore(ctx, keyword, score)
+	if s.hotRepo == nil {
+		return nil
+	}
+	return s.hotRepo.UpdateScore(ctx, keyword, float64(score))
 }
 
 func (s *Service) GetKeyword(ctx context.Context, keyword string) (map[string]interface{}, error) {
-	return s.repo.GetKeyword(ctx, keyword)
+	if s.hotRepo == nil {
+		return nil, context.Canceled
+	}
+	item, err := s.hotRepo.Get(ctx, keyword)
+	if err != nil {
+		return nil, err
+	}
+	return item, nil
 }
 
 func (s *Service) GetScore(ctx context.Context, keyword string) (int64, error) {
-	return s.repo.GetScore(ctx, keyword)
+	if s.hotRepo == nil {
+		return 0, context.Canceled
+	}
+	item, err := s.hotRepo.Get(ctx, keyword)
+	if err != nil {
+		return 0, err
+	}
+	score, _ := item["score"].(int64)
+	return score, nil
 }
 
 func (s *Service) CleanExpiredHotSearch(ctx context.Context) error {
-	return s.repo.CleanExpiredHotSearch(ctx)
+	if s.hotRepo == nil {
+		return nil
+	}
+	return s.hotRepo.CleanExpired(ctx, 100)
 }
 
 func (s *Service) DeleteOne(ctx context.Context, keyword string) error {
-	return s.repo.DeleteOne(ctx, keyword)
+	if s.hotRepo == nil {
+		return nil
+	}
+	return s.hotRepo.Delete(ctx, keyword)
 }
 
 func (s *Service) CountIndexed(ctx context.Context) (int64, error) {

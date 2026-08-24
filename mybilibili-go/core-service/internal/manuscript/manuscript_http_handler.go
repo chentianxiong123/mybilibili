@@ -562,13 +562,13 @@ func manuscriptToMap(info *pb.ManuscriptInfo) map[string]interface{} {
 		for _, v := range info.Videos {
 			videos = append(videos, map[string]interface{}{
 				"id": v.Id, "title": v.Title, "description": v.Description,
-				"play_url": v.PlayUrl, "play_url_hd": v.PlayUrlHd,
-				"play_url_sd": v.PlayUrlSd, "play_url_ld": v.PlayUrlLd,
-				"duration": v.Duration, "duration_seconds": v.DurationSeconds,
-				"video_order": v.VideoOrder, "status": v.Status,
-				"process_status": v.ProcessStatus,
-				"process_progress": v.ProcessProgress,
-				"process_stage": v.ProcessStage, "process_error": v.ProcessError,
+				"playUrl": v.PlayUrl, "playUrlHd": v.PlayUrlHd,
+				"playUrlSd": v.PlayUrlSd, "playUrlLd": v.PlayUrlLd,
+				"duration": v.Duration, "durationSeconds": v.DurationSeconds,
+				"videoOrder": v.VideoOrder, "status": v.Status,
+				"processStatus": v.ProcessStatus,
+				"processProgress": v.ProcessProgress,
+				"processStage": v.ProcessStage, "processError": v.ProcessError,
 			})
 		}
 		m["videos"] = videos

@@ -53,7 +53,8 @@ func (s *GrpcServer) GetHotSearch(ctx context.Context, req *pb.GetHotSearchReque
 	}
 	resp := &pb.GetHotSearchResponse{}
 	for _, kw := range keywords {
-		resp.List = append(resp.List, &pb.HotKeyword{Keyword: kw})
+		keyword, _ := kw["keyword"].(string)
+		resp.List = append(resp.List, &pb.HotKeyword{Keyword: keyword})
 	}
 	return resp, nil
 }
