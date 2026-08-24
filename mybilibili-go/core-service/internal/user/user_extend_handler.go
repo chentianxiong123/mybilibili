@@ -629,13 +629,51 @@ func (h *UserExtendHandler) handleUserByID(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "database error", 500)
 		return
 	}
+	var followerCount, followingCount, totalLikeCount, totalViewCount int64
+	_ = h.svc.repo.db.QueryRowContext(r.Context(),
+		`SELECT COALESCE(follower_count,0) FROM users WHERE id = $1`, id).Scan(&followerCount)
+	_ = h.svc.repo.db.QueryRowContext(r.Context(),
+		`SELECT COALESCE(following_count,0) FROM users WHERE id = $1`, id).Scan(&followingCount)
+	_ = h.svc.repo.db.QueryRowContext(r.Context(),
+		`SELECT COALESCE(SUM(like_count),0) FROM manuscripts WHERE user_id = $1`, id).Scan(&totalLikeCount)
+	_ = h.svc.repo.db.QueryRowContext(r.Context(),
+		`SELECT COALESCE(SUM(views),0) FROM manuscripts WHERE user_id = $1`, id).Scan(&totalViewCount)
+	var signature, announcement, bio string
+	var gender int64
+	var birthdate *time.Time
+	_ = h.svc.repo.db.QueryRowContext(r.Context(),
+		`SELECT COALESCE(signature,''), COALESCE(announcement,''), COALESCE(bio,''), COALESCE(gender,0), birthdate FROM users WHERE id = $1`,
+		id).Scan(&signature, &announcement, &bio, &gender, &birthdate)
+	var tags []string
+	rows, err := h.svc.repo.db.QueryContext(r.Context(),
+		`SELECT tag_name FROM user_tags WHERE user_id = $1`, id)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var t string
+			if err := rows.Scan(&t); err == nil {
+				tags = append(tags, t)
+			}
+		}
+	}
 	httputil.WriteOK(w, map[string]interface{}{
-		"id":         user.ID,
-		"username":   user.Username,
-		"nickname":   user.Nickname,
-		"avatar":     user.Avatar,
-		"level":      user.Level,
-		"created_at": user.CreatedAt,
+		"id":               user.ID,
+		"username":         user.Username,
+		"nickname":         user.Nickname,
+		"avatar":           user.Avatar,
+		"avatar_url":       user.Avatar,
+		"level":            user.Level,
+		"signature":        signature,
+		"announcement":     announcement,
+		"bio":              bio,
+		"gender":           gender,
+		"birthdate":        birthdate,
+		"tags":             tags,
+		"followerCount":    followerCount,
+		"followingCount":   followingCount,
+		"totalLikeCount":   totalLikeCount,
+		"totalViewCount":   totalViewCount,
+		"created_at":       user.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	})
 }
 
