@@ -39,6 +39,12 @@ const router = createRouter({
       meta: { title: '任务中心 - 管理后台', requiresAuth: true, permission: 'operation:manage' }
     },
     {
+      path: '/scheduled-tasks',
+      name: 'scheduledTasks',
+      component: () => import('~/views/admin/ScheduledTasksView.vue'),
+      meta: { title: '定时任务 - 管理后台', requiresAuth: true, permission: 'operation:manage' }
+    },
+    {
       path: '/audit-logs',
       name: 'auditLogs',
       component: () => import('~/views/admin/AuditLogsView.vue'),

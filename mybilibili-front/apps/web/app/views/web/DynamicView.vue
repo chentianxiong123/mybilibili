@@ -3,7 +3,7 @@ import { safeStorage } from '@/utils/safeStorage'
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ArrowDown } from '@element-plus/icons-vue'
-import { useVirtualizer } from '@tanstack/vue-virtual'
+
 import { dynamicApi } from '@/api/dynamic.ts'
 import { useUserStore } from '@/stores/user.ts'
 import { ElMessage } from 'element-plus'
@@ -31,17 +31,8 @@ const pageSize = ref(10)
 const hasMore = ref(true)
 const loading = ref(false)
 
-// 虚拟滚动（客户端挂载后再创建，避免 SSR 引入 window）
+// 虚拟滚动
 const scrollContainer = ref(null)
-const virtualizer = ref(null)
-onMounted(() => {
-  virtualizer.value = useVirtualizer({
-    count: computed(() => dynamicList.value.length),
-    getScrollElement: () => scrollContainer.value,
-    estimateSize: () => 200,
-    overscan: 3
-  })
-})
 
 const hotSearchList = ref([])
 
@@ -326,35 +317,11 @@ onMounted(() => {
         </div>
 
         <div class="dynamic-list" ref="scrollContainer">
-          <div v-if="virtualizer && dynamicList.length > 0" :style="{ height: `${virtualizer.value.getTotalSize()}px`, position: 'relative' }">
-            <div
-              v-for="vItem in virtualizer.value.getVirtualItems()"
-              :key="vItem.key"
-              :data-index="vItem.index"
-              :ref="vItem.measureElement"
-              :style="{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                transform: `translateY(${vItem.start}px)`
-              }"
-            >
-              <DynamicCard
-                :item="dynamicList[vItem.index]"
-                @like="handleLike"
-                @forward="handleForward"
-                @toggle-comment="toggleComment"
-                @go-to-user="goToUserProfile"
-                @go-to-manuscript="goToManuscript"
-              />
-            </div>
-          </div>
-
-          <div v-else-if="dynamicList.length > 0">
+          <div
+            v-for="item in dynamicList"
+            :key="item.id"
+          >
             <DynamicCard
-              v-for="item in dynamicList"
-              :key="item.id"
               :item="item"
               @like="handleLike"
               @forward="handleForward"

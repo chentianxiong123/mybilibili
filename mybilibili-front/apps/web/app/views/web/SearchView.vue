@@ -357,7 +357,6 @@ onUnmounted(() => {
                   @focus="handleSearchFocus"
                   @blur="handleSearchBlur"
                 >
-                >
                 <!-- 浅蓝色搜索按钮在右侧 -->
                 <button class="search-button" @click="handleSearch">
                   搜索
@@ -493,7 +492,6 @@ onUnmounted(() => {
             @keyup.enter="handleSearch"
             @focus="handleSearchFocus"
             @blur="handleSearchBlur"
-          >
           >
           <!-- 浅蓝色搜索按钮在右侧 -->
           <button class="search-button" @click="handleSearch">
