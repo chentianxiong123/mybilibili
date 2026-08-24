@@ -13,12 +13,17 @@ import (
 )
 
 type Handler struct {
-	svc *Service
-	jwt *auth.JWT
+	svc       *Service
+	jwt       *auth.JWT
+	scheduler *Scheduler
 }
 
 func NewHandler(svc *Service, jwt *auth.JWT) *Handler {
 	return &Handler{svc: svc, jwt: jwt}
+}
+
+func (h *Handler) SetScheduler(s *Scheduler) {
+	h.scheduler = s
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
@@ -40,6 +45,9 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/admin/operation-tasks/list", h.handleOperationTasks)
 	mux.HandleFunc("/api/v1/admin/operation-tasks/", h.handleOperationTaskByID)
 	mux.HandleFunc("/api/v1/admin/audit-logs/list", h.handleAuditLogs)
+	mux.HandleFunc("/api/v1/admin/scheduled-tasks", h.handleScheduledTasks)
+	mux.HandleFunc("/api/v1/admin/scheduled-tasks/toggle", h.handleScheduledTaskToggle)
+	mux.HandleFunc("/api/v1/admin/scheduled-tasks/trigger", h.handleScheduledTaskTrigger)
 	mux.HandleFunc("/api/v1/admin/", h.handleAdminByID)
 }
 
@@ -549,4 +557,85 @@ func (h *Handler) handleAdminByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Error(w, "not found", 404)
+}
+
+func (h *Handler) handleScheduledTasks(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		list, _ := h.svc.ListScheduledTasks(r.Context())
+		if list == nil {
+			list = []*ScheduledTask{}
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{"list": list})
+	case "POST":
+		var t ScheduledTask
+		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+			http.Error(w, "invalid body", 400)
+			return
+		}
+		if err := h.svc.CreateScheduledTask(r.Context(), &t); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		json.NewEncoder(w).Encode(t)
+	case "PUT":
+		var t ScheduledTask
+		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+			http.Error(w, "invalid body", 400)
+			return
+		}
+		if err := h.svc.UpdateScheduledTask(r.Context(), &t); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	case "DELETE":
+		body := struct {
+			ID int64 `json:"id"`
+		}{}
+		json.NewDecoder(r.Body).Decode(&body)
+		if body.ID <= 0 {
+			http.Error(w, "id required", 400)
+			return
+		}
+		_ = h.svc.DeleteScheduledTask(r.Context(), body.ID)
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	default:
+		http.Error(w, "method not allowed", 405)
+	}
+}
+
+func (h *Handler) handleScheduledTaskToggle(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		ID      int64 `json:"id"`
+		Enabled int32 `json:"enabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid body", 400)
+		return
+	}
+	_ = h.svc.ToggleScheduledTask(r.Context(), req.ID, req.Enabled)
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+func (h *Handler) handleScheduledTaskTrigger(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		TaskKey string `json:"task_key"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.TaskKey == "" {
+		http.Error(w, "task_key required", 400)
+		return
+	}
+	if h.scheduler != nil {
+		h.scheduler.TriggerTaskNow(r.Context(), req.TaskKey)
+	}
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }

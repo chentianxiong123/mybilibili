@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net"
@@ -8,12 +9,14 @@ import (
 	"os"
 
 	_ "github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
 	"mybilibili/pkg/abstraction"
 	pb "mybilibili/pkg/pb"
 	"mybilibili/search-service/internal/analytics"
+	"mybilibili/search-service/internal/hot"
 	"mybilibili/search-service/internal/profile"
 	"mybilibili/search-service/internal/search"
 )
@@ -34,6 +37,17 @@ func main() {
 		grpcAddr = ":9084"
 	}
 
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+	rdb := redis.NewClient(&redis.Options{Addr: redisAddr})
+	if err := rdb.Ping(ctxBackground()).Err(); err != nil {
+		log.Printf("warning: failed to connect redis at %s: %v", redisAddr, err)
+	} else {
+		log.Printf("connected to redis at %s", redisAddr)
+	}
+
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
@@ -45,7 +59,8 @@ func main() {
 	}
 
 	searchRepo := search.NewRepository(db)
-	searchSvc := search.NewService(searchRepo)
+	hotRepo := hot.NewRepository(rdb)
+	searchSvc := search.NewService(searchRepo, hotRepo)
 
 	searchH := search.NewHandler(searchSvc)
 
@@ -78,4 +93,8 @@ func main() {
 	profileH.Register(mux)
 	log.Printf("Search HTTP listening on %s", httpAddr)
 	log.Fatal(http.ListenAndServe(httpAddr, mux))
+}
+
+func ctxBackground() context.Context {
+	return context.Background()
 }

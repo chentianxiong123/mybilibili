@@ -72,6 +72,27 @@ type OperationTask struct {
 	FinishedAt   *time.Time `json:"finished_at"`
 }
 
+type ScheduledTask struct {
+	ID            int64      `json:"id"`
+	TaskKey       string     `json:"task_key"`
+	TaskName      string     `json:"task_name"`
+	Description   string     `json:"description"`
+	CronExpr      string     `json:"cron_expr"`
+	TaskType      string     `json:"task_type"`
+	TaskConfig    string     `json:"task_config"`
+	Enabled       int32      `json:"enabled"`
+	LastRunAt     *time.Time `json:"last_run_at"`
+	LastRunResult string     `json:"last_run_result"`
+	LastRunMsg    string     `json:"last_run_message"`
+	NextRunAt     *time.Time `json:"next_run_at"`
+	RunCount      int32      `json:"run_count"`
+	MaxRetries    int32      `json:"max_retries"`
+	RetryCount    int32      `json:"retry_count"`
+	TimeoutSecs   int32      `json:"timeout_seconds"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+}
+
 type Repository struct {
 	db *sql.DB
 }
@@ -418,4 +439,119 @@ func (s *Service) RecordLoginLog(ctx context.Context, userID int64, ip, ua strin
 
 func (s *Service) ListLoginLogs(ctx context.Context, userID int64, page, size int32) ([]map[string]interface{}, error) {
 	return s.repo.ListLoginLogs(ctx, userID, page, size)
+}
+
+// ---- ScheduledTask CRUD ----
+
+func (r *Repository) ListScheduledTasks(ctx context.Context) ([]*ScheduledTask, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, task_key, task_name, description, cron_expr, task_type, task_config,
+		        enabled, last_run_at, last_run_result, last_run_message,
+		        next_run_at, run_count, max_retries, retry_count, timeout_seconds,
+		        created_at, updated_at
+		 FROM scheduled_tasks ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var list []*ScheduledTask
+	for rows.Next() {
+		t := &ScheduledTask{}
+		if err := rows.Scan(&t.ID, &t.TaskKey, &t.TaskName, &t.Description,
+			&t.CronExpr, &t.TaskType, &t.TaskConfig,
+			&t.Enabled, &t.LastRunAt, &t.LastRunResult, &t.LastRunMsg,
+			&t.NextRunAt, &t.RunCount, &t.MaxRetries, &t.RetryCount, &t.TimeoutSecs,
+			&t.CreatedAt, &t.UpdatedAt); err != nil {
+			return nil, err
+		}
+		list = append(list, t)
+	}
+	return list, nil
+}
+
+func (r *Repository) GetScheduledTaskByKey(ctx context.Context, taskKey string) (*ScheduledTask, error) {
+	t := &ScheduledTask{}
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, task_key, task_name, description, cron_expr, task_type, task_config,
+		        enabled, last_run_at, last_run_result, last_run_message,
+		        next_run_at, run_count, max_retries, retry_count, timeout_seconds,
+		        created_at, updated_at
+		 FROM scheduled_tasks WHERE task_key = $1`, taskKey).Scan(
+		&t.ID, &t.TaskKey, &t.TaskName, &t.Description,
+		&t.CronExpr, &t.TaskType, &t.TaskConfig,
+		&t.Enabled, &t.LastRunAt, &t.LastRunResult, &t.LastRunMsg,
+		&t.NextRunAt, &t.RunCount, &t.MaxRetries, &t.RetryCount, &t.TimeoutSecs,
+		&t.CreatedAt, &t.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+func (r *Repository) CreateScheduledTask(ctx context.Context, t *ScheduledTask) error {
+	return r.db.QueryRowContext(ctx,
+		`INSERT INTO scheduled_tasks (task_key, task_name, description, cron_expr, task_type, task_config,
+		 enabled, max_retries, timeout_seconds)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+		t.TaskKey, t.TaskName, t.Description, t.CronExpr, t.TaskType, t.TaskConfig,
+		t.Enabled, t.MaxRetries, t.TimeoutSecs).Scan(&t.ID)
+}
+
+func (r *Repository) UpdateScheduledTask(ctx context.Context, t *ScheduledTask) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE scheduled_tasks SET task_name=$1, description=$2, cron_expr=$3,
+		 task_type=$4, task_config=$5, enabled=$6, max_retries=$7, timeout_seconds=$8,
+		 updated_at=NOW() WHERE id=$9`,
+		t.TaskName, t.Description, t.CronExpr, t.TaskType, t.TaskConfig,
+		t.Enabled, t.MaxRetries, t.TimeoutSecs, t.ID)
+	return err
+}
+
+func (r *Repository) ToggleScheduledTask(ctx context.Context, id int64, enabled int32) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE scheduled_tasks SET enabled=$1, updated_at=NOW() WHERE id=$2`, enabled, id)
+	return err
+}
+
+func (r *Repository) DeleteScheduledTask(ctx context.Context, id int64) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM scheduled_tasks WHERE id=$1`, id)
+	return err
+}
+
+func (r *Repository) UpdateScheduledTaskRun(ctx context.Context, taskKey string, result, message string, nextRunAt *time.Time) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE scheduled_tasks SET last_run_at=NOW(), last_run_result=$1, last_run_message=$2,
+		 next_run_at=$3, run_count=run_count+1, retry_count=0, updated_at=NOW()
+		 WHERE task_key=$4`, result, message, nextRunAt, taskKey)
+	return err
+}
+
+// ---- Service wrappers ----
+
+func (s *Service) ListScheduledTasks(ctx context.Context) ([]*ScheduledTask, error) {
+	return s.repo.ListScheduledTasks(ctx)
+}
+
+func (s *Service) GetScheduledTaskByKey(ctx context.Context, taskKey string) (*ScheduledTask, error) {
+	return s.repo.GetScheduledTaskByKey(ctx, taskKey)
+}
+
+func (s *Service) CreateScheduledTask(ctx context.Context, t *ScheduledTask) error {
+	return s.repo.CreateScheduledTask(ctx, t)
+}
+
+func (s *Service) UpdateScheduledTask(ctx context.Context, t *ScheduledTask) error {
+	return s.repo.UpdateScheduledTask(ctx, t)
+}
+
+func (s *Service) ToggleScheduledTask(ctx context.Context, id int64, enabled int32) error {
+	return s.repo.ToggleScheduledTask(ctx, id, enabled)
+}
+
+func (s *Service) DeleteScheduledTask(ctx context.Context, id int64) error {
+	return s.repo.DeleteScheduledTask(ctx, id)
+}
+
+func (s *Service) UpdateScheduledTaskRun(ctx context.Context, taskKey, result, message string, nextRunAt *time.Time) error {
+	return s.repo.UpdateScheduledTaskRun(ctx, taskKey, result, message, nextRunAt)
 }
