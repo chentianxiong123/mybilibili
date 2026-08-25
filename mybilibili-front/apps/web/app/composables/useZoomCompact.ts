@@ -1,7 +1,9 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
-export const desktopCompact = ref(false)
+export const compactLevel = ref(0)
+
+export const desktopCompact = computed(() => compactLevel.value > 0)
 
 export function useZoomCompact() {
-  return { desktopCompact }
+  return { compactLevel, desktopCompact }
 }

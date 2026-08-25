@@ -365,23 +365,23 @@ func roleTemplates() map[string]roleTemplate {
 	return map[string]roleTemplate{
 		"platform-operation": {
 			Code: "platform-operation", Name: "平台运营",
-			Description:     "适合处理工单、运营任务、推荐策略、索引和运营审计",
-			PermissionCodes: []string{"operation:manage", "search:manage", "audit:manage", "statistics:manage", "scheduled:manage"},
+			Description:     "适合维护视频、分类、轮播图、直播、字幕、搜索与定时任务",
+			PermissionCodes: []string{"video:manage", "category:manage", "banner:manage", "live:manage", "subtitle:manage", "search:manage", "operation:manage", "scheduled:manage"},
 		},
 		"content-review": {
 			Code: "content-review", Name: "内容审核",
 			Description:     "适合处理稿件审核、内容审核、举报、评论和违禁词",
 			PermissionCodes: []string{"review:manage", "comment:manage"},
 		},
-		"ai-manager": {
-			Code: "ai-manager", Name: "AI 管理",
-			Description:     "适合维护 AI 渠道、技能、用量和客服会话",
-			PermissionCodes: []string{"ai:manage"},
+		"customer-support": {
+			Code: "customer-support", Name: "客服专员",
+			Description:     "适合处理工单、客服会话、系统通知和用户查询",
+			PermissionCodes: []string{"message:manage", "user:manage", "operation:manage"},
 		},
-		"media-manager": {
-			Code: "media-manager", Name: "媒体管理",
-			Description:     "适合维护视频、字幕、分类、轮播图、直播资源",
-			PermissionCodes: []string{"video:manage", "category:manage", "banner:manage", "live:manage"},
+		"data-analyst": {
+			Code: "data-analyst", Name: "数据分析员",
+			Description:     "只读查看统计数据与审计日志",
+			PermissionCodes: []string{"statistics:manage", "audit:manage"},
 		},
 		"system-manager": {
 			Code: "system-manager", Name: "系统管理",

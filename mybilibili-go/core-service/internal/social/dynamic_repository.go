@@ -23,16 +23,16 @@ type Dynamic struct {
 }
 
 type DynamicComment struct {
-	ID          int64
-	DynamicID   int64
-	UserID      int64
-	Content     string
-	ParentID    int64
-	ReplyUserID int64
-	LikeCount   int32
-	Status      int32
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID          int64     `json:"id"`
+	DynamicID   int64     `json:"dynamicId"`
+	UserID      int64     `json:"userId"`
+	Content     string    `json:"content"`
+	ParentID    int64     `json:"parentId"`
+	ReplyUserID int64     `json:"replyUserId"`
+	LikeCount   int32     `json:"likeCount"`
+	Status      int32     `json:"-"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"-"`
 }
 
 type DynamicRepository struct {

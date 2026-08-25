@@ -1,6 +1,6 @@
 <script setup>
 import { safeStorage } from '@/utils/safeStorage'
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import { ArrowLeft, ArrowRight, View, Star } from '@element-plus/icons-vue'
 import { recommendApi } from '@/api/recommend.ts'
 import { getHomeBanners } from '@/api/banner.ts'
@@ -37,7 +37,10 @@ const prevBanner = () => {
 }
 
 const { apply: applyTabsVideoAlign } = useTabsVideoAlign()
-const { desktopCompact } = useZoomCompact()
+const { compactLevel } = useZoomCompact()
+
+// 视频网格列数：level 0→5, level 1→4, level 2→3
+const videoCols = computed(() => [5, 4, 3][compactLevel.value] || 5)
 
 const nextBanner = () => {
   currentBannerIndex.value = (currentBannerIndex.value + 1) % bannerList.value.length
@@ -65,7 +68,7 @@ const adjustBannerHeight = () => {
     const bannerSection = document.querySelector('.banner-section')
     if (!bannerSection) return
     if (videoCovers.length >= 6) {
-      const secondRowCover = videoCovers[desktopCompact.value ? 2 : 3]
+      const secondRowCover = videoCovers[compactLevel.value === 2 ? 1 : compactLevel.value === 1 ? 2 : 3]
       const videoGrid = document.querySelector('.video-grid')
       if (secondRowCover && videoGrid) {
         const gridRect = videoGrid.getBoundingClientRect()
@@ -177,7 +180,7 @@ onMounted(() => {
 })
 
 // 缩放紧凑模式切换时，重新计算轮播高度与对齐
-watch(desktopCompact, async () => {
+watch(compactLevel, async () => {
   await nextTick()
   adjustBannerHeight()
   applyTabsVideoAlign()
@@ -211,7 +214,7 @@ const goToAuthor = (authorId) => {
 
 <template>
   <!-- 主内容区域：5列网格布局 -->
-  <div :class="['main-section', { 'zoom-compact': desktopCompact }]">
+  <div class="main-section" :style="{ '--video-cols': videoCols }">
     <!-- 统一的视频网格：包含轮播图和视频项 -->
     <div class="video-grid">
       <!-- 左侧轮播图：占据2x2的位置 -->
@@ -365,18 +368,13 @@ const goToAuthor = (authorId) => {
   background: #fb7299;
 }
 
-/* 统一的视频网格：5列布局，自动行 */
+/* 统一的视频网格：列数由缩放 level 决定，自动行 */
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(var(--video-cols, 5), 1fr);
   grid-auto-rows: auto;
   gap: 20px;
   width: 100%;
-}
-
-/* 缩放紧凑模式：5列变4列，轮播图保持2列宽 */
-.zoom-compact .video-grid {
-  grid-template-columns: repeat(4, 1fr);
 }
 
 /* 轮播图：占据2x2的位置 */
