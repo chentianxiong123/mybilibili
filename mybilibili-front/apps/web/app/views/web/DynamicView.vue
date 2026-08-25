@@ -253,6 +253,9 @@ const initUserInfo = () => {
   if (token && userData) {
     try {
       const user = JSON.parse(userData)
+      if (!user.id && user.user_id) {
+        user.id = user.user_id
+      }
       userStore.setUserInfo(user)
       userStore.setLoginStatus(true)
       userStore.token = token

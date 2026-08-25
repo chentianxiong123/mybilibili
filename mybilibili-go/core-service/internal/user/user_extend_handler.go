@@ -108,7 +108,7 @@ func (h *UserExtendHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 	httputil.WriteOK(w, map[string]interface{}{
 		"token":         resp.Token,
 		"refresh_token": refreshToken,
-		"user_id":       resp.UserId,
+		"id":            resp.UserId,
 		"nickname":      resp.Nickname,
 		"avatar":        avatar,
 	})
@@ -142,7 +142,7 @@ func (h *UserExtendHandler) handleRegister(w http.ResponseWriter, r *http.Reques
 	httputil.WriteOK(w, map[string]interface{}{
 		"token":         resp.Token,
 		"refresh_token": refreshToken,
-		"user_id":       resp.UserId,
+		"id":            resp.UserId,
 		"nickname":      req.Nickname,
 		"avatar":        "",
 	})
@@ -173,7 +173,7 @@ func (h *UserExtendHandler) handleRefresh(w http.ResponseWriter, r *http.Request
 	httputil.WriteOK(w, map[string]interface{}{
 		"token":         newToken,
 		"refresh_token": newRefresh,
-		"user_id":       userID,
+		"id":            userID,
 	})
 }
 

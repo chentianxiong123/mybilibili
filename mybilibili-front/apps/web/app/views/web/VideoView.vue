@@ -4,7 +4,7 @@ import { interactionApi, userApi, videoApi } from '@/api/client'
 import { recommendApi } from '@/api/recommend.ts'
 import { Message } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { onMounted, onUnmounted, ref, watch, isUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AiAssistantPanel from '@/components/AiAssistantPanel.vue'
@@ -21,7 +21,7 @@ const route = useRoute()
 const router = useRouter()
 
 // 组件是否已卸载标记
-const isUnmountedRef = isUnmounted()
+const isUnmountedRef = ref(false)
 
 // 定义props - 从路由接收manuscriptId和p参数
 const props = defineProps({
