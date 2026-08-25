@@ -64,6 +64,12 @@ const loadStatistics = async () => {
 
 const getStatusText = (status) => {
   const statusMap = {
+    pending_review: '待审核',
+    approved: '审核通过',
+    published: '已上架',
+    rejected: '审核拒绝',
+    processing: '处理中',
+    draft: '草稿',
     0: '待审核',
     1: '处理中',
     2: '待上架',
@@ -77,6 +83,12 @@ const getStatusText = (status) => {
 
 const getStatusType = (status) => {
   const typeMap = {
+    pending_review: 'warning',
+    approved: 'success',
+    published: 'success',
+    rejected: 'danger',
+    processing: 'info',
+    draft: 'info',
     0: 'warning',
     1: 'info',
     2: 'primary',
