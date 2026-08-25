@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { User, Document, VideoCamera, View, Folder, Warning, DocumentChecked, DataAnalysis, Picture } from '@element-plus/icons-vue'
 import { getOverviewStatistics, getManuscriptStatusStatistics, getRecentManuscripts } from '@/api/statistics'
 
 const router = useRouter()
