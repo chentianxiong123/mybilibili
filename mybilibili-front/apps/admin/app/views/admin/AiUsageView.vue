@@ -1,4 +1,5 @@
 <script setup>
+import { DataAnalysis } from '@element-plus/icons-vue'
 import { ref, onMounted } from 'vue'
 import { getAiUsageOverview, getAiUsageFeatures, getAiUsageDaily } from '@/api/aiUsage'
 import echarts from '@/utils/echartsCore'

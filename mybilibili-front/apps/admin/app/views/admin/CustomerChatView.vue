@@ -1,4 +1,5 @@
 <script setup>
+import { ChatDotRound } from '@element-plus/icons-vue'
 import { safeStorage } from '@/utils/safeStorage'
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'

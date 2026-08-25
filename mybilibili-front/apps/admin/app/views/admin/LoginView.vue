@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Lock, User } from '@element-plus/icons-vue'
+import { Lock, Monitor, User } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useAdminStore } from '@/stores/admin'
 import { firstAllowedPathByPermissions } from '@/router/permissionRoutes'

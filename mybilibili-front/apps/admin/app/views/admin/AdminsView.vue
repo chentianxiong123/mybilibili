@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminRegister, getAdminList, updateAdmin, getAdminRoles, setAdminRoles } from '@/api/admin'
 import {
