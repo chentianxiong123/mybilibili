@@ -736,7 +736,7 @@ func (h *UserExtendHandler) handleCaptcha(w http.ResponseWriter, r *http.Request
 			`INSERT INTO verification_codes (identifier, code_type, code_value, expires_at)
 			 VALUES ($1, 'captcha', $2, NOW() + INTERVAL '5 minutes')`,
 			captchaID, fmt.Sprintf("%d", answer))
-		json.NewEncoder(w).Encode(map[string]string{
+		httputil.WriteOK(w, map[string]string{
 			"captchaId": captchaID,
 			"question":  fmt.Sprintf("%d+%d=?", a, b),
 		})
@@ -747,7 +747,7 @@ func (h *UserExtendHandler) handleCaptcha(w http.ResponseWriter, r *http.Request
 		}
 		json.NewDecoder(r.Body).Decode(&req)
 		if req.CaptchaID == "" || req.Answer == "" {
-			json.NewEncoder(w).Encode(map[string]bool{"verified": false})
+			httputil.WriteOK(w, false)
 			return
 		}
 		var id int64
@@ -757,11 +757,11 @@ func (h *UserExtendHandler) handleCaptcha(w http.ResponseWriter, r *http.Request
 			  AND expires_at > NOW() ORDER BY expires_at DESC LIMIT 1`,
 			req.CaptchaID, req.Answer).Scan(&id)
 		if err != nil {
-			json.NewEncoder(w).Encode(map[string]bool{"verified": false})
+			httputil.WriteOK(w, false)
 			return
 		}
 		_, _ = h.svc.repo.db.ExecContext(r.Context(), `UPDATE verification_codes SET used = 1 WHERE id = $1`, id)
-		json.NewEncoder(w).Encode(map[string]bool{"verified": true})
+		httputil.WriteOK(w, true)
 	}
 }
 
