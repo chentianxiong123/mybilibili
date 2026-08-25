@@ -81,20 +81,16 @@ func (h *FollowHandler) handleMyFollowers(w http.ResponseWriter, r *http.Request
 	userID := httputil.GetUserIDFromHeader(r)
 	page, pageSize := httputil.ParsePageParams(r)
 	ids, _ := h.svc.ListFollowers(r.Context(), userID, page, pageSize)
-	if ids == nil {
-		ids = []int64{}
-	}
-	json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": ids})
+	users := h.loadUserBriefs(r.Context(), ids)
+	json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": users})
 }
 
 func (h *FollowHandler) handleMyFollowing(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
 	page, pageSize := httputil.ParsePageParams(r)
 	ids, _ := h.svc.ListFollowing(r.Context(), userID, page, pageSize)
-	if ids == nil {
-		ids = []int64{}
-	}
-	json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": ids})
+	users := h.loadUserBriefs(r.Context(), ids)
+	json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": users})
 }
 
 func (h *FollowHandler) handleUserFollows(w http.ResponseWriter, r *http.Request) {
@@ -119,12 +115,15 @@ func (h *FollowHandler) handleUserFollows(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": users})
 }
 
+// loadUserBriefs 批量查询用户信息，返回与 Java UserVO 一致的字段：
+// id, username, nickname, avatar, level, signature
 func (h *FollowHandler) loadUserBriefs(ctx context.Context, ids []int64) []map[string]interface{} {
 	if len(ids) == 0 || h.db == nil {
 		return []map[string]interface{}{}
 	}
 	rows, err := h.db.QueryContext(ctx,
-		`SELECT id, COALESCE(username,''), COALESCE(nickname,''), COALESCE(avatar,'') FROM users WHERE id = ANY($1)`, ids)
+		`SELECT id, COALESCE(username,''), COALESCE(nickname,''), COALESCE(avatar,''), COALESCE(level,1), COALESCE(signature,'')
+		 FROM users WHERE id = ANY($1)`, ids)
 	if err != nil {
 		return []map[string]interface{}{}
 	}
@@ -132,19 +131,17 @@ func (h *FollowHandler) loadUserBriefs(ctx context.Context, ids []int64) []map[s
 	out := make([]map[string]interface{}, 0, len(ids))
 	for rows.Next() {
 		var id int64
-		var username, nickname, avatar string
-		rows.Scan(&id, &username, &nickname, &avatar)
-		name := nickname
-		if name == "" {
-			name = username
-		}
+		var username, nickname, avatar, signature string
+		var level int
+		rows.Scan(&id, &username, &nickname, &avatar, &level, &signature)
 		out = append(out, map[string]interface{}{
-			"id":       id,
-			"username": name,
-			"avatar":   avatar,
+			"id":        id,
+			"username":  username,
+			"nickname":  nickname,
+			"avatar":    avatar,
+			"level":     level,
+			"signature": signature,
 		})
 	}
 	return out
 }
-
-
