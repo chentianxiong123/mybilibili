@@ -45,7 +45,10 @@ func (h *SocialHandler) handleDynamicCommentList(w http.ResponseWriter, r *http.
 	dynamicID, _ := strconv.ParseInt(r.URL.Query().Get("dynamicId"), 10, 64)
 	page, limit := httputil.ParsePageParams(r)
 	list, _ := h.dynamicSvc.ListComments(r.Context(), dynamicID, page, limit)
-	json.NewEncoder(w).Encode(list)
+	if list == nil {
+		list = []*DynamicComment{}
+	}
+	httputil.WriteOK(w, list)
 }
 
 func (h *SocialHandler) handleDynamicCommentAdd(w http.ResponseWriter, r *http.Request) {
