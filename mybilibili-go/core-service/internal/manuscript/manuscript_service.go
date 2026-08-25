@@ -182,10 +182,15 @@ func (s *ManuscriptService) buildManuscriptInfo(ctx context.Context, m *Manuscri
 	user, err := s.userRepo.FindByID(ctx, m.UserID)
 	if err == nil {
 		uploader = &pb.UserInfo{
-			Id:     user.ID,
-			Name:   user.Nickname,
-			Avatar: user.Avatar,
-			Level:  user.Level,
+			Id:             user.ID,
+			Name:           user.Nickname,
+			Avatar:         user.Avatar,
+			Level:          user.Level,
+			Bio:            user.Bio,
+			Signature:      user.Signature,
+			FollowerCount:  user.FollowerCount,
+			FollowingCount: user.FollowingCount,
+			LikedCount:     user.LikedCount,
 		}
 	}
 
