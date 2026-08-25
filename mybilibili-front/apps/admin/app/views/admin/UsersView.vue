@@ -209,17 +209,11 @@ onMounted(() => {
       stripe
     >
       <el-table-column prop="id" label="ID" width="70" align="center" />
-      <el-table-column label="用户" width="180">
+      <el-table-column label="用户" width="160">
         <template #default="{ row }">
-          <div style="display: flex; align-items: center; gap: 12px">
-            <el-avatar
-              :size="40"
-              :src="row.avatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'"
-            />
-            <div>
-              <div style="font-weight: 600">{{ row.nickname }}</div>
-              <div style="font-size: 12px; color: #666">@{{ row.username }}</div>
-            </div>
+          <div>
+            <div style="font-weight: 600">{{ row.nickname }}</div>
+            <div style="font-size: 12px; color: #666">@{{ row.username }}</div>
           </div>
         </template>
       </el-table-column>

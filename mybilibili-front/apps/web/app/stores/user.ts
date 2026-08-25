@@ -102,6 +102,9 @@ export const useUserStore = (defineStore as any)('user', {
         this.isLoggedIn = true
         const user = getStoredUser()
         if (user) {
+          if (!user.id && user.user_id) {
+            user.id = user.user_id
+          }
           this.setUserInfo(user)
         }
       }
@@ -119,9 +122,11 @@ export const useUserStore = (defineStore as any)('user', {
         setAuthSession(response.data)
         this.token = response.data.token
         this.refreshToken = response.data.refreshToken || ''
-        if (response.data.user) {
-          this.setUserInfo(response.data.user)
+        const userData = response.data.user || response.data
+        if (!userData.id && userData.user_id) {
+          userData.id = userData.user_id
         }
+        this.setUserInfo(userData)
         this.setLoginStatus(true)
         return { success: true, message: '登录成功' }
       } catch (error) {
