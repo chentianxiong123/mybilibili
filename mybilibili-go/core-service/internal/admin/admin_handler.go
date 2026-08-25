@@ -27,9 +27,9 @@ func (h *Handler) requirePermission(r *http.Request, permission string) (int64, 
 	if adminID == 0 {
 		tokenStr := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 		if tokenStr != "" {
-			claims, err := h.jwt.ParseAdmin(tokenStr)
+			claims, err := h.jwt.Parse(tokenStr)
 			if err == nil {
-				adminID = claims.AdminID
+				adminID = claims.UserId
 			}
 		}
 	}
