@@ -27,6 +27,22 @@ func NewMessageHTTPHandler(repo *MessageRepository, notif *NotificationBroadcast
 	return &MessageHTTPHandler{repo: repo, notif: notif, jwt: j}
 }
 
+func (h *MessageHTTPHandler) getUserID(r *http.Request) int64 {
+	uid := httputil.GetUserIDFromHeader(r)
+	if uid != 0 {
+		return uid
+	}
+	if h.jwt != nil {
+		tokenStr := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		if tokenStr != "" {
+			if id, err := h.jwt.ParseUserID(tokenStr); err == nil {
+				return id
+			}
+		}
+	}
+	return 0
+}
+
 func (h *MessageHTTPHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/message/conversations", h.handleConversations)
 	mux.HandleFunc("/api/v1/message/conversations/", h.handleConversationByID)
@@ -56,7 +72,7 @@ func (h *MessageHTTPHandler) handleNotificationSSE(w http.ResponseWriter, r *htt
 		}
 	}
 	if userID == 0 {
-		userID = httputil.GetUserIDFromHeader(r)
+		userID = h.getUserID(r)
 	}
 	if userID == 0 {
 		http.Error(w, "unauthorized", 401)
@@ -98,7 +114,7 @@ func (h *MessageHTTPHandler) handleNotificationSSE(w http.ResponseWriter, r *htt
 }
 
 func (h *MessageHTTPHandler) handleConversations(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	list, _ := h.repo.GetConversations(r.Context(), userID)
 	if list == nil {
 		list = []*Conversation{}
@@ -108,7 +124,7 @@ func (h *MessageHTTPHandler) handleConversations(w http.ResponseWriter, r *http.
 }
 
 func (h *MessageHTTPHandler) handleConversationByID(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/message/conversations/"), "/")
 	id, _ := strconv.ParseInt(parts[0], 10, 64)
 
@@ -160,7 +176,7 @@ func (h *MessageHTTPHandler) handleConversationByID(w http.ResponseWriter, r *ht
 }
 
 func (h *MessageHTTPHandler) handleSend(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	var req struct {
 		ReceiverID int64  `json:"receiver_id"`
 		Content    string `json:"content"`
@@ -188,7 +204,7 @@ func (h *MessageHTTPHandler) handleSend(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *MessageHTTPHandler) handleUnread(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	cnt, _ := h.repo.GetUnreadCount(r.Context(), userID)
 	json.NewEncoder(w).Encode(map[string]int32{
 		"reply":  cnt,
@@ -199,7 +215,7 @@ func (h *MessageHTTPHandler) handleUnread(w http.ResponseWriter, r *http.Request
 }
 
 func (h *MessageHTTPHandler) handleConversationUnread(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	convIDStr := strings.TrimPrefix(r.URL.Path, "/api/v1/message/conversation/unread/")
 	convID, _ := strconv.ParseInt(convIDStr, 10, 64)
 	var unread int32
@@ -209,7 +225,7 @@ func (h *MessageHTTPHandler) handleConversationUnread(w http.ResponseWriter, r *
 }
 
 func (h *MessageHTTPHandler) handleReplies(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	rows, _ := h.repo.db.QueryContext(r.Context(),
 		`SELECT m.id, m.sender_id, m.content, m.created_at FROM messages m
 		 WHERE m.receiver_id = $1 AND m.message_type = 2 ORDER BY m.created_at DESC LIMIT 20`, userID)
@@ -228,7 +244,7 @@ func (h *MessageHTTPHandler) handleReplies(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *MessageHTTPHandler) handleAt(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	rows, _ := h.repo.db.QueryContext(r.Context(),
 		`SELECT m.id, m.sender_id, m.content, m.created_at FROM messages m
 		 WHERE m.receiver_id = $1 AND m.message_type = 3 ORDER BY m.created_at DESC LIMIT 20`, userID)
@@ -247,7 +263,7 @@ func (h *MessageHTTPHandler) handleAt(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	rows, _ := h.repo.db.QueryContext(r.Context(),
 		`SELECT m.id, m.sender_id, m.content, m.created_at FROM messages m
 		 WHERE m.receiver_id = $1 AND m.message_type IN (4,6) ORDER BY m.created_at DESC LIMIT 20`, userID)
@@ -266,7 +282,7 @@ func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *MessageHTTPHandler) handleSystem(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	rows, _ := h.repo.db.QueryContext(r.Context(),
 		`SELECT m.id, m.content, m.created_at FROM messages m
 		 WHERE m.receiver_id = $1 AND m.message_type = 5 ORDER BY m.created_at DESC LIMIT 20`, userID)
@@ -290,7 +306,7 @@ func (h *MessageHTTPHandler) handleMessageByID(w http.ResponseWriter, r *http.Re
 
 	switch r.Method {
 	case "GET":
-		userID := httputil.GetUserIDFromHeader(r)
+		userID := h.getUserID(r)
 		var msg struct {
 			ID          int64  `json:"id"`
 			SenderID    int64  `json:"sender_id"`
@@ -310,7 +326,7 @@ func (h *MessageHTTPHandler) handleMessageByID(w http.ResponseWriter, r *http.Re
 		}
 		json.NewEncoder(w).Encode(msg)
 	case "PUT": // mark read
-		userID := httputil.GetUserIDFromHeader(r)
+		userID := h.getUserID(r)
 		if len(parts) >= 2 && parts[1] == "read" {
 			_, err := h.repo.db.ExecContext(r.Context(),
 				`UPDATE messages SET is_read = 1 WHERE id = $1 AND receiver_id = $2`, id, userID)
@@ -321,7 +337,7 @@ func (h *MessageHTTPHandler) handleMessageByID(w http.ResponseWriter, r *http.Re
 			w.Write([]byte(`{"status":"ok"}`))
 		}
 	case "DELETE":
-		userID := httputil.GetUserIDFromHeader(r)
+		userID := h.getUserID(r)
 		_, err := h.repo.db.ExecContext(r.Context(), `DELETE FROM messages WHERE id = $1 AND receiver_id = $2`, id, userID)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -332,7 +348,7 @@ func (h *MessageHTTPHandler) handleMessageByID(w http.ResponseWriter, r *http.Re
 }
 
 func (h *MessageHTTPHandler) handleSettings(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	switch r.Method {
 	case "GET":
 		row := h.repo.db.QueryRowContext(r.Context(),
@@ -384,7 +400,7 @@ func (h *MessageHTTPHandler) handleBatchRead(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	var req struct {
 		IDs []int64 `json:"ids"`
 	}
@@ -398,7 +414,7 @@ func (h *MessageHTTPHandler) handleBatchRead(w http.ResponseWriter, r *http.Requ
 
 // GET|DELETE /api/v1/message/user/{userId} — 查询/清空用户所有消息
 func (h *MessageHTTPHandler) handleMessagesByUser(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/message/user/")
 	targetID, _ := strconv.ParseInt(strings.TrimSuffix(path, "/"), 10, 64)
 	if targetID == 0 {
