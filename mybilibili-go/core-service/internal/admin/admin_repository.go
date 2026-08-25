@@ -371,6 +371,84 @@ func NewService(repo *Repository) *Service {
 	return &Service{repo: repo}
 }
 
+// InitPermissions 初始化权限表，确保所有权限码存在
+func (r *Repository) InitPermissions(ctx context.Context) error {
+	perms := []struct {
+		Name string
+		Code string
+		Desc string
+	}{
+		{"用户管理", "user:manage", "查询/禁用/重置密码用户"},
+		{"稿件管理", "video:manage", "查询/审核/发布/下架稿件"},
+		{"评论管理", "comment:manage", "删除/审核评论"},
+		{"分类管理", "category:manage", "增删改视频分类"},
+		{"标签管理", "tag:manage", "增删改标签"},
+		{"内容审核", "review:manage", "审核稿件/评论/举报"},
+		{"统计查看", "statistics:manage", "查看仪表盘统计"},
+		{"角色管理", "role:manage", "增删改角色/岗位模板"},
+		{"管理员管理", "admin:manage", "增删改管理员/分配角色"},
+		{"安全设置", "security:manage", "修改安全策略/登录日志"},
+		{"直播管理", "live:manage", "管理直播间/强制下播"},
+		{"存储管理", "storage:manage", "触发存储迁移"},
+		{"轮播图管理", "banner:manage", "增删改轮播图/背景图"},
+		{"搜索管理", "search:manage", "管理搜索索引/推荐配置"},
+		{"AI 管理", "ai:manage", "管理 AI 渠道/技能/用量"},
+		{"消息管理", "message:manage", "发送系统通知/公告"},
+		{"审计日志", "audit:manage", "查看审计日志"},
+		{"运营任务", "operation:manage", "查看/管理运营任务"},
+		{"定时任务", "scheduled:manage", "管理定时任务"},
+		{"转码配置", "transcode:manage", "修改转码编码器配置"},
+		{"字幕管理", "subtitle:manage", "管理字幕上传/审核"},
+	}
+	for _, p := range perms {
+		_, err := r.db.ExecContext(ctx,
+			`INSERT INTO permissions (name, code, description)
+			 VALUES ($1, $2, $3) ON CONFLICT (code) DO UPDATE SET name=$1, description=$3`,
+			p.Name, p.Code, p.Desc)
+		if err != nil {
+			return err
+		}
+	}
+	// 初始化超级管理员角色（id=1）全部权限
+	permRows, err := r.db.QueryContext(ctx, `SELECT id FROM permissions`)
+	if err != nil {
+		return err
+	}
+	defer permRows.Close()
+	var ids []int64
+	for permRows.Next() {
+		var id int64
+		permRows.Scan(&id)
+		ids = append(ids, id)
+	}
+	for _, pid := range ids {
+		r.db.ExecContext(ctx,
+			`INSERT INTO role_permissions (role_id, permission_id) VALUES (1, $1) ON CONFLICT DO NOTHING`, pid)
+	}
+	return nil
+}
+
+// GetAdminPermissionCodes 获取指定管理员的所有权限码
+func (r *Repository) GetAdminPermissionCodes(ctx context.Context, adminID int64) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT DISTINCT p.code
+		 FROM admin_user_roles aur
+		 JOIN role_permissions rp ON rp.role_id = aur.role_id
+		 JOIN permissions p ON p.id = rp.permission_id
+		 WHERE aur.admin_user_id = $1`, adminID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var codes []string
+	for rows.Next() {
+		var code string
+		rows.Scan(&code)
+		codes = append(codes, code)
+	}
+	return codes, nil
+}
+
 func (s *Service) Login(ctx context.Context, username, password string) (*AdminUser, error) {
 	return s.repo.AdminLogin(ctx, username, password)
 }

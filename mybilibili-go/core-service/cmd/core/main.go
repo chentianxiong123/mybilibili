@@ -120,6 +120,9 @@ func main() {
 	adminRepo := admin.NewRepository(db)
 	adminSvc := admin.NewService(adminRepo)
 	adminH := admin.NewHandler(adminSvc, auth.NewJWT(jwtSecret))
+	if err := adminRepo.InitPermissions(context.Background()); err != nil {
+		log.Printf("WARN: init permissions: %v", err)
+	}
 	scheduler := admin.NewScheduler(adminSvc)
 	adminH.SetScheduler(scheduler)
 	go scheduler.Run(context.Background())

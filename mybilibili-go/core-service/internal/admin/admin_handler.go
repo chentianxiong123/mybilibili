@@ -22,32 +22,68 @@ func NewHandler(svc *Service, jwt *auth.JWT) *Handler {
 	return &Handler{svc: svc, jwt: jwt}
 }
 
+func (h *Handler) requirePermission(r *http.Request, permission string) (int64, bool) {
+	adminID := httputil.GetAdminIDFromHeader(r)
+	if adminID == 0 {
+		tokenStr := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		if tokenStr != "" {
+			claims, err := h.jwt.ParseAdmin(tokenStr)
+			if err == nil {
+				adminID = claims.AdminID
+			}
+		}
+	}
+	if adminID == 0 {
+		return 0, false
+	}
+	codes, err := h.svc.repo.GetAdminPermissionCodes(r.Context(), adminID)
+	if err != nil {
+		return adminID, false
+	}
+	for _, c := range codes {
+		if c == permission {
+			return adminID, true
+		}
+	}
+	return adminID, false
+}
+
+func (h *Handler) requirePerm(perm string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := h.requirePermission(r, perm); !ok {
+			http.Error(w, "forbidden", 403)
+			return
+		}
+		next(w, r)
+	}
+}
+
 func (h *Handler) SetScheduler(s *Scheduler) {
 	h.scheduler = s
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/admin/login", h.handleLogin)
-	mux.HandleFunc("/api/v1/admin/register", h.handleRegister)
-	mux.HandleFunc("/api/v1/admin/list", h.handleListAdmins)
-	mux.HandleFunc("/api/v1/admin/roles", h.handleRoles)
-	mux.HandleFunc("/api/v1/admin/roles/", h.handleRolesByID)
-	mux.HandleFunc("/api/v1/admin/permissions", h.handlePermissions)
-	mux.HandleFunc("/api/v1/admin/audit-logs", h.handleAuditLogs)
-	mux.HandleFunc("/api/v1/admin/audit-logs/", h.handleAuditLogByID)
-	mux.HandleFunc("/api/v1/admin/login-logs", h.handleLoginLogs)
-	mux.HandleFunc("/api/v1/admin/login-logs/list", h.handleLoginLogs)
-	mux.HandleFunc("/api/v1/admin/login-logs/user/", h.handleUserLoginLogs)
-	mux.HandleFunc("/api/v1/admin/security-settings", h.handleSecuritySettings)
-	mux.HandleFunc("/api/v1/admin/transcode-config", h.handleTranscodeConfig)
-	mux.HandleFunc("/api/v1/admin/storage/migrate", h.handleStorageMigrate)
-	mux.HandleFunc("/api/v1/admin/operation-tasks", h.handleOperationTasks)
-	mux.HandleFunc("/api/v1/admin/operation-tasks/list", h.handleOperationTasks)
-	mux.HandleFunc("/api/v1/admin/operation-tasks/", h.handleOperationTaskByID)
-	mux.HandleFunc("/api/v1/admin/audit-logs/list", h.handleAuditLogs)
-	mux.HandleFunc("/api/v1/admin/scheduled-tasks", h.handleScheduledTasks)
-	mux.HandleFunc("/api/v1/admin/scheduled-tasks/toggle", h.handleScheduledTaskToggle)
-	mux.HandleFunc("/api/v1/admin/scheduled-tasks/trigger", h.handleScheduledTaskTrigger)
+	mux.HandleFunc("/api/v1/admin/register", h.requirePerm("admin:manage", h.handleRegister))
+	mux.HandleFunc("/api/v1/admin/list", h.requirePerm("admin:manage", h.handleListAdmins))
+	mux.HandleFunc("/api/v1/admin/roles", h.requirePerm("role:manage", h.handleRoles))
+	mux.HandleFunc("/api/v1/admin/roles/", h.requirePerm("role:manage", h.handleRolesByID))
+	mux.HandleFunc("/api/v1/admin/permissions", h.requirePerm("role:manage", h.handlePermissions))
+	mux.HandleFunc("/api/v1/admin/audit-logs", h.requirePerm("audit:manage", h.handleAuditLogs))
+	mux.HandleFunc("/api/v1/admin/audit-logs/", h.requirePerm("audit:manage", h.handleAuditLogByID))
+	mux.HandleFunc("/api/v1/admin/login-logs", h.requirePerm("security:manage", h.handleLoginLogs))
+	mux.HandleFunc("/api/v1/admin/login-logs/list", h.requirePerm("security:manage", h.handleLoginLogs))
+	mux.HandleFunc("/api/v1/admin/login-logs/user/", h.requirePerm("security:manage", h.handleUserLoginLogs))
+	mux.HandleFunc("/api/v1/admin/security-settings", h.requirePerm("security:manage", h.handleSecuritySettings))
+	mux.HandleFunc("/api/v1/admin/transcode-config", h.requirePerm("transcode:manage", h.handleTranscodeConfig))
+	mux.HandleFunc("/api/v1/admin/storage/migrate", h.requirePerm("storage:manage", h.handleStorageMigrate))
+	mux.HandleFunc("/api/v1/admin/operation-tasks", h.requirePerm("operation:manage", h.handleOperationTasks))
+	mux.HandleFunc("/api/v1/admin/operation-tasks/list", h.requirePerm("operation:manage", h.handleOperationTasks))
+	mux.HandleFunc("/api/v1/admin/operation-tasks/", h.requirePerm("operation:manage", h.handleOperationTaskByID))
+	mux.HandleFunc("/api/v1/admin/audit-logs/list", h.requirePerm("audit:manage", h.handleAuditLogs))
+	mux.HandleFunc("/api/v1/admin/scheduled-tasks", h.requirePerm("scheduled:manage", h.handleScheduledTasks))
+	mux.HandleFunc("/api/v1/admin/scheduled-tasks/toggle", h.requirePerm("scheduled:manage", h.handleScheduledTaskToggle))
+	mux.HandleFunc("/api/v1/admin/scheduled-tasks/trigger", h.requirePerm("scheduled:manage", h.handleScheduledTaskTrigger))
 	mux.HandleFunc("/api/v1/admin/", h.handleAdminByID)
 }
 
@@ -176,6 +212,9 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		for _, p := range perms {
 			permissions = append(permissions, p.Code)
 		}
+	} else {
+		perms, _ := h.svc.repo.GetAdminPermissionCodes(r.Context(), admin.ID)
+		permissions = perms
 	}
 	httputil.WriteOK(w, map[string]interface{}{
 		"token":         token,
@@ -209,11 +248,19 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleListAdmins(w http.ResponseWriter, r *http.Request) {
+	if _, ok := h.requirePermission(r, "admin:manage"); !ok {
+		http.Error(w, "forbidden", 403)
+		return
+	}
 	list, _ := h.svc.ListAdmins(r.Context())
 	json.NewEncoder(w).Encode(list)
 }
 
 func (h *Handler) handleRoles(w http.ResponseWriter, r *http.Request) {
+	if _, ok := h.requirePermission(r, "role:manage"); !ok {
+		http.Error(w, "forbidden", 403)
+		return
+	}
 	switch r.Method {
 	case "GET":
 		list, _ := h.svc.ListRoles(r.Context())
@@ -319,7 +366,7 @@ func roleTemplates() map[string]roleTemplate {
 		"platform-operation": {
 			Code: "platform-operation", Name: "平台运营",
 			Description:     "适合处理工单、运营任务、推荐策略、索引和运营审计",
-			PermissionCodes: []string{"operation:manage", "search:manage", "audit:manage", "statistics:manage"},
+			PermissionCodes: []string{"operation:manage", "search:manage", "audit:manage", "statistics:manage", "scheduled:manage"},
 		},
 		"content-review": {
 			Code: "content-review", Name: "内容审核",
@@ -349,6 +396,7 @@ func roleTemplates() map[string]roleTemplate {
 				"review:manage", "statistics:manage", "role:manage", "admin:manage", "security:manage",
 				"live:manage", "storage:manage", "banner:manage", "search:manage",
 				"ai:manage", "message:manage", "audit:manage", "operation:manage",
+				"scheduled:manage", "transcode:manage", "subtitle:manage",
 			},
 		},
 	}
@@ -500,6 +548,10 @@ func (h *Handler) detectVAAPI() bool {
 
 // handleAdminByID 分派 /api/v1/admin/{id} 及子路径
 func (h *Handler) handleAdminByID(w http.ResponseWriter, r *http.Request) {
+	if _, ok := h.requirePermission(r, "admin:manage"); !ok {
+		http.Error(w, "forbidden", 403)
+		return
+	}
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/admin/")
 	parts := strings.Split(path, "/")
 	if len(parts) == 0 || parts[0] == "" {
