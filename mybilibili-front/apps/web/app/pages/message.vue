@@ -1,8 +1,13 @@
 <template>
-  <MessageView />
+  <NuxtPage />
 </template>
 
 <script setup lang="ts">
-import MessageView from '~/views/web/message/MessageView.vue'
 definePageMeta({ layout: 'simple' })
+if (import.meta.client) {
+  const route = useRoute()
+  if (route.path === '/message') {
+    navigateTo('/message/private', { replace: true })
+  }
+}
 </script>

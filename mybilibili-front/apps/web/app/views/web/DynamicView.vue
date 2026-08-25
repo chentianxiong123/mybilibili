@@ -516,6 +516,12 @@ onMounted(() => {
   height: calc(100vh - 260px);
   overflow-y: auto;
   padding-right: 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.dynamic-list::-webkit-scrollbar {
+  display: none;
 }
 
 .load-more {
