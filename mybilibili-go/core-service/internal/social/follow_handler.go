@@ -1,6 +1,8 @@
 package social
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -11,10 +13,11 @@ import (
 
 type FollowHandler struct {
 	svc *FollowService
+	db  *sql.DB
 }
 
-func NewFollowHandler(svc *FollowService) *FollowHandler {
-	return &FollowHandler{svc: svc}
+func NewFollowHandler(svc *FollowService, db *sql.DB) *FollowHandler {
+	return &FollowHandler{svc: svc, db: db}
 }
 
 func (h *FollowHandler) Register(mux *http.ServeMux) {
@@ -102,22 +105,46 @@ func (h *FollowHandler) handleUserFollows(w http.ResponseWriter, r *http.Request
 	}
 	userID, _ := strconv.ParseInt(parts[0], 10, 64)
 	page, pageSize := httputil.ParsePageParams(r)
+	var ids []int64
 	switch parts[1] {
 	case "following":
-		ids, _ := h.svc.ListFollowing(r.Context(), userID, page, pageSize)
-		if ids == nil {
-			ids = []int64{}
-		}
-		json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": ids})
+		ids, _ = h.svc.ListFollowing(r.Context(), userID, page, pageSize)
 	case "followers":
-		ids, _ := h.svc.ListFollowers(r.Context(), userID, page, pageSize)
-		if ids == nil {
-			ids = []int64{}
-		}
-		json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": ids})
+		ids, _ = h.svc.ListFollowers(r.Context(), userID, page, pageSize)
 	default:
 		http.Error(w, "not found", 404)
+		return
 	}
+	users := h.loadUserBriefs(r.Context(), ids)
+	json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": users})
+}
+
+func (h *FollowHandler) loadUserBriefs(ctx context.Context, ids []int64) []map[string]interface{} {
+	if len(ids) == 0 || h.db == nil {
+		return []map[string]interface{}{}
+	}
+	rows, err := h.db.QueryContext(ctx,
+		`SELECT id, COALESCE(username,''), COALESCE(nickname,''), COALESCE(avatar,'') FROM users WHERE id = ANY($1)`, ids)
+	if err != nil {
+		return []map[string]interface{}{}
+	}
+	defer rows.Close()
+	out := make([]map[string]interface{}, 0, len(ids))
+	for rows.Next() {
+		var id int64
+		var username, nickname, avatar string
+		rows.Scan(&id, &username, &nickname, &avatar)
+		name := nickname
+		if name == "" {
+			name = username
+		}
+		out = append(out, map[string]interface{}{
+			"id":       id,
+			"username": name,
+			"avatar":   avatar,
+		})
+	}
+	return out
 }
 
 

@@ -11,11 +11,12 @@ import (
 )
 
 type AdminUser struct {
-	ID         int64     `json:"id"`
-	Username   string    `json:"username"`
-	Password   string    `json:"password"`
-	AdminLevel int32     `json:"admin_level"`
-	CreatedAt  string    `json:"created_at"`
+	ID         int64  `json:"id"`
+	Username   string `json:"username"`
+	Password   string `json:"password,omitempty"`
+	AdminLevel int32  `json:"-"`
+	CreatedAt  string `json:"created_at"`
+	Roles      []Role `json:"roles,omitempty"`
 }
 
 type Role struct {
@@ -105,11 +106,12 @@ func (r *Repository) AdminLogin(ctx context.Context, username, password string) 
 	hash := sha256.Sum256([]byte(password))
 	u := &AdminUser{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, username, password, admin_level FROM admin_users WHERE username = $1 AND password = $2`,
+		`SELECT id, username, password, COALESCE(admin_level,1) FROM admin_users WHERE username = $1 AND password = $2`,
 		username, fmt.Sprintf("%x", hash)).Scan(&u.ID, &u.Username, &u.Password, &u.AdminLevel)
 	if err != nil {
 		return nil, err
 	}
+	u.Roles = r.getRolesForAdmin(ctx, u.ID)
 	return u, nil
 }
 
@@ -123,7 +125,7 @@ func (r *Repository) CreateAdmin(ctx context.Context, username, password string,
 }
 
 func (r *Repository) ListAdmins(ctx context.Context) ([]*AdminUser, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id, username, password, admin_level, COALESCE(created_at::text,'') FROM admin_users ORDER BY id`)
+	rows, err := r.db.QueryContext(ctx, `SELECT id, username, password, COALESCE(admin_level,1), COALESCE(created_at::text,'') FROM admin_users ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -132,6 +134,7 @@ func (r *Repository) ListAdmins(ctx context.Context) ([]*AdminUser, error) {
 	for rows.Next() {
 		u := &AdminUser{}
 		rows.Scan(&u.ID, &u.Username, &u.Password, &u.AdminLevel, &u.CreatedAt)
+		u.Roles = r.getRolesForAdmin(ctx, u.ID)
 		list = append(list, u)
 	}
 	return list, nil
@@ -140,12 +143,31 @@ func (r *Repository) ListAdmins(ctx context.Context) ([]*AdminUser, error) {
 func (r *Repository) GetAdminByID(ctx context.Context, id int64) (*AdminUser, error) {
 	u := &AdminUser{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, username, admin_level FROM admin_users WHERE id=$1`, id).
+		`SELECT id, username, COALESCE(admin_level,1) FROM admin_users WHERE id=$1`, id).
 		Scan(&u.ID, &u.Username, &u.AdminLevel)
 	if err != nil {
 		return nil, err
 	}
+	u.Roles = r.getRolesForAdmin(ctx, u.ID)
 	return u, nil
+}
+
+func (r *Repository) getRolesForAdmin(ctx context.Context, adminID int64) []Role {
+	roleRows, err := r.db.QueryContext(ctx,
+		`SELECT r.id, r.name, COALESCE(r.description,''), COALESCE(r.create_time::text,'')
+		 FROM admin_user_roles aur JOIN roles r ON r.id=aur.role_id
+		 WHERE aur.admin_user_id=$1 ORDER BY r.id`, adminID)
+	if err != nil {
+		return nil
+	}
+	defer roleRows.Close()
+	var roles []Role
+	for roleRows.Next() {
+		rl := Role{}
+		roleRows.Scan(&rl.ID, &rl.Name, &rl.Description, &rl.CreateTime)
+		roles = append(roles, rl)
+	}
+	return roles
 }
 
 func (r *Repository) UpdateAdmin(ctx context.Context, id int64) error {
