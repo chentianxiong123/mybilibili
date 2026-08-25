@@ -387,6 +387,14 @@ body {
   min-width: var(--zoom-base, 1440px);
 }
 
+/* 全局挤压保护：所有页面主内容容器保持最小宽度
+   缩放/窄窗口时页面横向滚动而非内容被挤压变形 */
+.layout-content,
+.layout-none {
+  min-width: var(--zoom-base, 1440px);
+  width: 100%;
+}
+
 body {
   font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
   background-color: var(--bili-bg);
