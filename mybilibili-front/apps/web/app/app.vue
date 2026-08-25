@@ -184,6 +184,7 @@ import { User, Lock, Message, Close, VideoPlay } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { userApi, captchaApi, emailCodeApi, startSilentRefresh, stopSilentRefresh } from './api/client'
 import { setAuthSession, getRefreshToken } from './utils/auth'
+import { useZoomCompact } from './composables/useZoomCompact'
 import { onMounted, onUnmounted } from 'vue'
 
 const router = useRouter()
@@ -340,13 +341,27 @@ const handleCloseDialog = () => {
   registerForm.value = { username: '', email: '', emailCode: '', password: '', confirmPassword: '', agreeTerms: false }
 }
 
+const ZOOM_COMPACT_ENTER_RATIO = 0.995
+const ZOOM_COMPACT_EXIT_RATIO = 0.97
 const ZOOM_FREEZE_RATIO = 1.25
+
+const { desktopCompact } = useZoomCompact()
+
+let baseRatio = 0
 
 const syncZoomBase = () => {
   const root = document.documentElement
   const zoom = window.outerWidth / window.innerWidth
-  if (zoom > ZOOM_FREEZE_RATIO) return
-  root.style.setProperty('--zoom-base', `${root.clientWidth}px`)
+  if (baseRatio === 0) baseRatio = zoom
+  const relative = zoom / baseRatio
+
+  if (desktopCompact.value) {
+    desktopCompact.value = relative > ZOOM_COMPACT_EXIT_RATIO
+  } else {
+    desktopCompact.value = relative > ZOOM_COMPACT_ENTER_RATIO
+  }
+  if (relative > ZOOM_FREEZE_RATIO) return
+  root.style.setProperty('--zoom-base', `${Math.min(root.clientWidth, window.innerWidth)}px`)
 }
 
 let zoomBaseObserver
