@@ -340,7 +340,7 @@ const handleCloseDialog = () => {
   registerForm.value = { username: '', email: '', emailCode: '', password: '', confirmPassword: '', agreeTerms: false }
 }
 
-const ZOOM_FREEZE_RATIO = 1.0
+const ZOOM_FREEZE_RATIO = 1.25
 
 const syncZoomBase = () => {
   const root = document.documentElement

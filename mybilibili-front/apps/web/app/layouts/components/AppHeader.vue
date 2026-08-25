@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { House, VideoCamera } from '@element-plus/icons-vue'
+import { House } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { userApi } from '@/api/client'
 import { messageApi } from '../../api/message.ts'
@@ -244,7 +244,6 @@ onUnmounted(() => {
           <span>首页</span>
         </el-button>
         <el-button link @click="router.push('/live')" @mouseenter="prefetch('/live')" class="home-icon">
-          <el-icon><VideoCamera /></el-icon>
           <span>直播</span>
         </el-button>
       </div>
