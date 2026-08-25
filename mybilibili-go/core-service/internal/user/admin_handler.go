@@ -74,28 +74,37 @@ func (h *UserAdminHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	page, size := httputil.ParsePageParams(r)
 	offset := (page - 1) * size
 	rows, err := h.db.QueryContext(r.Context(),
-		`SELECT id, username, nickname, email, avatar, level, status, created_at
-		 FROM users ORDER BY id DESC LIMIT $1 OFFSET $2`, size, offset)
+		`SELECT id, username, nickname, email, avatar, level, status, created_at,
+		 COALESCE(phone, ''),
+		 COALESCE(follower_count, 0),
+		 COALESCE(following_count, 0),
+		 (SELECT COUNT(*) FROM manuscripts WHERE user_id = u.id)
+		 FROM users u ORDER BY id DESC LIMIT $1 OFFSET $2`, size, offset)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 	defer rows.Close()
 	type userItem struct {
-		ID        int64  `json:"id"`
-		Username  string `json:"username"`
-		Nickname  string `json:"nickname"`
-		Email     string `json:"email"`
-		Avatar    string `json:"avatar"`
-		Level     int32  `json:"level"`
-		Status    int32  `json:"status"`
-		CreatedAt string `json:"created_at"`
+		ID              int64  `json:"id"`
+		Username        string `json:"username"`
+		Nickname        string `json:"nickname"`
+		Email           string `json:"email"`
+		Avatar          string `json:"avatar"`
+		Level           int32  `json:"level"`
+		Status          int32  `json:"status"`
+		CreatedAt       string `json:"created_at"`
+		Phone           string `json:"phone"`
+		FollowerCount   int64  `json:"follower_count"`
+		FollowingCount  int64  `json:"following_count"`
+		ManuscriptCount int64  `json:"manuscript_count"`
 	}
 	list := []userItem{}
 	for rows.Next() {
 		var u userItem
 		var createdAt string
-		rows.Scan(&u.ID, &u.Username, &u.Nickname, &u.Email, &u.Avatar, &u.Level, &u.Status, &createdAt)
+		rows.Scan(&u.ID, &u.Username, &u.Nickname, &u.Email, &u.Avatar, &u.Level, &u.Status, &createdAt,
+			&u.Phone, &u.FollowerCount, &u.FollowingCount, &u.ManuscriptCount)
 		u.CreatedAt = createdAt
 		list = append(list, u)
 	}
@@ -107,11 +116,19 @@ func (h *UserAdminHandler) handleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserAdminHandler) handleGet(w http.ResponseWriter, r *http.Request, id int64) {
-	var uid, level, status int32
-	var username, nickname, email, avatar, createdAt string
+	var uid, level, status, gender int32
+	var username, nickname, email, avatar, createdAt, phone, birthdate, bio, signature, announcement string
+	var followerCount, followingCount, manuscriptCount int64
 	err := h.db.QueryRowContext(r.Context(),
-		`SELECT id, username, nickname, email, avatar, level, status, created_at FROM users WHERE id=$1`, id).
-		Scan(&uid, &username, &nickname, &email, &avatar, &level, &status, &createdAt)
+		`SELECT id, username, nickname, email, avatar, level, status, created_at,
+		 COALESCE(phone,''), COALESCE(gender,0), COALESCE(birthdate::text,''),
+		 COALESCE(bio,''), COALESCE(signature,''), COALESCE(announcement,''),
+		 COALESCE(follower_count,0), COALESCE(following_count,0),
+		 (SELECT COUNT(*) FROM manuscripts WHERE user_id = u.id)
+		 FROM users u WHERE id=$1`, id).
+		Scan(&uid, &username, &nickname, &email, &avatar, &level, &status, &createdAt,
+			&phone, &gender, &birthdate, &bio, &signature, &announcement,
+			&followerCount, &followingCount, &manuscriptCount)
 	if err != nil {
 		http.Error(w, "user not found", 404)
 		return
@@ -119,6 +136,10 @@ func (h *UserAdminHandler) handleGet(w http.ResponseWriter, r *http.Request, id 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"id": uid, "username": username, "nickname": nickname, "email": email,
 		"avatar": avatar, "level": level, "status": status, "created_at": createdAt,
+		"phone": phone, "gender": gender, "birthdate": birthdate,
+		"bio": bio, "signature": signature, "announcement": announcement,
+		"follower_count": followerCount, "following_count": followingCount,
+		"manuscript_count": manuscriptCount,
 	})
 }
 

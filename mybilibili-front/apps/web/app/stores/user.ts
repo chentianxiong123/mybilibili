@@ -119,9 +119,9 @@ export const useUserStore = (defineStore as any)('user', {
           return { success: false, message: response.message || '登录失败，请检查用户名和密码' }
         }
 
-        setAuthSession(response.data)
+        setAuthSession({ token: response.data.token, refreshToken: response.data.refresh_token, user: response.data })
         this.token = response.data.token
-        this.refreshToken = response.data.refreshToken || ''
+        this.refreshToken = response.data.refresh_token || ''
         const userData = response.data.user || response.data
         if (!userData.id && userData.user_id) {
           userData.id = userData.user_id

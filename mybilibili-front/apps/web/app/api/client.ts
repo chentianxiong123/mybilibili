@@ -118,7 +118,7 @@ api.interceptors.response.use(
         api.post('/user/token/refresh', { refreshToken })
           .then((res: any) => {
             if (res.code === 200 && res.data) {
-              const { token, refreshToken: newRefreshToken } = res.data
+              const { token, refresh_token: newRefreshToken } = res.data
               setAuthSession({ token, refreshToken: newRefreshToken || refreshToken })
               originalRequest.headers.Authorization = `Bearer ${token}`
               processQueue(null, token)
@@ -192,7 +192,7 @@ async function silentRefreshOnce() {
     if (res && res.code === 200 && res.data && res.data.token) {
       setAuthSession({
         token: res.data.token,
-        refreshToken: res.data.refreshToken || refreshToken
+        refreshToken: res.data.refresh_token || refreshToken
       })
       return true
     }
