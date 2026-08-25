@@ -261,7 +261,7 @@ const handleReport = () => { emit('report') }
           <el-checkbox :checked="folder.selected" @change="toggleFolderSelection(Number(folder.id))">
             {{ folder.name }}
           </el-checkbox>
-          <span class="folder-count">{{ folder.collectCount || 0 }}/1000</span>
+          <span class="folder-count">{{ folder.video_count || 0 }}/1000</span>
         </div>
         <div class="new-folder-section">
           <div v-if="!showNewFolderInput" class="new-folder-btn" @click="showNewFolderForm">
