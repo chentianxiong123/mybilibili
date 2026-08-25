@@ -281,12 +281,6 @@ if (roleRes.code === 200 || roleRes.success) selectedPermIds.value = roleRes.dat
             <span v-if="!row.roles || row.roles.length === 0" style="color:#999;font-size:12px">未分配</span>
           </template>
         </el-table-column>
-        <el-table-column label="级别" width="110">
-          <template #default="{ row }">
-            <el-tag v-if="row.id === 1 || row.adminLevel === 2" type="danger" size="small">超级管理员</el-tag>
-            <el-tag v-else size="small">普通管理员</el-tag>
-          </template>
-        </el-table-column>
         <el-table-column prop="createdAt" label="创建时间" width="170">
           <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
         </el-table-column>
