@@ -58,7 +58,15 @@ const fetchConversations = async () => {
   try {
     const res = await messageApi.getConversations()
     if (res && res.code === 200) {
-      conversations.value = res.data || []
+      conversations.value = (res.data || []).map(c => ({
+        ...c,
+        targetUserId: c.target_user_id ?? c.targetUserId,
+        targetUserName: c.target_user_name ?? c.targetUserName,
+        targetUserAvatar: c.target_user_avatar ?? c.targetUserAvatar,
+        lastMessageContent: c.last_message_content ?? c.lastMessageContent,
+        lastMessageTime: c.last_message_at ?? c.last_message_time ?? c.lastMessageTime,
+        unreadCount: c.unread_count ?? c.unreadCount ?? 0
+      }))
     }
   } catch (error) {
     console.error('获取会话列表失败:', error)
