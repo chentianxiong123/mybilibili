@@ -104,10 +104,11 @@ const performSearch = async (isLoadMore = false) => {
     const response = await searchApi.searchVideos(params)
     
     if (response.code === 200 && response.data) {
-      const { content, totalElements: total, last } = response.data
+      const { list, total } = response.data
+      const items = list || []
       
       // 转换后端数据为前端展示格式
-      const formattedResults = content.map(item => ({
+      const formattedResults = items.map(item => ({
         manuscriptId: item.manuscriptId ?? item.manuscript_id ?? item.id,
         title: item.title,
         cover: item.coverUrl || item.cover_url || item.cover || '/default-cover.jpg',
@@ -127,7 +128,7 @@ const performSearch = async (isLoadMore = false) => {
       }
 
       totalElements.value = total
-      hasMore.value = !last
+      hasMore.value = items.length >= pageSize
 
       // 保存搜索历史（仅在有关键词时保存，标签搜索不保存到历史）
       if (searchKeyword.value.trim()) {
@@ -944,6 +945,7 @@ onUnmounted(() => {
   cursor: pointer;
   transition: background 0.3s;
   border-radius: 4px;
+  min-width: 0;
 }
 
 .hot-item:hover {
