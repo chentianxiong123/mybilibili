@@ -397,6 +397,7 @@ onUnmounted(() => {
   cursor: pointer;
   transition: background 0.3s;
   border-radius: 4px;
+  min-width: 0;
 }
 
 .hot-item:hover {
