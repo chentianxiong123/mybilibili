@@ -21,6 +21,8 @@ export default defineNuxtConfig({
     }
   },
   routeRules: {
+    // /message 重定向到默认私信页，避免嵌套路由无 <NuxtPage /> 的 E4016 报错
+    '/message': { redirect: '/message/private' },
     // === 私有/个性化页面关闭 SSR（避免 hydration 不一致；业界标准做法，见 docs/decisions） ===
     '/dynamic/**': { ssr: false },
     '/profile/**': { ssr: false },
