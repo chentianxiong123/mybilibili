@@ -34,7 +34,7 @@ const fetchFavoriteFolders = async () => {
       favoriteFolders.value = response.data.map(folder => ({
         id: folder.id,
         name: folder.name,
-        count: folder.collectCount || 0
+        count: folder.video_count || 0
       }))
 
       // 默认选中第一个收藏夹
