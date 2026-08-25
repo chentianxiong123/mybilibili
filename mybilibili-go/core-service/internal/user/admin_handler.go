@@ -74,7 +74,7 @@ func (h *UserAdminHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	page, size := httputil.ParsePageParams(r)
 	offset := (page - 1) * size
 	rows, err := h.db.QueryContext(r.Context(),
-		`SELECT id, username, nickname, email, avatar, level, status, created_at,
+		`SELECT id, username, nickname, COALESCE(email,''), COALESCE(avatar,''), level, status, created_at,
 		 COALESCE(phone, ''),
 		 COALESCE(follower_count, 0),
 		 COALESCE(following_count, 0),
@@ -103,8 +103,10 @@ func (h *UserAdminHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var u userItem
 		var createdAt string
-		rows.Scan(&u.ID, &u.Username, &u.Nickname, &u.Email, &u.Avatar, &u.Level, &u.Status, &createdAt,
-			&u.Phone, &u.FollowerCount, &u.FollowingCount, &u.ManuscriptCount)
+		if scanErr := rows.Scan(&u.ID, &u.Username, &u.Nickname, &u.Email, &u.Avatar, &u.Level, &u.Status, &createdAt,
+			&u.Phone, &u.FollowerCount, &u.FollowingCount, &u.ManuscriptCount); scanErr != nil {
+			continue
+		}
 		u.CreatedAt = createdAt
 		list = append(list, u)
 	}
@@ -116,11 +118,12 @@ func (h *UserAdminHandler) handleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserAdminHandler) handleGet(w http.ResponseWriter, r *http.Request, id int64) {
-	var uid, level, status, gender int32
+	var uid int64
+	var level, status, gender int32
 	var username, nickname, email, avatar, createdAt, phone, birthdate, bio, signature, announcement string
 	var followerCount, followingCount, manuscriptCount int64
 	err := h.db.QueryRowContext(r.Context(),
-		`SELECT id, username, nickname, email, avatar, level, status, created_at,
+		`SELECT id, username, nickname, COALESCE(email,''), COALESCE(avatar,''), level, status, created_at,
 		 COALESCE(phone,''), COALESCE(gender,0), COALESCE(birthdate::text,''),
 		 COALESCE(bio,''), COALESCE(signature,''), COALESCE(announcement,''),
 		 COALESCE(follower_count,0), COALESCE(following_count,0),
@@ -130,7 +133,11 @@ func (h *UserAdminHandler) handleGet(w http.ResponseWriter, r *http.Request, id 
 			&phone, &gender, &birthdate, &bio, &signature, &announcement,
 			&followerCount, &followingCount, &manuscriptCount)
 	if err != nil {
-		http.Error(w, "user not found", 404)
+		if err == sql.ErrNoRows {
+			http.Error(w, "user not found", 404)
+		} else {
+			http.Error(w, "db error: "+err.Error(), 500)
+		}
 		return
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{
