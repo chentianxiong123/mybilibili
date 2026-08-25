@@ -273,7 +273,7 @@ func (s *Service) Related(ctx context.Context, manuscriptID int64, size int32) (
 }
 
 func (s *Service) HotRecommend(ctx context.Context, categoryID int64, size int32) ([]map[string]interface{}, error) {
-	query := `SELECT m.id, m.user_id, m.title, m.cover_url, m.view_count, m.like_count, m.upload_time, m.duration_seconds,
+	query := `SELECT m.id, m.user_id, m.title, m.cover_url, m.view_count, m.like_count, m.comment_count, m.upload_time, m.duration_seconds,
 	                 u.id, u.username, u.nickname, u.avatar, u.level
 	          FROM manuscripts m LEFT JOIN users u ON m.user_id = u.id
 	          WHERE m.status = 3`
@@ -293,12 +293,12 @@ func (s *Service) HotRecommend(ctx context.Context, categoryID int64, size int32
 	defer rows.Close()
 	var out []map[string]interface{}
 	for rows.Next() {
-		var id, userID, views, likes, durSec int64
+		var id, userID, views, likes, comments, durSec int64
 		var title, cover string
 		var created time.Time
 		var uid, ulevel int64
 		var uname, unick, uavatar string
-		rows.Scan(&id, &userID, &title, &cover, &views, &likes, &created, &durSec,
+		rows.Scan(&id, &userID, &title, &cover, &views, &likes, &comments, &created, &durSec,
 			&uid, &uname, &unick, &uavatar, &ulevel)
 		uploader := map[string]interface{}{
 			"id": uid, "name": unick, "username": uname, "nickname": unick,
@@ -316,6 +316,7 @@ func (s *Service) HotRecommend(ctx context.Context, categoryID int64, size int32
 		out = append(out, map[string]interface{}{
 			"manuscript_id": id, "user_id": userID, "title": title,
 			"cover_url": cover, "view_count": views, "like_count": likes,
+			"comment_count": comments,
 			"created_at": created.Format("2006-01-02 15:04:05"),
 			"duration": duration, "duration_seconds": durSec,
 			"uploader": uploader,
