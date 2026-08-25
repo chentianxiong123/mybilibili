@@ -1,6 +1,8 @@
 package social
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -14,10 +16,11 @@ type SocialHandler struct {
 	dynamicSvc *DynamicService
 	collectSvc *CollectionService
 	shareRepo  *ShareRepository
+	db         *sql.DB
 }
 
-func NewSocialHandler(followSvc *FollowService, dynamicSvc *DynamicService, collectSvc *CollectionService, shareRepo *ShareRepository) *SocialHandler {
-	return &SocialHandler{followSvc: followSvc, dynamicSvc: dynamicSvc, collectSvc: collectSvc, shareRepo: shareRepo}
+func NewSocialHandler(followSvc *FollowService, dynamicSvc *DynamicService, collectSvc *CollectionService, shareRepo *ShareRepository, db *sql.DB) *SocialHandler {
+	return &SocialHandler{followSvc: followSvc, dynamicSvc: dynamicSvc, collectSvc: collectSvc, shareRepo: shareRepo, db: db}
 }
 
 func (h *SocialHandler) Register(mux *http.ServeMux) {
@@ -45,10 +48,7 @@ func (h *SocialHandler) handleDynamicCommentList(w http.ResponseWriter, r *http.
 	dynamicID, _ := strconv.ParseInt(r.URL.Query().Get("dynamicId"), 10, 64)
 	page, limit := httputil.ParsePageParams(r)
 	list, _ := h.dynamicSvc.ListComments(r.Context(), dynamicID, page, limit)
-	if list == nil {
-		list = []*DynamicComment{}
-	}
-	httputil.WriteOK(w, list)
+	httputil.WriteOK(w, h.enrichComments(r.Context(), list))
 }
 
 func (h *SocialHandler) handleDynamicCommentAdd(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +76,7 @@ func (h *SocialHandler) handleDynamicCommentAdd(w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), 400)
 		return
 	}
-	json.NewEncoder(w).Encode(dc)
+	httputil.WriteOK(w, h.enrichComments(r.Context(), []*DynamicComment{dc}))
 }
 
 func (h *SocialHandler) handleDynamicCommentReplies(w http.ResponseWriter, r *http.Request) {
@@ -87,7 +87,7 @@ func (h *SocialHandler) handleDynamicCommentReplies(w http.ResponseWriter, r *ht
 	commentID, _ := strconv.ParseInt(r.URL.Query().Get("commentId"), 10, 64)
 	page, limit := httputil.ParsePageParams(r)
 	list, _ := h.dynamicSvc.ListReplies(r.Context(), commentID, page, limit)
-	json.NewEncoder(w).Encode(list)
+	json.NewEncoder(w).Encode(h.enrichComments(r.Context(), list))
 }
 
 func (h *SocialHandler) handleDynamicCommentDelete(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +124,7 @@ func (h *SocialHandler) handleDynamicAll(w http.ResponseWriter, r *http.Request)
 	}
 	page, limit := httputil.ParsePageParams(r)
 	list, _ := h.dynamicSvc.ListAll(r.Context(), page, limit)
-	json.NewEncoder(w).Encode(list)
+	json.NewEncoder(w).Encode(h.enrichDynamics(r.Context(), list))
 }
 
 func (h *SocialHandler) handleDynamicLike(w http.ResponseWriter, r *http.Request) {
@@ -179,12 +179,12 @@ func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 	case len(parts) == 1 && parts[0] == "list" && r.Method == "GET":
 		page, limit := httputil.ParsePageParams(r)
 		list, _ := h.dynamicSvc.ListFollowing(r.Context(), userID, page, limit)
-		json.NewEncoder(w).Encode(list)
+		json.NewEncoder(w).Encode(h.enrichDynamics(r.Context(), list))
 
 	case len(parts) == 1 && parts[0] == "following" && r.Method == "GET":
 		page, limit := httputil.ParsePageParams(r)
 		list, _ := h.dynamicSvc.ListFollowing(r.Context(), userID, page, limit)
-		json.NewEncoder(w).Encode(list)
+		json.NewEncoder(w).Encode(h.enrichDynamics(r.Context(), list))
 
 	case len(parts) >= 2 && parts[0] == "user" && r.Method == "GET":
 		uid, _ := strconv.ParseInt(parts[1], 10, 64)
@@ -194,10 +194,7 @@ func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 			httputil.WriteError(w, http.StatusInternalServerError, "database error")
 			return
 		}
-		if list == nil {
-			list = []*Dynamic{}
-		}
-		httputil.WriteOK(w, list)
+		httputil.WriteOK(w, h.enrichDynamics(r.Context(), list))
 
 	case len(parts) >= 2 && parts[0] == "like":
 		id, _ := strconv.ParseInt(parts[1], 10, 64)
@@ -224,7 +221,7 @@ func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 		dynamicID, _ := strconv.ParseInt(parts[1], 10, 64)
 		page, limit := httputil.ParsePageParams(r)
 		list, _ := h.dynamicSvc.ListComments(r.Context(), dynamicID, page, limit)
-		json.NewEncoder(w).Encode(list)
+		json.NewEncoder(w).Encode(h.enrichComments(r.Context(), list))
 
 	case len(parts) >= 1 && r.Method == "DELETE":
 		id, _ := strconv.ParseInt(parts[0], 10, 64)
@@ -428,4 +425,180 @@ func (h *SocialHandler) handleWatchHistory(w http.ResponseWriter, r *http.Reques
 		h.shareRepo.db.ExecContext(r.Context(), `DELETE FROM watch_history WHERE user_id = $1`, userID)
 		w.Write([]byte(`{"status":"ok"}`))
 	}
+}
+
+// enrichDynamics 为动态列表批量补充 user 嵌套对象（avatar、username）、imageUrls 数组和 refVideo 引用稿件信息。
+func (h *SocialHandler) enrichDynamics(ctx context.Context, list []*Dynamic) []map[string]interface{} {
+	if len(list) == 0 {
+		return []map[string]interface{}{}
+	}
+	uidSet := map[int64]struct{}{}
+	refIds := map[int64]struct{}{}
+	for _, d := range list {
+		uidSet[d.UserID] = struct{}{}
+		if d.RefManuscriptID > 0 {
+			refIds[d.RefManuscriptID] = struct{}{}
+		}
+	}
+	ids := make([]int64, 0, len(uidSet))
+	for id := range uidSet {
+		ids = append(ids, id)
+	}
+	users := h.loadUsers(ctx, ids)
+
+	// 批量加载引用稿件信息
+	refVideos := map[int64]map[string]interface{}{}
+	for mid := range refIds {
+		refVideos[mid] = h.loadManuscriptBrief(ctx, mid)
+	}
+
+	out := make([]map[string]interface{}, 0, len(list))
+	for _, d := range list {
+		u, ok := users[d.UserID]
+		if !ok {
+			u = map[string]string{"username": "", "avatar": ""}
+		}
+		item := map[string]interface{}{
+			"id":              d.ID,
+			"userId":          d.UserID,
+			"content":         d.Content,
+			"dynamicType":     d.DynamicType,
+			"imageUrl":        d.ImageURL,
+			"imageUrls":       []string{},
+			"refManuscriptId": d.RefManuscriptID,
+			"likeCount":       d.LikeCount,
+			"commentCount":    d.CommentCount,
+			"shareCount":      d.ShareCount,
+			"createdAt":       d.CreatedAt,
+			"user": map[string]interface{}{
+				"id":       d.UserID,
+				"username": u["username"],
+				"avatar":   u["avatar"],
+			},
+		}
+		if d.ImageURL != "" {
+			item["imageUrls"] = []string{d.ImageURL}
+		}
+		if d.RefManuscriptID > 0 {
+			if rv, ok := refVideos[d.RefManuscriptID]; ok {
+				item["refVideo"] = rv
+			}
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
+// loadUsers 批量查询用户信息（username/nickname→name、avatar、level）。
+func (h *SocialHandler) loadUsers(ctx context.Context, ids []int64) map[int64]map[string]string {
+	users := map[int64]map[string]string{}
+	if h.db == nil || len(ids) == 0 {
+		return users
+	}
+	rows, err := h.db.QueryContext(ctx,
+		`SELECT id, COALESCE(username,''), COALESCE(nickname,''), COALESCE(avatar,''), COALESCE(level,1) FROM users WHERE id = ANY($1)`, ids)
+	if err != nil {
+		return users
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		var username, nickname, avatar string
+		var level int
+		rows.Scan(&id, &username, &nickname, &avatar, &level)
+		name := nickname
+		if name == "" {
+			name = username
+		}
+		users[id] = map[string]string{"username": name, "avatar": avatar, "level": strconv.Itoa(level)}
+	}
+	return users
+}
+
+// loadManuscriptBrief 查询单个稿件简要信息（封面、标题、时长、播放数）。
+func (h *SocialHandler) loadManuscriptBrief(ctx context.Context, mid int64) map[string]interface{} {
+	if h.db == nil {
+		return nil
+	}
+	var title, cover string
+	var durationSecs, viewCount int64
+	err := h.db.QueryRowContext(ctx,
+		`SELECT COALESCE(title,''), COALESCE(cover_url,''), COALESCE(duration_seconds,0), COALESCE(view_count,0) FROM manuscripts WHERE id = $1`, mid).Scan(&title, &cover, &durationSecs, &viewCount)
+	if err != nil {
+		return nil
+	}
+	return map[string]interface{}{
+		"id":        mid,
+		"title":     title,
+		"cover":     cover,
+		"viewCount": viewCount,
+		"duration":  formatDuration(durationSecs),
+	}
+}
+
+// formatDuration 将秒数格式化为 mm:ss 或 hh:mm:ss。
+func formatDuration(seconds int64) string {
+	if seconds <= 0 {
+		return ""
+	}
+	h := seconds / 3600
+	m := (seconds % 3600) / 60
+	s := seconds % 60
+	if h > 0 {
+		return strconv.FormatInt(h, 10) + ":" + pad2(m) + ":" + pad2(s)
+	}
+	return pad2(m) + ":" + pad2(s)
+}
+
+func pad2(n int64) string {
+	if n < 10 {
+		return "0" + strconv.FormatInt(n, 10)
+	}
+	return strconv.FormatInt(n, 10)
+}
+
+// enrichComments 为评论列表批量补充用户信息（userAvatar、userName、userLevel）和 replyCount。
+func (h *SocialHandler) enrichComments(ctx context.Context, list []*DynamicComment) []map[string]interface{} {
+	if len(list) == 0 {
+		return []map[string]interface{}{}
+	}
+	uidSet := map[int64]struct{}{}
+	for _, c := range list {
+		uidSet[c.UserID] = struct{}{}
+		if c.ReplyUserID > 0 {
+			uidSet[c.ReplyUserID] = struct{}{}
+		}
+	}
+	ids := make([]int64, 0, len(uidSet))
+	for id := range uidSet {
+		ids = append(ids, id)
+	}
+	users := h.loadUsers(ctx, ids)
+
+	out := make([]map[string]interface{}, 0, len(list))
+	for _, c := range list {
+		u, ok := users[c.UserID]
+		if !ok {
+			u = map[string]string{"username": "", "avatar": "", "level": "1"}
+		}
+		item := map[string]interface{}{
+			"id":          c.ID,
+			"dynamicId":   c.DynamicID,
+			"userId":      c.UserID,
+			"content":     c.Content,
+			"parentId":    c.ParentID,
+			"replyUserId": c.ReplyUserID,
+			"likeCount":   c.LikeCount,
+			"createdAt":   c.CreatedAt,
+			"userAvatar":  u["avatar"],
+			"userName":    u["username"],
+			"userLevel":   0,
+			"replyCount":  0,
+		}
+		if lvl, err := strconv.Atoi(u["level"]); err == nil {
+			item["userLevel"] = lvl
+		}
+		out = append(out, item)
+	}
+	return out
 }

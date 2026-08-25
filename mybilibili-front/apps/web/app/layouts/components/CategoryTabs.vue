@@ -9,7 +9,7 @@ import { useZoomCompact } from '@/composables/useZoomCompact'
 
 const router = useRouter()
 const { prefetch } = usePrefetch()
-const { desktopCompact } = useZoomCompact()
+const { compactLevel } = useZoomCompact()
 
 const activeTab = ref('热门')
 const hotTab = { name: '热门', special: true, id: 0 }
@@ -45,23 +45,23 @@ const tabs = computed(() => {
   return categories.value.filter(cat => cat.id !== 0 && cat.id !== -1)
 })
 
-// 每行分类数：正常11个，缩放紧凑模式9个
-const rowsCount = computed(() => desktopCompact.value ? 9 : 11)
+// 每行分类数：缩放 level 0→11, level 1→9, level 2→7
+const perRow = computed(() => [11, 9, 7][compactLevel.value] || 11)
 
 // 第一行显示的分类
 const firstRowTabs = computed(() => {
-  return tabs.value.slice(0, rowsCount.value)
+  return tabs.value.slice(0, perRow.value)
 })
 
 // 第二行显示的分类（留最后一位给"更多"）
 const secondRowTabs = computed(() => {
-  const n = rowsCount.value
+  const n = perRow.value
   return tabs.value.slice(n, n * 2 - 1)
 })
 
 // 更多分类
 const moreTabs = computed(() => {
-  return tabs.value.slice(rowsCount.value * 2 - 1)
+  return tabs.value.slice(perRow.value * 2 - 1)
 })
 
 // 是否有更多分类
@@ -112,7 +112,7 @@ const handleHotTabClick = () => {
 </script>
 
 <template>
-  <div :class="['tab-bar', { 'zoom-compact': desktopCompact }]">
+  <div class="tab-bar" :style="{ '--tab-cols': perRow }">
     <div class="tab-container">
       <div class="tabs-main-container">
         <!-- 动态独立标签 -->
@@ -215,7 +215,7 @@ const handleHotTabClick = () => {
 .tabs-main-container {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 0;
   width: 100%;
   max-width: calc(2560px - 240px);
   padding: 0 120px;
@@ -364,17 +364,12 @@ const handleHotTabClick = () => {
 /* 标签行 */
 .tabs-row {
   display: grid;
-  grid-template-columns: repeat(11, 1fr);
+  grid-template-columns: repeat(var(--tab-cols, 11), 1fr);
   align-items: center;
   gap: 8px;
   overflow: hidden;
   flex: 1;
   min-height: 0;
-}
-
-/* 缩放紧凑模式：每行9列 */
-.zoom-compact .tabs-row {
-  grid-template-columns: repeat(9, 1fr);
 }
 
 /* 普通标签 */

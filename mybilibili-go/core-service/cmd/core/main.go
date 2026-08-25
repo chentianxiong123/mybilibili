@@ -111,7 +111,7 @@ func main() {
 	collectRepo := social.NewCollectionRepository(db)
 	collectSvc := social.NewCollectionService(collectRepo)
 	shareRepo := social.NewShareRepository(db)
-	socialH := social.NewSocialHandler(followSvc, dynamicSvc, collectSvc, shareRepo)
+	socialH := social.NewSocialHandler(followSvc, dynamicSvc, collectSvc, shareRepo, db)
 
 	videoRepo := video.NewRepository(db)
 	videoSvc := video.NewService(videoRepo)

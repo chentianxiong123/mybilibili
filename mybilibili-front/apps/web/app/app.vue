@@ -341,11 +341,9 @@ const handleCloseDialog = () => {
   registerForm.value = { username: '', email: '', emailCode: '', password: '', confirmPassword: '', agreeTerms: false }
 }
 
-const ZOOM_COMPACT_ENTER_RATIO = 0.995
-const ZOOM_COMPACT_EXIT_RATIO = 0.97
 const ZOOM_FREEZE_RATIO = 1.25
 
-const { desktopCompact } = useZoomCompact()
+const { compactLevel } = useZoomCompact()
 
 let baseRatio = 0
 
@@ -355,11 +353,7 @@ const syncZoomBase = () => {
   if (baseRatio === 0) baseRatio = zoom
   const relative = zoom / baseRatio
 
-  if (desktopCompact.value) {
-    desktopCompact.value = relative > ZOOM_COMPACT_EXIT_RATIO
-  } else {
-    desktopCompact.value = relative > ZOOM_COMPACT_ENTER_RATIO
-  }
+  compactLevel.value = relative < 0.97 ? 0 : relative < 1.10 ? 1 : 2
   if (relative > ZOOM_FREEZE_RATIO) return
   root.style.setProperty('--zoom-base', `${Math.min(root.clientWidth, window.innerWidth)}px`)
 }
