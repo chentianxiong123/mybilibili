@@ -4,7 +4,7 @@ import { interactionApi, userApi, videoApi } from '@/api/client'
 import { recommendApi } from '@/api/recommend.ts'
 import { Message } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch, isUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AiAssistantPanel from '@/components/AiAssistantPanel.vue'
@@ -19,6 +19,9 @@ import VideoSidebar from '@/components/VideoSidebar.vue'
 
 const route = useRoute()
 const router = useRouter()
+
+// 组件是否已卸载标记
+const isUnmountedRef = isUnmounted()
 
 // 定义props - 从路由接收manuscriptId和p参数
 const props = defineProps({
@@ -592,6 +595,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  isUnmountedRef.value = true
   // 记录最终播放进度
   recordWatchHistorySync()
 
@@ -603,6 +607,7 @@ onUnmounted(() => {
 watch(
   () => route.params.id,
   newId => {
+    if (isUnmountedRef.value) return
     if (newId) {
       currentManuscriptId.value = Number.parseInt(String(newId))
     }
@@ -613,6 +618,7 @@ watch(
 watch(
   () => [route.query.p, route.query.t],
   ([newP, newT]) => {
+    if (isUnmountedRef.value) return
     const p = Number.parseInt(String(newP)) || 1
     const t = Number.parseInt(String(newT)) || 0
     resumeTime.value = t > 0 ? t : 0
