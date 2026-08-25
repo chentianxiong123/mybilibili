@@ -178,7 +178,7 @@ const loadFavoriteFolders = async () => {
       const userFolders = (response.data || []).map(folder => ({
         id: folder.id,
         name: folder.name,
-        count: folder.collectCount || 0,
+        count: folder.video_count || 0,
         icon: '📁'
       }))
 
