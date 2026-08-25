@@ -1,11 +1,12 @@
 <script setup>
 import { safeStorage } from '@/utils/safeStorage'
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, watch } from 'vue'
 import { ArrowLeft, ArrowRight, View, Star } from '@element-plus/icons-vue'
 import { recommendApi } from '@/api/recommend.ts'
 import { getHomeBanners } from '@/api/banner.ts'
 import { formatDuration, formatMonthDay, normalizeVideoCard } from '@/utils/videoCard.ts'
 import { useTabsVideoAlign } from '@/composables/useTabsVideoAlign'
+import { useZoomCompact } from '@/composables/useZoomCompact'
 
 // 轮播图数据
 const bannerList = ref([])
@@ -36,6 +37,7 @@ const prevBanner = () => {
 }
 
 const { apply: applyTabsVideoAlign } = useTabsVideoAlign()
+const { desktopCompact } = useZoomCompact()
 
 const nextBanner = () => {
   currentBannerIndex.value = (currentBannerIndex.value + 1) % bannerList.value.length
@@ -63,7 +65,7 @@ const adjustBannerHeight = () => {
     const bannerSection = document.querySelector('.banner-section')
     if (!bannerSection) return
     if (videoCovers.length >= 6) {
-      const secondRowCover = videoCovers[3]
+      const secondRowCover = videoCovers[desktopCompact.value ? 2 : 3]
       const videoGrid = document.querySelector('.video-grid')
       if (secondRowCover && videoGrid) {
         const gridRect = videoGrid.getBoundingClientRect()
@@ -174,6 +176,13 @@ onMounted(() => {
   window.addEventListener('resize', adjustBannerHeight)
 })
 
+// 缩放紧凑模式切换时，重新计算轮播高度与对齐
+watch(desktopCompact, async () => {
+  await nextTick()
+  adjustBannerHeight()
+  applyTabsVideoAlign()
+})
+
 // 视频列表加载完成后重新对齐分类栏与视频栏
 const alignAfterLoad = async () => {
   await nextTick()
@@ -202,7 +211,7 @@ const goToAuthor = (authorId) => {
 
 <template>
   <!-- 主内容区域：5列网格布局 -->
-  <div class="main-section">
+  <div :class="['main-section', { 'zoom-compact': desktopCompact }]">
     <!-- 统一的视频网格：包含轮播图和视频项 -->
     <div class="video-grid">
       <!-- 左侧轮播图：占据2x2的位置 -->
@@ -363,6 +372,11 @@ const goToAuthor = (authorId) => {
   grid-auto-rows: auto;
   gap: 20px;
   width: 100%;
+}
+
+/* 缩放紧凑模式：5列变4列，轮播图保持2列宽 */
+.zoom-compact .video-grid {
+  grid-template-columns: repeat(4, 1fr);
 }
 
 /* 轮播图：占据2x2的位置 */
