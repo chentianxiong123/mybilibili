@@ -45,8 +45,8 @@ const tabs = computed(() => {
   return categories.value.filter(cat => cat.id !== 0 && cat.id !== -1)
 })
 
-// 每行分类数：缩放 level 0→11, level 1→9, level 2→7
-const perRow = computed(() => [11, 9, 7][compactLevel.value] || 11)
+// 每行分类数：level 0→11, 1→9, 2→7, 3→13, 4→15
+const perRow = computed(() => [11, 9, 7, 13, 15][compactLevel.value] || 11)
 
 // 第一行显示的分类
 const firstRowTabs = computed(() => {
