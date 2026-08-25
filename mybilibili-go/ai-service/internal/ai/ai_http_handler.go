@@ -52,6 +52,7 @@ func (h *AIChatHandler) handleReviewContent(w http.ResponseWriter, r *http.Reque
 			}
 		}
 	}
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tags)
 }
 
@@ -87,6 +88,7 @@ func (h *AIChatHandler) moderateWith(w http.ResponseWriter, r *http.Request, sce
 	}
 	passed, _ := resp["passed"].(bool)
 	reason, _ := resp["reason"].(string)
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"passed": passed, "reason": reason,
 		"provider": r.URL.Query().Get("provider"),
@@ -108,6 +110,7 @@ func (h *AIChatHandler) handleCustomerChat(w http.ResponseWriter, r *http.Reques
 		http.Error(w, err.Error(), 500)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"reply": reply})
 }
 
@@ -124,6 +127,7 @@ func (h *AIChatHandler) handleCustomerHistory(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		history = []map[string]interface{}{}
 	}
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"code": 200, "data": history,
 	})
