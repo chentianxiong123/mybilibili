@@ -231,11 +231,7 @@ const handleLogin = () => {
         setAuthSession({
           token: data.token,
           refreshToken: data.refresh_token || data.refreshToken,
-          user: data.user || {
-            id: data.user_id,
-            nickname: data.nickname || data.username,
-            username: data.username || data.nickname
-          }
+          user: data.user || data
         })
         startSilentRefresh()
         showLoginDialog.value = false
