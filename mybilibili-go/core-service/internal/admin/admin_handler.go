@@ -203,25 +203,21 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	refreshToken, _ := h.jwt.GenerateRefresh(admin.ID)
 	role := "管理员"
-	if admin.AdminLevel >= 2 {
-		role = "超级管理员"
-	}
-	permissions := []string{}
-	if role == "超级管理员" {
-		perms, _ := h.svc.repo.ListPermissions(r.Context())
-		for _, p := range perms {
-			permissions = append(permissions, p.Code)
+	for _, rl := range admin.Roles {
+		if rl.Name == "超级管理员" {
+			role = "超级管理员"
+			break
 		}
-	} else {
-		perms, _ := h.svc.repo.GetAdminPermissionCodes(r.Context(), admin.ID)
-		permissions = perms
+	}
+	permissions, _ := h.svc.repo.GetAdminPermissionCodes(r.Context(), admin.ID)
+	if permissions == nil {
+		permissions = []string{}
 	}
 	httputil.WriteOK(w, map[string]interface{}{
 		"token":         token,
 		"refresh_token": refreshToken,
 		"admin_id":      admin.ID,
 		"username":      admin.Username,
-		"admin_level":   admin.AdminLevel,
 		"role":          role,
 		"permissions":   permissions,
 	})

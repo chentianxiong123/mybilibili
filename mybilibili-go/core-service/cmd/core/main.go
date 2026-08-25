@@ -103,7 +103,7 @@ func main() {
 
 	followRepo := social.NewFollowRepository(db)
 	followSvc := social.NewFollowService(followRepo)
-	followH := social.NewFollowHandler(followSvc)
+	followH := social.NewFollowHandler(followSvc, db)
 	interactionSvc.SetFollowService(followSvc)
 
 	dynamicRepo := social.NewDynamicRepository(db)
