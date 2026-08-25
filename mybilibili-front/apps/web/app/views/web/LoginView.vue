@@ -276,7 +276,7 @@ const handleLogin = () => {
       userApi.login(loginForm.username, loginForm.password)
         .then(response => {
           if (response.code === 200) {
-            setAuthSession(response.data)
+            setAuthSession({ token: response.data.token, refreshToken: response.data.refresh_token, user: response.data })
             ElMessage.success('登录成功')
             goAfterLogin()
           } else {
@@ -306,7 +306,7 @@ const handleEmailLogin = () => {
     userApi.login(null, null, 'email_code', emailLoginForm.email, emailLoginForm.emailCode)
       .then(response => {
         if (response.code === 200) {
-          setAuthSession(response.data)
+          setAuthSession({ token: response.data.token, refreshToken: response.data.refresh_token, user: response.data })
           ElMessage.success('登录成功')
           goAfterLogin()
         } else {
