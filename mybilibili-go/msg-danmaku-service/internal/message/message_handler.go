@@ -240,7 +240,8 @@ func (h *MessageHTTPHandler) handleReplies(w http.ResponseWriter, r *http.Reques
 	if list == nil {
 		list = []map[string]interface{}{}
 	}
-	json.NewEncoder(w).Encode(list)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": list})
 }
 
 func (h *MessageHTTPHandler) handleAt(w http.ResponseWriter, r *http.Request) {
@@ -259,7 +260,8 @@ func (h *MessageHTTPHandler) handleAt(w http.ResponseWriter, r *http.Request) {
 	if list == nil {
 		list = []map[string]interface{}{}
 	}
-	json.NewEncoder(w).Encode(list)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": list})
 }
 
 func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request) {
@@ -278,7 +280,8 @@ func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request)
 	if list == nil {
 		list = []map[string]interface{}{}
 	}
-	json.NewEncoder(w).Encode(list)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": list})
 }
 
 func (h *MessageHTTPHandler) handleSystem(w http.ResponseWriter, r *http.Request) {
@@ -297,7 +300,8 @@ func (h *MessageHTTPHandler) handleSystem(w http.ResponseWriter, r *http.Request
 	if list == nil {
 		list = []map[string]interface{}{}
 	}
-	json.NewEncoder(w).Encode(list)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": list})
 }
 
 func (h *MessageHTTPHandler) handleMessageByID(w http.ResponseWriter, r *http.Request) {
