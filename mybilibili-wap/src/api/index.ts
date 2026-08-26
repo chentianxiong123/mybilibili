@@ -206,3 +206,12 @@ export async function getRankingArchive(params) {
     return { code: '0', data: [] }
   }
 }
+// 提交反馈（意见反馈弹窗 → POST /api/v1/feedback）
+export async function submitFeedback(data: { type: string; content: string; contact: string }) {
+  try {
+    const res = await api.post('/feedback', data)
+    return { code: '1', data: res?.data || res }
+  } catch (e) {
+    return { code: '0', data: null }
+  }
+}
