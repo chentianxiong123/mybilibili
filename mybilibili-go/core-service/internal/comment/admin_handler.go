@@ -110,9 +110,13 @@ func (h *AdminHandler) handleRoute(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AdminHandler) exec(w http.ResponseWriter, r *http.Request, query string, args ...interface{}) {
-	_, err := h.db.ExecContext(r.Context(), query, args...)
+	res, err := h.db.ExecContext(r.Context(), query, args...)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
+		return
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		http.Error(w, "comment not found", 404)
 		return
 	}
 	w.Write([]byte(`{"status":"ok"}`))

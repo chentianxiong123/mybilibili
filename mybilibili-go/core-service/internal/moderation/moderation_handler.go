@@ -62,6 +62,11 @@ func (h *Handler) handleWords(w http.ResponseWriter, r *http.Request) {
 			Category  string `json:"category"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
+		req.Word = strings.TrimSpace(req.Word)
+		if req.Word == "" {
+			http.Error(w, "word required", 400)
+			return
+		}
 		h.svc.CreateWord(r.Context(), req.Word, req.MatchType, req.Category)
 		w.Write([]byte(`{"status":"ok"}`))
 	}
@@ -86,12 +91,20 @@ func (h *Handler) handleWordByID(w http.ResponseWriter, r *http.Request) {
 			IsEnabled int32  `json:"is_enabled"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
+		if _, err := h.svc.GetWord(r.Context(), id); err != nil {
+			http.Error(w, "word not found", 404)
+			return
+		}
 		if req.IsEnabled == 0 {
 			req.IsEnabled = 1
 		}
 		h.svc.UpdateWord(r.Context(), id, req.Word, req.MatchType, req.Category, req.IsEnabled)
 		w.Write([]byte(`{"status":"ok"}`))
 	case "DELETE":
+		if _, err := h.svc.GetWord(r.Context(), id); err != nil {
+			http.Error(w, "word not found", 404)
+			return
+		}
 		h.svc.DeleteWord(r.Context(), id)
 		w.Write([]byte(`{"status":"ok"}`))
 	default:

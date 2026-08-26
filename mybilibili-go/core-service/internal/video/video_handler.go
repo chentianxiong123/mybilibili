@@ -1,6 +1,7 @@
 package video
 
 import (
+	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -103,9 +104,17 @@ func (h *Handler) handleCategoryByID(w http.ResponseWriter, r *http.Request) {
 			Name string `json:"name"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
+		if _, err := h.svc.repo.GetCategoryByID(r.Context(), id); err != nil {
+			http.Error(w, "category not found", 404)
+			return
+		}
 		h.svc.UpdateCategory(r.Context(), id, req.Name)
 		w.Write([]byte(`{"status":"ok"}`))
 	case "DELETE":
+		if _, err := h.svc.repo.GetCategoryByID(r.Context(), id); err != nil {
+			http.Error(w, "category not found", 404)
+			return
+		}
 		h.svc.DeleteCategory(r.Context(), id)
 		w.Write([]byte(`{"status":"ok"}`))
 	}
@@ -295,23 +304,36 @@ func (h *Handler) handleStatisticsByPath(w http.ResponseWriter, r *http.Request)
 			func() *int64 { var v int64; data["rejected"] = &v; return &v }())
 		json.NewEncoder(w).Encode(data)
 	case "manuscript/recent":
+		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		if limit < 1 || limit > 50 {
+			limit = 10
+		}
 		rows, err := h.svc.repo.db.QueryContext(r.Context(),
-			`SELECT id, user_id, title, cover_url, view_count, created_at
-			 FROM manuscripts ORDER BY created_at DESC LIMIT 10`)
+			`SELECT id, user_id, title, cover_url, view_count, upload_time
+			 FROM manuscripts ORDER BY COALESCE(upload_time, to_timestamp(0)) DESC LIMIT $1`, limit)
 		if err != nil {
-			json.NewEncoder(w).Encode([]map[string]interface{}{})
+			http.Error(w, err.Error(), 500)
 			return
 		}
 		defer rows.Close()
 		list := []map[string]interface{}{}
 		for rows.Next() {
 			var id, uid, views int64
-			var title, cover, created string
-			rows.Scan(&id, &uid, &title, &cover, &views, &created)
-			list = append(list, map[string]interface{}{
-				"id": id, "user_id": uid, "title": title, "cover_url": cover,
-				"view_count": views, "created_at": created,
-			})
+			var title string
+			var cover sql.NullString
+			var uploaded sql.NullTime
+			if err := rows.Scan(&id, &uid, &title, &cover, &views, &uploaded); err != nil {
+				http.Error(w, err.Error(), 500)
+				return
+			}
+			item := map[string]interface{}{
+				"id": id, "user_id": uid, "title": title,
+				"cover_url": cover.String, "view_count": views,
+			}
+			if uploaded.Valid {
+				item["created_at"] = uploaded.Time.Format(time.RFC3339)
+			}
+			list = append(list, item)
 		}
 		json.NewEncoder(w).Encode(list)
 	default:
