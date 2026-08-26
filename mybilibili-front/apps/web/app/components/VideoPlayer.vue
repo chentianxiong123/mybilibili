@@ -2,7 +2,7 @@
 import { safeStorage } from '@/utils/safeStorage'
 import Artplayer from 'artplayer'
 import { ElMessage } from 'element-plus'
-import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { subtitleApi } from '@/api/subtitle.ts'
 import SubtitleDisplay from '@/components/SubtitleDisplay.vue'
@@ -89,6 +89,19 @@ const subtitleEnabled = ref(true)
 const subtitleDisplayRef = ref<any>(null)
 const subtitleSettingsPanelRef = ref<HTMLDivElement | null>(null)
 const subtitleSettingsVisible = ref(false)
+let subtitleToggleGuard = false
+
+const onDocClickForSubtitlePanel = (e: Event) => {
+  if (subtitleToggleGuard) return
+  const panel = subtitleSettingsPanelRef.value
+  if (panel && !panel.contains(e.target as Node)) {
+    subtitleSettingsVisible.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', onDocClickForSubtitlePanel)
+})
 const SUBTITLE_SETTINGS_KEY = 'mybilibili_subtitle_settings'
 const FULLSCREEN_FONT_SCALE = 1.5
 const defaultSubtitleSettings = {
@@ -424,6 +437,8 @@ const initPlayer = async () => {
       tooltip: '字幕设置',
       click: () => {
         subtitleSettingsVisible.value = !subtitleSettingsVisible.value
+        subtitleToggleGuard = true
+        setTimeout(() => { subtitleToggleGuard = false }, 0)
       },
       mounted: function (this: any) {
         this.innerHTML = `<span class="art-icon">字幕</span>`
@@ -639,6 +654,7 @@ defineExpose({
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleSubtitlePlayerResize)
+  document.removeEventListener('click', onDocClickForSubtitlePanel)
   if (art) {
     art.destroy()
     art = null
@@ -749,6 +765,12 @@ onUnmounted(() => {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   overflow: auto;
   pointer-events: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.subtitle-settings-panel::-webkit-scrollbar {
+  display: none;
 }
 
 .subtitle-settings-panel .settings-header {
