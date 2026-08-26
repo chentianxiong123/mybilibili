@@ -368,16 +368,7 @@ const goBack = () => {
 }
 
 const openVertical = () => {
-  // 在同一用户手势内先请求全屏，再进入竖屏页（SPA 导航后 documentElement 全屏状态保留）。
-  // 全屏失败（如环境不支持）不能阻断跳转，用 try/catch 包住。
-  try {
-    const el = document.documentElement
-    const rfs = el.requestFullscreen || el.webkitRequestFullscreen
-    if (rfs) {
-      const p = rfs.call(el)
-      if (p && p.catch) p.catch(() => {})
-    }
-  } catch (e) {}
+  // 进入竖屏短视频页（CSS 应用全屏，无需浏览器 Fullscreen API）
   router.push(`/m/vertical/${aId}`)
 }
 </script>
