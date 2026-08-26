@@ -59,7 +59,7 @@ const refresh = async () => {
 }
 
 const goBack = () => router.back()
-const goDrafts = () => showToast('草稿箱接口还没有接入')
+const goDrafts = () => router.push('/m/space/drafts')
 const goVideo = (item: any) => router.push(`/m/video/${item.manuscriptId || item.id}`)
 const goData = () => showToast('移动端数据面板待接入，先到 Web 创作中心查看')
 
