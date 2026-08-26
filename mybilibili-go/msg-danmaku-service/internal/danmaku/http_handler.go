@@ -32,11 +32,15 @@ func (h *HTTPHandler) Register(mux *http.ServeMux) {
 }
 
 func (h *HTTPHandler) handleSend(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+	if r.Method != http.MethodPost {
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	userID := httputil.GetUserIDFromHeader(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	var req struct {
 		VideoID      int64   `json:"video_id"`
 		ManuscriptID int64   `json:"manuscript_id"`
@@ -45,10 +49,17 @@ func (h *HTTPHandler) handleSend(w http.ResponseWriter, r *http.Request) {
 		Color        string  `json:"color"`
 		Mode         int32   `json:"mode"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
+		return
+	}
+	if req.VideoID <= 0 || strings.TrimSpace(req.Content) == "" {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "video_id and content required", "data": nil})
+		return
+	}
 	event, err := h.svc.Send(r.Context(), req.VideoID, req.ManuscriptID, userID, req.Content, req.Time, req.Color, req.Mode)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "发送弹幕失败", "data": nil})
 		return
 	}
 	h.broadcaster.Broadcast(req.VideoID, event)
@@ -74,7 +85,7 @@ func (h *HTTPHandler) handleListByVideo(w http.ResponseWriter, r *http.Request) 
 func (h *HTTPHandler) handleBatchCount(w http.ResponseWriter, r *http.Request) {
 	idsStr := r.URL.Query().Get("ids")
 	if idsStr == "" {
-		http.Error(w, "ids required", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "ids required", "data": nil})
 		return
 	}
 	parts := strings.Split(idsStr, ",")
@@ -86,7 +97,7 @@ func (h *HTTPHandler) handleBatchCount(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	counts, _ := h.svc.CountByManuscriptIDs(r.Context(), ids)
-	httputil.WriteJSON(w, http.StatusOK, counts)
+	httputil.WriteOK(w, counts)
 }
 
 func (h *HTTPHandler) handleTrend(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +105,7 @@ func (h *HTTPHandler) handleTrend(w http.ResponseWriter, r *http.Request) {
 	startDate := r.URL.Query().Get("start_date")
 	endDate := r.URL.Query().Get("end_date")
 	if idsStr == "" {
-		http.Error(w, "ids required", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "ids required", "data": nil})
 		return
 	}
 	parts := strings.Split(idsStr, ",")
@@ -106,35 +117,43 @@ func (h *HTTPHandler) handleTrend(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	trend, _ := h.svc.Trend(r.Context(), ids, startDate, endDate)
-	httputil.WriteJSON(w, http.StatusOK, trend)
+	httputil.WriteOK(w, trend)
 }
 
 func (h *HTTPHandler) handleByPath(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/danmaku/")
 	parts := strings.Split(path, "/")
 	if len(parts) == 0 {
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 		return
 	}
 	id, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil {
-		http.Error(w, "invalid id", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid id", "data": nil})
 		return
 	}
-	if r.Method == "DELETE" {
+	if r.Method == http.MethodDelete {
 		userID := httputil.GetUserIDFromHeader(r)
-		if err := h.svc.Delete(r.Context(), id, userID); err != nil {
-			http.Error(w, err.Error(), 500)
+		if userID == 0 {
+			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
 			return
 		}
-		w.Write([]byte(`{"status":"ok"}`))
+		if err := h.svc.Delete(r.Context(), id, userID); err != nil {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "删除失败", "data": nil})
+			return
+		}
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 		return
 	}
-	http.Error(w, "method not allowed", 405)
+	httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 }
 
 func (h *HTTPHandler) handleCreatorList(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	videoIDStr := r.URL.Query().Get("video_id")
 	page, size := httputil.ParsePageParams(r)
 	var videoID int64
@@ -142,22 +161,26 @@ func (h *HTTPHandler) handleCreatorList(w http.ResponseWriter, r *http.Request) 
 		videoID, _ = strconv.ParseInt(videoIDStr, 10, 64)
 	}
 	list, total, _ := h.svc.CreatorList(r.Context(), userID, videoID, page, size)
-	httputil.WriteJSON(w, http.StatusOK, map[string]interface{}{"list": list, "total": total})
+	httputil.WriteOK(w, map[string]any{"list": list, "total": total})
 }
 
 func (h *HTTPHandler) handleCreatorByPath(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimPrefix(r.URL.Path, "/api/v1/creator/danmaku/")
 	id, _ := strconv.ParseInt(idStr, 10, 64)
-	if r.Method == "DELETE" {
+	if r.Method == http.MethodDelete {
 		userID := httputil.GetUserIDFromHeader(r)
-		if err := h.svc.CreatorDelete(r.Context(), id, userID); err != nil {
-			http.Error(w, err.Error(), 500)
+		if userID == 0 {
+			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
 			return
 		}
-		w.Write([]byte(`{"status":"ok"}`))
+		if err := h.svc.CreatorDelete(r.Context(), id, userID); err != nil {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "删除失败", "data": nil})
+			return
+		}
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 		return
 	}
-	http.Error(w, "method not allowed", 405)
+	httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 }
 
 func (h *HTTPHandler) handleSSE(w http.ResponseWriter, r *http.Request) {
