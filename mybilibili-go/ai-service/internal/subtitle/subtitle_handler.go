@@ -153,7 +153,7 @@ func (h *Handler) handleUpload(w http.ResponseWriter, r *http.Request) {
 		h.svc.SetDefault(r.Context(), req.VideoID, sub.ID)
 	}
 
-	json.NewEncoder(w).Encode(subtitleToMap(sub))
+	httputil.WriteOK(w, subtitleToMap(sub))
 }
 
 func (h *Handler) handleUploadSRT(w http.ResponseWriter, r *http.Request) {
@@ -195,7 +195,7 @@ func (h *Handler) handleUploadSRT(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	json.NewEncoder(w).Encode(subtitleToMap(sub))
+	httputil.WriteOK(w, subtitleToMap(sub))
 }
 
 func (h *Handler) handleAllVideos(w http.ResponseWriter, r *http.Request) {
@@ -205,7 +205,7 @@ func (h *Handler) handleAllVideos(w http.ResponseWriter, r *http.Request) {
 	}
 	list, err := h.svc.ListAll(r.Context())
 	if err != nil {
-		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		httputil.WriteOK(w, []map[string]interface{}{})
 		return
 	}
 	out := make([]map[string]interface{}, 0, len(list))
@@ -214,7 +214,7 @@ func (h *Handler) handleAllVideos(w http.ResponseWriter, r *http.Request) {
 		m["created_at"] = s.UploadTime.Format("2006-01-02 15:04:05")
 		out = append(out, m)
 	}
-	json.NewEncoder(w).Encode(out)
+	httputil.WriteOK(w, out)
 }
 
 func (h *Handler) handleImport(w http.ResponseWriter, r *http.Request) {
@@ -242,7 +242,7 @@ func (h *Handler) handleImport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	json.NewEncoder(w).Encode(subtitleToMap(sub))
+	httputil.WriteOK(w, subtitleToMap(sub))
 }
 
 func (h *Handler) handleScan(w http.ResponseWriter, r *http.Request) {
@@ -253,14 +253,14 @@ func (h *Handler) handleScan(w http.ResponseWriter, r *http.Request) {
 	videoID, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/subtitle/scan/"), 10, 64)
 	list, err := h.svc.ListByVideoForScan(r.Context(), videoID)
 	if err != nil {
-		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		httputil.WriteOK(w, []map[string]interface{}{})
 		return
 	}
 	out := make([]map[string]interface{}, 0, len(list))
 	for _, s := range list {
 		out = append(out, subtitleToMap(s))
 	}
-	json.NewEncoder(w).Encode(out)
+	httputil.WriteOK(w, out)
 }
 
 func (h *Handler) handleImportSystem(w http.ResponseWriter, r *http.Request) {
@@ -287,7 +287,7 @@ func (h *Handler) handleImportSystem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.svc.Approve(r.Context(), sub.ID)
-	json.NewEncoder(w).Encode(subtitleToMap(sub))
+	httputil.WriteOK(w, subtitleToMap(sub))
 }
 
 func (h *Handler) handleSetDefault(w http.ResponseWriter, r *http.Request) {
@@ -301,7 +301,7 @@ func (h *Handler) handleSetDefault(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	h.svc.SetDefault(r.Context(), req.VideoID, req.ID)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	httputil.WriteOK(w, map[string]string{"status": "ok"})
 }
 
 func (h *Handler) handleSubtitleByID(w http.ResponseWriter, r *http.Request) {
@@ -312,27 +312,27 @@ func (h *Handler) handleSubtitleByID(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case len(parts) >= 2 && parts[1] == "approve" && r.Method == "POST":
 		h.svc.Approve(r.Context(), id)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]string{"status": "ok"})
 	case len(parts) >= 2 && parts[1] == "reject" && r.Method == "POST":
 		h.svc.Reject(r.Context(), id)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]string{"status": "ok"})
 	case len(parts) >= 2 && parts[1] == "preview" && r.Method == "GET":
 		cues, _ := h.svc.Preview(r.Context(), id)
-		json.NewEncoder(w).Encode(cues)
+		httputil.WriteOK(w, cues)
 	case len(parts) >= 2 && parts[1] == "set-default" && r.Method == "POST":
 		videoID, _ := strconv.ParseInt(r.URL.Query().Get("video_id"), 10, 64)
 		h.svc.SetDefault(r.Context(), videoID, id)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]string{"status": "ok"})
 	case r.Method == "GET":
 		sub, err := h.svc.repo.GetByID(r.Context(), id)
 		if err != nil {
 			http.Error(w, "not found", 404)
 			return
 		}
-		json.NewEncoder(w).Encode(subtitleToMap(sub))
+		httputil.WriteOK(w, subtitleToMap(sub))
 	case r.Method == "DELETE":
 		h.svc.Delete(r.Context(), id)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]string{"status": "ok"})
 	}
 }
 
