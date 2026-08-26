@@ -49,7 +49,7 @@ func (h *MessageHTTPHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/message/conversations", h.handleConversations)
 	mux.HandleFunc("/api/v1/message/conversations/", h.handleConversationByID)
 	mux.HandleFunc("/api/v1/message/send", h.handleSend)
-	mux.HandleFunc("/api/v1/message/unread/", h.handleUnread)
+	mux.HandleFunc("/api/v1/message/unread", h.handleUnread)
 	mux.HandleFunc("/api/v1/message/conversation/unread/", h.handleConversationUnread)
 	mux.HandleFunc("/api/v1/message/replies", h.handleReplies)
 	mux.HandleFunc("/api/v1/message/at", h.handleAt)
@@ -117,12 +117,15 @@ func (h *MessageHTTPHandler) handleNotificationSSE(w http.ResponseWriter, r *htt
 
 func (h *MessageHTTPHandler) handleConversations(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserID(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	list, _ := h.repo.GetConversations(r.Context(), userID)
 	if list == nil {
 		list = []*Conversation{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": list})
+	httputil.WriteOK(w, list)
 }
 
 func (h *MessageHTTPHandler) handleConversationByID(w http.ResponseWriter, r *http.Request) {
@@ -185,14 +188,25 @@ func (h *MessageHTTPHandler) handleConversationByID(w http.ResponseWriter, r *ht
 
 func (h *MessageHTTPHandler) handleSend(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserID(r)
-	var req struct {
-		ReceiverID int64  `json:"receiver_id"`
-		Content    string `json:"content"`
-		MsgType    int32  `json:"message_type"`
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+	var req struct {
+		ReceiverID int64  `json:"receiverId"`
+		Content    string `json:"content"`
+		MsgType    int32  `json:"messageType"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
+		return
+	}
 	if req.Content == "" {
-		http.Error(w, "content required", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "content required", "data": nil})
+		return
+	}
+	if req.ReceiverID <= 0 {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "receiverId required", "data": nil})
 		return
 	}
 	if req.MsgType == 0 {
@@ -200,21 +214,24 @@ func (h *MessageHTTPHandler) handleSend(w http.ResponseWriter, r *http.Request) 
 	}
 	msg, err := h.repo.SendMessage(r.Context(), userID, req.ReceiverID, req.Content, req.MsgType)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "发送失败", "data": nil})
 		return
 	}
 	h.notif.Send(req.ReceiverID, &NotificationEvent{
 		Type: "message", Content: req.Content, FromUID: userID,
 		CreatedAt: msg.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	})
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(msg)
+	httputil.WriteOK(w, msg)
 }
 
 func (h *MessageHTTPHandler) handleUnread(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserID(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	cnt, _ := h.repo.GetUnreadCount(r.Context(), userID)
-	json.NewEncoder(w).Encode(map[string]int32{
+	httputil.WriteOK(w, map[string]int32{
 		"reply":  cnt,
 		"at":     cnt,
 		"like":   cnt,
@@ -234,6 +251,10 @@ func (h *MessageHTTPHandler) handleConversationUnread(w http.ResponseWriter, r *
 
 func (h *MessageHTTPHandler) handleReplies(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserID(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	rows, _ := h.repo.db.QueryContext(r.Context(),
 		`SELECT m.id, m.sender_id, COALESCE(u.nickname,u.username,'') AS username, COALESCE(u.avatar,'') AS user_avatar,
 		        m.content, m.is_read, COALESCE(m.created_at::text,''), m.comment_id, COALESCE(m.target_id,0) AS manuscript_id
@@ -258,12 +279,15 @@ func (h *MessageHTTPHandler) handleReplies(w http.ResponseWriter, r *http.Reques
 	if list == nil {
 		list = []map[string]interface{}{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": list})
+		httputil.WriteOK(w, list)
 }
 
 func (h *MessageHTTPHandler) handleAt(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserID(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	rows, _ := h.repo.db.QueryContext(r.Context(),
 		`SELECT m.id, m.sender_id, COALESCE(u.nickname,u.username,'') AS username, COALESCE(u.avatar,'') AS user_avatar,
 		        m.content, m.is_read, COALESCE(m.created_at::text,''), COALESCE(m.target_id,0) AS manuscript_id
@@ -287,12 +311,15 @@ func (h *MessageHTTPHandler) handleAt(w http.ResponseWriter, r *http.Request) {
 	if list == nil {
 		list = []map[string]interface{}{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": list})
+		httputil.WriteOK(w, list)
 }
 
 func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserID(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	rows, _ := h.repo.db.QueryContext(r.Context(),
 		`SELECT m.id, m.sender_id, COALESCE(u.nickname,u.username,'') AS username, COALESCE(u.avatar,'') AS user_avatar,
 		        m.content, m.is_read, COALESCE(m.created_at::text,''), m.message_type,
@@ -335,8 +362,7 @@ func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request)
 	if list == nil {
 		list = []map[string]interface{}{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": list})
+		httputil.WriteOK(w, list)
 }
 
 // extractCommentText 从形如 赞了你的视频《xxx》/赞了你的评论"xxx" 的消息内容中提取引号内的文本。
@@ -361,6 +387,10 @@ func extractCommentText(s, open string) string {
 
 func (h *MessageHTTPHandler) handleSystem(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserID(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	rows, _ := h.repo.db.QueryContext(r.Context(),
 		`SELECT m.id, m.content, m.is_read, COALESCE(m.created_at::text,'')
 		 FROM messages m
@@ -381,8 +411,7 @@ func (h *MessageHTTPHandler) handleSystem(w http.ResponseWriter, r *http.Request
 	if list == nil {
 		list = []map[string]interface{}{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": list})
+		httputil.WriteOK(w, list)
 }
 
 func (h *MessageHTTPHandler) handleMessageByID(w http.ResponseWriter, r *http.Request) {
