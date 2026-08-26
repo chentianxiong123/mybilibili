@@ -22,6 +22,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/moderation/admin/prohibited-words", h.handleWords)
 	mux.HandleFunc("/api/v1/moderation/admin/prohibited-words/", h.handleWordByID)
 	mux.HandleFunc("/api/v1/report/submit", h.handleSubmitReport)
+	mux.HandleFunc("/api/v1/feedback", h.handleFeedback)
 	mux.HandleFunc("/api/v1/moderation/admin/report/", h.handleReports)
 }
 
@@ -97,6 +98,33 @@ func (h *Handler) handleWordByID(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "method not allowed", 405)
 	}
+}
+
+func (h *Handler) handleFeedback(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	userID := httputil.GetUserIDFromHeader(r)
+	var req struct {
+		Type    string `json:"type"`
+		Content string `json:"content"`
+		Contact string `json:"contact"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	req.Type = strings.ToUpper(strings.TrimSpace(req.Type))
+	if req.Type == "" {
+		req.Type = "OTHER"
+	}
+	if strings.TrimSpace(req.Content) == "" {
+		http.Error(w, "content required", 400)
+		return
+	}
+	if err := h.svc.SubmitFeedback(r.Context(), userID, req.Type, req.Content, req.Contact); err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+	w.Write([]byte(`{"status":"ok"}`))
 }
 
 func (h *Handler) handleSubmitReport(w http.ResponseWriter, r *http.Request) {
