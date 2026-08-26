@@ -9,11 +9,8 @@ export default defineNuxtRouteMiddleware((to) => {
     document.title = to.meta.title as string
   }
 
-  // Web 路由守卫
+  // Web 路由守卫：未登录访问需登录页 → 跳首页（登录弹窗由组件触发）
   if (to.meta.requiresAuth && !hasAuthSession()) {
-    return navigateTo({ path: '/login', query: { redirect: to.fullPath } })
-  }
-  if (to.path === '/login' && hasAuthSession()) {
-    return navigateTo('/')
+    return navigateTo({ path: '/', query: { redirect: to.fullPath } })
   }
 })

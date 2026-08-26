@@ -44,9 +44,8 @@ const handleNavClick = (item) => {
         const url = `${window.location.origin}/profile/${currentUser.value.id}/home`
         window.open(url, '_blank')
       } else {
-        // 打开新标签页到登录页
-        const url = `${window.location.origin}/login`
-        window.open(url, '_blank')
+        // 未登录：回首页触发登录弹窗
+        window.location.href = `${window.location.origin}/`
       }
     } 
     // 特殊处理：创作中心
