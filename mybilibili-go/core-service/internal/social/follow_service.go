@@ -17,17 +17,11 @@ func (s *FollowService) Follow(ctx context.Context, followerID, followingID int6
 	if followerID == followingID {
 		return errors.New("cannot follow yourself")
 	}
-	if err := s.repo.Follow(ctx, followerID, followingID); err != nil {
-		return err
-	}
-	return s.repo.IncrCounts(ctx, followerID, followingID, 1)
+	return s.repo.Follow(ctx, followerID, followingID)
 }
 
 func (s *FollowService) Unfollow(ctx context.Context, followerID, followingID int64) error {
-	if err := s.repo.Unfollow(ctx, followerID, followingID); err != nil {
-		return err
-	}
-	return s.repo.IncrCounts(ctx, followerID, followingID, -1)
+	return s.repo.Unfollow(ctx, followerID, followingID)
 }
 
 func (s *FollowService) IsFollowing(ctx context.Context, followerID, followingID int64) (bool, error) {
