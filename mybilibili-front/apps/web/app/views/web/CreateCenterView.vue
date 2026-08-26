@@ -51,23 +51,14 @@
           <DataCenterView />
         </div>
 
-        <!-- 评论管理内容 -->
-        <div v-show="currentActive === 'interaction-comment'" class="content-section">
-          <div class="content-body">
-            <CommentManager :active="currentActive === 'interaction-comment'" />
-          </div>
-        </div>
-
-        <!-- 弹幕管理内容 -->
-        <div v-show="currentActive === 'interaction-danmu'" class="content-section">
-          <div class="content-body">
-            <DanmuManager />
-          </div>
-        </div>
-
         <!-- 投稿内容 -->
         <div v-if="currentActive === 'upload'" class="content-section">
           <UploadView />
+        </div>
+
+        <!-- 草稿箱 -->
+        <div v-if="currentActive === 'drafts'" class="content-section">
+          <DraftsBox />
         </div>
 
         <!-- 粉丝管理 -->
@@ -91,9 +82,8 @@ import DataCenterView from './DataCenterView.vue'
 import CenterSidebar from '@/components/createCenter/CenterSidebar.vue'
 import CenterDashboard from '@/components/createCenter/CenterDashboard.vue'
 import ManuscriptManager from '@/components/createCenter/ManuscriptManager.vue'
-import CommentManager from '@/components/createCenter/CommentManager.vue'
-import DanmuManager from '@/components/createCenter/DanmuManager.vue'
 import FansManager from '@/components/createCenter/FansManager.vue'
+import DraftsBox from '@/components/createCenter/DraftsBox.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -171,6 +161,7 @@ watch(
     const pathMap = {
       '/create-center/home': 'home',
       '/create-center/upload': 'upload',
+      '/create-center/drafts': 'drafts',
       '/create-center/content': 'content',
       '/create-center/content-articles': 'content-articles',
 

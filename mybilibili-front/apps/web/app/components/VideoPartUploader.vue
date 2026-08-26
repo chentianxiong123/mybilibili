@@ -146,8 +146,9 @@ defineExpose({
             class="part-title-input"
           ></el-input>
           <div class="part-meta">
-            <span class="part-size">{{ formatFileSize(part.size) }}</span>
-            <span class="part-filename">{{ part.file.name }}</span>
+            <span class="part-size">{{ part.file ? formatFileSize(part.size) : '' }}</span>
+            <span v-if="part.file" class="part-filename">{{ part.file.name }}</span>
+            <span v-else class="part-filename missing-file">文件已丢失，请重新选择视频</span>
           </div>
         </div>
         <div class="part-actions">
