@@ -24,6 +24,7 @@ const followingUsers = ref([
   { id: null, name: '全部动态', avatar: '', isAll: true }
 ])
 const selectedUserId = ref(null)
+const myStats = ref({})
 
 const dynamicList = ref([])
 const currentPage = ref(1)
@@ -80,6 +81,19 @@ const handlePublish = async (payload) => {
     }
   } catch (error) {
     ElMessage.error('发布失败：' + error.message)
+  }
+}
+
+const fetchMyStats = async () => {
+  try {
+    const currentUserId = userStore.userInfo?.id
+    if (!currentUserId) return
+    const res = await api.get(`/user/${currentUserId}`)
+    if (res.code === 200 && res.data) {
+      myStats.value = res.data
+    }
+  } catch (error) {
+    console.error('获取个人统计失败:', error)
   }
 }
 
@@ -268,6 +282,7 @@ const initUserInfo = () => {
 onMounted(() => {
   initUserInfo()
   fetchFollowingUsers()
+  fetchMyStats()
   fetchDynamics()
   fetchHotSearch()
 })
@@ -282,18 +297,18 @@ onMounted(() => {
             <img loading="lazy" decoding="async" :src="currentUser.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" alt="头像" class="user-avatar">
             <div class="user-level" v-if="currentUser.level">LV{{ currentUser.level }}</div>
           </div>
-          <div class="user-name">{{ currentUser.username }}</div>
+          <div class="user-name">{{ currentUser.nickname || currentUser.username }}</div>
           <div class="user-stats">
             <div class="stat-item" @click="goToUserFollowing(currentUser.id)">
-              <div class="stat-value">{{ currentUser.followingCount || 0 }}</div>
+              <div class="stat-value">{{ myStats.followingCount ?? currentUser.followingCount ?? 0 }}</div>
               <div class="stat-label">关注</div>
             </div>
             <div class="stat-item" @click="goToUserFollowers(currentUser.id)">
-              <div class="stat-value">{{ currentUser.followerCount || 0 }}</div>
+              <div class="stat-value">{{ myStats.followerCount ?? currentUser.followerCount ?? 0 }}</div>
               <div class="stat-label">粉丝</div>
             </div>
             <div class="stat-item" @click="goToUserDynamic(currentUser.id)">
-              <div class="stat-value">{{ currentUser.dynamicCount || 0 }}</div>
+              <div class="stat-value">{{ myStats.dynamicCount || 0 }}</div>
               <div class="stat-label">动态</div>
             </div>
           </div>

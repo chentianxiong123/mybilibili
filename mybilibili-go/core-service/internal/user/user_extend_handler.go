@@ -96,7 +96,7 @@ func (h *UserExtendHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 		ip = r.RemoteAddr
 	}
 	h.svc.repo.db.ExecContext(r.Context(),
-		`INSERT INTO login_logs (user_id, ip, user_agent, status) VALUES ($1, $2, $3, 0)`,
+		`INSERT INTO login_logs (user_id, ip, user_agent, status) VALUES ($1, $2, $3, 1)`,
 		resp.UserId, ip, r.UserAgent())
 	refreshToken, _ := h.svc.jwt.GenerateRefresh(resp.UserId)
 	user, _ := h.svc.repo.FindByID(r.Context(), resp.UserId)
@@ -323,7 +323,14 @@ func (h *UserExtendHandler) handlePinnedVideo(w http.ResponseWriter, r *http.Req
 func (h *UserExtendHandler) handleLoginLogs(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
 	page, _ := strconv.ParseInt(r.URL.Query().Get("page"), 10, 32)
-	size, _ := strconv.ParseInt(r.URL.Query().Get("page_size"), 10, 32)
+	sizeStr := r.URL.Query().Get("size")
+	if sizeStr == "" {
+		sizeStr = r.URL.Query().Get("page_size")
+	}
+	if sizeStr == "" {
+		sizeStr = r.URL.Query().Get("pageSize")
+	}
+	size, _ := strconv.ParseInt(sizeStr, 10, 32)
 	if page < 1 {
 		page = 1
 	}
@@ -348,7 +355,12 @@ func (h *UserExtendHandler) handleLoginLogs(w http.ResponseWriter, r *http.Reque
 			"id": id, "user_id": uid, "ip": ip, "user_agent": ua, "status": st, "login_time": t,
 		})
 	}
-	json.NewEncoder(w).Encode(list)
+	var total int64
+	_ = h.svc.repo.db.QueryRowContext(r.Context(),
+		`SELECT COUNT(*) FROM login_logs WHERE user_id = $1`, userID).Scan(&total)
+	httputil.WriteOK(w, map[string]interface{}{
+		"list": list, "total": total, "page": page, "size": size,
+	})
 }
 
 // GET /api/v1/user/login-logs/count — 按条件计数（countUserLogs / countByCondition）
@@ -629,15 +641,17 @@ func (h *UserExtendHandler) handleUserByID(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "database error", 500)
 		return
 	}
-	var followerCount, followingCount, totalLikeCount, totalViewCount int64
+	var followerCount, followingCount, totalLikeCount, totalViewCount, dynamicCount int64
 	_ = h.svc.repo.db.QueryRowContext(r.Context(),
-		`SELECT COALESCE(follower_count,0) FROM users WHERE id = $1`, id).Scan(&followerCount)
+		`SELECT COUNT(*) FROM follows WHERE following_id = $1`, id).Scan(&followerCount)
 	_ = h.svc.repo.db.QueryRowContext(r.Context(),
-		`SELECT COALESCE(following_count,0) FROM users WHERE id = $1`, id).Scan(&followingCount)
+		`SELECT COUNT(*) FROM follows WHERE follower_id = $1`, id).Scan(&followingCount)
 	_ = h.svc.repo.db.QueryRowContext(r.Context(),
 		`SELECT COALESCE(SUM(like_count),0) FROM manuscripts WHERE user_id = $1`, id).Scan(&totalLikeCount)
 	_ = h.svc.repo.db.QueryRowContext(r.Context(),
 		`SELECT COALESCE(SUM(views),0) FROM manuscripts WHERE user_id = $1`, id).Scan(&totalViewCount)
+	_ = h.svc.repo.db.QueryRowContext(r.Context(),
+		`SELECT COUNT(*) FROM user_dynamics WHERE user_id = $1 AND status = 0`, id).Scan(&dynamicCount)
 	var signature, announcement, bio string
 	var gender int64
 	var birthdate *time.Time
@@ -671,6 +685,7 @@ func (h *UserExtendHandler) handleUserByID(w http.ResponseWriter, r *http.Reques
 		"tags":             tags,
 		"followerCount":    followerCount,
 		"followingCount":   followingCount,
+		"dynamicCount":     dynamicCount,
 		"totalLikeCount":   totalLikeCount,
 		"totalViewCount":   totalViewCount,
 		"created_at":       user.CreatedAt.Format("2006-01-02T15:04:05Z"),
