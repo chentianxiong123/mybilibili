@@ -3,6 +3,7 @@ import { inject } from 'vue'
 import TopBackground from './components/TopBackground.vue'
 import CategoryTabs from './components/CategoryTabs.vue'
 import AppHeader from './components/AppHeader.vue'
+import FeedbackFloat from '../components/FeedbackFloat.vue'
 
 const showLoginDialog = inject('showLoginDialog')
 
@@ -26,6 +27,7 @@ const handleLogout = () => {
     <div class="layout-content">
       <slot />
     </div>
+    <FeedbackFloat />
   </div>
 </template>
 

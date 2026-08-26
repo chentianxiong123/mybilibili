@@ -415,6 +415,10 @@ export const reportApi = {
   submitReport: (data: any) => api.post('/report/submit', data)
 }
 
+export const feedbackApi = {
+  submit: (data: { type: string; content: string; contact: string }) => api.post('/feedback', data)
+}
+
 export const getUserList = (params: Record<string, any>) => api.get('/user/admin/list', { params })
 export const getUserById = (id: number) => api.get(`/user/admin/${id}`)
 export const updateUserStatus = (id: number, status: string) => api.put(`/user/admin/${id}/status`, { status })
