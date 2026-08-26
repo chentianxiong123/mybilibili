@@ -72,6 +72,12 @@ const mobileRoutes: RouteRecordRaw[] = [
     meta: { title: '私信', mobile: true, hideTabBar: true }
   },
   {
+    path: '/m/message/notify/:type',
+    name: 'mobile-message-notify',
+    component: () => import('../views/message/NotificationList.vue'),
+    meta: { title: '消息通知', mobile: true, hideTabBar: true }
+  },
+  {
     path: '/m/creator',
     name: 'mobile-creator-center',
     component: () => import('../views/creator/Center.vue'),
