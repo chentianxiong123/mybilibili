@@ -32,7 +32,7 @@ func (h *FavoriteHandler) Register(mux *http.ServeMux) {
 func (h *FavoriteHandler) handleFavorites(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
 	if userID == 0 {
-		http.Error(w, "unauthorized", 401)
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
 		return
 	}
 
@@ -42,7 +42,7 @@ func (h *FavoriteHandler) handleFavorites(w http.ResponseWriter, r *http.Request
 	case "POST":
 		h.createFolder(w, r, userID)
 	default:
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 	}
 }
 
@@ -59,17 +59,17 @@ func (h *FavoriteHandler) listFolders(w http.ResponseWriter, r *http.Request, us
 		 WHERE f.user_id = $1
 		 ORDER BY f.created_at DESC`, userID)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "查询失败", "data": nil})
 		return
 	}
 	defer rows.Close()
 
 	type folder struct {
-		ID        int64  `json:"id"`
-		Name      string `json:"name"`
-		VideoCount int64 `json:"video_count"`
-		CreatedAt string `json:"created_at"`
-		UpdatedAt string `json:"updated_at"`
+		ID         int64  `json:"id"`
+		Name       string `json:"name"`
+		VideoCount int64  `json:"video_count"`
+		CreatedAt  string `json:"created_at"`
+		UpdatedAt  string `json:"updated_at"`
 	}
 	list := []folder{}
 	for rows.Next() {
@@ -82,16 +82,19 @@ func (h *FavoriteHandler) listFolders(w http.ResponseWriter, r *http.Request, us
 		f.UpdatedAt = updatedAt.Format("2006-01-02T15:04:05Z")
 		list = append(list, f)
 	}
-	json.NewEncoder(w).Encode(list)
+	httputil.WriteOK(w, list)
 }
 
 func (h *FavoriteHandler) createFolder(w http.ResponseWriter, r *http.Request, userID int64) {
 	var req struct {
 		Name string `json:"name"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
+		return
+	}
 	if strings.TrimSpace(req.Name) == "" {
-		http.Error(w, "name required", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "name required", "data": nil})
 		return
 	}
 	var id int64
@@ -99,20 +102,17 @@ func (h *FavoriteHandler) createFolder(w http.ResponseWriter, r *http.Request, u
 		`INSERT INTO favorite_folders (user_id, name) VALUES ($1, $2) RETURNING id`,
 		userID, req.Name).Scan(&id)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "创建失败", "data": nil})
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"id":   id,
-		"name": req.Name,
-	})
+	httputil.WriteOK(w, map[string]any{"id": id, "name": req.Name})
 }
 
 // PUT/DELETE /api/v1/favorites/{id}
 func (h *FavoriteHandler) handleByID(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/favorites/")
 	if path == "" {
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 		return
 	}
 
@@ -130,10 +130,14 @@ func (h *FavoriteHandler) handleByID(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.ParseInt(path, 10, 64)
 	if err != nil {
-		http.Error(w, "invalid id", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid id", "data": nil})
 		return
 	}
 	userID := httputil.GetUserIDFromHeader(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 
 	switch r.Method {
 	case "PUT":
@@ -142,27 +146,27 @@ func (h *FavoriteHandler) handleByID(w http.ResponseWriter, r *http.Request) {
 		}
 		json.NewDecoder(r.Body).Decode(&req)
 		if strings.TrimSpace(req.Name) == "" {
-			http.Error(w, "name required", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "name required", "data": nil})
 			return
 		}
 		_, err := h.db.ExecContext(r.Context(),
 			`UPDATE favorite_folders SET name = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3`,
 			req.Name, id, userID)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "更新失败", "data": nil})
 			return
 		}
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	case "DELETE":
 		_, err := h.db.ExecContext(r.Context(),
 			`DELETE FROM favorite_folders WHERE id = $1 AND user_id = $2`, id, userID)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "删除失败", "data": nil})
 			return
 		}
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	default:
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 	}
 }
 
@@ -171,15 +175,19 @@ func (h *FavoriteHandler) handleFolderManuscripts(w http.ResponseWriter, r *http
 	// path = "{folderId}/manuscripts" 或 "{folderId}/manuscripts/{manuscriptId}"
 	parts := strings.Split(path, "/")
 	if len(parts) < 2 {
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 		return
 	}
 	folderID, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil {
-		http.Error(w, "invalid folder id", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid folder id", "data": nil})
 		return
 	}
 	userID := httputil.GetUserIDFromHeader(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 
 	// 确认 folder 属于当前用户
 	var cnt int
@@ -187,26 +195,26 @@ func (h *FavoriteHandler) handleFolderManuscripts(w http.ResponseWriter, r *http
 		`SELECT COUNT(*) FROM favorite_folders WHERE id = $1 AND user_id = $2`,
 		folderID, userID).Scan(&cnt)
 	if cnt == 0 {
-		http.Error(w, "folder not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "收藏夹不存在或无权操作", "data": nil})
 		return
 	}
 
 	// DELETE /api/v1/favorites/{folderId}/manuscripts/{manuscriptId}
-	if r.Method == "DELETE" && len(parts) >= 3 {
+	if r.Method == http.MethodDelete && len(parts) >= 3 {
 		msID, err := strconv.ParseInt(parts[2], 10, 64)
 		if err != nil {
-			http.Error(w, "invalid manuscript id", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid manuscript id", "data": nil})
 			return
 		}
 		h.db.ExecContext(r.Context(),
 			`DELETE FROM favorite_folder_videos WHERE folder_id = $1 AND manuscript_id = $2`,
 			folderID, msID)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 		return
 	}
 
-	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+	if r.Method != http.MethodPost {
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 
@@ -215,7 +223,7 @@ func (h *FavoriteHandler) handleFolderManuscripts(w http.ResponseWriter, r *http
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	if req.ManuscriptID == 0 {
-		http.Error(w, "manuscript_id required", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "manuscript_id required", "data": nil})
 		return
 	}
 	_, err = h.db.ExecContext(r.Context(),
@@ -223,25 +231,29 @@ func (h *FavoriteHandler) handleFolderManuscripts(w http.ResponseWriter, r *http
 		 VALUES ($1, $2) ON CONFLICT (folder_id, manuscript_id) DO NOTHING`,
 		folderID, req.ManuscriptID)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "添加失败", "data": nil})
 		return
 	}
-	w.Write([]byte(`{"status":"ok"}`))
+	httputil.WriteOK(w, map[string]any{"status": "ok"})
 }
 
 // GET|PUT /api/v1/favorites/{folderId}/videos — 分页查询/批量更新收藏夹视频
 func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Request, path string) {
 	parts := strings.Split(path, "/")
 	if len(parts) < 2 {
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 		return
 	}
 	folderID, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil {
-		http.Error(w, "invalid folder id", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid folder id", "data": nil})
 		return
 	}
 	userID := httputil.GetUserIDFromHeader(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 
 	// 确认 folder 属于当前用户
 	var cnt int
@@ -249,7 +261,7 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 		`SELECT COUNT(*) FROM favorite_folders WHERE id = $1 AND user_id = $2`,
 		folderID, userID).Scan(&cnt)
 	if cnt == 0 {
-		http.Error(w, "folder not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "收藏夹不存在或无权操作", "data": nil})
 		return
 	}
 
@@ -265,7 +277,7 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 			 ORDER BY ffv.created_at DESC
 			 LIMIT $2 OFFSET $3`, folderID, size, offset)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "查询失败", "data": nil})
 			return
 		}
 		defer rows.Close()
@@ -284,9 +296,7 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 			it.CreatedAt = t.Format("2006-01-02T15:04:05Z")
 			list = append(list, it)
 		}
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"list": list, "page": page, "size": size,
-		})
+		httputil.WriteOK(w, map[string]any{"list": list, "page": page, "size": size})
 
 	case "PUT":
 		var req struct {
@@ -295,13 +305,13 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 		json.NewDecoder(r.Body).Decode(&req)
 		tx, err := h.db.BeginTx(r.Context(), nil)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "事务开启失败", "data": nil})
 			return
 		}
 		defer tx.Rollback()
 		_, err = tx.ExecContext(r.Context(), `DELETE FROM favorite_folder_videos WHERE folder_id = $1`, folderID)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "更新失败", "data": nil})
 			return
 		}
 		for _, msID := range req.ManuscriptIDs {
@@ -309,24 +319,33 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 				`INSERT INTO favorite_folder_videos (folder_id, manuscript_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
 				folderID, msID)
 			if err != nil {
-				http.Error(w, err.Error(), 500)
+				httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "更新失败", "data": nil})
 				return
 			}
 		}
 		tx.Commit()
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 
 	default:
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 	}
 }
 
 // GET /api/v1/favorites/check?manuscript_id=xxx — 检查稿件是否已收藏
 func (h *FavoriteHandler) handleCheck(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
-	msID, _ := strconv.ParseInt(r.URL.Query().Get("manuscript_id"), 10, 64)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
+	// 兼容 manuscript_id 和 manuscriptId 两种参数名
+	msIDStr := r.URL.Query().Get("manuscript_id")
+	if msIDStr == "" {
+		msIDStr = r.URL.Query().Get("manuscriptId")
+	}
+	msID, _ := strconv.ParseInt(msIDStr, 10, 64)
 	if msID == 0 {
-		http.Error(w, "manuscript_id required", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "manuscript_id required", "data": nil})
 		return
 	}
 	var cnt int
@@ -335,17 +354,14 @@ func (h *FavoriteHandler) handleCheck(w http.ResponseWriter, r *http.Request) {
 		 JOIN favorite_folders ff ON ff.id = ffv.folder_id
 		 WHERE ff.user_id = $1 AND ffv.manuscript_id = $2`,
 		userID, msID).Scan(&cnt)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"favorited": cnt > 0,
-		"count":     cnt,
-	})
+	httputil.WriteOK(w, map[string]any{"favorited": cnt > 0, "count": cnt})
 }
 
 // GET /api/v1/favorites/list — 用户全部收藏（平铺，不分文件夹）
 func (h *FavoriteHandler) handleFlatList(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
 	if userID == 0 {
-		http.Error(w, "unauthorized", 401)
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
 		return
 	}
 	page, size := httputil.ParsePageParams(r)
@@ -357,7 +373,7 @@ func (h *FavoriteHandler) handleFlatList(w http.ResponseWriter, r *http.Request)
 		 ORDER BY ffv.created_at DESC
 		 LIMIT $2 OFFSET $3`, userID, size, (page-1)*size)
 	if err != nil {
-		json.NewEncoder(w).Encode([]interface{}{})
+		httputil.WriteOK(w, []any{})
 		return
 	}
 	defer rows.Close()
@@ -377,7 +393,7 @@ func (h *FavoriteHandler) handleFlatList(w http.ResponseWriter, r *http.Request)
 		f.CreatedAt = t.Format("2006-01-02T15:04:05Z")
 		list = append(list, f)
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{"list": list, "page": page, "size": size})
+	httputil.WriteOK(w, map[string]any{"list": list, "page": page, "size": size})
 }
 
 // GET /api/v1/favorites/manuscript/{manuscriptId} — 稿件所在收藏夹列表
@@ -385,7 +401,7 @@ func (h *FavoriteHandler) handleManuscriptFolders(w http.ResponseWriter, r *http
 	msIDStr := strings.TrimPrefix(r.URL.Path, "/api/v1/favorites/manuscript/")
 	msID, err := strconv.ParseInt(msIDStr, 10, 64)
 	if err != nil {
-		http.Error(w, "invalid manuscript id", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid manuscript id", "data": nil})
 		return
 	}
 	userID := httputil.GetUserIDFromHeader(r)
@@ -396,7 +412,7 @@ func (h *FavoriteHandler) handleManuscriptFolders(w http.ResponseWriter, r *http
 		 WHERE ff.user_id = $1 AND ffv.manuscript_id = $2`,
 		userID, msID)
 	if err != nil {
-		json.NewEncoder(w).Encode([]interface{}{})
+		httputil.WriteOK(w, []any{})
 		return
 	}
 	defer rows.Close()
@@ -411,7 +427,7 @@ func (h *FavoriteHandler) handleManuscriptFolders(w http.ResponseWriter, r *http
 		rows.Scan(&f.ID, &f.Name)
 		list = append(list, f)
 	}
-	json.NewEncoder(w).Encode(list)
+	httputil.WriteOK(w, list)
 }
 
 
