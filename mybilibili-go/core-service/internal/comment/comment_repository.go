@@ -37,6 +37,7 @@ type Reply struct {
 	Status        string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	ManuscriptID  int64 // 由 JOIN 父评论填充（创作者列表用）
 }
 
 type CommentRepository struct {
@@ -174,6 +175,27 @@ func (r *CommentRepository) FindUserByID(ctx context.Context, userID int64) (*Us
 		return nil, err
 	}
 	return u, nil
+}
+
+// FindUsersByIDs 批量查用户，返回 map[id]*User。
+func (r *CommentRepository) FindUsersByIDs(ctx context.Context, ids []int64) map[int64]*User {
+	out := map[int64]*User{}
+	if len(ids) == 0 {
+		return out
+	}
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, username, nickname, avatar, level FROM users WHERE id = ANY($1)`, ids)
+	if err != nil {
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		u := &User{}
+		if err := rows.Scan(&u.ID, &u.Username, &u.Nickname, &u.Avatar, &u.Level); err == nil {
+			out[u.ID] = u
+		}
+	}
+	return out
 }
 
 func (r *CommentRepository) IsCommentLiked(ctx context.Context, commentID, userID int64) (bool, error) {
@@ -331,14 +353,15 @@ func replyToPB(rep *Reply, userName, userAvatar string, userLevel int32, replyTo
 }
 
 func (r *CommentRepository) ListCommentsByCreator(ctx context.Context, userID, manuscriptID int64, page, pageSize int32, sort, commentType string) ([]*Comment, error) {
+	// commentType == "reply" 时不查 comments（由 ListRepliesByCreator 负责）
+	if commentType == "reply" {
+		return nil, nil
+	}
 	where := `JOIN manuscripts m ON m.id = comments.manuscript_id WHERE m.user_id = $1`
 	args := []any{userID}
 	if manuscriptID > 0 {
 		where += ` AND comments.manuscript_id = $2`
 		args = append(args, manuscriptID)
-	}
-	if commentType == "reply" {
-		where += ` AND comments.reply_count > 0`
 	}
 	order := `comments.created_at DESC`
 	if sort == "latest" {
@@ -369,27 +392,83 @@ func (r *CommentRepository) ListCommentsByCreator(ctx context.Context, userID, m
 }
 
 func (r *CommentRepository) CountCommentsByCreator(ctx context.Context, userID, manuscriptID int64, commentType string) (int64, error) {
+	if commentType == "reply" {
+		where := `JOIN comments c ON r.comment_id = c.id JOIN manuscripts m ON m.id = c.manuscript_id WHERE m.user_id = $1 AND r.status = 'NORMAL'`
+		args := []any{userID}
+		if manuscriptID > 0 {
+			where += ` AND c.manuscript_id = $2`
+			args = append(args, manuscriptID)
+		}
+		var total int64
+		err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM replies r `+where, args...).Scan(&total)
+		return total, err
+	}
 	where := `JOIN manuscripts m ON m.id = comments.manuscript_id WHERE m.user_id = $1`
 	args := []any{userID}
 	if manuscriptID > 0 {
 		where += ` AND comments.manuscript_id = $2`
 		args = append(args, manuscriptID)
 	}
-	if commentType == "reply" {
-		where += ` AND comments.reply_count > 0`
-	}
 	var total int64
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM comments `+where, args...).Scan(&total)
 	return total, err
 }
 
-func (r *CommentRepository) DeleteCommentByCreator(ctx context.Context, commentID, userID int64) error {
-	_, err := r.db.ExecContext(ctx,
+// ListRepliesByCreator 创作者稿件下的回复列表（JOIN comments 取 manuscript_id）。
+func (r *CommentRepository) ListRepliesByCreator(ctx context.Context, userID, manuscriptID int64, page, pageSize int32, sort string) ([]*Reply, error) {
+	where := `JOIN comments c ON r.comment_id = c.id JOIN manuscripts m ON m.id = c.manuscript_id WHERE m.user_id = $1 AND r.status = 'NORMAL'`
+	args := []any{userID}
+	if manuscriptID > 0 {
+		where += ` AND c.manuscript_id = $2`
+		args = append(args, manuscriptID)
+	}
+	order := `r.created_at DESC`
+	if sort == "oldest" {
+		order = `r.created_at ASC`
+	} else if sort == "likes" {
+		order = `r.like_count DESC`
+	}
+	offset := int64(page-1) * int64(pageSize)
+	query := `SELECT r.id, r.comment_id, r.user_id, r.reply_to_user_id, r.content, r.like_count, r.status, r.created_at, r.updated_at, c.manuscript_id
+	          FROM replies r ` + where + ` ORDER BY ` + order + ` LIMIT $` + strconv.Itoa(len(args)+1) + ` OFFSET $` + strconv.Itoa(len(args)+2)
+	args = append(args, pageSize, offset)
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var list []*Reply
+	for rows.Next() {
+		rep := &Reply{}
+		if err := rows.Scan(&rep.ID, &rep.CommentID, &rep.UserID, &rep.ReplyToUserID, &rep.Content, &rep.LikeCount, &rep.Status, &rep.CreatedAt, &rep.UpdatedAt, &rep.ManuscriptID); err != nil {
+			return nil, err
+		}
+		list = append(list, rep)
+	}
+	return list, nil
+}
+
+func (r *CommentRepository) IsCommentOwnedByCreator(ctx context.Context, commentID, userID int64) (bool, error) {
+	var exists bool
+	err := r.db.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM comments c
+		 JOIN manuscripts m ON m.id = c.manuscript_id
+		 WHERE c.id = $1 AND m.user_id = $2)`,
+		commentID, userID).Scan(&exists)
+	return exists, err
+}
+
+func (r *CommentRepository) DeleteCommentByCreator(ctx context.Context, commentID, userID int64) (int64, error) {
+	res, err := r.db.ExecContext(ctx,
 		`DELETE FROM comments
 		 WHERE id = $1 AND manuscript_id IN (
 		     SELECT id FROM manuscripts WHERE user_id = $2)`,
 		commentID, userID)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return n, nil
 }
 
 func (r *CommentRepository) WriteContentReview(ctx context.Context, typ string, userID int64, content string) error {
@@ -403,13 +482,17 @@ func (r *CommentRepository) UpdateCommentStatus(ctx context.Context, id int64, s
 	return err
 }
 
-func (r *CommentRepository) DeleteReplyByCreator(ctx context.Context, replyID, userID int64) error {
-	_, err := r.db.ExecContext(ctx,
+func (r *CommentRepository) DeleteReplyByCreator(ctx context.Context, replyID, userID int64) (int64, error) {
+	res, err := r.db.ExecContext(ctx,
 		`DELETE FROM replies
 		 WHERE id = $1 AND comment_id IN (
 		     SELECT c.id FROM comments c
 		     JOIN manuscripts m ON m.id = c.manuscript_id
 		     WHERE m.user_id = $2)`,
 		replyID, userID)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return n, nil
 }

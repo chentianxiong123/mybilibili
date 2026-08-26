@@ -72,7 +72,7 @@ func (s *ManuscriptService) ListUserManuscripts(ctx context.Context, req *pb.Lis
 
 	var infos []*pb.ManuscriptInfo
 	for _, m := range list {
-		infos = append(infos, s.buildManuscriptInfo(ctx, m, 0, false))
+		infos = append(infos, s.buildManuscriptInfo(ctx, m, 0, true))
 	}
 
 	return &pb.ListUserManuscriptsResponse{
@@ -146,14 +146,20 @@ func (s *ManuscriptService) DeleteManuscript(ctx context.Context, req *pb.Delete
 
 func (s *ManuscriptService) PublishManuscript(ctx context.Context, req *pb.PublishManuscriptRequest) (*pb.PublishManuscriptResponse, error) {
 	if err := s.repo.UpdateStatus(ctx, req.Id, req.UserId, 3); err != nil {
-		return nil, errors.ErrPermissionDenied("cannot publish")
+		if err == sql.ErrNoRows {
+			return nil, errors.ErrNotFound("manuscript not found")
+		}
+		return nil, errors.ErrInternal("publish failed")
 	}
 	return &pb.PublishManuscriptResponse{}, nil
 }
 
 func (s *ManuscriptService) UnpublishManuscript(ctx context.Context, req *pb.UnpublishManuscriptRequest) (*pb.UnpublishManuscriptResponse, error) {
 	if err := s.repo.UpdateStatus(ctx, req.Id, req.UserId, -1); err != nil {
-		return nil, errors.ErrPermissionDenied("cannot unpublish")
+		if err == sql.ErrNoRows {
+			return nil, errors.ErrNotFound("manuscript not found")
+		}
+		return nil, errors.ErrInternal("unpublish failed")
 	}
 	return &pb.UnpublishManuscriptResponse{}, nil
 }

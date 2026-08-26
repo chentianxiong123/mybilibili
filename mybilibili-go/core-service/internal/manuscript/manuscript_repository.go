@@ -170,7 +170,8 @@ func (r *ManuscriptRepository) ListByUser(ctx context.Context, userID int64, sta
 	where := "WHERE user_id = $1"
 	args := []interface{}{userID}
 	argN := 2
-	if status != 0 {
+	// status = -100 表示不过滤（全部）；其他值按精确状态过滤（含 0=pending）
+	if status != -100 {
 		where += " AND status = $" + itoa(argN)
 		args = append(args, status)
 		argN++
