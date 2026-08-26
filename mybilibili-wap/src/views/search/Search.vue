@@ -15,6 +15,13 @@ const suggestList = ref([])
 const showSuggest = ref(false)
 const searchHistories = ref([])
 
+// 搜索发现隐藏开关（默认显示，持久化到本地）
+const discoveryVisible = ref(storage.get(K.searchDiscoverVisible) !== false)
+const toggleDiscover = () => {
+  discoveryVisible.value = !discoveryVisible.value
+  storage.set(K.searchDiscoverVisible, discoveryVisible.value)
+}
+
 const isLogin = () => !!storage.get(K.token)
 
 const discoveryWords = computed(() => {
@@ -167,13 +174,17 @@ const goHot = () => router.push('/m/search/hot')
           <div class="heading-actions">
             <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-8.5-6M3 12a9 9 0 0 1 15.5-6" /><path d="M3 4v6h6M21 20v-6h-6" /></svg>
             <span></span>
-            <svg viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" /><circle cx="12" cy="12" r="3" /></svg>
+            <!-- 搜索发现隐藏开关 -->
+            <button class="discover-toggle" :class="{ off: !discoveryVisible }" @click="toggleDiscover" aria-label="隐藏/显示搜索发现">
+              <svg v-if="discoveryVisible" viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" /><circle cx="12" cy="12" r="3" /></svg>
+              <svg v-else viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" /><circle cx="12" cy="12" r="3" /><line x1="3" y1="21" x2="21" y2="3" /></svg>
+            </button>
           </div>
         </div>
-        <div v-if="discoveryWords.length" class="pill-grid discover-grid">
+        <div v-if="discoveryVisible && discoveryWords.length" class="pill-grid discover-grid">
           <button v-for="word in discoveryWords" :key="word" @click="onSearch(word)">{{ word }}</button>
         </div>
-        <p v-else class="empty-text">暂无发现词</p>
+        <p v-else-if="discoveryVisible" class="empty-text">暂无发现词</p>
       </section>
 
       <button class="feedback-btn">反馈 <svg viewBox="0 0 24 24"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg></button>
@@ -396,6 +407,29 @@ const goHot = () => router.push('/m/search/hot')
     width: 1px;
     height: 18px;
     background: #e3e5e7;
+  }
+}
+
+.discover-toggle {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+
+  svg {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: #9499a0;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  &.off svg {
+    stroke: #c4c9d0;
   }
 }
 
