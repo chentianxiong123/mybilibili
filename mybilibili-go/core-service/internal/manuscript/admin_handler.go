@@ -8,17 +8,49 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"mybilibili/pkg/httputil"
 )
+
+// PermChecker 校验当前请求是否拥有指定权限码（由 admin.Handler 实现）。
+type PermChecker interface {
+	CheckPermission(r *http.Request, permission string) (int64, bool)
+}
 
 // ManuscriptAdminHandler 稿件管理后台真 SQL 实现
 type ManuscriptAdminHandler struct {
 	db        *sql.DB
 	events    ManuscriptEventWriter
 	publisher ManuscriptEventPublisher
+	perm      PermChecker
 }
 
 func NewManuscriptAdminHandler(db *sql.DB) *ManuscriptAdminHandler {
 	return &ManuscriptAdminHandler{db: db}
+}
+
+// SetPermChecker 注入权限校验器（来自 admin.Handler）。
+func (h *ManuscriptAdminHandler) SetPermChecker(p PermChecker) {
+	h.perm = p
+}
+
+// requirePerm 鉴权中间件：无权限返回 401/403。
+func (h *ManuscriptAdminHandler) requirePerm(perm string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.perm == nil {
+			httputil.WriteJSON(w, http.StatusForbidden, map[string]any{"code": 403, "message": "权限校验未配置", "data": nil})
+			return
+		}
+		if _, ok := h.perm.CheckPermission(r, perm); !ok {
+			if httputil.GetAdminIDFromHeader(r) == 0 {
+				httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+			} else {
+				httputil.WriteJSON(w, http.StatusForbidden, map[string]any{"code": 403, "message": "forbidden", "data": nil})
+			}
+			return
+		}
+		next(w, r)
+	}
 }
 
 // SetEventWriter 注入事件/流水落库器；未注入时惰性创建 SQL 实现。
@@ -39,11 +71,11 @@ func (h *ManuscriptAdminHandler) eventWriter() ManuscriptEventWriter {
 }
 
 func (h *ManuscriptAdminHandler) Register(mux *http.ServeMux) {
-	mux.HandleFunc("/api/v1/manuscript/admin/pending", h.handlePending)
-	mux.HandleFunc("/api/v1/manuscript/admin/processing", h.handleProcessing)
-	mux.HandleFunc("/api/v1/manuscript/admin/all", h.handleAll)
-	mux.HandleFunc("/api/v1/manuscript/admin/statistics", h.handleStatistics)
-	mux.HandleFunc("/api/v1/manuscript/admin/", h.handleByID)
+	mux.HandleFunc("/api/v1/manuscript/admin/pending", h.requirePerm("review:manage", h.handlePending))
+	mux.HandleFunc("/api/v1/manuscript/admin/processing", h.requirePerm("review:manage", h.handleProcessing))
+	mux.HandleFunc("/api/v1/manuscript/admin/all", h.requirePerm("review:manage", h.handleAll))
+	mux.HandleFunc("/api/v1/manuscript/admin/statistics", h.requirePerm("statistics:manage", h.handleStatistics))
+	mux.HandleFunc("/api/v1/manuscript/admin/", h.requirePerm("review:manage", h.handleByID))
 }
 
 // GET /api/v1/manuscript/admin/pending — 待审核稿件列表

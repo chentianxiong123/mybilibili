@@ -46,3 +46,5 @@ mybilibili-ns/package-lock.json
 
 # Go 编译产物统一输出 /tmp（make build-*），勿在源码目录内 go build -o
 # 注意：裸名规则（如 core-service）会连同名源码目录一起忽略，禁止使用
+mybilibili-go/msg-danmaku-service/mybilibili-msg-danmaku
+# 编译产物

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"mybilibili/pkg/auth"
 	"mybilibili/pkg/httputil"
 )
 
@@ -17,57 +18,107 @@ type AuditRecorder interface {
 	RecordAudit(ctx context.Context, operatorID int64, operatorName, module, action, targetType, targetID string, result int32, message, detail string) error
 }
 
+// PermChecker 校验当前请求是否拥有指定权限码。
+// 返回 (adminID, true) 表示有权限；adminID 用于审计记录。
+type PermChecker interface {
+	CheckPermission(r *http.Request, permission string) (int64, bool)
+}
+
 type UserAdminHandler struct {
 	db      *sql.DB
 	auditor AuditRecorder
+	perm    PermChecker
+	jwt     *auth.JWT
 }
 
-func NewUserAdminHandler(db *sql.DB, auditor AuditRecorder) *UserAdminHandler {
-	return &UserAdminHandler{db: db, auditor: auditor}
+func NewUserAdminHandler(db *sql.DB, auditor AuditRecorder, perm PermChecker, jwt *auth.JWT) *UserAdminHandler {
+	return &UserAdminHandler{db: db, auditor: auditor, perm: perm, jwt: jwt}
+}
+
+// requirePerm 鉴权中间件：无权限返回 401/403，有则继续。
+func (h *UserAdminHandler) requirePerm(perm string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.perm == nil {
+			httputil.WriteJSON(w, http.StatusForbidden, map[string]any{"code": 403, "message": "权限校验未配置", "data": nil})
+			return
+		}
+		if _, ok := h.perm.CheckPermission(r, perm); !ok {
+			if httputil.GetAdminIDFromHeader(r) == 0 {
+				httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+			} else {
+				httputil.WriteJSON(w, http.StatusForbidden, map[string]any{"code": 403, "message": "forbidden", "data": nil})
+			}
+			return
+		}
+		next(w, r)
+	}
 }
 
 func (h *UserAdminHandler) Register(mux *http.ServeMux) {
+	mux.HandleFunc("/api/v1/user/admin/list", h.requirePerm("user:manage", h.handleList))
 	mux.HandleFunc("/api/v1/user/admin/", h.handleRoute)
 }
 
-// handleRoute 分派 /api/v1/user/admin/ 下的子路径
+// handleRoute 分派 /api/v1/user/admin/{id} 下的子路径（除 list 外）。
 func (h *UserAdminHandler) handleRoute(w http.ResponseWriter, r *http.Request) {
+	// /api/v1/user/admin/list 由上面的精确路由处理，这里跳过
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/user/admin/")
-	parts := strings.Split(path, "/")
-	if len(parts) == 1 && parts[0] == "list" {
+	if path == "list" {
 		h.handleList(w, r)
 		return
 	}
+	parts := strings.Split(path, "/")
 	if len(parts) >= 1 {
 		id, err := strconv.ParseInt(parts[0], 10, 64)
 		if err != nil {
-			http.Error(w, "invalid user id", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid user id", "data": nil})
 			return
 		}
 		if len(parts) == 1 {
-			switch r.Method {
-			case "GET":
-				h.handleGet(w, r, id)
-			case "PUT":
-				h.handleUpdate(w, r, id)
-			default:
-				http.Error(w, "method not allowed", 405)
+			// 鉴权：查看/更新用户
+			if r.Method == "GET" {
+				h.withPerm(w, r, "user:manage", func() { h.handleGet(w, r, id) })
+				return
 			}
+			if r.Method == "PUT" {
+				h.withPerm(w, r, "user:manage", func() { h.handleUpdate(w, r, id) })
+				return
+			}
+			httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 			return
 		}
 		if len(parts) == 2 {
 			switch parts[1] {
 			case "status":
-				h.handleStatus(w, r, id)
+				h.withPerm(w, r, "user:manage", func() { h.handleStatus(w, r, id) })
+				return
 			case "password":
-				h.handlePassword(w, r, id)
+				h.withPerm(w, r, "user:manage", func() { h.handlePassword(w, r, id) })
+				return
 			default:
-				http.Error(w, "not found", 404)
+				httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
+				return
 			}
-			return
 		}
 	}
-	http.Error(w, "not found", 404)
+	httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
+}
+
+// withPerm 鉴权后执行 next。
+func (h *UserAdminHandler) withPerm(w http.ResponseWriter, r *http.Request, perm string, next func()) {
+	if h.perm == nil {
+		httputil.WriteJSON(w, http.StatusForbidden, map[string]any{"code": 403, "message": "权限校验未配置", "data": nil})
+		return
+	}
+	if _, ok := h.perm.CheckPermission(r, perm); !ok {
+		if httputil.GetAdminIDFromHeader(r) == 0 {
+			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		} else {
+			httputil.WriteJSON(w, http.StatusForbidden, map[string]any{"code": 403, "message": "forbidden", "data": nil})
+		}
+		return
+	}
+	next()
 }
 
 func (h *UserAdminHandler) handleList(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +132,7 @@ func (h *UserAdminHandler) handleList(w http.ResponseWriter, r *http.Request) {
 		 (SELECT COUNT(*) FROM manuscripts WHERE user_id = u.id)
 		 FROM users u ORDER BY id DESC LIMIT $1 OFFSET $2`, size, offset)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "查询失败", "data": nil})
 		return
 	}
 	defer rows.Close()
@@ -112,7 +163,7 @@ func (h *UserAdminHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	var total int64
 	_ = h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM users`).Scan(&total)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	httputil.WriteOK(w, map[string]any{
 		"list": list, "total": total, "page": page, "size": size,
 	})
 }
@@ -134,13 +185,13 @@ func (h *UserAdminHandler) handleGet(w http.ResponseWriter, r *http.Request, id 
 			&followerCount, &followingCount, &manuscriptCount)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "user not found", 404)
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "user not found", "data": nil})
 		} else {
-			http.Error(w, "db error: "+err.Error(), 500)
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "数据库错误", "data": nil})
 		}
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	httputil.WriteOK(w, map[string]any{
 		"id": uid, "username": username, "nickname": nickname, "email": email,
 		"avatar": avatar, "level": level, "status": status, "created_at": createdAt,
 		"phone": phone, "gender": gender, "birthdate": birthdate,
@@ -153,7 +204,7 @@ func (h *UserAdminHandler) handleGet(w http.ResponseWriter, r *http.Request, id 
 func (h *UserAdminHandler) handleUpdate(w http.ResponseWriter, r *http.Request, id int64) {
 	var body map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid body", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
 		return
 	}
 	for k, v := range body {
@@ -164,7 +215,7 @@ func (h *UserAdminHandler) handleUpdate(w http.ResponseWriter, r *http.Request, 
 				_ = h.db.QueryRowContext(r.Context(),
 					`SELECT COUNT(*) FROM users WHERE nickname = $1 AND id != $2`, s, id).Scan(&exists)
 				if exists > 0 {
-					http.Error(w, "昵称已存在", 409)
+					httputil.WriteJSON(w, http.StatusConflict, map[string]any{"code": 409, "message": "昵称已存在", "data": nil})
 					return
 				}
 				_, _ = h.db.ExecContext(r.Context(),
@@ -182,62 +233,68 @@ func (h *UserAdminHandler) handleUpdate(w http.ResponseWriter, r *http.Request, 
 			}
 		}
 	}
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	httputil.WriteOK(w, map[string]any{"status": "ok"})
 }
 
 func (h *UserAdminHandler) handleStatus(w http.ResponseWriter, r *http.Request, id int64) {
 	if r.Method != "PUT" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var body struct {
 		Status int32 `json:"status"`
 	}
-	json.NewDecoder(r.Body).Decode(&body)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
+		return
+	}
 	res, err := h.db.ExecContext(r.Context(),
 		`UPDATE users SET status=$1, updated_at=NOW() WHERE id=$2`, body.Status, id)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "更新失败", "data": nil})
 		return
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
-		http.Error(w, "user not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "user not found", "data": nil})
 		return
 	}
 	if h.auditor != nil {
 		h.auditor.RecordAudit(r.Context(), httputil.GetAdminIDFromHeader(r), "", "user", "UPDATE_USER_STATUS", "users", strconv.FormatInt(id, 10), 0, "更新用户状态", "")
 	}
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	httputil.WriteOK(w, map[string]any{"status": "ok"})
 }
 
 func (h *UserAdminHandler) handlePassword(w http.ResponseWriter, r *http.Request, id int64) {
 	if r.Method != "PUT" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var body struct {
 		NewPassword string `json:"newPassword"`
 	}
-	json.NewDecoder(r.Body).Decode(&body)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
+		return
+	}
 	if body.NewPassword == "" {
-		http.Error(w, "newPassword required", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "newPassword required", "data": nil})
 		return
 	}
 	hash := sha256hex(body.NewPassword)
 	res, err := h.db.ExecContext(r.Context(),
 		`UPDATE users SET password=$1, updated_at=NOW() WHERE id=$2`, hash, id)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "更新失败", "data": nil})
 		return
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
-		http.Error(w, "user not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "user not found", "data": nil})
 		return
 	}
 	if h.auditor != nil {
 		h.auditor.RecordAudit(r.Context(), httputil.GetAdminIDFromHeader(r), "", "user", "RESET_USER_PASSWORD", "users", strconv.FormatInt(id, 10), 0, "重置用户密码", "")
 	}
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	httputil.WriteOK(w, map[string]any{"status": "ok"})
 }
 
 func sha256hex(s string) string {
