@@ -3,7 +3,6 @@ package social
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -50,7 +49,7 @@ func (h *FollowHandler) Register(mux *http.ServeMux) {
 func (h *FollowHandler) handleFollow(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/follow/"), "/")
 	if len(parts) < 1 || parts[0] == "" {
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 		return
 	}
 	if parts[0] == "me" || parts[0] == "check" || parts[0] == "user" {
@@ -59,63 +58,80 @@ func (h *FollowHandler) handleFollow(w http.ResponseWriter, r *http.Request) {
 
 	userID := h.getUserID(r)
 	if userID == 0 {
-		http.Error(w, "unauthorized", 401)
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
 		return
 	}
 
 	targetID, _ := strconv.ParseInt(parts[0], 10, 64)
 	if targetID == 0 {
-		http.Error(w, "invalid user id", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid user id", "data": nil})
 		return
 	}
 
 	switch r.Method {
 	case "POST":
-		if err := h.svc.Follow(r.Context(), userID, targetID); err != nil {
-			http.Error(w, err.Error(), 400)
+		if userID == targetID {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "不能关注自己", "data": nil})
 			return
 		}
-		w.Write([]byte(`{"status":"ok"}`))
+		// 校验目标用户存在，避免抛 pq 外键错误给前端
+		if !h.userExists(r.Context(), targetID) {
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "用户不存在", "data": nil})
+			return
+		}
+		if err := h.svc.Follow(r.Context(), userID, targetID); err != nil {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "关注失败", "data": nil})
+			return
+		}
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	case "DELETE":
 		h.svc.Unfollow(r.Context(), userID, targetID)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	default:
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 	}
 }
 
 func (h *FollowHandler) handleCheck(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/follow/check/"), "/")
 	if len(parts) == 0 || parts[0] == "" {
-		http.Error(w, "missing user id", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "missing user id", "data": nil})
 		return
 	}
 	targetID, _ := strconv.ParseInt(parts[0], 10, 64)
 	userID := h.getUserID(r)
 	ok, _ := h.svc.IsFollowing(r.Context(), userID, targetID)
-	json.NewEncoder(w).Encode(map[string]bool{"following": ok})
+	httputil.WriteOK(w, map[string]any{"following": ok})
 }
 
 func (h *FollowHandler) handleMyFollowers(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserID(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	page, pageSize := httputil.ParsePageParams(r)
 	ids, _ := h.svc.ListFollowers(r.Context(), userID, page, pageSize)
 	users := h.loadUserBriefs(r.Context(), ids)
-	json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": users})
+	httputil.WriteOK(w, users)
 }
 
 func (h *FollowHandler) handleMyFollowing(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserID(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	page, pageSize := httputil.ParsePageParams(r)
 	ids, _ := h.svc.ListFollowing(r.Context(), userID, page, pageSize)
 	users := h.loadUserBriefs(r.Context(), ids)
-	json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": users})
+	httputil.WriteOK(w, users)
 }
 
 func (h *FollowHandler) handleUserFollows(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/v1/follow/user/"), "/")
 	if len(parts) < 2 {
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 		return
 	}
 	userID, _ := strconv.ParseInt(parts[0], 10, 64)
@@ -127,11 +143,20 @@ func (h *FollowHandler) handleUserFollows(w http.ResponseWriter, r *http.Request
 	case "followers":
 		ids, _ = h.svc.ListFollowers(r.Context(), userID, page, pageSize)
 	default:
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 		return
 	}
 	users := h.loadUserBriefs(r.Context(), ids)
-	json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": users})
+	httputil.WriteOK(w, users)
+}
+
+func (h *FollowHandler) userExists(ctx context.Context, userID int64) bool {
+	if h.db == nil || userID == 0 {
+		return false
+	}
+	var exists bool
+	err := h.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`, userID).Scan(&exists)
+	return err == nil && exists
 }
 
 // loadUserBriefs 批量查询用户信息，返回与 Java UserVO 一致的字段：
