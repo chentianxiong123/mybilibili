@@ -23,16 +23,44 @@ func NewFollowRepository(db *sql.DB) *FollowRepository {
 }
 
 func (r *FollowRepository) Follow(ctx context.Context, followerID, followingID int64) error {
-	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO follows (follower_id, following_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-		followerID, followingID)
-	return err
+	return r.withTx(ctx, func(tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx,
+			`INSERT INTO follows (follower_id, following_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+			followerID, followingID)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			return incrCountsTx(ctx, tx, followerID, followingID, 1)
+		}
+		return nil
+	})
 }
 
 func (r *FollowRepository) Unfollow(ctx context.Context, followerID, followingID int64) error {
-	_, err := r.db.ExecContext(ctx,
-		`DELETE FROM follows WHERE follower_id = $1 AND following_id = $2`, followerID, followingID)
-	return err
+	return r.withTx(ctx, func(tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx,
+			`DELETE FROM follows WHERE follower_id = $1 AND following_id = $2`, followerID, followingID)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			return incrCountsTx(ctx, tx, followerID, followingID, -1)
+		}
+		return nil
+	})
+}
+
+func (r *FollowRepository) withTx(ctx context.Context, fn func(tx *sql.Tx) error) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := fn(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (r *FollowRepository) IsFollowing(ctx context.Context, followerID, followingID int64) (bool, error) {
@@ -95,13 +123,12 @@ func (r *FollowRepository) FollowerCount(ctx context.Context, userID int64) (int
 	return count, err
 }
 
-func (r *FollowRepository) IncrCounts(ctx context.Context, followerID, followingID int64, delta int) error {
-	_, err := r.db.ExecContext(ctx,
-		`UPDATE users SET following_count = GREATEST(following_count + $1, 0) WHERE id = $2`, delta, followerID)
-	if err != nil {
+func incrCountsTx(ctx context.Context, tx *sql.Tx, followerID, followingID int64, delta int) error {
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE users SET following_count = GREATEST(following_count + $1, 0) WHERE id = $2`, delta, followerID); err != nil {
 		return err
 	}
-	_, err = r.db.ExecContext(ctx,
+	_, err := tx.ExecContext(ctx,
 		`UPDATE users SET follower_count = GREATEST(follower_count + $1, 0) WHERE id = $2`, delta, followingID)
 	return err
 }
