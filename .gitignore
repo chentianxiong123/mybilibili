@@ -43,4 +43,6 @@ mybilibili-ns/webpack.config.js
 mybilibili-ns/v8.json
 mybilibili-ns/report.nginx
 mybilibili-ns/package-lock.json
-core-service
+
+# Go 编译产物统一输出 /tmp（make build-*），勿在源码目录内 go build -o
+# 注意：裸名规则（如 core-service）会连同名源码目录一起忽略，禁止使用
