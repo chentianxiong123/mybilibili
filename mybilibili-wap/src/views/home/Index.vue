@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Header from '../../components/Header.vue'
 import TabBar from '../../components/TabBar.vue'
 import Drawer from '../../components/Drawer.vue'
@@ -28,7 +28,36 @@ const currentSlide = ref(0)
 const currentLiveSlide = ref(0)
 const searchPlaceholder = ref('搜索...')
 const route = useRoute()
+const router = useRouter()
 let swiperTimer = null
+
+// 轮播图点击跳转：后端 linkUrl 是 Web 端格式(/manuscript/11)，需转成 WAP 路由(/m/video/11)
+const handleBannerClick = (b) => {
+  const link = String(b?.linkUrl || b?.url || '').trim()
+  if (!link) return
+  // Web 端稿件链接 → WAP 视频详情
+  const m = /^\/(?:manuscript|video)\/(\d+)/.exec(link)
+  if (m) {
+    router.push(`/m/video/${m[1]}`)
+    return
+  }
+  // 同源绝对地址 → 去掉 origin 走 SPA
+  if (link.startsWith(window.location.origin)) {
+    router.push(link.replace(window.location.origin, ''))
+    return
+  }
+  // WAP 内部路由直接 push
+  if (link.startsWith('/m/')) {
+    router.push(link)
+    return
+  }
+  // 外部链接整页打开
+  if (/^https?:\/\//.test(link)) {
+    window.location.href = link
+    return
+  }
+  if (link) router.push(link)
+}
 
 onMounted(async () => {
   try {
@@ -294,12 +323,12 @@ const activeCategoryBanners = computed(() => {
       <div v-else-if="activeTabId === 0 && banners.length" class="banner-slider">
         <div class="swiper-container">
           <div v-for="(b, i) in banners" :key="b.id" class="swiper-slide" v-show="currentSlide === i">
-            <a :href="b.url">
-              <img :src="b.pic" width="100%" height="100%" alt="" />
+            <div class="banner-link" @click="handleBannerClick(b)">
+              <img :src="b.imageUrl || b.pic" width="100%" height="100%" alt="" />
               <div v-if="getBannerTitle(b)" class="banner-caption">
                 <h3>{{ getBannerTitle(b) }}</h3>
               </div>
-            </a>
+            </div>
           </div>
           <div class="pagination-dots">
             <span v-for="(_, i) in banners" :key="i" :class="['dot', { active: currentSlide === i }]" @click="goToSlide(i)" />
@@ -310,12 +339,12 @@ const activeCategoryBanners = computed(() => {
       <div v-else-if="(activeTabId > 0 || activeTabId === -2) && activeCategoryBanners.length" class="category-banner-slider">
         <div class="swiper-container">
           <div v-for="(b, i) in activeCategoryBanners" :key="b.id" class="swiper-slide" v-show="currentSlide === i">
-            <a :href="b.url">
-              <img :src="b.pic" width="100%" height="100%" alt="" />
+            <div class="banner-link" @click="handleBannerClick(b)">
+              <img :src="b.imageUrl || b.pic" width="100%" height="100%" alt="" />
               <div v-if="getBannerTitle(b)" class="banner-caption">
                 <h3>{{ getBannerTitle(b) }}</h3>
               </div>
-            </a>
+            </div>
           </div>
           <div class="pagination-dots" v-if="activeCategoryBanners.length > 1">
             <span v-for="(_, i) in activeCategoryBanners" :key="i" :class="['dot', { active: currentSlide === i }]" @click="goToSlide(i)" />
@@ -405,11 +434,13 @@ const activeCategoryBanners = computed(() => {
   .swiper-slide {
     width: 100%;
 
+    .banner-link,
     a,
     :deep(a) {
       position: relative;
       display: block;
       color: inherit;
+      cursor: pointer;
       text-decoration: none;
     }
 
