@@ -4,10 +4,7 @@ import { useRouter } from 'vue-router'
 import { manuscriptApi, normalizeManuscriptList } from '../../api/manuscript'
 import { formatTenThousand } from '../../utils/format'
 
-type ManageTab = 'video' | 'article' | 'audio'
-
 const router = useRouter()
-const activeTab = ref<ManageTab>('video')
 const loading = ref(false)
 const manuscripts = ref<any[]>([])
 const stats = ref<Record<string, number>>({})
@@ -15,12 +12,6 @@ const page = ref(1)
 const totalPages = ref(1)
 const actionItem = ref<any>(null)
 const toastText = ref('')
-
-const tabs = computed(() => [
-  { key: 'video' as ManageTab, label: '视频', count: stats.value.total ?? manuscripts.value.length },
-  { key: 'article' as ManageTab, label: '图文', count: 0 },
-  { key: 'audio' as ManageTab, label: '音频', count: 0 }
-])
 
 const videoList = computed(() => manuscripts.value)
 
@@ -178,18 +169,14 @@ onMounted(refresh)
     </header>
 
     <nav class="manage-tabs">
-      <button
-        v-for="tab in tabs"
-        :key="tab.key"
-        :class="{ active: activeTab === tab.key }"
-        @click="activeTab = tab.key"
-      >
-        {{ tab.label }}
+      <button class="active">
+        视频
+        <span class="tab-count">{{ stats.total ?? videoList.length }}</span>
       </button>
     </nav>
 
     <main class="manage-content">
-      <section v-if="activeTab === 'video'">
+      <section>
         <div v-if="loading" class="state-block">加载中...</div>
         <div v-else-if="videoList.length === 0" class="state-block">
           <p>还没有视频稿件</p>
@@ -244,10 +231,6 @@ onMounted(refresh)
         <button v-if="page < totalPages && !loading" class="load-more" @click="loadManuscripts(page + 1)">
           加载更多
         </button>
-      </section>
-
-      <section v-else class="state-block">
-        <p>{{ activeTab === 'article' ? '图文稿件' : '音频稿件' }}接口还没有接入</p>
       </section>
     </main>
 
@@ -335,8 +318,9 @@ onMounted(refresh)
   top: 78px;
   z-index: 35;
   height: 56px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: #fff;
   box-shadow: 0 2px 7px rgba(0, 0, 0, 0.08);
 
@@ -344,13 +328,11 @@ onMounted(refresh)
     position: relative;
     border: 0;
     background: transparent;
-    color: #61666d;
+    color: #fb7299;
     font-size: 20px;
-    font-weight: 500;
+    font-weight: 600;
 
     &.active {
-      color: #fb7299;
-
       &::after {
         content: '';
         position: absolute;
@@ -362,6 +344,13 @@ onMounted(refresh)
         background: #fb7299;
       }
     }
+  }
+
+  .tab-count {
+    margin-left: 6px;
+    font-size: 14px;
+    font-weight: 400;
+    color: #9499a0;
   }
 }
 
