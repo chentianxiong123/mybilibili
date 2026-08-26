@@ -28,6 +28,7 @@ type Video struct {
 	ProcessError    string
 	SourceVideoURL  string
 	DurationSeconds int32
+	IsVertical      int32
 }
 
 type BannerImage struct {
@@ -56,12 +57,12 @@ func (r *Repository) GetVideoByID(ctx context.Context, id int64) (*Video, error)
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, manuscript_id, video_order, title, play_url_hd, play_url_sd, play_url_ld,
 		        upload_time, updated_at, process_progress, COALESCE(process_stage,''), has_subtitle, has_summary,
-		        process_status, COALESCE(process_error,''), source_video_url, duration_seconds
+		        process_status, COALESCE(process_error,''), source_video_url, duration_seconds, is_vertical
 		 FROM videos WHERE id = $1`, id,
 	).Scan(&v.ID, &v.ManuscriptID, &v.VideoOrder, &v.Title,
 		&v.PlayURLHD, &v.PlayURLSD, &v.PlayURLLD, &v.UploadTime, &v.UpdatedAt,
 		&v.ProcessProgress, &v.ProcessStage, &v.HasSubtitle, &v.HasSummary,
-		&v.ProcessStatus, &v.ProcessError, &v.SourceVideoURL, &v.DurationSeconds)
+		&v.ProcessStatus, &v.ProcessError, &v.SourceVideoURL, &v.DurationSeconds, &v.IsVertical)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +73,7 @@ func (r *Repository) ListByManuscript(ctx context.Context, manuscriptID int64) (
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, manuscript_id, video_order, title, play_url_hd, play_url_sd, play_url_ld,
 		        upload_time, updated_at, process_progress, COALESCE(process_stage,''), has_subtitle, has_summary,
-		        process_status, COALESCE(process_error,''), source_video_url, duration_seconds
+		        process_status, COALESCE(process_error,''), source_video_url, duration_seconds, is_vertical
 		 FROM videos WHERE manuscript_id = $1 ORDER BY video_order`, manuscriptID)
 	if err != nil {
 		return nil, err
@@ -84,7 +85,7 @@ func (r *Repository) ListByManuscript(ctx context.Context, manuscriptID int64) (
 		rows.Scan(&v.ID, &v.ManuscriptID, &v.VideoOrder, &v.Title,
 			&v.PlayURLHD, &v.PlayURLSD, &v.PlayURLLD, &v.UploadTime, &v.UpdatedAt,
 			&v.ProcessProgress, &v.ProcessStage, &v.HasSubtitle, &v.HasSummary,
-			&v.ProcessStatus, &v.ProcessError, &v.SourceVideoURL, &v.DurationSeconds)
+			&v.ProcessStatus, &v.ProcessError, &v.SourceVideoURL, &v.DurationSeconds, &v.IsVertical)
 		list = append(list, v)
 	}
 	return list, nil

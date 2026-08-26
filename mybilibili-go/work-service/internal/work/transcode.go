@@ -99,6 +99,23 @@ func (w *TranscodeWorker) GetDuration(ctx context.Context, srcFile string) (int,
 	return seconds, nil
 }
 
+// GetVideoSize 用 ffprobe 探测源视频的宽高，用于判断横竖屏（高>宽为竖屏）。
+func (w *TranscodeWorker) GetVideoSize(ctx context.Context, srcFile string) (width, height int, err error) {
+	out, err := w.ffprobe.Run(ctx,
+		"-v", "error", "-select_streams", "v:0",
+		"-show_entries", "stream=width,height",
+		"-of", "csv=s=x:p=0", srcFile)
+	if err != nil {
+		return 0, 0, err
+	}
+	parts := strings.Split(strings.TrimSpace(string(out)), "x")
+	if len(parts) == 2 {
+		fmt.Sscanf(parts[0], "%d", &width)
+		fmt.Sscanf(parts[1], "%d", &height)
+	}
+	return width, height, nil
+}
+
 // transcodeArgs 组装 ffmpeg 参数。
 // 硬编：h264_vaapi CQP（快、CPU 近零，体积略大）；软编：libx264 CRF（体积优，吃 CPU）。
 func (w *TranscodeWorker) transcodeArgs(scale, crf, srcFile, outDir string) []string {
@@ -132,17 +149,17 @@ func (w *TranscodeWorker) Transcode(ctx context.Context, srcFile, outDir string,
 		return err
 	}
 	crf := "23"
-	scale := "1280:-2"
+	scale := "min(1280,iw):-2"
 	switch quality {
 	case "1080p":
 		crf = "20"
-		scale = "1920:-2"
+		scale = "min(1920,iw):-2"
 	case "720p":
 		crf = "22"
-		scale = "1280:-2"
+		scale = "min(1280,iw):-2"
 	default:
 		crf = "23"
-		scale = "854:-2"
+		scale = "min(854,iw):-2"
 	}
 
 	args := w.transcodeArgs(scale, crf, srcFile, outDir)

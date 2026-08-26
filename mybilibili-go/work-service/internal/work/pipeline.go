@@ -97,6 +97,24 @@ func (p *Pipeline) doTranscode(ctx context.Context, task ProcessMessage, dir str
 		return
 	}
 
+	// 检测视频横竖屏（高>宽即竖屏），随进度事件回写 videos.is_vertical
+	if w, h, err := p.transcoder.GetVideoSize(ctx, src); err == nil && w > 0 && h > 0 {
+		isVertical := int32(0)
+		if h > w {
+			isVertical = 1
+		}
+		p.mq.Publish(ctx, TopicVideoProgress, abstraction.Message{
+			Topic: TopicVideoProgress,
+			Payload: marshal(ProgressEvent{
+				VideoID: task.VideoID, ManuscriptID: task.ManuscriptID,
+				Stage: "transcode", StageText: "方向检测", Progress: 15, Status: 1,
+				IsVertical: isVertical, Done: true, OccurredAt: now(),
+			}),
+		})
+	} else {
+		log.Printf("get video size failed (video %d): %v", task.VideoID, err)
+	}
+
 	p.emitProgress(task.VideoID, task.ManuscriptID, "transcoding", "转码中 1080p", 30, 1, "")
 	if err := p.transcoder.Transcode(ctx, src, filepath.Join(dir, "1080p"), "1080p"); err != nil {
 		log.Printf("transcode 1080p warning: %v", err)
@@ -289,6 +307,7 @@ func (p *Pipeline) emitProgress(videoID, manuscriptID int64, stage, stageText st
 		Stage: stage, StageText: stageText, Progress: progress,
 		Status: status, StatusText: stageText, Error: errMsg,
 		Done: progress >= 100, OccurredAt: now(),
+		IsVertical: -1,
 	}
 	p.mq.Publish(context.Background(), TopicVideoProgress, abstraction.Message{
 		Topic: TopicVideoProgress, Payload: marshal(evt),

@@ -569,6 +569,7 @@ func manuscriptToMap(info *pb.ManuscriptInfo) map[string]interface{} {
 				"processStatus": v.ProcessStatus,
 				"processProgress": v.ProcessProgress,
 				"processStage": v.ProcessStage, "processError": v.ProcessError,
+				"isVertical": v.IsVertical,
 			})
 		}
 		m["videos"] = videos

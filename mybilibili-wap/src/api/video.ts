@@ -49,6 +49,7 @@ export async function getVideoInfo(aId: number) {
       playUrlHd: currentVideo.playUrlHd || '',
       playUrlSd: currentVideo.playUrlSd || '',
       playUrlLd: currentVideo.playUrlLd || '',
+      isVertical: currentVideo.isVertical ? 1 : 0,
       // 互动计数
       likeCount: data.likeCount || 0,
       coinCount: data.coinCount || 0,
@@ -74,7 +75,8 @@ export async function getVideoInfo(aId: number) {
         playUrlHd: v.playUrlHd || '',
         playUrlSd: v.playUrlSd || '',
         playUrlLd: v.playUrlLd || '',
-        duration: v.duration
+        duration: v.duration,
+        isVertical: v.isVertical ? 1 : 0
       }))
     }
     writeCache('detail', String(aId), result)

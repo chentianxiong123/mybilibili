@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { getBarrages } from '../../api/video'
 
 const props = defineProps({
@@ -19,6 +19,7 @@ const emit = defineEmits<{
 const playerRef = ref<HTMLDivElement | null>(null)
 let art: any = null
 let artReady = false
+let currentAid: number | null = null
 let ArtplayerClass: any = null
 let DanmukuPluginClass: any = null
 let HlsClass: any = null
@@ -28,6 +29,9 @@ const showCover = ref(true)
 const finish = ref(false)
 const duration = ref(0)
 const currentTime = ref(0)
+// 竖屏视频用 9:16 竖屏比例展示，横屏用 16:9
+const isVertical = ref(false)
+const playerRatio = computed(() => (isVertical.value ? '9 / 16' : '16 / 9'))
 
 const buildQualityOptions = () => {
   const opts: any[] = []
@@ -42,6 +46,8 @@ const buildQualityOptions = () => {
 
 const initPlayer = async () => {
   if (!playerRef.value || !props.video) return
+  currentAid = props.video.aId ?? null
+  isVertical.value = props.video.isVertical === 1
 
   const defaultUrl = props.video.playUrl || props.video.playUrlHd || ''
   if (!defaultUrl) return
@@ -168,9 +174,22 @@ const destroyPlayer = () => {
     art = null
     artReady = false
   }
+  // artplayer-plugin-danmuku 在外部 mount 节点里挂载的弹幕控件不会被 art.destroy() 清理（外部 mount 不在播放器容器内），
+  // 若不手动清空，每次 watch(video) 触发销毁重建都会在 #danmaku-emitter-mount 里多 append 一个 .artplayer-plugin-danmuku，
+  // 导致弹幕栏重复累积（出现多个）。这里主动清空，避免重复。
+  if (props.danmakuMount) {
+    const mountEl = document.querySelector(props.danmakuMount)
+    if (mountEl) mountEl.innerHTML = ''
+  }
 }
 
 watch(() => props.video, () => {
+  // SWR 场景：同一稿件（相同 aId）缓存→网络的刷新不应重建播放器，
+  // 否则播放器会销毁并从头重载，造成“打开页面时画面抖动”一次。
+  // 仅真正切换到不同视频（aId 变化）时才销毁重建。
+  if (props.video?.aId != null && props.video.aId === currentAid) {
+    return
+  }
   destroyPlayer()
   if (props.video?.playUrl) {
     nextTick(() => initPlayer())
@@ -187,17 +206,45 @@ onUnmounted(() => {
   destroyPlayer()
 })
 
+const switchPart = async (part) => {
+  const url = part.playUrl || part.playUrlHd || ''
+  if (!art || !url) return
+  // 切分P时同步更新横竖屏展示比例
+  if (part.isVertical !== undefined) {
+    isVertical.value = part.isVertical === 1
+  }
+  // 切换分P：直接换源，避免整体销毁重建导致画面闪动。
+  // 每个分P的 id 就是 video_id，弹幕按 video_id 存储，切分P要重载对应弹幕。
+  art.switchUrl(url)
+  if (part.videoId) {
+    try {
+      const res = await getBarrages(part.videoId)
+      const barrages = (res.data || []).map((b: any) => ({
+        text: b.text || b.content,
+        time: parseFloat(b.time) || 0,
+        color: b.color || '#ffffff'
+      }))
+      const dm = art.plugins?.artplayerPluginDanmuku
+      if (dm) {
+        dm.config({ danmuku: barrages })
+        dm.load()
+      }
+    } catch (e) {}
+  }
+}
+
 defineExpose({
   play: () => art?.play(),
   pause: () => art?.pause(),
   seek: (time: number) => { if (art) art.currentTime = time },
-  getArt: () => art
+  getArt: () => art,
+  switchPart
 })
 </script>
 
 <template>
   <div class="artplayer-mobile-wrap">
-    <div ref="playerRef" class="artplayer-mobile" />
+    <div ref="playerRef" class="artplayer-mobile" :style="{ aspectRatio: playerRatio }" />
   </div>
 </template>
 
