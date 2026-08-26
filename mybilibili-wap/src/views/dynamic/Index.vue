@@ -37,6 +37,7 @@ const myVideos = ref<any[]>([])
 // Comment states (per-dynamic map)
 const showCommentsMap = ref<Record<number, boolean>>({})
 const commentsMap = ref<Record<number, any[]>>({})
+const repliesMap = ref<Record<number, any[]>>({})
 const commentInputs = ref<Record<number, string>>({})
 const loadingCommentsMap = ref<Record<number, boolean>>({})
 
@@ -223,12 +224,30 @@ const fetchComments = async (dynamicId: number) => {
   try {
     const res = await dynamicApi.getComments(dynamicId, 1, 30)
     if (res.code === 200) {
-      commentsMap.value[dynamicId] = res.data?.list || res.data || []
+      const list = res.data?.list || res.data || []
+      commentsMap.value[dynamicId] = list
+      // 并行拉取每条评论的楼中楼回复（有回复数才拉）
+      for (const c of list) {
+        if ((c.replyCount || 0) > 0) {
+          fetchReplies(c.id)
+        }
+      }
     }
   } catch (e) {
     console.error('获取评论失败:', e)
   } finally {
     loadingCommentsMap.value[dynamicId] = false
+  }
+}
+
+const fetchReplies = async (commentId: number) => {
+  try {
+    const res = await dynamicApi.getReplies(commentId, 1, 20)
+    if (res.code === 200) {
+      repliesMap.value[commentId] = res.data?.list || res.data || []
+    }
+  } catch (e) {
+    console.error('获取回复失败:', e)
   }
 }
 
@@ -587,6 +606,17 @@ defineExpose({
                   <span class="comment-time">{{ formatTime(c.createdAt) }}</span>
                 </div>
                 <p class="comment-text">{{ c.content }}</p>
+                <div v-if="(c.replyCount || 0) > 0" class="comment-replies">
+                  <div v-for="r in repliesMap[c.id] || []" :key="r.id" class="reply-item">
+                    <img :src="r.userAvatar || r.user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" class="reply-avatar" alt="" />
+                    <div class="reply-body">
+                      <span class="reply-name">{{ r.userName || r.user?.username || '用户' }}</span>
+                      <span v-if="r.replyUserId > 0" class="reply-at">回复</span>
+                      <span class="reply-text">{{ r.content }}</span>
+                    </div>
+                  </div>
+                  <div v-if="repliesMap[c.id] && repliesMap[c.id].length === 0" class="reply-loading">回复加载中...</div>
+                </div>
               </div>
             </div>
             <div v-if="!commentsMap[item.id] || commentsMap[item.id].length === 0" class="empty-comments">
@@ -1223,6 +1253,60 @@ defineExpose({
           margin-top: 3px;
           line-height: 1.4;
           word-break: break-all;
+        }
+
+        .comment-replies {
+          margin-top: 6px;
+          background-color: #fff;
+          border-radius: 4px;
+          padding: 6px 8px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+
+          .reply-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+
+            .reply-avatar {
+              width: 18px;
+              height: 18px;
+              border-radius: 50%;
+              object-fit: cover;
+              flex-shrink: 0;
+              margin-top: 1px;
+            }
+
+            .reply-body {
+              flex: 1;
+              font-size: 12px;
+              line-height: 1.5;
+              word-break: break-all;
+
+              .reply-name {
+                color: #61666d;
+                font-weight: 500;
+                margin-right: 4px;
+              }
+
+              .reply-at {
+                color: #9499a0;
+                margin-right: 4px;
+              }
+
+              .reply-text {
+                color: #18191c;
+              }
+            }
+          }
+
+          .reply-loading {
+            text-align: center;
+            font-size: 11px;
+            color: #9499a0;
+            padding: 2px 0;
+          }
         }
       }
 
