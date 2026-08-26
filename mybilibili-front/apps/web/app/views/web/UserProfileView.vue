@@ -116,9 +116,8 @@ const loadUserInfo = async () => {
   }
 }
 
-// 根据路由路径获取当前活跃标签
-const activeTab = computed(() => {
-  const path = route.path
+// 当前活跃标签（纯前端切换，不走路由，避免整页重建闪烁）
+const pathToTab = (path) => {
   if (path.endsWith('/home')) return '主页'
   if (path.endsWith('/dynamic')) return '动态'
   if (path.endsWith('/submissions')) return '投稿'
@@ -130,46 +129,12 @@ const activeTab = computed(() => {
   if (path.endsWith('/followers')) return '粉丝'
   if (path.endsWith('/search')) return '搜索'
   return '主页'
-})
+}
+const activeTab = ref(pathToTab(route.path))
 
-// 处理标签点击
+// 处理标签点击（纯前端切换，不触发路由）
 const handleTabClick = (tab) => {
-  let path = ''
-  switch (tab) {
-    case '主页':
-      path = `/profile/${userId.value}/home`
-      break
-    case '动态':
-      path = `/profile/${userId.value}/dynamic`
-      break
-    case '投稿':
-      path = `/profile/${userId.value}/submissions`
-      break
-    case '合集和列表':
-      path = `/profile/${userId.value}/collections`
-      break
-    case '收藏':
-      path = `/profile/${userId.value}/favorites`
-      break
-    case '设置':
-      path = `/profile/${userId.value}/settings`
-      break
-    case '兴趣画像':
-      path = `/profile/${userId.value}/interests`
-      break
-    case '关注':
-      path = `/profile/${userId.value}/following`
-      break
-    case '粉丝':
-      path = `/profile/${userId.value}/followers`
-      break
-    case '搜索':
-      path = `/profile/${userId.value}/search`
-      break
-    default:
-      path = `/profile/${userId.value}/home`
-  }
-  router.push(path)
+  activeTab.value = tab
 }
 
 // 关注状态
