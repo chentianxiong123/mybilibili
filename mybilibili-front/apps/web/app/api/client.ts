@@ -309,6 +309,9 @@ export const commentApi = {
     if (targetType === 'DYNAMIC') {
       return api.post(`/dynamic/comment/add?dynamicId=${targetId}&content=${encodedContent}`, null, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      }).then((res: any) => {
+        if (res && res.code === 200 && Array.isArray(res.data)) res.data = res.data[0] || null
+        return res
       })
     } else {
       return api.post(`/comment/add`, `manuscriptId=${targetId}&content=${encodedContent}`, {
@@ -316,6 +319,40 @@ export const commentApi = {
       })
     }
   },
+
+  // ===== 统一评论接口：视频/动态共用一套契约，仅 targetType 分流 =====
+
+  // 回复（顶层评论或楼中楼），动态侧复用 add 接口携带 parentId
+  replyTo: (targetType: string, targetId: number, commentId: number, content: string, replyToUserId?: number) => {
+    const enc = encodeURIComponent(content)
+    if (targetType === 'DYNAMIC') {
+      return api.post(`/dynamic/comment/add?dynamicId=${targetId}&content=${enc}&parentId=${commentId}${replyToUserId ? `&replyUserId=${replyToUserId}` : ''}`, null, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      }).then((res: any) => {
+        if (res && res.code === 200 && Array.isArray(res.data)) res.data = res.data[0] || null
+        return res
+      })
+    }
+    return api.post('/comment/reply', `commentId=${commentId}&content=${enc}${replyToUserId ? `&replyToUserId=${replyToUserId}` : ''}`, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+  },
+
+  // 评论/回复点赞与取消（kind 区分顶层评论与回复）
+  likeTarget: (targetType: string, kind: 'comment' | 'reply', id: number) => {
+    if (targetType === 'DYNAMIC') return api.post(`/dynamic/comment/like/${id}`)
+    return kind === 'reply' ? api.post(`/comment/reply/${id}/like`) : api.post(`/comment/${id}/like`)
+  },
+  unlikeTarget: (targetType: string, kind: 'comment' | 'reply', id: number) => {
+    if (targetType === 'DYNAMIC') return api.delete(`/dynamic/comment/like/${id}`)
+    return kind === 'reply' ? api.delete(`/comment/reply/${id}/like`) : api.delete(`/comment/${id}/like`)
+  },
+
+  // 加载某条评论的回复列表
+  getReplies: (targetType: string, commentId: number, page = 1, size = 20) =>
+    targetType === 'DYNAMIC'
+      ? api.get(`/dynamic/comment/replies?commentId=${commentId}&page=${page}&size=${size}`)
+      : api.get(`/comment/${commentId}/replies?page=${page}&size=${size}`),
 
   replyComment: (commentId: number, content: string, replyToUserId?: number) => api.post('/comment/reply', `commentId=${commentId}&content=${encodeURIComponent(content)}${replyToUserId ? `&replyToUserId=${replyToUserId}` : ''}`, {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
@@ -326,15 +363,10 @@ export const commentApi = {
   }),
 
   likeComment: (commentId: number) => api.post(`/comment/${commentId}/like`),
-  likeDynamicComment: (commentId: number) => api.post(`/dynamic/comment/like/${commentId}`),
   unlikeComment: (commentId: number) => api.delete(`/comment/${commentId}/like`),
-  unlikeDynamicComment: (commentId: number) => api.delete(`/dynamic/comment/like/${commentId}`),
   getRepliesByCommentId: (commentId: number, page: number, size: number) => api.get(`/comment/${commentId}/replies?page=${page}&size=${size}`),
-  getDynamicRepliesByCommentId: (commentId: number) => api.get(`/dynamic/comment/replies?commentId=${commentId}`),
   likeReply: (replyId: number) => api.post(`/comment/reply/${replyId}/like`),
-  likeDynamicReply: (replyId: number) => api.post(`/dynamic/comment/like/${replyId}`),
-  unlikeReply: (replyId: number) => api.delete(`/comment/reply/${replyId}/like`),
-  unlikeDynamicReply: (replyId: number) => api.delete(`/dynamic/comment/like/${replyId}`)
+  unlikeReply: (replyId: number) => api.delete(`/comment/reply/${replyId}/like`)
 }
 
 const requireAuthResult = (data: any) => (
