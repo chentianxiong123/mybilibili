@@ -34,17 +34,6 @@ type Report struct {
 	CreatedAt    time.Time  `json:"created_at"`
 }
 
-// Feedback 用户反馈（区别于举报，无目标对象）
-type Feedback struct {
-	ID        int64     `json:"id"`
-	UserID    int64     `json:"user_id"`
-	Type      string    `json:"type"`
-	Content   string    `json:"content"`
-	Contact   string    `json:"contact"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
 type Repository struct {
 	db *sql.DB
 }
@@ -130,14 +119,6 @@ func (r *Repository) CreateReport(ctx context.Context, reporterID int64, targetT
 		`INSERT INTO reports (reporter_id, target_type, target_id, manuscript_id, reason, description)
 		 VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
 		reporterID, targetType, targetID, repository.NullInt64(manuscriptID), reason, desc).Scan(&id)
-	return id, err
-}
-
-func (r *Repository) CreateFeedback(ctx context.Context, userID int64, fbType, content, contact string) (int64, error) {
-	var id int64
-	err := r.db.QueryRowContext(ctx,
-		`INSERT INTO feedbacks (user_id, type, content, contact) VALUES ($1,$2,$3,$4) RETURNING id`,
-		userID, fbType, content, contact).Scan(&id)
 	return id, err
 }
 
@@ -227,11 +208,6 @@ func (s *Service) ContainsProhibited(ctx context.Context, content string) (bool,
 
 func (s *Service) SubmitReport(ctx context.Context, reporterID int64, targetType string, targetID, msID int64, reason, desc string) error {
 	_, err := s.repo.CreateReport(ctx, reporterID, targetType, targetID, msID, reason, desc)
-	return err
-}
-
-func (s *Service) SubmitFeedback(ctx context.Context, userID int64, fbType, content, contact string) error {
-	_, err := s.repo.CreateFeedback(ctx, userID, fbType, content, contact)
 	return err
 }
 

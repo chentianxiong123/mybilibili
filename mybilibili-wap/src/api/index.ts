@@ -206,10 +206,15 @@ export async function getRankingArchive(params) {
     return { code: '0', data: [] }
   }
 }
-// 提交反馈（意见反馈弹窗 → POST /api/v1/feedback）
+// 提交反馈（意见反馈 → 客服工单 POST /api/v1/operation/tickets，后端 source=USER_FEEDBACK）
 export async function submitFeedback(data: { type: string; content: string; contact: string }) {
   try {
-    const res = await api.post('/feedback', data)
+    const res = await api.post('/operation/tickets', {
+      title: data.type,
+      content: data.contact
+        ? `${data.content}\n\n联系方式：${data.contact}`
+        : data.content
+    })
     return { code: '1', data: res?.data || res }
   } catch (e) {
     return { code: '0', data: null }
