@@ -102,6 +102,12 @@ const mobileRoutes: RouteRecordRaw[] = [
     meta: { title: '稿件管理', mobile: true, hideTabBar: true }
   },
   {
+    path: '/m/space/drafts',
+    name: 'mobile-space-drafts',
+    component: () => import('../views/space/Drafts.vue'),
+    meta: { title: '草稿箱', mobile: true, hideTabBar: true }
+  },
+  {
     path: '/m/space/profile/edit',
     name: 'mobile-space-profile-edit',
     component: () => import('../views/space/ProfileEdit.vue'),
