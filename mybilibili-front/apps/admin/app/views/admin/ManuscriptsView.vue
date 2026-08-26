@@ -1,5 +1,5 @@
 <script setup>
-import { Search } from '@element-plus/icons-vue'
+import { Search, ArrowDown, VideoPlay } from '@element-plus/icons-vue'
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -413,7 +413,7 @@ const getStatusType = (status) => {
     5: 'danger',
     [-1]: 'info'
   }
-  return typeMap[status] || ''
+  return typeMap[status] || 'info'
 }
 
 const getProcessStatusText = (processStatus) => {
