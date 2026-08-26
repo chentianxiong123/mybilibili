@@ -59,7 +59,6 @@ const allMenuItems = [
     children: [
       { path: '/categories', icon: 'Folder', title: '分类管理', permission: 'category:manage' },
       { path: '/banner-images', icon: 'Picture', title: '图片管理', permission: 'banner:manage' },
-      { path: '/subtitles', icon: 'Tickets', title: '字幕管理', permission: 'video:manage' },
       { path: '/live-rooms', icon: 'Connection', title: '直播管理', permission: 'live:manage' }
     ]
   },
@@ -93,7 +92,7 @@ const activeMenu = computed(() => {
   const prefixes = ['/users', '/manuscripts', '/operation-tasks', '/audit-logs', '/prohibited-words',
     '/content-review', '/categories', '/banner-images', '/index-manager', '/recommend-config',
     '/admins', '/api-management', '/ai-skills', '/ai-usage', '/support-tickets', '/live-rooms',
-    '/login-logs', '/customer-chat', '/subtitles']
+    '/login-logs', '/customer-chat']
   for (const p of prefixes) {
     if (path.startsWith(p)) return p
   }

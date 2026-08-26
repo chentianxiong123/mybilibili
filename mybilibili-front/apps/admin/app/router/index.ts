@@ -87,12 +87,6 @@ const router = createRouter({
       meta: { title: '管理员与角色权限 - 管理后台', requiresAuth: true, superAdminOnly: true, permission: 'role:manage' }
     },
     {
-      path: '/subtitles',
-      name: 'subtitles',
-      component: () => import('~/views/admin/SubtitleManagementView.vue'),
-      meta: { title: '字幕管理 - 管理后台', requiresAuth: true, permission: 'video:manage' }
-    },
-    {
       path: '/index-manager',
       name: 'indexManager',
       component: () => import('~/views/admin/IndexManagerView.vue'),

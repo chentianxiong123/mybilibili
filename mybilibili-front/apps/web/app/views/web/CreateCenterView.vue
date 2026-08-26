@@ -167,11 +167,6 @@ watch(
 
       '/create-center/data': 'data',
       '/create-center/fans': 'fans',
-      '/create-center/interaction': 'interaction',
-      '/create-center/interaction-comment': 'interaction-comment',
-      '/create-center/interaction-danmu': 'interaction-danmu',
-
-
     }
 
     if (pathMap[newPath]) {
