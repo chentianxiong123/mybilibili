@@ -19,7 +19,7 @@ export const manuscriptApi = {
   getMyStats: () => api.get(`/manuscript/me/stats`),
   getUserManuscripts: (userId: number, params: any) => api.get(`/manuscript/user/${userId}`, { params }),
   getManuscriptById: (id: number) => api.get(`/manuscript/${id}`),
-  getMyManuscriptById: (id: number) => api.get(`/manuscript/me/${id}`),
+  getMyManuscriptById: (id: number) => api.get(`/manuscript/${id}`),
   updateManuscript: (id: number, data: any) => {
     const formData = new FormData()
     formData.append('title', data.title)

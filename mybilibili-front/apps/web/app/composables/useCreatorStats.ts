@@ -31,9 +31,11 @@ export function useCreatorStats() {
     loading.overview = true
     try {
       const res = await statsApi.getOverview()
-      if (res.code === 200 && res.data) {
+      if (res?.code === 200 && res.data) {
         overview.value = { ...overview.value, ...res.data }
       }
+    } catch (e) {
+      console.error('loadOverview failed:', e)
     } finally {
       loading.overview = false
     }
@@ -44,9 +46,11 @@ export function useCreatorStats() {
     loading.trend = true
     try {
       const res = await statsApi.getTrend(days)
-      if (res.code === 200 && res.data) {
+      if (res?.code === 200 && res.data) {
         trendData.value = res.data
       }
+    } catch (e) {
+      console.error('loadTrend failed:', e)
     } finally {
       loading.trend = false
     }
@@ -57,9 +61,11 @@ export function useCreatorStats() {
     loading.ranking = true
     try {
       const res = await statsApi.getRanking(sortBy, limit)
-      if (res.code === 200 && res.data) {
+      if (res?.code === 200 && res.data) {
         rankingList.value = res.data.list || []
       }
+    } catch (e) {
+      console.error('loadRanking failed:', e)
     } finally {
       loading.ranking = false
     }
@@ -70,9 +76,11 @@ export function useCreatorStats() {
     loading.fansTrend = true
     try {
       const res = await statsApi.getFansTrend(days)
-      if (res.code === 200 && res.data) {
+      if (res?.code === 200 && res.data) {
         fansTrend.value = res.data
       }
+    } catch (e) {
+      console.error('loadFansTrend failed:', e)
     } finally {
       loading.fansTrend = false
     }
@@ -83,9 +91,11 @@ export function useCreatorStats() {
     loading.trend = true
     try {
       const res = await statsApi.getManuscriptTrend()
-      if (res.code === 200 && res.data) {
+      if (res?.code === 200 && res.data) {
         manuscriptTrend.value = res.data
       }
+    } catch (e) {
+      console.error('loadManuscriptTrend failed:', e)
     } finally {
       loading.trend = false
     }
