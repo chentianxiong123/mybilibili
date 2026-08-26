@@ -56,7 +56,7 @@ func (r *DynamicRepository) GetByID(ctx context.Context, id int64) (*Dynamic, er
 	d := &Dynamic{}
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, user_id, content, dynamic_type, COALESCE(image_url,''), COALESCE(ref_manuscript_id,0),
-		        like_count, comment_count, share_count, status, created_at
+		        like_count, COALESCE((SELECT COUNT(*)::int FROM dynamic_comments c WHERE c.dynamic_id = user_dynamics.id AND c.status = 0), 0) AS comment_count, share_count, status, created_at
 		 FROM user_dynamics WHERE id = $1`, id,
 	).Scan(&d.ID, &d.UserID, &d.Content, &d.DynamicType, &d.ImageURL, &d.RefManuscriptID,
 		&d.LikeCount, &d.CommentCount, &d.ShareCount, &d.Status, &d.CreatedAt)
@@ -70,7 +70,7 @@ func (r *DynamicRepository) ListByUser(ctx context.Context, userID int64, page, 
 	offset := (page - 1) * limit
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, user_id, content, dynamic_type, COALESCE(image_url,''), COALESCE(ref_manuscript_id,0),
-		        like_count, comment_count, share_count, status, created_at
+		        like_count, COALESCE((SELECT COUNT(*)::int FROM dynamic_comments c WHERE c.dynamic_id = user_dynamics.id AND c.status = 0), 0) AS comment_count, share_count, status, created_at
 		 FROM user_dynamics WHERE user_id = $1 AND status = 0 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
 		userID, limit, offset)
 	if err != nil {
@@ -84,7 +84,7 @@ func (r *DynamicRepository) ListFollowing(ctx context.Context, userID int64, pag
 	offset := (page - 1) * limit
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT d.id, d.user_id, d.content, d.dynamic_type, COALESCE(d.image_url,''), COALESCE(d.ref_manuscript_id,0),
-		        d.like_count, d.comment_count, d.share_count, d.status, d.created_at
+		        d.like_count, COALESCE((SELECT COUNT(*)::int FROM dynamic_comments c WHERE c.dynamic_id = d.id AND c.status = 0), 0) AS comment_count, d.share_count, d.status, d.created_at
 		 FROM user_dynamics d
 		 WHERE d.status = 0 AND (
 		       d.user_id = $1
@@ -103,7 +103,7 @@ func (r *DynamicRepository) ListAll(ctx context.Context, page, limit int32) ([]*
 	offset := (page - 1) * limit
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, user_id, content, dynamic_type, COALESCE(image_url,''), COALESCE(ref_manuscript_id,0),
-		        like_count, comment_count, share_count, status, created_at
+		        like_count, COALESCE((SELECT COUNT(*)::int FROM dynamic_comments c WHERE c.dynamic_id = user_dynamics.id AND c.status = 0), 0) AS comment_count, share_count, status, created_at
 		 FROM user_dynamics WHERE status = 0 ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
 		limit, offset)
 	if err != nil {

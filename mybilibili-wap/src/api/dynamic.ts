@@ -53,6 +53,10 @@ export const dynamicApi = {
     return api.get('/dynamic/comment/list', { params: { dynamicId, page, size: limit } })
   },
 
+  getReplies(commentId: number, page = 1, limit = 20) {
+    return api.get('/dynamic/comment/replies', { params: { commentId, page, size: limit } })
+  },
+
   addComment(dynamicId: number, content: string, parentId?: number | null, replyUserId?: number | null) {
     const params: any = { dynamicId, content }
     if (parentId) params.parentId = parentId
