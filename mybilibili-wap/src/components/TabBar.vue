@@ -42,6 +42,16 @@ const handleClick = (tab) => emit('click', tab)
     text-overflow: ellipsis;
     white-space: nowrap;
 
+    // 第一个 tab（直播）文字左对齐，使其与顶栏头像左边缘（共享的 --item-inset）重合
+    &:first-child {
+      text-align: left;
+
+      &.active::after {
+        left: 0;
+        transform: none;
+      }
+    }
+
     &.active {
       color: #fb7299;
       font-weight: 700;
