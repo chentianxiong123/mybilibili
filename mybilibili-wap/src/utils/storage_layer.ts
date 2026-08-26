@@ -57,7 +57,9 @@ export const K = {
   cacheUser: 'cache:user:',
   cacheDanmaku: 'cache:danmaku:',
   // 搜索历史
-  searchHistory: 'search:history'
+  searchHistory: 'search:history',
+  // 搜索发现可见性开关
+  searchDiscoverVisible: 'search:discover:visible'
 }
 
 export default {
