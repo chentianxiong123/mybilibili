@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"mybilibili/core-service/internal/user"
 	"mybilibili/pkg/auth"
 	"mybilibili/pkg/httputil"
 )
@@ -99,6 +100,7 @@ func (h *SocialHandler) handleDynamicCommentAdd(w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), 400)
 		return
 	}
+	user.AwardExperience(r.Context(), h.db, userID, 2)
 	httputil.WriteOK(w, h.enrichComments(r.Context(), userID, []*DynamicComment{dc}))
 }
 
@@ -175,23 +177,49 @@ func (h *SocialHandler) handleDynamicAll(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	page, limit := httputil.ParsePageParams(r)
+	uid := httputil.GetUserIDFromHeader(r)
 	list, _ := h.dynamicSvc.ListAll(r.Context(), page, limit)
-	json.NewEncoder(w).Encode(h.enrichDynamics(r.Context(), list))
+	json.NewEncoder(w).Encode(h.enrichDynamics(r.Context(), uid, list))
 }
 
 func (h *SocialHandler) handleDynamicLike(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/like/"), 10, 64)
-	userID := h.getUserID(r)
+	uid, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	if id == 0 {
+		http.Error(w, "invalid dynamic id", 400)
+		return
+	}
 	switch r.Method {
 	case http.MethodPost:
-		h.dynamicSvc.Like(r.Context(), id, userID)
-		w.Write([]byte(`{"status":"ok"}`))
+		res, err := h.db.ExecContext(r.Context(),
+			`INSERT INTO dynamic_likes (dynamic_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, id, uid)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			h.dynamicSvc.repo.IncrLikeCount(r.Context(), id, 1)
+		}
 	case http.MethodDelete:
-		liked, _ := h.dynamicSvc.IsLiked(r.Context(), id, userID)
-		json.NewEncoder(w).Encode(map[string]interface{}{"liked": liked})
+		res, err := h.db.ExecContext(r.Context(),
+			`DELETE FROM dynamic_likes WHERE dynamic_id = $1 AND user_id = $2`, id, uid)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			h.dynamicSvc.repo.IncrLikeCount(r.Context(), id, -1)
+		}
 	default:
 		http.Error(w, "method not allowed", 405)
+		return
 	}
+	var likeCount int64
+	_ = h.db.QueryRowContext(r.Context(), `SELECT like_count FROM user_dynamics WHERE id = $1`, id).Scan(&likeCount)
+	httputil.WriteOK(w, map[string]interface{}{"isLiked": r.Method == http.MethodPost, "likeCount": likeCount})
 }
 
 func (h *SocialHandler) handleDynamicShare(w http.ResponseWriter, r *http.Request) {
@@ -226,17 +254,18 @@ func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), 400)
 			return
 		}
+		user.AwardExperience(r.Context(), h.db, userID, 5)
 		json.NewEncoder(w).Encode(d)
 
 	case len(parts) == 1 && parts[0] == "list" && r.Method == "GET":
 		page, limit := httputil.ParsePageParams(r)
 		list, _ := h.dynamicSvc.ListAll(r.Context(), page, limit)
-		json.NewEncoder(w).Encode(h.enrichDynamics(r.Context(), list))
+		json.NewEncoder(w).Encode(h.enrichDynamics(r.Context(), userID, list))
 
 	case len(parts) == 1 && parts[0] == "following" && r.Method == "GET":
 		page, limit := httputil.ParsePageParams(r)
 		list, _ := h.dynamicSvc.ListFollowing(r.Context(), userID, page, limit)
-		json.NewEncoder(w).Encode(h.enrichDynamics(r.Context(), list))
+		json.NewEncoder(w).Encode(h.enrichDynamics(r.Context(), userID, list))
 
 	case len(parts) >= 2 && parts[0] == "user" && r.Method == "GET":
 		uid, _ := strconv.ParseInt(parts[1], 10, 64)
@@ -246,7 +275,7 @@ func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 			httputil.WriteError(w, http.StatusInternalServerError, "database error")
 			return
 		}
-		httputil.WriteOK(w, h.enrichDynamics(r.Context(), list))
+		httputil.WriteOK(w, h.enrichDynamics(r.Context(), userID, list))
 
 	case len(parts) >= 2 && parts[0] == "like":
 		id, _ := strconv.ParseInt(parts[1], 10, 64)
@@ -519,23 +548,41 @@ func (h *SocialHandler) handleWatchHistory(w http.ResponseWriter, r *http.Reques
 }
 
 // enrichDynamics 为动态列表批量补充 user 嵌套对象（avatar、username）、imageUrls 数组和 refVideo 引用稿件信息。
-func (h *SocialHandler) enrichDynamics(ctx context.Context, list []*Dynamic) []map[string]interface{} {
+func (h *SocialHandler) enrichDynamics(ctx context.Context, uid int64, list []*Dynamic) []map[string]interface{} {
 	if len(list) == 0 {
 		return []map[string]interface{}{}
 	}
 	uidSet := map[int64]struct{}{}
 	refIds := map[int64]struct{}{}
+	dynIds := make([]int64, 0, len(list))
 	for _, d := range list {
 		uidSet[d.UserID] = struct{}{}
 		if d.RefManuscriptID > 0 {
 			refIds[d.RefManuscriptID] = struct{}{}
 		}
+		dynIds = append(dynIds, d.ID)
 	}
 	ids := make([]int64, 0, len(uidSet))
 	for id := range uidSet {
 		ids = append(ids, id)
 	}
 	users := h.loadUsers(ctx, ids)
+
+	// 当前用户点赞过的动态
+	likedSet := map[int64]bool{}
+	if uid > 0 && len(dynIds) > 0 {
+		lrows, err := h.db.QueryContext(ctx,
+			`SELECT dynamic_id FROM dynamic_likes WHERE user_id = $1 AND dynamic_id = ANY($2)`, uid, dynIds)
+		if err == nil {
+			defer lrows.Close()
+			for lrows.Next() {
+				var did int64
+				if lrows.Scan(&did) == nil {
+					likedSet[did] = true
+				}
+			}
+		}
+	}
 
 	// 批量加载引用稿件信息
 	refVideos := map[int64]map[string]interface{}{}
@@ -558,6 +605,7 @@ func (h *SocialHandler) enrichDynamics(ctx context.Context, list []*Dynamic) []m
 			"imageUrls":       []string{},
 			"refManuscriptId": d.RefManuscriptID,
 			"likeCount":       d.LikeCount,
+			"isLiked":         likedSet[d.ID],
 			"commentCount":    d.CommentCount,
 			"shareCount":      d.ShareCount,
 			"createdAt":       d.CreatedAt,
