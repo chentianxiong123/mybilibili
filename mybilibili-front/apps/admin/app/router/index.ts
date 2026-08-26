@@ -180,32 +180,29 @@ const hasPermission = (permission?: string): boolean => {
   return getAdminPermissions().includes(permission)
 }
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach((to) => {
   const token = localStorage.getItem('admin_token')
   const role = getAdminRole()
 
+  let redirect: string | boolean = true
   if (to.meta.requiresAuth && !token) {
-    next('/login')
+    redirect = '/login'
   } else if (to.path === '/login' && token) {
-    const permissions = getAdminPermissions()
-    next(firstAllowedPathByPermissions(role, permissions))
+    redirect = firstAllowedPathByPermissions(role, getAdminPermissions())
   } else if (to.path === '/' && token) {
-    const permissions = getAdminPermissions()
-    next(firstAllowedPathByPermissions(role, permissions))
+    redirect = firstAllowedPathByPermissions(role, getAdminPermissions())
   } else if (to.meta.superAdminOnly && role !== '超级管理员') {
-    const permissions = getAdminPermissions()
-    next(firstAllowedPathByPermissions(role, permissions))
+    redirect = firstAllowedPathByPermissions(role, getAdminPermissions())
   } else if (to.meta.requiresAuth && !hasPermission(to.meta.permission as string | undefined)) {
-    const permissions = getAdminPermissions()
-    const fallback = firstAllowedPathByPermissions(role, permissions)
-    next(fallback !== to.path ? fallback : '/no-permission')
-  } else {
-    next()
+    const fallback = firstAllowedPathByPermissions(role, getAdminPermissions())
+    redirect = fallback !== to.path ? fallback : '/no-permission'
   }
 
   if (to.meta.title) {
     document.title = to.meta.title as string
   }
+
+  return redirect
 })
 
 export default router

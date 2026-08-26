@@ -643,12 +643,27 @@ func (h *ManuscriptAdminHandler) getVideoSource(w http.ResponseWriter, r *http.R
 		`SELECT COALESCE(source_video_url,''), COALESCE(title,''), COALESCE(duration_seconds,0)
 		 FROM videos WHERE id = $1`, videoID).Scan(&sourceURL, &title, &duration)
 	if err != nil {
-		http.Error(w, "视频不存在", 404)
+		// 视频不存在（可能已被删除，但字幕记录仍在）：返回空数据而非 404，
+		// 前端会回退显示"视频 #ID"，避免控制台大量 404 报错
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"code": 200,
+			"data": map[string]interface{}{
+				"video_id": videoID, "source_url": "",
+				"title": "", "duration_seconds": 0, "exists": false,
+			},
+			"message": "ok",
+		})
 		return
 	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"video_id": videoID, "source_url": sourceURL,
-		"title": title, "duration_seconds": duration,
+		"code": 200,
+		"data": map[string]interface{}{
+			"video_id": videoID, "source_url": sourceURL,
+			"title": title, "duration_seconds": duration, "exists": true,
+		},
+		"message": "ok",
 	})
 }
 
