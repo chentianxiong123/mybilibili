@@ -72,7 +72,7 @@ const hasMoreTabs = computed(() => {
 // 获取第一条动态的用户头像
 const fetchFirstDynamicAvatar = async () => {
   try {
-    const res = await dynamicApi.getDynamicList(1, 1)
+    const res = await dynamicApi.getFollowingDynamics(1, 1)
     const list = Array.isArray(res) ? res : (res?.data && Array.isArray(res.data) ? res.data : [])
     if (list.length > 0) {
       const firstDynamic = list[0]

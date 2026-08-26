@@ -129,7 +129,7 @@ const fetchDynamics = async () => {
   try {
     let res
     if (selectedUserId.value === null) {
-      res = await dynamicApi.getDynamicList(currentPage.value, pageSize.value)
+      res = await dynamicApi.getFollowingDynamics(currentPage.value, pageSize.value)
     } else {
       res = await dynamicApi.getFollowingDynamics(currentPage.value, pageSize.value, selectedUserId.value)
     }

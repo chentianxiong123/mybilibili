@@ -48,7 +48,7 @@ const getThumbnail = (item) => {
 const fetchDynamics = async () => {
   loading.value = true
   try {
-    const res = await dynamicApi.getDynamicList(1, 10)
+    const res = await dynamicApi.getFollowingDynamics(1, 10)
     const data = Array.isArray(res) ? res : res?.data
     const list = data?.list || data || []
       dynamicList.value = list.map(item => ({

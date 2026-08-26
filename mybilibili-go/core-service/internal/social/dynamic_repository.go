@@ -85,8 +85,12 @@ func (r *DynamicRepository) ListFollowing(ctx context.Context, userID int64, pag
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT d.id, d.user_id, d.content, d.dynamic_type, COALESCE(d.image_url,''), COALESCE(d.ref_manuscript_id,0),
 		        d.like_count, d.comment_count, d.share_count, d.status, d.created_at
-		 FROM user_dynamics d JOIN follows f ON d.user_id = f.following_id
-		 WHERE f.follower_id = $1 AND d.status = 0 ORDER BY d.created_at DESC LIMIT $2 OFFSET $3`,
+		 FROM user_dynamics d
+		 WHERE d.status = 0 AND (
+		       d.user_id = $1
+		       OR d.user_id IN (SELECT f.following_id FROM follows f WHERE f.follower_id = $1)
+		 )
+		 ORDER BY d.created_at DESC LIMIT $2 OFFSET $3`,
 		userID, limit, offset)
 	if err != nil {
 		return nil, err
