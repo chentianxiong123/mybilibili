@@ -92,9 +92,21 @@ const handleItemClick = async (item) => {
     }
   }
   
-  // 跳转到稿件页面
+  // 跳转到稿件页面，先探测稿件是否为已删除
   if (item.manuscriptId) {
     const pParam = item.videoOrder ? `&p=${item.videoOrder}` : ''
+    try {
+      const resp = await fetch(`/api/v1/manuscript/${item.manuscriptId}`, {
+        headers: { 'Authorization': safeStorage.getItem('token') ? `Bearer ${safeStorage.getItem('token')}` : '' }
+      })
+      const data = await resp.json()
+      if (data.code === 404) {
+        router.push('/404')
+        return
+      }
+    } catch (err) {
+      // 探测失败也不阻塞，直接跳转
+    }
     window.open(`/manuscript/${item.manuscriptId}?${pParam}`, '_blank')
   }
 }
