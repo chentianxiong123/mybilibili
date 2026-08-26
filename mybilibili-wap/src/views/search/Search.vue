@@ -279,7 +279,9 @@ const goHot = () => router.push('/m/search/hot')
 }
 
 .search-home {
-  padding: 16px 28px 40px;
+  padding: 16px 28px;
+  /* 底部留出空间，避免反馈按钮被固定的底部 TabBar 遮住 */
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
 }
 
 .section-heading {
@@ -465,16 +467,19 @@ const goHot = () => router.push('/m/search/hot')
 
 .feedback-btn {
   height: 36px;
+  width: fit-content;   /* 让按钮收缩成内容宽度，配合 auto 水平居中 */
   margin: 34px auto 0;
   padding: 0 16px;
   border: 1px solid #e3e5e7;
   border-radius: 18px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   background: #fff;
   color: #61666d;
   font-size: 16px;
+  cursor: pointer;
 
   svg {
     width: 19px;
