@@ -16,6 +16,7 @@ type User struct {
 	Email          string
 	Avatar         string
 	Level          int32
+	Experience     int64
 	Signature      string
 	Bio            string
 	FollowerCount  int32
@@ -46,9 +47,9 @@ func (r *Repository) Create(ctx context.Context, u *User) (int64, error) {
 func (r *Repository) FindByUsername(ctx context.Context, username string) (*User, error) {
 	u := &User{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, username, password, nickname, COALESCE(email,''), COALESCE(avatar,''), level, COALESCE(signature,''), COALESCE(bio,''), COALESCE(follower_count,0), COALESCE(following_count,0), COALESCE(liked_count,0), status, created_at, updated_at FROM users WHERE username = $1`,
+		`SELECT id, username, password, nickname, COALESCE(email,''), COALESCE(avatar,''), level, COALESCE(experience,0), COALESCE(signature,''), COALESCE(bio,''), COALESCE(follower_count,0), COALESCE(following_count,0), COALESCE(liked_count,0), status, created_at, updated_at FROM users WHERE username = $1`,
 		username,
-	).Scan(&u.ID, &u.Username, &u.Password, &u.Nickname, &u.Email, &u.Avatar, &u.Level, &u.Signature, &u.Bio, &u.FollowerCount, &u.FollowingCount, &u.LikedCount, &u.Status, &u.CreatedAt, &u.UpdatedAt)
+	).Scan(&u.ID, &u.Username, &u.Password, &u.Nickname, &u.Email, &u.Avatar, &u.Level, &u.Experience, &u.Signature, &u.Bio, &u.FollowerCount, &u.FollowingCount, &u.LikedCount, &u.Status, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -58,9 +59,9 @@ func (r *Repository) FindByUsername(ctx context.Context, username string) (*User
 func (r *Repository) FindByNickname(ctx context.Context, nickname string) (*User, error) {
 	u := &User{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, username, password, nickname, COALESCE(email,''), COALESCE(avatar,''), level, COALESCE(signature,''), COALESCE(bio,''), COALESCE(follower_count,0), COALESCE(following_count,0), COALESCE(liked_count,0), status, created_at, updated_at FROM users WHERE nickname = $1 AND nickname != ''`,
+		`SELECT id, username, password, nickname, COALESCE(email,''), COALESCE(avatar,''), level, COALESCE(experience,0), COALESCE(signature,''), COALESCE(bio,''), COALESCE(follower_count,0), COALESCE(following_count,0), COALESCE(liked_count,0), status, created_at, updated_at FROM users WHERE nickname = $1 AND nickname != ''`,
 		nickname,
-	).Scan(&u.ID, &u.Username, &u.Password, &u.Nickname, &u.Email, &u.Avatar, &u.Level, &u.Signature, &u.Bio, &u.FollowerCount, &u.FollowingCount, &u.LikedCount, &u.Status, &u.CreatedAt, &u.UpdatedAt)
+	).Scan(&u.ID, &u.Username, &u.Password, &u.Nickname, &u.Email, &u.Avatar, &u.Level, &u.Experience, &u.Signature, &u.Bio, &u.FollowerCount, &u.FollowingCount, &u.LikedCount, &u.Status, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -70,9 +71,9 @@ func (r *Repository) FindByNickname(ctx context.Context, nickname string) (*User
 func (r *Repository) FindByID(ctx context.Context, id int64) (*User, error) {
 	u := &User{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, username, password, nickname, COALESCE(email,''), COALESCE(avatar,''), level, COALESCE(signature,''), COALESCE(bio,''), COALESCE(follower_count,0), COALESCE(following_count,0), COALESCE(liked_count,0), status, created_at, updated_at FROM users WHERE id = $1`,
+		`SELECT id, username, password, nickname, COALESCE(email,''), COALESCE(avatar,''), level, COALESCE(experience,0), COALESCE(signature,''), COALESCE(bio,''), COALESCE(follower_count,0), COALESCE(following_count,0), COALESCE(liked_count,0), status, created_at, updated_at FROM users WHERE id = $1`,
 		id,
-	).Scan(&u.ID, &u.Username, &u.Password, &u.Nickname, &u.Email, &u.Avatar, &u.Level, &u.Signature, &u.Bio, &u.FollowerCount, &u.FollowingCount, &u.LikedCount, &u.Status, &u.CreatedAt, &u.UpdatedAt)
+	).Scan(&u.ID, &u.Username, &u.Password, &u.Nickname, &u.Email, &u.Avatar, &u.Level, &u.Experience, &u.Signature, &u.Bio, &u.FollowerCount, &u.FollowingCount, &u.LikedCount, &u.Status, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}

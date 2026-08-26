@@ -59,8 +59,8 @@ onMounted(async () => {
       userInfo.value.experience = currentUser.value.experience || 0
       userInfo.value.memberType = currentUser.value.level >= 4 ? '正式会员' : '注册会员'
       userInfo.value.coins = currentUser.value.coinCount || currentUser.value.coins || 0
-      
-      userInfo.value.maxExperience = calculateMaxExperience(userInfo.value.level)
+
+      userInfo.value.maxExperience = currentUser.value.maxExperience || calculateMaxExperience(userInfo.value.level)
       
       console.log('当前用户:', currentUser.value)
     }

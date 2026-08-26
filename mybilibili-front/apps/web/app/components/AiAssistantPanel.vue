@@ -28,87 +28,56 @@ const isGenerating = ref(false)
 const summaryContent = ref('')
 const errorMessage = ref('')
 const hasSummary = ref(false)
-const eventSource = ref(null)
 const contentRef = ref(null)
 
 // 监听面板显示状态
 watch(() => props.visible, (newVal) => {
-  console.log('[AI助手] visible 变化:', newVal, 'videoId:', props.videoId)
   if (newVal && props.videoId) {
-    console.log('[AI助手] 开始加载摘要, videoId:', props.videoId)
-    checkSummaryAndLoad()
-  } else if (!newVal) {
-    closeEventSource()
+    loadSummary()
   }
 })
 
-// 检查摘要并加载
-const checkSummaryAndLoad = async () => {
-  console.log('[AI助手] checkSummaryAndLoad 开始')
+// 一次性加载已生成的持久化摘要（生成一次，永久复用）
+const loadSummary = async () => {
   isLoading.value = true
   errorMessage.value = ''
   summaryContent.value = ''
-  
   try {
-    console.log('[AI助手] 调用 checkSummary API, videoId:', props.videoId)
-    const response = await aiSummaryApi.checkSummary(props.videoId)
-    console.log('[AI助手] checkSummary 响应:', response)
-    if (response.code === 200) {
-      hasSummary.value = response.data
-      console.log('[AI助手] hasSummary:', hasSummary.value)
-      if (hasSummary.value) {
-        startStreamSummary()
-      } else {
-        errorMessage.value = '该视频暂无AI摘要，请稍后再试'
-      }
+    const response = await aiSummaryApi.getSummary(props.videoId)
+    const text = (response?.data?.summary ?? response?.summary ?? '').trim()
+    if (text && !/^(AI summary|AI generated summary)/.test(text)) {
+      hasSummary.value = true
+      // 轻量打字机：本地逐字显示，避免一次性大段刷出
+      typewriter(text)
     } else {
-      errorMessage.value = response.message || '检查摘要状态失败'
+      hasSummary.value = false
+      errorMessage.value = '该视频暂无AI摘要，请稍后再试'
     }
   } catch (error) {
-    console.error('[AI助手] 检查摘要失败:', error)
-    errorMessage.value = '检查摘要状态失败，请稍后重试'
+    console.error('[AI助手] 加载摘要失败:', error)
+    errorMessage.value = '加载摘要失败，请稍后重试'
   } finally {
     isLoading.value = false
+    isGenerating.value = false
   }
 }
 
-// 开始流式获取摘要
-const startStreamSummary = () => {
+// 本地打字机效果
+let typingTimer = null
+const typewriter = (text) => {
+  clearInterval(typingTimer)
+  const chars = Array.from(text)
+  let i = 0
   isGenerating.value = true
-  summaryContent.value = ''
-  errorMessage.value = ''
-  
-  closeEventSource()
-  
-  eventSource.value = aiSummaryApi.streamSummary(props.videoId, {
-    onStart: (data) => {
-      console.log('开始生成摘要:', data)
-    },
-    onData: (data) => {
-      summaryContent.value += data
-      scrollToBottom()
-    },
-    onMeta: (meta) => {
-      console.log('元数据:', meta)
-    },
-    onDone: (data) => {
-      console.log('摘要生成完成:', data)
-      isGenerating.value = false
-    },
-    onError: (error) => {
-      console.error('生成摘要错误:', error)
-      errorMessage.value = error
+  typingTimer = setInterval(() => {
+    i += 3
+    summaryContent.value = chars.slice(0, i).join('')
+    scrollToBottom()
+    if (i >= chars.length) {
+      clearInterval(typingTimer)
       isGenerating.value = false
     }
-  })
-}
-
-// 关闭SSE连接
-const closeEventSource = () => {
-  if (eventSource.value) {
-    eventSource.value.abort()
-    eventSource.value = null
-  }
+  }, 30)
 }
 
 // 滚动到内容底部
@@ -123,12 +92,13 @@ const scrollToBottom = () => {
 // 关闭面板
 const closePanel = () => {
   emit('update:visible', false)
-  closeEventSource()
+  clearInterval(typingTimer)
+  isGenerating.value = false
 }
 
-// 重新生成
+// 重新生成（重新加载持久化摘要）
 const regenerate = () => {
-  startStreamSummary()
+  loadSummary()
 }
 
 // 复制摘要内容
@@ -209,7 +179,7 @@ const formatSummary = (content) => {
               <CircleClose />
             </el-icon>
             <p>{{ errorMessage }}</p>
-            <el-button type="primary" @click="checkSummaryAndLoad">重试</el-button>
+            <el-button type="primary" @click="loadSummary">重试</el-button>
           </div>
 
           <!-- 生成中状态 -->

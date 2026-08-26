@@ -53,6 +53,21 @@ func main() {
 
 	caller, _ := abstraction.NewServiceCaller(abstraction.ServiceCallerConfig{Type: "ollama"})
 	summarySvc := ai.NewSummaryService(caller)
+	summarySvc.SetDatabase(db)
+	minioEndpoint := os.Getenv("MINIO_ENDPOINT")
+	if minioEndpoint == "" {
+		minioEndpoint = "127.0.0.1:9000"
+	}
+	if storage, serr := abstraction.NewMinioStorageService(abstraction.MinioConfig{
+		Endpoint:   minioEndpoint,
+		AccessKey:  getEnvDefault("MINIO_ACCESS_KEY", "minioadmin"),
+		SecretKey:  getEnvDefault("MINIO_SECRET_KEY", "minioadmin"),
+		BucketName: "mybilibili",
+	}); serr == nil {
+		summarySvc.SetStorage(storage)
+	} else {
+		log.Printf("WARN: minio storage unavailable, summaries fallback to live generation: %v", serr)
+	}
 	reviewSvc := ai.NewReviewService(caller)
 	customerSvc := ai.NewCustomerService(caller)
 
@@ -80,4 +95,11 @@ func main() {
 	aiChatH.Register(mux)
 	log.Printf("AI HTTP listening on %s", httpAddr)
 	log.Fatal(http.ListenAndServe(httpAddr, mux))
+}
+
+func getEnvDefault(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }

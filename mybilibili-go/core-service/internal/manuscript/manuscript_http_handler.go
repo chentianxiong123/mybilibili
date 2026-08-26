@@ -118,6 +118,12 @@ func (h *ManuscriptHTTPHandler) handleManuscriptRoute(w http.ResponseWriter, r *
 	case "deleteManuscript":
 		r.SetPathValue("id", parts[0])
 		h.handleDeleteManuscript(w, r)
+	case "publishManuscript":
+		r.SetPathValue("id", parts[0])
+		h.handlePublishManuscript(w, r)
+	case "unpublishManuscript":
+		r.SetPathValue("id", parts[0])
+		h.handleUnpublishManuscript(w, r)
 	case "status":
 		r.SetPathValue("id", parts[0])
 		h.handleInteractionStatus(w, r)
@@ -130,6 +136,16 @@ func (h *ManuscriptHTTPHandler) handleManuscriptRoute(w http.ResponseWriter, r *
 	case "collect":
 		r.SetPathValue("id", parts[0])
 		h.handleCollect(w, r)
+	case "videoFavorite":
+		r.SetPathValue("id", parts[0])
+		h.handleVideoFavorite(w, r)
+	case "videoFavoriteFolders":
+		r.SetPathValue("id", parts[0])
+		h.handleVideoFavoriteFolders(w, r)
+	case "videoFavoriteFolderByID":
+		r.SetPathValue("id", parts[0])
+		r.SetPathValue("folderId", parts[3])
+		h.handleVideoFavoriteFolderByID(w, r)
 	case "share":
 		r.SetPathValue("id", parts[0])
 		h.handleShare(w, r)
@@ -254,6 +270,8 @@ func manuscriptRouteName(parts []string) string {
 				return "collect"
 			case "share":
 				return "share"
+			case "favorite":
+				return "videoFavorite"
 			case "comment-count":
 				return "commentCount"
 			case "increment-comment":
@@ -264,6 +282,14 @@ func manuscriptRouteName(parts []string) string {
 				return "publishManuscript"
 			case "unpublish":
 				return "unpublishManuscript"
+			}
+		case 3:
+			if parts[1] == "favorite" && parts[2] == "folders" {
+				return "videoFavoriteFolders"
+			}
+		case 4:
+			if parts[1] == "favorite" && parts[2] == "folders" {
+				return "videoFavoriteFolderByID"
 			}
 		}
 		return ""
@@ -643,16 +669,16 @@ func (h *ManuscriptHTTPHandler) handleCategory(w http.ResponseWriter, r *http.Re
 
 func (h *ManuscriptHTTPHandler) handleUserManuscripts(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseInt(httputil.PathValue(r, "id"), 10, 64)
-	status, _ := strconv.ParseInt(r.URL.Query().Get("status"), 10, 32)
+	status := convertManuscriptStatusParam(r.URL.Query().Get("status"))
 	page, size := httputil.ParsePageParams(r)
 	resp, err := h.manuscriptSvc.ListUserManuscripts(r.Context(), &pb.ListUserManuscriptsRequest{
-		UserId: id, Status: int32(status), Page: page, PageSize: size,
+		UserId: id, Status: status, Page: page, PageSize: size,
 	})
 	if err != nil {
 		errors.WriteHTTPError(w, err)
 		return
 	}
-	httputil.WriteOK(w, manuscriptListToJSON(resp.Manuscripts))
+	httputil.WriteOK(w, manuscriptListPageJSON(resp))
 }
 
 func (h *ManuscriptHTTPHandler) handleUserSearch(w http.ResponseWriter, r *http.Request) {
@@ -672,16 +698,16 @@ func (h *ManuscriptHTTPHandler) handleManuscriptList(w http.ResponseWriter, r *h
 	if !ok {
 		return
 	}
-	status, _ := strconv.ParseInt(r.URL.Query().Get("status"), 10, 32)
+	status := convertManuscriptStatusParam(r.URL.Query().Get("status"))
 	page, size := httputil.ParsePageParams(r)
 	resp, err := h.manuscriptSvc.ListUserManuscripts(r.Context(), &pb.ListUserManuscriptsRequest{
-		UserId: uid, Status: int32(status), Page: page, PageSize: size,
+		UserId: uid, Status: status, Page: page, PageSize: size,
 	})
 	if err != nil {
 		errors.WriteHTTPError(w, err)
 		return
 	}
-	httputil.WriteOK(w, manuscriptListToJSON(resp.Manuscripts))
+	httputil.WriteOK(w, manuscriptListPageJSON(resp))
 }
 
 // ---- 更新 / 删除 / 统计 / 收藏点赞列表 ----
@@ -789,6 +815,50 @@ func (h *ManuscriptHTTPHandler) handleDeleteManuscript(w http.ResponseWriter, r 
 	httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
 }
 
+// handlePublishManuscript POST /api/v1/manuscript/{id}/publish — 发布稿件（status=3）。
+func (h *ManuscriptHTTPHandler) handlePublishManuscript(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	uid, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	id, _ := strconv.ParseInt(httputil.PathValue(r, "id"), 10, 64)
+	if id <= 0 {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid manuscript id", "data": nil})
+		return
+	}
+	if _, err := h.manuscriptSvc.PublishManuscript(r.Context(), &pb.PublishManuscriptRequest{Id: id, UserId: uid}); err != nil {
+		errors.WriteHTTPError(w, err)
+		return
+	}
+	httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
+}
+
+// handleUnpublishManuscript POST /api/v1/manuscript/{id}/unpublish — 下架稿件（status=-1）。
+func (h *ManuscriptHTTPHandler) handleUnpublishManuscript(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	uid, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	id, _ := strconv.ParseInt(httputil.PathValue(r, "id"), 10, 64)
+	if id <= 0 {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid manuscript id", "data": nil})
+		return
+	}
+	if _, err := h.manuscriptSvc.UnpublishManuscript(r.Context(), &pb.UnpublishManuscriptRequest{Id: id, UserId: uid}); err != nil {
+		errors.WriteHTTPError(w, err)
+		return
+	}
+	httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
+}
+
 // handleUserManuscriptStats GET /api/v1/manuscript/user/{id}/stats — 用户稿件统计。
 func (h *ManuscriptHTTPHandler) handleUserManuscriptStats(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseInt(httputil.PathValue(r, "id"), 10, 64)
@@ -796,14 +866,7 @@ func (h *ManuscriptHTTPHandler) handleUserManuscriptStats(w http.ResponseWriter,
 		httputil.WriteJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid user id", "data": nil})
 		return
 	}
-	var total, published, views, likes int64
-	_ = h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts WHERE user_id = $1`, id).Scan(&total)
-	_ = h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts WHERE user_id = $1 AND status >= 0`, id).Scan(&published)
-	_ = h.db.QueryRowContext(r.Context(),
-		`SELECT COALESCE(SUM(view_count),0), COALESCE(SUM(like_count),0) FROM manuscripts WHERE user_id = $1`, id).Scan(&views, &likes)
-	httputil.WriteOK(w, map[string]interface{}{
-		"total": total, "published": published, "views": views, "likes": likes,
-	})
+	httputil.WriteOK(w, h.manuscriptStatsByUser(r.Context(), id))
 }
 
 func (h *ManuscriptHTTPHandler) handleMyManuscriptStats(w http.ResponseWriter, r *http.Request) {
@@ -811,8 +874,67 @@ func (h *ManuscriptHTTPHandler) handleMyManuscriptStats(w http.ResponseWriter, r
 	if !ok {
 		return
 	}
-	r.SetPathValue("id", strconv.FormatInt(uid, 10))
-	h.handleUserManuscriptStats(w, r)
+	httputil.WriteOK(w, h.manuscriptStatsByUser(r.Context(), uid))
+}
+
+func (h *ManuscriptHTTPHandler) manuscriptStatsByUser(ctx context.Context, userID int64) map[string]int64 {
+	var draft, processing, published, rejected, unpublished int64
+	_ = h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscripts WHERE user_id = $1 AND status = 0`, userID).Scan(&draft)
+	_ = h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscripts WHERE user_id = $1 AND status = 1`, userID).Scan(&processing)
+	_ = h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscripts WHERE user_id = $1 AND status = 3`, userID).Scan(&published)
+	_ = h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscripts WHERE user_id = $1 AND status = 4`, userID).Scan(&rejected)
+	_ = h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscripts WHERE user_id = $1 AND status = -1`, userID).Scan(&unpublished)
+	return map[string]int64{
+		"draft": draft, "processing": processing, "published": published,
+		"rejected": rejected, "unpublished": unpublished,
+	}
+}
+
+// convertManuscriptStatusParam 将前端 status 字符串映射为后端 status 数值（对齐老版 convertStatusParam）。
+// 返回 -100 表示"全部/不过滤"。
+func convertManuscriptStatusParam(s string) int32 {
+	if s == "" {
+		return -100 // 不过滤
+	}
+	if n, err := strconv.ParseInt(s, 10, 32); err == nil {
+		return int32(n)
+	}
+	switch strings.ToLower(s) {
+	case "pending", "reviewing", "draft":
+		return 0 // STATUS_PENDING_REVIEW
+	case "processing":
+		return 1
+	case "published":
+		return 3
+	case "rejected":
+		return 4
+	case "failed":
+		return 5
+	case "unpublished":
+		return -1
+	default:
+		return -100
+	}
+}
+
+// manuscriptListPageJSON 将分页响应转为 {list,total,page,size,totalPages}（对齐老版）。
+func manuscriptListPageJSON(resp *pb.ListUserManuscriptsResponse) map[string]interface{} {
+	total := resp.Total
+	size := resp.PageSize
+	if size <= 0 {
+		size = 10
+	}
+	totalPages := int64(0)
+	if total > 0 {
+		totalPages = (total + int64(size) - 1) / int64(size)
+	}
+	return map[string]interface{}{
+		"list":       manuscriptListToJSON(resp.Manuscripts),
+		"total":      total,
+		"page":       resp.Page,
+		"size":       size,
+		"totalPages": totalPages,
+	}
 }
 
 // manuscriptsByIDs 按 id 集合返回完整稿件列表（保持 id 顺序）。
@@ -960,6 +1082,123 @@ func (h *ManuscriptHTTPHandler) handleFavoriteFolderByID(w http.ResponseWriter, 
 	default:
 		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
 	}
+}
+
+// handleVideoFavoriteFolders GET|PUT /api/v1/manuscript/{id}/favorite/folders
+// GET 返回包含该稿件的收藏夹；PUT 以 {folderIds} 全量设置稿件所在收藏夹（仅作用于本人收藏夹）。
+func (h *ManuscriptHTTPHandler) handleVideoFavoriteFolders(w http.ResponseWriter, r *http.Request) {
+	uid, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	msID, _ := strconv.ParseInt(httputil.PathValue(r, "id"), 10, 64)
+	if msID <= 0 {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid manuscript id", "data": nil})
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		rows, err := h.db.QueryContext(r.Context(),
+			`SELECT ff.id, ff.name FROM favorite_folders ff
+			 JOIN favorite_folder_videos ffv ON ffv.folder_id = ff.id
+			 WHERE ff.user_id = $1 AND ffv.manuscript_id = $2
+			 ORDER BY ff.id`, uid, msID)
+		if err != nil {
+			errors.WriteHTTPError(w, errors.ErrInternal("database error"))
+			return
+		}
+		defer rows.Close()
+		type folder struct {
+			ID   int64  `json:"id"`
+			Name string `json:"name"`
+		}
+		list := []folder{}
+		for rows.Next() {
+			var f folder
+			_ = rows.Scan(&f.ID, &f.Name)
+			list = append(list, f)
+		}
+		httputil.WriteOK(w, list)
+	case http.MethodPut:
+		var req struct {
+			FolderIDs []int64 `json:"folderIds"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		tx, err := h.db.BeginTx(r.Context(), nil)
+		if err != nil {
+			errors.WriteHTTPError(w, errors.ErrInternal("database error"))
+			return
+		}
+		defer tx.Rollback()
+		if _, err := tx.ExecContext(r.Context(),
+			`DELETE FROM favorite_folder_videos ffv USING favorite_folders ff
+			 WHERE ffv.folder_id = ff.id AND ff.user_id = $1 AND ffv.manuscript_id = $2`, uid, msID); err != nil {
+			errors.WriteHTTPError(w, errors.ErrInternal("update failed"))
+			return
+		}
+		for _, fid := range req.FolderIDs {
+			if _, err := tx.ExecContext(r.Context(),
+				`INSERT INTO favorite_folder_videos (folder_id, manuscript_id)
+				 SELECT ff.id, $2 FROM favorite_folders ff WHERE ff.id = $1 AND ff.user_id = $3
+				 ON CONFLICT (folder_id, manuscript_id) DO NOTHING`, fid, msID, uid); err != nil {
+				errors.WriteHTTPError(w, errors.ErrInternal("update failed"))
+				return
+			}
+		}
+		if err := tx.Commit(); err != nil {
+			errors.WriteHTTPError(w, errors.ErrInternal("update failed"))
+			return
+		}
+		httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
+	default:
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
+	}
+}
+
+// handleVideoFavorite POST /api/v1/manuscript/{id}/favorite — 增量加入收藏夹 {folderIds:[...]}
+func (h *ManuscriptHTTPHandler) handleVideoFavorite(w http.ResponseWriter, r *http.Request) {
+	uid, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	msID, _ := strconv.ParseInt(httputil.PathValue(r, "id"), 10, 64)
+	if msID <= 0 || r.Method != http.MethodPost {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid request", "data": nil})
+		return
+	}
+	var req struct {
+		FolderIDs []int64 `json:"folderIds"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&req)
+	for _, fid := range req.FolderIDs {
+		h.db.ExecContext(r.Context(),
+			`INSERT INTO favorite_folder_videos (folder_id, manuscript_id)
+			 SELECT ff.id, $2 FROM favorite_folders ff WHERE ff.id = $1 AND ff.user_id = $3
+			 ON CONFLICT (folder_id, manuscript_id) DO NOTHING`, fid, msID, uid)
+	}
+	httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
+}
+
+// handleVideoFavoriteFolderByID DELETE /api/v1/manuscript/{id}/favorite/folders/{folderId} — 从指定收藏夹移除该稿件
+func (h *ManuscriptHTTPHandler) handleVideoFavoriteFolderByID(w http.ResponseWriter, r *http.Request) {
+	uid, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	msID, _ := strconv.ParseInt(httputil.PathValue(r, "id"), 10, 64)
+	folderID, _ := strconv.ParseInt(httputil.PathValue(r, "folderId"), 10, 64)
+	if msID <= 0 || folderID <= 0 || r.Method != http.MethodDelete {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid request", "data": nil})
+		return
+	}
+	if _, err := h.db.ExecContext(r.Context(),
+		`DELETE FROM favorite_folder_videos ffv USING favorite_folders ff
+		 WHERE ffv.folder_id = ff.id AND ff.id = $1 AND ff.user_id = $2 AND ffv.manuscript_id = $3`,
+		folderID, uid, msID); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal("delete failed"))
+		return
+	}
+	httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
 }
 
 // handleFavoriteFolderVideos GET /api/v1/manuscript/favorite/folders/{id}/videos — 收藏夹内稿件列表。

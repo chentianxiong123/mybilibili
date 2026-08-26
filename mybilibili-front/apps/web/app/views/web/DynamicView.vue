@@ -7,6 +7,7 @@ import { ArrowDown } from '@element-plus/icons-vue'
 import { dynamicApi } from '@/api/dynamic.ts'
 import { useUserStore } from '@/stores/user.ts'
 import { ElMessage } from 'element-plus'
+import { refreshUserWithNotify } from '@/utils/expNotify.ts'
 import api from '@/api/client'
 import { searchApi } from '@/api/search.ts'
 import DynamicPublishPanel from '@/components/DynamicPublishPanel.vue'
@@ -73,7 +74,8 @@ const handlePublish = async (payload) => {
     })
     const res = await dynamicApi.publishDynamic(formData)
     if (res.code === 200) {
-      ElMessage.success('发布成功，经验值+5')
+      ElMessage.success('发布成功')
+      refreshUserWithNotify()
       publishPanelRef.value?.reset()
       await fetchDynamics()
     } else {
