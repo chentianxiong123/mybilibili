@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Header from '../../components/Header.vue'
 import TabBar from '../../components/TabBar.vue'
@@ -103,7 +103,7 @@ const alignAvatar = () => {
   const avatar = document.querySelector('.mobile-header .user-avatar')
   const firstTab = document.querySelector('.tab-bar .tab-item')
   if (!avatar || !firstTab) return
-  // 直接用 span 的盒位置量「直播」文字左边缘，避免 createRange 在部分 WebView 失效
+  // 直接量「直播」文字的 span 盒子，避免 createRange 在部分 WebView 失效
   const textEl = firstTab.querySelector('.tab-name') || firstTab
   const textRect = textEl.getBoundingClientRect()
   const avatarRect = avatar.getBoundingClientRect()
@@ -113,23 +113,44 @@ const alignAvatar = () => {
   }
 }
 
-// 布局变化后重新对齐（防抖到下一帧执行，避免计算量）
-let realignHandler = null
+// —— 布局变化后保持对齐：事件触发时直接量一次，布局稳定后再复查一次 ——
+let realignTimer = null
+let realignOnResize = null
+function realignNow() {
+  alignAvatar()
+  // 窗口拖拽/缩放的最后一帧布局可能尚未落定，150ms 后复查一次作为兑底
+  clearTimeout(realignTimer)
+  realignTimer = setTimeout(alignAvatar, 150)
+}
 function startRealign() {
-  if (realignHandler) return
-  realignHandler = () => requestAnimationFrame(alignAvatar)
-  window.addEventListener('resize', realignHandler)
-  window.addEventListener('orientationchange', realignHandler)
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(alignAvatar)
+  if (realignOnResize) return
+  realignOnResize = realignNow
+  window.addEventListener('resize', realignOnResize)
+  window.addEventListener('orientationchange', realignOnResize)
+  // 触屏捏合缩放只有 visualViewport 会触发
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', realignOnResize)
+    window.visualViewport.addEventListener('scroll', realignOnResize)
   }
+  // 字体加载完成会改变文字宽度，从而改变对齐点
+  if (document.fonts) {
+    if (document.fonts.ready) document.fonts.ready.then(alignAvatar)
+    document.fonts.onloadingdone = alignAvatar
+  }
+  // 分区数据是异步到达的，tab 数量/宽度变化后也要重新对齐
+  watch(() => tabBarData.value.length, () => nextTick(alignAvatar))
 }
 function stopRealign() {
-  if (realignHandler) {
-    window.removeEventListener('resize', realignHandler)
-    window.removeEventListener('orientationchange', realignHandler)
-    realignHandler = null
+  if (!realignOnResize) return
+  window.removeEventListener('resize', realignOnResize)
+  window.removeEventListener('orientationchange', realignOnResize)
+  if (window.visualViewport) {
+    window.visualViewport.removeEventListener('resize', realignOnResize)
+    window.visualViewport.removeEventListener('scroll', realignOnResize)
   }
+  if (document.fonts) document.fonts.onloadingdone = null
+  clearTimeout(realignTimer)
+  realignOnResize = null
 }
 
 const initSwiper = () => {
