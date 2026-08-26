@@ -39,7 +39,7 @@ const userInfo = ref(null)
 const isScrolled = ref(false)
 
 const isZoomed = ref(false)
-const ZOOM_THRESHOLD = 1.1
+const ZOOM_THRESHOLD = 1.0
 
 const unreadCounts = ref({
   private: 0,
@@ -130,31 +130,13 @@ const handleScroll = () => {
   isScrolled.value = window.scrollY > 10
 }
 
-let currentZoomRatio = 1
-let initialDPR = 0
 let zoomDebounceTimer = null
-let isZoomInitialized = false
 
 const checkZoom = () => {
-  const currentDPR = window.devicePixelRatio || 1
-
-  if (!isZoomInitialized) {
-    initialDPR = currentDPR
-    currentZoomRatio = 1
-    isZoomed.value = false
-    isZoomInitialized = true
-    return
-  }
-
-  const newZoomRatio = currentDPR / initialDPR
-
-  if (Math.abs(newZoomRatio - currentZoomRatio) > 0.001) {
-    currentZoomRatio = newZoomRatio
-    const shouldBeZoomed = currentZoomRatio >= ZOOM_THRESHOLD
-    
-    if (isZoomed.value !== shouldBeZoomed) {
-      isZoomed.value = shouldBeZoomed
-    }
+  const zoom = window.outerWidth / window.innerWidth
+  const shouldBeZoomed = zoom > ZOOM_THRESHOLD
+  if (isZoomed.value !== shouldBeZoomed) {
+    isZoomed.value = shouldBeZoomed
   }
 }
 
@@ -169,11 +151,11 @@ const debouncedCheckZoom = () => {
 }
 
 const resetZoomBase = () => {
-  initialDPR = 0
   checkZoom()
 }
 
 const handleVisualViewportResize = () => {
+  debouncedCheckZoom()
 }
 
 const handleKeyZoom = (e) => {
@@ -206,7 +188,7 @@ onMounted(() => {
     window.visualViewport.addEventListener('resize', handleVisualViewportResize)
   }
 
-  window.addEventListener('resize', checkZoom)
+  window.addEventListener('resize', debouncedCheckZoom)
   window.addEventListener('keydown', handleKeyZoom)
   window.addEventListener('wheel', handleWheelZoom, { passive: false })
   
@@ -222,7 +204,7 @@ onUnmounted(() => {
   if (props.mode === 'transparent') {
     window.removeEventListener('scroll', handleScroll)
   }
-  window.removeEventListener('resize', checkZoom)
+  window.removeEventListener('resize', debouncedCheckZoom)
   window.removeEventListener('keydown', handleKeyZoom)
   window.removeEventListener('wheel', handleWheelZoom)
   if (window.visualViewport) {

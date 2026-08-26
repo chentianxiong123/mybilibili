@@ -672,7 +672,7 @@ const syncZoomBase = () => {
   const root = document.documentElement
   const zoom = window.outerWidth / window.innerWidth
 
-  compactLevel.value = zoom < 0.67 ? 4 : zoom < 0.80 ? 3 : zoom < 0.95 ? 0 : zoom < 1.08 ? 1 : 2
+  compactLevel.value = zoom < 0.67 ? 4 : zoom < 0.80 ? 3 : zoom < 0.95 ? 0 : 1
   if (zoom > ZOOM_FREEZE_RATIO) return
   root.style.setProperty('--zoom-base', `${Math.min(root.clientWidth, window.innerWidth)}px`)
 }
