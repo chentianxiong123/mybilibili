@@ -10,6 +10,7 @@ import ManuscriptForm from '@/components/ManuscriptForm.vue'
 import CoverUploader from '@/components/CoverUploader.vue'
 import VideoPartUploader from '@/components/VideoPartUploader.vue'
 import UploadProgressBar from '@/components/UploadProgressBar.vue'
+import { saveDraft as saveLocalDraft, getDraft, listDrafts } from '@/utils/drafts'
 
 const router = useRouter()
 
@@ -24,6 +25,8 @@ const uploadForm = reactive({
 
 const videoParts = ref([])
 const categories = ref([])
+const currentDraftId = ref('')
+const draftCount = ref(0)
 
 const loadCategories = async () => {
   try {
@@ -221,7 +224,37 @@ const handleCancelUpload = async () => {
 }
 
 const saveDraft = () => {
-  ElMessage.info('草稿保存功能暂未实现')
+  if (!uploadForm.title) {
+    ElMessage.warning('请先填写稿件标题再保存草稿')
+    return
+  }
+  const videoPartsMeta = videoParts.value.map((part, index) => ({
+    title: part.title || `P${index + 1}`,
+    sortOrder: index,
+    // File 对象无法序列化，仅保存元信息；继续编辑时需重新选择文件
+    hasLocalFile: !!part.file
+  }))
+  const saved = saveLocalDraft({
+    id: currentDraftId.value || undefined,
+    title: uploadForm.title,
+    categoryId: uploadForm.categoryId,
+    tags: uploadForm.tags,
+    description: uploadForm.description,
+    type: uploadForm.type,
+    coverPreview: coverPreview.value || undefined,
+    videoParts: videoPartsMeta,
+    hasLocalVideoFiles: videoParts.value.some((p) => p.file)
+  })
+  if (saved) {
+    currentDraftId.value = saved.id
+    ElMessage.success('草稿已保存到本地，可在草稿箱中继续编辑')
+  } else {
+    ElMessage.error('草稿保存失败')
+  }
+}
+
+const goDraftsBox = () => {
+  router.push('/create-center/drafts')
 }
 
 const cancelUpload = () => {
@@ -244,6 +277,32 @@ const cancelUpload = () => {
 
 onMounted(() => {
   loadCategories()
+  draftCount.value = listDrafts().length
+  // 从 URL 的 draftId 恢复草稿
+  const params = new URLSearchParams(window.location.search)
+  const draftId = params.get('draftId')
+  if (draftId) {
+    const draft = getDraft(draftId)
+    if (draft) {
+      currentDraftId.value = draft.id
+      uploadForm.title = draft.title || ''
+      uploadForm.categoryId = draft.categoryId
+      uploadForm.tags = Array.isArray(draft.tags) ? draft.tags : []
+      uploadForm.description = draft.description || ''
+      uploadForm.type = draft.type || 'original'
+      coverPreview.value = draft.coverPreview || ''
+      // 恢复分P标题（文件需重新选择）
+      videoParts.value = (draft.videoParts || []).map((p, i) => ({
+        id: 'dp_' + Date.now().toString(36) + '_' + i,
+        title: p.title || `P${i + 1}`,
+        sortOrder: i,
+        file: null
+      }))
+      ElMessage.success('已恢复草稿，请重新选择视频文件后发布')
+    } else {
+      ElMessage.warning('草稿不存在或已删除')
+    }
+  }
 })
 </script>
 
@@ -311,6 +370,7 @@ onMounted(() => {
     <div class="form-actions">
       <el-button @click="cancelUpload" :disabled="isSubmittingRequest" size="large">取消</el-button>
       <el-button @click="saveDraft" :disabled="isSubmittingRequest" size="large">存草稿</el-button>
+      <el-button @click="goDraftsBox" :disabled="isSubmittingRequest" size="large">草稿箱{{ draftCount ? ` (${draftCount})` : '' }}</el-button>
       <el-button
         type="primary"
         @click="handleSubmit"

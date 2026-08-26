@@ -27,6 +27,10 @@
           <el-icon><Menu /></el-icon>
           <span>稿件管理</span>
         </el-menu-item>
+        <el-menu-item index="drafts">
+          <el-icon><FolderOpened /></el-icon>
+          <span>草稿箱</span>
+        </el-menu-item>
 
       </el-sub-menu>
       <el-menu-item index="data">
@@ -64,7 +68,8 @@ import {
   UserFilled,
   ChatDotRound,
   Menu,
-  Comment
+  Comment,
+  FolderOpened
 } from '@element-plus/icons-vue'
 
 const props = defineProps({
@@ -87,6 +92,7 @@ const handleMenuSelect = (index, indexPath) => {
     'upload': '/create-center/upload',
     'content': '/create-center/content',
     'content-articles': '/create-center/content-articles',
+    'drafts': '/create-center/drafts',
 
     'data': '/create-center/data',
     'fans': '/create-center/fans',
