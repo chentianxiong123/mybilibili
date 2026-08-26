@@ -657,7 +657,7 @@ func (h *UserExtendHandler) handleUserByID(w http.ResponseWriter, r *http.Reques
 	}
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || id <= 0 {
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 		return
 	}
 
@@ -665,7 +665,7 @@ func (h *UserExtendHandler) handleUserByID(w http.ResponseWriter, r *http.Reques
 	if r.Method == "PUT" || r.Method == "PATCH" {
 		var req map[string]interface{}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "invalid body", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
 			return
 		}
 		allowed := []string{"signature", "announcement", "bio", "gender", "nickname", "cover"}
@@ -680,13 +680,13 @@ func (h *UserExtendHandler) handleUserByID(w http.ResponseWriter, r *http.Reques
 			}
 		}
 		if len(sets) == 0 {
-			http.Error(w, "no updatable fields", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "no updatable fields", "data": nil})
 			return
 		}
 		args = append(args, id)
 		query := fmt.Sprintf("UPDATE users SET %s, updated_at = NOW() WHERE id = $%d", strings.Join(sets, ", "), argIdx)
 		if _, err := h.svc.repo.db.ExecContext(r.Context(), query, args...); err != nil {
-			http.Error(w, "update failed: "+err.Error(), 500)
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "更新失败", "data": nil})
 			return
 		}
 		httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
@@ -696,10 +696,10 @@ func (h *UserExtendHandler) handleUserByID(w http.ResponseWriter, r *http.Reques
 	user, err := h.svc.repo.FindByID(r.Context(), id)
 	if err != nil {
 		if stderrors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", 404)
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "user not found", "data": nil})
 			return
 		}
-		http.Error(w, "database error", 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "database error", "data": nil})
 		return
 	}
 	var followerCount, followingCount, totalLikeCount, totalViewCount, dynamicCount int64

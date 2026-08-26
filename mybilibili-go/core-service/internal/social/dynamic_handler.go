@@ -173,13 +173,13 @@ func (h *SocialHandler) handleDynamicCommentLike(w http.ResponseWriter, r *http.
 
 func (h *SocialHandler) handleDynamicAll(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	page, limit := httputil.ParsePageParams(r)
 	uid := httputil.GetUserIDFromHeader(r)
 	list, _ := h.dynamicSvc.ListAll(r.Context(), page, limit)
-	json.NewEncoder(w).Encode(h.enrichDynamics(r.Context(), uid, list))
+	httputil.WriteOK(w, h.enrichDynamics(r.Context(), uid, list))
 }
 
 func (h *SocialHandler) handleDynamicLike(w http.ResponseWriter, r *http.Request) {
@@ -251,28 +251,28 @@ func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 		refID, _ := strconv.ParseInt(r.URL.Query().Get("ref_manuscript_id"), 10, 64)
 		d, err := h.dynamicSvc.Publish(r.Context(), userID, content, int32(dynType), "", refID)
 		if err != nil {
-			http.Error(w, err.Error(), 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "发布失败", "data": nil})
 			return
 		}
 		user.AwardExperience(r.Context(), h.db, userID, 5)
-		json.NewEncoder(w).Encode(d)
+		httputil.WriteOK(w, d)
 
 	case len(parts) == 1 && parts[0] == "list" && r.Method == "GET":
 		page, limit := httputil.ParsePageParams(r)
 		list, _ := h.dynamicSvc.ListAll(r.Context(), page, limit)
-		json.NewEncoder(w).Encode(h.enrichDynamics(r.Context(), userID, list))
+		httputil.WriteOK(w, h.enrichDynamics(r.Context(), userID, list))
 
 	case len(parts) == 1 && parts[0] == "following" && r.Method == "GET":
 		page, limit := httputil.ParsePageParams(r)
 		list, _ := h.dynamicSvc.ListFollowing(r.Context(), userID, page, limit)
-		json.NewEncoder(w).Encode(h.enrichDynamics(r.Context(), userID, list))
+		httputil.WriteOK(w, h.enrichDynamics(r.Context(), userID, list))
 
 	case len(parts) >= 2 && parts[0] == "user" && r.Method == "GET":
 		uid, _ := strconv.ParseInt(parts[1], 10, 64)
 		page, limit := httputil.ParsePageParams(r)
 		list, err := h.dynamicSvc.ListByUser(r.Context(), uid, page, limit)
 		if err != nil {
-			httputil.WriteError(w, http.StatusInternalServerError, "database error")
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "database error", "data": nil})
 			return
 		}
 		httputil.WriteOK(w, h.enrichDynamics(r.Context(), userID, list))
@@ -284,7 +284,7 @@ func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 		} else if r.Method == "DELETE" {
 			h.dynamicSvc.Unlike(r.Context(), id, userID)
 		}
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 
 	case len(parts) >= 2 && parts[0] == "comment" && r.Method == "POST":
 		dynamicID, _ := strconv.ParseInt(parts[1], 10, 64)
@@ -293,16 +293,16 @@ func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 		replyID, _ := strconv.ParseInt(r.URL.Query().Get("reply_user_id"), 10, 64)
 		dc, err := h.dynamicSvc.AddComment(r.Context(), dynamicID, userID, content, parentID, replyID)
 		if err != nil {
-			http.Error(w, err.Error(), 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "评论失败", "data": nil})
 			return
 		}
-		json.NewEncoder(w).Encode(dc)
+		httputil.WriteOK(w, dc)
 
 	case len(parts) >= 2 && parts[0] == "comment" && r.Method == "GET":
 		dynamicID, _ := strconv.ParseInt(parts[1], 10, 64)
 		page, limit := httputil.ParsePageParams(r)
 		list, _ := h.dynamicSvc.ListComments(r.Context(), dynamicID, page, limit, "")
-		json.NewEncoder(w).Encode(h.enrichComments(r.Context(), userID, list))
+		httputil.WriteOK(w, h.enrichComments(r.Context(), userID, list))
 
 	case len(parts) >= 1 && r.Method == "DELETE":
 		id, _ := strconv.ParseInt(parts[0], 10, 64)
