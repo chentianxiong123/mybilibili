@@ -31,7 +31,8 @@ const handleClick = (tab) => emit('click', tab)
 
   .tab-item {
     flex: 1;
-    text-align: center;
+    // 全部左对齐：与本 bar 的起点（--item-inset）和顶栏头像左边缘对齐，整排规整统一
+    text-align: left;
     height: 48px;
     line-height: 48px;
     font-size: 18px;
@@ -42,16 +43,6 @@ const handleClick = (tab) => emit('click', tab)
     text-overflow: ellipsis;
     white-space: nowrap;
 
-    // 第一个 tab（直播）文字左对齐，使其与顶栏头像左边缘（共享的 --item-inset）重合
-    &:first-child {
-      text-align: left;
-
-      &.active::after {
-        left: 0;
-        transform: none;
-      }
-    }
-
     &.active {
       color: #fb7299;
       font-weight: 700;
@@ -59,8 +50,7 @@ const handleClick = (tab) => emit('click', tab)
         content: '';
         position: absolute;
         bottom: 4px;
-        left: 50%;
-        transform: translateX(-50%);
+        left: 0;
         width: 26px;
         height: 4px;
         background: #fb7299;
