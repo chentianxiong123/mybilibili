@@ -14,6 +14,15 @@ const adaptVideo = (v) => ({
   duration: v.duration || ''
 })
 
+const adaptUpUser = (u) => ({
+  mid: u.mid || u.id,
+  name: u.name || u.nickname || u.username || '',
+  face: u.face || u.avatar || '',
+  sign: u.sign || u.signature || '',
+  fans: u.fans || u.follower || u.follower_count || 0,
+  videos: u.videos || u.manuscript_count || 0
+})
+
 // 热搜榜 - 复用 searchApi.getHotSearch() → /search/hot
 export async function getHotwords() {
   try {
@@ -46,16 +55,24 @@ export async function getSuggests(keyword) {
 }
 
 // 搜索结果 - 复用 searchApi.searchVideos() → /search/videos
+// UP主 搜索走 /search/users（按昵称/用户名模糊匹配）
 export async function getSearchResult(params) {
   try {
-    const { keyword = '', page = 1, size = 20, order = 'totalrank' } = params || {}
+    const { keyword = '', page = 1, size = 20, order = 'totalrank', searchType = 'all' } = params || {}
+    if (searchType === 'upuser') {
+      const res = await api.get(`/search/users?keyword=${encodeURIComponent(keyword)}&page=${page}&size=${size}`)
+      return {
+        code: '1',
+        data: (res?.data?.list || []).map(adaptUpUser)
+      }
+    }
     let sort = 'relevance'
     if (order === 'click') sort = 'hot'
     if (order === 'pubdate') sort = 'time'
     const res = await api.get(`/search/videos?keyword=${encodeURIComponent(keyword)}&page=${page}&size=${size}&sort=${sort}`)
     return {
       code: '1',
-      data: ((res?.data?.content) || res || []).map(adaptVideo)
+      data: ((res?.data?.list) || []).map(adaptVideo)
     }
   } catch (e) {
     return { code: '0', data: [] }
