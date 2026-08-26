@@ -21,7 +21,6 @@ const videoEls = ref([])
 const showComment = ref(false)
 const comments = ref([])
 const commentLoading = ref(false)
-const isFullscreen = ref(false)
 // 双击点赞心形动画
 const heartShow = ref(false)
 let heartTimer = null
@@ -255,42 +254,12 @@ async function openComments(it) {
 }
 
 const goBack = () => {
-  exitFullscreen()
   const it = feed.value[activeIndex.value]
   // 退出竖屏 → 回到普通视频详情页（与横屏一样的 16:9 + 左右补黑边状态）
   router.replace(`/m/video/${it?.aId || startAId}`)
 }
 
-function enterFullscreen() {
-  const el = document.documentElement
-  const rfs = el.requestFullscreen || el.webkitRequestFullscreen
-  if (rfs) {
-    const p = rfs.call(el)
-    if (p && p.catch) p.catch(() => {})
-  }
-}
-
-function exitFullscreen() {
-  if (document.fullscreenElement) {
-    document.exitFullscreen().catch(() => {})
-  } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
-    document.webkitExitFullscreen()
-  }
-}
-
-function toggleFullscreen() {
-  if (isFullscreen.value) exitFullscreen()
-  else enterFullscreen()
-}
-
-function onFsChange() {
-  isFullscreen.value = !!(document.fullscreenElement || document.webkitFullscreenElement)
-}
-
 onMounted(async () => {
-  document.addEventListener('fullscreenchange', onFsChange)
-  document.addEventListener('webkitfullscreenchange', onFsChange)
-  enterFullscreen()
   const first = await loadDetail(startAId)
   if (first) {
     feed.value.push(makeItem({ ...first, resolved: true }))
@@ -310,11 +279,8 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  document.removeEventListener('fullscreenchange', onFsChange)
-  document.removeEventListener('webkitfullscreenchange', onFsChange)
   Object.values(hlsMap).forEach(h => { try { h.destroy() } catch (e) {} })
   cancelAnimationFrame(scrollRaf)
-  exitFullscreen()
 })
 </script>
 
@@ -334,14 +300,6 @@ onUnmounted(() => {
         </svg>
       </div>
       <div class="vf-brand">竖屏 · 短视频</div>
-      <div class="vf-fs" @click.stop="toggleFullscreen">
-        <svg v-if="!isFullscreen" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2">
-          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-        </svg>
-        <svg v-else viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2">
-          <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-        </svg>
-      </div>
     </div>
 
     <!-- 视频流 -->
@@ -512,7 +470,6 @@ onUnmounted(() => {
   background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
 }
 .vf-back { display: flex; align-items: center; cursor: pointer; }
-.vf-fs { margin-left: auto; display: flex; align-items: center; cursor: pointer; opacity: 0.9; }
 .vf-brand {
   color: #fff;
   font-size: 15px;
