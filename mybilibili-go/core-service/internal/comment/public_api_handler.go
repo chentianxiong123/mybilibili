@@ -6,10 +6,14 @@ import (
 	"strconv"
 	"strings"
 
+	"database/sql"
+
 	"google.golang.org/protobuf/encoding/protojson"
 	"mybilibili/pkg/errors"
 	"mybilibili/pkg/httputil"
 	pb "mybilibili/pkg/pb"
+
+	"mybilibili/core-service/internal/user"
 )
 
 // PublicAPIHandler 提供评论的公开 HTTP JSON 端点（Flutter App 与 web-ts 直接消费），
@@ -17,10 +21,11 @@ import (
 // 稿件与互动端点统一由 ManuscriptHTTPHandler 的 /api/v1/manuscript/ 子树分发。
 type PublicAPIHandler struct {
 	commentSvc *CommentService
+	db         *sql.DB
 }
 
-func NewPublicAPIHandler(commentSvc *CommentService) *PublicAPIHandler {
-	return &PublicAPIHandler{commentSvc: commentSvc}
+func NewPublicAPIHandler(commentSvc *CommentService, db *sql.DB) *PublicAPIHandler {
+	return &PublicAPIHandler{commentSvc: commentSvc, db: db}
 }
 
 func (h *PublicAPIHandler) Register(mux *http.ServeMux) {
@@ -177,6 +182,7 @@ func (h *PublicAPIHandler) handleCommentAdd(w http.ResponseWriter, r *http.Reque
 		errors.WriteHTTPError(w, err)
 		return
 	}
+	user.AwardExperience(r.Context(), h.db, uid, 5)
 	httputil.WriteOK(w, commentToMap(resp.Comment))
 }
 
@@ -205,6 +211,7 @@ func (h *PublicAPIHandler) handleCommentReply(w http.ResponseWriter, r *http.Req
 		errors.WriteHTTPError(w, err)
 		return
 	}
+	user.AwardExperience(r.Context(), h.db, uid, 2)
 	httputil.WriteOK(w, replyToMapJSON(resp.Reply))
 }
 

@@ -13,10 +13,11 @@ import (
 type CreatorCommentHTTPHandler struct {
 	repo    *CommentRepository
 	service *CommentService
+	db      *sql.DB
 }
 
-func NewCreatorCommentHTTPHandler(repo *CommentRepository, service *CommentService) *CreatorCommentHTTPHandler {
-	return &CreatorCommentHTTPHandler{repo: repo, service: service}
+func NewCreatorCommentHTTPHandler(repo *CommentRepository, service *CommentService, db *sql.DB) *CreatorCommentHTTPHandler {
+	return &CreatorCommentHTTPHandler{repo: repo, service: service, db: db}
 }
 
 func (h *CreatorCommentHTTPHandler) Register(mux *http.ServeMux) {

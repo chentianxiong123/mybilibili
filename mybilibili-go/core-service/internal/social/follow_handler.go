@@ -8,16 +8,35 @@ import (
 	"strconv"
 	"strings"
 
+	"mybilibili/pkg/auth"
 	"mybilibili/pkg/httputil"
 )
 
 type FollowHandler struct {
 	svc *FollowService
 	db  *sql.DB
+	jwt *auth.JWT
 }
 
-func NewFollowHandler(svc *FollowService, db *sql.DB) *FollowHandler {
-	return &FollowHandler{svc: svc, db: db}
+func NewFollowHandler(svc *FollowService, db *sql.DB, jwt *auth.JWT) *FollowHandler {
+	return &FollowHandler{svc: svc, db: db, jwt: jwt}
+}
+
+// getUserID 先从 X-User-Id header 取，无网关时 fallback 解析 Authorization Bearer token。
+func (h *FollowHandler) getUserID(r *http.Request) int64 {
+	uid := httputil.GetUserIDFromHeader(r)
+	if uid != 0 {
+		return uid
+	}
+	if h.jwt != nil {
+		tokenStr := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		if tokenStr != "" && tokenStr != r.Header.Get("Authorization") {
+			if id, err := h.jwt.ParseUserID(tokenStr); err == nil {
+				return id
+			}
+		}
+	}
+	return 0
 }
 
 func (h *FollowHandler) Register(mux *http.ServeMux) {
@@ -38,7 +57,7 @@ func (h *FollowHandler) handleFollow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	if userID == 0 {
 		http.Error(w, "unauthorized", 401)
 		return
@@ -72,13 +91,13 @@ func (h *FollowHandler) handleCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	targetID, _ := strconv.ParseInt(parts[0], 10, 64)
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	ok, _ := h.svc.IsFollowing(r.Context(), userID, targetID)
 	json.NewEncoder(w).Encode(map[string]bool{"following": ok})
 }
 
 func (h *FollowHandler) handleMyFollowers(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	page, pageSize := httputil.ParsePageParams(r)
 	ids, _ := h.svc.ListFollowers(r.Context(), userID, page, pageSize)
 	users := h.loadUserBriefs(r.Context(), ids)
@@ -86,7 +105,7 @@ func (h *FollowHandler) handleMyFollowers(w http.ResponseWriter, r *http.Request
 }
 
 func (h *FollowHandler) handleMyFollowing(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	page, pageSize := httputil.ParsePageParams(r)
 	ids, _ := h.svc.ListFollowing(r.Context(), userID, page, pageSize)
 	users := h.loadUserBriefs(r.Context(), ids)

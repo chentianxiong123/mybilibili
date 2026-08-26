@@ -64,6 +64,37 @@ const createCollectionVideoDialogVisible = ref(false)
 const addVideoDialogVisible = ref(false)
 const currentCollectionId = ref(null)
 
+// 合集 API 返回 snake_case，归一化到 camelCase
+const normalizeCollection = (d) => ({
+  id: d.id,
+  name: d.title || d.name || '',
+  title: d.title || d.name || '',
+  description: d.description || '',
+  coverUrl: d.cover_url || d.coverUrl || d.cover || '',
+  isPublic: d.status === 1 || d.isPublic === true || d.is_public === true,
+  videoCount: d.manuscript_count || d.videoCount || 0,
+  manuscriptCount: d.manuscript_count || d.manuscriptCount || 0,
+  viewCount: d.view_count || d.viewCount || 0,
+  createTime: d.created_at || d.createTime || '',
+  updateTime: d.updated_at || d.updateTime || '',
+  updatedAt: d.updated_at || d.updateTime || '',
+  userId: d.user_id || d.userId || null,
+  videos: []
+})
+
+// 稿件归一化
+const normalizeManuscript = (m) => ({
+  id: m.id,
+  title: m.title || '',
+  coverUrl: m.cover_url || m.coverUrl || m.cover || '',
+  viewCount: m.view_count || m.viewCount || m.view_count || 0,
+  uploadTime: m.upload_time || m.uploadTime || m.created_at || m.createTime || '',
+  date: formatDate(m.upload_time || m.uploadTime || m.created_at || m.createTime || ''),
+  duration: m.duration || '00:00',
+  userId: m.user_id || m.userId || 0,
+  status: m.status || 0
+})
+
 // 加载用户的合集列表
 const loadUserCollections = async () => {
   if (!props.userId) return
@@ -72,17 +103,15 @@ const loadUserCollections = async () => {
   try {
     const response = await collectionApi.getUserCollections(props.userId, 1, 100)
     if (response.code === 200) {
-      const list = response.data || []
+      const list = (response.data?.list || response.data || []).map(normalizeCollection)
       for (const collection of list) {
         try {
           const videoResponse = await collectionApi.getCollectionManuscripts(collection.id, 1, 10)
           if (videoResponse.code === 200) {
-            collection.videos = (videoResponse.data || []).map(video => ({
-              ...video,
-              date: formatDate(video.uploadTime)
-            }))
-            if (collection.videos.length > 0 && collection.videos[0].coverUrl) {
-              collection.coverUrl = collection.videos[0].coverUrl
+            const videos = (videoResponse.data?.list || videoResponse.data || []).map(normalizeManuscript)
+            collection.videos = videos
+            if (videos.length > 0 && videos[0].coverUrl) {
+              collection.coverUrl = videos[0].coverUrl
             }
           }
         } catch (e) {
@@ -105,8 +134,8 @@ const loadCollectionDetailData = async () => {
   collectionDetail.value.loading = true
   try {
     const collectionResponse = await collectionApi.getCollectionById(collectionDetail.value.collectionId)
-    if (collectionResponse.code === 200) {
-      collectionDetail.value.collection = collectionResponse.data
+    if (collectionResponse.code === 200 && collectionResponse.data) {
+      collectionDetail.value.collection = normalizeCollection(collectionResponse.data)
     }
 
     const manuscriptsResponse = await collectionApi.getCollectionManuscripts(
@@ -115,9 +144,9 @@ const loadCollectionDetailData = async () => {
       collectionDetail.value.pagination.pageSize
     )
     if (manuscriptsResponse.code === 200) {
-      const manuscripts = manuscriptsResponse.data || []
+      const manuscripts = (manuscriptsResponse.data?.list || manuscriptsResponse.data || []).map(normalizeManuscript)
       collectionDetail.value.manuscripts = manuscripts
-      collectionDetail.value.pagination.total = manuscripts.length
+      collectionDetail.value.pagination.total = manuscriptsResponse.data?.total || manuscripts.length
     }
   } catch (error) {
     console.error('获取合集详情失败:', error)
