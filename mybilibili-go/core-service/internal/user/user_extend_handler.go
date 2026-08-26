@@ -632,6 +632,39 @@ func (h *UserExtendHandler) handleUserByID(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "not found", 404)
 		return
 	}
+
+	// PUT: 更新用户资料（简介、公告等）
+	if r.Method == "PUT" || r.Method == "PATCH" {
+		var req map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid body", 400)
+			return
+		}
+		allowed := []string{"signature", "announcement", "bio", "gender", "nickname", "cover"}
+		sets := []string{}
+		args := []interface{}{}
+		argIdx := 1
+		for _, field := range allowed {
+			if val, ok := req[field]; ok {
+				sets = append(sets, fmt.Sprintf("%s = $%d", field, argIdx))
+				args = append(args, val)
+				argIdx++
+			}
+		}
+		if len(sets) == 0 {
+			http.Error(w, "no updatable fields", 400)
+			return
+		}
+		args = append(args, id)
+		query := fmt.Sprintf("UPDATE users SET %s, updated_at = NOW() WHERE id = $%d", strings.Join(sets, ", "), argIdx)
+		if _, err := h.svc.repo.db.ExecContext(r.Context(), query, args...); err != nil {
+			http.Error(w, "update failed: "+err.Error(), 500)
+			return
+		}
+		httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
+		return
+	}
+
 	user, err := h.svc.repo.FindByID(r.Context(), id)
 	if err != nil {
 		if stderrors.Is(err, sql.ErrNoRows) {
