@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import { getMyInfo } from '../../api/user'
 import { manuscriptApi, normalizeManuscriptList } from '../../api/manuscript'
 import { formatTenThousand } from '../../utils/format'
-import { getWebOrigin } from '../../utils/webOrigin'
 import noface from '../../assets/noface.gif'
 
 const router = useRouter()
@@ -48,7 +47,7 @@ const goService = (service: any) => {
   if (service.to) router.push(service.to)
 }
 const goPublish = () => {
-  const origin = getWebOrigin()
+  const origin = window.location.origin.replace(':5174', ':5173')
   window.location.href = `${origin}/create-center/upload`
 }
 </script>
