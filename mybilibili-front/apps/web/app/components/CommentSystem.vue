@@ -237,9 +237,6 @@ onMounted(() => {
 
 const defaultAvatar = '/default-avatar.svg'
 
-// 判断是否为动态类型
-const isDynamic = computed(() => props.targetType === 'DYNAMIC')
-
 // 评论列表数据
 const comments = ref([])
 const loading = ref(false)
@@ -386,9 +383,7 @@ const submitReply = async (comment) => {
   }
 
   try {
-    const res = isDynamic.value
-      ? await commentApi.replyDynamicComment(props.targetId, comment.id, replyContent.value, null)
-      : await commentApi.replyComment(comment.id, replyContent.value, null)
+    const res = await commentApi.replyTo(props.targetType, props.targetId, comment.id, replyContent.value, null)
     if (res.code === 200) {
       if (!comment.replies) {
         comment.replies = []
@@ -414,9 +409,7 @@ const submitReplyToReply = async (comment, reply) => {
   }
 
   try {
-    const res = isDynamic.value
-      ? await commentApi.replyDynamicComment(props.targetId, comment.id, replyContent.value, replyTarget.value.replyToUserId)
-      : await commentApi.replyComment(comment.id, replyContent.value, replyTarget.value.replyToUserId)
+    const res = await commentApi.replyTo(props.targetType, props.targetId, comment.id, replyContent.value, replyTarget.value.replyToUserId)
     if (res.code === 200) {
       // 添加回复到列表
       if (!comment.replies) {
@@ -444,17 +437,13 @@ const likeComment = async (comment) => {
 
   try {
     if (comment.liked) {
-      const res = isDynamic.value
-        ? await commentApi.unlikeDynamicComment(comment.id)
-        : await commentApi.unlikeComment(comment.id)
+      const res = await commentApi.unlikeTarget(props.targetType, 'comment', comment.id)
       if (res.code === 200) {
         comment.likeCount = Math.max(0, comment.likeCount - 1)
         comment.liked = false
       }
     } else {
-      const res = isDynamic.value
-        ? await commentApi.likeDynamicComment(comment.id)
-        : await commentApi.likeComment(comment.id)
+      const res = await commentApi.likeTarget(props.targetType, 'comment', comment.id)
       if (res.code === 200) {
         comment.likeCount = (comment.likeCount || 0) + 1
         comment.liked = true
@@ -498,17 +487,13 @@ const likeReply = async (reply) => {
 
   try {
     if (reply.liked) {
-      const res = isDynamic.value
-        ? await commentApi.unlikeDynamicReply(reply.id)
-        : await commentApi.unlikeReply(reply.id)
+      const res = await commentApi.unlikeTarget(props.targetType, 'reply', reply.id)
       if (res.code === 200) {
         reply.likeCount = Math.max(0, reply.likeCount - 1)
         reply.liked = false
       }
     } else {
-      const res = isDynamic.value
-        ? await commentApi.likeDynamicReply(reply.id)
-        : await commentApi.likeReply(reply.id)
+      const res = await commentApi.likeTarget(props.targetType, 'reply', reply.id)
       if (res.code === 200) {
         reply.likeCount = (reply.likeCount || 0) + 1
         reply.liked = true
@@ -546,9 +531,7 @@ const dislikeReply = (reply) => {
 // 加载更多回复
 const loadMoreReplies = async (comment) => {
   try {
-    const res = isDynamic.value
-      ? await commentApi.getDynamicRepliesByCommentId(comment.id)
-      : await commentApi.getRepliesByCommentId(comment.id, 1, comment.replyCount)
+    const res = await commentApi.getReplies(props.targetType, comment.id, 1, Math.max(comment.replyCount || 0, 20))
     if (res.code === 200) {
       comment.replies = res.data || []
     }

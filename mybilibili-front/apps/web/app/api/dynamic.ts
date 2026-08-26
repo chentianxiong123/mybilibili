@@ -39,35 +39,8 @@ export const dynamicApi = {
     return api.delete(`/dynamic/like/${id}`)
   },
 
-  checkLikeStatus: (id: number) => {
-    return api.get(`/dynamic/like/status/${id}`)
-  },
-
   shareDynamic: (id: number) => {
     return api.post(`/dynamic/share/${id}`)
-  },
-
-  getComments: (dynamicId: number, page = 1, limit = 10) => {
-    return api.get('/dynamic/comment/list', { params: { dynamicId, page, size: limit } })
-  },
-
-  addComment: (dynamicId: number, content: string, parentId: number | null = null, replyUserId: number | null = null) => {
-    const params: Record<string, any> = { dynamicId, content }
-    if (parentId) params.parentId = parentId
-    if (replyUserId) params.replyUserId = replyUserId
-    return api.post('/dynamic/comment/add', null, { params })
-  },
-
-  deleteComment: (commentId: number) => {
-    return api.delete(`/dynamic/comment/delete/${commentId}`)
-  },
-
-  likeComment: (commentId: number) => {
-    return api.post(`/dynamic/comment/like/${commentId}`)
-  },
-
-  unlikeComment: (commentId: number) => {
-    return api.delete(`/dynamic/comment/like/${commentId}`)
   }
 }
 
