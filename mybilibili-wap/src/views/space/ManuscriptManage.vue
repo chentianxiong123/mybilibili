@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { manuscriptApi, normalizeManuscriptList } from '../../api/manuscript'
 import { formatTenThousand } from '../../utils/format'
-import { getWebOrigin } from '../../utils/webOrigin'
 
 const router = useRouter()
 const loading = ref(false)
@@ -59,7 +58,8 @@ const goData = (item: any) => {
 }
 
 const getWebUrl = (path: string) => {
-  return `${getWebOrigin()}${path}`
+  const origin = window.location.origin.replace(':5174', ':5173')
+  return `${origin}${path}`
 }
 
 const goEdit = (item: any) => {
