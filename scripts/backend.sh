@@ -4,7 +4,7 @@
 #   start            拉起 infra + 全部服务（--migrate 首次建表用）
 #   stop             停掉全部服务
 #   status           各服务存活状态
-#   logs [name]      跟踪日志，name ∈ core search msg-danmaku live ai studio work，缺省全跟
+#   logs [name]      跟踪日志，name ∈ core search msg-danmaku live ai studio work bili，缺省全跟
 set -u
 cd "$(dirname "$0")/.."
 
@@ -20,8 +20,11 @@ export JWT_SECRET="${JWT_SECRET:-dev-secret-change-in-production}"
 export MQ_TYPE=nats
 export NATS_URL="${NATS_URL:-nats://127.0.0.1:4222}"
 export REDIS_ADDR="${REDIS_ADDR:-localhost:6379}"
+# bili-proxy 服务：BILI_SESSDATA 可选（提升清晰度档位），BILI_PROXY_ADDR 供 core 反代（默认 http://127.0.0.1:8091）
+export BILI_SESSDATA="${BILI_SESSDATA:-}"
+export BILI_PROXY_ADDR="${BILI_PROXY_ADDR:-http://127.0.0.1:8091}"
 
-SERVICES="core search msg-danmaku live ai studio work"
+SERVICES="core search msg-danmaku live ai studio work bili"
 
 bin_of() {
     case "$1" in
@@ -32,6 +35,7 @@ bin_of() {
         ai)         echo /tmp/mybilibili-ai ;;
         studio)     echo /tmp/mybilibili-studio ;;
         work)       echo /tmp/mybilibili-work ;;
+        bili)       echo /tmp/mybilibili-bili ;;
     esac
 }
 

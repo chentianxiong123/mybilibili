@@ -143,6 +143,37 @@ func (p *LiveProxy) Register(mux *http.ServeMux) {
 	mux.HandleFunc(p.prefix, p.proxy.ServeHTTP)
 }
 
+// BiliProxy 将 /api/v1/bili/stream/{id} 反向代理到 bili-proxy 服务的 /stream/{id}，
+// 使前端走同源路径播放 B 站外部视频流（免 CORS）。Range 头由 ReverseProxy 透传。
+type BiliProxy struct {
+	proxy  *httputil.ReverseProxy
+	prefix string
+}
+
+func NewBiliProxy() *BiliProxy {
+	target := os.Getenv("BILI_PROXY_ADDR")
+	if target == "" {
+		target = "http://127.0.0.1:8091"
+	}
+	u, _ := url.Parse(target)
+	proxy := httputil.NewSingleHostReverseProxy(u)
+	origDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		origDirector(req)
+		// /api/v1/bili/stream/{id}?qn= -> /stream/{id}?qn=
+		trimmed := strings.TrimPrefix(req.URL.Path, "/api/v1/bili")
+		req.URL.Path = trimmed
+		if req.URL.RawPath != "" {
+			req.URL.RawPath = strings.TrimPrefix(req.URL.RawPath, "/api/v1/bili")
+		}
+	}
+	return &BiliProxy{proxy: proxy, prefix: "/api/v1/bili/"}
+}
+
+func (p *BiliProxy) Register(mux *http.ServeMux) {
+	mux.HandleFunc(p.prefix, p.proxy.ServeHTTP)
+}
+
 func StartHTTPServer(addr string, jwt *JWT, extras ...LiveHandler) {
 	mux := http.NewServeMux()
 	h := NewHTTPHandler()

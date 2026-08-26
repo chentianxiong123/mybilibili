@@ -100,6 +100,7 @@ func main() {
 	interactionSvc.SetNotifier(msgDanmakuClient)
 
 	liveProxy := coreapi.NewLiveProxy()
+	biliProxy := coreapi.NewBiliProxy()
 
 	followRepo := social.NewFollowRepository(db)
 	followSvc := social.NewFollowService(followRepo)
@@ -314,7 +315,7 @@ func main() {
 	adminContentH := moderation.NewAdminContentHandler(db)
 
 	coreapi.StartHTTPServer(httpAddr, auth.NewJWT(jwtSecret),
-		liveProxy, followH, socialH, videoH, adminH, modH,
+		liveProxy, biliProxy, followH, socialH, videoH, adminH, modH,
 		supportH, userExtH, favoriteH,
 		creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH,
 		userAdminH, manuscriptAdminH, videoAdminH, commentAdminH, moderationAdminH,

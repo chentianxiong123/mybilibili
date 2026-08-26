@@ -9,4 +9,5 @@ use (
 	./pkg
 	./search-service
 	./studio-service
+	./bili-proxy-service
 )
