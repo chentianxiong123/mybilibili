@@ -360,19 +360,56 @@ function seekTo(clientX) {
   currentTime.value = ratio * duration.value
 }
 
-// 桌面端鼠标拖拽进度
+// 桌面端鼠标：与触摸一致，按下后需停留 180ms 才进入拖拽，否则为点击
 function onMouseDown(e) {
-  dragging.value = true
-  showProgressBar.value = true
-  seekTo(e.clientX)
+  touchStart = { x: e.clientX, y: e.clientY, time: Date.now() }
+  moved = false
+  holdTimer = setTimeout(() => {
+    if (!moved && touchStart) {
+      dragging.value = true
+      showProgressBar.value = true
+      seekTo(touchStart.x)
+    }
+  }, 180)
 }
 function onMouseMove(e) {
-  if (dragging.value) seekTo(e.clientX)
+  if (!touchStart) return
+  const dx = e.clientX - touchStart.x
+  const dy = e.clientY - touchStart.y
+  if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+    if (!dragging.value) {
+      moved = true
+      clearTimeout(holdTimer)
+    }
+  }
+  if (dragging.value) {
+    seekTo(e.clientX)
+  }
 }
 function onMouseUp() {
-  if (!dragging.value) return
-  dragging.value = false
-  setTimeout(() => { showProgressBar.value = false }, 200)
+  clearTimeout(holdTimer)
+  if (dragging.value) {
+    dragging.value = false
+    setTimeout(() => { showProgressBar.value = false }, 200)
+    touchStart = null
+    return
+  }
+  if (!touchStart || moved) { touchStart = null; return }
+  // 短点 → 单击/双击逻辑
+  const x = touchStart.x, y = touchStart.y
+  touchStart = null
+  const now = Date.now()
+  if (now - lastTap < 300) {
+    clearTimeout(tapTimer)
+    lastTap = 0
+    const it = feed.value[activeIndex.value]
+    if (it && !it.liked) toggleLike(it)
+    showHeart(x, y)
+    return
+  }
+  lastTap = now
+  clearTimeout(tapTimer)
+  tapTimer = setTimeout(() => { togglePlay() }, 300)
 }
 
 async function toggleLike(it) {
