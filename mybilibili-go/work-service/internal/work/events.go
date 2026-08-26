@@ -44,6 +44,8 @@ type ProgressEvent struct {
 	Error        string `json:"error"`
 	Done         bool   `json:"done"`
 	OccurredAt   string `json:"occurred_at"`
+	// IsVertical 视频方向：0=横屏 1=竖屏；-1 表示未设置（非转码类事件默认值）
+	IsVertical   int32  `json:"is_vertical"`
 }
 
 type PublishEvent struct {

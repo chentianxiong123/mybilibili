@@ -282,6 +282,7 @@ type VideoItem struct {
 	ProcessProgress int32                  `protobuf:"varint,13,opt,name=process_progress,json=processProgress,proto3" json:"process_progress,omitempty"`
 	ProcessStage    string                 `protobuf:"bytes,14,opt,name=process_stage,json=processStage,proto3" json:"process_stage,omitempty"`
 	ProcessError    string                 `protobuf:"bytes,15,opt,name=process_error,json=processError,proto3" json:"process_error,omitempty"`
+	IsVertical      int32                  `protobuf:"varint,16,opt,name=is_vertical,json=isVertical,proto3" json:"is_vertical,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -419,6 +420,13 @@ func (x *VideoItem) GetProcessError() string {
 		return x.ProcessError
 	}
 	return ""
+}
+
+func (x *VideoItem) GetIsVertical() int32 {
+	if x != nil {
+		return x.IsVertical
+	}
+	return 0
 }
 
 type UserInfo struct {

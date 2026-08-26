@@ -52,6 +52,7 @@ type Video struct {
 	ProcessError    string
 	SourceVideoURL  string
 	DurationSeconds int32
+	IsVertical      int32
 }
 
 type Tag struct {
@@ -98,7 +99,7 @@ func (r *ManuscriptRepository) FindVideosByManuscriptID(ctx context.Context, man
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, manuscript_id, video_order, title, play_url_hd, play_url_sd, play_url_ld,
 		       upload_time, updated_at, process_progress, COALESCE(process_stage,''), has_subtitle, has_summary,
-		       process_status, COALESCE(process_error,''), source_video_url, duration_seconds
+		       process_status, COALESCE(process_error,''), source_video_url, duration_seconds, is_vertical
 		FROM videos WHERE manuscript_id = $1 ORDER BY video_order`, manuscriptID)
 	if err != nil {
 		return nil, err
@@ -111,7 +112,7 @@ func (r *ManuscriptRepository) FindVideosByManuscriptID(ctx context.Context, man
 		if err := rows.Scan(&v.ID, &v.ManuscriptID, &v.VideoOrder, &v.Title,
 			&v.PlayURLHd, &v.PlayURLSd, &v.PlayURLld, &v.UploadTime, &v.UpdatedAt,
 			&v.ProcessProgress, &v.ProcessStage, &v.HasSubtitle, &v.HasSummary,
-			&v.ProcessStatus, &v.ProcessError, &v.SourceVideoURL, &v.DurationSeconds); err != nil {
+			&v.ProcessStatus, &v.ProcessError, &v.SourceVideoURL, &v.DurationSeconds, &v.IsVertical); err != nil {
 			return nil, err
 		}
 		list = append(list, v)
@@ -403,6 +404,7 @@ func videoToPB(v *Video) *pb.VideoItem {
 		ProcessProgress: v.ProcessProgress,
 		ProcessStage:    v.ProcessStage,
 		ProcessError:    v.ProcessError,
+		IsVertical:      v.IsVertical,
 	}
 }
 

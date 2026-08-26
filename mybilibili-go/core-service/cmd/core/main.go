@@ -246,10 +246,15 @@ func main() {
 				Status       int32  `json:"status"`
 				Done         bool   `json:"done"`
 				Error        string `json:"error"`
+				IsVertical   int32  `json:"is_vertical"`
 			}
 			json.Unmarshal(msg.Payload, &evt)
 			if evt.VideoID == 0 {
 				continue
+			}
+			// 转码时探测出的横竖屏方向（>=0 表示已设置）
+			if evt.IsVertical >= 0 {
+				_, _ = db.Exec(`UPDATE videos SET is_vertical = $1 WHERE id = $2`, evt.IsVertical, evt.VideoID)
 			}
 			stage := evt.Stage
 			if stage == "failed" {

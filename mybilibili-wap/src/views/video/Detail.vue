@@ -14,7 +14,7 @@ import { getToken } from '../../utils/session'
 
 const route = useRoute()
 const router = useRouter()
-const aId = parseInt(route.params.aId) || 0
+let aId = parseInt(route.params.aId) || 0
 
 const video = ref(null)
 const recommendVides = ref([])
@@ -63,6 +63,8 @@ onUnmounted(() => {
 })
 
 watch(() => route.params.aId, async () => {
+  // 同一路由复用组件时不重新挂载，需手动用最新参数更新 aId 再重新加载
+  aId = parseInt(route.params.aId) || 0
   await loadData()
   await loadInteractionState()
   await loadFollowState()
@@ -121,6 +123,12 @@ const loadFollowState = async () => {
 
 const loadData = async () => {
   loading.value = true
+  // 切换视频（同一组件复用）时重置每个视频独立的本地状态
+  activePartIndex.value = 0
+  videoParts.value = []
+  comments.value = []
+  commentPage.value = 1
+  hasMoreComments.value = true
   try {
     // SWR：先展示本地缓存，立即渲染；网络请求回来再覆盖
     const cached = readCache('detail', String(aId))
@@ -158,12 +166,17 @@ const applyVideoData = (d) => {
   shareCount.value = d.shareCount || 0
   followerCount.value = d.uploader?.followerCount || 0
 
-  // 多分P
-  if (d.videos && d.videos.length > 0 && videoParts.value.length === 0) {
+  // 多分P：始终按当前视频的分P列表渲染（同一组件复用时也要覆盖）
+  if (d.videos && d.videos.length > 0) {
     videoParts.value = d.videos.map((v, i) => ({
       id: v.id,
       title: v.title,
-      active: i === 0
+      active: i === 0,
+      playUrl: v.playUrl || '',
+      playUrlHd: v.playUrlHd || '',
+      playUrlSd: v.playUrlSd || '',
+      playUrlLd: v.playUrlLd || '',
+      isVertical: v.isVertical ? 1 : 0
     }))
   }
 
@@ -295,6 +308,25 @@ const submitComment = async () => {
 
 const selectPart = (index) => {
   activePartIndex.value = index
+  const part = videoParts.value[index]
+  if (!part) return
+  // 让共享的 video.value 的播放地址跟随所选分P（供分享、收藏等依赖 video 的逻辑使用）
+  if (video.value) {
+    video.value.playUrl = part.playUrl || part.playUrlHd || video.value.playUrl
+    video.value.playUrlHd = part.playUrlHd
+    video.value.playUrlSd = part.playUrlSd
+    video.value.playUrlLd = part.playUrlLd
+    video.value.isVertical = part.isVertical ? 1 : 0
+  }
+  // 分P切换时 aId 不变，播放器 watch 不会重建；需显式通知播放器换源 + 重载对应分P弹幕
+  videoPlayerRef.value?.switchPart?.({
+    playUrl: part.playUrl || part.playUrlHd || '',
+    playUrlHd: part.playUrlHd,
+    playUrlSd: part.playUrlSd,
+    playUrlLd: part.playUrlLd,
+    videoId: part.id,
+    isVertical: part.isVertical ? 1 : 0
+  })
 }
 
 const formatTimeLabel = (timeStr) => {
@@ -439,7 +471,7 @@ const goBack = () => {
       </div>
 
       <!-- 分P选集列表 -->
-      <div v-if="videoParts.length > 0" class="parts-slider-container">
+      <div v-if="videoParts.length > 1" class="parts-slider-container">
         <div class="parts-list">
           <div
             v-for="(part, index) in videoParts"
