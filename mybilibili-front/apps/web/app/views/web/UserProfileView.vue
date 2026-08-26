@@ -483,12 +483,25 @@ const handleSidebarClick = (type) => {
   }
 }
 
+// 前端内存排序，不重新请求接口，避免整个组件闪烁
+const sortVideosInMemory = () => {
+  const videos = [...allVideos.value]
+  if (videoSortOption.value === '最多播放') {
+    videos.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
+  } else if (videoSortOption.value === '最多收藏') {
+    videos.sort((a, b) => (b.collectCount || 0) - (a.collectCount || 0))
+  } else {
+    videos.sort((a, b) => new Date(b.uploadTime) - new Date(a.uploadTime))
+  }
+  allVideos.value = videos
+  submissions.value.videos = videos
+}
+
 // 处理主页排序变化
 const handleSortChange = (option) => {
   videoSortOption.value = option
   videoSearch.value.activeSort = option
-  // 重新加载视频列表
-  loadUserVideos()
+  sortVideosInMemory()
 }
 
 // 处理投稿页面排序变化
@@ -497,8 +510,7 @@ const handleSubmissionsSortChange = (option) => {
   // 同步更新主页和搜索页的排序选项
   videoSortOption.value = option
   videoSearch.value.activeSort = option
-  // 重新加载视频列表
-  loadUserVideos()
+  sortVideosInMemory()
 }
 
 // 处理视频搜索
