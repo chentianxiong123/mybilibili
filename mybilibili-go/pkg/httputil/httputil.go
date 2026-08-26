@@ -42,6 +42,9 @@ func ParsePageParams(r *http.Request) (int32, int32) {
 	if sizeStr == "" {
 		sizeStr = r.URL.Query().Get("size")
 	}
+	if sizeStr == "" {
+		sizeStr = r.URL.Query().Get("limit")
+	}
 	size, _ := strconv.ParseInt(sizeStr, 10, 32)
 	if page < 1 {
 		page = 1

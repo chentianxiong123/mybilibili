@@ -13,7 +13,7 @@ import (
 type AdminUser struct {
 	ID         int64  `json:"id"`
 	Username   string `json:"username"`
-	Password   string `json:"password,omitempty"`
+	Password   string `json:"-"`
 	AdminLevel int32  `json:"-"`
 	CreatedAt  string `json:"created_at"`
 	Roles      []Role `json:"roles,omitempty"`

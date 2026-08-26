@@ -194,10 +194,14 @@ func (h *UserAdminHandler) handleStatus(w http.ResponseWriter, r *http.Request, 
 		Status int32 `json:"status"`
 	}
 	json.NewDecoder(r.Body).Decode(&body)
-	_, err := h.db.ExecContext(r.Context(),
+	res, err := h.db.ExecContext(r.Context(),
 		`UPDATE users SET status=$1, updated_at=NOW() WHERE id=$2`, body.Status, id)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
+		return
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		http.Error(w, "user not found", 404)
 		return
 	}
 	if h.auditor != nil {
@@ -220,10 +224,14 @@ func (h *UserAdminHandler) handlePassword(w http.ResponseWriter, r *http.Request
 		return
 	}
 	hash := sha256hex(body.NewPassword)
-	_, err := h.db.ExecContext(r.Context(),
+	res, err := h.db.ExecContext(r.Context(),
 		`UPDATE users SET password=$1, updated_at=NOW() WHERE id=$2`, hash, id)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
+		return
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		http.Error(w, "user not found", 404)
 		return
 	}
 	if h.auditor != nil {

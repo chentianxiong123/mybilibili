@@ -97,10 +97,11 @@ func (s *Scheduler) runTask(ctx context.Context, t *ScheduledTask) {
 }
 
 // TriggerTaskNow immediately runs a task by key.
-func (s *Scheduler) TriggerTaskNow(ctx context.Context, taskKey string) {
+func (s *Scheduler) TriggerTaskNow(ctx context.Context, taskKey string) error {
 	t, err := s.svc.GetScheduledTaskByKey(ctx, taskKey)
 	if err != nil {
-		return
+		return err
 	}
 	s.runTask(ctx, t)
+	return nil
 }

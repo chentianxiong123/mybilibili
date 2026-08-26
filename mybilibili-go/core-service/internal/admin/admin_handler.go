@@ -528,27 +528,56 @@ func (h *Handler) handleLoginLogs(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleSecuritySettings(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"password_policy": map[string]interface{}{
-				"min_length":      8,
-				"require_upper":   true,
-				"require_lower":   true,
-				"require_digit":   true,
-				"require_special": false,
-				"max_age_days":    90,
-			},
-			"login_policy": map[string]interface{}{
-				"max_attempts":         5,
-				"lockout_minutes":      30,
-				"session_timeout_min":  480,
-				"two_factor_required":  false,
-				"ip_whitelist_enabled": false,
-			},
-		})
+		var settings map[string]interface{}
+		var raw string
+		if err := h.svc.repo.db.QueryRowContext(r.Context(),
+			`SELECT config_value FROM system_configs WHERE config_key='security_settings'`).Scan(&raw); err == nil && raw != "" {
+			if json.Unmarshal([]byte(raw), &settings) != nil || settings == nil {
+				settings = defaultSecuritySettings()
+			}
+		} else {
+			settings = defaultSecuritySettings()
+		}
+		json.NewEncoder(w).Encode(settings)
 	case "PUT":
+		var settings map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
+			http.Error(w, "invalid body", 400)
+			return
+		}
+		raw, _ := json.Marshal(settings)
+		_, err := h.svc.repo.db.ExecContext(r.Context(),
+			`INSERT INTO system_configs (config_key, config_value, updated_at, updated_by)
+			 VALUES ('security_settings', $1, NOW(), $2)
+			 ON CONFLICT (config_key) DO UPDATE SET config_value=$1, updated_at=NOW(), updated_by=$2`,
+			string(raw), httputil.GetAdminIDFromHeader(r))
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	default:
 		http.Error(w, "method not allowed", 405)
+	}
+}
+
+func defaultSecuritySettings() map[string]interface{} {
+	return map[string]interface{}{
+		"password_policy": map[string]interface{}{
+			"min_length":      8,
+			"require_upper":   true,
+			"require_lower":   true,
+			"require_digit":   true,
+			"require_special": false,
+			"max_age_days":    90,
+		},
+		"login_policy": map[string]interface{}{
+			"max_attempts":         5,
+			"lockout_minutes":      30,
+			"session_timeout_min":  480,
+			"two_factor_required":  false,
+			"ip_whitelist_enabled": false,
+		},
 	}
 }
 
@@ -748,7 +777,10 @@ func (h *Handler) handleScheduledTaskTrigger(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if h.scheduler != nil {
-		h.scheduler.TriggerTaskNow(r.Context(), req.TaskKey)
+		if err := h.scheduler.TriggerTaskNow(r.Context(), req.TaskKey); err != nil {
+			http.Error(w, "task not found", 404)
+			return
+		}
 	}
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
