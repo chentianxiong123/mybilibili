@@ -126,7 +126,7 @@ func main() {
 	scheduler := admin.NewScheduler(adminSvc)
 	adminH.SetScheduler(scheduler)
 	go scheduler.Run(context.Background())
-	userAdminH := user.NewUserAdminHandler(db, adminSvc)
+	userAdminH := user.NewUserAdminHandler(db, adminSvc, adminH, auth.NewJWT(jwtSecret))
 	videoAdminH := video.NewAdminHandler(db)
 	commentAdminH := comment.NewAdminHandler(db)
 	moderationAdminH := moderation.NewAdminHandler(db)

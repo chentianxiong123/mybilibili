@@ -49,6 +49,11 @@ func (h *Handler) requirePermission(r *http.Request, permission string) (int64, 
 	return adminID, false
 }
 
+// CheckPermission 导出版，供其他包（如 user.UserAdminHandler）做权限校验。
+func (h *Handler) CheckPermission(r *http.Request, permission string) (int64, bool) {
+	return h.requirePermission(r, permission)
+}
+
 func (h *Handler) requirePerm(perm string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := h.requirePermission(r, perm); !ok {
