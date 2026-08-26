@@ -22,7 +22,6 @@ const normalizeLoginLog = (d) => ({
   id: d.id,
   userId: d.user_id ?? d.userId ?? null,
   ip: d.ip || '',
-  location: d.location || '',
   loginTime: d.login_time || d.loginTime || '',
   status: d.status,
   userAgent: d.user_agent || d.userAgent || ''
@@ -112,7 +111,6 @@ const formatStatus = (status) => {
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="userId" label="用户ID" width="100" />
       <el-table-column prop="ip" label="登录IP" width="150" />
-      <el-table-column prop="location" label="登录地点" width="150" />
       <el-table-column prop="loginTime" label="登录时间" width="180">
         <template #default="{ row }">
           {{ formatTime(row.loginTime) }}

@@ -366,9 +366,16 @@ func (r *Repository) RecordLoginLog(ctx context.Context, userID int64, ip, userA
 
 func (r *Repository) ListLoginLogs(ctx context.Context, userID int64, page, size int32) ([]map[string]interface{}, error) {
 	offset := (page - 1) * size
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, user_id, ip, user_agent, status, login_time FROM login_logs WHERE user_id = $1 ORDER BY login_time DESC LIMIT $2 OFFSET $3`,
-		userID, size, offset)
+	var query string
+	var args []interface{}
+	if userID > 0 {
+		query = `SELECT id, user_id, ip, user_agent, status, login_time FROM login_logs WHERE user_id = $1 ORDER BY login_time DESC LIMIT $2 OFFSET $3`
+		args = []interface{}{userID, size, offset}
+	} else {
+		query = `SELECT id, user_id, ip, user_agent, status, login_time FROM login_logs ORDER BY login_time DESC LIMIT $1 OFFSET $2`
+		args = []interface{}{size, offset}
+	}
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

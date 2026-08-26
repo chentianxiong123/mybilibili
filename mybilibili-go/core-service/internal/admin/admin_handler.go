@@ -2,6 +2,7 @@ package admin
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
@@ -194,7 +195,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		ip = r.RemoteAddr
 	}
 	h.svc.repo.db.ExecContext(r.Context(),
-		`INSERT INTO login_logs (user_id, ip, user_agent, status) VALUES ($1, $2, $3, 0)`,
+		`INSERT INTO login_logs (user_id, ip, user_agent, status) VALUES ($1, $2, $3, 1)`,
 		admin.ID, ip, r.UserAgent())
 	token, err := h.jwt.GenerateAdmin(admin.ID)
 	if err != nil {
@@ -442,19 +443,83 @@ func (h *Handler) handleUserLoginLogs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleLoginLogs(w http.ResponseWriter, r *http.Request) {
-	userID, _ := strconv.ParseInt(r.URL.Query().Get("user_id"), 10, 64)
 	page, size := httputil.ParsePageParams(r)
-	list, _ := h.svc.ListLoginLogs(r.Context(), userID, page, size)
-	if list == nil {
-		list = []map[string]interface{}{}
+
+	// Build dynamic filters from query
+	conds := "WHERE 1=1"
+	args := []interface{}{}
+	argIdx := 0
+
+	if uidStr := r.URL.Query().Get("user_id"); uidStr != "" {
+		if uid, err := strconv.ParseInt(uidStr, 10, 64); err == nil && uid > 0 {
+			argIdx++
+			args = append(args, uid)
+			conds += fmt.Sprintf(" AND user_id = $%d", argIdx)
+		}
+	} else if uidStr := r.URL.Query().Get("userId"); uidStr != "" {
+		if uid, err := strconv.ParseInt(uidStr, 10, 64); err == nil && uid > 0 {
+			argIdx++
+			args = append(args, uid)
+			conds += fmt.Sprintf(" AND user_id = $%d", argIdx)
+		}
 	}
+
+	if ip := r.URL.Query().Get("ip"); ip != "" {
+		argIdx++
+		args = append(args, "%"+ip+"%")
+		conds += fmt.Sprintf(" AND ip ILIKE $%d", argIdx)
+	}
+
+	if statusStr := r.URL.Query().Get("status"); statusStr != "" {
+		if st, err := strconv.ParseInt(statusStr, 10, 64); err == nil {
+			argIdx++
+			args = append(args, int32(st))
+			conds += fmt.Sprintf(" AND status = $%d", argIdx)
+		}
+	}
+
+	if start := r.URL.Query().Get("startTime"); start != "" {
+		argIdx++
+		args = append(args, start)
+		conds += fmt.Sprintf(" AND login_time >= $%d", argIdx)
+	} else if start := r.URL.Query().Get("start_time"); start != "" {
+		argIdx++
+		args = append(args, start)
+		conds += fmt.Sprintf(" AND login_time >= $%d", argIdx)
+	}
+
+	if end := r.URL.Query().Get("endTime"); end != "" {
+		argIdx++
+		args = append(args, end)
+		conds += fmt.Sprintf(" AND login_time <= $%d", argIdx)
+	} else if end := r.URL.Query().Get("end_time"); end != "" {
+		argIdx++
+		args = append(args, end)
+		conds += fmt.Sprintf(" AND login_time <= $%d", argIdx)
+	}
+
+	offset := (page - 1) * size
+	query := `SELECT id, user_id, ip, user_agent, status, login_time FROM login_logs ` + conds + ` ORDER BY login_time DESC LIMIT $` + fmt.Sprintf("%d", argIdx+1) + ` OFFSET $` + fmt.Sprintf("%d", argIdx+2)
+	args = append(args, size, offset)
+
+	rows, err := h.svc.repo.db.QueryContext(r.Context(), query, args...)
+	list := []map[string]interface{}{}
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var id, uid, st int64
+			var ip, ua, t string
+			rows.Scan(&id, &uid, &ip, &ua, &st, &t)
+			list = append(list, map[string]interface{}{
+				"id": id, "user_id": uid, "ip": ip, "user_agent": ua, "status": st, "login_time": t,
+			})
+		}
+	}
+
 	var total int64
-	if userID > 0 {
-		h.svc.repo.db.QueryRowContext(r.Context(),
-			`SELECT COUNT(*) FROM login_logs WHERE user_id = $1`, userID).Scan(&total)
-	} else {
-		h.svc.repo.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM login_logs`).Scan(&total)
-	}
+	countQuery := `SELECT COUNT(*) FROM login_logs ` + conds
+	h.svc.repo.db.QueryRowContext(r.Context(), countQuery, args[:len(args)-2]...).Scan(&total)
+
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"list": list, "total": total, "page": page, "size": size,
 	})
