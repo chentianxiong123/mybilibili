@@ -132,7 +132,10 @@ func (h *MessageHTTPHandler) handleConversationByID(w http.ResponseWriter, r *ht
 
 	if len(parts) >= 2 && parts[1] == "messages" && r.Method == "GET" {
 		page, _ := strconv.ParseInt(r.URL.Query().Get("page"), 10, 32)
-		size, _ := strconv.ParseInt(r.URL.Query().Get("page_size"), 10, 32)
+		size, _ := strconv.ParseInt(r.URL.Query().Get("size"), 10, 32)
+		if size < 1 {
+			size, _ = strconv.ParseInt(r.URL.Query().Get("page_size"), 10, 32)
+		}
 		if page < 1 {
 			page = 1
 		}
@@ -140,8 +143,11 @@ func (h *MessageHTTPHandler) handleConversationByID(w http.ResponseWriter, r *ht
 			size = 20
 		}
 		msgs, _ := h.repo.GetMessages(r.Context(), id, int32(page), int32(size))
+		if msgs == nil {
+			msgs = []*Message{}
+		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(msgs)
+		json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": msgs})
 		return
 	}
 
