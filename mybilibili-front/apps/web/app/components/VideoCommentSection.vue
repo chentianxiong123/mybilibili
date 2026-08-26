@@ -370,7 +370,9 @@ const loadReplies = async (commentId, page = 1) => {
           likeCount: reply.likeCount || 0,
           dislikeCount: reply.dislikeCount || 0,
           isLiked: reply.liked || false,
-          targetAuthor: reply.replyToUserName || reply.targetAuthor || reply.replyTo || reply.toUserName || null
+          targetAuthor: reply.replyToUserName || reply.targetAuthor || reply.replyTo || reply.toUserName || null,
+          replyToUserId: reply.replyToUserId || 0,
+          replyToUserName: reply.replyToUserName || reply.replyTo || reply.toUserName || null
         }))
         comment.replies = formattedReplies
         replyPage.value[commentId] = page
@@ -456,7 +458,9 @@ const submitReply = async commentId => {
           likeCount: response.data.likeCount || 0,
           dislikeCount: 0,
           isLiked: response.data.liked || false,
-          targetAuthor: response.data.replyToUserName || targetAuthor
+          targetAuthor: response.data.replyToUserName || targetAuthor,
+          replyToUserId: response.data.replyToUserId || replyToUserId || 0,
+          replyToUserName: response.data.replyToUserName || targetAuthor
         }
         comment.replyCount = (comment.replyCount || 0) + 1
         if (isUploaderUser(newReply.userId)) {
@@ -507,7 +511,9 @@ const loadComments = async (sort = 'new') => {
           likeCount: reply.likeCount || 0,
           dislikeCount: reply.dislikeCount || 0,
           isLiked: reply.liked || false,
-          targetAuthor: reply.replyToUserName || reply.targetAuthor || reply.replyTo || reply.toUserName || null
+          targetAuthor: reply.replyToUserName || reply.targetAuthor || reply.replyTo || reply.toUserName || null,
+          replyToUserId: reply.replyToUserId || 0,
+          replyToUserName: reply.replyToUserName || reply.replyTo || reply.toUserName || null
         }))
       }))
     }
@@ -739,6 +745,7 @@ onUnmounted(() => {
                   <div class="reply-text">
                     <span class="reply-author" @click="goToAuthor(reply.userId)">{{ reply.author }}</span>
                     <LevelBadge :level="reply.userLevel" />
+                    <span v-if="reply.replyToUserId" class="reply-to" @click="goToAuthor(reply.replyToUserId)">回复 @{{ reply.replyToUserName }}</span>
                     <span class="reply-colon">: </span>
                     <span v-html="formatContentWithAtLinks(reply.content)"></span>
                   </div>
@@ -770,6 +777,7 @@ onUnmounted(() => {
                       <div class="reply-text">
                         <span class="reply-author" @click="goToAuthor(reply.userId)">{{ reply.author }}</span>
                         <LevelBadge :level="reply.userLevel" />
+                        <span v-if="reply.replyToUserId" class="reply-to" @click="goToAuthor(reply.replyToUserId)">回复 @{{ reply.replyToUserName }}</span>
                         <span class="reply-colon">: </span>
                         <span v-html="formatContentWithAtLinks(reply.content)"></span>
                       </div>
@@ -1220,6 +1228,25 @@ onUnmounted(() => {
   line-height: 1.5;
   margin-bottom: 8px;
   word-wrap: break-word;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.comment-section .reply-colon {
+  margin: 0 2px;
+}
+
+.comment-section .reply-to {
+  color: #00a1d6;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.comment-section .reply-to:hover {
+  color: #0091c6;
+  text-decoration: underline;
 }
 
 .comment-section .reply-actions {

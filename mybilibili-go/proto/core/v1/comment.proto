@@ -44,6 +44,7 @@ message ReplyInfo {
   string created_at = 9;
   string reply_to_user_name = 10;
   bool liked = 11;
+  int64 reply_to_user_id = 12;
 }
 
 message AddCommentRequest {
