@@ -178,13 +178,13 @@ func (h *ManuscriptAdminHandler) handleAll(w http.ResponseWriter, r *http.Reques
 	h.db.QueryRowContext(r.Context(),
 		`SELECT COUNT(*) FROM manuscripts`).Scan(&total)
 
-	json.NewEncoder(w).Encode(map[string]interface{}{"list": list, "total": total, "page": page, "size": size})
+	httputil.WriteOK(w, map[string]any{"list": list, "total": total, "page": page, "size": size})
 }
 
 // GET /api/v1/manuscript/admin/statistics — 稿件统计概览
 func (h *ManuscriptAdminHandler) handleStatistics(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	stats := map[string]interface{}{}
@@ -423,7 +423,7 @@ func (h *ManuscriptAdminHandler) getVideos(w http.ResponseWriter, r *http.Reques
 		`SELECT id, video_order, title, play_url_hd, play_url_sd, play_url_ld, upload_time
 		 FROM videos WHERE manuscript_id = $1 ORDER BY video_order`, manuscriptID)
 	if err != nil {
-		json.NewEncoder(w).Encode([]interface{}{})
+		httputil.WriteOK(w, map[string]any{"list": []any{}, "total": 0})
 		return
 	}
 	defer rows.Close()
