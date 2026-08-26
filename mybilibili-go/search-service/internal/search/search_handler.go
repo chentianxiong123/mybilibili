@@ -69,7 +69,7 @@ func (h *Handler) handleHot(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleHotIncrement(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var req struct {
@@ -77,12 +77,12 @@ func (h *Handler) handleHotIncrement(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	_ = h.svc.IncrementHotSearch(r.Context(), req.Keyword)
-	w.Write([]byte(`{"status":"ok"}`))
+	writeJSON(w, map[string]any{"status": "ok"})
 }
 
 func (h *Handler) handleHotKeyword(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var req struct {
@@ -92,12 +92,12 @@ func (h *Handler) handleHotKeyword(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	_ = h.svc.SetKeyword(r.Context(), req.Keyword, req.Score, req.Rank)
-	w.Write([]byte(`{"status":"ok"}`))
+	writeJSON(w, map[string]any{"status": "ok"})
 }
 
 func (h *Handler) handleHotRank(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "PUT" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var req struct {
@@ -106,12 +106,12 @@ func (h *Handler) handleHotRank(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	_ = h.svc.SetRank(r.Context(), req.Keyword, req.Rank)
-	w.Write([]byte(`{"status":"ok"}`))
+	writeJSON(w, map[string]any{"status": "ok"})
 }
 
 func (h *Handler) handleHotScore(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "PUT" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var req struct {
@@ -120,21 +120,21 @@ func (h *Handler) handleHotScore(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	_ = h.svc.SetScore(r.Context(), req.Keyword, req.Score)
-	w.Write([]byte(`{"status":"ok"}`))
+	writeJSON(w, map[string]any{"status": "ok"})
 }
 
 func (h *Handler) handleCleanExpired(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	_ = h.svc.CleanExpiredHotSearch(r.Context())
-	w.Write([]byte(`{"status":"ok"}`))
+	writeJSON(w, map[string]any{"status": "ok"})
 }
 
 func (h *Handler) handleHotDelete(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "DELETE" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var req struct {
@@ -142,35 +142,35 @@ func (h *Handler) handleHotDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	_ = h.svc.DeleteOne(r.Context(), req.Keyword)
-	w.Write([]byte(`{"status":"ok"}`))
+	writeJSON(w, map[string]any{"status": "ok"})
 }
 
 func (h *Handler) handleHotGet(w http.ResponseWriter, r *http.Request) {
 	keyword := r.URL.Query().Get("keyword")
 	if keyword == "" {
-		http.Error(w, "keyword required", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "keyword required", "data": nil})
 		return
 	}
 	result, err := h.svc.GetKeyword(r.Context(), keyword)
 	if err != nil {
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 		return
 	}
-	json.NewEncoder(w).Encode(result)
+	writeJSON(w, result)
 }
 
 func (h *Handler) handleHotScoreGet(w http.ResponseWriter, r *http.Request) {
 	keyword := r.URL.Query().Get("keyword")
 	if keyword == "" {
-		http.Error(w, "keyword required", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "keyword required", "data": nil})
 		return
 	}
 	score, err := h.svc.GetScore(r.Context(), keyword)
 	if err != nil {
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{"keyword": keyword, "score": score})
+	writeJSON(w, map[string]interface{}{"keyword": keyword, "score": score})
 }
 
 func (h *Handler) handleSuggest(w http.ResponseWriter, r *http.Request) {
@@ -217,7 +217,7 @@ func (h *Handler) handleHotRecommend(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleIndexStatus(w http.ResponseWriter, r *http.Request) {
 	st, err := h.svc.GetIndexStatus(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
 		return
 	}
 	writeJSON(w, st)
@@ -225,12 +225,12 @@ func (h *Handler) handleIndexStatus(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleIndexValidate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	st, err := h.svc.GetIndexStatus(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
 		return
 	}
 	writeJSON(w, st)
@@ -238,12 +238,12 @@ func (h *Handler) handleIndexValidate(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleIndexRebuild(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	count, err := h.svc.RebuildSearchVector(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
 		return
 	}
 	writeJSON(w, map[string]interface{}{
@@ -253,7 +253,7 @@ func (h *Handler) handleIndexRebuild(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleIndexNotNeeded(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	writeJSON(w, map[string]interface{}{
@@ -264,7 +264,7 @@ func (h *Handler) handleIndexNotNeeded(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleIndexRefresh(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	writeJSON(w, map[string]interface{}{
@@ -281,7 +281,7 @@ func (h *Handler) handleRecommendConfig(w http.ResponseWriter, r *http.Request) 
 		if data == nil {
 			data = map[string]interface{}{}
 		}
-		json.NewEncoder(w).Encode(data)
+		writeJSON(w, data)
 	case "PUT":
 		var data map[string]interface{}
 		json.NewDecoder(r.Body).Decode(&data)
@@ -291,18 +291,18 @@ func (h *Handler) handleRecommendConfig(w http.ResponseWriter, r *http.Request) 
 			updatedBy = "admin"
 		}
 		if err := h.svc.UpdateRecommendConfig(r.Context(), string(b), updatedBy); err != nil {
-			http.Error(w, err.Error(), 500)
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
 			return
 		}
-		json.NewEncoder(w).Encode(data)
+		writeJSON(w, data)
 	default:
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 	}
 }
 
 func (h *Handler) handleRecommendConfigReset(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	defaults := map[string]interface{}{
@@ -314,10 +314,10 @@ func (h *Handler) handleRecommendConfigReset(w http.ResponseWriter, r *http.Requ
 		updatedBy = "admin"
 	}
 	if err := h.svc.UpdateRecommendConfig(r.Context(), string(b), updatedBy); err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
 		return
 	}
-	json.NewEncoder(w).Encode(defaults)
+	writeJSON(w, defaults)
 }
 
 

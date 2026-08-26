@@ -120,7 +120,7 @@ func (w *TranscodeWorker) GetVideoSize(ctx context.Context, srcFile string) (wid
 // 硬编：h264_vaapi CQP（快、CPU 近零，体积略大）；软编：libx264 CRF（体积优，吃 CPU）。
 func (w *TranscodeWorker) transcodeArgs(scale, crf, srcFile, outDir string) []string {
 	segPattern := filepath.Join(outDir, "segment%03d.ts")
-	playlist := filepath.Join(outDir, "index.m3u8")
+	playlist := filepath.Join(outDir, "playlist.m3u8")
 	audio := []string{"-c:a", "aac", "-b:a", "128k"}
 	hls := []string{
 		"-f", "hls", "-hls_time", "6", "-hls_list_size", "0",

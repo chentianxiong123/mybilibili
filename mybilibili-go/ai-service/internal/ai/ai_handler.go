@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"mybilibili/pkg/httputil"
 )
 
 type Handler struct {
@@ -62,7 +64,7 @@ func (h *Handler) handleConfigs(w http.ResponseWriter, r *http.Request) {
 		for _, c := range list {
 			c.APIKey = maskKey(c.APIKey)
 		}
-		json.NewEncoder(w).Encode(list)
+		httputil.WriteOK(w, list)
 	case "POST":
 		var req struct {
 			Name        string  `json:"name"`
@@ -82,7 +84,7 @@ func (h *Handler) handleConfigs(w http.ResponseWriter, r *http.Request) {
 			Model: req.Model, MaxTokens: req.MaxTokens, Temperature: req.Temperature,
 		}
 		h.svc.CreateConfig(r.Context(), c)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	}
 }
 
@@ -90,11 +92,11 @@ func (h *Handler) handleConfigByID(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/ai/configs/")
 	parts := strings.Split(path, "/")
 	if parts[0] == "types" {
-		json.NewEncoder(w).Encode([]string{"LLM", "ASR", "TTS", "IMAGE", "MODERATION"})
+		httputil.WriteOK(w, []string{"LLM", "ASR", "TTS", "IMAGE", "MODERATION"})
 		return
 	}
 	if parts[0] == "features" {
-		json.NewEncoder(w).Encode([]map[string]string{
+		httputil.WriteOK(w, []map[string]string{
 			{"feature": "chat", "type": "LLM"},
 			{"feature": "summary", "type": "LLM"},
 			{"feature": "transcribe", "type": "ASR"},
@@ -108,31 +110,31 @@ func (h *Handler) handleConfigByID(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case len(parts) >= 2 && parts[1] == "toggle" && r.Method == "PUT":
 		h.svc.ToggleConfig(r.Context(), id)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	case len(parts) >= 2 && parts[1] == "bind" && r.Method == "POST":
 		var req struct {
 			ConfigID int64 `json:"config_id"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
 		h.svc.SetBinding(r.Context(), parts[0], req.ConfigID)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	case r.Method == "GET":
 		c, err := h.svc.GetConfig(r.Context(), id)
 		if err != nil {
-			http.Error(w, err.Error(), 404)
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": err.Error(), "data": nil})
 			return
 		}
 		c.APIKey = maskKey(c.APIKey)
-		json.NewEncoder(w).Encode(c)
+		httputil.WriteOK(w, c)
 	case r.Method == "PUT":
 		var req ApiConfig
 		json.NewDecoder(r.Body).Decode(&req)
 		req.ID = id
 		h.svc.UpdateConfig(r.Context(), &req)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	case r.Method == "DELETE":
 		h.svc.DeleteConfig(r.Context(), id)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	}
 }
 
@@ -140,7 +142,7 @@ func (h *Handler) handleBindings(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		bindings, _ := h.svc.ListAllBindings(r.Context())
-		json.NewEncoder(w).Encode(bindings)
+		httputil.WriteOK(w, bindings)
 	case "POST":
 		var req struct {
 			Feature  string `json:"feature"`
@@ -148,29 +150,29 @@ func (h *Handler) handleBindings(w http.ResponseWriter, r *http.Request) {
 		}
 		json.NewDecoder(r.Body).Decode(&req)
 		h.svc.SetBinding(r.Context(), req.Feature, req.ConfigID)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	}
 }
 
 func (h *Handler) handleBindingsByPath(w http.ResponseWriter, r *http.Request) {
 	feature := strings.TrimPrefix(r.URL.Path, "/api/v1/ai/bindings/")
 	if feature == "" {
-		http.Error(w, "feature required", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "feature required", "data": nil})
 		return
 	}
 	switch r.Method {
 	case "GET":
 		configID, _ := h.svc.GetBinding(r.Context(), feature)
-		json.NewEncoder(w).Encode(map[string]any{"feature": feature, "config_id": configID})
+		httputil.WriteOK(w, map[string]any{"feature": feature, "config_id": configID})
 	case "POST":
 		var req struct {
 			ConfigID int64 `json:"configId"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
 		h.svc.SetBinding(r.Context(), feature, req.ConfigID)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	default:
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 	}
 }
 
@@ -179,11 +181,11 @@ func (h *Handler) handleSkills(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		if typ := r.URL.Query().Get("type"); typ != "" {
 			list, _ := h.svc.ListSkillsByType(r.Context(), typ)
-			json.NewEncoder(w).Encode(list)
+			httputil.WriteOK(w, list)
 			return
 		}
 		list, _ := h.svc.ListSkills(r.Context())
-		json.NewEncoder(w).Encode(list)
+		httputil.WriteOK(w, list)
 	case "POST":
 		var req struct {
 			Name            string `json:"name"`
@@ -196,14 +198,14 @@ func (h *Handler) handleSkills(w http.ResponseWriter, r *http.Request) {
 		json.NewDecoder(r.Body).Decode(&req)
 		if req.Defaults || req.Name == "" {
 			created, _ := h.svc.CreateMissingCustomerServiceDefaults(r.Context())
-			json.NewEncoder(w).Encode(map[string]any{"created": created})
+			httputil.WriteOK(w, map[string]any{"created": created})
 			return
 		}
 		h.svc.CreateSkill(r.Context(), &Skill{
 			Name: req.Name, Description: req.Description,
 			SystemPrompt: req.SystemPrompt, FewShotExamples: req.FewShotExamples, Type: req.Type,
 		})
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	}
 }
 
@@ -214,22 +216,22 @@ func (h *Handler) handleSkillByPath(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case len(parts) >= 2 && parts[1] == "toggle" && r.Method == "PUT":
 		h.svc.ToggleSkill(r.Context(), id)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	case r.Method == "GET":
 		s, err := h.svc.GetSkill(r.Context(), id)
 		if err != nil {
-			http.Error(w, err.Error(), 404)
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": err.Error(), "data": nil})
 			return
 		}
-		json.NewEncoder(w).Encode(s)
+		httputil.WriteOK(w, s)
 	case r.Method == "PUT":
 		var req Skill
 		json.NewDecoder(r.Body).Decode(&req)
 		h.svc.UpdateSkill(r.Context(), id, &req)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	case r.Method == "DELETE":
 		h.svc.DeleteSkill(r.Context(), id)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	}
 }
 
@@ -238,19 +240,19 @@ func (h *Handler) handleUsage(w http.ResponseWriter, r *http.Request) {
 	switch path {
 	case "overview":
 		data, _ := h.svc.UsageOverview(r.Context())
-		json.NewEncoder(w).Encode(data)
+		httputil.WriteOK(w, data)
 	case "features":
 		data, _ := h.svc.UsageByFeature(r.Context())
-		json.NewEncoder(w).Encode(data)
+		httputil.WriteOK(w, data)
 	case "daily":
 		days := 7
 		if v := r.URL.Query().Get("days"); v != "" {
 			days, _ = strconv.Atoi(v)
 		}
 		data, _ := h.svc.UsageDaily(r.Context(), days)
-		json.NewEncoder(w).Encode(data)
+		httputil.WriteOK(w, data)
 	default:
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 	}
 }
 
@@ -262,29 +264,29 @@ func (h *Handler) handleCustomer(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case len(parts) >= 2 && parts[1] == "messages" && r.Method == "GET":
 		msgs, _ := h.svc.GetSessionMessages(r.Context(), sessionID)
-		json.NewEncoder(w).Encode(msgs)
+		httputil.WriteOK(w, msgs)
 	case len(parts) >= 2 && parts[1] == "reply" && r.Method == "POST":
 		var req struct {
 			Content string `json:"content"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
 		if req.Content == "" {
-			http.Error(w, "content required", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "content required", "data": nil})
 			return
 		}
 		h.svc.SendSessionReply(r.Context(), sessionID, getAdminID(r), req.Content)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	case len(parts) >= 2 && parts[1] == "resolve" && r.Method == "POST":
 		h.svc.MarkSessionProcessed(r.Context(), sessionID, getAdminID(r))
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	case len(parts) >= 2 && parts[1] == "pending" && parts[0] == "sessions" && len(parts) >= 3 && parts[2] == "count" && r.Method == "GET":
 		cnt, _ := h.svc.CountPendingSessions(r.Context())
-		json.NewEncoder(w).Encode(map[string]any{"count": cnt})
+		httputil.WriteOK(w, map[string]any{"count": cnt})
 	case len(parts) >= 1 && parts[0] == "sessions" && r.Method == "GET":
 		sessions, _ := h.svc.ListPendingSessions(r.Context())
-		json.NewEncoder(w).Encode(sessions)
+		httputil.WriteOK(w, sessions)
 	default:
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 	}
 }
 
@@ -310,19 +312,19 @@ func (h *Handler) handleSummary(w http.ResponseWriter, r *http.Request) {
 	// GET /api/v1/ai/summary/check/{videoId} — 是否已有摘要
 	if strings.HasPrefix(path, "check/") {
 		if h.summarySvc == nil {
-			json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": false})
+			httputil.WriteOK(w, map[string]any{"code": 200, "data": false})
 			return
 		}
 		videoID, _ := strconv.ParseInt(strings.TrimPrefix(path, "check/"), 10, 64)
 		if videoID == 0 {
-			http.Error(w, "invalid video id", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid video id", "data": nil})
 			return
 		}
 		has, err := h.summarySvc.CheckSummary(r.Context(), videoID)
 		if err != nil {
 			has = false
 		}
-		json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": has})
+		httputil.WriteOK(w, map[string]any{"code": 200, "data": has})
 		return
 	}
 
@@ -330,7 +332,7 @@ func (h *Handler) handleSummary(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(path, "stream/") {
 		videoID, _ := strconv.ParseInt(strings.TrimPrefix(path, "stream/"), 10, 64)
 		if videoID == 0 {
-			http.Error(w, "invalid video id", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid video id", "data": nil})
 			return
 		}
 		h.handleSummaryStream(w, r, videoID)
@@ -339,7 +341,7 @@ func (h *Handler) handleSummary(w http.ResponseWriter, r *http.Request) {
 
 	videoID, _ := strconv.ParseInt(path, 10, 64)
 	if videoID == 0 {
-		http.Error(w, "invalid video id", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid video id", "data": nil})
 		return
 	}
 	if h.summarySvc == nil {
@@ -348,17 +350,17 @@ func (h *Handler) handleSummary(w http.ResponseWriter, r *http.Request) {
 	}
 	summary, err := h.summarySvc.GetSummary(r.Context(), videoID)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]string{"summary": summary})
+	httputil.WriteOK(w, map[string]string{"summary": summary})
 }
 
 // handleSummaryStream 以 SSE 推送流式摘要；data 为 base64(UTF-8)，与前端 atob 解码对齐。
 func (h *Handler) handleSummaryStream(w http.ResponseWriter, r *http.Request, videoID int64) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "streaming unsupported", 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "streaming unsupported", "data": nil})
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -432,28 +434,28 @@ func (h *Handler) handleSummaryStream(w http.ResponseWriter, r *http.Request, vi
 
 func (h *Handler) handleCustomerDefaults(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	created, _ := h.svc.CreateMissingCustomerServiceDefaults(r.Context())
-	json.NewEncoder(w).Encode(map[string]any{"created": created})
+	httputil.WriteOK(w, map[string]any{"created": created})
 }
 
 func (h *Handler) handleConfigTest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var req map[string]string
 	json.NewDecoder(r.Body).Decode(&req)
-	json.NewEncoder(w).Encode(map[string]any{
+	httputil.WriteOK(w, map[string]any{
 		"success": true, "message": "connection ok", "provider": req["provider"],
 	})
 }
 
 func (h *Handler) handleAssistantSend(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var req struct {
@@ -465,14 +467,14 @@ func (h *Handler) handleAssistantSend(w http.ResponseWriter, r *http.Request) {
 	if msg == "" {
 		msg = req.Content
 	}
-	json.NewEncoder(w).Encode(map[string]any{
+	httputil.WriteOK(w, map[string]any{
 		"reply": "已收到: " + msg,
 	})
 }
 
 func (h *Handler) handleRouteTest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var req struct {
@@ -483,12 +485,12 @@ func (h *Handler) handleRouteTest(w http.ResponseWriter, r *http.Request) {
 	if skill == nil {
 		skill = map[string]any{"name": "default", "matched": false}
 	}
-	json.NewEncoder(w).Encode(skill)
+	httputil.WriteOK(w, skill)
 }
 
 func (h *Handler) handleRouteSkills(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var req struct {
@@ -500,5 +502,5 @@ func (h *Handler) handleRouteSkills(w http.ResponseWriter, r *http.Request) {
 	if skills == nil {
 		skills = []map[string]any{}
 	}
-	json.NewEncoder(w).Encode(skills)
+	httputil.WriteOK(w, skills)
 }
