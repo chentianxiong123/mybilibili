@@ -407,19 +407,12 @@ func (p *Pipeline) uploadTranscoded(ctx context.Context, task ProcessMessage, di
 // writePlayURLs 将转码产物播放地址写回 videos 表。
 func (p *Pipeline) writePlayURLs(ctx context.Context, task ProcessMessage, urls map[string]string) error {
 	if p.db == nil {
-		log.Printf("[debug] writePlayURLs: db is nil, skip video=%d urls=%v", task.VideoID, urls)
 		return nil
 	}
 	hd, sd, ld := urls["1080p"], urls["720p"], urls["480p"]
-	res, err := p.db.ExecContext(ctx,
+	_, err := p.db.ExecContext(ctx,
 		`UPDATE videos SET play_url_hd = $1, play_url_sd = $2, play_url_ld = $3, updated_at = NOW() WHERE id = $4`,
 		hd, sd, ld, task.VideoID)
-	log.Printf("[debug] writePlayURLs video=%d hd=%s sd=%s ld=%s err=%v", task.VideoID, hd, sd, ld, err)
-	if err == nil {
-		if n, _ := res.RowsAffected(); n == 0 {
-			log.Printf("[debug] writePlayURLs: no rows affected video=%d", task.VideoID)
-		}
-	}
 	return err
 }
 
