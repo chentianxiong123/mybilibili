@@ -226,6 +226,10 @@ func (h *SocialHandler) handleDynamicShare(w http.ResponseWriter, r *http.Reques
 	id, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/share/"), 10, 64)
 	if r.Method == "POST" && id > 0 {
 		userID := h.getUserID(r)
+		if userID == 0 {
+			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+			return
+		}
 		h.dynamicSvc.ShareDynamic(r.Context(), id, userID)
 		w.Write([]byte(`{"status":"ok"}`))
 	}
@@ -246,6 +250,10 @@ func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case len(parts) == 1 && parts[0] == "publish" && r.Method == "POST":
+		if userID == 0 {
+			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+			return
+		}
 		content := r.URL.Query().Get("content")
 		dynType, _ := strconv.ParseInt(r.URL.Query().Get("type"), 10, 32)
 		refID, _ := strconv.ParseInt(r.URL.Query().Get("ref_manuscript_id"), 10, 64)
@@ -475,6 +483,10 @@ func (h *SocialHandler) handleShare(w http.ResponseWriter, r *http.Request) {
 
 func (h *SocialHandler) handleWatchHistory(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserID(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/watch-history/")
 	if path == r.URL.Path {
 		path = ""
