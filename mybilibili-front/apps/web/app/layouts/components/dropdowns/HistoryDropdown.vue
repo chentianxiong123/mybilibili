@@ -87,6 +87,7 @@ const loadHistory = async () => {
           title: video.title || '未知视频',
           thumbnail: video.coverUrl || video.cover_url || video.cover || '',
           duration: formatDuration(item.videoDuration || item.video_duration),
+          progressSeconds: item.progressSeconds || item.progress_seconds || 0,
           watchedAt: watchedAt,
           dateKey: formatDate(watchedAt),
           time: formatTime(watchedAt),
@@ -120,8 +121,11 @@ const handleVideoClick = (video) => {
   const targetId = video.manuscriptId || video.videoId
   if (targetId) {
     emit('navigate')
+    // 带上观看进度时间参数，播放器跳转到上次观看位置
+    const t = Number(video.progressSeconds) || 0
+    const query = t > 0 ? `?t=${Math.floor(t)}` : ''
     // 使用页面刷新跳转，确保视频播放器完全重置
-    window.location.href = `/manuscript/${targetId}`
+    window.location.href = `/manuscript/${targetId}${query}`
   }
 }
 
