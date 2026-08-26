@@ -192,6 +192,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Star, ChatDotRound, ArrowDown } from '@element-plus/icons-vue'
 import { commentApi } from '@/api/client'
+import { refreshUserWithNotify } from '@/utils/expNotify.ts'
 import EmojiPopover from './EmojiPopover.vue'
 import LevelBadge from './LevelBadge.vue'
 
@@ -334,7 +335,8 @@ const submitComment = async () => {
       newComment.value = ''
       isInputCollapsed.value = true
       showEmojiPicker.value = false
-      ElMessage.success('评论发表成功，经验值+5')
+      ElMessage.success('评论发表成功')
+      refreshUserWithNotify()
     } else {
       ElMessage.error(res.message || '评论发表失败')
     }
@@ -391,7 +393,8 @@ const submitReply = async (comment) => {
       comment.replies.push(res.data)
       comment.replyCount = (comment.replyCount || 0) + 1
       cancelReply()
-      ElMessage.success('回复成功，经验值+2')
+      ElMessage.success('回复成功')
+      refreshUserWithNotify()
     } else {
       ElMessage.error(res.message || '回复失败')
     }
@@ -418,7 +421,8 @@ const submitReplyToReply = async (comment, reply) => {
       comment.replies.push(res.data)
       comment.replyCount = (comment.replyCount || 0) + 1
       cancelReply()
-      ElMessage.success('回复成功，经验值+2')
+      ElMessage.success('回复成功')
+      refreshUserWithNotify()
     } else {
       ElMessage.error(res.message || '回复失败')
     }
@@ -441,12 +445,14 @@ const likeComment = async (comment) => {
       if (res.code === 200) {
         comment.likeCount = Math.max(0, comment.likeCount - 1)
         comment.liked = false
+        ElMessage.success('已取消点赞')
       }
     } else {
       const res = await commentApi.likeTarget(props.targetType, 'comment', comment.id)
       if (res.code === 200) {
         comment.likeCount = (comment.likeCount || 0) + 1
         comment.liked = true
+        ElMessage.success('点赞成功')
         if (comment.disliked) {
           comment.disliked = false
           comment.dislikeCount = Math.max(0, (comment.dislikeCount || 0) - 1)
@@ -491,12 +497,14 @@ const likeReply = async (reply) => {
       if (res.code === 200) {
         reply.likeCount = Math.max(0, reply.likeCount - 1)
         reply.liked = false
+        ElMessage.success('已取消点赞')
       }
     } else {
       const res = await commentApi.likeTarget(props.targetType, 'reply', reply.id)
       if (res.code === 200) {
         reply.likeCount = (reply.likeCount || 0) + 1
         reply.liked = true
+        ElMessage.success('点赞成功')
         if (reply.disliked) {
           reply.disliked = false
           reply.dislikeCount = Math.max(0, (reply.dislikeCount || 0) - 1)

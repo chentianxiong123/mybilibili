@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { safeStorage } from '@/utils/safeStorage'
-import { commentApi, userApi } from '@/api/client'
+import { commentApi } from '@/api/client'
+import { refreshUserWithNotify } from '@/utils/expNotify.ts'
 import LevelBadge from '@/components/LevelBadge.vue'
 import UserFloatCard from '@/components/UserFloatCard.vue'
 import { CircleCheck, CircleClose } from '@element-plus/icons-vue'
@@ -231,7 +232,8 @@ const submitComment = async () => {
       newComment.value = ''
       isCommentInputCollapsed.value = true
       showEmojiPicker.value = false
-      ElMessage.success('评论发表成功，经验值+5')
+      ElMessage.success('评论发表成功')
+      refreshUserWithNotify()
     } else {
       ElMessage.error(response.message || '评论发表失败')
     }
@@ -251,6 +253,7 @@ const likeComment = async commentId => {
       if (response.code === 200) {
         comment.likeCount = Math.max(0, comment.likeCount - 1)
         comment.isLiked = false
+        ElMessage.success('已取消点赞')
       } else {
         ElMessage.error(response.message || '取消点赞失败')
       }
@@ -259,6 +262,7 @@ const likeComment = async commentId => {
       if (response.code === 200) {
         comment.likeCount++
         comment.isLiked = true
+        ElMessage.success('点赞成功')
       } else {
         ElMessage.error(response.message || '点赞失败')
       }
@@ -308,6 +312,7 @@ const likeReply = async replyId => {
       if (response.code === 200) {
         targetReply.likeCount = Math.max(0, targetReply.likeCount - 1)
         targetReply.isLiked = false
+        ElMessage.success('已取消点赞')
       } else {
         ElMessage.error(response.message || '取消点赞失败')
       }
@@ -316,6 +321,7 @@ const likeReply = async replyId => {
       if (response.code === 200) {
         targetReply.likeCount++
         targetReply.isLiked = true
+        ElMessage.success('点赞成功')
       } else {
         ElMessage.error(response.message || '点赞失败')
       }
@@ -469,7 +475,8 @@ const submitReply = async commentId => {
           comment.replies.push(newReply)
         }
       }
-      ElMessage.success('回复成功，经验值+2')
+      ElMessage.success('回复成功')
+      refreshUserWithNotify()
     } else {
       ElMessage.error(response.message || (response.data ? '回复失败' : '回复失败：未获取到数据'))
     }
