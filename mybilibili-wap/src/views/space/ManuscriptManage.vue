@@ -52,7 +52,10 @@ const refresh = async () => {
 const goBack = () => router.back()
 const goDrafts = () => router.push('/m/space/drafts')
 const goVideo = (item: any) => router.push(`/m/video/${item.manuscriptId || item.id}`)
-const goData = () => showToast('移动端数据面板待接入，先到 Web 创作中心查看')
+const goData = (item: any) => {
+  const id = item?.manuscriptId || item?.id
+  window.location.href = getWebUrl(id ? `/create-center/data?manuscriptId=${id}` : '/create-center/data')
+}
 
 const getWebUrl = (path: string) => {
   const origin = window.location.origin.replace(':5174', ':5173')
@@ -222,7 +225,7 @@ onMounted(refresh)
 
           <div class="action-row">
             <button @click="shareItem(item)">分享</button>
-            <button @click="goData">数据</button>
+            <button @click="goData(item)">数据</button>
             <button @click="goEdit(item)">编辑</button>
             <button @click="actionItem = item">更多</button>
           </div>
