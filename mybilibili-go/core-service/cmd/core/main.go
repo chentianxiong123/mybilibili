@@ -201,6 +201,7 @@ func main() {
 	eventPublisher := events.NewEventPublisher(mq)
 
 	manuscriptAdminH := manuscript.NewManuscriptAdminHandler(db)
+	videoProcessAdminH := manuscript.NewVideoProcessAdminHandler(db)
 	manuscriptAdminH.SetEventPublisher(eventPublisher)
 	interactionSvc.SetEventPublisher(eventPublisher)
 
@@ -269,6 +270,33 @@ func main() {
 		}
 	}()
 
+	// 订阅同一进度主题（独立消费组），转发给转码流水线看板的 SSE 客户端
+	go func() {
+		ch, err := mq.Subscribe(context.Background(), "video-process-progress-topic", "admin-sse")
+		if err != nil {
+			log.Printf("admin-sse subscribe: %v", err)
+			return
+		}
+		for msg := range ch {
+			var evt struct {
+				VideoID      int64  `json:"video_id"`
+				ManuscriptID int64  `json:"manuscript_id"`
+				Title        string `json:"title"`
+				Stage        string `json:"stage"`
+				StageText    string `json:"stage_text"`
+				Progress     int32  `json:"progress"`
+				Status       int32  `json:"status"`
+				Done         bool   `json:"done"`
+				Error        string `json:"error"`
+			}
+			json.Unmarshal(msg.Payload, &evt)
+			if evt.VideoID == 0 {
+				continue
+			}
+			videoProcessAdminH.Hub().Broadcast(manuscript.ProgressEvt(evt))
+		}
+	}()
+
 
 	interactionSvc.SetProfileRecorder(clients.NewHTTPProfileRecorder())
 
@@ -282,6 +310,7 @@ func main() {
 		supportH, userExtH, favoriteH,
 		creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH,
 		userAdminH, manuscriptAdminH, videoAdminH, commentAdminH, moderationAdminH,
+		videoProcessAdminH,
 		social.NewSearchHistoryHandler(cacheStore))
 
 	lis, err := net.Listen("tcp", grpcAddr)
