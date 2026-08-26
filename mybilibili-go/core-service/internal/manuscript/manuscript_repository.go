@@ -95,6 +95,21 @@ func (r *ManuscriptRepository) FindByID(ctx context.Context, id int64) (*Manuscr
 	return m, nil
 }
 
+// FirstVideoIsVertical 取稿件第一个分P（video_order 最小）的横竖屏标记，0=横屏 1=竖屏。
+func (r *ManuscriptRepository) FirstVideoIsVertical(ctx context.Context, manuscriptID int64) (int32, error) {
+	var isVertical int32
+	err := r.db.QueryRowContext(ctx,
+		`SELECT is_vertical FROM videos WHERE manuscript_id = $1 ORDER BY video_order ASC, id ASC LIMIT 1`,
+		manuscriptID).Scan(&isVertical)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
+		return 0, err
+	}
+	return isVertical, nil
+}
+
 func (r *ManuscriptRepository) FindVideosByManuscriptID(ctx context.Context, manuscriptID int64) ([]*Video, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, manuscript_id, video_order, title, play_url_hd, play_url_sd, play_url_ld,

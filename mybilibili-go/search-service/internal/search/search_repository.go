@@ -24,8 +24,14 @@ func (r *Repository) SearchManuscripts(ctx context.Context, keyword string, cate
 	                 COALESCE(m.comment_count,0), COALESCE(m.danmaku_count,0),
 	                 COALESCE(m.duration,''), m.status, m.upload_time,
 	                 COALESCE(u.id,0), COALESCE(u.username,''), COALESCE(u.nickname,''),
-	                 COALESCE(u.avatar,''), COALESCE(u.level,0)
+	                 COALESCE(u.avatar,''), COALESCE(u.level,0),
+	                 COALESCE(fv.is_vertical,0)
 	          FROM manuscripts m LEFT JOIN users u ON m.user_id = u.id
+	          LEFT JOIN LATERAL (
+	            SELECT v.is_vertical FROM videos v
+	            WHERE v.manuscript_id = m.id
+	            ORDER BY v.video_order ASC, v.id ASC LIMIT 1
+	          ) fv ON true
 	          WHERE m.status = 3`
 	var args []interface{}
 	kwIdx := 0
@@ -54,12 +60,12 @@ func (r *Repository) SearchManuscripts(ctx context.Context, keyword string, cate
 	for rows.Next() {
 		var id, userID, catID, viewCount, likeCount, commentCount, danmakuCount, status int64
 		var title, desc, cover, duration, uploadTime string
-		var uid, ulevel int64
+		var uid, ulevel, isVertical int64
 		var uname, unick, uavatar string
 		rows.Scan(&id, &title, &desc, &cover, &userID, &catID,
 			&viewCount, &likeCount, &commentCount, &danmakuCount,
 			&duration, &status, &uploadTime,
-			&uid, &uname, &unick, &uavatar, &ulevel)
+			&uid, &uname, &unick, &uavatar, &ulevel, &isVertical)
 		uploader := map[string]interface{}{
 			"id": uid, "name": unick, "username": uname, "nickname": unick,
 			"avatar": uavatar, "level": ulevel,
@@ -69,6 +75,7 @@ func (r *Repository) SearchManuscripts(ctx context.Context, keyword string, cate
 			"user_id": userID, "category_id": catID, "view_count": viewCount,
 			"like_count": likeCount, "comment_count": commentCount, "danmaku_count": danmakuCount,
 			"duration": duration, "status": status, "upload_time": uploadTime,
+			"is_vertical": isVertical,
 			"uploader": uploader,
 		})
 	}
@@ -193,8 +200,14 @@ func (s *Service) Related(ctx context.Context, manuscriptID int64, size int32) (
 
 func (s *Service) HotRecommend(ctx context.Context, categoryID int64, size int32) ([]map[string]interface{}, error) {
 	query := `SELECT m.id, m.user_id, m.title, m.cover_url, m.view_count, m.like_count, m.comment_count, m.upload_time, m.duration_seconds,
-	                 u.id, u.username, u.nickname, u.avatar, u.level
+	                 u.id, u.username, u.nickname, u.avatar, u.level,
+	                 COALESCE(fv.is_vertical,0)
 	          FROM manuscripts m LEFT JOIN users u ON m.user_id = u.id
+	          LEFT JOIN LATERAL (
+	            SELECT v.is_vertical FROM videos v
+	            WHERE v.manuscript_id = m.id
+	            ORDER BY v.video_order ASC, v.id ASC LIMIT 1
+	          ) fv ON true
 	          WHERE m.status = 3`
 	args := []interface{}{}
 	paramIdx := 1
@@ -212,13 +225,13 @@ func (s *Service) HotRecommend(ctx context.Context, categoryID int64, size int32
 	defer rows.Close()
 	var out []map[string]interface{}
 	for rows.Next() {
-		var id, userID, views, likes, comments, durSec int64
+		var id, userID, views, likes, comments, durSec, isVertical int64
 		var title, cover string
 		var created time.Time
 		var uid, ulevel int64
 		var uname, unick, uavatar string
 		rows.Scan(&id, &userID, &title, &cover, &views, &likes, &comments, &created, &durSec,
-			&uid, &uname, &unick, &uavatar, &ulevel)
+			&uid, &uname, &unick, &uavatar, &ulevel, &isVertical)
 		uploader := map[string]interface{}{
 			"id": uid, "name": unick, "username": uname, "nickname": unick,
 			"avatar": uavatar, "level": ulevel,
@@ -238,6 +251,7 @@ func (s *Service) HotRecommend(ctx context.Context, categoryID int64, size int32
 			"comment_count": comments,
 			"created_at": created.Format("2006-01-02 15:04:05"),
 			"duration": duration, "duration_seconds": durSec,
+			"is_vertical": isVertical,
 			"uploader": uploader,
 		})
 	}

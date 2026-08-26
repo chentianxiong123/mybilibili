@@ -15,7 +15,8 @@ const adaptRecommend = (v: any) => ({
   mid: v.user_id || v.userId || v.uploader?.id,
   play: v.view_count || v.viewCount || 0,
   videoReview: v.comment_count || v.danmaku_count || v.commentCount || v.danmakuCount || 0,
-  duration: v.duration
+  duration: v.duration,
+  isVertical: (v.is_vertical || v.isVertical) ? 1 : 0
 })
 
 // 稿件详情 - 完整字段映射

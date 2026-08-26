@@ -12,7 +12,7 @@ const formatNum = (n) => {
 </script>
 
 <template>
-  <router-link :to="'/m/video/' + video.aId" class="video-item">
+  <router-link :to="video.isVertical ? '/m/vertical/' + video.aId : '/m/video/' + video.aId" class="video-item">
     <div class="pic">
       <img :src="video.pic" :alt="video.title" loading="lazy" />
       <div v-if="showStatistics" class="stats-overlay">
