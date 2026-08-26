@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getVideoInfo, getRecommendVides, getComments } from '../../api/video'
-import { likeManuscript, collectManuscript, shareManuscript, followUser } from '../../api/interaction'
+import { likeManuscript, collectManuscript, shareManuscript, followUser, getInteractionStatus, checkFollow } from '../../api/interaction'
 import { getToken } from '../../utils/session'
 
 const route = useRoute()
@@ -57,6 +57,7 @@ function makeItem(basic) {
     isVertical: basic.isVertical ? 1 : 0,
     uploader: basic.uploader || null,
     likeCount: basic.likeCount || 0,
+    collectCount: basic.collectCount || 0,
     liked: false,
     starred: false,
     following: false,
@@ -76,8 +77,32 @@ async function ensureLoaded(i) {
       playUrlSd: d.playUrlSd, playUrlLd: d.playUrlLd,
       description: d.description, isVertical: d.isVertical,
       uploader: d.uploader, likeCount: d.likeCount,
+      collectCount: d.collectCount || 0,
       resolved: true
     })
+    // 拉取当前用户真实的点赞/收藏/关注状态
+    loadInteractionState(it)
+  }
+}
+
+// 拉取真实互动状态（点赞、收藏、关注），不阻塞渲染
+async function loadInteractionState(it) {
+  if (!getToken() || !it) return
+  try {
+    const res = await getInteractionStatus(it.aId)
+    if (res.code === '1' && res.data) {
+      const d = res.data
+      it.liked = !!d.liked || !!d.isLiked
+      it.starred = !!d.collected || !!d.isCollected
+    }
+  } catch (e) {}
+  if (it.mid) {
+    try {
+      const r = await checkFollow(it.mid)
+      if (r.code === '1') {
+        it.following = typeof r.data === 'object' ? !!r.data.following : !!r.data
+      }
+    } catch (e) {}
   }
 }
 
@@ -371,7 +396,7 @@ onUnmounted(() => {
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
                 </svg>
               </div>
-              <span class="vf-rail-num">{{ it.starred ? '已藏' : '收藏' }}</span>
+              <span class="vf-rail-num">{{ fmt(it.collectCount) }}</span>
             </div>
             <div class="vf-rail-item" @click.stop="doShare(it)">
               <div class="vf-icon">
