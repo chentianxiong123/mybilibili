@@ -103,7 +103,7 @@ func main() {
 
 	followRepo := social.NewFollowRepository(db)
 	followSvc := social.NewFollowService(followRepo)
-	followH := social.NewFollowHandler(followSvc, db)
+	followH := social.NewFollowHandler(followSvc, db, auth.NewJWT(jwtSecret))
 	interactionSvc.SetFollowService(followSvc)
 
 	dynamicRepo := social.NewDynamicRepository(db)
@@ -111,7 +111,7 @@ func main() {
 	collectRepo := social.NewCollectionRepository(db)
 	collectSvc := social.NewCollectionService(collectRepo)
 	shareRepo := social.NewShareRepository(db)
-	socialH := social.NewSocialHandler(followSvc, dynamicSvc, collectSvc, shareRepo, db)
+	socialH := social.NewSocialHandler(followSvc, dynamicSvc, collectSvc, shareRepo, db, auth.NewJWT(jwtSecret))
 
 	videoRepo := video.NewRepository(db)
 	videoSvc := video.NewService(videoRepo)
@@ -163,7 +163,7 @@ func main() {
 
 	userExtH := user.NewUserExtendHandler(userSvc)
 	manuscriptHTTPH := manuscript.NewManuscriptHTTPHandler(db, manuscriptSvc, commentSvc, interactionSvc)
-	creatorCommentH := comment.NewCreatorCommentHTTPHandler(commentRepo, commentSvc)
+	creatorCommentH := comment.NewCreatorCommentHTTPHandler(commentRepo, commentSvc, db)
 	favoriteH := favorite.NewFavoriteHandler(db)
 	genericInteractionH := social.NewGenericInteractionHandler(interactionRepo)
 
@@ -308,7 +308,7 @@ func main() {
 
 	commentSvc.SetReviewService(aiClient)
 
-	publicAPIH := comment.NewPublicAPIHandler(commentSvc)
+	publicAPIH := comment.NewPublicAPIHandler(commentSvc, db)
 
 	coreapi.StartHTTPServer(httpAddr, auth.NewJWT(jwtSecret),
 		liveProxy, followH, socialH, videoH, adminH, modH,
@@ -316,7 +316,7 @@ func main() {
 		creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH,
 		userAdminH, manuscriptAdminH, videoAdminH, commentAdminH, moderationAdminH,
 		videoProcessAdminH,
-		social.NewSearchHistoryHandler(cacheStore))
+		social.NewSearchHistoryHandler(cacheStore, auth.NewJWT(jwtSecret)))
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {

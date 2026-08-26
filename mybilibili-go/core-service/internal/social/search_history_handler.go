@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
+	"mybilibili/pkg/auth"
 	"mybilibili/pkg/httputil"
 	"mybilibili/pkg/abstraction"
 )
@@ -15,10 +17,28 @@ import (
 // 匿名用户搜索历史由前端本地存储（storage 抽象层）负责，不经过此接口。
 type SearchHistoryHandler struct {
 	cache abstraction.CacheStore
+	jwt   *auth.JWT
 }
 
-func NewSearchHistoryHandler(cache abstraction.CacheStore) *SearchHistoryHandler {
-	return &SearchHistoryHandler{cache: cache}
+func NewSearchHistoryHandler(cache abstraction.CacheStore, jwt *auth.JWT) *SearchHistoryHandler {
+	return &SearchHistoryHandler{cache: cache, jwt: jwt}
+}
+
+// getUserID 先从 X-User-Id header 取，无网关时 fallback 解析 Authorization Bearer token。
+func (h *SearchHistoryHandler) getUserID(r *http.Request) int64 {
+	uid := httputil.GetUserIDFromHeader(r)
+	if uid != 0 {
+		return uid
+	}
+	if h.jwt != nil {
+		tokenStr := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		if tokenStr != "" && tokenStr != r.Header.Get("Authorization") {
+			if id, err := h.jwt.ParseUserID(tokenStr); err == nil {
+				return id
+			}
+		}
+	}
+	return 0
 }
 
 const searchHistoryTTL = 30 * 24 * time.Hour
@@ -33,7 +53,7 @@ func (h *SearchHistoryHandler) Register(mux *http.ServeMux) {
 }
 
 func (h *SearchHistoryHandler) handle(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	if userID == 0 {
 		httputil.WriteError(w, http.StatusUnauthorized, "unauthorized")
 		return

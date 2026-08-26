@@ -44,7 +44,6 @@ func (h *UserExtendHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/user/batch", h.handleBatch)
 	mux.HandleFunc("/api/v1/user/default-avatar", h.handleDefaultAvatar)
 	mux.HandleFunc("/api/v1/user/password/forgot", h.handleForgotPassword)
-	mux.HandleFunc("/api/v1/user/add-experience", h.handleAddExperience)
 	mux.HandleFunc("/api/v1/user/pinned-video", h.handlePinnedVideo)
 	mux.HandleFunc("/api/v1/user/login-logs", h.handleLoginLogs)
 	mux.HandleFunc("/api/v1/user/login-logs/count", h.handleLoginLogCount)
@@ -95,9 +94,19 @@ func (h *UserExtendHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 	if ip == "" {
 		ip = r.RemoteAddr
 	}
+	// 每日首次登录奖励 1 硬币：在写入当天 login_logs 前先查今天是否已有登录记录
+	var loginsToday int64
+	_ = h.svc.repo.db.QueryRowContext(r.Context(),
+		`SELECT COUNT(*) FROM login_logs WHERE user_id = $1 AND login_time >= date_trunc('day', NOW())`,
+		resp.UserId).Scan(&loginsToday)
+	firstLoginToday := loginsToday == 0
 	h.svc.repo.db.ExecContext(r.Context(),
 		`INSERT INTO login_logs (user_id, ip, user_agent, status) VALUES ($1, $2, $3, 1)`,
 		resp.UserId, ip, r.UserAgent())
+	if firstLoginToday {
+		h.svc.repo.db.ExecContext(r.Context(),
+			`UPDATE users SET coin_count = COALESCE(coin_count,0) + 1 WHERE id = $1`, resp.UserId)
+	}
 	refreshToken, _ := h.svc.jwt.GenerateRefresh(resp.UserId)
 	user, _ := h.svc.repo.FindByID(r.Context(), resp.UserId)
 	avatar := ""
@@ -105,13 +114,17 @@ func (h *UserExtendHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 		avatar = user.Avatar
 	}
 	h.setSessionCookies(w, resp.Token, refreshToken, resp.UserId, resp.Nickname, avatar)
-	httputil.WriteOK(w, map[string]interface{}{
+	respBody := map[string]interface{}{
 		"token":         resp.Token,
 		"refresh_token": refreshToken,
 		"id":            resp.UserId,
 		"nickname":      resp.Nickname,
 		"avatar":        avatar,
-	})
+	}
+	if firstLoginToday {
+		respBody["dailyCoin"] = true
+	}
+	httputil.WriteOK(w, respBody)
 }
 
 func (h *UserExtendHandler) handleRegister(w http.ResponseWriter, r *http.Request) {
@@ -289,14 +302,6 @@ func (h *UserExtendHandler) handleForgotPassword(w http.ResponseWriter, r *http.
 	hash := sha256.Sum256([]byte(req.NewPassword))
 	h.svc.repo.db.ExecContext(r.Context(),
 		`UPDATE users SET password = $1 WHERE email = $2`, fmt.Sprintf("%x", hash), req.Email)
-	w.Write([]byte(`{"status":"ok"}`))
-}
-
-func (h *UserExtendHandler) handleAddExperience(w http.ResponseWriter, r *http.Request) {
-	userID, _ := strconv.ParseInt(r.URL.Query().Get("userId"), 10, 64)
-	amount, _ := strconv.ParseInt(r.URL.Query().Get("experienceAmount"), 10, 64)
-	h.svc.repo.db.ExecContext(r.Context(),
-		`UPDATE users SET experience = experience + $1 WHERE id = $2`, amount, userID)
 	w.Write([]byte(`{"status":"ok"}`))
 }
 
@@ -577,6 +582,8 @@ func (h *UserExtendHandler) handleMe(w http.ResponseWriter, r *http.Request) {
 			"introduction":     "",
 			"sign":             "",
 			"level":            user.Level,
+			"experience":       user.Experience,
+			"maxExperience":    LevelThreshold(user.Level),
 			"follower_count":   followerCount,
 			"following_count":  followingCount,
 			"like_count":       likeCount,
@@ -731,6 +738,8 @@ func (h *UserExtendHandler) handleUserByID(w http.ResponseWriter, r *http.Reques
 		"avatar":           user.Avatar,
 		"avatar_url":       user.Avatar,
 		"level":            user.Level,
+		"experience":       user.Experience,
+		"maxExperience":    LevelThreshold(user.Level),
 		"signature":        signature,
 		"announcement":     announcement,
 		"bio":              bio,
