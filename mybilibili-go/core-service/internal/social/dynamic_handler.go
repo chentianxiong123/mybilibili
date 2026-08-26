@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"mybilibili/pkg/auth"
 	"mybilibili/pkg/httputil"
 )
 
@@ -17,10 +18,28 @@ type SocialHandler struct {
 	collectSvc *CollectionService
 	shareRepo  *ShareRepository
 	db         *sql.DB
+	jwt        *auth.JWT
 }
 
-func NewSocialHandler(followSvc *FollowService, dynamicSvc *DynamicService, collectSvc *CollectionService, shareRepo *ShareRepository, db *sql.DB) *SocialHandler {
-	return &SocialHandler{followSvc: followSvc, dynamicSvc: dynamicSvc, collectSvc: collectSvc, shareRepo: shareRepo, db: db}
+func NewSocialHandler(followSvc *FollowService, dynamicSvc *DynamicService, collectSvc *CollectionService, shareRepo *ShareRepository, db *sql.DB, jwt *auth.JWT) *SocialHandler {
+	return &SocialHandler{followSvc: followSvc, dynamicSvc: dynamicSvc, collectSvc: collectSvc, shareRepo: shareRepo, db: db, jwt: jwt}
+}
+
+// getUserID 先从 X-User-Id header 取（Traefik 注入），无网关时 fallback 解析 Authorization Bearer token。
+func (h *SocialHandler) getUserID(r *http.Request) int64 {
+	uid := httputil.GetUserIDFromHeader(r)
+	if uid != 0 {
+		return uid
+	}
+	if h.jwt != nil {
+		tokenStr := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		if tokenStr != "" && tokenStr != r.Header.Get("Authorization") {
+			if id, err := h.jwt.ParseUserID(tokenStr); err == nil {
+				return id
+			}
+		}
+	}
+	return 0
 }
 
 func (h *SocialHandler) Register(mux *http.ServeMux) {
@@ -35,7 +54,9 @@ func (h *SocialHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/dynamic/share/", h.handleDynamicShare)
 	mux.HandleFunc("/api/v1/dynamic/comment/increment/", h.handleDynamicCommentIncrement)
 	mux.HandleFunc("/api/v1/collection/", h.handleCollection)
+	mux.HandleFunc("/api/v1/collection", h.handleCollection)
 	mux.HandleFunc("/api/v1/share/", h.handleShare)
+	mux.HandleFunc("/api/v1/share", h.handleShare)
 	mux.HandleFunc("/api/v1/watch-history/", h.handleWatchHistory)
 	mux.HandleFunc("/api/v1/watch-history", h.handleWatchHistory)
 }
@@ -47,8 +68,10 @@ func (h *SocialHandler) handleDynamicCommentList(w http.ResponseWriter, r *http.
 	}
 	dynamicID, _ := strconv.ParseInt(r.URL.Query().Get("dynamicId"), 10, 64)
 	page, limit := httputil.ParsePageParams(r)
-	list, _ := h.dynamicSvc.ListComments(r.Context(), dynamicID, page, limit)
-	httputil.WriteOK(w, h.enrichComments(r.Context(), list))
+	sort := r.URL.Query().Get("sort")
+	uid := httputil.GetUserIDFromHeader(r)
+	list, _ := h.dynamicSvc.ListComments(r.Context(), dynamicID, page, limit, sort)
+	httputil.WriteOK(w, h.enrichComments(r.Context(), uid, list))
 }
 
 func (h *SocialHandler) handleDynamicCommentAdd(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +79,7 @@ func (h *SocialHandler) handleDynamicCommentAdd(w http.ResponseWriter, r *http.R
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	dynamicID, _ := strconv.ParseInt(r.URL.Query().Get("dynamicId"), 10, 64)
 	content := r.URL.Query().Get("content")
 	parentID, _ := strconv.ParseInt(r.URL.Query().Get("parentId"), 10, 64)
@@ -76,7 +99,7 @@ func (h *SocialHandler) handleDynamicCommentAdd(w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), 400)
 		return
 	}
-	httputil.WriteOK(w, h.enrichComments(r.Context(), []*DynamicComment{dc}))
+	httputil.WriteOK(w, h.enrichComments(r.Context(), userID, []*DynamicComment{dc}))
 }
 
 func (h *SocialHandler) handleDynamicCommentReplies(w http.ResponseWriter, r *http.Request) {
@@ -86,35 +109,64 @@ func (h *SocialHandler) handleDynamicCommentReplies(w http.ResponseWriter, r *ht
 	}
 	commentID, _ := strconv.ParseInt(r.URL.Query().Get("commentId"), 10, 64)
 	page, limit := httputil.ParsePageParams(r)
+	uid := httputil.GetUserIDFromHeader(r)
 	list, _ := h.dynamicSvc.ListReplies(r.Context(), commentID, page, limit)
-	json.NewEncoder(w).Encode(h.enrichComments(r.Context(), list))
+	httputil.WriteOK(w, h.enrichComments(r.Context(), uid, list))
 }
 
 func (h *SocialHandler) handleDynamicCommentDelete(w http.ResponseWriter, r *http.Request) {
 	commentIDStr := strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/comment/delete/")
 	commentID, _ := strconv.ParseInt(commentIDStr, 10, 64)
-	if r.Method == "DELETE" && commentID > 0 {
-		h.dynamicSvc.repo.DeleteComment(r.Context(), commentID)
+	uid, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
 	}
-	w.Write([]byte(`{"status":"ok"}`))
+	if r.Method == "DELETE" && commentID > 0 {
+		h.dynamicSvc.repo.DeleteComment(r.Context(), commentID, uid)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": map[string]string{"status": "ok"}})
 }
 
 func (h *SocialHandler) handleDynamicCommentLike(w http.ResponseWriter, r *http.Request) {
 	commentIDStr := strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/comment/like/")
 	commentID, _ := strconv.ParseInt(commentIDStr, 10, 64)
+	uid, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	if commentID <= 0 {
+		http.Error(w, "invalid comment id", 400)
+		return
+	}
 	switch r.Method {
 	case "POST":
-		if commentID > 0 {
-			h.dynamicSvc.repo.db.ExecContext(r.Context(),
-				`UPDATE dynamic_comments SET like_count = like_count + 1 WHERE id = $1`, commentID)
+		res, err := h.db.ExecContext(r.Context(),
+			`INSERT INTO user_interactions (user_id, target_type, target_id, interaction_type) VALUES ($1, 'DYNAMIC_COMMENT', $2, 'LIKE')
+			 ON CONFLICT (user_id, target_type, target_id, interaction_type) DO NOTHING`, uid, commentID)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			h.db.ExecContext(r.Context(), `UPDATE dynamic_comments SET like_count = like_count + 1 WHERE id = $1`, commentID)
 		}
 	case "DELETE":
-		if commentID > 0 {
-			h.dynamicSvc.repo.db.ExecContext(r.Context(),
-				`UPDATE dynamic_comments SET like_count = GREATEST(like_count - 1, 0) WHERE id = $1`, commentID)
+		res, err := h.db.ExecContext(r.Context(),
+			`DELETE FROM user_interactions WHERE user_id = $1 AND target_type = 'DYNAMIC_COMMENT' AND target_id = $2 AND interaction_type = 'LIKE'`, uid, commentID)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
 		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			h.db.ExecContext(r.Context(), `UPDATE dynamic_comments SET like_count = GREATEST(like_count - 1, 0) WHERE id = $1`, commentID)
+		}
+	default:
+		http.Error(w, "method not allowed", 405)
+		return
 	}
-	w.Write([]byte(`{"status":"ok"}`))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": map[string]string{"status": "ok"}})
 }
 
 func (h *SocialHandler) handleDynamicAll(w http.ResponseWriter, r *http.Request) {
@@ -129,7 +181,7 @@ func (h *SocialHandler) handleDynamicAll(w http.ResponseWriter, r *http.Request)
 
 func (h *SocialHandler) handleDynamicLike(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/like/"), 10, 64)
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	switch r.Method {
 	case http.MethodPost:
 		h.dynamicSvc.Like(r.Context(), id, userID)
@@ -145,7 +197,7 @@ func (h *SocialHandler) handleDynamicLike(w http.ResponseWriter, r *http.Request
 func (h *SocialHandler) handleDynamicShare(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/share/"), 10, 64)
 	if r.Method == "POST" && id > 0 {
-		userID := httputil.GetUserIDFromHeader(r)
+		userID := h.getUserID(r)
 		h.dynamicSvc.ShareDynamic(r.Context(), id, userID)
 		w.Write([]byte(`{"status":"ok"}`))
 	}
@@ -161,7 +213,7 @@ func (h *SocialHandler) handleDynamicCommentIncrement(w http.ResponseWriter, r *
 
 func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/")
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	parts := strings.Split(path, "/")
 
 	switch {
@@ -220,8 +272,8 @@ func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 	case len(parts) >= 2 && parts[0] == "comment" && r.Method == "GET":
 		dynamicID, _ := strconv.ParseInt(parts[1], 10, 64)
 		page, limit := httputil.ParsePageParams(r)
-		list, _ := h.dynamicSvc.ListComments(r.Context(), dynamicID, page, limit)
-		json.NewEncoder(w).Encode(h.enrichComments(r.Context(), list))
+		list, _ := h.dynamicSvc.ListComments(r.Context(), dynamicID, page, limit, "")
+		json.NewEncoder(w).Encode(h.enrichComments(r.Context(), userID, list))
 
 	case len(parts) >= 1 && r.Method == "DELETE":
 		id, _ := strconv.ParseInt(parts[0], 10, 64)
@@ -234,29 +286,48 @@ func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *SocialHandler) handleCollection(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/api/v1/collection/")
-	userID := httputil.GetUserIDFromHeader(r)
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/collection")
+	path = strings.TrimPrefix(path, "/")
+	userID := h.getUserID(r)
 	parts := strings.Split(path, "/")
 
 	switch {
 	case len(parts) == 1 && parts[0] == "" && r.Method == "POST":
-		var req struct {
-			Title       string `json:"title"`
-			Description string `json:"description"`
-			CoverURL    string `json:"cover_url"`
-			Status      int32  `json:"status"`
+		// 前端发 FormData(name/description/isPublic/cover)，后端兼容 JSON(title) 与 FormData
+		title := r.FormValue("name")
+		description := r.FormValue("description")
+		coverURL := r.FormValue("cover")
+		isPublic := r.FormValue("isPublic")
+		status := int32(1)
+		if isPublic == "false" {
+			status = 0
 		}
-		json.NewDecoder(r.Body).Decode(&req)
-		if req.Title == "" {
-			http.Error(w, "title required", 400)
+		if title == "" {
+			// 兼容 JSON body {title,description,cover_url,status}
+			var req struct {
+				Title       string `json:"title"`
+				Description string `json:"description"`
+				CoverURL    string `json:"cover_url"`
+				Status      int32  `json:"status"`
+			}
+			json.NewDecoder(r.Body).Decode(&req)
+			title = req.Title
+			description = req.Description
+			coverURL = req.CoverURL
+			if req.Status != 0 {
+				status = req.Status
+			}
+		}
+		if title == "" {
+			httputil.WriteError(w, http.StatusBadRequest, "title required")
 			return
 		}
-		c, err := h.collectSvc.Create(r.Context(), userID, req.Title, req.Description, req.CoverURL, req.Status)
+		c, err := h.collectSvc.Create(r.Context(), userID, title, description, coverURL, status)
 		if err != nil {
-			http.Error(w, err.Error(), 400)
+			httputil.WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		json.NewEncoder(w).Encode(c)
+		httputil.WriteOK(w, c)
 
 	case len(parts) >= 2 && parts[0] == "user" && r.Method == "GET":
 		uid, _ := strconv.ParseInt(parts[1], 10, 64)
@@ -264,61 +335,81 @@ func (h *SocialHandler) handleCollection(w http.ResponseWriter, r *http.Request)
 		if list == nil {
 			list = []map[string]interface{}{}
 		}
-		httputil.WriteOK(w, list)
+		// 返回 {list:[], total:N} 以兼容前端
+		httputil.WriteOK(w, map[string]interface{}{"list": list, "total": len(list)})
 
 	case len(parts) >= 2 && parts[0] != "" && parts[1] == "manuscripts" && r.Method == "GET":
 		id, _ := strconv.ParseInt(parts[0], 10, 64)
 		page, limit := httputil.ParsePageParams(r)
-		ids, err := h.collectSvc.ListManuscripts(r.Context(), id, page, limit)
+		list, total, err := h.collectSvc.ListManuscriptsDetail(r.Context(), id, page, limit)
 		if err != nil {
 			httputil.WriteError(w, http.StatusInternalServerError, "database error")
 			return
 		}
-		if ids == nil {
-			ids = []int64{}
+		if list == nil {
+			list = []map[string]interface{}{}
 		}
-		httputil.WriteOK(w, ids)
+		httputil.WriteOK(w, map[string]interface{}{"list": list, "total": total})
 
 	case len(parts) >= 1 && parts[0] != "" && r.Method == "GET" && !strings.Contains(parts[0], "manuscript"):
 		id, _ := strconv.ParseInt(parts[0], 10, 64)
-		c, _ := h.collectSvc.GetByID(r.Context(), id)
-		json.NewEncoder(w).Encode(c)
+		c, err := h.collectSvc.GetByID(r.Context(), id)
+		if err != nil || c == nil {
+			httputil.WriteError(w, http.StatusNotFound, "collection not found")
+			return
+		}
+		httputil.WriteOK(w, c)
 
 	case len(parts) >= 1 && parts[0] != "" && r.Method == "PUT":
 		id, _ := strconv.ParseInt(parts[0], 10, 64)
-		var req struct {
-			Title       string `json:"title"`
-			Description string `json:"description"`
-			Status      int32  `json:"status"`
+		title := r.FormValue("name")
+		description := r.FormValue("description")
+		isPublic := r.FormValue("isPublic")
+		status := int32(1)
+		if isPublic == "false" {
+			status = 0
 		}
-		json.NewDecoder(r.Body).Decode(&req)
-		h.collectSvc.Update(r.Context(), id, userID, req.Title, req.Description, req.Status)
-		w.Write([]byte(`{"status":"ok"}`))
+		if title == "" {
+			var req struct {
+				Title       string `json:"title"`
+				Description string `json:"description"`
+				Status      int32  `json:"status"`
+			}
+			json.NewDecoder(r.Body).Decode(&req)
+			title = req.Title
+			description = req.Description
+			if req.Status != 0 {
+				status = req.Status
+			}
+		}
+		h.collectSvc.Update(r.Context(), id, userID, title, description, status)
+		httputil.WriteOK(w, map[string]string{"status": "ok"})
 
 	case len(parts) >= 1 && parts[0] != "" && r.Method == "DELETE" && !strings.Contains(parts[0], "manuscript"):
 		id, _ := strconv.ParseInt(parts[0], 10, 64)
 		h.collectSvc.Delete(r.Context(), id, userID)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]string{"status": "ok"})
 
 	case len(parts) >= 3 && parts[0] != "" && parts[1] == "manuscript" && r.Method == "POST":
 		collectionID, _ := strconv.ParseInt(parts[0], 10, 64)
 		manuscriptID, _ := strconv.ParseInt(parts[2], 10, 64)
 		h.collectSvc.AddManuscript(r.Context(), collectionID, manuscriptID, userID)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]string{"status": "ok"})
 
 	case len(parts) >= 3 && parts[1] == "manuscript" && r.Method == "DELETE":
 		collectionID, _ := strconv.ParseInt(parts[0], 10, 64)
 		manuscriptID, _ := strconv.ParseInt(parts[2], 10, 64)
 		h.collectSvc.RemoveManuscript(r.Context(), collectionID, manuscriptID, userID)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]string{"status": "ok"})
 
 	default:
-		http.Error(w, "not found", 404)
+		httputil.WriteError(w, http.StatusNotFound, "not found")
 	}
 }
 
 func (h *SocialHandler) handleShare(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/api/v1/share/")
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/share")
+	path = strings.TrimPrefix(path, "/")
 	if path == "statistics" && r.Method == "GET" {
 		manuscriptID, _ := strconv.ParseInt(r.URL.Query().Get("manuscript_id"), 10, 64)
 		if manuscriptID == 0 {
@@ -345,7 +436,7 @@ func (h *SocialHandler) handleShare(w http.ResponseWriter, r *http.Request) {
 
 	manuscriptID, _ := strconv.ParseInt(path, 10, 64)
 	if r.Method == "POST" && manuscriptID > 0 {
-		userID := httputil.GetUserIDFromHeader(r)
+		userID := h.getUserID(r)
 		channel := r.URL.Query().Get("channel")
 		ip := r.Header.Get("X-Forwarded-For")
 		h.shareRepo.Record(r.Context(), userID, manuscriptID, channel, ip)
@@ -354,7 +445,7 @@ func (h *SocialHandler) handleShare(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *SocialHandler) handleWatchHistory(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	userID := h.getUserID(r)
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/watch-history/")
 	if path == r.URL.Path {
 		path = ""
@@ -557,23 +648,62 @@ func pad2(n int64) string {
 	return strconv.FormatInt(n, 10)
 }
 
-// enrichComments 为评论列表批量补充用户信息（userAvatar、userName、userLevel）和 replyCount。
-func (h *SocialHandler) enrichComments(ctx context.Context, list []*DynamicComment) []map[string]interface{} {
+// enrichComments 为评论列表批量补充用户信息（userAvatar、userName、userLevel）、
+// replyCount、liked（与视频评论契约一致）。
+func (h *SocialHandler) enrichComments(ctx context.Context, uid int64, list []*DynamicComment) []map[string]interface{} {
 	if len(list) == 0 {
 		return []map[string]interface{}{}
 	}
 	uidSet := map[int64]struct{}{}
+	cidSet := map[int64]struct{}{}
 	for _, c := range list {
 		uidSet[c.UserID] = struct{}{}
 		if c.ReplyUserID > 0 {
 			uidSet[c.ReplyUserID] = struct{}{}
 		}
+		if c.ParentID > 0 {
+			cidSet[c.ParentID] = struct{}{}
+		}
+		cidSet[c.ID] = struct{}{}
 	}
 	ids := make([]int64, 0, len(uidSet))
 	for id := range uidSet {
 		ids = append(ids, id)
 	}
 	users := h.loadUsers(ctx, ids)
+
+	allIDs := make([]int64, 0, len(cidSet))
+	for id := range cidSet {
+		allIDs = append(allIDs, id)
+	}
+
+	replyCounts := map[int64]int64{}
+	rows, err := h.db.QueryContext(ctx,
+		`SELECT parent_id, COUNT(*) FROM dynamic_comments WHERE parent_id = ANY($1) AND status = 0 GROUP BY parent_id`, allIDs)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var pid, cnt int64
+			if rows.Scan(&pid, &cnt) == nil {
+				replyCounts[pid] = cnt
+			}
+		}
+	}
+
+	likedSet := map[int64]bool{}
+	if uid > 0 {
+		lrows, err := h.db.QueryContext(ctx,
+			`SELECT target_id FROM user_interactions WHERE user_id = $1 AND target_type = 'DYNAMIC_COMMENT' AND interaction_type = 'LIKE' AND target_id = ANY($2)`, uid, allIDs)
+		if err == nil {
+			defer lrows.Close()
+			for lrows.Next() {
+				var tid int64
+				if lrows.Scan(&tid) == nil {
+					likedSet[tid] = true
+				}
+			}
+		}
+	}
 
 	out := make([]map[string]interface{}, 0, len(list))
 	for _, c := range list {
@@ -590,10 +720,12 @@ func (h *SocialHandler) enrichComments(ctx context.Context, list []*DynamicComme
 			"replyUserId": c.ReplyUserID,
 			"likeCount":   c.LikeCount,
 			"createdAt":   c.CreatedAt,
+			"createTime":  c.CreatedAt.Format("2006-01-02 15:04:05"),
 			"userAvatar":  u["avatar"],
 			"userName":    u["username"],
 			"userLevel":   0,
-			"replyCount":  0,
+			"replyCount":  replyCounts[c.ID],
+			"liked":       likedSet[c.ID],
 		}
 		if lvl, err := strconv.Atoi(u["level"]); err == nil {
 			item["userLevel"] = lvl

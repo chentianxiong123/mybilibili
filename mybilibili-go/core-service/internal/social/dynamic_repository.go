@@ -153,12 +153,17 @@ func (r *DynamicRepository) CreateComment(ctx context.Context, dc *DynamicCommen
 	return id, err
 }
 
-func (r *DynamicRepository) ListComments(ctx context.Context, dynamicID int64, page, limit int32) ([]*DynamicComment, error) {
+func (r *DynamicRepository) ListComments(ctx context.Context, dynamicID int64, page, limit int32, sort string) ([]*DynamicComment, error) {
 	offset := (page - 1) * limit
+	order := `created_at DESC`
+	if sort == "hot" {
+		order = `like_count DESC, created_at DESC`
+	}
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, dynamic_id, user_id, content, COALESCE(parent_id,0), COALESCE(reply_user_id,0),
 		        like_count, status, created_at, updated_at
-		 FROM dynamic_comments WHERE dynamic_id = $1 AND status = 0 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+		 FROM dynamic_comments WHERE dynamic_id = $1 AND status = 0 AND (parent_id IS NULL OR parent_id = 0)
+		 ORDER BY `+order+` LIMIT $2 OFFSET $3`,
 		dynamicID, limit, offset)
 	if err != nil {
 		return nil, err
@@ -199,8 +204,8 @@ func (r *DynamicRepository) ListReplies(ctx context.Context, commentID int64, pa
 	return list, nil
 }
 
-func (r *DynamicRepository) DeleteComment(ctx context.Context, id int64) error {
-	_, err := r.db.ExecContext(ctx, `UPDATE dynamic_comments SET status = 1 WHERE id = $1`, id)
+func (r *DynamicRepository) DeleteComment(ctx context.Context, id, userID int64) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE dynamic_comments SET status = 1 WHERE id = $1 AND user_id = $2`, id, userID)
 	return err
 }
 
