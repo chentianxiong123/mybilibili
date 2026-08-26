@@ -182,6 +182,9 @@ func (s *CommentService) DeleteReply(ctx context.Context, req *pb.DeleteReplyReq
 
 func (s *CommentService) LikeComment(ctx context.Context, req *pb.LikeCommentRequest) (*pb.LikeCommentResponse, error) {
 	if err := s.repo.LikeTarget(ctx, "comment", req.CommentId, req.UserId); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.ErrNotFound("comment not found")
+		}
 		return nil, errors.ErrInternal("failed to like")
 	}
 	s.sendCommentLikeNotification(ctx, "comment", req.CommentId, req.UserId)
@@ -197,6 +200,9 @@ func (s *CommentService) UnlikeComment(ctx context.Context, req *pb.UnlikeCommen
 
 func (s *CommentService) LikeReply(ctx context.Context, req *pb.LikeReplyRequest) (*pb.LikeReplyResponse, error) {
 	if err := s.repo.LikeTarget(ctx, "reply", req.ReplyId, req.UserId); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.ErrNotFound("reply not found")
+		}
 		return nil, errors.ErrInternal("failed to like")
 	}
 	s.sendCommentLikeNotification(ctx, "reply", req.ReplyId, req.UserId)
