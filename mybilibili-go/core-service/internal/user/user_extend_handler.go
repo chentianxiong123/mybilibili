@@ -302,21 +302,42 @@ func (h *UserExtendHandler) handleAddExperience(w http.ResponseWriter, r *http.R
 
 func (h *UserExtendHandler) handlePinnedVideo(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
+	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case "POST":
-		videoID, _ := strconv.ParseInt(r.URL.Query().Get("videoId"), 10, 64)
-		h.svc.repo.db.ExecContext(r.Context(),
-			`UPDATE users SET pinned_video_id = $1 WHERE id = $2`, videoID, userID)
-		w.Write([]byte(`{"status":"ok"}`))
+		var req struct {
+			VideoID int64 `json:"videoId"`
+		}
+		json.NewDecoder(r.Body).Decode(&req)
+		if req.VideoID > 0 {
+			h.svc.repo.db.ExecContext(r.Context(),
+				`UPDATE users SET pinned_video_id = $1 WHERE id = $2`, req.VideoID, userID)
+		}
+		httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
 	case "DELETE":
 		h.svc.repo.db.ExecContext(r.Context(),
 			`UPDATE users SET pinned_video_id = NULL WHERE id = $1`, userID)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
 	case "GET":
 		var videoID int64
 		h.svc.repo.db.QueryRowContext(r.Context(),
 			`SELECT COALESCE(pinned_video_id,0) FROM users WHERE id = $1`, userID).Scan(&videoID)
-		json.NewEncoder(w).Encode(map[string]int64{"video_id": videoID})
+		if videoID == 0 {
+			httputil.WriteOK(w, nil)
+			return
+		}
+		var id int64
+		var title, coverURL string
+		var views int64
+		var uploadTime time.Time
+		h.svc.repo.db.QueryRowContext(r.Context(),
+			`SELECT id, COALESCE(title,''), COALESCE(cover_url,''), COALESCE(view_count,0), COALESCE(upload_time,NOW())
+			 FROM manuscripts WHERE id = $1`, videoID).
+			Scan(&id, &title, &coverURL, &views, &uploadTime)
+		httputil.WriteOK(w, map[string]interface{}{
+			"id": id, "title": title, "coverUrl": coverURL,
+			"viewCount": views, "date": uploadTime.Format("2006-01-02"),
+		})
 	}
 }
 
