@@ -41,11 +41,15 @@ public class MainActivity extends AppCompatActivity {
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setLoadWithOverviewMode(true);
-        settings.setUseWideViewPort(true);
-        settings.setBuiltInZoomControls(true);
+        // wap 页面已自带 viewport meta（width=device-width），按移动端宽度渲染即可。
+        // 不要开启 useWideViewPort / loadWithOverviewMode：它们会让 WebView 以宽视口/整页
+        // 方式加载后再缩放适配屏幕，加载时产生从左上角往右下角扩散的缩放动画（每次打开都闪）。
+        settings.setUseWideViewPort(false);
+        settings.setLoadWithOverviewMode(false);
+        // 页面已禁用用户缩放（maximum-scale=1），无需内建缩放控件
+        settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
-        settings.setSupportZoom(true);
+        settings.setSupportZoom(false);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
