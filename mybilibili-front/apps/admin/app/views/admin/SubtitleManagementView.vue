@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, View, Upload, Document, Warning, Download } from '@element-plus/icons-vue'
+import api from '@/api/client'
 import {
   getVideosWithSubtitleInfo,
   getVideoSubtitles,
@@ -11,7 +12,7 @@ import {
   deleteSubtitle,
   previewSubtitle,
   scanSystemSubtitles,
-  importSystemSubtitle
+  approveSubtitle
 } from '@/api/subtitle'
 
 const tableData = ref([])
@@ -38,7 +39,7 @@ const uploadLoading = ref(false)
 const importDialogVisible = ref(false)
 const importForm = ref({
   videoId: null,
-  srtFilePath: '',
+  srtContent: '',
   language: 'zh-CN',
   isDefault: false
 })
@@ -51,7 +52,9 @@ const previewData = ref({
   content: []
 })
 
-// 待入库字幕
+// video titles cache
+const videoTitles = ref({})
+
 const pendingImportSubtitles = ref([])
 
 const normalizeSubtitleRecord = (d) => ({
@@ -72,13 +75,24 @@ const loadVideos = async () => {
       let list = res.data?.list || res.data || []
       if (keyword.value) {
         list = list.filter(item =>
-          item.language?.includes(keyword.value) ||
-          item.language_name?.includes(keyword.value) ||
-          item.video_id?.toString().includes(keyword.value) ||
-          item.id?.toString().includes(keyword.value)
+          (item.language || '').includes(keyword.value) ||
+          (item.language_name || '').includes(keyword.value) ||
+          (item.video_id || item.videoId || '').toString().includes(keyword.value) ||
+          (item.id || '').toString().includes(keyword.value)
         )
       }
-      tableData.value = (Array.isArray(list) ? list : []).map(normalizeSubtitleRecord)
+      let records = (Array.isArray(list) ? list : []).map(normalizeSubtitleRecord)
+      // 去重：主列表按视频展示
+      const seen = new Set()
+      records = records.filter(r => {
+        const key = r.videoId || r.id
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      tableData.value = records
+      // 后台 enrich 标题
+      enrichVideoTitles(records.map(r => r.videoId))
     } else {
       ElMessage.error(res.message || '获取字幕列表失败')
     }
@@ -98,10 +112,35 @@ const handleReset = () => {
   loadVideos()
 }
 
+const enrichVideoTitles = async (videoIds) => {
+  const unique = [...new Set(videoIds)].filter(Boolean).slice(0, 30)
+  for (const vid of unique) {
+    if (videoTitles.value[vid]) continue
+    try {
+      const res = await api.get(`/manuscript/admin/video-source/${vid}`)
+      const d = (res.data && (res.data.data || res.data)) || {}
+      const t = d.title || d.videoTitle || `视频 #${vid}`
+      videoTitles.value[vid] = t
+    } catch (e) {}
+  }
+  // trigger reactivity
+  tableData.value = tableData.value.map(x => ({...x}))
+}
+
 // 查看字幕详情
 const handleViewSubtitles = async (videoId) => {
   currentVideo.value = { id: videoId, title: `视频 #${videoId}` }
   subtitleDialogVisible.value = true
+  // 尝试获取真实标题
+  try {
+    const res = await api.get(`/manuscript/admin/video-source/${videoId}`)
+    if (res.code === 200 && res.data) {
+      const t = res.data.title || res.data.videoTitle
+      if (t) currentVideo.value.title = t
+    }
+  } catch (e) {
+    // ignore, keep default
+  }
   await loadVideoSubtitles(videoId)
   await loadPendingImportSubtitles(videoId)
 }
@@ -249,7 +288,7 @@ const handleUploadSubmit = async () => {
 const handleOpenImport = (videoId) => {
   importForm.value = {
     videoId: videoId,
-    srtFilePath: '',
+    srtContent: '',
     language: 'zh-CN',
     isDefault: false
   }
@@ -258,8 +297,8 @@ const handleOpenImport = (videoId) => {
 
 // 确认导入SRT
 const handleImportSubmit = async () => {
-  if (!importForm.value.srtFilePath) {
-    ElMessage.error('请输入SRT文件路径')
+  if (!importForm.value.srtContent || !importForm.value.srtContent.trim()) {
+    ElMessage.error('请输入SRT内容')
     return
   }
 
@@ -267,7 +306,7 @@ const handleImportSubmit = async () => {
   try {
     const res = await importSrtToMongo(
       importForm.value.videoId,
-      importForm.value.srtFilePath,
+      importForm.value.srtContent,
       importForm.value.language,
       importForm.value.isDefault
     )
@@ -369,6 +408,19 @@ const formatTime = (time) => {
   return new Date(time).toLocaleString('zh-CN')
 }
 
+// 格式化字幕时长（秒 -> mm:ss 或 hh:mm:ss）
+const formatDuration = (seconds) => {
+  if (seconds == null || isNaN(seconds)) return '00:00'
+  const secs = Math.floor(seconds)
+  const hours = Math.floor(secs / 3600)
+  const minutes = Math.floor((secs % 3600) / 60)
+  const s = secs % 60
+  if (hours > 0) {
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
+  return `${minutes.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+}
+
 onMounted(() => {
   loadVideos()
 })
@@ -381,7 +433,7 @@ onMounted(() => {
     <div class="search-bar">
       <el-input
         v-model="keyword"
-        placeholder="搜索视频标题、ID"
+        placeholder="搜索 视频ID / 语言 / 来源"
         clearable
         style="width: 250px"
         @keyup.enter="handleSearch"
@@ -401,8 +453,13 @@ onMounted(() => {
       :data="tableData"
       style="width: 100%"
     >
-      <el-table-column prop="id" label="字幕ID" width="100" />
+      <el-table-column prop="id" label="字幕ID(示例)" width="100" />
       <el-table-column prop="videoId" label="视频ID" width="80" />
+      <el-table-column label="视频标题" min-width="180">
+        <template #default="{ row }">
+          {{ videoTitles[row.videoId] || `视频 #${row.videoId}` }}
+        </template>
+      </el-table-column>
       <el-table-column prop="language" label="语言代码" width="100" />
       <el-table-column prop="languageName" label="语言名称" width="120" />
       <el-table-column label="状态" width="100">
@@ -460,15 +517,15 @@ onMounted(() => {
       width="900px"
     >
       <!-- 待入库字幕区域 -->
-      <div v-if="pendingImportSubtitles.filter(s => s.status === 'pending').length > 0" class="pending-import-section">
+      <div v-if="pendingImportSubtitles.filter(s => s.status === 0 || s.status === '0' || ['system','whisper'].includes(s.source)).length > 0" class="pending-import-section">
         <div class="section-title">
           <el-icon><Warning /></el-icon>
           <span>待入库字幕（系统生成）</span>
         </div>
         <div class="pending-import-list">
           <div 
-            v-for="sub in pendingImportSubtitles.filter(s => s.status === 'pending')" 
-            :key="sub.language"
+            v-for="sub in pendingImportSubtitles.filter(s => s.status === 0 || s.status === '0' || ['system','whisper'].includes(s.source))" 
+            :key="sub.id || sub.language"
             class="pending-import-item"
           >
             <div class="pending-info">
@@ -599,10 +656,12 @@ onMounted(() => {
         <el-form-item label="视频ID">
           <el-input v-model="importForm.videoId" disabled />
         </el-form-item>
-        <el-form-item label="SRT文件路径">
+        <el-form-item label="SRT内容">
           <el-input
-            v-model="importForm.srtFilePath"
-            placeholder="例如: /uploads/subtitles/video_123.srt"
+            v-model="importForm.srtContent"
+            type="textarea"
+            :rows="8"
+            placeholder="粘贴完整的 SRT 字幕内容..."
           />
         </el-form-item>
         <el-form-item label="语言">
