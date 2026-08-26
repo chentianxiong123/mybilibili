@@ -241,7 +241,9 @@ func (s *CommentService) buildReply(ctx context.Context, rep *Reply, currentUser
 	}
 
 	replyToUserName := ""
+	replyToUserID := int64(0)
 	if rep.ReplyToUserID.Valid {
+		replyToUserID = rep.ReplyToUserID.Int64
 		replyUser, err := s.repo.FindUserByID(ctx, rep.ReplyToUserID.Int64)
 		if err == nil {
 			replyToUserName = replyUser.Nickname
@@ -253,7 +255,7 @@ func (s *CommentService) buildReply(ctx context.Context, rep *Reply, currentUser
 		liked, _ = s.repo.IsReplyLiked(ctx, rep.ID, currentUserID)
 	}
 
-	return replyToPB(rep, userName, userAvatar, userLevel, replyToUserName, liked)
+	return replyToPB(rep, userName, userAvatar, userLevel, replyToUserName, replyToUserID, liked)
 }
 
 func (s *CommentService) sendCommentLikeNotification(ctx context.Context, targetType string, targetID, senderID int64) {
