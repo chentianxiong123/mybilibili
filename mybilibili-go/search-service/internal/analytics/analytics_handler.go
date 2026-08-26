@@ -1,7 +1,6 @@
 package analytics
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -28,50 +27,78 @@ func (h *Handler) Register(mux *http.ServeMux) {
 
 func (h *Handler) handleOverview(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	data, _ := h.svc.Overview(r.Context(), userID)
-	json.NewEncoder(w).Encode(data)
+	httputil.WriteOK(w, data)
 }
 
 func (h *Handler) handleTrend(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
 	data, _ := h.svc.Trend(r.Context(), userID, days)
-	json.NewEncoder(w).Encode(data)
+	httputil.WriteOK(w, data)
 }
 
 func (h *Handler) handleRanking(w http.ResponseWriter, r *http.Request) {
+	userID := httputil.GetUserIDFromHeader(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	sortBy := r.URL.Query().Get("sortBy")
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	data, _ := h.svc.Ranking(r.Context(), sortBy, limit)
-	json.NewEncoder(w).Encode(data)
+	data, _ := h.svc.Ranking(r.Context(), userID, sortBy, limit)
+	httputil.WriteOK(w, data)
 }
 
 func (h *Handler) handleLatestComments(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	data, _ := h.svc.LatestComments(r.Context(), userID, limit)
-	json.NewEncoder(w).Encode(data)
+	httputil.WriteOK(w, data)
 }
 
 func (h *Handler) handleFansTrend(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
 	data, _ := h.svc.FansTrend(r.Context(), userID, days)
-	json.NewEncoder(w).Encode(data)
+	httputil.WriteOK(w, data)
 }
 
 func (h *Handler) handleFansRanking(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
+	typ := r.URL.Query().Get("type")
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	data, _ := h.svc.FansRanking(r.Context(), userID, limit)
-	json.NewEncoder(w).Encode(data)
+	data, _ := h.svc.FansRanking(r.Context(), userID, typ, limit)
+	httputil.WriteOK(w, data)
 }
 
 func (h *Handler) handleManuscriptTrend(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
 	data, _ := h.svc.ManuscriptTrend(r.Context(), userID, days)
-	json.NewEncoder(w).Encode(data)
+	httputil.WriteOK(w, data)
 }
-
-

@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"mybilibili/pkg/abstraction"
+	"mybilibili/pkg/auth"
 	pb "mybilibili/pkg/pb"
 	"mybilibili/search-service/internal/analytics"
 	"mybilibili/search-service/internal/hot"
@@ -85,6 +86,11 @@ func main() {
 		log.Fatal(srv.Serve(lis))
 	}()
 
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "dev-secret-change-in-production"
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{"status":"ok"}`)) })
 	mux.HandleFunc("/api/v1/health", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{"status":"ok"}`)) })
@@ -92,7 +98,7 @@ func main() {
 	analyticsH.Register(mux)
 	profileH.Register(mux)
 	log.Printf("Search HTTP listening on %s", httpAddr)
-	log.Fatal(http.ListenAndServe(httpAddr, mux))
+	log.Fatal(http.ListenAndServe(httpAddr, auth.IdentityMiddleware(auth.NewJWT(jwtSecret))(mux)))
 }
 
 func ctxBackground() context.Context {
