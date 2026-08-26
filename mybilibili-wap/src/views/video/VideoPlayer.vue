@@ -6,8 +6,7 @@ import { getToken } from '../../utils/session'
 const props = defineProps({
   video: { type: Object, default: null },
   live: { type: Boolean, default: false },
-  isLive: { type: Boolean, default: false },
-  danmakuMount: { type: String, default: '' }
+  isLive: { type: Boolean, default: false }
 })
 
 const emit = defineEmits<{
@@ -137,9 +136,7 @@ const initPlayer = async () => {
         synchronousPlayback: true,
         maxLength: 50,
         margin: [6, 6, 6, 6],
-        theme: props.danmakuMount ? 'light' : 'dark',
-        width: 0,
-        lockTime: 3,
+        // 不传 mount：插件默认渲染到 art-controls-center，全屏/普通都可见（与 web 端一致）
         emitter: true,
         // 发送弹幕：校验登录并写入后端（与 web 端一致）
         beforeEmit: async (danmu: any) => {
@@ -164,8 +161,7 @@ const initPlayer = async () => {
             showToast('发送失败，请稍后重试')
             return false
           }
-        },
-        ...(props.danmakuMount ? { mount: props.danmakuMount } : {})
+        }
       })
     ]
   })
@@ -206,13 +202,6 @@ const destroyPlayer = () => {
     art.destroy()
     art = null
     artReady = false
-  }
-  // artplayer-plugin-danmuku 在外部 mount 节点里挂载的弹幕控件不会被 art.destroy() 清理（外部 mount 不在播放器容器内），
-  // 若不手动清空，每次 watch(video) 触发销毁重建都会在 #danmaku-emitter-mount 里多 append 一个 .artplayer-plugin-danmuku，
-  // 导致弹幕栏重复累积（出现多个）。这里主动清空，避免重复。
-  if (props.danmakuMount) {
-    const mountEl = document.querySelector(props.danmakuMount)
-    if (mountEl) mountEl.innerHTML = ''
   }
 }
 
@@ -303,13 +292,6 @@ defineExpose({
         height: 36px;
       }
     }
-  }
-
-  // 当弹幕控制挂载到外部时，隐藏播放器内部的弹幕控制
-  :deep(.apd-toggle-on),
-  :deep(.apd-toggle-off),
-  :deep(.apd-emitter) {
-    display: none !important;
   }
 }
 </style>
