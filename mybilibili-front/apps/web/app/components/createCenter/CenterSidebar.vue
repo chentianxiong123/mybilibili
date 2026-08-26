@@ -41,18 +41,6 @@
         <el-icon><UserFilled /></el-icon>
         <span>粉丝管理</span>
       </el-menu-item>
-      <el-sub-menu index="interaction">
-        <template #title>
-          <el-icon><ChatDotRound /></el-icon>
-          <span>互动管理</span>
-        </template>
-        <el-menu-item index="interaction-comment">
-          <el-icon><Comment /></el-icon>
-          <span>评论管理</span>
-        </el-menu-item>
-      </el-sub-menu>
-
-
     </el-menu>
   </aside>
 </template>
@@ -66,10 +54,7 @@ import {
   Document,
   DataAnalysis,
   UserFilled,
-  ChatDotRound,
-  Menu,
-  Comment,
-  FolderOpened
+  Menu
 } from '@element-plus/icons-vue'
 
 const props = defineProps({
@@ -96,11 +81,6 @@ const handleMenuSelect = (index, indexPath) => {
 
     'data': '/create-center/data',
     'fans': '/create-center/fans',
-    'interaction': '/create-center/interaction',
-    'interaction-comment': '/create-center/interaction-comment',
-    'interaction-danmu': '/create-center/interaction-danmu',
-
-
   }
 
   if (routeMap[index]) {

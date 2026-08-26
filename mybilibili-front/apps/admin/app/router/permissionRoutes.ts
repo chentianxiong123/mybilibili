@@ -15,7 +15,6 @@ export const permissionRouteOrder = [
   { path: '/customer-chat', permission: 'ai:manage' },
   { path: '/categories', permission: 'category:manage' },
   { path: '/banner-images', permission: 'banner:manage' },
-  { path: '/subtitles', permission: 'video:manage' },
   { path: '/live-rooms', permission: 'live:manage' },
   
   { path: '/users', permission: 'user:manage' },

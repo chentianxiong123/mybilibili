@@ -13,6 +13,9 @@ import {
   getReportList,
   processReport
 } from '@/api/report'
+import DanmakuPanel from '@/components/admin/DanmakuPanel.vue'
+import CommentPanel from '@/components/admin/CommentPanel.vue'
+import SubtitleManagementView from '~/views/admin/SubtitleManagementView.vue'
 
 // 表格数据
 const tableData = ref([])
@@ -94,7 +97,7 @@ const loadReportData = async () => {
 const loadData = () => {
   if (activeTab.value === 'reports') {
     loadReportData()
-  } else {
+  } else if (activeTab.value === 'removed') {
     loadAllContent()
   }
 }
@@ -297,6 +300,9 @@ onMounted(() => {
     <el-tabs v-model="activeTab" @tab-change="handleTabChange" class="review-tabs">
       <el-tab-pane label="已下架内容" name="removed"></el-tab-pane>
       <el-tab-pane label="举报管理" name="reports"></el-tab-pane>
+      <el-tab-pane label="评论区管理" name="comments"></el-tab-pane>
+      <el-tab-pane label="弹幕管理" name="danmaku"></el-tab-pane>
+      <el-tab-pane label="字幕管理" name="subtitle"></el-tab-pane>
     </el-tabs>
 
     <!-- 内容审核筛选 -->
@@ -460,8 +466,17 @@ onMounted(() => {
       </el-table-column>
     </el-table>
 
+    <!-- 评论区管理 -->
+    <CommentPanel v-if="activeTab === 'comments'" />
+
+    <!-- 弹幕管理 -->
+    <DanmakuPanel v-else-if="activeTab === 'danmaku'" />
+
+    <!-- 字幕管理 -->
+    <SubtitleManagementView v-else-if="activeTab === 'subtitle'" class="embedded-subtitle" />
+
     <!-- 分页 -->
-    <div class="pagination">
+    <div class="pagination" v-if="activeTab === 'removed' || activeTab === 'reports'">
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
@@ -520,6 +535,14 @@ onMounted(() => {
 
 .review-tabs {
   margin-bottom: 20px;
+}
+
+.embedded-subtitle {
+  padding: 0;
+}
+
+.embedded-subtitle :deep(.page-title) {
+  display: none;
 }
 
 .tab-badge {

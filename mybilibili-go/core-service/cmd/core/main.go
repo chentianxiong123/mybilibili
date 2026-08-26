@@ -310,11 +310,14 @@ func main() {
 
 	publicAPIH := comment.NewPublicAPIHandler(commentSvc, db)
 
+	adminContentH := moderation.NewAdminContentHandler(db)
+
 	coreapi.StartHTTPServer(httpAddr, auth.NewJWT(jwtSecret),
 		liveProxy, followH, socialH, videoH, adminH, modH,
 		supportH, userExtH, favoriteH,
 		creatorCommentH, manuscriptHTTPH, publicAPIH, genericInteractionH,
 		userAdminH, manuscriptAdminH, videoAdminH, commentAdminH, moderationAdminH,
+		adminContentH,
 		videoProcessAdminH,
 		social.NewSearchHistoryHandler(cacheStore, auth.NewJWT(jwtSecret)))
 
