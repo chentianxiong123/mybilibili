@@ -49,7 +49,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   height: 56px;
-  padding: 6px 16px 4px;
+  /* 左右内边距与分区栏第一项共享同一变量（在 .mobile-index 定义），保证头像与「直播」tab 永远对齐 */
+  padding: 6px var(--item-inset, 16px) 4px;
   background: $bg-white;
   gap: 12px;
   position: sticky;
@@ -116,8 +117,8 @@ onMounted(() => {
 @media (max-width: 390px) {
   .mobile-header {
     gap: 8px;
-    padding-left: 12px;
-    padding-right: 12px;
+    padding-left: var(--item-inset, 12px);
+    padding-right: var(--item-inset, 12px);
 
     .user-avatar {
       width: 34px;
