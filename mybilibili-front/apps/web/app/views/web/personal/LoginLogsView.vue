@@ -9,12 +9,21 @@ const total = ref(0)
 const page = ref(1)
 const size = ref(10)
 
+const normalizeLog = (d) => ({
+  ip: d.ip || '',
+  location: d.location || '',
+  loginTime: d.login_time || d.loginTime || '',
+  status: d.status,
+  userAgent: d.user_agent || d.userAgent || ''
+})
+
 const loadData = () => {
   loading.value = true
   userApi.getLoginLogs(page.value, size.value).then(res => {
     if (res.code === 200) {
-      tableData.value = res.data.list
-      total.value = res.data.total
+      const raw = res.data?.list || res.data || []
+      tableData.value = raw.map(normalizeLog)
+      total.value = res.data?.total || 0
     } else {
       ElMessage.error(res.message || '获取登录记录失败')
     }
