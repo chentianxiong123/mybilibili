@@ -15,7 +15,7 @@ const handleClick = (tab) => emit('click', tab)
       :class="['tab-item', { active: tab.id === activeId }]"
       @click="handleClick(tab)"
     >
-      {{ tab.name }}
+      <span class="tab-name">{{ tab.name }}</span>
     </div>
   </div>
 </template>

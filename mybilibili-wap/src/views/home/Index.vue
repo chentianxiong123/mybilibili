@@ -86,6 +86,7 @@ onMounted(async () => {
     initSwiper()
     await nextTick()
     alignAvatar()
+    startRealign()
   } catch (e) {
     console.error('首页加载失败:', e)
   } finally {
@@ -94,6 +95,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  stopRealign()
   if (swiperTimer) clearInterval(swiperTimer)
 })
 
@@ -101,13 +103,32 @@ const alignAvatar = () => {
   const avatar = document.querySelector('.mobile-header .user-avatar')
   const firstTab = document.querySelector('.tab-bar .tab-item')
   if (!avatar || !firstTab) return
-  const range = document.createRange()
-  range.selectNodeContents(firstTab)
-  const textRect = range.getBoundingClientRect()
+  // 直接用 span 的盒位置量「直播」文字左边缘，避免 createRange 在部分 WebView 失效
+  const textEl = firstTab.querySelector('.tab-name') || firstTab
+  const textRect = textEl.getBoundingClientRect()
   const avatarRect = avatar.getBoundingClientRect()
   const offset = textRect.left - avatarRect.left
-  if (offset !== 0) {
+  if (Math.abs(offset) > 0.5) {
     avatar.style.marginLeft = offset + 'px'
+  }
+}
+
+// 布局变化后重新对齐（防抖到下一帧执行，避免计算量）
+let realignHandler = null
+function startRealign() {
+  if (realignHandler) return
+  realignHandler = () => requestAnimationFrame(alignAvatar)
+  window.addEventListener('resize', realignHandler)
+  window.addEventListener('orientationchange', realignHandler)
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(alignAvatar)
+  }
+}
+function stopRealign() {
+  if (realignHandler) {
+    window.removeEventListener('resize', realignHandler)
+    window.removeEventListener('orientationchange', realignHandler)
+    realignHandler = null
   }
 }
 
