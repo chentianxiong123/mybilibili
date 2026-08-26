@@ -96,7 +96,7 @@ const fetchFollowingUsers = async () => {
         { id: null, name: '全部动态', avatar: '', isAll: true },
         ...res.data.map(user => ({
           id: user.id,
-          name: user.username,
+          name: user.nickname || user.username,
           avatar: user.avatar
         }))
       ]
