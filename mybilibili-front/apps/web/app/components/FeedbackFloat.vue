@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { ChatDotRound } from '@element-plus/icons-vue'
 import { feedbackApi } from '@/api/client'
 
 const visible = ref(false)
@@ -41,13 +42,9 @@ const submit = async () => {
 
 <template>
   <div class="feedback-float">
-    <!-- 右下角悬浮反馈按钮（图标与内部播放器/竖屏页同款描边风格） -->
+    <!-- 右下角悬浮反馈按钮 -->
     <button class="feedback-float-btn" @click="open" aria-label="意见反馈">
-      <svg class="feedback-float-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-        <line x1="8" y1="10" x2="16" y2="10" />
-        <line x1="8" y1="13" x2="14" y2="13" />
-      </svg>
+      <el-icon><ChatDotRound /></el-icon>
       <span>反馈</span>
     </button>
 
@@ -112,12 +109,6 @@ const submit = async () => {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(251, 114, 153, 0.3);
   }
-}
-
-.feedback-float-icon {
-  width: 18px;
-  height: 18px;
-  flex: 0 0 auto;
 }
 
 .feedback-form {
