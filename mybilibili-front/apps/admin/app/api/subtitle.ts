@@ -49,8 +49,8 @@ export const uploadSubtitle = (videoId: number, file: File, language: string, is
     headers: { 'Content-Type': 'multipart/form-data' }
   })
 }
-export const importSrtToMongo = (videoId: number, srtFilePath: string, language: string, isDefault: boolean) =>
-  api.post('/subtitle/import-srt', { video_id: videoId, srt: srtFilePath })
+export const importSrtToMongo = (videoId: number, srtContent: string, language: string, isDefault: boolean) =>
+  api.post('/subtitle/import-srt', { video_id: videoId, srt: srtContent })
 export const setDefaultSubtitle = (subtitleId: number, videoId: number) => api.post(`/subtitle/${subtitleId}/set-default?video_id=${videoId}`)
 export const deleteSubtitle = (subtitleId: number) => api.delete(`/subtitle/${subtitleId}`)
 export const getPendingSubtitles = () => api.get('/subtitle/pending')
