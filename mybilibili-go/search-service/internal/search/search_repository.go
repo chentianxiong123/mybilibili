@@ -75,6 +75,49 @@ func (r *Repository) SearchManuscripts(ctx context.Context, keyword string, cate
 	return list, nil
 }
 
+func (r *Repository) SearchUsers(ctx context.Context, keyword string, page, size int32) ([]map[string]interface{}, error) {
+	offset := (page - 1) * size
+	query := `SELECT u.id, u.username, u.nickname, COALESCE(u.avatar,''), COALESCE(u.signature,''),
+	                 COALESCE(u.level,1), COALESCE(u.follower_count,0), COALESCE(u.manuscript_count,0)
+	          FROM users u
+	          WHERE u.status = 1`
+	var args []interface{}
+	kwIdx := 0
+	if keyword != "" {
+		args = append(args, keyword)
+		kwIdx = len(args)
+		query += fmt.Sprintf(` AND (u.username ILIKE '%%' || $%d || '%%' OR u.nickname ILIKE '%%' || $%d || '%%')`, kwIdx, kwIdx)
+	}
+	query += ` ORDER BY u.follower_count DESC, u.id ASC`
+	query += fmt.Sprintf(` LIMIT $%d OFFSET $%d`, len(args)+1, len(args)+2)
+	args = append(args, size, offset)
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var list []map[string]interface{}
+	for rows.Next() {
+		var id, level, followerCount, manuscriptCount int64
+		var username, nickname, avatar, signature string
+		if err := rows.Scan(&id, &username, &nickname, &avatar, &signature, &level, &followerCount, &manuscriptCount); err != nil {
+			return nil, err
+		}
+		list = append(list, map[string]interface{}{
+			"mid":       id,
+			"username":  username,
+			"name":      nickname,
+			"face":      avatar,
+			"sign":      signature,
+			"level":     level,
+			"fans":      followerCount,
+			"follower":  followerCount,
+			"videos":    manuscriptCount,
+		})
+	}
+	return list, nil
+}
+
 func (r *Repository) RecommendRelated(ctx context.Context, manuscriptID, categoryID int64, size int32) ([]map[string]interface{}, error) {
 	return r.SearchManuscripts(ctx, "", categoryID, 1, size)
 }
@@ -111,6 +154,10 @@ func (s *Service) Search(ctx context.Context, keyword string, categoryID int64, 
 	return s.repo.SearchManuscripts(ctx, keyword, categoryID, page, size)
 }
 
+func (s *Service) SearchUsers(ctx context.Context, keyword string, page, size int32) ([]map[string]interface{}, error) {
+	return s.repo.SearchUsers(ctx, keyword, page, size)
+}
+
 func (s *Service) Hot(ctx context.Context) ([]map[string]interface{}, error) {
 	if s.hotRepo != nil {
 		if list, err := s.hotRepo.Top(ctx, 10); err == nil && len(list) > 0 {
@@ -125,8 +172,8 @@ func (s *Service) Suggest(ctx context.Context, keyword string, size int32) ([]st
 		return []string{}, nil
 	}
 	rows, err := s.repo.db.QueryContext(ctx,
-		`SELECT title FROM manuscripts WHERE status = 3 AND search_vector @@ to_tsquery('zh_cn', $1 || ':*')
-		 ORDER BY view_count DESC LIMIT $2`, keyword, size)
+		`SELECT title FROM manuscripts WHERE status = 3 AND title ILIKE $1
+		 ORDER BY view_count DESC LIMIT $2`, "%"+keyword+"%", size)
 	if err != nil {
 		return nil, err
 	}

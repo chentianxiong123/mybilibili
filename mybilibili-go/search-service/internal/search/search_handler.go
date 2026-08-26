@@ -23,6 +23,7 @@ func NewHandler(svc *Service) *Handler {
 
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/search/videos", h.handleSearch)
+	mux.HandleFunc("/api/v1/search/users", h.handleSearchUsers)
 	mux.HandleFunc("/api/v1/search/suggest", h.handleSuggest)
 	mux.HandleFunc("/api/v1/search/hot", h.handleHot)
 	mux.HandleFunc("/api/v1/recommend/related/", h.handleRelated)
@@ -51,6 +52,13 @@ func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 	categoryID, _ := strconv.ParseInt(r.URL.Query().Get("category_id"), 10, 64)
 	page, size := httputil.ParsePageParams(r)
 	list, _ := h.svc.Search(r.Context(), keyword, categoryID, page, size)
+	writeJSON(w, map[string]interface{}{"list": list, "total": len(list)})
+}
+
+func (h *Handler) handleSearchUsers(w http.ResponseWriter, r *http.Request) {
+	keyword := r.URL.Query().Get("keyword")
+	page, size := httputil.ParsePageParams(r)
+	list, _ := h.svc.SearchUsers(r.Context(), keyword, page, size)
 	writeJSON(w, map[string]interface{}{"list": list, "total": len(list)})
 }
 
