@@ -1,10 +1,15 @@
 package ai
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Handler struct {
@@ -300,8 +305,39 @@ func getAdminID(r *http.Request) int64 {
 }
 
 func (h *Handler) handleSummary(w http.ResponseWriter, r *http.Request) {
-	videoIDStr := strings.TrimPrefix(r.URL.Path, "/api/v1/ai/summary/")
-	videoID, _ := strconv.ParseInt(videoIDStr, 10, 64)
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/ai/summary/")
+
+	// GET /api/v1/ai/summary/check/{videoId} — 是否已有摘要
+	if strings.HasPrefix(path, "check/") {
+		if h.summarySvc == nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": false})
+			return
+		}
+		videoID, _ := strconv.ParseInt(strings.TrimPrefix(path, "check/"), 10, 64)
+		if videoID == 0 {
+			http.Error(w, "invalid video id", 400)
+			return
+		}
+		has, err := h.summarySvc.CheckSummary(r.Context(), videoID)
+		if err != nil {
+			has = false
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": has})
+		return
+	}
+
+	// GET /api/v1/ai/summary/stream/{videoId} — SSE 流式摘要
+	if strings.HasPrefix(path, "stream/") {
+		videoID, _ := strconv.ParseInt(strings.TrimPrefix(path, "stream/"), 10, 64)
+		if videoID == 0 {
+			http.Error(w, "invalid video id", 400)
+			return
+		}
+		h.handleSummaryStream(w, r, videoID)
+		return
+	}
+
+	videoID, _ := strconv.ParseInt(path, 10, 64)
 	if videoID == 0 {
 		http.Error(w, "invalid video id", 400)
 		return
@@ -316,6 +352,82 @@ func (h *Handler) handleSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(map[string]string{"summary": summary})
+}
+
+// handleSummaryStream 以 SSE 推送流式摘要；data 为 base64(UTF-8)，与前端 atob 解码对齐。
+func (h *Handler) handleSummaryStream(w http.ResponseWriter, r *http.Request, videoID int64) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", 500)
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	sendEvent := func(event, payload string) {
+		fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, payload)
+		flusher.Flush()
+	}
+	b64 := func(s string) string { return base64.StdEncoding.EncodeToString([]byte(s)) }
+
+	sendEvent("start", "开始生成摘要...")
+
+	// 优先推送 MinIO 里流水线生成的持久化摘要（老项目数据），
+	// 打字机节奏与老项目 AiController.streamSummary 对齐：5字符/块 + 25~65ms 随机间隔
+	if stored, serr := h.summarySvc.FetchStoredSummary(r.Context(), videoID); serr == nil && stored != "" {
+		runes := []rune(stored)
+		sendEvent("meta", fmt.Sprintf(`{"totalLength":%d}`, len(runes)))
+
+		const chunkSize = 5
+		for i := 0; i < len(runes); i += chunkSize {
+			select {
+			case <-r.Context().Done():
+				return
+			default:
+			}
+			end := i + chunkSize
+			if end > len(runes) {
+				end = len(runes)
+			}
+			sendEvent("data", b64(string(runes[i:end])))
+
+			delay := 25 + rand.Intn(40) // 25~65ms，同老项目
+			if (i+chunkSize)%60 == 0 && rand.Float64() > 0.6 {
+				delay += 80 + rand.Intn(100) // 偶尔停顿，模拟思考
+			}
+			time.Sleep(time.Duration(delay) * time.Millisecond)
+		}
+		sendEvent("done", "摘要生成完成")
+		return
+	}
+
+	ch, err := func() (<-chan string, error) {
+		if h.summarySvc == nil {
+			return nil, errors.New("summary service not configured")
+		}
+		return h.summarySvc.StreamSummary(r.Context(), videoID)
+	}()
+	if err != nil {
+		// 流式不可用时回退为一次性取摘要推送
+		if h.summarySvc != nil {
+			if summary, gerr := h.summarySvc.GetSummary(r.Context(), videoID); gerr == nil && summary != "" {
+				sendEvent("data", b64(summary))
+				sendEvent("done", "摘要生成完成")
+				return
+			}
+		}
+		sendEvent("error", "生成摘要失败: "+err.Error())
+		return
+	}
+	for chunk := range ch {
+		if chunk == "" {
+			continue
+		}
+		sendEvent("data", b64(chunk))
+	}
+	sendEvent("done", "摘要生成完成")
 }
 
 func (h *Handler) handleCustomerDefaults(w http.ResponseWriter, r *http.Request) {

@@ -401,7 +401,7 @@ const initPlayer = async () => {
               currentVideo.id,
               props.manuscriptInfo?.id,
               danmu.text,
-              danmu.time.toString(),
+              Number(danmu.time) || 0,
               danmu.color || '#ffffff',
               danmu.mode || 0
             )

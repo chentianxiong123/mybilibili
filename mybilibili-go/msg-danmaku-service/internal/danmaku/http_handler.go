@@ -52,7 +52,7 @@ func (h *HTTPHandler) handleSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.broadcaster.Broadcast(req.VideoID, event)
-	httputil.WriteJSON(w, http.StatusOK, event)
+	httputil.WriteOK(w, event)
 }
 
 func (h *HTTPHandler) handleListByVideo(w http.ResponseWriter, r *http.Request) {

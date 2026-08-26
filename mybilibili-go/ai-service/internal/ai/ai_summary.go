@@ -2,10 +2,12 @@ package ai
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"mybilibili/pkg/abstraction"
@@ -14,6 +16,8 @@ import (
 type SummaryService struct {
 	caller     abstraction.ServiceCaller
 	cacheStore abstraction.CacheStore
+	db         *sql.DB
+	storage    *abstraction.MinioStorageService
 }
 
 func NewSummaryService(caller abstraction.ServiceCaller) *SummaryService {
@@ -24,6 +28,83 @@ func (s *SummaryService) SetCacheStore(cs abstraction.CacheStore) {
 	s.cacheStore = cs
 }
 
+// SetDatabase 注入 PG，用于查询 videos.has_summary / manuscript_id（与老项目迁移数据对齐）
+func (s *SummaryService) SetDatabase(db *sql.DB) {
+	s.db = db
+}
+
+// SetStorage 注入 MinIO 客户端，用于读取流水线上传的摘要文件
+func (s *SummaryService) SetStorage(st *abstraction.MinioStorageService) {
+	s.storage = st
+}
+
+// summaryObjectKey 老项目 StorageKeys.videoSummary 的对象 key 格式
+func summaryObjectKey(manuscriptID, videoID int64) string {
+	return fmt.Sprintf("manuscripts/%d/videos/%d/summary/ai-summary.txt", manuscriptID, videoID)
+}
+
+// FetchStoredSummary 从 MinIO 读取流水线生成的摘要全文；无则返回 ""
+func (s *SummaryService) FetchStoredSummary(ctx context.Context, videoID int64) (string, error) {
+	if s.db == nil || s.storage == nil {
+		return "", errors.New("storage not configured")
+	}
+	var manuscriptID int64
+	var hasSummary int32
+	err := s.db.QueryRowContext(ctx,
+		`SELECT COALESCE(manuscript_id,0), COALESCE(has_summary,0) FROM videos WHERE id = $1`, videoID).
+		Scan(&manuscriptID, &hasSummary)
+	if err != nil || manuscriptID <= 0 {
+		return "", err
+	}
+	rc, err := s.storage.Get(ctx, "mybilibili", summaryObjectKey(manuscriptID, videoID))
+	if err != nil {
+		return "", err
+	}
+	defer rc.Close()
+	data, err := io.ReadAll(rc)
+	if err != nil {
+		return "", err
+	}
+	return extractSummaryContent(string(data)), nil
+}
+
+// extractSummaryContent 与老项目 AiController.extractSummaryContent 对齐：
+// 剥掉文件头部的 ======/视频标题/生成时间 等元信息，从【视频摘要】等标记处返回正文
+func extractSummaryContent(fileContent string) string {
+	if fileContent == "" {
+		return ""
+	}
+	markers := []string{"【视频摘要】", "### 视频摘要", "视频摘要", "### 摘要"}
+	for _, marker := range markers {
+		if idx := strings.Index(fileContent, marker); idx >= 0 {
+			return fileContent[idx:]
+		}
+	}
+	var result strings.Builder
+	foundEmptyLine := false
+	for _, line := range strings.Split(fileContent, "\n") {
+		line = strings.TrimRight(line, "\r")
+		if strings.HasPrefix(line, "=") || strings.HasPrefix(line, "视频标题:") || strings.HasPrefix(line, "生成时间:") {
+			continue
+		}
+		if strings.TrimSpace(line) == "" {
+			foundEmptyLine = true
+			continue
+		}
+		if foundEmptyLine {
+			if result.Len() > 0 {
+				result.WriteString("\n")
+			}
+			result.WriteString(line)
+		}
+	}
+	extracted := result.String()
+	if extracted == "" {
+		return fileContent
+	}
+	return extracted
+}
+
 func (s *SummaryService) GetSummary(ctx context.Context, videoID int64) (string, error) {
 	if s.cacheStore != nil {
 		key := fmt.Sprintf("summary:%d", videoID)
@@ -31,6 +112,14 @@ func (s *SummaryService) GetSummary(ctx context.Context, videoID int64) (string,
 		if err == nil {
 			return string(data), nil
 		}
+	}
+
+	// 优先读流水线已生成的持久化摘要（MinIO），与老项目读取链路一致
+	if stored, err := s.FetchStoredSummary(ctx, videoID); err == nil && stored != "" {
+		if s.cacheStore != nil {
+			_ = s.cacheStore.Set(ctx, fmt.Sprintf("summary:%d", videoID), []byte(stored), 0)
+		}
+		return stored, nil
 	}
 
 	req := map[string]interface{}{"video_id": videoID}
@@ -68,6 +157,19 @@ func (s *SummaryService) StreamSummary(ctx context.Context, videoID int64) (<-ch
 }
 
 func (s *SummaryService) CheckSummary(ctx context.Context, videoID int64) (bool, error) {
+	// 与老项目一致：以 videos.has_summary 标志为准（迁移数据即真实标志）
+	if s.db != nil {
+		var hasSummary int32
+		err := s.db.QueryRowContext(ctx,
+			`SELECT COALESCE(has_summary,0) FROM videos WHERE id = $1`, videoID).Scan(&hasSummary)
+		if err == nil {
+			if hasSummary == 1 {
+				return true, nil
+			}
+		} else if err != sql.ErrNoRows {
+			return false, err
+		}
+	}
 	req := map[string]interface{}{"video_id": videoID}
 	var resp struct {
 		HasSummary bool `json:"has_summary"`
