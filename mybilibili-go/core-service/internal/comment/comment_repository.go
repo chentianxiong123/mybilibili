@@ -199,31 +199,39 @@ func (r *CommentRepository) IsReplyLiked(ctx context.Context, replyID, userID in
 }
 
 func (r *CommentRepository) LikeTarget(ctx context.Context, targetType string, targetID, userID int64) error {
-	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO user_interactions (user_id, target_type, target_id, interaction_type) VALUES ($1, $2, $3, 'like')
+	t := strings.ToUpper(targetType)
+	res, err := r.db.ExecContext(ctx,
+		`INSERT INTO user_interactions (user_id, target_type, target_id, interaction_type) VALUES ($1, $2, $3, 'LIKE')
 		 ON CONFLICT (user_id, target_type, target_id, interaction_type) DO NOTHING`,
-		userID, targetType, targetID)
+		userID, t, targetID)
 	if err != nil {
 		return err
 	}
-	if targetType == "COMMENT" {
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil
+	}
+	if t == "COMMENT" {
 		_, err = r.db.ExecContext(ctx, `UPDATE comments SET like_count = like_count + 1 WHERE id = $1`, targetID)
-	} else if targetType == "REPLY" {
+	} else if t == "REPLY" {
 		_, err = r.db.ExecContext(ctx, `UPDATE replies SET like_count = like_count + 1 WHERE id = $1`, targetID)
 	}
 	return err
 }
 
 func (r *CommentRepository) UnlikeTarget(ctx context.Context, targetType string, targetID, userID int64) error {
-	_, err := r.db.ExecContext(ctx,
+	t := strings.ToUpper(targetType)
+	res, err := r.db.ExecContext(ctx,
 		`DELETE FROM user_interactions WHERE user_id = $1 AND target_type = $2 AND target_id = $3 AND interaction_type = 'LIKE'`,
-		userID, targetType, targetID)
+		userID, t, targetID)
 	if err != nil {
 		return err
 	}
-	if targetType == "COMMENT" {
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil
+	}
+	if t == "COMMENT" {
 		_, err = r.db.ExecContext(ctx, `UPDATE comments SET like_count = GREATEST(like_count - 1, 0) WHERE id = $1`, targetID)
-	} else if targetType == "REPLY" {
+	} else if t == "REPLY" {
 		_, err = r.db.ExecContext(ctx, `UPDATE replies SET like_count = GREATEST(like_count - 1, 0) WHERE id = $1`, targetID)
 	}
 	return err
@@ -305,7 +313,7 @@ func commentToPB(c *Comment, userName, userAvatar string, userLevel int32, liked
 	}
 }
 
-func replyToPB(rep *Reply, userName, userAvatar string, userLevel int32, replyToUserName string, liked bool) *pb.ReplyInfo {
+func replyToPB(rep *Reply, userName, userAvatar string, userLevel int32, replyToUserName string, replyToUserID int64, liked bool) *pb.ReplyInfo {
 	return &pb.ReplyInfo{
 		Id:              rep.ID,
 		CommentId:       rep.CommentID,
@@ -317,6 +325,7 @@ func replyToPB(rep *Reply, userName, userAvatar string, userLevel int32, replyTo
 		LikeCount:       rep.LikeCount,
 		CreatedAt:       rep.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		ReplyToUserName: replyToUserName,
+		ReplyToUserId:   replyToUserID,
 		Liked:           liked,
 	}
 }
