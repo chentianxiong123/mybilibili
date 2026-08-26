@@ -416,7 +416,14 @@ export const reportApi = {
 }
 
 export const feedbackApi = {
-  submit: (data: { type: string; content: string; contact: string }) => api.post('/feedback', data)
+  // 意见反馈 → 客服工单 POST /api/v1/operation/tickets（后端 source=USER_FEEDBACK）
+  submit: (data: { type: string; content: string; contact: string }) =>
+    api.post('/operation/tickets', {
+      title: data.type,
+      content: data.contact
+        ? `${data.content}\n\n联系方式：${data.contact}`
+        : data.content
+    })
 }
 
 export const getUserList = (params: Record<string, any>) => api.get('/user/admin/list', { params })
