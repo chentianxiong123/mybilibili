@@ -503,7 +503,8 @@ const openVertical = () => {
       </div>
 
       <!-- 相关推荐视频列表 -->
-      <div class="recommendations-list">
+      <div v-if="recommendVides.length > 0" class="recommendations-list">
+        <div class="recommend-title">相关推荐</div>
         <div
           v-for="rec in recommendVides"
           :key="rec.aId"
@@ -526,6 +527,7 @@ const openVertical = () => {
           </div>
         </div>
       </div>
+      <div v-else-if="!loading" class="recommend-empty">暂无相关推荐</div>
     </div>
 
     <!-- 2. 评论模式内容区块 -->
@@ -1054,8 +1056,22 @@ const openVertical = () => {
     }
   }
 
+  .recommend-empty {
+    padding: 32px 16px;
+    text-align: center;
+    color: #9499a0;
+    font-size: 13px;
+  }
+
   .recommendations-list {
     padding: 8px 16px;
+
+    .recommend-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #18191c;
+      margin-bottom: 12px;
+    }
 
     .recommend-card-row {
       display: flex;
