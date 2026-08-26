@@ -580,10 +580,10 @@ defineExpose({
           </div>
           <div v-else class="comments-list">
             <div v-for="c in commentsMap[item.id]" :key="c.id" class="comment-item">
-              <img :src="c.user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" class="comment-avatar" alt="" />
+              <img :src="c.userAvatar || c.user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" class="comment-avatar" alt="" />
               <div class="comment-right">
                 <div class="comment-meta">
-                  <span class="commenter-name">{{ c.user?.username || '用户' }}</span>
+                  <span class="commenter-name">{{ c.userName || c.user?.username || '用户' }}</span>
                   <span class="comment-time">{{ formatTime(c.createdAt) }}</span>
                 </div>
                 <p class="comment-text">{{ c.content }}</p>
