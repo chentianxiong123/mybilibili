@@ -14,7 +14,7 @@ const adaptRecommend = (v: any) => ({
   author: v.uploader?.name || v.uploader?.nickname || v.uploader?.username || v.username || v.nickname || v.author || '',
   mid: v.user_id || v.userId || v.uploader?.id,
   play: v.view_count || v.viewCount || 0,
-  videoReview: v.comment_count || v.danmaku_count || v.commentCount || v.danmakuCount || 0,
+  videoReview: v.commentCount || v.comment_count || v.danmaku_count || v.danmakuCount || 0,
   likeCount: v.like_count || v.likeCount || 0,
   collectCount: v.collect_count || v.collectCount || 0,
   duration: v.duration,
@@ -44,7 +44,7 @@ export async function getVideoInfo(aId: number) {
       author: data.uploader?.name || data.username || data.nickname || '',
       mid: data.uploader?.id || data.userId,
       play: data.viewCount || 0,
-      videoReview: data.danmakuCount || 0,
+      videoReview: data.commentCount || data.danmakuCount || 0,
       ctime: data.createTime,
       description: data.description || '',
       // 播放地址
