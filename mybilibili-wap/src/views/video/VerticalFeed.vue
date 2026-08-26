@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getVideoInfo, getRecommendVides, getComments } from '../../api/video'
 import { likeManuscript, collectManuscript, shareManuscript, followUser, getInteractionStatus, checkFollow } from '../../api/interaction'
@@ -14,16 +14,23 @@ const activeIndex = ref(0)
 const playing = ref(false)
 const loading = ref(true)
 const progress = ref(0)
+const buffering = ref(false)
+const currentTime = ref(0)
+const duration = ref(0)
+const muted = ref(false)
+const dragging = ref(false)
+const showProgressBar = ref(false)
+const heartShow = ref(false)
+const heartStyle = ref({})
 const containerRef = ref(null)
 const videoEls = ref([])
+let currentHlsIndex = -1
+let loadingMore = false
 
 // 评论面板
 const showComment = ref(false)
 const comments = ref([])
 const commentLoading = ref(false)
-// 双击点赞心形动画
-const heartShow = ref(false)
-let heartTimer = null
 
 const hlsMap = {}
 let scrollRaf = 0
@@ -127,6 +134,7 @@ function setupVideo(i) {
         hls.loadSource(url)
         hls.attachMedia(el)
         hlsMap[it.aId] = hls
+        currentHlsIndex = i
       } else {
         el.src = url
       }
@@ -134,6 +142,7 @@ function setupVideo(i) {
   } else {
     el.src = url
   }
+  el.muted = muted.value
 }
 
 function playActive() {
@@ -146,6 +155,11 @@ function pauseAll(except) {
   videoEls.value.forEach((el, i) => {
     if (el && i !== except) el.pause()
   })
+  // 回收非当前视频的 HLS 实例，避免滑多条后带宽/内存泄漏
+  if (currentHlsIndex !== -1 && currentHlsIndex !== except) {
+    destroyHls(currentHlsIndex)
+    currentHlsIndex = -1
+  }
   playing.value = false
 }
 
@@ -157,6 +171,50 @@ async function activate(i) {
   pauseAll(i)
   setupVideo(i)
   playActive()
+  // 预缓存相邻视频，提升滑动丝滑度
+  preloadNearby(i)
+}
+
+// 预加载当前前后各1条：提前拉详情 + 预创建 HLS，滑到时秒开
+function preloadNearby(i) {
+  ;[i - 1, i + 1].forEach((idx) => {
+    if (idx < 0 || idx >= feed.value.length) return
+    const it = feed.value[idx]
+    if (!it) return
+    if (!it.resolved) {
+      ensureLoaded(idx).then(() => {
+        // 详情就绪后预挂载视频源（不播放）
+        nextTick(() => { if (idx !== activeIndex.value) setupVideoQuiet(idx) })
+      })
+    } else if (!videoEls.value[idx]?.src && !hlsMap[it.aId]) {
+      setupVideoQuiet(idx)
+    }
+  })
+  // 接近末尾预拉更多
+  if (feed.value.length - i <= 3 && !loadingMore) loadMore()
+}
+
+// 预挂载源但不自动播放（仅缓存）
+function setupVideoQuiet(i) {
+  const it = feed.value[i]
+  const el = videoEls.value[i]
+  if (!it || !el || el.src || hlsMap[it.aId]) return
+  const url = it.playUrlHd || it.playUrlSd || it.playUrlLd || it.playUrl
+  if (!url) return
+  if (url.endsWith('.m3u8')) {
+    import('hls.js').then(({ default: Hls }) => {
+      if (Hls.isSupported() && !hlsMap[it.aId]) {
+        const hls = new Hls()
+        hls.loadSource(url)
+        hls.attachMedia(el)
+        hlsMap[it.aId] = hls
+      } else if (!el.src) {
+        el.src = url
+      }
+    })
+  } else if (!el.src) {
+    el.src = url
+  }
 }
 
 function onScroll() {
@@ -171,13 +229,36 @@ function onScroll() {
 
 function onTimeUpdate(e) {
   const el = e.target
-  if (el && el.duration) progress.value = el.currentTime / el.duration
+  if (el && el.duration && !dragging.value) {
+    progress.value = el.currentTime / el.duration
+    currentTime.value = el.currentTime
+    duration.value = el.duration
+  }
 }
+
+function onWaiting() { buffering.value = true }
+function onPlaying() { buffering.value = false; playing.value = true }
+function onPause() { playing.value = false }
+function onLoadedMeta(e) { duration.value = e.target.duration || 0 }
 
 function onEnded() {
   playing.value = false
   progress.value = 0
 }
+
+function toggleMute() {
+  muted.value = !muted.value
+  videoEls.value.forEach((el) => { if (el) el.muted = muted.value })
+}
+
+function fmtTime(s) {
+  if (!s || isNaN(s)) return '00:00'
+  const m = Math.floor(s / 60)
+  const sec = Math.floor(s % 60)
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
+}
+
+const progressPct = computed(() => (dragging.value ? progress.value : (duration.value ? currentTime.value / duration.value : 0)) * 100)
 
 function togglePlay() {
   const el = videoEls.value[activeIndex.value]
@@ -190,29 +271,108 @@ function togglePlay() {
   }
 }
 
-function showHeart() {
+function showHeart(x, y) {
   heartShow.value = false
+  // 心形位置：默认居中；双击时跟随点击位置
+  heartStyle.value = (x != null && y != null)
+    ? { left: x + 'px', top: y + 'px' }
+    : { left: '50%', top: '50%' }
   nextTick(() => { heartShow.value = true })
   clearTimeout(heartTimer)
   heartTimer = setTimeout(() => { heartShow.value = false }, 900)
 }
 
-// 单击 播放/暂停；300ms 内双击 = 点赞 + 心形动画（抖音交互）
+// 触摸交互：短点=单击（播放/暂停），双击=点赞，长按拖拽=进度条
 let lastTap = 0
 let tapTimer = null
-function onOverlayTap() {
+let touchStart = null
+let holdTimer = null
+let moved = false
+
+function onTouchStart(e) {
+  if (e.touches.length !== 1) return
+  const t = e.touches[0]
+  touchStart = { x: t.clientX, y: t.clientY, time: Date.now() }
+  moved = false
+  // 长按 180ms 后进入拖拽进度模式
+  holdTimer = setTimeout(() => {
+    if (!moved && touchStart) {
+      dragging.value = true
+      showProgressBar.value = true
+      seekTo(touchStart.x)
+    }
+  }, 180)
+}
+
+function onTouchMove(e) {
+  if (!touchStart || e.touches.length !== 1) return
+  const t = e.touches[0]
+  const dx = t.clientX - touchStart.x
+  const dy = t.clientY - touchStart.y
+  // 水平移动为主视为拖拽进度；垂直移动大视为滑动翻页
+  if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+    if (!dragging.value) {
+      moved = true
+      clearTimeout(holdTimer) // 移动了，取消点击/长按
+    }
+  }
+  if (dragging.value) {
+    e.preventDefault()
+    seekTo(t.clientX)
+  }
+}
+
+function onTouchEnd() {
+  clearTimeout(holdTimer)
+  if (dragging.value) {
+    // 结束拖拽，隐藏进度条
+    dragging.value = false
+    setTimeout(() => { showProgressBar.value = false }, 200)
+    touchStart = null
+    return
+  }
+  if (!touchStart || moved) { touchStart = null; return }
+  // 短点 → 单击/双击逻辑
+  const x = touchStart.x, y = touchStart.y
+  touchStart = null
   const now = Date.now()
   if (now - lastTap < 300) {
     clearTimeout(tapTimer)
     lastTap = 0
     const it = feed.value[activeIndex.value]
     if (it && !it.liked) toggleLike(it)
-    showHeart()
+    showHeart(x, y)
     return
   }
   lastTap = now
   clearTimeout(tapTimer)
   tapTimer = setTimeout(() => { togglePlay() }, 300)
+}
+
+// 根据屏幕 X 坐标定位进度
+function seekTo(clientX) {
+  const el = videoEls.value[activeIndex.value]
+  if (!el || !duration.value) return
+  const w = window.innerWidth
+  const ratio = Math.max(0, Math.min(1, clientX / w))
+  progress.value = ratio
+  el.currentTime = ratio * duration.value
+  currentTime.value = ratio * duration.value
+}
+
+// 桌面端鼠标拖拽进度
+function onMouseDown(e) {
+  dragging.value = true
+  showProgressBar.value = true
+  seekTo(e.clientX)
+}
+function onMouseMove(e) {
+  if (dragging.value) seekTo(e.clientX)
+}
+function onMouseUp() {
+  if (!dragging.value) return
+  dragging.value = false
+  setTimeout(() => { showProgressBar.value = false }, 200)
 }
 
 async function toggleLike(it) {
@@ -253,6 +413,22 @@ async function openComments(it) {
   commentLoading.value = false
 }
 
+async function loadMore() {
+  if (loadingMore) return
+  const last = feed.value[feed.value.length - 1]
+  if (!last) return
+  loadingMore = true
+  try {
+    const rec = await getRecommendVides(last.aId)
+    if (rec.code === '1') {
+      ;(rec.data || []).forEach(r => {
+        if (r.aId && !feed.value.some(x => x.aId === r.aId)) feed.value.push(makeItem(r))
+      })
+    }
+  } catch (e) {}
+  loadingMore = false
+}
+
 const goBack = () => {
   const it = feed.value[activeIndex.value]
   // 退出竖屏 → 回到普通视频详情页（与横屏一样的 16:9 + 左右补黑边状态）
@@ -275,7 +451,17 @@ onMounted(async () => {
   loading.value = false
   await nextTick()
   setupVideo(0)
-  playActive()
+  // 浏览器拦截有声自动播放时，静音播放（抖音式体验，不静默等待）
+  const el = videoEls.value[0]
+  if (el) {
+    el.play().then(() => { playing.value = true }).catch(() => {
+      muted.value = true
+      el.muted = true
+      el.play().then(() => { playing.value = true }).catch(() => {})
+    })
+  }
+  // 预缓存下一条
+  preloadNearby(0)
 })
 
 onUnmounted(() => {
@@ -319,11 +505,34 @@ onUnmounted(() => {
           preload="metadata"
           :poster="it.isVertical ? it.pic || undefined : undefined"
           @timeupdate="onTimeUpdate"
+          @waiting="onWaiting"
+          @playing="onPlaying"
+          @pause="onPause"
+          @loadedmetadata="onLoadedMeta"
           @ended="onEnded"
         ></video>
 
-        <!-- 覆盖层 UI -->
-        <div class="vf-overlay" @click="onOverlayTap">
+        <!-- 缓冲指示 -->
+        <div v-if="i === activeIndex && buffering && !dragging" class="vf-buffer">
+          <div class="vf-spinner"></div>
+        </div>
+
+        <!-- 静音提示 -->
+        <div v-if="i === activeIndex && muted" class="vf-muted-tip" @click.stop="toggleMute">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="#fff"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+          <span>点按开声音</span>
+        </div>
+
+        <!-- 覆盖层 UI：触摸交互（短点/双击/长按拖拽进度） -->
+        <div class="vf-overlay"
+          @touchstart="onTouchStart"
+          @touchmove="onTouchMove"
+          @touchend="onTouchEnd"
+          @mousedown="onMouseDown"
+          @mousemove="onMouseMove"
+          @mouseup="onMouseUp"
+          @mouseleave="onMouseUp"
+        >
           <!-- 右侧操作栏 -->
           <div class="vf-rail">
             <div class="vf-rail-item" @click.stop="doFollow(it)">
@@ -386,16 +595,21 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- 双击点赞心形 -->
-        <div v-if="i === activeIndex && heartShow" class="vf-heart">
+        <!-- 双击点赞心形（跟随点击位置） -->
+        <div v-if="i === activeIndex && heartShow" class="vf-heart" :style="heartStyle">
           <svg viewBox="0 0 24 24" width="120" height="120" fill="#fb7299" stroke="#fff" stroke-width="0.5">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
           </svg>
         </div>
 
-        <!-- 顶部进度条（仅当前视频） -->
-        <div v-if="i === activeIndex" class="vf-progress">
-          <div class="vf-progress-inner" :style="{ width: (progress * 100) + '%' }"></div>
+        <!-- 底部进度条：默认隐藏，仅按住拖拽时出现 -->
+        <div v-if="i === activeIndex && showProgressBar" class="vf-progress">
+          <span class="vf-time vf-time-cur">{{ fmtTime(currentTime) }}</span>
+          <div class="vf-progress-track">
+            <div class="vf-progress-inner" :style="{ width: progressPct + '%' }"></div>
+            <div class="vf-progress-thumb" :style="{ left: progressPct + '%' }"></div>
+          </div>
+          <span class="vf-time vf-time-dur">{{ fmtTime(duration) }}</span>
         </div>
       </div>
     </div>
@@ -581,11 +795,9 @@ onUnmounted(() => {
 
 .vf-heart {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   z-index: 6;
   pointer-events: none;
+  transform: translate(-50%, -50%);
   animation: vf-heart-pop 0.9s ease-out forwards;
 }
 @keyframes vf-heart-pop {
@@ -605,19 +817,71 @@ onUnmounted(() => {
 }
 
 .vf-progress {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
-  background: rgba(255,255,255,0.2);
+  height: 44px;
   z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+  padding-top: 8px;
+}
+.vf-time { color: #fff; font-size: 11px; text-shadow: 0 1px 2px rgba(0,0,0,0.6); min-width: 34px; }
+.vf-time-cur { text-align: right; }
+.vf-progress-track {
+  position: relative;
+  flex: 1;
+  height: 3px;
+  background: rgba(255,255,255,0.25);
+  border-radius: 2px;
+  cursor: pointer;
 }
 .vf-progress-inner {
   height: 100%;
   background: #fb7299;
-  transition: width 0.2s linear;
+  border-radius: 2px;
 }
+.vf-progress-thumb {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fb7299;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 3px rgba(251,114,153,0.25);
+}
+.vf-mute-btn { display: flex; cursor: pointer; opacity: 0.9; }
+
+.vf-buffer {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+}
+.vf-muted-tip {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 16px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.vf-progress-old { display: none; }
 
 /* 评论面板 */
 .vf-comment-mask {
