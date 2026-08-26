@@ -9,19 +9,6 @@ import {
   deleteCategory
 } from '@/api/category'
 
-// 格式化日期时间
-const formatDateTime = (dateStr) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  const seconds = String(date.getSeconds()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-}
-
 // 表格数据
 const tableData = ref([])
 const loading = ref(false)
@@ -203,11 +190,6 @@ onMounted(() => {
     >
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="name" label="分区名称" width="200" />
-      <el-table-column label="创建时间" width="180">
-        <template #default="{ row }">
-          {{ formatDateTime(row.createdAt) }}
-        </template>
-      </el-table-column>
       <el-table-column label="操作" fixed="right" width="150">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleEdit(row)">
