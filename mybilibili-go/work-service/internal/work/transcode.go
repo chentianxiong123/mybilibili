@@ -149,17 +149,17 @@ func (w *TranscodeWorker) Transcode(ctx context.Context, srcFile, outDir string,
 		return err
 	}
 	crf := "23"
-	scale := "min(1280,iw):-2"
+	scale := "min(1280\\,iw):-2"
 	switch quality {
 	case "1080p":
 		crf = "20"
-		scale = "min(1920,iw):-2"
+		scale = "min(1920\\,iw):-2"
 	case "720p":
 		crf = "22"
-		scale = "min(1280,iw):-2"
+		scale = "min(1280\\,iw):-2"
 	default:
 		crf = "23"
-		scale = "min(854,iw):-2"
+		scale = "min(854\\,iw):-2"
 	}
 
 	args := w.transcodeArgs(scale, crf, srcFile, outDir)
