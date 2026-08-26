@@ -75,64 +75,6 @@ func (r *Repository) SearchManuscripts(ctx context.Context, keyword string, cate
 	return list, nil
 }
 
-func (r *Repository) HotSearch(ctx context.Context) ([]map[string]interface{}, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT keyword, score FROM hot_search
-		 WHERE expires_at IS NULL OR expires_at > NOW()
-		 ORDER BY score DESC LIMIT 10`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var list []map[string]interface{}
-	for rows.Next() {
-		var keyword string
-		var score int64
-		if err := rows.Scan(&keyword, &score); err != nil {
-			return nil, err
-		}
-		list = append(list, map[string]interface{}{
-			"rank":    len(list) + 1,
-			"keyword": keyword,
-			"score":   score,
-		})
-	}
-	if len(list) > 0 {
-		return list, nil
-	}
-	// 兜底：按播放量取已发布稿件标题
-	titles, err := r.TopTitles(ctx, 10)
-	if err != nil {
-		return nil, err
-	}
-	for i, t := range titles {
-		list = append(list, map[string]interface{}{
-			"rank":    i + 1,
-			"keyword": t,
-			"score":   0,
-		})
-	}
-	return list, nil
-}
-
-func (r *Repository) TopTitles(ctx context.Context, limit int) ([]string, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT title FROM manuscripts WHERE status = 3 ORDER BY view_count DESC LIMIT $1`, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var list []string
-	for rows.Next() {
-		var t string
-		if err := rows.Scan(&t); err != nil {
-			return nil, err
-		}
-		list = append(list, t)
-	}
-	return list, nil
-}
-
 func (r *Repository) RecommendRelated(ctx context.Context, manuscriptID, categoryID int64, size int32) ([]map[string]interface{}, error) {
 	return r.SearchManuscripts(ctx, "", categoryID, 1, size)
 }
@@ -150,75 +92,6 @@ func (r *Repository) UpdateRecommendConfig(ctx context.Context, configJSON, upda
 		 VALUES ('default', $1, $2)
 		 ON CONFLICT (config_key) DO UPDATE SET config_json = $1, updated_by = $2, updated_at = NOW()`,
 		configJSON, updatedBy)
-	return err
-}
-
-func (r *Repository) IncrementHotSearch(ctx context.Context, keyword string) error {
-	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO hot_search (keyword, search_count, score, expires_at)
-		 VALUES ($1, 1, 1, NOW() + INTERVAL '24 hours')
-		 ON CONFLICT (keyword) DO UPDATE SET
-		   search_count = hot_search.search_count + 1,
-		   score = hot_search.score + 1,
-		   updated_at = NOW()`, keyword)
-	return err
-}
-
-func (r *Repository) SetKeyword(ctx context.Context, keyword string, score, rank int) error {
-	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO hot_search (keyword, score, rank, expires_at)
-		 VALUES ($1, $2, $3, NOW() + INTERVAL '24 hours')
-		 ON CONFLICT (keyword) DO UPDATE SET score = $2, rank = $3, updated_at = NOW()`,
-		keyword, score, rank)
-	return err
-}
-
-func (r *Repository) SetRank(ctx context.Context, keyword string, rank int) error {
-	_, err := r.db.ExecContext(ctx,
-		`UPDATE hot_search SET rank = $1, updated_at = NOW() WHERE keyword = $2`, rank, keyword)
-	return err
-}
-
-func (r *Repository) SetScore(ctx context.Context, keyword string, score int) error {
-	_, err := r.db.ExecContext(ctx,
-		`UPDATE hot_search SET score = $1, updated_at = NOW() WHERE keyword = $2`, score, keyword)
-	return err
-}
-
-func (r *Repository) GetKeyword(ctx context.Context, keyword string) (map[string]interface{}, error) {
-	var id, score, rank, searchCount int64
-	var expiresAt sql.NullTime
-	err := r.db.QueryRowContext(ctx,
-		`SELECT id, keyword, score, rank, search_count, expires_at FROM hot_search WHERE keyword = $1`, keyword,
-	).Scan(&id, &keyword, &score, &rank, &searchCount, &expiresAt)
-	if err != nil {
-		return nil, err
-	}
-	result := map[string]interface{}{
-		"id": id, "keyword": keyword, "score": score, "rank": rank, "search_count": searchCount,
-	}
-	if expiresAt.Valid {
-		result["expires_at"] = expiresAt.Time.Format("2006-01-02T15:04:05Z")
-	}
-	return result, nil
-}
-
-func (r *Repository) GetScore(ctx context.Context, keyword string) (int64, error) {
-	var score int64
-	err := r.db.QueryRowContext(ctx,
-		`SELECT score FROM hot_search WHERE keyword = $1`, keyword).Scan(&score)
-	return score, err
-}
-
-func (r *Repository) CleanExpiredHotSearch(ctx context.Context) error {
-	_, err := r.db.ExecContext(ctx,
-		`DELETE FROM hot_search WHERE expires_at IS NOT NULL AND expires_at < NOW()`)
-	return err
-}
-
-func (r *Repository) DeleteOne(ctx context.Context, keyword string) error {
-	_, err := r.db.ExecContext(ctx,
-		`DELETE FROM hot_search WHERE keyword = $1`, keyword)
 	return err
 }
 
@@ -244,8 +117,7 @@ func (s *Service) Hot(ctx context.Context) ([]map[string]interface{}, error) {
 			return list, nil
 		}
 	}
-	// 兜底：按播放量取已发布稿件标题
-	return s.repo.HotSearch(ctx)
+	return []map[string]interface{}{}, nil
 }
 
 func (s *Service) Suggest(ctx context.Context, keyword string, size int32) ([]string, error) {
