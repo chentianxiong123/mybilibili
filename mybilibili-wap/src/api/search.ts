@@ -79,11 +79,14 @@ export async function getSearchResult(params) {
   }
 }
 
-// 搜索历史 - 登录用户存 Redis（带 TTL），匿名走本地
+// 搜索历史 - 纯客户端 localStorage 持久化（与 web 端一致，不依赖后端接口）
+const HISTORY_KEY = 'searchHistory'
+const HISTORY_MAX = 10
+
 export async function fetchSearchHistory() {
   try {
-    const res = await api.get('/search/history')
-    const data = res?.data || []
+    const raw = localStorage.getItem(HISTORY_KEY)
+    const data = raw ? JSON.parse(raw) : []
     return { code: '1', data: Array.isArray(data) ? data : [] }
   } catch (e) {
     return { code: '0', data: [] }
@@ -93,9 +96,15 @@ export async function fetchSearchHistory() {
 export async function pushSearchHistory(keyword) {
   if (!keyword) return { code: '0', data: [] }
   try {
-    const res = await api.post('/search/history', { keyword }, { headers: { 'Content-Type': 'application/json' } })
-    const data = res?.data || []
-    return { code: '1', data: Array.isArray(data) ? data : [] }
+    const raw = localStorage.getItem(HISTORY_KEY)
+    let list = raw ? JSON.parse(raw) : []
+    if (!Array.isArray(list)) list = []
+    // 去重后置顶
+    list = list.filter(x => x !== keyword)
+    list.unshift(keyword)
+    if (list.length > HISTORY_MAX) list = list.slice(0, HISTORY_MAX)
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(list))
+    return { code: '1', data: list }
   } catch (e) {
     return { code: '0', data: [] }
   }
@@ -103,7 +112,7 @@ export async function pushSearchHistory(keyword) {
 
 export async function clearSearchHistory() {
   try {
-    await api.delete('/search/history')
+    localStorage.removeItem(HISTORY_KEY)
     return { code: '1' }
   } catch (e) {
     return { code: '0' }
