@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/lib/pq"
 	"mybilibili/pkg/auth"
@@ -288,24 +289,37 @@ func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request)
 	userID := h.getUserID(r)
 	rows, _ := h.repo.db.QueryContext(r.Context(),
 		`SELECT m.id, m.sender_id, COALESCE(u.nickname,u.username,'') AS username, COALESCE(u.avatar,'') AS user_avatar,
-		        m.content, m.is_read, COALESCE(m.created_at::text,''), COALESCE(m.target_id,0) AS manuscript_id,
-		        COALESCE(m.comment_id,0) AS comment_id
+		        m.content, m.is_read, COALESCE(m.created_at::text,''), m.message_type,
+		        COALESCE(m.target_id,0) AS manuscript_id, COALESCE(m.comment_id,0) AS comment_id,
+		        COALESCE(ms.title,'') AS video_title, COALESCE(ms.cover_url,'') AS video_cover,
+		        COALESCE(c.content,'') AS comment_content
 		 FROM messages m
 		 LEFT JOIN users u ON u.id = m.sender_id
+		 LEFT JOIN manuscripts ms ON ms.id = m.target_id
+		 LEFT JOIN comments c ON c.id = m.comment_id
 		 WHERE m.receiver_id = $1 AND m.message_type IN (4,6) ORDER BY m.created_at DESC LIMIT 50`, userID)
 	defer rows.Close()
 	var list []map[string]interface{}
 	for rows.Next() {
-		var id, sID, manuscriptID, commentID int64
-		var username, avatar, content, t string
+		var id, sID, manuscriptID, commentID, msgType int64
+		var username, avatar, content, t, videoTitle, videoCover, commentContent string
 		var isRead int32
-		rows.Scan(&id, &sID, &username, &avatar, &content, &isRead, &t, &manuscriptID, &commentID)
+		rows.Scan(&id, &sID, &username, &avatar, &content, &isRead, &t, &msgType, &manuscriptID, &commentID, &videoTitle, &videoCover, &commentContent)
+		// 从 content 兜底解析标题/评论内容（部分稿件已删除，JOIN 不到）
+		if videoTitle == "" {
+			videoTitle = extractCommentText(content, "《")
+		}
+		if commentContent == "" {
+			commentContent = extractCommentText(content, "\"")
+		}
 		item := map[string]interface{}{
-			"id": id, "username": username, "userAvatar": avatar,
+			"id": id, "username": username, "userAvatar": avatar, "userAvatars": []string{avatar},
 			"content": content, "isRead": isRead == 1, "createdAt": t,
 			"createTime": t, "manuscriptId": manuscriptID, "commentId": commentID,
+			"videoTitle": videoTitle, "videoCover": videoCover, "commentContent": commentContent,
+			"userCount": 1, "usernames": username,
 		}
-		if strings.Contains(content, "评论") {
+		if msgType == 6 {
 			item["actionText"] = "赞了你的评论"
 		} else {
 			item["actionText"] = "赞了你的视频"
@@ -317,6 +331,26 @@ func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": list})
+}
+
+// extractCommentText 从形如 赞了你的视频《xxx》/赞了你的评论"xxx" 的消息内容中提取引号内的文本。
+func extractCommentText(s, open string) string {
+	i := strings.Index(s, open)
+	if i < 0 {
+		return ""
+	}
+	// 全在 rune 层面操作，避免字节索引与 rune 数组错位
+	runes := []rune(s)
+	start := utf8.RuneCountInString(s[:i]) + len([]rune(open))
+	// 匹配闭合：中文《》或英文/中文引号
+	for j := start; j < len(runes); j++ {
+		c := runes[j]
+		if c == '》' || c == '"' || c == '”' {
+			return string(runes[start:j])
+		}
+	}
+	// 没有闭合则取后续所有内容
+	return string(runes[start:])
 }
 
 func (h *MessageHTTPHandler) handleSystem(w http.ResponseWriter, r *http.Request) {
