@@ -146,7 +146,7 @@ const handleRegister = () => {
 
 // 跳转到登录页
 const goToLogin = () => {
-  router.push('/login')
+  router.push('/')
 }
 
 // 兴趣标签选择
@@ -172,12 +172,12 @@ const finishInterestSelection = async () => {
   }
   showInterestDialog.value = false
   ElMessage.success('注册成功，请登录')
-  router.push('/login')
+  router.push('/')
 }
 const skipInterest = () => {
   showInterestDialog.value = false
   ElMessage.success('注册成功，请登录')
-  router.push('/login')
+  router.push('/')
 }
 
 const goBack = () => {

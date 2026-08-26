@@ -1,5 +1,5 @@
 <template></template>
 
 <script setup lang="ts">
-definePageMeta({ redirect: '/login?mode=register', layout: 'none' })
+definePageMeta({ redirect: '/', layout: 'none' })
 </script>

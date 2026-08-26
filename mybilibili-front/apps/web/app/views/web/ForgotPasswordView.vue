@@ -111,7 +111,7 @@ const handleForgotPassword = () => {
       .then(response => {
         if (response.code === 200) {
           ElMessage.success('密码重置成功，请登录')
-          router.push('/login')
+          router.push('/')
         } else {
           ElMessage.error(response.message || '重置失败')
         }
@@ -128,12 +128,12 @@ const handleForgotPassword = () => {
 
 // 跳转到登录页
 const goToLogin = () => {
-  router.push('/login')
+  router.push('/')
 }
 
 // 跳转到注册页
 const goToRegister = () => {
-  router.push({ path: '/login', query: { mode: 'register' } })
+  router.push('/')
 }
 
 // 返回上一页
