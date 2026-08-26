@@ -310,6 +310,12 @@ defineExpose({
   width: 100%;
   aspect-ratio: 16/9;
 
+  // 控制栏仅点按后显示（触屏），播放中自动隐藏；桌面浏览器访问时悬浮也显示
+  :deep(.art-video-player:not(.art-control-show):not(.art-hover)) .art-bottom {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
   // Override Artplayer default styles for mobile
   :deep(.art-video) {
     object-fit: contain;
