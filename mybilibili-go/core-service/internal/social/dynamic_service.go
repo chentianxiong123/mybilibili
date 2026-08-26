@@ -3,6 +3,7 @@ package social
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 type DynamicService struct {
@@ -72,8 +73,8 @@ func (s *DynamicService) AddComment(ctx context.Context, dynamicID, userID int64
 	return dc, nil
 }
 
-func (s *DynamicService) ListComments(ctx context.Context, dynamicID int64, page, limit int32) ([]*DynamicComment, error) {
-	return s.repo.ListComments(ctx, dynamicID, page, limit)
+func (s *DynamicService) ListComments(ctx context.Context, dynamicID int64, page, limit int32, sort string) ([]*DynamicComment, error) {
+	return s.repo.ListComments(ctx, dynamicID, page, limit, sort)
 }
 
 func (s *DynamicService) ListReplies(ctx context.Context, commentID int64, page, limit int32) ([]*DynamicComment, error) {
@@ -170,19 +171,63 @@ func (r *CollectionRepository) ListManuscripts(ctx context.Context, collectionID
 	return ids, nil
 }
 
+// ListManuscriptsDetail JOIN manuscripts 返回完整稿件对象（供前端渲染）。
+func (r *CollectionRepository) ListManuscriptsDetail(ctx context.Context, collectionID int64, page, limit int32) ([]map[string]interface{}, int64, error) {
+	offset := (page - 1) * limit
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT m.id, COALESCE(m.title,''), COALESCE(m.cover_url,''), COALESCE(m.view_count,0),
+		        COALESCE(m.upload_time, NOW()), COALESCE(m.duration,''), m.user_id, COALESCE(m.status,0)
+		 FROM manuscript_collection_relations cr
+		 JOIN manuscripts m ON m.id = cr.manuscript_id
+		 WHERE cr.collection_id = $1 ORDER BY cr.collection_order LIMIT $2 OFFSET $3`,
+		collectionID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	var list []map[string]interface{}
+	for rows.Next() {
+		var id, userID, viewCount, status int64
+		var title, cover, duration string
+		var uploadTime time.Time
+		if err := rows.Scan(&id, &title, &cover, &viewCount, &uploadTime, &duration, &userID, &status); err != nil {
+			continue
+		}
+		list = append(list, map[string]interface{}{
+			"id":         id,
+			"title":      title,
+			"cover_url":  cover,
+			"view_count": viewCount,
+			"upload_time": uploadTime,
+			"created_at": uploadTime,
+			"duration":   duration,
+			"user_id":    userID,
+			"status":     status,
+		})
+	}
+	var total int64
+	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscript_collection_relations WHERE collection_id = $1`, collectionID).Scan(&total)
+	return list, total, nil
+}
+
 func scanCollection(row interface {
 	Scan(dest ...interface{}) error
 }) (map[string]interface{}, error) {
-	var id, userID, manuscriptCount, viewCount, status int64
-	var title, desc, cover, createdAt, updatedAt string
+	var id, userID int64
+	var title string
+	var desc, cover sql.NullString
+	var manuscriptCount, viewCount, status sql.NullInt64
+	var createdAt, updatedAt sql.NullTime
 	err := row.Scan(&id, &title, &desc, &cover, &userID, &manuscriptCount, &viewCount, &status, &createdAt, &updatedAt)
 	if err != nil {
 		return nil, err
 	}
+	createdStr, _ := createdAt.Value()
+	updatedStr, _ := updatedAt.Value()
 	return map[string]interface{}{
-		"id": id, "title": title, "description": desc, "cover_url": cover,
-		"user_id": userID, "manuscript_count": manuscriptCount, "view_count": viewCount,
-		"status": status, "created_at": createdAt, "updated_at": updatedAt,
+		"id": id, "title": title, "description": desc.String, "cover_url": cover.String,
+		"user_id": userID, "manuscript_count": manuscriptCount.Int64, "view_count": viewCount.Int64,
+		"status": status.Int64, "created_at": createdStr, "updated_at": updatedStr,
 	}, nil
 }
 
@@ -240,6 +285,10 @@ func (s *CollectionService) RemoveManuscript(ctx context.Context, collectionID, 
 
 func (s *CollectionService) ListManuscripts(ctx context.Context, collectionID int64, page, limit int32) ([]int64, error) {
 	return s.repo.ListManuscripts(ctx, collectionID, page, limit)
+}
+
+func (s *CollectionService) ListManuscriptsDetail(ctx context.Context, collectionID int64, page, limit int32) ([]map[string]interface{}, int64, error) {
+	return s.repo.ListManuscriptsDetail(ctx, collectionID, page, limit)
 }
 
 type ShareRepository struct {
