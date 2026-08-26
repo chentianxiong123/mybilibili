@@ -120,7 +120,7 @@ func (h *MessageHTTPHandler) handleConversations(w http.ResponseWriter, r *http.
 		list = []*Conversation{}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(list)
+	json.NewEncoder(w).Encode(map[string]interface{}{"code": 200, "data": list})
 }
 
 func (h *MessageHTTPHandler) handleConversationByID(w http.ResponseWriter, r *http.Request) {
