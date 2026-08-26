@@ -5,7 +5,7 @@ import {
   ArrowDown, Connection, Cpu, DataAnalysis, DataBoard, DataLine,
   Document, DocumentChecked, Expand, Fold, Folder, Headset, List,
   Lock, Message, Monitor, Operation, Picture, Setting, SwitchButton,
-  Tickets, User, UserFilled, VideoPlay, Warning
+  Tickets, User, UserFilled, VideoCamera, VideoPlay, Warning
 } from '@element-plus/icons-vue'
 import { useAdminStore } from '~/stores/admin'
 import AdminAiFloatingButton from '~/components/AdminAiFloatingButton.vue'
@@ -23,7 +23,7 @@ const isLoginPage = computed(() => route.path === '/login')
 
 const iconMap: Record<string, any> = {
   Connection, Cpu, DataAnalysis, DataBoard, DataLine, Document, DocumentChecked,
-  Folder, Headset, List, Lock, Message, Monitor, Operation, Picture, Setting, Tickets, User, VideoPlay, Warning
+  Folder, Headset, List, Lock, Message, Monitor, Operation, Picture, Setting, Tickets, User, VideoCamera, VideoPlay, Warning
 }
 
 const allMenuItems = [
@@ -31,6 +31,7 @@ const allMenuItems = [
     type: 'group', icon: 'Operation', title: '运营板块',
     children: [
       { path: '/operation-tasks', icon: 'List', title: '任务中心', permission: 'operation:manage' },
+      { path: '/video-process', icon: 'VideoCamera', title: '视频处理看板', permission: 'video:manage' },
       { path: '/support-tickets', icon: 'Message', title: '工单中心', permission: 'operation:manage' },
       { path: '/index-manager', icon: 'DataLine', title: '索引管理', permission: 'search:manage' },
       { path: '/recommend-config', icon: 'DataAnalysis', title: '推荐配置', permission: 'search:manage' }

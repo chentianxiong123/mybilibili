@@ -1,6 +1,7 @@
 package message
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -227,15 +228,25 @@ func (h *MessageHTTPHandler) handleConversationUnread(w http.ResponseWriter, r *
 func (h *MessageHTTPHandler) handleReplies(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserID(r)
 	rows, _ := h.repo.db.QueryContext(r.Context(),
-		`SELECT m.id, m.sender_id, m.content, m.created_at FROM messages m
-		 WHERE m.receiver_id = $1 AND m.message_type = 2 ORDER BY m.created_at DESC LIMIT 20`, userID)
+		`SELECT m.id, m.sender_id, COALESCE(u.nickname,u.username,'') AS username, COALESCE(u.avatar,'') AS user_avatar,
+		        m.content, m.is_read, COALESCE(m.created_at::text,''), m.comment_id, COALESCE(m.target_id,0) AS manuscript_id
+		 FROM messages m
+		 LEFT JOIN users u ON u.id = m.sender_id
+		 WHERE m.receiver_id = $1 AND m.message_type = 2 ORDER BY m.created_at DESC LIMIT 50`, userID)
 	defer rows.Close()
 	var list []map[string]interface{}
 	for rows.Next() {
-		var id, sID int64
-		var content, t string
-		rows.Scan(&id, &sID, &content, &t)
-		list = append(list, map[string]interface{}{"id": id, "sender_id": sID, "content": content, "created_at": t})
+		var id, sID, manuscriptID int64
+		var username, avatar, content, t string
+		var isRead int32
+		var commentID sql.NullInt64
+		rows.Scan(&id, &sID, &username, &avatar, &content, &isRead, &t, &commentID, &manuscriptID)
+		list = append(list, map[string]interface{}{
+			"id": id, "senderId": sID, "username": username, "userAvatar": avatar,
+			"content": content, "isRead": isRead == 1, "createdAt": t,
+			"createTime": t, "commentId": commentID.Int64, "manuscriptId": manuscriptID,
+			"actionText": "回复了你的评论",
+		})
 	}
 	if list == nil {
 		list = []map[string]interface{}{}
@@ -247,15 +258,24 @@ func (h *MessageHTTPHandler) handleReplies(w http.ResponseWriter, r *http.Reques
 func (h *MessageHTTPHandler) handleAt(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserID(r)
 	rows, _ := h.repo.db.QueryContext(r.Context(),
-		`SELECT m.id, m.sender_id, m.content, m.created_at FROM messages m
-		 WHERE m.receiver_id = $1 AND m.message_type = 3 ORDER BY m.created_at DESC LIMIT 20`, userID)
+		`SELECT m.id, m.sender_id, COALESCE(u.nickname,u.username,'') AS username, COALESCE(u.avatar,'') AS user_avatar,
+		        m.content, m.is_read, COALESCE(m.created_at::text,''), COALESCE(m.target_id,0) AS manuscript_id
+		 FROM messages m
+		 LEFT JOIN users u ON u.id = m.sender_id
+		 WHERE m.receiver_id = $1 AND m.message_type = 3 ORDER BY m.created_at DESC LIMIT 50`, userID)
 	defer rows.Close()
 	var list []map[string]interface{}
 	for rows.Next() {
-		var id, sID int64
-		var content, t string
-		rows.Scan(&id, &sID, &content, &t)
-		list = append(list, map[string]interface{}{"id": id, "sender_id": sID, "content": content, "created_at": t})
+		var id, sID, manuscriptID int64
+		var username, avatar, content, t string
+		var isRead int32
+		rows.Scan(&id, &sID, &username, &avatar, &content, &isRead, &t, &manuscriptID)
+		list = append(list, map[string]interface{}{
+			"id": id, "username": username, "userAvatar": avatar,
+			"content": content, "isRead": isRead == 1, "createdAt": t,
+			"createTime": t, "manuscriptId": manuscriptID,
+			"actionText": "在评论中@了我",
+		})
 	}
 	if list == nil {
 		list = []map[string]interface{}{}
@@ -267,15 +287,30 @@ func (h *MessageHTTPHandler) handleAt(w http.ResponseWriter, r *http.Request) {
 func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserID(r)
 	rows, _ := h.repo.db.QueryContext(r.Context(),
-		`SELECT m.id, m.sender_id, m.content, m.created_at FROM messages m
-		 WHERE m.receiver_id = $1 AND m.message_type IN (4,6) ORDER BY m.created_at DESC LIMIT 20`, userID)
+		`SELECT m.id, m.sender_id, COALESCE(u.nickname,u.username,'') AS username, COALESCE(u.avatar,'') AS user_avatar,
+		        m.content, m.is_read, COALESCE(m.created_at::text,''), COALESCE(m.target_id,0) AS manuscript_id,
+		        COALESCE(m.comment_id,0) AS comment_id
+		 FROM messages m
+		 LEFT JOIN users u ON u.id = m.sender_id
+		 WHERE m.receiver_id = $1 AND m.message_type IN (4,6) ORDER BY m.created_at DESC LIMIT 50`, userID)
 	defer rows.Close()
 	var list []map[string]interface{}
 	for rows.Next() {
-		var id, sID int64
-		var content, t string
-		rows.Scan(&id, &sID, &content, &t)
-		list = append(list, map[string]interface{}{"id": id, "sender_id": sID, "content": content, "created_at": t})
+		var id, sID, manuscriptID, commentID int64
+		var username, avatar, content, t string
+		var isRead int32
+		rows.Scan(&id, &sID, &username, &avatar, &content, &isRead, &t, &manuscriptID, &commentID)
+		item := map[string]interface{}{
+			"id": id, "username": username, "userAvatar": avatar,
+			"content": content, "isRead": isRead == 1, "createdAt": t,
+			"createTime": t, "manuscriptId": manuscriptID, "commentId": commentID,
+		}
+		if strings.Contains(content, "评论") {
+			item["actionText"] = "赞了你的评论"
+		} else {
+			item["actionText"] = "赞了你的视频"
+		}
+		list = append(list, item)
 	}
 	if list == nil {
 		list = []map[string]interface{}{}
@@ -287,15 +322,21 @@ func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request)
 func (h *MessageHTTPHandler) handleSystem(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserID(r)
 	rows, _ := h.repo.db.QueryContext(r.Context(),
-		`SELECT m.id, m.content, m.created_at FROM messages m
-		 WHERE m.receiver_id = $1 AND m.message_type = 5 ORDER BY m.created_at DESC LIMIT 20`, userID)
+		`SELECT m.id, m.content, m.is_read, COALESCE(m.created_at::text,'')
+		 FROM messages m
+		 WHERE m.receiver_id = $1 AND m.message_type = 5 ORDER BY m.created_at DESC LIMIT 50`, userID)
 	defer rows.Close()
 	var list []map[string]interface{}
 	for rows.Next() {
 		var id int64
 		var content, t string
-		rows.Scan(&id, &content, &t)
-		list = append(list, map[string]interface{}{"id": id, "content": content, "created_at": t})
+		var isRead int32
+		rows.Scan(&id, &content, &isRead, &t)
+		list = append(list, map[string]interface{}{
+			"id": id, "content": content, "title": content,
+			"isRead": isRead == 1, "createdAt": t, "createTime": t,
+			"type": "notification", "actionText": "系统通知",
+		})
 	}
 	if list == nil {
 		list = []map[string]interface{}{}
