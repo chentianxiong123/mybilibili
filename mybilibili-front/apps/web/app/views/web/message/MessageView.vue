@@ -84,13 +84,23 @@ const fetchUnreadCounts = async () => {
   }
 }
 
+const normalizeMessage = (m) => ({
+  ...m,
+  senderId: m.senderId ?? m.sender_id,
+  receiverId: m.receiverId ?? m.receiver_id,
+  conversationId: m.conversationId ?? m.conversation_id,
+  messageType: m.messageType ?? m.message_type,
+  isRead: m.isRead ?? !!m.is_read,
+  createdAt: m.createdAt ?? m.created_at
+})
+
 const fetchMessages = async (conversationId) => {
   if (!conversationId) return
   loading.value = true
   try {
     const res = await messageApi.getMessages(conversationId)
     if (res && res.code === 200) {
-      currentMessages.value = res.data || []
+      currentMessages.value = (res.data || []).map(normalizeMessage)
     }
   } catch (error) {
     console.error('获取消息失败:', error)
@@ -161,8 +171,8 @@ const handleSendMessage = async (content) => {
       messageType: 1
     })
     console.log('发送消息响应:', res)
-    if (res && res.code === 200) {
-      currentMessages.value.unshift(res.data)
+    if (res && res.code === 200 && res.data) {
+      currentMessages.value.unshift(normalizeMessage(res.data))
       // 刷新会话列表，获取新创建的会话ID
       await fetchConversations()
       // 如果是新会话，更新当前选中会话为完整的会话对象
