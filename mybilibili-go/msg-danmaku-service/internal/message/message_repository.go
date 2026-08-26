@@ -18,14 +18,14 @@ type Message struct {
 }
 
 type Conversation struct {
-	ID                 int64        `json:"id"`
-	UserID             int64        `json:"user_id"`
-	TargetUserID       int64        `json:"target_user_id"`
-	TargetUserName     string       `json:"target_user_name"`
-	TargetUserAvatar   string       `json:"target_user_avatar"`
-	LastMessageContent string       `json:"last_message_content"`
-	LastMessageAt      sql.NullTime `json:"last_message_at"`
-	UnreadCount        int32        `json:"unread_count"`
+	ID                 int64  `json:"id"`
+	UserID             int64  `json:"user_id"`
+	TargetUserID       int64  `json:"target_user_id"`
+	TargetUserName     string `json:"target_user_name"`
+	TargetUserAvatar   string `json:"target_user_avatar"`
+	LastMessageContent string `json:"last_message_content"`
+	LastMessageTime    string `json:"last_message_time"`
+	UnreadCount        int32  `json:"unread_count"`
 }
 
 type MessageRepository struct {
@@ -86,7 +86,7 @@ func (r *MessageRepository) GetConversations(ctx context.Context, userID int64) 
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT c.id, c.user_id, c.target_user_id,
 		        COALESCE(u.nickname, u.username, ''), COALESCE(u.avatar, ''),
-		        c.last_message_content, c.last_message_time, c.unread_count
+		        c.last_message_content, COALESCE(c.last_message_time::text,''), c.unread_count
 		 FROM conversations c
 		 LEFT JOIN users u ON u.id = c.target_user_id
 		 WHERE c.user_id = $1 ORDER BY c.last_message_time DESC NULLS LAST`, userID)
@@ -98,7 +98,7 @@ func (r *MessageRepository) GetConversations(ctx context.Context, userID int64) 
 	var list []*Conversation
 	for rows.Next() {
 		c := &Conversation{}
-		if err := rows.Scan(&c.ID, &c.UserID, &c.TargetUserID, &c.TargetUserName, &c.TargetUserAvatar, &c.LastMessageContent, &c.LastMessageAt, &c.UnreadCount); err != nil {
+		if err := rows.Scan(&c.ID, &c.UserID, &c.TargetUserID, &c.TargetUserName, &c.TargetUserAvatar, &c.LastMessageContent, &c.LastMessageTime, &c.UnreadCount); err != nil {
 			return nil, err
 		}
 		list = append(list, c)

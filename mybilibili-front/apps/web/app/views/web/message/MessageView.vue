@@ -64,7 +64,7 @@ const fetchConversations = async () => {
         targetUserName: c.target_user_name ?? c.targetUserName,
         targetUserAvatar: c.target_user_avatar ?? c.targetUserAvatar,
         lastMessageContent: c.last_message_content ?? c.lastMessageContent,
-        lastMessageTime: c.last_message_at ?? c.last_message_time ?? c.lastMessageTime,
+        lastMessageTime: c.last_message_time ?? c.last_message_at ?? c.lastMessageTime,
         unreadCount: c.unread_count ?? c.unreadCount ?? 0
       }))
     }
