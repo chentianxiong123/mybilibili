@@ -201,6 +201,7 @@ func main() {
 	eventPublisher := events.NewEventPublisher(mq)
 
 	manuscriptAdminH := manuscript.NewManuscriptAdminHandler(db)
+	manuscriptAdminH.SetPermChecker(adminH)
 	videoProcessAdminH := manuscript.NewVideoProcessAdminHandler(db)
 	manuscriptAdminH.SetEventPublisher(eventPublisher)
 	interactionSvc.SetEventPublisher(eventPublisher)

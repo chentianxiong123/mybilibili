@@ -27,7 +27,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 
 func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	userID := httputil.GetUserIDFromHeader(r)
@@ -37,15 +37,15 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	if req.Title == "" {
-		http.Error(w, "title required", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "title required", "data": nil})
 		return
 	}
 	t, err := h.svc.Create(r.Context(), userID, req.Title, req.Content)
 	if err != nil {
-		http.Error(w, err.Error(), 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": err.Error(), "data": nil})
 		return
 	}
-	json.NewEncoder(w).Encode(t)
+	httputil.WriteOK(w, t)
 }
 
 func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +55,7 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 	if list == nil {
 		list = []*Ticket{}
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	httputil.WriteOK(w, map[string]any{
 		"list": list, "total": total, "page": page, "size": size,
 	})
 }
@@ -68,10 +68,10 @@ func (h *Handler) handleTicketByID(w http.ResponseWriter, r *http.Request) {
 	case r.Method == "GET":
 		t, err := h.svc.GetByID(r.Context(), id)
 		if err != nil {
-			http.Error(w, "not found", 404)
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 			return
 		}
-		json.NewEncoder(w).Encode(t)
+		httputil.WriteOK(w, t)
 	case len(parts) >= 2 && parts[1] == "process" && r.Method == "PUT":
 		var req struct {
 			AdminReply string `json:"adminReply"`
@@ -79,16 +79,16 @@ func (h *Handler) handleTicketByID(w http.ResponseWriter, r *http.Request) {
 		json.NewDecoder(r.Body).Decode(&req)
 		adminID := httputil.GetAdminIDFromHeader(r)
 		h.svc.Process(r.Context(), id, adminID, req.AdminReply)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	case r.Method == "DELETE":
 		h.svc.repo.db.ExecContext(r.Context(), `DELETE FROM support_tickets WHERE id = $1`, id)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	}
 }
 
 func (h *Handler) handleCustomerSession(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var req struct {
@@ -103,17 +103,17 @@ func (h *Handler) handleCustomerSession(w http.ResponseWriter, r *http.Request) 
 	}
 	t, err := h.svc.Create(r.Context(), req.UserID, req.Title, req.Content)
 	if err != nil {
-		http.Error(w, err.Error(), 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": err.Error(), "data": nil})
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	httputil.WriteOK(w, map[string]any{
 		"ticketId": t.ID, "ticketNo": t.TicketNo, "sessionId": t.SessionID,
 	})
 }
 
 func (h *Handler) handleSessionProcess(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "PUT" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	sessionID, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/operation/internal/tickets/session/"), 10, 64)
@@ -125,8 +125,8 @@ func (h *Handler) handleSessionProcess(w http.ResponseWriter, r *http.Request) {
 		`UPDATE support_tickets SET admin_reply = $2, status = 'processed', processed_at = NOW() WHERE session_id = $1`,
 		sessionID, req.AdminReply)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
 		return
 	}
-	w.Write([]byte(`{"status":"ok"}`))
+	httputil.WriteOK(w, map[string]any{"status": "ok"})
 }

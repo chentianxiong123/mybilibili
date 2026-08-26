@@ -28,7 +28,27 @@ func main() {
 	}
 	defer mq.Close()
 
-	storage, err := abstraction.NewStorageService(abstraction.StorageServiceConfig{Type: getEnv("STORAGE_TYPE", "memory")})
+	// 转码产物/音频/字幕/摘要统一持久化到 MinIO（对齐老项目存储链路）；
+	// factory 的 minio 分支是未实现桩，这里直接使用真实实现 NewMinioStorageService。
+	// 注意：本仓库 minio-go 不接受带 scheme 的 endpoint（会报 fully qualified paths），
+	// 与 ai-service 一致使用 主机:端口 形式。
+	minioCfg := abstraction.DefaultMinioConfig()
+	minioCfg.Endpoint = "127.0.0.1:9000"
+	minioCfg.PublicEndpoint = "127.0.0.1:9000"
+	if v := os.Getenv("MINIO_ENDPOINT"); v != "" {
+		minioCfg.Endpoint = v
+		minioCfg.PublicEndpoint = v
+	}
+	if v := os.Getenv("MINIO_ACCESS_KEY"); v != "" {
+		minioCfg.AccessKey = v
+	}
+	if v := os.Getenv("MINIO_SECRET_KEY"); v != "" {
+		minioCfg.SecretKey = v
+	}
+	if v := os.Getenv("MINIO_BUCKET"); v != "" {
+		minioCfg.BucketName = v
+	}
+	storage, err := abstraction.NewMinioStorageService(minioCfg)
 	if err != nil {
 		log.Fatalf("storage: %v", err)
 	}
@@ -50,6 +70,12 @@ func main() {
 	encoder := loadTranscodeEncoder(getEnv("PG_DSN", ""), getEnv("TRANSCODE_ENCODER", "auto"))
 
 	pipeline := work.NewPipeline(mq, storage, docStore, search, workDir, encoder)
+	if dsn := getEnv("PG_DSN", ""); dsn != "" {
+		if db, err := sql.Open("postgres", dsn); err == nil {
+			pipeline.SetDatabase(db)
+			defer db.Close()
+		}
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

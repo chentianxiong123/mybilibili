@@ -57,7 +57,7 @@ func (h *Handler) CheckPermission(r *http.Request, permission string) (int64, bo
 func (h *Handler) requirePerm(perm string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := h.requirePermission(r, perm); !ok {
-			http.Error(w, "forbidden", 403)
+			httputil.WriteJSON(w, http.StatusForbidden, map[string]any{"code": 403, "message": "forbidden", "data": nil})
 			return
 		}
 		next(w, r)
@@ -95,7 +95,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 
 func (h *Handler) handleStorageMigrate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var req struct {
@@ -110,17 +110,17 @@ func (h *Handler) handleStorageMigrate(w http.ResponseWriter, r *http.Request) {
 		`UPDATE videos SET source_video_url = replace(source_video_url, $1, $2)
 		 WHERE source_video_url LIKE '%' || $1 || '%'`, req.From, req.To)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "操作失败", "data": nil})
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	httputil.WriteOK(w, map[string]any{
 		"status": "ok", "from": req.From, "to": req.To,
 	})
 }
 
 func (h *Handler) handleOperationTasks(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	page, size := httputil.ParsePageParams(r)
@@ -129,11 +129,11 @@ func (h *Handler) handleOperationTasks(w http.ResponseWriter, r *http.Request) {
 		        status, COALESCE(progress,0), COALESCE(error_message,''), created_at, updated_at
 		 FROM operation_tasks ORDER BY id DESC LIMIT $1 OFFSET $2`, size, (page-1)*size)
 	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{"list": []map[string]interface{}{}, "total": 0, "page": page, "size": size})
+		httputil.WriteOK(w, map[string]any{"list": []map[string]any{}, "total": 0, "page": page, "size": size})
 		return
 	}
 	defer rows.Close()
-	list := []map[string]interface{}{}
+	list := []map[string]any{}
 	for rows.Next() {
 		var id, targetID int64
 		var key, typ, name, targetType, status string
@@ -141,7 +141,7 @@ func (h *Handler) handleOperationTasks(w http.ResponseWriter, r *http.Request) {
 		var errMsg string
 		var created, updated string
 		rows.Scan(&id, &key, &typ, &name, &targetType, &targetID, &status, &progress, &errMsg, &created, &updated)
-		list = append(list, map[string]interface{}{
+		list = append(list, map[string]any{
 			"id": id, "task_key": key, "task_type": typ, "task_name": name,
 			"target_type": targetType, "target_id": targetID, "status": status,
 			"progress": progress, "error_message": errMsg, "created_at": created, "updated_at": updated,
@@ -149,14 +149,14 @@ func (h *Handler) handleOperationTasks(w http.ResponseWriter, r *http.Request) {
 	}
 	var total int64
 	h.svc.repo.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM operation_tasks`).Scan(&total)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	httputil.WriteOK(w, map[string]any{
 		"list": list, "total": total, "page": page, "size": size,
 	})
 }
 
 func (h *Handler) handleOperationTaskByID(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	id, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/admin/operation-tasks/"), 10, 64)
@@ -170,10 +170,10 @@ func (h *Handler) handleOperationTaskByID(w http.ResponseWriter, r *http.Request
 	var errMsg string
 	var created, updated string
 	if err := row.Scan(&tid, &key, &typ, &name, &targetType, &targetID, &status, &progress, &errMsg, &created, &updated); err != nil {
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	httputil.WriteOK(w, map[string]any{
 		"id": tid, "task_key": key, "task_type": typ, "task_name": name,
 		"target_type": targetType, "target_id": targetID, "status": status,
 		"progress": progress, "error_message": errMsg, "created_at": created, "updated_at": updated,
@@ -182,7 +182,7 @@ func (h *Handler) handleOperationTaskByID(w http.ResponseWriter, r *http.Request
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var req struct {
@@ -192,7 +192,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	json.NewDecoder(r.Body).Decode(&req)
 	admin, err := h.svc.Login(r.Context(), req.Username, req.Password)
 	if err != nil {
-		http.Error(w, "invalid credentials", 401)
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "账号或密码错误", "data": nil})
 		return
 	}
 	ip := r.Header.Get("X-Forwarded-For")
@@ -204,7 +204,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		admin.ID, ip, r.UserAgent())
 	token, err := h.jwt.GenerateAdmin(admin.ID)
 	if err != nil {
-		http.Error(w, "token generation failed", 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "token生成失败", "data": nil})
 		return
 	}
 	refreshToken, _ := h.jwt.GenerateRefresh(admin.ID)
@@ -219,7 +219,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if permissions == nil {
 		permissions = []string{}
 	}
-	httputil.WriteOK(w, map[string]interface{}{
+	httputil.WriteOK(w, map[string]any{
 		"token":         token,
 		"refresh_token": refreshToken,
 		"admin_id":      admin.ID,
@@ -231,7 +231,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var req struct {
@@ -242,31 +242,31 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	if err := h.svc.CreateAdmin(r.Context(), req.Username, req.Password, req.Level); err != nil {
-		http.Error(w, err.Error(), 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": err.Error(), "data": nil})
 		return
 	}
 	h.svc.RecordAudit(r.Context(), httputil.GetAdminIDFromHeader(r), req.Username, "admin", "CREATE_ADMIN", "admin_users", req.Username, 0, "创建管理员", "")
-	w.Write([]byte(`{"status":"ok"}`))
+	httputil.WriteOK(w, map[string]any{"status": "ok"})
 }
 
 func (h *Handler) handleListAdmins(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.requirePermission(r, "admin:manage"); !ok {
-		http.Error(w, "forbidden", 403)
+		httputil.WriteJSON(w, http.StatusForbidden, map[string]any{"code": 403, "message": "forbidden", "data": nil})
 		return
 	}
 	list, _ := h.svc.ListAdmins(r.Context())
-	json.NewEncoder(w).Encode(list)
+	httputil.WriteOK(w, list)
 }
 
 func (h *Handler) handleRoles(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.requirePermission(r, "role:manage"); !ok {
-		http.Error(w, "forbidden", 403)
+		httputil.WriteJSON(w, http.StatusForbidden, map[string]any{"code": 403, "message": "forbidden", "data": nil})
 		return
 	}
 	switch r.Method {
 	case "GET":
 		list, _ := h.svc.ListRoles(r.Context())
-		json.NewEncoder(w).Encode(list)
+		httputil.WriteOK(w, list)
 	case "POST":
 		var req struct {
 			Name        string `json:"name"`
@@ -274,7 +274,7 @@ func (h *Handler) handleRoles(w http.ResponseWriter, r *http.Request) {
 		}
 		json.NewDecoder(r.Body).Decode(&req)
 		h.svc.CreateRole(r.Context(), req.Name, req.Description)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	}
 }
 
@@ -284,14 +284,14 @@ func (h *Handler) handleRolesByID(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseInt(parts[0], 10, 64)
 
 	if parts[0] == "templates" && r.Method == "GET" {
-		json.NewEncoder(w).Encode(roleTemplates())
+		httputil.WriteOK(w, roleTemplates())
 		return
 	}
 
 	if len(parts) >= 2 && parts[1] == "permissions" {
 		if r.Method == "GET" {
 			ids, _ := h.svc.GetRolePermissions(r.Context(), id)
-			json.NewEncoder(w).Encode(ids)
+			httputil.WriteOK(w, ids)
 		} else if r.Method == "PUT" {
 			var req struct {
 				PermissionIDs []int64 `json:"permission_ids"`
@@ -299,7 +299,7 @@ func (h *Handler) handleRolesByID(w http.ResponseWriter, r *http.Request) {
 			json.NewDecoder(r.Body).Decode(&req)
 			h.svc.SetRolePermissions(r.Context(), id, req.PermissionIDs)
 			h.svc.RecordAudit(r.Context(), httputil.GetAdminIDFromHeader(r), "", "role", "SET_ROLE_PERMISSIONS", "role_permissions", strconv.FormatInt(id, 10), 0, "设置角色权限", "")
-			w.Write([]byte(`{"status":"ok"}`))
+			httputil.WriteOK(w, map[string]any{"status": "ok"})
 		}
 		return
 	}
@@ -308,12 +308,12 @@ func (h *Handler) handleRolesByID(w http.ResponseWriter, r *http.Request) {
 		code := parts[2]
 		tpl, ok := roleTemplates()[code]
 		if !ok {
-			http.Error(w, "岗位模板不存在", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "岗位模板不存在", "data": nil})
 			return
 		}
 		permMap, err := h.svc.GetPermissionIDsByCodes(r.Context(), tpl.PermissionCodes)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "操作失败", "data": nil})
 			return
 		}
 		missing := []string{}
@@ -323,7 +323,7 @@ func (h *Handler) handleRolesByID(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if len(missing) > 0 {
-			http.Error(w, "权限码不存在: "+strings.Join(missing, ", "), 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "权限码不存在: " + strings.Join(missing, ", "), "data": nil})
 			return
 		}
 		ids := []int64{}
@@ -331,11 +331,11 @@ func (h *Handler) handleRolesByID(w http.ResponseWriter, r *http.Request) {
 			ids = append(ids, permMap[c])
 		}
 		if err := h.svc.SetRolePermissions(r.Context(), id, ids); err != nil {
-			http.Error(w, err.Error(), 500)
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "操作失败", "data": nil})
 			return
 		}
 		h.svc.RecordAudit(r.Context(), httputil.GetAdminIDFromHeader(r), "", "role", "APPLY_ROLE_TEMPLATE", "role_permissions", strconv.FormatInt(id, 10), 0, "应用岗位模板 "+code, "")
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 		return
 	}
 
@@ -348,11 +348,11 @@ func (h *Handler) handleRolesByID(w http.ResponseWriter, r *http.Request) {
 		json.NewDecoder(r.Body).Decode(&req)
 		h.svc.UpdateRole(r.Context(), id, req.Name, req.Description)
 		h.svc.RecordAudit(r.Context(), httputil.GetAdminIDFromHeader(r), "", "role", "UPDATE_ROLE", "roles", strconv.FormatInt(id, 10), 0, "更新角色", "")
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	case "DELETE":
 		h.svc.DeleteRole(r.Context(), id)
 		h.svc.RecordAudit(r.Context(), httputil.GetAdminIDFromHeader(r), "", "role", "DELETE_ROLE", "roles", strconv.FormatInt(id, 10), 0, "删除角色", "")
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	}
 }
 
@@ -406,7 +406,7 @@ func roleTemplates() map[string]roleTemplate {
 
 func (h *Handler) handlePermissions(w http.ResponseWriter, r *http.Request) {
 	list, _ := h.svc.ListPermissions(r.Context())
-	json.NewEncoder(w).Encode(list)
+	httputil.WriteOK(w, list)
 }
 
 func (h *Handler) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
@@ -417,34 +417,34 @@ func (h *Handler) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 	}
 	var total int64
 	h.svc.repo.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM audit_logs`).Scan(&total)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	httputil.WriteOK(w, map[string]any{
 		"list": list, "total": total, "page": page, "size": size,
 	})
 }
 
 func (h *Handler) handleAuditLogByID(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	id, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/admin/audit-logs/"), 10, 64)
 	l, err := h.svc.GetAuditLogByID(r.Context(), id)
 	if err != nil {
-		http.Error(w, "audit log not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "audit log not found", "data": nil})
 		return
 	}
-	json.NewEncoder(w).Encode(l)
+	httputil.WriteOK(w, l)
 }
 
 func (h *Handler) handleUserLoginLogs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	userID, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/admin/login-logs/user/"), 10, 64)
 	page, size := httputil.ParsePageParams(r)
 	list, _ := h.svc.ListLoginLogs(r.Context(), userID, page, size)
-	json.NewEncoder(w).Encode(map[string]interface{}{"list": list, "page": page, "size": size})
+	httputil.WriteOK(w, map[string]any{"list": list, "page": page, "size": size})
 }
 
 func (h *Handler) handleLoginLogs(w http.ResponseWriter, r *http.Request) {
@@ -452,7 +452,7 @@ func (h *Handler) handleLoginLogs(w http.ResponseWriter, r *http.Request) {
 
 	// Build dynamic filters from query
 	conds := "WHERE 1=1"
-	args := []interface{}{}
+	args := []any{}
 	argIdx := 0
 
 	if uidStr := r.URL.Query().Get("user_id"); uidStr != "" {
@@ -508,14 +508,14 @@ func (h *Handler) handleLoginLogs(w http.ResponseWriter, r *http.Request) {
 	args = append(args, size, offset)
 
 	rows, err := h.svc.repo.db.QueryContext(r.Context(), query, args...)
-	list := []map[string]interface{}{}
+	list := []map[string]any{}
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {
 			var id, uid, st int64
 			var ip, ua, t string
 			rows.Scan(&id, &uid, &ip, &ua, &st, &t)
-			list = append(list, map[string]interface{}{
+			list = append(list, map[string]any{
 				"id": id, "user_id": uid, "ip": ip, "user_agent": ua, "status": st, "login_time": t,
 			})
 		}
@@ -525,7 +525,7 @@ func (h *Handler) handleLoginLogs(w http.ResponseWriter, r *http.Request) {
 	countQuery := `SELECT COUNT(*) FROM login_logs ` + conds
 	h.svc.repo.db.QueryRowContext(r.Context(), countQuery, args[:len(args)-2]...).Scan(&total)
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	httputil.WriteOK(w, map[string]any{
 		"list": list, "total": total, "page": page, "size": size,
 	})
 }
@@ -533,7 +533,7 @@ func (h *Handler) handleLoginLogs(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleSecuritySettings(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		var settings map[string]interface{}
+		var settings map[string]any
 		var raw string
 		if err := h.svc.repo.db.QueryRowContext(r.Context(),
 			`SELECT config_value FROM system_configs WHERE config_key='security_settings'`).Scan(&raw); err == nil && raw != "" {
@@ -543,11 +543,11 @@ func (h *Handler) handleSecuritySettings(w http.ResponseWriter, r *http.Request)
 		} else {
 			settings = defaultSecuritySettings()
 		}
-		json.NewEncoder(w).Encode(settings)
+		httputil.WriteOK(w, settings)
 	case "PUT":
-		var settings map[string]interface{}
+		var settings map[string]any
 		if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
-			http.Error(w, "invalid body", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
 			return
 		}
 		raw, _ := json.Marshal(settings)
@@ -557,18 +557,18 @@ func (h *Handler) handleSecuritySettings(w http.ResponseWriter, r *http.Request)
 			 ON CONFLICT (config_key) DO UPDATE SET config_value=$1, updated_at=NOW(), updated_by=$2`,
 			string(raw), httputil.GetAdminIDFromHeader(r))
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "操作失败", "data": nil})
 			return
 		}
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		httputil.WriteOK(w, map[string]string{"status": "ok"})
 	default:
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 	}
 }
 
-func defaultSecuritySettings() map[string]interface{} {
-	return map[string]interface{}{
-		"password_policy": map[string]interface{}{
+func defaultSecuritySettings() map[string]any {
+	return map[string]any{
+		"password_policy": map[string]any{
 			"min_length":      8,
 			"require_upper":   true,
 			"require_lower":   true,
@@ -576,7 +576,7 @@ func defaultSecuritySettings() map[string]interface{} {
 			"require_special": false,
 			"max_age_days":    90,
 		},
-		"login_policy": map[string]interface{}{
+		"login_policy": map[string]any{
 			"max_attempts":         5,
 			"lockout_minutes":      30,
 			"session_timeout_min":  480,
@@ -598,7 +598,7 @@ func (h *Handler) handleTranscodeConfig(w http.ResponseWriter, r *http.Request) 
 		if err != nil {
 			cfg = "auto"
 		}
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		httputil.WriteOK(w, map[string]any{
 			"encoder":  cfg,
 			"vaapi":    h.detectVAAPI(),
 			"vaapiDev": os.Getenv("VAAPI_DEVICE"),
@@ -610,7 +610,7 @@ func (h *Handler) handleTranscodeConfig(w http.ResponseWriter, r *http.Request) 
 		}
 		json.NewDecoder(r.Body).Decode(&req)
 		if req.Encoder != "auto" && req.Encoder != "vaapi" && req.Encoder != "x264" {
-			http.Error(w, "invalid encoder, must be auto|vaapi|x264", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid encoder, must be auto|vaapi|x264", "data": nil})
 			return
 		}
 		_, err := h.svc.repo.db.ExecContext(r.Context(),
@@ -619,12 +619,12 @@ func (h *Handler) handleTranscodeConfig(w http.ResponseWriter, r *http.Request) 
 			 ON CONFLICT (config_key) DO UPDATE SET config_value=$1, updated_at=NOW(), updated_by=$2`,
 			req.Encoder, httputil.GetAdminIDFromHeader(r))
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "操作失败", "data": nil})
 			return
 		}
-		json.NewEncoder(w).Encode(map[string]interface{}{"status": "ok", "encoder": req.Encoder})
+		httputil.WriteOK(w, map[string]any{"status": "ok", "encoder": req.Encoder})
 	default:
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 	}
 }
 
@@ -644,24 +644,24 @@ func (h *Handler) detectVAAPI() bool {
 // handleAdminByID 分派 /api/v1/admin/{id} 及子路径
 func (h *Handler) handleAdminByID(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.requirePermission(r, "admin:manage"); !ok {
-		http.Error(w, "forbidden", 403)
+		httputil.WriteJSON(w, http.StatusForbidden, map[string]any{"code": 403, "message": "forbidden", "data": nil})
 		return
 	}
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/admin/")
 	parts := strings.Split(path, "/")
 	if len(parts) == 0 || parts[0] == "" {
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 		return
 	}
 	// 跳过已知的有独立 handler 的子路径
 	switch parts[0] {
 	case "roles", "permissions", "login", "register", "list", "login-logs", "audit-logs", "storage", "operation-tasks", "security-settings", "transcode-config":
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 		return
 	}
 	id, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil {
-		http.Error(w, "invalid admin id", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid admin id", "data": nil})
 		return
 	}
 	if len(parts) == 1 {
@@ -669,19 +669,19 @@ func (h *Handler) handleAdminByID(w http.ResponseWriter, r *http.Request) {
 		case "GET":
 			admin, err := h.svc.repo.GetAdminByID(r.Context(), id)
 			if err != nil {
-				http.Error(w, "admin not found", 404)
+				httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "admin not found", "data": nil})
 				return
 			}
-			json.NewEncoder(w).Encode(admin)
+			httputil.WriteOK(w, admin)
 		case "PUT":
-			var body map[string]interface{}
+			var body map[string]any
 			json.NewDecoder(r.Body).Decode(&body)
 			if _, ok := body["nickname"].(string); ok {
 				_ = h.svc.repo.UpdateAdmin(r.Context(), id)
 			}
-			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+			httputil.WriteOK(w, map[string]string{"status": "ok"})
 		default:
-			http.Error(w, "method not allowed", 405)
+			httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		}
 		return
 	}
@@ -689,7 +689,7 @@ func (h *Handler) handleAdminByID(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
 			ids, _ := h.svc.repo.GetAdminRoles(r.Context(), id)
-			json.NewEncoder(w).Encode(ids)
+			httputil.WriteOK(w, ids)
 		case "PUT":
 			var req struct {
 				RoleIDs []int64 `json:"role_ids"`
@@ -697,13 +697,13 @@ func (h *Handler) handleAdminByID(w http.ResponseWriter, r *http.Request) {
 			json.NewDecoder(r.Body).Decode(&req)
 			_ = h.svc.repo.SetAdminRoles(r.Context(), id, req.RoleIDs)
 			h.svc.RecordAudit(r.Context(), httputil.GetAdminIDFromHeader(r), "", "admin", "SET_ADMIN_ROLES", "admin_user_roles", strconv.FormatInt(id, 10), 0, "设置管理员角色", "")
-			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+			httputil.WriteOK(w, map[string]string{"status": "ok"})
 		default:
-			http.Error(w, "method not allowed", 405)
+			httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		}
 		return
 	}
-	http.Error(w, "not found", 404)
+	httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 }
 
 func (h *Handler) handleScheduledTasks(w http.ResponseWriter, r *http.Request) {
@@ -713,48 +713,48 @@ func (h *Handler) handleScheduledTasks(w http.ResponseWriter, r *http.Request) {
 		if list == nil {
 			list = []*ScheduledTask{}
 		}
-		json.NewEncoder(w).Encode(map[string]interface{}{"list": list})
+		httputil.WriteOK(w, map[string]any{"list": list})
 	case "POST":
 		var t ScheduledTask
 		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
-			http.Error(w, "invalid body", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
 			return
 		}
 		if err := h.svc.CreateScheduledTask(r.Context(), &t); err != nil {
-			http.Error(w, err.Error(), 500)
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "操作失败", "data": nil})
 			return
 		}
-		json.NewEncoder(w).Encode(t)
+		httputil.WriteOK(w, t)
 	case "PUT":
 		var t ScheduledTask
 		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
-			http.Error(w, "invalid body", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
 			return
 		}
 		if err := h.svc.UpdateScheduledTask(r.Context(), &t); err != nil {
-			http.Error(w, err.Error(), 500)
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "操作失败", "data": nil})
 			return
 		}
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		httputil.WriteOK(w, map[string]string{"status": "ok"})
 	case "DELETE":
 		body := struct {
 			ID int64 `json:"id"`
 		}{}
 		json.NewDecoder(r.Body).Decode(&body)
 		if body.ID <= 0 {
-			http.Error(w, "id required", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "id required", "data": nil})
 			return
 		}
 		_ = h.svc.DeleteScheduledTask(r.Context(), body.ID)
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		httputil.WriteOK(w, map[string]string{"status": "ok"})
 	default:
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 	}
 }
 
 func (h *Handler) handleScheduledTaskToggle(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var req struct {
@@ -762,30 +762,30 @@ func (h *Handler) handleScheduledTaskToggle(w http.ResponseWriter, r *http.Reque
 		Enabled int32 `json:"enabled"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid body", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
 		return
 	}
 	_ = h.svc.ToggleScheduledTask(r.Context(), req.ID, req.Enabled)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	httputil.WriteOK(w, map[string]string{"status": "ok"})
 }
 
 func (h *Handler) handleScheduledTaskTrigger(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var req struct {
 		TaskKey string `json:"task_key"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.TaskKey == "" {
-		http.Error(w, "task_key required", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "task_key required", "data": nil})
 		return
 	}
 	if h.scheduler != nil {
 		if err := h.scheduler.TriggerTaskNow(r.Context(), req.TaskKey); err != nil {
-			http.Error(w, "task not found", 404)
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "task not found", "data": nil})
 			return
 		}
 	}
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	httputil.WriteOK(w, map[string]string{"status": "ok"})
 }

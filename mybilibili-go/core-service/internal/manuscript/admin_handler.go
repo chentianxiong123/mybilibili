@@ -81,7 +81,7 @@ func (h *ManuscriptAdminHandler) Register(mux *http.ServeMux) {
 // GET /api/v1/manuscript/admin/pending — 待审核稿件列表
 func (h *ManuscriptAdminHandler) handlePending(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	page, size := parsePageAdmin(r)
@@ -91,7 +91,7 @@ func (h *ManuscriptAdminHandler) handlePending(w http.ResponseWriter, r *http.Re
 // GET /api/v1/manuscript/admin/processing — 审核中稿件列表
 func (h *ManuscriptAdminHandler) handleProcessing(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	page, size := parsePageAdmin(r)
@@ -101,7 +101,7 @@ func (h *ManuscriptAdminHandler) handleProcessing(w http.ResponseWriter, r *http
 // GET /api/v1/manuscript/admin/all — 全部稿件列表（带过滤）
 func (h *ManuscriptAdminHandler) handleAll(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	page, size := parsePageAdmin(r)
@@ -142,7 +142,7 @@ func (h *ManuscriptAdminHandler) handleAll(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{"list": []interface{}{}, "total": 0})
+		httputil.WriteOK(w, map[string]any{"list": []any{}, "total": 0})
 		return
 	}
 	defer rows.Close()
@@ -187,7 +187,7 @@ func (h *ManuscriptAdminHandler) handleStatistics(w http.ResponseWriter, r *http
 		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
-	stats := map[string]interface{}{}
+	stats := map[string]any{}
 
 	var total, pending, approved, rejected, draft int64
 	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts`).Scan(&total)
@@ -212,7 +212,7 @@ func (h *ManuscriptAdminHandler) handleStatistics(w http.ResponseWriter, r *http
 	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM videos`).Scan(&videoCount)
 	stats["total_videos"] = videoCount
 
-	json.NewEncoder(w).Encode(stats)
+	httputil.WriteOK(w, stats)
 }
 
 const (
@@ -242,7 +242,7 @@ func (h *ManuscriptAdminHandler) handleByID(w http.ResponseWriter, r *http.Reque
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/manuscript/admin/")
 	parts := strings.Split(path, "/")
 	if len(parts) == 0 || parts[0] == "" {
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 		return
 	}
 
@@ -252,12 +252,12 @@ func (h *ManuscriptAdminHandler) handleByID(w http.ResponseWriter, r *http.Reque
 	switch parts[0] {
 	case "transcode", "extract-audio", "generate-subtitle", "ai-summary", "process-all", "video-source", "reset":
 		if len(parts) < 2 {
-			http.Error(w, "invalid video id", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid video id", "data": nil})
 			return
 		}
 		videoID, err := strconv.ParseInt(parts[1], 10, 64)
 		if err != nil {
-			http.Error(w, "invalid video id", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid video id", "data": nil})
 			return
 		}
 		switch parts[0] {
@@ -286,15 +286,15 @@ func (h *ManuscriptAdminHandler) handleByID(w http.ResponseWriter, r *http.Reque
 		case "approve", "reject", "publish", "unpublish", "retry":
 			if len(parts) < 2 || r.Method != "POST" {
 				if r.Method != "POST" {
-					http.Error(w, "method not allowed", 405)
+					httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 				} else {
-					http.Error(w, "invalid manuscript id", 400)
+					httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid manuscript id", "data": nil})
 				}
 				return
 			}
 			mid, perr := strconv.ParseInt(parts[1], 10, 64)
 			if perr != nil {
-				http.Error(w, "invalid manuscript id", 400)
+				httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid manuscript id", "data": nil})
 				return
 			}
 			switch parts[0] {
@@ -311,7 +311,7 @@ func (h *ManuscriptAdminHandler) handleByID(w http.ResponseWriter, r *http.Reque
 			}
 			return
 		}
-		http.Error(w, "invalid id", 400)
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid id", "data": nil})
 		return
 	}
 
@@ -340,7 +340,7 @@ func (h *ManuscriptAdminHandler) handleByID(w http.ResponseWriter, r *http.Reque
 	}
 
 	if r.Method != "GET" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 
@@ -381,14 +381,14 @@ func (h *ManuscriptAdminHandler) handleByID(w http.ResponseWriter, r *http.Reque
 		&d.ViewCount, &d.LikeCount, &d.CoinCount, &d.CollectCount,
 		&d.ShareCount, &d.CommentCount, &d.DanmakuCount,
 		&d.Duration, &uploadTime, &updatedAt); err != nil {
-		http.Error(w, "not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "稿件不存在", "data": nil})
 		return
 	}
 	d.UploadTime = uploadTime.Format("2006-01-02T15:04:05Z")
 	d.UpdatedAt = updatedAt.Format("2006-01-02T15:04:05Z")
 
 	// 附带视频列表
-	视频列表 := []map[string]interface{}{}
+	视频列表 := []map[string]any{}
 	vrows, _ := h.db.QueryContext(r.Context(),
 		`SELECT id, video_order, title, play_url_hd, upload_time FROM videos WHERE manuscript_id = $1 ORDER BY video_order`, id)
 	if vrows != nil {
@@ -399,13 +399,13 @@ func (h *ManuscriptAdminHandler) handleByID(w http.ResponseWriter, r *http.Reque
 			var vtitle, playURL string
 			var vtime time.Time
 			vrows.Scan(&vid, &order, &vtitle, &playURL, &vtime)
-			视频列表 = append(视频列表, map[string]interface{}{
+			视频列表 = append(视频列表, map[string]any{
 				"id": vid, "video_order": order, "title": vtitle,
 				"play_url": playURL, "upload_time": vtime.Format("2006-01-02T15:04:05Z"),
 			})
 		}
 	}
-	dMap := map[string]interface{}{
+	dMap := map[string]any{
 		"id": d.ID, "title": d.Title, "description": d.Description, "cover_url": d.CoverURL,
 		"user_id": d.UserID, "category_id": d.CategoryID, "status": d.Status,
 		"review_status": d.ReviewStatus, "review_reason": d.ReviewReason,
@@ -415,7 +415,7 @@ func (h *ManuscriptAdminHandler) handleByID(w http.ResponseWriter, r *http.Reque
 		"duration": d.Duration, "upload_time": d.UploadTime, "updated_at": d.UpdatedAt,
 		"videos": 视频列表,
 	}
-	json.NewEncoder(w).Encode(dMap)
+	httputil.WriteOK(w, dMap)
 }
 
 func (h *ManuscriptAdminHandler) getVideos(w http.ResponseWriter, r *http.Request, manuscriptID int64) {
@@ -448,7 +448,7 @@ func (h *ManuscriptAdminHandler) getVideos(w http.ResponseWriter, r *http.Reques
 		v.UploadTime = t.Format("2006-01-02T15:04:05Z")
 		list = append(list, v)
 	}
-	json.NewEncoder(w).Encode(list)
+	httputil.WriteOK(w, list)
 }
 
 // reviewManuscript 审核通过/拒绝稿件，对齐旧版 approveManuscript/rejectManuscript 的状态流转。
@@ -472,7 +472,7 @@ func (h *ManuscriptAdminHandler) reviewManuscript(w http.ResponseWriter, r *http
 	var exists int64
 	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&exists)
 	if exists == 0 {
-		http.Error(w, "稿件不存在", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "稿件不存在", "data": nil})
 		return
 	}
 
@@ -487,7 +487,7 @@ func (h *ManuscriptAdminHandler) reviewManuscript(w http.ResponseWriter, r *http
 		 WHERE id = $5`,
 		status, reviewStatus, reviewerID, reason, manuscriptID)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "操作失败", "data": nil})
 		return
 	}
 
@@ -514,7 +514,7 @@ func (h *ManuscriptAdminHandler) reviewManuscript(w http.ResponseWriter, r *http
 	if approved {
 		message = "审核通过"
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	httputil.WriteOK(w, map[string]any{
 		"status": "ok", "manuscript_id": manuscriptID, "message": message,
 		"review_status": reviewStatus,
 	})
@@ -525,7 +525,7 @@ func (h *ManuscriptAdminHandler) setManuscriptStatus(w http.ResponseWriter, r *h
 	var exists int64
 	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&exists)
 	if exists == 0 {
-		http.Error(w, "稿件不存在", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "稿件不存在", "data": nil})
 		return
 	}
 
@@ -540,7 +540,7 @@ func (h *ManuscriptAdminHandler) setManuscriptStatus(w http.ResponseWriter, r *h
 	_, err := h.db.ExecContext(r.Context(),
 		`UPDATE manuscripts SET status = $1, updated_at = NOW() WHERE id = $2`, status, manuscriptID)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "操作失败", "data": nil})
 		return
 	}
 
@@ -588,7 +588,7 @@ func (h *ManuscriptAdminHandler) setManuscriptStatus(w http.ResponseWriter, r *h
 		}
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	httputil.WriteOK(w, map[string]any{
 		"status": "ok", "manuscript_id": manuscriptID, "status_int": status, "message": msg,
 	})
 }
@@ -596,7 +596,7 @@ func (h *ManuscriptAdminHandler) setManuscriptStatus(w http.ResponseWriter, r *h
 // triggerVideoProcess 触发单视频处理（对齐旧版 manualTranscode / manualExtractAudio / manualGenerateSubtitle / manualAiSummary / manualProcessAll）
 func (h *ManuscriptAdminHandler) triggerVideoProcess(w http.ResponseWriter, r *http.Request, videoID int64, processStatus int, stage string) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
 	var exists int64
@@ -605,7 +605,7 @@ func (h *ManuscriptAdminHandler) triggerVideoProcess(w http.ResponseWriter, r *h
 	err := h.db.QueryRowContext(r.Context(),
 		`SELECT COUNT(*) FROM videos WHERE id = $1`, videoID).Scan(&exists)
 	if exists == 0 {
-		http.Error(w, "视频不存在", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "视频不存在", "data": nil})
 		return
 	}
 	var sourceURL string
@@ -625,7 +625,7 @@ func (h *ManuscriptAdminHandler) triggerVideoProcess(w http.ResponseWriter, r *h
 		`UPDATE videos SET process_status = $1, process_stage = $2, updated_at = NOW() WHERE id = $3`,
 		processStatus, stage, videoID)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "操作失败", "data": nil})
 		return
 	}
 
@@ -643,7 +643,7 @@ func (h *ManuscriptAdminHandler) triggerVideoProcess(w http.ResponseWriter, r *h
 			manuscriptStatusProcessing, manuscriptID)
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	httputil.WriteOK(w, map[string]any{
 		"status": "ok", "video_id": videoID, "manuscript_id": manuscriptID,
 		"process_status": processStatus, "message": "任务已触发",
 	})
@@ -654,17 +654,17 @@ func (h *ManuscriptAdminHandler) resetVideo(w http.ResponseWriter, r *http.Reque
 	var exists int64
 	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM videos WHERE id = $1`, videoID).Scan(&exists)
 	if exists == 0 {
-		http.Error(w, "视频不存在", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "视频不存在", "data": nil})
 		return
 	}
 	_, err := h.db.ExecContext(r.Context(),
 		`UPDATE videos SET process_status = $1, process_stage = '', process_error = '', updated_at = NOW() WHERE id = $2`,
 		videoProcessStatusPending, videoID)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "操作失败", "data": nil})
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{"status": "ok", "video_id": videoID, "message": "重置成功"})
+	httputil.WriteOK(w, map[string]any{"status": "ok", "video_id": videoID, "message": "重置成功"})
 }
 
 // getVideoSource 获取视频源地址（对齐旧版 getVideoSourceUrl）
@@ -677,25 +677,15 @@ func (h *ManuscriptAdminHandler) getVideoSource(w http.ResponseWriter, r *http.R
 	if err != nil {
 		// 视频不存在（可能已被删除，但字幕记录仍在）：返回空数据而非 404，
 		// 前端会回退显示"视频 #ID"，避免控制台大量 404 报错
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"code": 200,
-			"data": map[string]interface{}{
-				"video_id": videoID, "source_url": "",
-				"title": "", "duration_seconds": 0, "exists": false,
-			},
-			"message": "ok",
+		httputil.WriteOK(w, map[string]any{
+			"video_id": videoID, "source_url": "",
+			"title": "", "duration_seconds": 0, "exists": false,
 		})
 		return
 	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"code": 200,
-		"data": map[string]interface{}{
-			"video_id": videoID, "source_url": sourceURL,
-			"title": title, "duration_seconds": duration, "exists": true,
-		},
-		"message": "ok",
+	httputil.WriteOK(w, map[string]any{
+		"video_id": videoID, "source_url": sourceURL,
+		"title": title, "duration_seconds": duration, "exists": true,
 	})
 }
 
@@ -732,7 +722,7 @@ func (h *ManuscriptAdminHandler) approveWithProcess(w http.ResponseWriter, r *ht
 		`UPDATE manuscripts SET review_status = 1, review_time = NOW(), updated_at = NOW()
 		 WHERE id = $1`, manuscriptID)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "操作失败", "data": nil})
 		return
 	}
 
@@ -754,7 +744,7 @@ func (h *ManuscriptAdminHandler) approveWithProcess(w http.ResponseWriter, r *ht
 		}
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	httputil.WriteOK(w, map[string]any{
 		"status":        "ok",
 		"manuscript_id": manuscriptID,
 		"review_status": 1,
@@ -773,7 +763,7 @@ func (h *ManuscriptAdminHandler) listByStatus(w http.ResponseWriter, r *http.Req
 		 ORDER BY m.id DESC LIMIT $2 OFFSET $3`,
 		status, size, offset)
 	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{"list": []interface{}{}, "total": 0})
+		httputil.WriteOK(w, map[string]any{"list": []any{}, "total": 0})
 		return
 	}
 	defer rows.Close()
@@ -809,7 +799,7 @@ func (h *ManuscriptAdminHandler) listByStatus(w http.ResponseWriter, r *http.Req
 	h.db.QueryRowContext(r.Context(),
 		`SELECT COUNT(*) FROM manuscripts WHERE review_status = $1`, status).Scan(&total)
 
-	json.NewEncoder(w).Encode(map[string]interface{}{"list": list, "total": total, "page": page, "size": size})
+	httputil.WriteOK(w, map[string]any{"list": list, "total": total, "page": page, "size": size})
 }
 
 func parsePageAdmin(r *http.Request) (int32, int32) {

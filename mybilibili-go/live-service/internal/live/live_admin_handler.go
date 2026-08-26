@@ -37,7 +37,7 @@ func (h *AdminHandler) handleRoute(w http.ResponseWriter, r *http.Request) {
 	if len(parts) >= 2 {
 		id, err := strconv.ParseInt(parts[1], 10, 64)
 		if err != nil {
-			http.Error(w, "invalid room id", 400)
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid room id", "data": nil})
 			return
 		}
 		switch {
@@ -49,7 +49,7 @@ func (h *AdminHandler) handleRoute(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	http.Error(w, "not found", 404)
+	httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "not found", "data": nil})
 }
 
 func (h *AdminHandler) handleRooms(w http.ResponseWriter, r *http.Request) {
@@ -67,20 +67,20 @@ func (h *AdminHandler) handleRooms(w http.ResponseWriter, r *http.Request) {
 		`SELECT id, user_id, title, status, viewer_count, created_at
 		 FROM live_rooms WHERE 1=1`+conds+` ORDER BY created_at DESC LIMIT $`+strconv.Itoa(len(args)-1)+` OFFSET $`+strconv.Itoa(len(args)), args...)
 	if err != nil {
-		json.NewEncoder(w).Encode([]map[string]interface{}{})
+		httputil.WriteOK(w, []map[string]any{})
 		return
 	}
 	defer rows.Close()
-	var list []map[string]interface{}
+	var list []map[string]any
 	for rows.Next() {
 		var id, vc int64
 		var uid, st, title, t string
 		rows.Scan(&id, &uid, &title, &st, &vc, &t)
-		list = append(list, map[string]interface{}{
+		list = append(list, map[string]any{
 			"id": id, "user_id": uid, "title": title, "status": st, "viewer_count": vc, "created_at": t,
 		})
 	}
-	json.NewEncoder(w).Encode(list)
+	httputil.WriteOK(w, list)
 }
 
 func (h *AdminHandler) handleRoomByID(w http.ResponseWriter, r *http.Request, id int64) {
@@ -90,10 +90,10 @@ func (h *AdminHandler) handleRoomByID(w http.ResponseWriter, r *http.Request, id
 		`SELECT id, user_id, title, status, viewer_count, created_at
 		 FROM live_rooms WHERE id = $1`, id).Scan(&rid, &uid, &title, &st, &vc, &t)
 	if err != nil {
-		http.Error(w, "room not found", 404)
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "room not found", "data": nil})
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	httputil.WriteOK(w, map[string]any{
 		"id": rid, "user_id": uid, "title": title, "status": st, "viewer_count": vc, "created_at": t,
 	})
 }
@@ -105,15 +105,15 @@ func (h *AdminHandler) handleRoomStatus(w http.ResponseWriter, r *http.Request, 
 	json.NewDecoder(r.Body).Decode(&req)
 	if _, err := h.db.ExecContext(r.Context(),
 		`UPDATE live_rooms SET status = $1, updated_at = NOW() WHERE id = $2`, req.Status, id); err != nil {
-		http.Error(w, err.Error(), 500)
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	httputil.WriteOK(w, map[string]string{"status": "ok"})
 }
 
 func (h *AdminHandler) handleStats(w http.ResponseWriter, r *http.Request) {
 	var liveCount, totalViewers int64
 	_ = h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM live_rooms WHERE status = 1`).Scan(&liveCount)
 	_ = h.db.QueryRowContext(r.Context(), `SELECT COALESCE(SUM(viewer_count), 0) FROM live_rooms WHERE status = 1`).Scan(&totalViewers)
-	json.NewEncoder(w).Encode(map[string]interface{}{"live_count": liveCount, "total_viewers": totalViewers})
+	httputil.WriteOK(w, map[string]any{"live_count": liveCount, "total_viewers": totalViewers})
 }

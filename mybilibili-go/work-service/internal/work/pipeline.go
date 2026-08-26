@@ -3,6 +3,7 @@ package work
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,6 +26,7 @@ type Pipeline struct {
 	docStore   abstraction.DocumentStore
 	search     abstraction.SearchEngine
 	workDir    string
+	db         *sql.DB
 }
 
 func NewPipeline(
@@ -43,6 +45,11 @@ func NewPipeline(
 		search:     search,
 		workDir:    workDir,
 	}
+}
+
+// SetDatabase 注入数据库句柄，用于转码完成后回写 play_url_hd/sd/ld。
+func (p *Pipeline) SetDatabase(db *sql.DB) {
+	p.db = db
 }
 
 func (p *Pipeline) Start(ctx context.Context) error {
@@ -361,17 +368,59 @@ func (p *Pipeline) downloadSource(ctx context.Context, sourceURL, dest string) e
 }
 
 func (p *Pipeline) uploadTranscoded(ctx context.Context, task ProcessMessage, dir string) error {
+	// 上传每个清晰度目录下的全部文件（playlist.m3u8 + ts 段），对齐老项目 videoHlsObject key。
+	playURLs := map[string]string{}
 	for _, quality := range []string{"1080p", "720p", "480p"} {
-		playlist := filepath.Join(dir, quality, "index.m3u8")
-		f, err := os.Open(playlist)
+		qualityDir := filepath.Join(dir, quality)
+		entries, err := os.ReadDir(qualityDir)
 		if err != nil {
 			continue
 		}
-		key := fmt.Sprintf("manuscripts/%d/videos/%d/transcoded/%s/index.m3u8", task.ManuscriptID, task.VideoID, quality)
-		p.storage.Put(ctx, "mybilibili", key, f, "application/vnd.apple.mpegurl")
-		f.Close()
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			f, err := os.Open(filepath.Join(qualityDir, e.Name()))
+			if err != nil {
+				continue
+			}
+			key := fmt.Sprintf("manuscripts/%d/videos/%d/transcoded/%s/%s",
+				task.ManuscriptID, task.VideoID, quality, e.Name())
+			ct := "application/octet-stream"
+			if strings.HasSuffix(e.Name(), ".m3u8") {
+				ct = "application/vnd.apple.mpegurl"
+			} else if strings.HasSuffix(e.Name(), ".ts") {
+				ct = "video/mp2t"
+			}
+			_ = p.storage.Put(ctx, "mybilibili", key, f, ct)
+			f.Close()
+		}
+		if _, err := os.Stat(filepath.Join(qualityDir, "playlist.m3u8")); err == nil {
+			playURLs[quality] = fmt.Sprintf("/uploads/manuscripts/%d/videos/%d/transcoded/%s/playlist.m3u8",
+				task.ManuscriptID, task.VideoID, quality)
+		}
 	}
-	return nil
+	// 转码完成后回写 play_url_hd/sd/ld（对齐老项目 markTranscodeSuccess）
+	return p.writePlayURLs(ctx, task, playURLs)
+}
+
+// writePlayURLs 将转码产物播放地址写回 videos 表。
+func (p *Pipeline) writePlayURLs(ctx context.Context, task ProcessMessage, urls map[string]string) error {
+	if p.db == nil {
+		log.Printf("[debug] writePlayURLs: db is nil, skip video=%d urls=%v", task.VideoID, urls)
+		return nil
+	}
+	hd, sd, ld := urls["1080p"], urls["720p"], urls["480p"]
+	res, err := p.db.ExecContext(ctx,
+		`UPDATE videos SET play_url_hd = $1, play_url_sd = $2, play_url_ld = $3, updated_at = NOW() WHERE id = $4`,
+		hd, sd, ld, task.VideoID)
+	log.Printf("[debug] writePlayURLs video=%d hd=%s sd=%s ld=%s err=%v", task.VideoID, hd, sd, ld, err)
+	if err == nil {
+		if n, _ := res.RowsAffected(); n == 0 {
+			log.Printf("[debug] writePlayURLs: no rows affected video=%d", task.VideoID)
+		}
+	}
+	return err
 }
 
 var _ = os.RemoveAll
