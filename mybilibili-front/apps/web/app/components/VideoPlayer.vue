@@ -296,6 +296,7 @@ const handleVideoTimeUpdate = () => {
 
 let playerInitialized = false
 let lastAppliedUrl = ''
+let timeUpdateInterval: any = null
 
 const initPlayer = async () => {
   if (playerInitialized) return
@@ -491,7 +492,6 @@ const initPlayer = async () => {
     }
   })
 
-  let timeUpdateInterval: any = null
   let lastLoggedSecond = -1
 
   const updateCurrentTime = () => {
@@ -538,12 +538,6 @@ const initPlayer = async () => {
 
   art.on('resize', () => {
     refreshSubtitleLayout(false)
-  })
-
-  onUnmounted(() => {
-    if (timeUpdateInterval) {
-      clearInterval(timeUpdateInterval)
-    }
   })
 
   loadSubtitles()
@@ -653,6 +647,10 @@ defineExpose({
 })
 
 onUnmounted(() => {
+  if (timeUpdateInterval) {
+    clearInterval(timeUpdateInterval)
+    timeUpdateInterval = null
+  }
   window.removeEventListener('resize', handleSubtitlePlayerResize)
   document.removeEventListener('click', onDocClickForSubtitlePanel)
   if (art) {
@@ -739,6 +737,12 @@ onUnmounted(() => {
 .video-player-wrapper {
   position: relative;
   width: 100%;
+}
+
+/* 控制栏仅在鼠标悬浮播放器时显示，不悬浮即隐藏（含暂停状态） */
+.video-player :deep(.art-video-player:not(.art-hover)) .art-bottom {
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .video-player {
