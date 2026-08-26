@@ -178,7 +178,7 @@ func (h *SocialHandler) handleDynamic(w http.ResponseWriter, r *http.Request) {
 
 	case len(parts) == 1 && parts[0] == "list" && r.Method == "GET":
 		page, limit := httputil.ParsePageParams(r)
-		list, _ := h.dynamicSvc.ListFollowing(r.Context(), userID, page, limit)
+		list, _ := h.dynamicSvc.ListAll(r.Context(), page, limit)
 		json.NewEncoder(w).Encode(h.enrichDynamics(r.Context(), list))
 
 	case len(parts) == 1 && parts[0] == "following" && r.Method == "GET":
