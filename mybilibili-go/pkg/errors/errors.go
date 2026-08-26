@@ -39,8 +39,13 @@ func ErrResourceExhausted(msg string) error {
 
 func WriteHTTPError(w http.ResponseWriter, err error) {
 	code := codes.Internal
+	msg := "internal error"
 	if s, ok := status.FromError(err); ok {
 		code = s.Code()
+		// 只暴露简洁的 desc，不暴露 "rpc error: code = ... desc = ..." 内部格式
+		if d := s.Message(); d != "" {
+			msg = d
+		}
 	}
 	httpStatus := http.StatusInternalServerError
 	switch code {
@@ -53,5 +58,5 @@ func WriteHTTPError(w http.ResponseWriter, err error) {
 	case codes.PermissionDenied:
 		httpStatus = http.StatusForbidden
 	}
-	httputil.WriteError(w, httpStatus, err.Error())
+	httputil.WriteJSON(w, httpStatus, map[string]interface{}{"code": httpStatus, "message": msg, "data": nil})
 }

@@ -121,7 +121,7 @@ func (p *pgJSONB) Query(ctx context.Context, collection string, filter QueryFilt
 	}
 	args = append(args, filter.PageSize, offset)
 	query := fmt.Sprintf(
-		`SELECT doc_json FROM jsonb_documents %s ORDER BY %s LIMIT $%d OFFSET $%d`,
+		`SELECT id, doc_json FROM jsonb_documents %s ORDER BY %s LIMIT $%d OFFSET $%d`,
 		where, orderBy, argIdx+1, argIdx+2)
 	rows, err := p.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -130,12 +130,17 @@ func (p *pgJSONB) Query(ctx context.Context, collection string, filter QueryFilt
 	defer rows.Close()
 	var list []any
 	for rows.Next() {
-		var jsonBytes string
-		if err := rows.Scan(&jsonBytes); err != nil {
+		var rowID, jsonBytes string
+		if err := rows.Scan(&rowID, &jsonBytes); err != nil {
 			continue
 		}
 		var doc any
 		json.Unmarshal([]byte(jsonBytes), &doc)
+		if m, ok := doc.(map[string]any); ok {
+			if v, has := m["id"]; !has || v == nil || fmt.Sprintf("%v", v) == "" {
+				m["id"] = rowID
+			}
+		}
 		list = append(list, doc)
 	}
 	outBytes, _ := json.Marshal(list)
