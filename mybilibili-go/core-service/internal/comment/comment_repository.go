@@ -51,8 +51,8 @@ func NewCommentRepository(db *sql.DB) *CommentRepository {
 func (r *CommentRepository) CreateComment(ctx context.Context, c *Comment) (int64, error) {
 	var id int64
 	err := r.db.QueryRowContext(ctx,
-		`INSERT INTO comments (manuscript_id, user_id, content) VALUES ($1, $2, $3) RETURNING id`,
-		c.ManuscriptID, c.UserID, c.Content).Scan(&id)
+		`INSERT INTO comments (manuscript_id, user_id, content) VALUES ($1, $2, $3) RETURNING id, created_at`,
+		c.ManuscriptID, c.UserID, c.Content).Scan(&id, &c.CreatedAt)
 	return id, err
 }
 
@@ -110,8 +110,8 @@ func (r *CommentRepository) Delete(ctx context.Context, id, userID int64) error 
 func (r *CommentRepository) CreateReply(ctx context.Context, rep *Reply) (int64, error) {
 	var id int64
 	err := r.db.QueryRowContext(ctx,
-		`INSERT INTO replies (comment_id, user_id, reply_to_user_id, content) VALUES ($1, $2, $3, $4) RETURNING id`,
-		rep.CommentID, rep.UserID, repository.NullInt64FromSQL(rep.ReplyToUserID), rep.Content).Scan(&id)
+		`INSERT INTO replies (comment_id, user_id, reply_to_user_id, content) VALUES ($1, $2, $3, $4) RETURNING id, created_at`,
+		rep.CommentID, rep.UserID, repository.NullInt64FromSQL(rep.ReplyToUserID), rep.Content).Scan(&id, &rep.CreatedAt)
 	return id, err
 }
 
@@ -222,6 +222,24 @@ func (r *CommentRepository) IsReplyLiked(ctx context.Context, replyID, userID in
 
 func (r *CommentRepository) LikeTarget(ctx context.Context, targetType string, targetID, userID int64) error {
 	t := strings.ToUpper(targetType)
+	// 校验目标存在，避免对不存在的评论/回复点赞也返回成功
+	if t == "COMMENT" {
+		var exists bool
+		if err := r.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM comments WHERE id = $1)`, targetID).Scan(&exists); err != nil {
+			return err
+		}
+		if !exists {
+			return sql.ErrNoRows
+		}
+	} else if t == "REPLY" {
+		var exists bool
+		if err := r.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM replies WHERE id = $1)`, targetID).Scan(&exists); err != nil {
+			return err
+		}
+		if !exists {
+			return sql.ErrNoRows
+		}
+	}
 	res, err := r.db.ExecContext(ctx,
 		`INSERT INTO user_interactions (user_id, target_type, target_id, interaction_type) VALUES ($1, $2, $3, 'LIKE')
 		 ON CONFLICT (user_id, target_type, target_id, interaction_type) DO NOTHING`,
