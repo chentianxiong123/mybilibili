@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { getWebOrigin } from '../../utils/webOrigin'
 
 const router = useRouter()
 
 const goBack = () => router.back()
 
 const goWebDrafts = () => {
-  const origin = window.location.origin.replace(':5174', ':5173')
-  window.location.href = `${origin}/create-center/drafts`
+  window.location.href = `${getWebOrigin()}/create-center/drafts`
 }
 </script>
 

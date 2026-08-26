@@ -5,6 +5,7 @@ import { getMyInfo } from '../../api/user'
 import { getWapTheme, toggleWapTheme } from '../../utils/theme'
 import noface from '../../assets/noface.gif'
 import { getToken, getLocalUser, clearSession } from '../../utils/session'
+import { getWebOrigin } from '../../utils/webOrigin'
 
 const router = useRouter()
 const userInfo = ref<any>(null)
@@ -45,8 +46,7 @@ const navigateTo = (path: string) => {
 }
 
 const openWebPath = (path: string) => {
-  const origin = window.location.origin.replace(':5174', ':5173')
-  window.location.href = `${origin}${path}`
+  window.location.href = `${getWebOrigin()}${path}`
 }
 
 const getUserCount = (keys: string[]) => {
