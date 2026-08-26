@@ -155,15 +155,16 @@ export async function getBarrages(videoId: number) {
   }
 }
 
-// 发送弹幕
-export async function sendBarrage(videoId: number, text: string, time: number, color = '#ffffff') {
+// 发送弹幕（字段与 web 端 /danmaku/send 保持一致：video_id + manuscript_id + mode）
+export async function sendBarrage(videoId: number, manuscriptId: number, text: string, time: number, color = '#ffffff', mode = 0) {
   try {
     const res = await api.post(`/danmaku/send`, {
-      videoId,
+      video_id: videoId,
+      manuscript_id: manuscriptId,
       content: text,
       time: Math.floor(time),
       color,
-      type: 1
+      mode
     })
     return { code: '1', data: res?.data || res }
   } catch (e) {

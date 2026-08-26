@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { getBarrages } from '../../api/video'
+import { getBarrages, sendBarrage } from '../../api/video'
+import { getToken } from '../../utils/session'
 
 const props = defineProps({
   video: { type: Object, default: null },
@@ -20,9 +21,19 @@ const playerRef = ref<HTMLDivElement | null>(null)
 let art: any = null
 let artReady = false
 let currentAid: number | null = null
+// 当前分P的 video id：弹幕按分P video id 存储/查询（与 web 端一致），不是稿件 id
+let currentVideoId: number | null = null
 let ArtplayerClass: any = null
 let DanmukuPluginClass: any = null
 let HlsClass: any = null
+
+function showToast(msg: string) {
+  const el = document.createElement('div')
+  el.className = 'wap-toast'
+  el.textContent = msg
+  document.body.appendChild(el)
+  setTimeout(() => el.remove(), 2500)
+}
 
 const isPlaying = ref(false)
 const showCover = ref(true)
@@ -44,6 +55,8 @@ const buildQualityOptions = () => {
 const initPlayer = async () => {
   if (!playerRef.value || !props.video) return
   currentAid = props.video.aId ?? null
+  // 当前分P：默认第一P。弹幕按分P video id 查询（与 web 端一致）
+  currentVideoId = props.video?.videos?.[0]?.id ?? props.video.aId ?? null
 
   const defaultUrl = props.video.playUrl || props.video.playUrlHd || ''
   if (!defaultUrl) return
@@ -67,9 +80,9 @@ const initPlayer = async () => {
 
   // Load barrages
   let barrages: any[] = []
-  if (!props.live && props.video.aId) {
+  if (!props.live && currentVideoId) {
     try {
-      const res = await getBarrages(props.video.aId)
+      const res = await getBarrages(currentVideoId)
       if (res.code === '1') {
         barrages = (res.data || []).map((b: any) => ({
           text: b.text || b.content,
@@ -127,6 +140,31 @@ const initPlayer = async () => {
         theme: props.danmakuMount ? 'light' : 'dark',
         width: 0,
         lockTime: 3,
+        emitter: true,
+        // 发送弹幕：校验登录并写入后端（与 web 端一致）
+        beforeEmit: async (danmu: any) => {
+          const token = getToken()
+          if (!token) {
+            showToast('请先登录')
+            return false
+          }
+          const videoId = currentVideoId || props.video?.videos?.[0]?.id
+          const manuscriptId = props.video?.aId
+          if (!videoId) return false
+          try {
+            const res = await sendBarrage(videoId, manuscriptId || 0, danmu.text, danmu.time, danmu.color || '#ffffff', danmu.mode || 0)
+            if (res.code === '1') {
+              showToast('发送成功')
+              return true
+            } else {
+              showToast('发送失败')
+              return false
+            }
+          } catch (e) {
+            showToast('发送失败，请稍后重试')
+            return false
+          }
+        },
         ...(props.danmakuMount ? { mount: props.danmakuMount } : {})
       })
     ]
@@ -207,9 +245,11 @@ const switchPart = async (part) => {
   // 切换分P：直接换源，避免整体销毁重建导致画面闪动。
   // 每个分P的 id 就是 video_id，弹幕按 video_id 存储，切分P要重载对应弹幕。
   art.switchUrl(url)
-  if (part.videoId) {
+  const videoId = part.id ?? part.videoId
+  if (videoId) {
+    currentVideoId = videoId
     try {
-      const res = await getBarrages(part.videoId)
+      const res = await getBarrages(videoId)
       const barrages = (res.data || []).map((b: any) => ({
         text: b.text || b.content,
         time: parseFloat(b.time) || 0,
