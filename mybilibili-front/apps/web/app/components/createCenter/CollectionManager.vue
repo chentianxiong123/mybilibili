@@ -174,14 +174,18 @@ const loadUserCollections = async () => {
   try {
     const response = await collectionApi.getUserCollections(userId, 1, 100)
     if (response.code === 200) {
-      const list = (response.data || []).map(normalizeCollection)
+      const rawList = Array.isArray(response.data) ? response.data : (response.data?.list || [])
+      const list = rawList.map(normalizeCollection)
       for (const collection of list) {
         try {
           const videoResponse = await collectionApi.getCollectionManuscripts(collection.id, 1, 10)
           if (videoResponse.code === 200) {
-            collection.videos = (videoResponse.data || []).map(video => ({
+            const rawVideos = Array.isArray(videoResponse.data) ? videoResponse.data : (videoResponse.data?.list || [])
+            collection.videos = rawVideos.map(video => ({
               ...video,
-              date: formatDate(video.uploadTime)
+              coverUrl: video.cover_url || video.coverUrl || '',
+              uploadTime: video.upload_time || video.uploadTime,
+              date: formatDate(video.upload_time || video.uploadTime)
             }))
             if (!collection.coverUrl && collection.videos.length > 0 && collection.videos[0].coverUrl) {
               collection.coverUrl = collection.videos[0].coverUrl
@@ -214,8 +218,13 @@ const goToCollectionDetail = async (collectionId) => {
 
     const videoResponse = await collectionApi.getCollectionManuscripts(collectionId, 1, 20)
     if (videoResponse.code === 200) {
-      collectionDetail.value.manuscripts = videoResponse.data || []
-      collectionDetail.value.pagination.total = videoResponse.data?.length || 0
+      const rawVideos = Array.isArray(videoResponse.data) ? videoResponse.data : (videoResponse.data?.list || [])
+      collectionDetail.value.manuscripts = rawVideos.map(video => ({
+        ...video,
+        coverUrl: video.cover_url || video.coverUrl || '',
+        uploadTime: video.upload_time || video.uploadTime
+      }))
+      collectionDetail.value.pagination.total = videoResponse.data?.total ?? rawVideos.length
     }
   } catch (error) {
     console.error('获取合集详情失败:', error)

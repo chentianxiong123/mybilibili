@@ -257,7 +257,7 @@ const loadHomeData = async () => {
       statsApi.getFansRanking('interaction', 5)
     ])
 
-    if (overviewRes.code === 200 && overviewRes.data) {
+    if (overviewRes?.code === 200 && overviewRes.data) {
       statsData.value = {
         followerCount: overviewRes.data.totalFollowers || 0,
         totalViewCount: overviewRes.data.totalViews || 0,
@@ -270,15 +270,15 @@ const loadHomeData = async () => {
       }
     }
 
-    if (commentsRes.code === 200 && commentsRes.data) {
+    if (commentsRes?.code === 200 && commentsRes.data) {
       latestComments.value = commentsRes.data
     }
 
-    if (viewRankingRes.code === 200 && viewRankingRes.data) {
+    if (viewRankingRes?.code === 200 && viewRankingRes.data) {
       viewRanking.value = viewRankingRes.data
     }
 
-    if (interactionRankingRes.code === 200 && interactionRankingRes.data) {
+    if (interactionRankingRes?.code === 200 && interactionRankingRes.data) {
       interactionRanking.value = interactionRankingRes.data
     }
   } catch (error) {
