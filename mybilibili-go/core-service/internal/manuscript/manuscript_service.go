@@ -197,6 +197,7 @@ func (s *ManuscriptService) buildManuscriptInfo(ctx context.Context, m *Manuscri
 	var videoPBs []*pb.VideoItem
 	var firstVideoID int64
 	var firstVideoPlayURL string
+	var firstVideoIsVertical int32
 
 	if loadVideos {
 		videos, _ := s.repo.FindVideosByManuscriptID(ctx, m.ID)
@@ -206,7 +207,10 @@ func (s *ManuscriptService) buildManuscriptInfo(ctx context.Context, m *Manuscri
 		if len(videos) > 0 {
 			firstVideoID = videos[0].ID
 			firstVideoPlayURL = videos[0].PlayURLHd
+			firstVideoIsVertical = videos[0].IsVertical
 		}
+	} else {
+		firstVideoIsVertical, _ = s.repo.FirstVideoIsVertical(ctx, m.ID)
 	}
 
 	var tags []string
@@ -218,7 +222,9 @@ func (s *ManuscriptService) buildManuscriptInfo(ctx context.Context, m *Manuscri
 		tags = unique(tags)
 	}
 
-	return s.repo.ToPB(m, catName, uploader, videoPBs, tags, firstVideoID, firstVideoPlayURL)
+	info := s.repo.ToPB(m, catName, uploader, videoPBs, tags, firstVideoID, firstVideoPlayURL)
+	info.IsVertical = firstVideoIsVertical
+	return info
 }
 
 func unique(s []string) []string {

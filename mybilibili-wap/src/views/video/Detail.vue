@@ -366,6 +366,20 @@ const formatCount = (num) => {
 const goBack = () => {
   router.back()
 }
+
+const openVertical = () => {
+  // 在同一用户手势内先请求全屏，再进入竖屏页（SPA 导航后 documentElement 全屏状态保留）。
+  // 全屏失败（如环境不支持）不能阻断跳转，用 try/catch 包住。
+  try {
+    const el = document.documentElement
+    const rfs = el.requestFullscreen || el.webkitRequestFullscreen
+    if (rfs) {
+      const p = rfs.call(el)
+      if (p && p.catch) p.catch(() => {})
+    }
+  } catch (e) {}
+  router.push(`/m/vertical/${aId}`)
+}
 </script>
 
 <template>
@@ -393,7 +407,15 @@ const goBack = () => {
     </div>
 
     <!-- 视频播放器区 -->
-    <VideoPlayer ref="videoPlayerRef" :video="video" danmaku-mount="#danmaku-emitter-mount" />
+    <div class="player-wrap">
+      <VideoPlayer ref="videoPlayerRef" :video="video" danmaku-mount="#danmaku-emitter-mount" />
+      <div v-if="video" class="vertical-entry" @click="openVertical">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2">
+          <path d="M12 3v18M12 3l-4 4M12 3l4 4" />
+        </svg>
+        竖屏
+      </div>
+    </div>
 
     <!-- 简介/评论/弹幕控制栏 -->
     <div class="tab-section-header">
@@ -495,7 +517,7 @@ const goBack = () => {
           v-for="rec in recommendVides"
           :key="rec.aId"
           class="recommend-card-row"
-          @click="router.push(`/m/video/${rec.aId}`)"
+          @click="router.push(rec.isVertical ? `/m/vertical/${rec.aId}` : `/m/video/${rec.aId}`)"
         >
           <div class="rec-cover-wrapper">
             <img :src="rec.pic" class="rec-cover" />
@@ -579,6 +601,28 @@ const goBack = () => {
 
 <style scoped lang="scss">
 @import '../../styles/variables';
+
+.player-wrap {
+  position: relative;
+}
+
+.vertical-entry {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  /* 层级必须高于顶部导航栏(z-index:999)，否则按钮被盖住无法点击 */
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 12px;
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+}
 
 .video-detail-page {
   min-height: 100vh;

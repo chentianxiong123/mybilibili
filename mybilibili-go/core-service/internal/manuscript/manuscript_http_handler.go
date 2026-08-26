@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"mybilibili/core-service/internal/comment"
+	"mybilibili/core-service/internal/user"
 	"mybilibili/pkg/httputil"
 	"mybilibili/core-service/internal/social"
 	"mybilibili/pkg/errors"
@@ -435,6 +436,7 @@ func (h *ManuscriptHTTPHandler) handleUploadComplete(w http.ResponseWriter, r *h
 	}
 	_, _ = h.db.ExecContext(r.Context(),
 		`UPDATE upload_sessions SET status = 'uploaded', updated_at = NOW() WHERE id = $1`, uploadID)
+	user.AwardExperience(r.Context(), h.db, uid, 10)
 	httputil.WriteOK(w, map[string]interface{}{"manuscript_id": msID, "status": "uploaded"})
 }
 
@@ -542,6 +544,7 @@ func manuscriptToMap(info *pb.ManuscriptInfo) map[string]interface{} {
 		"created_at": info.CreatedAt, "updated_at": info.UpdatedAt,
 		"first_video_id": info.FirstVideoId,
 		"first_video_play_url": info.FirstVideoPlayUrl,
+		"is_vertical": info.IsVertical,
 	}
 	if info.Uploader != nil {
 		m["uploader"] = map[string]interface{}{
@@ -1241,6 +1244,7 @@ func (h *ManuscriptHTTPHandler) handleUploadCompleteWeb(w http.ResponseWriter, r
 	}
 	_, _ = h.db.ExecContext(r.Context(),
 		`UPDATE upload_sessions SET status = 'uploaded', updated_at = NOW() WHERE id = $1`, uploadID)
+	user.AwardExperience(r.Context(), h.db, uid, 10)
 	httputil.WriteOK(w, map[string]interface{}{"manuscript_id": msID, "status": "uploaded"})
 }
 

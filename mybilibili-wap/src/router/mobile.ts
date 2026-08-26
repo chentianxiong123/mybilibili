@@ -36,6 +36,12 @@ const mobileRoutes: RouteRecordRaw[] = [
     meta: { title: '视频详情', mobile: true }
   },
   {
+    path: '/m/vertical/:aId',
+    name: 'mobile-vertical',
+    component: () => import('../views/video/VerticalFeed.vue'),
+    meta: { title: '竖屏短视频', mobile: true, hideTabBar: true }
+  },
+  {
     path: '/m/search',
     name: 'mobile-search',
     component: () => import('../views/search/Search.vue'),

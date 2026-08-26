@@ -16,7 +16,8 @@ const adaptVideo = (v) => ({
   play: v.viewCount || v.play || 0,
   videoReview: v.commentCount || v.videoReview || v.danmakuCount || 0,
   duration: v.duration || v.durationSeconds,
-  description: v.description || ''
+  description: v.description || '',
+  isVertical: (v.isVertical || v.is_vertical) ? 1 : 0
 })
 
 // 首页推荐 + 排行榜 + 分区

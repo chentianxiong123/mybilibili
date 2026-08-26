@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { getBarrages } from '../../api/video'
 
 const props = defineProps({
@@ -29,9 +29,6 @@ const showCover = ref(true)
 const finish = ref(false)
 const duration = ref(0)
 const currentTime = ref(0)
-// 竖屏视频用 9:16 竖屏比例展示，横屏用 16:9
-const isVertical = ref(false)
-const playerRatio = computed(() => (isVertical.value ? '9 / 16' : '16 / 9'))
 
 const buildQualityOptions = () => {
   const opts: any[] = []
@@ -47,7 +44,6 @@ const buildQualityOptions = () => {
 const initPlayer = async () => {
   if (!playerRef.value || !props.video) return
   currentAid = props.video.aId ?? null
-  isVertical.value = props.video.isVertical === 1
 
   const defaultUrl = props.video.playUrl || props.video.playUrlHd || ''
   if (!defaultUrl) return
@@ -87,7 +83,6 @@ const initPlayer = async () => {
   art = new ArtplayerClass({
     container: playerRef.value,
     url: defaultUrl,
-    poster: props.video.pic || '',
     volume: 0.7,
     isLive: !!props.live,
     muted: false,
@@ -209,10 +204,6 @@ onUnmounted(() => {
 const switchPart = async (part) => {
   const url = part.playUrl || part.playUrlHd || ''
   if (!art || !url) return
-  // 切分P时同步更新横竖屏展示比例
-  if (part.isVertical !== undefined) {
-    isVertical.value = part.isVertical === 1
-  }
   // 切换分P：直接换源，避免整体销毁重建导致画面闪动。
   // 每个分P的 id 就是 video_id，弹幕按 video_id 存储，切分P要重载对应弹幕。
   art.switchUrl(url)
@@ -244,7 +235,7 @@ defineExpose({
 
 <template>
   <div class="artplayer-mobile-wrap">
-    <div ref="playerRef" class="artplayer-mobile" :style="{ aspectRatio: playerRatio }" />
+    <div ref="playerRef" class="artplayer-mobile" />
   </div>
 </template>
 
