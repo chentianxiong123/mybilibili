@@ -71,6 +71,19 @@ const goToAvatar = () => {
   }
 }
 
+// 生日等日期格式化为 YYYY-MM-DD（后端返回 ISO 格式如 2026-03-17T00:00:00Z）
+const formatDateOnly = (dateStr) => {
+  if (!dateStr) return ''
+  const m = String(dateStr).match(/^(\d{4}-\d{2}-\d{2})/)
+  if (m) return m[1]
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return dateStr
+  const y = d.getFullYear()
+  const mo = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${mo}-${day}`
+}
+
 // 加载用户主页背景图
 const loadUserProfileBackground = async () => {
   try {
@@ -96,7 +109,7 @@ const loadUserInfo = async () => {
         announcement: data.announcement || '',
         cover: 'https://picsum.photos/id/1025/1920/200',
         uid: data.id || '',
-        birthday: data.birthdate || '',
+        birthday: formatDateOnly(data.birthdate),
         gender: data.gender || 0,
         stats: {
           following: data.followingCount || 0,
