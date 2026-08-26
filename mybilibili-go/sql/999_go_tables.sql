@@ -72,15 +72,22 @@ CREATE TABLE IF NOT EXISTS live_seats (
     UNIQUE(room_id, seat_index)
 );
 
--- 7. login_logs
+-- 7. login_logs (partitioned by month on login_time)
 CREATE TABLE IF NOT EXISTS login_logs (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGSERIAL,
     user_id BIGINT NOT NULL,
     ip VARCHAR(50) NOT NULL DEFAULT '',
     user_agent TEXT NOT NULL DEFAULT '',
     status INT NOT NULL DEFAULT 0,
-    login_time TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    login_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id, login_time)
+) PARTITION BY RANGE (login_time);
+
+-- 示例子分区（部署后根据需要创建更多月份）
+-- CREATE TABLE IF NOT EXISTS login_logs_y2026m08 PARTITION OF login_logs FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
+-- ...
+
+CREATE INDEX IF NOT EXISTS idx_login_logs_user ON login_logs(user_id, login_time DESC);
 
 -- 8. verification_codes
 CREATE TABLE IF NOT EXISTS verification_codes (
@@ -130,16 +137,19 @@ CREATE TABLE IF NOT EXISTS ai_skills (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 12. ai_usage_logs
+-- 12. ai_usage_logs (partitioned by month on created_at)
 CREATE TABLE IF NOT EXISTS ai_usage_logs (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGSERIAL,
     feature VARCHAR(50) NOT NULL,
     user_id BIGINT NOT NULL DEFAULT 0,
     token_count INT NOT NULL DEFAULT 0,
     model VARCHAR(50) NOT NULL DEFAULT '',
     duration_ms INT NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id, created_at)
+) PARTITION BY RANGE (created_at);
+
+-- 示例：CREATE TABLE IF NOT EXISTS ai_usage_logs_y2026m08 PARTITION OF ai_usage_logs FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
 
 -- 13. support_tickets
 CREATE TABLE IF NOT EXISTS support_tickets (
