@@ -10,4 +10,5 @@ use (
 	./search-service
 	./studio-service
 	./bili-proxy-service
+	./transcoder-service
 )

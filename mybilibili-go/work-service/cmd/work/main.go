@@ -36,8 +36,9 @@ func main() {
 	minioCfg.Endpoint = "127.0.0.1:9000"
 	minioCfg.PublicEndpoint = "127.0.0.1:9000"
 	if v := os.Getenv("MINIO_ENDPOINT"); v != "" {
-		minioCfg.Endpoint = v
-		minioCfg.PublicEndpoint = v
+		// minio-go 不接受带 scheme 的 endpoint，剥掉 http(s):// 前缀。
+		minioCfg.Endpoint = stripScheme(v)
+		minioCfg.PublicEndpoint = stripScheme(v)
 	}
 	if v := os.Getenv("MINIO_ACCESS_KEY"); v != "" {
 		minioCfg.AccessKey = v
@@ -67,9 +68,10 @@ func main() {
 	}
 
 	workDir := getEnv("WORK_DIR", "/tmp/work")
-	encoder := loadTranscodeEncoder(getEnv("PG_DSN", ""), getEnv("TRANSCODE_ENCODER", "auto"))
+	transcoderBase := getEnv("TRANSCODER_ADDR", "http://127.0.0.1:8092")
+	transcoderClient := work.NewTranscoderClient(transcoderBase)
 
-	pipeline := work.NewPipeline(mq, storage, docStore, search, workDir, encoder)
+	pipeline := work.NewPipeline(mq, storage, docStore, search, transcoderClient, workDir)
 	if dsn := getEnv("PG_DSN", ""); dsn != "" {
 		if db, err := sql.Open("postgres", dsn); err == nil {
 			pipeline.SetDatabase(db)
@@ -87,7 +89,7 @@ func main() {
 		cancel()
 	}()
 
-	log.Println("work service starting (FFmpeg pipeline)")
+	log.Println("work service starting (orchestrator)")
 	if err := pipeline.Start(ctx); err != nil {
 		log.Fatalf("pipeline: %v", err)
 	}
@@ -100,24 +102,12 @@ func getEnv(key, def string) string {
 	return def
 }
 
-// loadTranscodeEncoder 优先读取后台配置的 system_configs.transcode_encoder，
-// 便于运营在后台切换转码编码器而无需改环境变量；读不到时回退到 env 或 auto。
-func loadTranscodeEncoder(dsn, fallback string) string {
-	if dsn == "" {
-		return fallback
+// stripScheme 去掉 http(s):// 前缀，供 minio-go 客户端使用（其不接受带 scheme 的 endpoint）。
+func stripScheme(s string) string {
+	for _, p := range []string{"https://", "http://"} {
+		if len(s) > len(p) && s[:len(p)] == p {
+			return s[len(p):]
+		}
 	}
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return fallback
-	}
-	defer db.Close()
-	var val string
-	if err := db.QueryRow(`SELECT config_value FROM system_configs WHERE config_key='transcode_encoder'`).Scan(&val); err != nil {
-		return fallback
-	}
-	if val == "auto" || val == "vaapi" || val == "x264" {
-		log.Printf("transcode encoder from config center: %s", val)
-		return val
-	}
-	return fallback
+	return s
 }
