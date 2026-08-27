@@ -12,10 +12,17 @@ import (
 
 type Handler struct {
 	svc *Service
+	gen *WhisperGenerator
 }
 
 func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
+}
+
+// SetGenerator 注入 whisper 字幕生成器（由 main 注入 MinIO 存储）。
+func (h *Handler) SetGenerator(gen *WhisperGenerator) *Handler {
+	h.gen = gen
+	return h
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
@@ -24,11 +31,41 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/subtitle/scan/", h.handleScan)
 	mux.HandleFunc("/api/v1/subtitle/import-system", h.handleImportSystem)
 	mux.HandleFunc("/api/v1/subtitle/set-default", h.handleSetDefault)
+	mux.HandleFunc("/api/v1/subtitle/generate", h.handleGenerate)
 	mux.HandleFunc("/api/v1/subtitle/video/", h.handleVideoSubtitle)
 	mux.HandleFunc("/api/v1/subtitle/pending", h.handlePending)
 	mux.HandleFunc("/api/v1/subtitle/upload", h.handleUpload)
 	mux.HandleFunc("/api/v1/subtitle/upload-srt", h.handleUploadSRT)
 	mux.HandleFunc("/api/v1/subtitle/", h.handleSubtitleByID)
+}
+
+func (h *Handler) handleGenerate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed"})
+		return
+	}
+	if h.gen == nil {
+		httputil.WriteJSON(w, http.StatusServiceUnavailable, map[string]any{"code": 503, "message": "whisper generator not configured"})
+		return
+	}
+	var req struct {
+		ManuscriptID int64 `json:"manuscript_id"`
+		VideoID      int64 `json:"video_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "bad request"})
+		return
+	}
+	if req.VideoID <= 0 {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "video_id required"})
+		return
+	}
+	id, cues, err := h.gen.GenerateFromAudio(r.Context(), req.ManuscriptID, req.VideoID)
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error()})
+		return
+	}
+	httputil.WriteOK(w, map[string]any{"subtitle_id": id, "cues": cues})
 }
 
 func subtitleToMap(sub *Subtitle) map[string]interface{} {

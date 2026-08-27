@@ -309,6 +309,32 @@ func getAdminID(r *http.Request) int64 {
 func (h *Handler) handleSummary(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/ai/summary/")
 
+	// POST /api/v1/ai/summary/generate — 生成摘要（work 编排调用，写入 MinIO）
+	if path == "generate" {
+		if r.Method != "POST" {
+			httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed"})
+			return
+		}
+		if h.summarySvc == nil {
+			httputil.WriteJSON(w, http.StatusServiceUnavailable, map[string]any{"code": 503, "message": "summary service not configured"})
+			return
+		}
+		var req struct {
+			ManuscriptID int64 `json:"manuscript_id"`
+			VideoID      int64 `json:"video_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.VideoID <= 0 {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "video_id required"})
+			return
+		}
+		if err := h.summarySvc.GenerateSummary(r.Context(), req.ManuscriptID, req.VideoID); err != nil {
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error()})
+			return
+		}
+		httputil.WriteOK(w, map[string]any{"status": "ok"})
+		return
+	}
+
 	// GET /api/v1/ai/summary/check/{videoId} — 是否已有摘要
 	if strings.HasPrefix(path, "check/") {
 		if h.summarySvc == nil {

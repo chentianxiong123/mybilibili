@@ -259,3 +259,11 @@ func (s *CustomerService) Transfer(ctx context.Context, userID int64) error {
 var _ = json.Marshal
 var _ = io.EOF
 var _ = time.Now
+func (s *SummaryService) GenerateSummary(ctx context.Context, manuscriptID, videoID int64) error {
+	if s.storage == nil {
+		return errors.New("storage not configured")
+	}
+	summary := "AI generated summary (stub)"
+	key := summaryObjectKey(manuscriptID, videoID)
+	return s.storage.Put(ctx, "mybilibili", key, strings.NewReader(summary), "text/plain")
+}

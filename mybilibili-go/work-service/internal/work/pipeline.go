@@ -1,15 +1,11 @@
 package work
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"mime/multipart"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,6 +17,7 @@ import (
 // Pipeline orchestrates the MQ-driven video processing chain.
 type Pipeline struct {
 	transcoderClient *TranscoderClient
+	aiClient         *AIClient
 	mq               abstraction.MessageQueue
 	storage          abstraction.StorageService
 	docStore         abstraction.DocumentStore
@@ -35,10 +32,12 @@ func NewPipeline(
 	docStore abstraction.DocumentStore,
 	search abstraction.SearchEngine,
 	transcoderClient *TranscoderClient,
+	aiClient *AIClient,
 	workDir string,
 ) *Pipeline {
 	return &Pipeline{
 		transcoderClient: transcoderClient,
+		aiClient:         aiClient,
 		mq:               mq,
 		storage:          storage,
 		docStore:         docStore,
@@ -161,113 +160,31 @@ func (p *Pipeline) doExtractAudio(ctx context.Context, task ProcessMessage, dir 
 
 func (p *Pipeline) doGenerateSubtitle(ctx context.Context, task ProcessMessage, dir string) {
 	p.emitProgress(task.VideoID, task.ManuscriptID, "subtitle", "生成字幕", 10, 3, "")
-	audioFile := filepath.Join(dir, "audio.mp3")
 
-	cues, err := callWhisperAPI(ctx, audioFile)
-	if err != nil {
-		log.Printf("[whisper] API call failed: %v, using placeholder", err)
-		cues = []map[string]interface{}{
-			{"index": 1, "startTime": 0.0, "endTime": 1.0, "text": "..."},
-		}
+	// 字幕/whisper 转写已归位 ai-service（从 MinIO 读音频、写字幕对象）。
+	if p.aiClient == nil {
+		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "AI 客户端未配置", 0, 8, "ai client not configured")
+		return
 	}
-	cuesJSON, _ := json.Marshal(cues)
-
-	sub := map[string]interface{}{
-		"video_id":      task.VideoID,
-		"language":      "zh-CN",
-		"language_name": "中文",
-		"format":        "json",
-		"content":       string(cuesJSON),
-		"is_default":    true,
-		"source":        "whisper",
-		"status":        1,
-	}
-	if _, err := p.docStore.Insert(ctx, "subtitles", sub); err != nil {
-		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "保存字幕失败", 0, 8, err.Error())
+	if err := p.aiClient.GenerateSubtitle(ctx, task.ManuscriptID, task.VideoID); err != nil {
+		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "字幕生成失败", 0, 8, err.Error())
 		return
 	}
 	p.emitProgress(task.VideoID, task.ManuscriptID, "subtitle", "字幕生成完成", 100, 3, "")
 }
 
-func callWhisperAPI(ctx context.Context, audioFile string) ([]map[string]interface{}, error) {
-	accountID := os.Getenv("CLOUDFLARE_AI_ACCOUNT_ID")
-	apiToken := os.Getenv("CLOUDFLARE_AI_API_TOKEN")
-	if accountID == "" || apiToken == "" {
-		return nil, fmt.Errorf("CLOUDFLARE_AI_ACCOUNT_ID or CLOUDFLARE_AI_API_TOKEN not set")
-	}
-
-	audioData, err := os.ReadFile(audioFile)
-	if err != nil {
-		return nil, fmt.Errorf("read audio file: %w", err)
-	}
-
-	var buf bytes.Buffer
-	w := multipart.NewWriter(&buf)
-	fw, err := w.CreateFormFile("file", "audio.mp3")
-	if err != nil {
-		return nil, fmt.Errorf("create form file: %w", err)
-	}
-	if _, err := fw.Write(audioData); err != nil {
-		return nil, fmt.Errorf("write audio data: %w", err)
-	}
-	w.Close()
-
-	url := fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/ai/run/@cf/openai/whisper", accountID)
-	req, err := http.NewRequestWithContext(ctx, "POST", url, &buf)
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+apiToken)
-	req.Header.Set("Content-Type", w.FormDataContentType())
-
-	client := &http.Client{Timeout: 300 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("api request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("api status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var whisperResp struct {
-		Success bool `json:"success"`
-		Result  struct {
-			Text     string `json:"text"`
-			Segments []struct {
-				ID    int     `json:"id"`
-				Start float64 `json:"start"`
-				End   float64 `json:"end"`
-				Text  string  `json:"text"`
-			} `json:"segments"`
-		} `json:"result"`
-	}
-	if err := json.Unmarshal(body, &whisperResp); err != nil {
-		return nil, fmt.Errorf("parse response: %w", err)
-	}
-	if !whisperResp.Success {
-		return nil, fmt.Errorf("whisper API returned success=false: %s", string(body))
-	}
-
-	cues := make([]map[string]interface{}, 0, len(whisperResp.Result.Segments))
-	for _, seg := range whisperResp.Result.Segments {
-		cues = append(cues, map[string]interface{}{
-			"index":     seg.ID + 1,
-			"startTime": seg.Start,
-			"endTime":   seg.End,
-			"text":      strings.TrimSpace(seg.Text),
-		})
-	}
-	return cues, nil
-}
-
 func (p *Pipeline) doAISummary(ctx context.Context, task ProcessMessage, dir string) {
 	p.emitProgress(task.VideoID, task.ManuscriptID, "summary", "AI摘要", 10, 4, "")
-	summary := "AI generated summary (stub)"
-	key := fmt.Sprintf("manuscripts/%d/videos/%d/summary/ai-summary.txt", task.ManuscriptID, task.VideoID)
-	p.storage.Put(ctx, "mybilibili", key, strings.NewReader(summary), "text/plain")
+
+	// AI 摘要已归位 ai-service（写 MinIO 摘要文件）。
+	if p.aiClient == nil {
+		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "AI 客户端未配置", 0, 9, "ai client not configured")
+		return
+	}
+	if err := p.aiClient.GenerateSummary(ctx, task.ManuscriptID, task.VideoID); err != nil {
+		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "AI摘要失败", 0, 9, err.Error())
+		return
+	}
 	p.emitProgress(task.VideoID, task.ManuscriptID, "summary", "AI摘要完成", 100, 4, "")
 }
 
