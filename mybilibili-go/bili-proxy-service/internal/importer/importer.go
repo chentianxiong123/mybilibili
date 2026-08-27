@@ -185,6 +185,7 @@ func (i *Importer) importOne(info *bilibili.ViewInfo) error {
 	if !strings.HasPrefix(coverURL, "http") {
 		coverURL = "https:" + coverURL
 	}
+	coverURL = strings.Replace(coverURL, "http://i", "https://i", 1)
 	var msID int64
 	if err := i.db.QueryRow(`INSERT INTO manuscripts
 		(title, description, cover_url, user_id, category_id, view_count, like_count,
