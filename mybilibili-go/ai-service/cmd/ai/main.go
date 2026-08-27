@@ -50,7 +50,6 @@ func main() {
 	subtitleRepo := subtitle.NewRepository(docStore)
 	subtitleSvc := subtitle.NewService(subtitleRepo)
 	subtitleH := subtitle.NewHandler(subtitleSvc)
-
 	caller, _ := abstraction.NewServiceCaller(abstraction.ServiceCallerConfig{Type: "ollama"})
 	summarySvc := ai.NewSummaryService(caller)
 	summarySvc.SetDatabase(db)
@@ -67,6 +66,7 @@ func main() {
 		BucketName: "mybilibili",
 	}); serr == nil {
 		summarySvc.SetStorage(storage)
+		subtitleH.SetGenerator(subtitle.NewWhisperGenerator(subtitleRepo, storage))
 	} else {
 		log.Printf("WARN: minio storage unavailable, summaries fallback to live generation: %v", serr)
 	}

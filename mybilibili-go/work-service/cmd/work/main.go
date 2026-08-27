@@ -70,8 +70,10 @@ func main() {
 	workDir := getEnv("WORK_DIR", "/tmp/work")
 	transcoderBase := getEnv("TRANSCODER_ADDR", "http://127.0.0.1:8092")
 	transcoderClient := work.NewTranscoderClient(transcoderBase)
+	aiBase := getEnv("AI_ADDR", "http://127.0.0.1:8088")
+	aiClient := work.NewAIClient(aiBase)
 
-	pipeline := work.NewPipeline(mq, storage, docStore, search, transcoderClient, workDir)
+	pipeline := work.NewPipeline(mq, storage, docStore, search, transcoderClient, aiClient, workDir)
 	if dsn := getEnv("PG_DSN", ""); dsn != "" {
 		if db, err := sql.Open("postgres", dsn); err == nil {
 			pipeline.SetDatabase(db)

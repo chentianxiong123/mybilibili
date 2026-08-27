@@ -141,6 +141,8 @@ services:
     environment:
       # transcoder 裸跑宿主机（mylib 网络网关 172.18.0.1），用宿主机系统 ffmpeg + 对应显卡驱动
       - TRANSCODER_ADDR=http://172.18.0.1:8092
+      # ai-service 走容器内 redis 网关地址 mybilibili-ai:8088（whisper 字幕/AI 摘要）
+      - AI_ADDR=http://mybilibili-ai:8088
     volumes:
       - work-tmp:/tmp/work   # 转码编排会话目录（轻量）
     depends_on:
