@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-# 一键拉起 Go 后端全家桶：基础设施(docker) → 编译 → 7 个服务后台运行
-# 用法: scripts/backend.sh {start|stop|status|logs} [服务名] [--migrate]
-#   start            拉起 infra + 全部服务（--migrate 首次建表用）
-#   stop             停掉全部服务
+# 一键拉起 Go 后端全家桶：基础设施(docker) → 编译 → 8 个服务后台运行
+# 用法: scripts/backend.sh {start|stop|status|logs|docker} [服务名] [--migrate]
+#   start            拉起 infra + 编译 + 裸跑全部服务（开发用）
+#   stop             停掉全部裸跑服务
 #   status           各服务存活状态
 #   logs [name]      跟踪日志，name ∈ core search msg-danmaku live ai studio work bili，缺省全跟
+#   docker up        容器化: 构建镜像 + compose 起全部(infra+后端8服务)
+#   docker down      停掉全部容器
+#   docker build     只构建镜像，不启动
+#   docker logs [n]   跟踪容器日志
+#   docker status    容器存活状态
 set -u
 cd "$(dirname "$0")/.."
 
@@ -99,10 +104,60 @@ logs() {
     exec tail -f "$LOG_DIR"/*.log
 }
 
+# ====== 容器化模式 ======
+COMPOSE_FILE="$ROOT/deploy/docker-compose.yml"
+
+docker_up() {
+    echo "== 容器化: 构建镜像 + 启动全部 =="
+    docker compose -f "$COMPOSE_FILE" up -d --build
+    echo "== 等待 PostgreSQL 就绪 =="
+    until docker exec pg16 pg_isready -U postgres -d mybilibili >/dev/null 2>&1; do
+        sleep 1; echo -n .
+    done
+    echo " OK"
+    sleep 2
+    curl -sf http://localhost:8080/api/v1/health >/dev/null 2>&1 \
+        && echo "核心链路 OK (:8080)" || echo "提示: :8080 尚未响应，看日志 docker logs"
+}
+
+docker_down() {
+    echo "== 停掉全部容器 =="
+    docker compose -f "$COMPOSE_FILE" down
+}
+
+docker_build() {
+    echo "== 构建全部后端镜像 =="
+    docker compose -f "$COMPOSE_FILE" build
+}
+
+docker_status() {
+    echo "== 容器状态 =="
+    docker compose -f "$COMPOSE_FILE" ps
+}
+
+docker_logs() {
+    target="${1:-}"
+    if [ -n "$target" ]; then
+        docker logs -f "mybilibili-$target"
+    else
+        docker compose -f "$COMPOSE_FILE" logs -f --tail=50
+    fi
+}
+
 case "${1:-}" in
     start)  shift; start "$@" ;;
     stop)   stop ;;
     status) status ;;
     logs)   shift; logs "${1:-}" ;;
-    *)      sed -n '2,8p' "$0" ;;
+    docker)
+        case "${2:-}" in
+            up)      docker_up ;;
+            down)    docker_down ;;
+            build)   docker_build ;;
+            status)  docker_status ;;
+            logs)    shift 2; docker_logs "${1:-}" ;;
+            *)       echo "用法: scripts/backend.sh docker {up|down|build|status|logs [服务名]}" ;;
+        esac
+        ;;
+    *)      sed -n '2,12p' "$0" ;;
 esac
