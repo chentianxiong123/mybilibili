@@ -1,0 +1,179 @@
+# ====== mybilibili 后端服务编排（8 个 Go 服务 + 基础设施）======
+# 本文件通过 include 引入根目录 infra-compose.yml 的基础设施（pg/redis/minio/nats），
+# 因此 docker compose -f deploy/docker-compose.yml up -d --build 一条命令即可全栈启动。
+#
+# 用法:
+#   docker compose -f deploy/docker-compose.yml up -d --build  # 构建并起全部
+#   docker compose -f deploy/docker-compose.yml up -d          # 用已有镜像起
+#   docker compose -f deploy/docker-compose.yml down           # 停全部
+#   或 scripts/backend.sh docker up / docker down
+#
+# 前端（web/admin/wap）开发时仍 pnpm dev 裸跑，不在此编排。
+
+include:
+  - path: ../infra-compose.yml
+
+# 统一构建配置：所有 Go 服务共用 mybilibili-go/Dockerfile，通过 SERVICE build-arg 区分。
+# x- 为 compose 扩展字段，不产生服务，仅用于 YAML 锚点复用。
+x-go-build: &go-build
+  context: ../mybilibili-go
+  dockerfile: Dockerfile
+
+services:
+  core:
+    image: mybilibili-core:latest
+    build:
+      <<: *go-build
+      args:
+        SERVICE: core-service
+    container_name: mybilibili-core
+    restart: unless-stopped
+    env_file: [".env"]
+    environment:
+      - HTTP_ADDR=:8080
+      - GRPC_ADDR=:9090
+    ports:
+      - "8080:8080"   # 前端裸跑通过 localhost:8080 访问
+    depends_on:
+      pg16: {condition: service_started}
+      mybilibili-redis: {condition: service_started}
+      nats: {condition: service_started}
+      mybilibili-minio: {condition: service_started}
+    networks: [mylib]
+
+  search:
+    image: mybilibili-search:latest
+    build:
+      <<: *go-build
+      args:
+        SERVICE: search-service
+    container_name: mybilibili-search
+    restart: unless-stopped
+    env_file: [".env"]
+    environment:
+      - HTTP_ADDR=:8084
+      - GRPC_ADDR=:9084
+    ports: ["8084:8084"]
+    depends_on:
+      pg16: {condition: service_started}
+    networks: [mylib]
+
+  msg-danmaku:
+    image: mybilibili-msg-danmaku:latest
+    build:
+      <<: *go-build
+      args:
+        SERVICE: msg-danmaku-service
+    container_name: mybilibili-msg-danmaku
+    restart: unless-stopped
+    env_file: [".env"]
+    environment:
+      - HTTP_ADDR=:8086
+      - GRPC_ADDR=:9086
+    ports: ["8086:8086"]
+    depends_on:
+      pg16: {condition: service_started}
+      mybilibili-redis: {condition: service_started}
+    networks: [mylib]
+
+  live:
+    image: mybilibili-live:latest
+    build:
+      <<: *go-build
+      args:
+        SERVICE: live-service
+    container_name: mybilibili-live
+    restart: unless-stopped
+    env_file: [".env"]
+    environment:
+      - HTTP_ADDR=:8087
+    ports: ["8087:8087"]
+    depends_on:
+      pg16: {condition: service_started}
+    networks: [mylib]
+
+  ai:
+    image: mybilibili-ai:latest
+    build:
+      <<: *go-build
+      args:
+        SERVICE: ai-service
+    container_name: mybilibili-ai
+    restart: unless-stopped
+    env_file: [".env"]
+    environment:
+      - HTTP_ADDR=:8088
+      - GRPC_ADDR=:9088
+    ports: ["8088:8088"]
+    depends_on:
+      pg16: {condition: service_started}
+      mybilibili-minio: {condition: service_started}
+    networks: [mylib]
+
+  studio:
+    image: mybilibili-studio:latest
+    build:
+      <<: *go-build
+      args:
+        SERVICE: studio-service
+    container_name: mybilibili-studio
+    restart: unless-stopped
+    env_file: [".env"]
+    environment:
+      - HTTP_ADDR=:8089
+    ports: ["8089:8089"]
+    volumes:
+      - studio-data:/data/studio
+    depends_on:
+      pg16: {condition: service_started}
+    networks: [mylib]
+
+  work:
+    image: mybilibili-work:latest
+    build:
+      <<: *go-build
+      args:
+        SERVICE: work-service
+      target: runtime-work   # 带 ffmpeg + VAAPI 的运行阶段
+    container_name: mybilibili-work
+    restart: unless-stopped
+    env_file: [".env"]
+    environment:
+      - TRANSCODE_ENCODER=auto
+    volumes:
+      - work-tmp:/tmp/work   # 转码临时工作区（源文件下载、切片暂存）
+    # GPU 透传: VAAPI 硬件编码需要 /dev/dri/renderD128
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "44"    # video (宿主机 GID)
+      - "992"   # render (宿主机 GID)
+    depends_on:
+      pg16: {condition: service_started}
+      nats: {condition: service_started}
+      mybilibili-minio: {condition: service_started}
+    networks: [mylib]
+
+  bili:
+    image: mybilibili-bili:latest
+    build:
+      <<: *go-build
+      args:
+        SERVICE: bili-proxy-service
+    container_name: mybilibili-bili
+    restart: unless-stopped
+    env_file: [".env"]
+    environment:
+      - LISTEN=:8091
+    ports: ["8091:8091"]
+    depends_on:
+      pg16: {condition: service_started}
+    networks: [mylib]
+
+volumes:
+  studio-data:
+  work-tmp:
+
+networks:
+  mylib:
+    external: true
