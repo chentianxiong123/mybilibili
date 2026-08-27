@@ -1,6 +1,6 @@
 name: build-and-push
 
-# 后端 8 服务镜像构建并推送 GHCR。
+# 后端 7 服务镜像构建并推送 GHCR（transcoder 不做容器，裸跑宿主机用系统 ffmpeg）。
 # 触发方式: workflow_dispatch（手动），k3s 就绪后再开 push/PR 自动触发。
 # 镜像 tag: git-sha (精确回滚) + latest (默认拉取)。
 # 仓库: ghcr.io/chentianxiong123/mybilibili-{core,search,msg-danmaku,live,ai,studio,work,bili}
@@ -35,7 +35,8 @@ jobs:
           - {service: live-service,           name: live,        target: runtime}
           - {service: ai-service,            name: ai,          target: runtime}
           - {service: studio-service,         name: studio,      target: runtime}
-          - {service: work-service,          name: work,        target: runtime-work}
+          - {service: work-service,          name: work,        target: runtime}
+          # transcoder 不做容器（裸跑宿主机用系统 ffmpeg），不建镜像
           - {service: bili-proxy-service,    name: bili,        target: runtime}
     steps:
       - uses: actions/checkout@v4

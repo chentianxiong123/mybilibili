@@ -29,7 +29,7 @@ export REDIS_ADDR="${REDIS_ADDR:-localhost:6379}"
 export BILI_SESSDATA="${BILI_SESSDATA:-}"
 export BILI_PROXY_ADDR="${BILI_PROXY_ADDR:-http://127.0.0.1:8091}"
 
-SERVICES="core search msg-danmaku live ai studio work bili"
+SERVICES="core search msg-danmaku live ai studio work bili transcoder"
 
 bin_of() {
     case "$1" in
@@ -40,6 +40,7 @@ bin_of() {
         ai)         echo /tmp/mybilibili-ai ;;
         studio)     echo /tmp/mybilibili-studio ;;
         work)       echo /tmp/mybilibili-work ;;
+        transcoder) echo /tmp/mybilibili-transcoder ;;
         bili)       echo /tmp/mybilibili-bili ;;
     esac
 }
@@ -74,7 +75,17 @@ start() {
             echo "  $s 已在运行"; continue
         fi
         bin=$(bin_of "$s")
-        nohup "$bin" >> "$LOG_DIR/$s.log" 2>&1 &
+        case "$s" in
+            transcoder)
+                # transcoder 裸跑宿主机: 用系统 ffmpeg/驱动; 监听 :8092; 走宿主映射的 MinIO
+                HTTP_ADDR=:8092 TRANSCODE_ENCODER="${TRANSCODE_ENCODER:-auto}" \
+                MINIO_ENDPOINT="${MINIO_ENDPOINT:-127.0.0.1:9000}" \
+                nohup "$bin" >> "$LOG_DIR/$s.log" 2>&1 &
+                ;;
+            *)
+                nohup "$bin" >> "$LOG_DIR/$s.log" 2>&1 &
+                ;;
+        esac
         echo "$s=$!" >> "$PID_FILE"
         echo "  $s pid=$! log=$LOG_DIR/$s.log"
     done
