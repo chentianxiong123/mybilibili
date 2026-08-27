@@ -50,6 +50,7 @@ type ManuscriptInfo struct {
 	FirstVideoPlayUrl string                 `protobuf:"bytes,25,opt,name=first_video_play_url,json=firstVideoPlayUrl,proto3" json:"first_video_play_url,omitempty"`
 	Videos            []*VideoItem           `protobuf:"bytes,26,rep,name=videos,proto3" json:"videos,omitempty"`
 	IsVertical        int32                  `protobuf:"varint,27,opt,name=is_vertical,json=isVertical,proto3" json:"is_vertical,omitempty"`
+	SourceType        string                 `protobuf:"bytes,28,opt,name=source_type,json=sourceType,proto3" json:"source_type,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -264,6 +265,13 @@ func (x *ManuscriptInfo) GetIsVertical() int32 {
 		return x.IsVertical
 	}
 	return 0
+}
+
+func (x *ManuscriptInfo) GetSourceType() string {
+	if x != nil {
+		return x.SourceType
+	}
+	return ""
 }
 
 func (x *ManuscriptInfo) GetVideos() []*VideoItem {

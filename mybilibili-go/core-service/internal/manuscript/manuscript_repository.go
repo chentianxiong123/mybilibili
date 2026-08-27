@@ -32,6 +32,7 @@ type Manuscript struct {
 	UpdatedAt       sql.NullTime
 	Duration        string
 	DurationSeconds int32
+	SourceType      string
 }
 
 type Video struct {
@@ -83,12 +84,14 @@ func (r *ManuscriptRepository) FindByID(ctx context.Context, id int64) (*Manuscr
 		SELECT id, title, description, cover_url, user_id, category_id,
 		       view_count, like_count, coin_count, collect_count, share_count,
 		       comment_count, danmaku_count, status, review_status, COALESCE(review_reason,''),
-		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds
+		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds,
+		       COALESCE(source_type,'local')
 		FROM manuscripts WHERE id = $1`, id,
 	).Scan(&m.ID, &m.Title, &m.Description, &m.CoverURL, &m.UserID, &m.CategoryID,
 		&m.ViewCount, &m.LikeCount, &m.CoinCount, &m.CollectCount, &m.ShareCount,
 		&m.CommentCount, &m.DanmakuCount, &m.Status, &m.ReviewStatus, &m.ReviewReason,
-		&m.ReviewTime, &m.ReviewerID, &m.UploadTime, &m.UpdatedAt, &m.Duration, &m.DurationSeconds)
+		&m.ReviewTime, &m.ReviewerID, &m.UploadTime, &m.UpdatedAt, &m.Duration, &m.DurationSeconds,
+		&m.SourceType)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +194,8 @@ func (r *ManuscriptRepository) ListByUser(ctx context.Context, userID int64, sta
 		SELECT id, title, description, cover_url, user_id, category_id,
 		       view_count, like_count, coin_count, collect_count, share_count,
 		       comment_count, danmaku_count, status, review_status, COALESCE(review_reason,''),
-		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds
+		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds,
+		       COALESCE(source_type,'local')
 		FROM manuscripts `+where+order, args...)
 	if err != nil {
 		return nil, 0, err
@@ -204,7 +208,8 @@ func (r *ManuscriptRepository) ListByUser(ctx context.Context, userID int64, sta
 		if err := rows.Scan(&m.ID, &m.Title, &m.Description, &m.CoverURL, &m.UserID, &m.CategoryID,
 			&m.ViewCount, &m.LikeCount, &m.CoinCount, &m.CollectCount, &m.ShareCount,
 			&m.CommentCount, &m.DanmakuCount, &m.Status, &m.ReviewStatus, &m.ReviewReason,
-			&m.ReviewTime, &m.ReviewerID, &m.UploadTime, &m.UpdatedAt, &m.Duration, &m.DurationSeconds); err != nil {
+			&m.ReviewTime, &m.ReviewerID, &m.UploadTime, &m.UpdatedAt, &m.Duration, &m.DurationSeconds,
+			&m.SourceType); err != nil {
 			return nil, 0, err
 		}
 		list = append(list, m)
@@ -217,7 +222,8 @@ func (r *ManuscriptRepository) ListRecommended(ctx context.Context) ([]*Manuscri
 		SELECT id, title, description, cover_url, user_id, category_id,
 		       view_count, like_count, coin_count, collect_count, share_count,
 		       comment_count, danmaku_count, status, review_status, COALESCE(review_reason,''),
-		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds
+		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds,
+		       COALESCE(source_type,'local')
 		FROM manuscripts WHERE status = 3 ORDER BY upload_time DESC LIMIT 20`)
 	if err != nil {
 		return nil, err
@@ -230,7 +236,8 @@ func (r *ManuscriptRepository) ListRecommended(ctx context.Context) ([]*Manuscri
 		if err := rows.Scan(&m.ID, &m.Title, &m.Description, &m.CoverURL, &m.UserID, &m.CategoryID,
 			&m.ViewCount, &m.LikeCount, &m.CoinCount, &m.CollectCount, &m.ShareCount,
 			&m.CommentCount, &m.DanmakuCount, &m.Status, &m.ReviewStatus, &m.ReviewReason,
-			&m.ReviewTime, &m.ReviewerID, &m.UploadTime, &m.UpdatedAt, &m.Duration, &m.DurationSeconds); err != nil {
+			&m.ReviewTime, &m.ReviewerID, &m.UploadTime, &m.UpdatedAt, &m.Duration, &m.DurationSeconds,
+			&m.SourceType); err != nil {
 			return nil, err
 		}
 		list = append(list, m)
@@ -243,7 +250,8 @@ func (r *ManuscriptRepository) ListHot(ctx context.Context) ([]*Manuscript, erro
 		SELECT id, title, description, cover_url, user_id, category_id,
 		       view_count, like_count, coin_count, collect_count, share_count,
 		       comment_count, danmaku_count, status, review_status, COALESCE(review_reason,''),
-		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds
+		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds,
+		       COALESCE(source_type,'local')
 		FROM manuscripts WHERE status = 3 ORDER BY view_count DESC LIMIT 20`)
 	if err != nil {
 		return nil, err
@@ -256,7 +264,8 @@ func (r *ManuscriptRepository) ListHot(ctx context.Context) ([]*Manuscript, erro
 		if err := rows.Scan(&m.ID, &m.Title, &m.Description, &m.CoverURL, &m.UserID, &m.CategoryID,
 			&m.ViewCount, &m.LikeCount, &m.CoinCount, &m.CollectCount, &m.ShareCount,
 			&m.CommentCount, &m.DanmakuCount, &m.Status, &m.ReviewStatus, &m.ReviewReason,
-			&m.ReviewTime, &m.ReviewerID, &m.UploadTime, &m.UpdatedAt, &m.Duration, &m.DurationSeconds); err != nil {
+			&m.ReviewTime, &m.ReviewerID, &m.UploadTime, &m.UpdatedAt, &m.Duration, &m.DurationSeconds,
+			&m.SourceType); err != nil {
 			return nil, err
 		}
 		list = append(list, m)
@@ -276,7 +285,8 @@ func (r *ManuscriptRepository) ListByCategory(ctx context.Context, categoryID in
 		SELECT id, title, description, cover_url, user_id, category_id,
 		       view_count, like_count, coin_count, collect_count, share_count,
 		       comment_count, danmaku_count, status, review_status, COALESCE(review_reason,''),
-		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds
+		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds,
+		       COALESCE(source_type,'local')
 		FROM manuscripts WHERE category_id = $1 AND status = 3
 		ORDER BY upload_time DESC LIMIT $2 OFFSET $3`, categoryID, pageSize, offset)
 	if err != nil {
@@ -290,7 +300,8 @@ func (r *ManuscriptRepository) ListByCategory(ctx context.Context, categoryID in
 		if err := rows.Scan(&m.ID, &m.Title, &m.Description, &m.CoverURL, &m.UserID, &m.CategoryID,
 			&m.ViewCount, &m.LikeCount, &m.CoinCount, &m.CollectCount, &m.ShareCount,
 			&m.CommentCount, &m.DanmakuCount, &m.Status, &m.ReviewStatus, &m.ReviewReason,
-			&m.ReviewTime, &m.ReviewerID, &m.UploadTime, &m.UpdatedAt, &m.Duration, &m.DurationSeconds); err != nil {
+			&m.ReviewTime, &m.ReviewerID, &m.UploadTime, &m.UpdatedAt, &m.Duration, &m.DurationSeconds,
+			&m.SourceType); err != nil {
 			return nil, 0, err
 		}
 		list = append(list, m)
@@ -345,7 +356,8 @@ func (r *ManuscriptRepository) SearchUser(ctx context.Context, userID int64, key
 		SELECT id, title, description, cover_url, user_id, category_id,
 		       view_count, like_count, coin_count, collect_count, share_count,
 		       comment_count, danmaku_count, status, review_status, COALESCE(review_reason,''),
-		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds
+		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds,
+		       COALESCE(source_type,'local')
 		FROM manuscripts WHERE user_id = $1 AND title ILIKE $2 `+order, userID, "%"+keyword+"%")
 	if err != nil {
 		return nil, err
@@ -358,7 +370,8 @@ func (r *ManuscriptRepository) SearchUser(ctx context.Context, userID int64, key
 		if err := rows.Scan(&m.ID, &m.Title, &m.Description, &m.CoverURL, &m.UserID, &m.CategoryID,
 			&m.ViewCount, &m.LikeCount, &m.CoinCount, &m.CollectCount, &m.ShareCount,
 			&m.CommentCount, &m.DanmakuCount, &m.Status, &m.ReviewStatus, &m.ReviewReason,
-			&m.ReviewTime, &m.ReviewerID, &m.UploadTime, &m.UpdatedAt, &m.Duration, &m.DurationSeconds); err != nil {
+			&m.ReviewTime, &m.ReviewerID, &m.UploadTime, &m.UpdatedAt, &m.Duration, &m.DurationSeconds,
+			&m.SourceType); err != nil {
 			return nil, err
 		}
 		list = append(list, m)
@@ -403,6 +416,7 @@ func (r *ManuscriptRepository) ToPB(m *Manuscript, catName string, uploader *pb.
 		FirstVideoId:      firstVideoID,
 		FirstVideoPlayUrl: firstVideoPlayURL,
 		Videos:            videos,
+		SourceType:        m.SourceType,
 	}
 }
 
