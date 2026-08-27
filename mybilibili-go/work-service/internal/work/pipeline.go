@@ -20,13 +20,13 @@ import (
 
 // Pipeline orchestrates the MQ-driven video processing chain.
 type Pipeline struct {
-	transcoder *TranscodeWorker
-	mq         abstraction.MessageQueue
-	storage    abstraction.StorageService
-	docStore   abstraction.DocumentStore
-	search     abstraction.SearchEngine
-	workDir    string
-	db         *sql.DB
+	transcoderClient *TranscoderClient
+	mq               abstraction.MessageQueue
+	storage          abstraction.StorageService
+	docStore         abstraction.DocumentStore
+	search           abstraction.SearchEngine
+	workDir          string
+	db               *sql.DB
 }
 
 func NewPipeline(
@@ -34,16 +34,16 @@ func NewPipeline(
 	storage abstraction.StorageService,
 	docStore abstraction.DocumentStore,
 	search abstraction.SearchEngine,
+	transcoderClient *TranscoderClient,
 	workDir string,
-	encoder string,
 ) *Pipeline {
 	return &Pipeline{
-		transcoder: NewTranscodeWorker(storage, encoder),
-		mq:         mq,
-		storage:    storage,
-		docStore:   docStore,
-		search:     search,
-		workDir:    workDir,
+		transcoderClient: transcoderClient,
+		mq:               mq,
+		storage:          storage,
+		docStore:         docStore,
+		search:           search,
+		workDir:          workDir,
 	}
 }
 
@@ -98,71 +98,64 @@ func (p *Pipeline) process(ctx context.Context, task ProcessMessage) {
 func (p *Pipeline) doTranscode(ctx context.Context, task ProcessMessage, dir string) {
 	p.emitProgress(task.VideoID, task.ManuscriptID, "transcoding", "转码中", 10, 1, "")
 
-	src := filepath.Join(dir, "source.mp4")
-	if err := p.downloadSource(ctx, task.SourceURL, src); err != nil {
-		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "下载源文件失败", 0, 6, err.Error())
+	sourceKey := sourceKeyFromURL(task.SourceURL)
+	if sourceKey == "" {
+		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "源对象 key 为空", 0, 6, "empty source key")
 		return
 	}
 
-	// 检测视频横竖屏（高>宽即竖屏），随进度事件回写 videos.is_vertical
-	if w, h, err := p.transcoder.GetVideoSize(ctx, src); err == nil && w > 0 && h > 0 {
-		isVertical := int32(0)
-		if h > w {
-			isVertical = 1
-		}
+	res, err := p.transcoderClient.Transcode(ctx, TranscodeRequest{
+		Bucket:       "mybilibili",
+		SourceKey:    sourceKey,
+		ManuscriptID: task.ManuscriptID,
+		VideoID:      task.VideoID,
+		Qualities:    []string{"1080p", "720p", "480p"},
+		ExtractAudio: false,
+	})
+	if err != nil {
+		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "转码失败", 0, 6, err.Error())
+		return
+	}
+
+	// 回写 is_vertical（横竖屏）
+	if res.IsVertical != -1 {
 		p.mq.Publish(ctx, TopicVideoProgress, abstraction.Message{
 			Topic: TopicVideoProgress,
 			Payload: marshal(ProgressEvent{
 				VideoID: task.VideoID, ManuscriptID: task.ManuscriptID,
 				Stage: "transcode", StageText: "方向检测", Progress: 15, Status: 1,
-				IsVertical: isVertical, Done: true, OccurredAt: now(),
+				IsVertical: res.IsVertical, Done: true, OccurredAt: now(),
 			}),
 		})
-	} else {
-		log.Printf("get video size failed (video %d): %v", task.VideoID, err)
 	}
 
-	p.emitProgress(task.VideoID, task.ManuscriptID, "transcoding", "转码中 1080p", 30, 1, "")
-	if err := p.transcoder.Transcode(ctx, src, filepath.Join(dir, "1080p"), "1080p"); err != nil {
-		log.Printf("transcode 1080p warning: %v", err)
-	}
-
-	p.emitProgress(task.VideoID, task.ManuscriptID, "transcoding", "转码中 720p", 50, 1, "")
-	if err := p.transcoder.Transcode(ctx, src, filepath.Join(dir, "720p"), "720p"); err != nil {
-		log.Printf("transcode 720p warning: %v", err)
-	}
-
-	p.emitProgress(task.VideoID, task.ManuscriptID, "transcoding", "转码中 480p", 70, 1, "")
-	if err := p.transcoder.Transcode(ctx, src, filepath.Join(dir, "480p"), "480p"); err != nil {
-		log.Printf("transcode 480p warning: %v", err)
-	}
-
-	if err := p.uploadTranscoded(ctx, task, dir); err != nil {
-		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "上传转码结果失败", 0, 6, err.Error())
+	// 回写 play_url_hd/sd/ld
+	if err := p.writePlayURLs(ctx, task, res.PlayURLs); err != nil {
+		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "回写播放地址失败", 0, 6, err.Error())
 		return
 	}
+
+	p.emitProgress(task.VideoID, task.ManuscriptID, "transcoding", "转码完成", 100, 1, "")
 }
 
 func (p *Pipeline) doExtractAudio(ctx context.Context, task ProcessMessage, dir string) {
 	p.emitProgress(task.VideoID, task.ManuscriptID, "audio", "提取音频", 10, 2, "")
-	src := filepath.Join(dir, "source.mp4")
-	if err := p.downloadSource(ctx, task.SourceURL, src); err != nil {
-		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "下载失败", 0, 7, err.Error())
+	sourceKey := sourceKeyFromURL(task.SourceURL)
+	if sourceKey == "" {
+		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "源对象 key 为空", 0, 7, "empty source key")
 		return
 	}
-	if err := p.transcoder.ExtractAudio(ctx, src, dir); err != nil {
+	_, err := p.transcoderClient.Transcode(ctx, TranscodeRequest{
+		Bucket:       "mybilibili",
+		SourceKey:    sourceKey,
+		ManuscriptID: task.ManuscriptID,
+		VideoID:      task.VideoID,
+		ExtractAudio: true,
+	})
+	if err != nil {
 		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "音频提取失败", 0, 7, err.Error())
 		return
 	}
-	audioFile := filepath.Join(dir, "audio.mp3")
-	key := fmt.Sprintf("manuscripts/%d/videos/%d/audio/audio.mp3", task.ManuscriptID, task.VideoID)
-	f, err := os.Open(audioFile)
-	if err != nil {
-		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "读取音频失败", 0, 7, err.Error())
-		return
-	}
-	defer f.Close()
-	p.storage.Put(ctx, "mybilibili", key, f, "audio/mpeg")
 	p.emitProgress(task.VideoID, task.ManuscriptID, "audio", "音频提取完成", 100, 2, "")
 }
 
@@ -321,87 +314,23 @@ func (p *Pipeline) emitProgress(videoID, manuscriptID int64, stage, stageText st
 	})
 }
 
-func (p *Pipeline) downloadSource(ctx context.Context, sourceURL, dest string) error {
-	if sourceURL == "" {
-		return fmt.Errorf("empty source url")
-	}
-	var body io.ReadCloser
-	switch {
-	case strings.HasPrefix(sourceURL, "http://"), strings.HasPrefix(sourceURL, "https://"):
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, sourceURL, nil)
-		if err != nil {
-			return err
-		}
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return err
-		}
-		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
-			return fmt.Errorf("download source: http %d", resp.StatusCode)
-		}
-		body = resp.Body
-	case strings.HasPrefix(sourceURL, "file://"):
-		f, err := os.Open(strings.TrimPrefix(sourceURL, "file://"))
-		if err != nil {
-			return err
-		}
-		body = f
-	default:
-		f, err := os.Open(sourceURL)
-		if err != nil {
-			return err
-		}
-		body = f
-	}
-	defer body.Close()
+func (p *Pipeline) downloadSourceRemovedMarker() {}
 
-	out, err := os.Create(dest)
-	if err != nil {
-		return err
+// sourceKeyFromURL 把源地址转成 MinIO 对象 key。
+// 对齐 core 上传落盘约定: 源对象存于 manuscripts/{id}/videos/{vid}/source/video.mp4。
+// 输入可能为:
+//   - "/uploads/manuscripts/10/videos/25/source/video.mp4" (经 core 反代)
+//   - "manuscripts/10/videos/25/source/video.mp4" (纯 MinIO key)
+// 统一输出: "manuscripts/10/videos/25/source/video.mp4"
+func sourceKeyFromURL(sourceURL string) string {
+	key := strings.TrimPrefix(sourceURL, "/uploads/")
+	if key == sourceURL {
+		key = sourceURL
 	}
-	defer out.Close()
-	if _, err := io.Copy(out, body); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (p *Pipeline) uploadTranscoded(ctx context.Context, task ProcessMessage, dir string) error {
-	// 上传每个清晰度目录下的全部文件（playlist.m3u8 + ts 段），对齐老项目 videoHlsObject key。
-	playURLs := map[string]string{}
-	for _, quality := range []string{"1080p", "720p", "480p"} {
-		qualityDir := filepath.Join(dir, quality)
-		entries, err := os.ReadDir(qualityDir)
-		if err != nil {
-			continue
-		}
-		for _, e := range entries {
-			if e.IsDir() {
-				continue
-			}
-			f, err := os.Open(filepath.Join(qualityDir, e.Name()))
-			if err != nil {
-				continue
-			}
-			key := fmt.Sprintf("manuscripts/%d/videos/%d/transcoded/%s/%s",
-				task.ManuscriptID, task.VideoID, quality, e.Name())
-			ct := "application/octet-stream"
-			if strings.HasSuffix(e.Name(), ".m3u8") {
-				ct = "application/vnd.apple.mpegurl"
-			} else if strings.HasSuffix(e.Name(), ".ts") {
-				ct = "video/mp2t"
-			}
-			_ = p.storage.Put(ctx, "mybilibili", key, f, ct)
-			f.Close()
-		}
-		if _, err := os.Stat(filepath.Join(qualityDir, "playlist.m3u8")); err == nil {
-			playURLs[quality] = fmt.Sprintf("/uploads/manuscripts/%d/videos/%d/transcoded/%s/playlist.m3u8",
-				task.ManuscriptID, task.VideoID, quality)
-		}
-	}
-	// 转码完成后回写 play_url_hd/sd/ld（对齐老项目 markTranscodeSuccess）
-	return p.writePlayURLs(ctx, task, playURLs)
+	key = strings.TrimPrefix(key, "/")
+	// 去掉多余的前缀噪音
+	key = strings.TrimPrefix(key, "uploads/")
+	return key
 }
 
 // writePlayURLs 将转码产物播放地址写回 videos 表。

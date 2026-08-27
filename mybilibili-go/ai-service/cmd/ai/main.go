@@ -58,6 +58,8 @@ func main() {
 	if minioEndpoint == "" {
 		minioEndpoint = "127.0.0.1:9000"
 	}
+	// minio-go 不接受带 scheme 的 endpoint，剥掉 http(s):// 前缀。
+	minioEndpoint = stripScheme(minioEndpoint)
 	if storage, serr := abstraction.NewMinioStorageService(abstraction.MinioConfig{
 		Endpoint:   minioEndpoint,
 		AccessKey:  getEnvDefault("MINIO_ACCESS_KEY", "minioadmin"),
@@ -102,4 +104,14 @@ func getEnvDefault(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// stripScheme 去掉 http(s):// 前缀，供 minio-go 客户端使用。
+func stripScheme(s string) string {
+	for _, p := range []string{"https://", "http://"} {
+		if len(s) > len(p) && s[:len(p)] == p {
+			return s[len(p):]
+		}
+	}
+	return s
 }
