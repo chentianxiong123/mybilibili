@@ -50,6 +50,7 @@ func (h *MessageHTTPHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/message/conversations/", h.handleConversationByID)
 	mux.HandleFunc("/api/v1/message/send", h.handleSend)
 	mux.HandleFunc("/api/v1/message/unread", h.handleUnread)
+	mux.HandleFunc("/api/v1/message/unread/counts", h.handleUnreadCounts)
 	mux.HandleFunc("/api/v1/message/conversation/unread/", h.handleConversationUnread)
 	mux.HandleFunc("/api/v1/message/replies", h.handleReplies)
 	mux.HandleFunc("/api/v1/message/at", h.handleAt)
@@ -236,6 +237,37 @@ func (h *MessageHTTPHandler) handleUnread(w http.ResponseWriter, r *http.Request
 		"at":     cnt,
 		"like":   cnt,
 		"system": cnt,
+	})
+}
+
+// handleUnreadCounts 返回前端头部所需的分类型未读数（private/reply/at/like/system/dynamic）。
+func (h *MessageHTTPHandler) handleUnreadCounts(w http.ResponseWriter, r *http.Request) {
+	userID := h.getUserID(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
+	// message_type: 1=私信 2=回复 3=@ 4=点赞稿件 5=系统 6=点赞评论
+	// private 取会话未读数，其余按未读消息条数统计
+	private, _ := h.repo.GetUnreadCount(r.Context(), userID)
+	typeCount := func(types ...int32) int32 {
+		var n int32
+		for _, t := range types {
+			var c int32
+			_ = h.repo.db.QueryRowContext(r.Context(),
+				`SELECT COUNT(*) FROM messages WHERE receiver_id = $1 AND message_type = $2 AND is_read = 0`,
+				userID, t).Scan(&c)
+			n += c
+		}
+		return n
+	}
+	httputil.WriteOK(w, map[string]int32{
+		"private": private,
+		"reply":   typeCount(2),
+		"at":      typeCount(3),
+		"like":    typeCount(4, 6),
+		"system":  typeCount(5),
+		"dynamic": typeCount(2, 3, 4, 5, 6), // 动态侧角标沿用通知类未读
 	})
 }
 
