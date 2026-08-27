@@ -20,6 +20,10 @@ on:
         required: false
         default: "all"
 
+permissions:
+  contents: read
+  packages: write
+
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/chentianxiong123/mybilibili
