@@ -35,9 +35,11 @@ RUN SVC="${SERVICE%-service}" && DIR="${CMD_DIR:-$SVC}" \
     && cd ${SERVICE} && go build -o /out/app ./cmd/${DIR}
 
 # ============ 运行阶段 ============
-# 注: 原 runtime-work(transcoder 专用 ffmpeg) 已移除。
-# transcoder 服务改为裸跑宿主机（用系统 ffmpeg + 对应显卡驱动），不做容器。
-FROM debian:bookworm-slim AS runtime
+# 极简基底：Go 服务为 CGO_ENABLED=0 纯静态二进制，Alpine 只需 ca-certificates。
+# 不装 ffmpeg/chrome——图片转 WebP 已前移到前端，转码由裸跑 transcoder 承担。
+# 镜像体积对比：debian-bookworm-slim(~70MB) → alpine(~3.5MB + certs)。
+FROM alpine:3.20 AS runtime
+RUN apk add --no-cache ca-certificates tzdata && addgroup -S app && adduser -S -G app app
+USER app
 COPY --from=build /out/app /app
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 ENTRYPOINT ["/app"]

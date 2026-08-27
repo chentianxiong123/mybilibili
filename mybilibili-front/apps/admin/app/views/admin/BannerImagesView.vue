@@ -2,6 +2,7 @@
 import { Plus } from '@element-plus/icons-vue'
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { toWebP } from '@/utils/toWebP'
 import {
   getHomeBanners,
   addHomeBanner,
@@ -246,7 +247,8 @@ const handleDeleteUserProfileBackground = async () => {
 const handleUpload = async (file) => {
   uploadLoading.value = true
   try {
-    const res = await uploadBannerImage(file.raw)
+    const webpFile = await toWebP(file.raw)
+    const res = await uploadBannerImage(webpFile)
     if (res.code === 200) {
       formData.value.imageUrl = res.data.url
       ElMessage.success('上传成功')
