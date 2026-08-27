@@ -1,28 +1,31 @@
 name: build-and-push
 
-# 后端 7 服务镜像构建并推送 GHCR（transcoder 不做容器，裸跑宿主机用系统 ffmpeg）。
-# 触发方式: workflow_dispatch（手动），k3s 就绪后再开 push/PR 自动触发。
+# 后端 8 服务 + 前端 2 应用（web/admin）镜像构建并推送 GHCR。
+# wap 不做镜像（将打包为 App）。
+# 触发方式: push main 自动触发（transcoder 不做容器，裸跑宿主机用系统 ffmpeg）。
 # 镜像 tag: git-sha (精确回滚) + latest (默认拉取)。
-# 仓库: ghcr.io/chentianxiong123/mybilibili-{core,search,msg-danmaku,live,ai,studio,work,bili}
+# 仓库: ghcr.io/chentianxiong123/mybilibili-{core,search,msg-danmaku,live,ai,studio,work,bili,web,admin}
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'mybilibili-go/**'
+      - 'mybilibili-front/**'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
     inputs:
       services:
         description: "要构建的服务（逗号分隔，空=全部）"
         required: false
         default: "all"
-  # k3s 就绪后取消注释以自动触发:
-  # push:
-  #   branches: [main]
-  #   paths: ['mybilibili-go/**']
 
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/chentianxiong123/mybilibili
 
 jobs:
-  # ---------- 矩阵: 8 个后端服务 ----------
+  # ---------- 后端 8 个服务 ----------
   build-backend:
     runs-on: ubuntu-latest
     strategy:
@@ -66,10 +69,37 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ---------- 前端镜像 (k3s 阶段再启用) ----------
-  # build-frontend:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - web: Nuxt SSR → ghcr.io/.../mybilibili-web
-  #     - admin/wap: Vite SPA → nginx 静态镜像
+  # ---------- 前端 2 应用 (wap 将来打包为 App，不建镜像) ----------
+  build-frontend:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: web,    dir: mybilibili-front/apps/web,    context: mybilibili-front,  port: 3200}
+          - {name: admin,  dir: mybilibili-front/apps/admin,  context: mybilibili-front,  port: 3100}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.context }}
+          file: ./${{ matrix.dir }}/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:latest
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+

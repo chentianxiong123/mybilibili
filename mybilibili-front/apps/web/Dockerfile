@@ -1,5 +1,5 @@
 FROM node:26-alpine AS build
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN npm install -g pnpm@11
 WORKDIR /app
 
 # 复制 monorepo 清单 + workspace 配置

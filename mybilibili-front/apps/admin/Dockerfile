@@ -1,5 +1,5 @@
 FROM node:26-alpine AS build
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN npm install -g pnpm@11
 WORKDIR /app
 
 # 复制 monorepo 清单 + workspace 配置
@@ -15,9 +15,8 @@ RUN pnpm install --frozen-lockfile --filter @mybilibili/admin --ignore-scripts
 WORKDIR /app/apps/admin
 RUN pnpm build
 
-FROM node:26-alpine
-WORKDIR /app/apps/admin
-COPY --from=build /app/apps/admin/.output .output
+FROM nginx:alpine
+COPY --from=build /app/apps/admin/dist /usr/share/nginx/html
+COPY --from=build /app/apps/admin/nginx.conf.template /etc/nginx/templates/default.conf.template
 EXPOSE 3100
-ENV NITRO_PORT=3100
-CMD ["node", ".output/server/index.mjs"]
+CMD ["nginx", "-g", "daemon off;"]
