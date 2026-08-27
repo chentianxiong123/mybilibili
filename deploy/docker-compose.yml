@@ -134,20 +134,15 @@ services:
       <<: *go-build
       args:
         SERVICE: work-service
-      target: runtime-work   # 带 ffmpeg + VAAPI 的运行阶段
+          # target 普通 runtime（work 已剥离 ffmpeg，转码/提音频由裸跑宿机主上的 transcoder 承担）
     container_name: mybilibili-work
     restart: unless-stopped
     env_file: [".env"]
     environment:
-      - TRANSCODE_ENCODER=auto
+      # transcoder 裸跑宿主机（mylib 网络网关 172.18.0.1），用宿主机系统 ffmpeg + 对应显卡驱动
+      - TRANSCODER_ADDR=http://172.18.0.1:8092
     volumes:
-      - work-tmp:/tmp/work   # 转码临时工作区（源文件下载、切片暂存）
-    # GPU 透传: VAAPI 硬件编码需要 /dev/dri/renderD128
-    devices:
-      - /dev/dri:/dev/dri
-    group_add:
-      - "44"    # video (宿主机 GID)
-      - "992"   # render (宿主机 GID)
+      - work-tmp:/tmp/work   # 转码编排会话目录（轻量）
     depends_on:
       pg16: {condition: service_started}
       nats: {condition: service_started}

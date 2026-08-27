@@ -1,9 +1,9 @@
 # 统一多阶段 Dockerfile — 构建上下文为 mybilibili-go/
 #
-# 普通服务:
+# 普通服务（含已剥离 ffmpeg 的 work 编排器）:
 #   docker build --build-arg SERVICE=core-service -t mybilibili-core .
-# work 服务(带 ffmpeg+VAAPI):
-#   docker build --build-arg SERVICE=work-service --target runtime-work -t mybilibili-work .
+#
+# 注: transcoder 服务不做容器，改为裸跑宿主机（用系统 ffmpeg + 对应显卡驱动）。
 #
 # SERVICE 取值:
 #   core-service ai-service search-service msg-danmaku-service
@@ -34,16 +34,10 @@ COPY ${SERVICE} ./${SERVICE}/
 RUN SVC="${SERVICE%-service}" && DIR="${CMD_DIR:-$SVC}" \
     && cd ${SERVICE} && go build -o /out/app ./cmd/${DIR}
 
-# ============ 运行阶段: 普通服务 ============
+# ============ 运行阶段 ============
+# 注: 原 runtime-work(transcoder 专用 ffmpeg) 已移除。
+# transcoder 服务改为裸跑宿主机（用系统 ffmpeg + 对应显卡驱动），不做容器。
 FROM debian:bookworm-slim AS runtime
 COPY --from=build /out/app /app
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
-ENTRYPOINT ["/app"]
-
-# ============ 运行阶段: work 转码 (需 ffmpeg + ffprobe) ============
-FROM debian:bookworm-slim AS runtime-work
-COPY --from=build /out/app /app
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates ffmpeg libva2 libva-drm2 \
-    && rm -rf /var/lib/apt/lists/*
 ENTRYPOINT ["/app"]
