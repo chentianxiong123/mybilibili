@@ -1,0 +1,74 @@
+name: build-and-push
+
+# 后端 8 服务镜像构建并推送 GHCR。
+# 触发方式: workflow_dispatch（手动），k3s 就绪后再开 push/PR 自动触发。
+# 镜像 tag: git-sha (精确回滚) + latest (默认拉取)。
+# 仓库: ghcr.io/chentianxiong123/mybilibili-{core,search,msg-danmaku,live,ai,studio,work,bili}
+
+on:
+  workflow_dispatch:
+    inputs:
+      services:
+        description: "要构建的服务（逗号分隔，空=全部）"
+        required: false
+        default: "all"
+  # k3s 就绪后取消注释以自动触发:
+  # push:
+  #   branches: [main]
+  #   paths: ['mybilibili-go/**']
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/chentianxiong123/mybilibili
+
+jobs:
+  # ---------- 矩阵: 8 个后端服务 ----------
+  build-backend:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {service: core-service,          name: core,        target: runtime}
+          - {service: search-service,         name: search,      target: runtime}
+          - {service: msg-danmaku-service,    name: msg-danmaku, target: runtime}
+          - {service: live-service,           name: live,        target: runtime}
+          - {service: ai-service,            name: ai,          target: runtime}
+          - {service: studio-service,         name: studio,      target: runtime}
+          - {service: work-service,          name: work,        target: runtime-work}
+          - {service: bili-proxy-service,    name: bili,        target: runtime}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./mybilibili-go
+          file: ./mybilibili-go/Dockerfile
+          build-args: |
+            SERVICE=${{ matrix.service }}
+          target: ${{ matrix.target }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:latest
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------- 前端镜像 (k3s 阶段再启用) ----------
+  # build-frontend:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - web: Nuxt SSR → ghcr.io/.../mybilibili-web
+  #     - admin/wap: Vite SPA → nginx 静态镜像
