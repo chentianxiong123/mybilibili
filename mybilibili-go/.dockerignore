@@ -1,0 +1,28 @@
+# Git / IDE
+.git
+.gitignore
+.idea
+.vscode
+*.swp
+.DS_Store
+
+# Go 编译产物 / 本地二进制
+**/mybilibili-core
+**/mybilibili-msg-danmaku
+**/mybilibili-ai
+**/mybilibili-search
+**/mybilibili-live
+**/mybilibili-studio
+**/mybilibili-work
+**/mybilibili-bili
+*.exe
+*.test
+*.out
+
+# Go 测试 / 缓存
+**/*_test.go
+**/.go_cache
+
+# 文档 / 非源码（不影响构建，跳过提速）
+sql/*.md
+**/README.md
