@@ -13,7 +13,8 @@ export default defineNuxtConfig({
       htmlAttrs: { lang: 'zh-CN' },
       title: '哔哩哔哩',
       meta: [
-        { name: 'viewport', content: 'width=device-width, initial-scale=1.0' }
+        { name: 'viewport', content: 'width=device-width, initial-scale=1.0' },
+        { name: 'referrer', content: 'no-referrer' }
       ],
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/vite.svg' }
