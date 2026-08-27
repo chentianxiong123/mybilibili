@@ -147,6 +147,35 @@ func (r *MessageRepository) GetUnreadCount(ctx context.Context, userID int64) (i
 	return count, err
 }
 
+// GetUnreadCountsByType 从 DB 重算六类未读数（源真相），供 Redis 缓存回源。
+// message_type: 1=私信 2=回复 3=@ 4=点赞稿件 5=系统 6=点赞评论
+func (r *MessageRepository) GetUnreadCountsByType(ctx context.Context, userID int64) map[string]int32 {
+	counts := map[string]int32{
+		"private": 0, "reply": 0, "at": 0, "like": 0, "system": 0, "dynamic": 0,
+	}
+	// private = 所有会话未读数之和
+	var private int32
+	_ = r.db.QueryRowContext(ctx,
+		`SELECT COALESCE(SUM(unread_count),0) FROM conversations WHERE user_id = $1`, userID).Scan(&private)
+	counts["private"] = private
+	// 其余按未读消息条数统计
+	var reply, at, like, system int32
+	_ = r.db.QueryRowContext(ctx,
+		`SELECT
+		   COALESCE(COUNT(*) FILTER (WHERE message_type = 2),0),
+		   COALESCE(COUNT(*) FILTER (WHERE message_type = 3),0),
+		   COALESCE(COUNT(*) FILTER (WHERE message_type IN (4,6)),0),
+		   COALESCE(COUNT(*) FILTER (WHERE message_type = 5),0)
+		 FROM messages WHERE receiver_id = $1 AND is_read = 0`, userID).
+		Scan(&reply, &at, &like, &system)
+	counts["reply"] = reply
+	counts["at"] = at
+	counts["like"] = like
+	counts["system"] = system
+	counts["dynamic"] = reply + at + like + system
+	return counts
+}
+
 type NotificationBroadcaster struct {
 	channels map[int64]chan *NotificationEvent
 }

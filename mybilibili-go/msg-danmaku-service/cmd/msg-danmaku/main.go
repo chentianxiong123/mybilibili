@@ -8,6 +8,7 @@ import (
 	"os"
 
 	_ "github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
@@ -51,13 +52,22 @@ func main() {
 	messageRepo := message.NewMessageRepository(db)
 	notifBroadcaster := message.NewNotificationBroadcaster()
 
+	// Redis 未读红点缓存（DB 仍为源真相）
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+	rdb := redis.NewClient(&redis.Options{Addr: redisAddr})
+	defer rdb.Close()
+	unreadCache := message.NewUnreadCache(rdb, messageRepo, 0)
+
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		jwtSecret = "dev-secret-change-in-production"
 	}
 	jwt := auth.NewJWT(jwtSecret)
 
-	messageH := message.NewMessageHTTPHandler(messageRepo, notifBroadcaster, jwt)
+	messageH := message.NewMessageHTTPHandler(messageRepo, notifBroadcaster, unreadCache, jwt)
 
 	go func() {
 		lis, err := net.Listen("tcp", grpcAddr)
@@ -65,7 +75,7 @@ func main() {
 			log.Fatalf("failed to listen gRPC: %v", err)
 		}
 		srv := grpc.NewServer()
-		pb.RegisterMsgDanmakuServiceServer(srv, message.NewGrpcServer(messageRepo, notifBroadcaster))
+		pb.RegisterMsgDanmakuServiceServer(srv, message.NewGrpcServer(messageRepo, notifBroadcaster, unreadCache))
 		reflection.Register(srv)
 		log.Printf("MsgDanmaku gRPC listening on %s", grpcAddr)
 		log.Fatal(srv.Serve(lis))
