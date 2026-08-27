@@ -8,12 +8,13 @@ import (
 
 type GrpcServer struct {
 	pb.UnimplementedMsgDanmakuServiceServer
-	repo *MessageRepository
+	repo  *MessageRepository
 	notif *NotificationBroadcaster
+	cache *UnreadCache
 }
 
-func NewGrpcServer(repo *MessageRepository, notif *NotificationBroadcaster) *GrpcServer {
-	return &GrpcServer{repo: repo, notif: notif}
+func NewGrpcServer(repo *MessageRepository, notif *NotificationBroadcaster, cache *UnreadCache) *GrpcServer {
+	return &GrpcServer{repo: repo, notif: notif, cache: cache}
 }
 
 func (s *GrpcServer) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
@@ -27,6 +28,9 @@ func (s *GrpcServer) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 			Content: req.Content,
 			FromUID: req.SenderId,
 		})
+	}
+	if s.cache != nil {
+		s.cache.Invalidate(ctx, req.ReceiverId)
 	}
 	return &pb.SendMessageResponse{MessageId: msg.ID}, nil
 }

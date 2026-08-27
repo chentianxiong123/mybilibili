@@ -19,14 +19,15 @@ type MessageHTTPHandler struct {
 	repo  *MessageRepository
 	notif *NotificationBroadcaster
 	jwt   *auth.JWT
+	cache *UnreadCache
 }
 
-func NewMessageHTTPHandler(repo *MessageRepository, notif *NotificationBroadcaster, opts ...*auth.JWT) *MessageHTTPHandler {
+func NewMessageHTTPHandler(repo *MessageRepository, notif *NotificationBroadcaster, cache *UnreadCache, opts ...*auth.JWT) *MessageHTTPHandler {
 	var j *auth.JWT
 	if len(opts) > 0 {
 		j = opts[0]
 	}
-	return &MessageHTTPHandler{repo: repo, notif: notif, jwt: j}
+	return &MessageHTTPHandler{repo: repo, notif: notif, jwt: j, cache: cache}
 }
 
 func (h *MessageHTTPHandler) getUserID(r *http.Request) int64 {
@@ -222,6 +223,9 @@ func (h *MessageHTTPHandler) handleSend(w http.ResponseWriter, r *http.Request) 
 		Type: "message", Content: req.Content, FromUID: userID,
 		CreatedAt: msg.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	})
+	if h.cache != nil {
+		h.cache.Invalidate(r.Context(), req.ReceiverID)
+	}
 	httputil.WriteOK(w, msg)
 }
 
@@ -241,34 +245,20 @@ func (h *MessageHTTPHandler) handleUnread(w http.ResponseWriter, r *http.Request
 }
 
 // handleUnreadCounts 返回前端头部所需的分类型未读数（private/reply/at/like/system/dynamic）。
+// 优先走 Redis 缓存，miss 回源 DB 重算回填。
 func (h *MessageHTTPHandler) handleUnreadCounts(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserID(r)
 	if userID == 0 {
 		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
 		return
 	}
-	// message_type: 1=私信 2=回复 3=@ 4=点赞稿件 5=系统 6=点赞评论
-	// private 取会话未读数，其余按未读消息条数统计
-	private, _ := h.repo.GetUnreadCount(r.Context(), userID)
-	typeCount := func(types ...int32) int32 {
-		var n int32
-		for _, t := range types {
-			var c int32
-			_ = h.repo.db.QueryRowContext(r.Context(),
-				`SELECT COUNT(*) FROM messages WHERE receiver_id = $1 AND message_type = $2 AND is_read = 0`,
-				userID, t).Scan(&c)
-			n += c
+	counts := h.repo.GetUnreadCountsByType(r.Context(), userID)
+	if h.cache != nil {
+		if cached, err := h.cache.Counts(r.Context(), userID); err == nil {
+			counts = cached
 		}
-		return n
 	}
-	httputil.WriteOK(w, map[string]int32{
-		"private": private,
-		"reply":   typeCount(2),
-		"at":      typeCount(3),
-		"like":    typeCount(4, 6),
-		"system":  typeCount(5),
-		"dynamic": typeCount(2, 3, 4, 5, 6), // 动态侧角标沿用通知类未读
-	})
+	httputil.WriteOK(w, counts)
 }
 
 func (h *MessageHTTPHandler) handleConversationUnread(w http.ResponseWriter, r *http.Request) {
@@ -554,6 +544,16 @@ func (h *MessageHTTPHandler) handleBatchRead(w http.ResponseWriter, r *http.Requ
 	if len(req.IDs) > 0 {
 		_, _ = h.repo.db.ExecContext(r.Context(),
 			`UPDATE messages SET is_read = 1 WHERE id = ANY($1) AND receiver_id = $2`, pq.Array(req.IDs), userID)
+		// 顺带把涉及会话的未读数清零，避免私聊红点残留
+		_, _ = h.repo.db.ExecContext(r.Context(),
+			`UPDATE conversations SET unread_count = 0
+			 WHERE user_id = $1 AND id IN (
+			   SELECT DISTINCT conversation_id FROM messages
+			   WHERE id = ANY($2) AND receiver_id = $1 AND conversation_id IS NOT NULL
+			 )`, userID, pq.Array(req.IDs))
+	}
+	if h.cache != nil {
+		h.cache.Invalidate(r.Context(), userID)
 	}
 	w.Write([]byte(`{"status":"ok"}`))
 }
