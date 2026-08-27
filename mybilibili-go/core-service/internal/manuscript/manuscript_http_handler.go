@@ -571,6 +571,7 @@ func manuscriptToMap(info *pb.ManuscriptInfo) map[string]interface{} {
 		"first_video_id": info.FirstVideoId,
 		"first_video_play_url": info.FirstVideoPlayUrl,
 		"is_vertical": info.IsVertical,
+		"source_type": info.SourceType,
 	}
 	if info.Uploader != nil {
 		m["uploader"] = map[string]interface{}{

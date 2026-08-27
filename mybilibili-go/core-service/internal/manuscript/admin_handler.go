@@ -350,7 +350,8 @@ func (h *ManuscriptAdminHandler) handleByID(w http.ResponseWriter, r *http.Reque
 		        m.status, m.review_status, COALESCE(m.review_reason,''),
 		        COALESCE(m.view_count,0), COALESCE(m.like_count,0), COALESCE(m.coin_count,0),
 		        COALESCE(m.collect_count,0), COALESCE(m.share_count,0), COALESCE(m.comment_count,0),
-		        COALESCE(m.danmaku_count,0), m.duration, m.upload_time, m.updated_at
+		        COALESCE(m.danmaku_count,0), m.duration, m.upload_time, m.updated_at,
+		        COALESCE(m.source_type,'local')
 		 FROM manuscripts m WHERE m.id = $1`, id)
 
 	type detail struct {
@@ -373,6 +374,7 @@ func (h *ManuscriptAdminHandler) handleByID(w http.ResponseWriter, r *http.Reque
 		Duration     string `json:"duration"`
 		UploadTime   string `json:"upload_time"`
 		UpdatedAt    string `json:"updated_at"`
+		SourceType   string `json:"source_type"`
 	}
 	var d detail
 	var uploadTime, updatedAt time.Time
@@ -380,7 +382,7 @@ func (h *ManuscriptAdminHandler) handleByID(w http.ResponseWriter, r *http.Reque
 		&d.Status, &d.ReviewStatus, &d.ReviewReason,
 		&d.ViewCount, &d.LikeCount, &d.CoinCount, &d.CollectCount,
 		&d.ShareCount, &d.CommentCount, &d.DanmakuCount,
-		&d.Duration, &uploadTime, &updatedAt); err != nil {
+		&d.Duration, &uploadTime, &updatedAt, &d.SourceType); err != nil {
 		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "稿件不存在", "data": nil})
 		return
 	}

@@ -262,6 +262,7 @@ const goToAuthor = (authorId) => {
           <a :href="'/manuscript/' + (video.manuscriptId || video.id)" class="video-cover-link">
             <img loading="lazy" decoding="async" :src="video.coverUrl || '/assets/placeholder-cover.svg'" alt="视频封面">
           </a>
+          <span v-if="video.sourceType === 'bilibili'" class="source-badge">B站</span>
           <!-- 左下角：播放量和评论量 -->
           <div class="video-stats-overlay">
             <span class="stat-item">
@@ -487,6 +488,20 @@ const goToAuthor = (authorId) => {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.source-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 3px;
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
 .video-cover:hover img {

@@ -88,6 +88,7 @@ export const normalizeVideoCard = (item) => {
     uploader,
     duration: item.duration || firstVideo?.duration || formatDuration(durationSeconds),
     durationSeconds,
+    sourceType: item.sourceType || item.source_type || 'local',
     manuscriptId,
     manuscript: item
   }
