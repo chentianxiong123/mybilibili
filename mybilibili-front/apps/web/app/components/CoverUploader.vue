@@ -1,6 +1,7 @@
 <script setup>
 import { ElMessage } from 'element-plus'
 import { UploadFilled, Plus } from '@element-plus/icons-vue'
+import { toWebP } from '@/utils/toWebP'
 
 defineProps({
   coverPreview: { type: String, default: '' }
@@ -8,7 +9,7 @@ defineProps({
 
 const emit = defineEmits(['cover-change', 'update:coverPreview'])
 
-const handleCoverUpload = (file) => {
+const handleCoverUpload = async (file) => {
   const isImage = file.raw.type.startsWith('image/')
   const isLt10M = file.raw.size / 1024 / 1024 < 10
 
@@ -21,7 +22,7 @@ const handleCoverUpload = (file) => {
     return false
   }
 
-  emit('cover-change', file.raw)
+  emit('cover-change', await toWebP(file.raw))
   const reader = new FileReader()
   reader.onload = (e) => {
     emit('update:coverPreview', e.target.result)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 
@@ -628,17 +627,10 @@ func (h *Handler) handleTranscodeConfig(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-// detectVAAPI 探测本机是否有可用的 VAAPI 硬件编码（/dev/dri 设备 + ffmpeg 支持 h264_vaapi）。
+// detectVAAPI 探测本机是否有可用的 VAAPI 硬件编码。
+// 注：转码已迁移到裸跑的 transcoder 服务，core 容器内不再检测 ffmpeg，恒返回 false。
 func (h *Handler) detectVAAPI() bool {
-	if _, err := os.Stat("/dev/dri/renderD128"); err != nil {
-		return false
-	}
-	cmd := exec.Command("ffmpeg", "-hide_banner", "-encoders")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return false
-	}
-	return strings.Contains(string(out), "h264_vaapi")
+	return false
 }
 
 // handleAdminByID 分派 /api/v1/admin/{id} 及子路径

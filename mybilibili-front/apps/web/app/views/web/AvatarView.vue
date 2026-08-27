@@ -5,6 +5,7 @@ import { Upload, Picture } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { userApi } from '@/api/client'
 import { getStoredUser, setAuthSession } from '@/utils/auth.ts'
+import { toWebP } from '@/utils/toWebP'
 
 // 当前用户信息
 const currentUser = ref(null)
@@ -43,7 +44,7 @@ onMounted(() => {
 })
 
 // 处理文件选择
-const handleFileChange = (event) => {
+const handleFileChange = async (event) => {
   const file = event.target.files[0]
   
   if (!file) return
@@ -61,14 +62,14 @@ const handleFileChange = (event) => {
     return
   }
   
-  selectedFile.value = file
+  selectedFile.value = await toWebP(file)
   
   // 创建预览 URL
   const reader = new FileReader()
   reader.onload = (e) => {
     previewUrl.value = e.target.result
   }
-  reader.readAsDataURL(file)
+  reader.readAsDataURL(selectedFile.value)
 }
 
 // 触发文件选择

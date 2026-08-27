@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { ChatDotRound, Picture, Link } from '@element-plus/icons-vue'
 import EmojiPopover from '@/components/EmojiPopover.vue'
 import VideoSelectDialog from '@/components/VideoSelectDialog.vue'
+import { toWebP } from '@/utils/toWebP'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user.ts'
 
@@ -18,24 +19,25 @@ const refVideoId = ref(null)
 const refVideoInfo = ref(null)
 const showVideoSelectDialog = ref(false)
 
-const handleImageSelect = (event) => {
+const handleImageSelect = async (event) => {
   const files = Array.from(event.target.files)
   if (files.length + selectedImages.value.length > 9) {
     ElMessage.warning('最多只能上传9张图片')
     return
   }
-  files.forEach(file => {
+  for (const file of files) {
     if (!file.type.startsWith('image/')) {
       ElMessage.error('只能上传图片文件')
-      return
+      continue
     }
     if (file.size > 5 * 1024 * 1024) {
       ElMessage.error('图片大小不能超过5MB')
-      return
+      continue
     }
-    selectedImages.value.push(file)
-    imagePreviewUrls.value.push(URL.createObjectURL(file))
-  })
+    const webpFile = await toWebP(file)
+    selectedImages.value.push(webpFile)
+    imagePreviewUrls.value.push(URL.createObjectURL(webpFile))
+  }
   event.target.value = ''
 }
 

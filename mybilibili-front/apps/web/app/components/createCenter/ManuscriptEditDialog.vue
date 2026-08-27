@@ -185,6 +185,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { manuscriptApi } from '@/api/creator'
 import { categoryApi } from '@/api/client'
+import { toWebP } from '@/utils/toWebP'
 import { Picture, UploadFilled, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 
 const props = defineProps({
@@ -274,7 +275,7 @@ const editArticle = async (id) => {
   }
 }
 
-const handleEditManuscriptCoverChange = (file) => {
+const handleEditManuscriptCoverChange = async (file) => {
   if (!file.raw) {
     ElMessage.error('封面文件读取失败')
     return false
@@ -291,8 +292,8 @@ const handleEditManuscriptCoverChange = (file) => {
     return false
   }
 
-  editManuscriptForm.cover = file.raw
-  editManuscriptCoverPreview.value = URL.createObjectURL(file.raw)
+  editManuscriptForm.cover = await toWebP(file.raw)
+  editManuscriptCoverPreview.value = URL.createObjectURL(editManuscriptForm.cover)
   return false
 }
 
