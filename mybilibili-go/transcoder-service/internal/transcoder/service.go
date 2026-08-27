@@ -62,9 +62,9 @@ func NewService(storage abstraction.StorageService, encoder string) *Service {
 	return s
 }
 
-// detectHW 探测 VAAPI 硬编是否可用（auto/vaapi 启用，x264 强制禁用）。
+// detectHW 探测 VAAPI 硬编是否可用（auto/vaapi 启用，x265 强制禁用）。
 func (s *Service) detectHW() bool {
-	if s.encoder == "x264" {
+	if s.encoder == "x265" {
 		return false
 	}
 	if _, err := os.Stat(s.vaapi); err != nil {
@@ -74,7 +74,7 @@ func (s *Service) detectHW() bool {
 	if err != nil {
 		return false
 	}
-	return strings.Contains(string(out), "h264_vaapi")
+	return strings.Contains(string(out), "hevc_vaapi")
 }
 
 // GetVideoSize 探测源视频宽高，用于判断横竖屏（高>宽为竖屏）。
@@ -167,22 +167,22 @@ func (s *Service) Process(ctx context.Context, req Request) (*Result, error) {
 	return res, nil
 }
 
-// transcode 单档转码：scale + 硬编(h264_vaapi)/软编(libx264) → HLS。
+// transcode 单档转码：scale + 硬编(hevc_vaapi)/软编(libx265) → HLS。
 func (s *Service) transcode(ctx context.Context, srcFile, outDir, quality string) error {
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return err
 	}
-	crf := "23"
+	crf := "32"
 	scale := "min(1280\\,iw):-2"
 	switch quality {
 	case "1080p":
-		crf = "20"
+		crf = "28"
 		scale = "min(1920\\,iw):-2"
 	case "720p":
-		crf = "22"
+		crf = "30"
 		scale = "min(1280\\,iw):-2"
 	default:
-		crf = "23"
+		crf = "32"
 		scale = "min(854\\,iw):-2"
 	}
 
@@ -200,13 +200,13 @@ func (s *Service) transcode(ctx context.Context, srcFile, outDir, quality string
 			"-i", srcFile,
 			"-vf", "scale=" + scale + ",format=nv12,hwupload",
 			"-vaapi_device", s.vaapi,
-			"-c:v", "h264_vaapi", "-rc_mode", "CQP", "-qp", crf,
+			"-c:v", "hevc_vaapi", "-tag:v", "hvc1", "-rc_mode", "CQP", "-qp", crf,
 		}, append(audio, hls...)...)
 	} else {
 		args = append([]string{
 			"-i", srcFile,
 			"-vf", "scale=" + scale,
-			"-c:v", "libx264", "-preset", "veryfast", "-crf", crf,
+			"-c:v", "libx265", "-preset", "veryfast", "-tag:v", "hvc1", "-crf", crf,
 		}, append(audio, hls...)...)
 	}
 	_, err := s.ffmpeg.Run(ctx, args...)
@@ -214,14 +214,14 @@ func (s *Service) transcode(ctx context.Context, srcFile, outDir, quality string
 		return err
 	}
 	// VAAPI 失败自动回退软编
-	log.Printf("[%s] VAAPI encode failed (%v), falling back to libx264", quality, err)
+	log.Printf("[%s] VAAPI encode failed (%v), falling back to libx265", quality, err)
 	prev := s.useHW
 	s.useHW = false
 	defer func() { s.useHW = prev }()
 	args = append([]string{
 		"-i", srcFile,
 		"-vf", "scale=" + scale,
-		"-c:v", "libx264", "-preset", "veryfast", "-crf", crf,
+		"-c:v", "libx265", "-preset", "veryfast", "-tag:v", "hvc1", "-crf", crf,
 	}, append(audio, hls...)...)
 	_, retryErr := s.ffmpeg.Run(ctx, args...)
 	return retryErr
