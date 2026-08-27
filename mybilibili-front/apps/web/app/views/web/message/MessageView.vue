@@ -145,14 +145,16 @@ const markConversationAsRead = async (conversationId) => {
       unreadMessages.forEach(msg => {
         msg.isRead = true
       })
-      // 更新会话未读数
-      const conversation = conversations.value.find(c => c.id === conversationId)
-      if (conversation) {
-        conversation.unreadCount = 0
-      }
-      // 刷新未读计数
-      await fetchUnreadCounts()
     }
+    // 无论是否有未读消息，都清零该会话的本地未读数并刷新计数，
+    // 防止 conversations.unread_count 列与真实状态漂移导致红点残留
+    const conversation = conversations.value.find(c => c.id === conversationId)
+    if (conversation) {
+      conversation.unreadCount = 0
+    }
+    // 刷新未读计数与会话列表（会话列表的未读数后端实时算，保证一致）
+    await fetchUnreadCounts()
+    await fetchConversations()
   } catch (error) {
     console.error('标记已读失败:', error)
   }

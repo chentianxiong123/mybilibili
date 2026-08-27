@@ -86,7 +86,8 @@ func (r *MessageRepository) GetConversations(ctx context.Context, userID int64) 
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT c.id, c.user_id, c.target_user_id,
 		        COALESCE(u.nickname, u.username, ''), COALESCE(u.avatar, ''),
-		        c.last_message_content, COALESCE(c.last_message_time::text,''), c.unread_count
+		        c.last_message_content, COALESCE(c.last_message_time::text,''),
+		        (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id AND m.receiver_id = c.user_id AND m.is_read = 0) AS real_unread
 		 FROM conversations c
 		 LEFT JOIN users u ON u.id = c.target_user_id
 		 WHERE c.user_id = $1 ORDER BY c.last_message_time DESC NULLS LAST`, userID)
@@ -143,7 +144,7 @@ func (r *MessageRepository) MarkAsRead(ctx context.Context, conversationID, user
 func (r *MessageRepository) GetUnreadCount(ctx context.Context, userID int64) (int32, error) {
 	var count int32
 	err := r.db.QueryRowContext(ctx,
-		`SELECT COALESCE(SUM(unread_count), 0) FROM conversations WHERE user_id = $1`, userID).Scan(&count)
+		`SELECT COALESCE(COUNT(*),0) FROM messages WHERE receiver_id = $1 AND is_read = 0`, userID).Scan(&count)
 	return count, err
 }
 
@@ -153,21 +154,19 @@ func (r *MessageRepository) GetUnreadCountsByType(ctx context.Context, userID in
 	counts := map[string]int32{
 		"private": 0, "reply": 0, "at": 0, "like": 0, "system": 0, "dynamic": 0,
 	}
-	// private = 所有会话未读数之和
-	var private int32
-	_ = r.db.QueryRowContext(ctx,
-		`SELECT COALESCE(SUM(unread_count),0) FROM conversations WHERE user_id = $1`, userID).Scan(&private)
-	counts["private"] = private
-	// 其余按未读消息条数统计
-	var reply, at, like, system int32
+	// 全部按「真实未读消息条数」统计，避免依赖可能漂移的 conversations.unread_count 列。
+	// message_type: 1=私信 2=回复 3=@ 4=点赞稿件 5=系统 6=点赞评论
+	var private, reply, at, like, system int32
 	_ = r.db.QueryRowContext(ctx,
 		`SELECT
+		   COALESCE(COUNT(*) FILTER (WHERE message_type = 1),0),
 		   COALESCE(COUNT(*) FILTER (WHERE message_type = 2),0),
 		   COALESCE(COUNT(*) FILTER (WHERE message_type = 3),0),
 		   COALESCE(COUNT(*) FILTER (WHERE message_type IN (4,6)),0),
 		   COALESCE(COUNT(*) FILTER (WHERE message_type = 5),0)
 		 FROM messages WHERE receiver_id = $1 AND is_read = 0`, userID).
-		Scan(&reply, &at, &like, &system)
+		Scan(&private, &reply, &at, &like, &system)
+	counts["private"] = private
 	counts["reply"] = reply
 	counts["at"] = at
 	counts["like"] = like
