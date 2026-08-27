@@ -1,0 +1,51 @@
+server {
+    listen 5174;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+    # base=/wap/ 的 SPA
+    location /wap/ {
+        try_files $uri $uri/ /wap/index.html;
+    }
+    location = /wap { return 301 /wap/; }
+
+    # 后端反代（默认各 service 名，可用 env 覆盖）
+    location /api/v1/search/ {
+        proxy_pass http://${SEARCH_ADDR:-search:8084}/api/v1/search/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    location /api/v1/recommend/ {
+        proxy_pass http://${SEARCH_ADDR:-search:8084}/api/v1/recommend/;
+        proxy_set_header Host $host;
+    }
+    location /api/v1/live/ {
+        proxy_pass http://${LIVE_ADDR:-live:8087}/api/v1/live/;
+        proxy_set_header Host $host;
+    }
+    location /api/v1/danmaku/ {
+        proxy_pass http://${MVP_ADDR:-msg-danmaku:8086}/api/v1/danmaku/;
+        proxy_set_header Host $host;
+    }
+    location /api/v1/message/ {
+        proxy_pass http://${MVP_ADDR:-msg-danmaku:8086}/api/v1/message/;
+        proxy_set_header Host $host;
+    }
+    location /api/ {
+        proxy_pass http://${CORE_ADDR:-core:8080}/api/;
+        proxy_set_header Host $host;
+    }
+    location /uploads/ {
+        proxy_pass http://${CORE_ADDR:-core:8080}/uploads/;
+        proxy_set_header Host $host;
+    }
+    location /covers/ {
+        proxy_pass http://${CORE_ADDR:-core:8080}/covers/;
+        proxy_set_header Host $host;
+    }
+    location /videos/ {
+        proxy_pass http://${CORE_ADDR:-core:8080}/videos/;
+        proxy_set_header Host $host;
+    }
+}
