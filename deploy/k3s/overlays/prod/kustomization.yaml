@@ -1,5 +1,6 @@
 # prod overlay: 生产环境 infra(PG/MinIO/Redis/NATS) 部署在 k3s 集群内（同 namespace）。
-# 流量入口: traefik IngressRoute(:80) → 按 path 路由到各服务
+# base configmap 已指向集群内 infra，此 overlay 仅覆盖差异项。
+# 部署: kubectl apply -k overlays/prod
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: mybilibili
@@ -7,25 +8,4 @@ namespace: mybilibili
 resources:
   - ../../base
 
-patches:
-  # ConfigMap 指向集群内基础设施（k8s service 短名）
-  - target: {kind: ConfigMap, name: mybilibili-config}
-    patch: |-
-      apiVersion: v1
-      kind: ConfigMap
-      metadata:
-        name: mybilibili-config
-      data:
-        PG_DSN: "postgres://postgres:postgres@postgres:5432/mybilibili?sslmode=disable"
-        REDIS_ADDR: "redis:6379"
-        NATS_URL: "nats://nats:4222"
-        MINIO_ENDPOINT: "http://minio:9000"
-        TRANSCODER_ADDR: "http://192.168.31.225:8092"
-        LIVE_SERVICE_ADDR: "live:8087"
-
-  # 镜像已 docker load 到本地，不拉远程
-  - target: {kind: Deployment}
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/imagePullPolicy
-        value: IfNotPresent
+patches: []

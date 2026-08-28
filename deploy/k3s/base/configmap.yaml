@@ -1,23 +1,23 @@
-# 非敏感配置（对齐 deploy/.env 非敏感项）
+# 非敏感配置（base 默认指向集群内 infra，与 prod overlay 一致）
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mybilibili-config
   namespace: mybilibili
 data:
-  PG_DSN: "postgres://postgres:postgres@pg16:5432/mybilibili?sslmode=disable"
-  REDIS_ADDR: "mybilibili-redis:6379"
+  PG_DSN: "postgres://postgres:postgres@postgres:5432/mybilibili?sslmode=disable"
+  REDIS_ADDR: "redis:6379"
   NATS_URL: "nats://nats:4222"
   MQ_TYPE: "nats"
-  MINIO_ENDPOINT: "http://mybilibili-minio:9000"
+  MINIO_ENDPOINT: "http://minio:9000"
   MINIO_BUCKET: "mybilibili"
   AI_GRPC_ADDR: "ai:9088"
   MSG_DANMAKU_GRPC_ADDR: "msg-danmaku:9086"
   SEARCH_GRPC_ADDR: "search:9084"
-  SEARCH_SERVICE_ADDR: "search:9084"
+  SEARCH_SERVICE_ADDR: "search:8084"
   BILI_PROXY_ADDR: "http://bili:8091"
   LIVE_SERVICE_ADDR: "live:8087"
-  WORK_DIR: "/data/work"
-  TRANSCODER_ADDR: "http://172.18.0.1:8092"
+  WORK_DIR: "/tmp/work"
+  TRANSCODER_ADDR: "http://192.168.31.225:8092"
   STUDIO_DATA_DIR: "/data/studio"
   LOG_LEVEL: "info"

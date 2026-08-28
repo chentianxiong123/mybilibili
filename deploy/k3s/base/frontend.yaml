@@ -1,4 +1,4 @@
-# 前端：web(Nuxt SSR,node:3200) + admin(Vite SPA,nginx:3100)
+# 前端：web(Nuxt SSR,bun:3200) + admin(Vite SPA,nginx:3100)
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -16,6 +16,11 @@ spec:
           env:
             - {name: NITRO_PORT, value: "3200"}
           ports: [{containerPort: 3200}]
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          readinessProbe: {httpGet: {path: /, port: 3200}, initialDelaySeconds: 5, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /, port: 3200}, initialDelaySeconds: 15, periodSeconds: 20}
 ---
 apiVersion: v1
 kind: Service
@@ -39,6 +44,11 @@ spec:
           image: ghcr.io/chentianxiong123/mybilibili-admin:latest
           imagePullPolicy: IfNotPresent
           ports: [{containerPort: 3100}]
+          resources:
+            requests: {cpu: 25m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 128Mi}
+          readinessProbe: {httpGet: {path: /admin/, port: 3100}, initialDelaySeconds: 3, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /admin/, port: 3100}, initialDelaySeconds: 10, periodSeconds: 20}
 ---
 apiVersion: v1
 kind: Service
