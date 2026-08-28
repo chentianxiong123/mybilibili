@@ -29,8 +29,34 @@ env:
   IMAGE_PREFIX: ghcr.io/chentianxiong123/mybilibili
 
 jobs:
+  # ---------- 静态检查 + 编译（门禁，失败则不构建镜像） ----------
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mybilibili-go
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: mybilibili-go/go.work
+
+      - name: go vet（逐模块）
+        run: |
+          for d in */ ; do
+            [ -f "$d/go.mod" ] && (cd "$d" && echo "vet $d" && go vet ./...)
+          done
+
+      - name: go build（逐模块）
+        run: |
+          for d in */ ; do
+            [ -f "$d/go.mod" ] && (cd "$d" && echo "build $d" && go build ./...)
+          done
+
   # ---------- 后端 8 个服务 ----------
   build-backend:
+    needs: test
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -75,6 +101,7 @@ jobs:
 
   # ---------- 前端 2 应用 (wap 将来打包为 App，不建镜像) ----------
   build-frontend:
+    needs: test
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
