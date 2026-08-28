@@ -8,5 +8,9 @@
     "build:web": "pnpm --filter @mybilibili/web build",
     "build:admin": "pnpm --filter @mybilibili/admin build",
     "build": "pnpm -r build"
-  }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }
