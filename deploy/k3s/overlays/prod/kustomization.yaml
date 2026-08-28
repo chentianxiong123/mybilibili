@@ -20,17 +20,14 @@ patches:
         REDIS_ADDR: "192.168.31.204:6379"
         NATS_URL: "nats://192.168.31.204:4222"
         MINIO_ENDPOINT: "http://192.168.31.204:9000"
-        TRANSCODER_ADDR: "http://192.168.31.204:8092"
+        TRANSCODER_ADDR: "http://192.168.31.225:8092"
 
-  # 所有 Deployment 挂载 ghcr 拉取凭证
+  # 镜像已 docker load 到本地，不拉远程
   - target: {kind: Deployment}
     patch: |-
-      - op: add
-        path: /spec/template/spec/imagePullSecrets
-        value: [{name: ghcr-secret}]
       - op: replace
         path: /spec/template/spec/containers/0/imagePullPolicy
-        value: Always
+        value: IfNotPresent
 
   # NodePort 暴露入口
   - target: {kind: Service, name: core}

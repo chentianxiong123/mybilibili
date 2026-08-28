@@ -18,6 +18,5 @@ data:
   BILI_PROXY_ADDR: "http://bili:8091"
   WORK_DIR: "/data/work"
   TRANSCODER_ADDR: "http://172.18.0.1:8092"
-  TRANSCODE_ENCODER: "auto"
   STUDIO_DATA_DIR: "/data/studio"
   LOG_LEVEL: "info"
