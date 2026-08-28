@@ -4,7 +4,6 @@ namespace: mybilibili
 
 resources:
   - namespace.yaml
-  - infra.yaml
   - configmap.yaml
   - secret.yaml
   - backend.yaml

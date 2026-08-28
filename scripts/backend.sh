@@ -78,7 +78,8 @@ start() {
         case "$s" in
             transcoder)
                 # transcoder 裸跑宿主机: 用系统 ffmpeg/驱动; 监听 :8092; 走宿主映射的 MinIO
-                HTTP_ADDR=:8092 TRANSCODE_ENCODER="${TRANSCODE_ENCODER:-auto}" \
+                # 二进制按显卡类型编译: make build-transcoder-vaapi(AMD) / build-transcoder-nvenc(NVIDIA) / build-transcoder(软编)
+                HTTP_ADDR=:8092 \
                 MINIO_ENDPOINT="${MINIO_ENDPOINT:-127.0.0.1:9000}" \
                 nohup "$bin" >> "$LOG_DIR/$s.log" 2>&1 &
                 ;;

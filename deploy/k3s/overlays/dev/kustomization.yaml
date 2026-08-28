@@ -5,6 +5,7 @@ namespace: mybilibili
 
 resources:
   - ../../base
+  - infra.yaml
 
 patches:
   # 所有 Deployment 挂载 ghcr 拉取凭证 + 本地有镜像则复用（docker 运行时）
