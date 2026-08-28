@@ -16,6 +16,7 @@ data:
   SEARCH_GRPC_ADDR: "search:9084"
   SEARCH_SERVICE_ADDR: "search:9084"
   BILI_PROXY_ADDR: "http://bili:8091"
+  LIVE_SERVICE_ADDR: "live:8087"
   WORK_DIR: "/data/work"
   TRANSCODER_ADDR: "http://172.18.0.1:8092"
   STUDIO_DATA_DIR: "/data/studio"

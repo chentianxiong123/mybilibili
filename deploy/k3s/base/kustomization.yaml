@@ -10,3 +10,4 @@ resources:
   - frontend.yaml
   - pvc.yaml
   - service.yaml
+  - ingress.yaml

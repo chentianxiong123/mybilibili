@@ -1,5 +1,6 @@
 # prod overlay: 部署机连开发机 infra(PG/MinIO/Redis/NATS)，不部署自己的 infra。
 # 开发机 IP 默认 192.168.31.204，改这里即可。
+# 流量入口: traefik IngressRoute(:80) → 按 path 路由到各服务
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: mybilibili
@@ -21,6 +22,7 @@ patches:
         NATS_URL: "nats://192.168.31.204:4222"
         MINIO_ENDPOINT: "http://192.168.31.204:9000"
         TRANSCODER_ADDR: "http://192.168.31.225:8092"
+        LIVE_SERVICE_ADDR: "live:8087"
 
   # 镜像已 docker load 到本地，不拉远程
   - target: {kind: Deployment}
@@ -28,29 +30,3 @@ patches:
       - op: replace
         path: /spec/template/spec/containers/0/imagePullPolicy
         value: IfNotPresent
-
-  # NodePort 暴露入口
-  - target: {kind: Service, name: core}
-    patch: |-
-      - op: replace
-        path: /spec/type
-        value: NodePort
-      - op: add
-        path: /spec/ports/0/nodePort
-        value: 30080
-  - target: {kind: Service, name: web}
-    patch: |-
-      - op: replace
-        path: /spec/type
-        value: NodePort
-      - op: add
-        path: /spec/ports/0/nodePort
-        value: 30320
-  - target: {kind: Service, name: admin}
-    patch: |-
-      - op: replace
-        path: /spec/type
-        value: NodePort
-      - op: add
-        path: /spec/ports/0/nodePort
-        value: 30310
