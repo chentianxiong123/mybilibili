@@ -32,20 +32,16 @@ type Result struct {
 }
 
 // Service 转码服务：从 MinIO 读源，本地 ffmpeg 处理，产物写回 MinIO。
-// 无状态、可水平扩展；ffmpeg/ffprobe 为本机二进制依赖（镜像内装好）。
+// 硬编类型由编译时 build tag 决定（hw_nvenc.go / hw_vaapi.go / hw_soft.go），
+// 不做运行时探测：编译 nvenc 版 → NVIDIA，编译 vaapi 版 → AMD，默认 → 软编。
 type Service struct {
 	storage abstraction.StorageService
 	ffmpeg  FFmpegRunner
 	ffprobe FFprobeRunner
-	encoder string
-	vaapi   string
-	useHW   bool
+	vaapi   string // VAAPI 设备路径（仅 vaapi 版用到）
 }
 
-func NewService(storage abstraction.StorageService, encoder string) *Service {
-	if encoder == "" {
-		encoder = "auto"
-	}
+func NewService(storage abstraction.StorageService, _ string) *Service {
 	dev := os.Getenv("VAAPI_DEVICE")
 	if dev == "" {
 		dev = "/dev/dri/renderD128"
@@ -54,27 +50,10 @@ func NewService(storage abstraction.StorageService, encoder string) *Service {
 		storage: storage,
 		ffmpeg:  systemFFmpeg{},
 		ffprobe: systemFFprobe{},
-		encoder: encoder,
 		vaapi:   dev,
 	}
-	s.useHW = s.detectHW()
-	log.Printf("transcoder encoder: %s (useHW=%v, device=%s)", encoder, s.useHW, s.vaapi)
+	log.Printf("transcoder compiled hw: %s (vaapiDev=%s)", hwName(), s.vaapi)
 	return s
-}
-
-// detectHW 探测 VAAPI 硬编是否可用（auto/vaapi 启用，x265 强制禁用）。
-func (s *Service) detectHW() bool {
-	if s.encoder == "x265" {
-		return false
-	}
-	if _, err := os.Stat(s.vaapi); err != nil {
-		return false
-	}
-	out, err := s.ffmpeg.Run(context.Background(), "-hide_banner", "-encoders")
-	if err != nil {
-		return false
-	}
-	return strings.Contains(string(out), "hevc_vaapi")
 }
 
 // GetVideoSize 探测源视频宽高，用于判断横竖屏（高>宽为竖屏）。
@@ -167,7 +146,8 @@ func (s *Service) Process(ctx context.Context, req Request) (*Result, error) {
 	return res, nil
 }
 
-// transcode 单档转码：scale + 硬编(hevc_vaapi)/软编(libx265) → HLS。
+// transcode 单档转码：scale + 硬编/软编 → HLS。
+// 硬编参数由 build tag 选定的 hwBuildArgs 提供（nvenc/vaapi/soft）。
 func (s *Service) transcode(ctx context.Context, srcFile, outDir, quality string) error {
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return err
@@ -194,35 +174,16 @@ func (s *Service) transcode(ctx context.Context, srcFile, outDir, quality string
 		"-hls_segment_filename", segPattern,
 		playlist,
 	}
-	var args []string
-	if s.useHW {
-		args = append([]string{
-			"-i", srcFile,
-			"-vf", "scale=" + scale + ",format=nv12,hwupload",
-			"-vaapi_device", s.vaapi,
-			"-c:v", "hevc_vaapi", "-tag:v", "hvc1", "-rc_mode", "CQP", "-qp", crf,
-		}, append(audio, hls...)...)
-	} else {
-		args = append([]string{
-			"-i", srcFile,
-			"-vf", "scale=" + scale,
-			"-c:v", "libx265", "-preset", "veryfast", "-tag:v", "hvc1", "-crf", crf,
-		}, append(audio, hls...)...)
-	}
+
+	args := hwBuildArgs(srcFile, scale, crf, s.vaapi, audio, hls)
 	_, err := s.ffmpeg.Run(ctx, args...)
-	if err == nil || !s.useHW {
+	if err == nil || !hwAvailable() {
 		return err
 	}
-	// VAAPI 失败自动回退软编
-	log.Printf("[%s] VAAPI encode failed (%v), falling back to libx265", quality, err)
-	prev := s.useHW
-	s.useHW = false
-	defer func() { s.useHW = prev }()
-	args = append([]string{
-		"-i", srcFile,
-		"-vf", "scale=" + scale,
-		"-c:v", "libx265", "-preset", "veryfast", "-tag:v", "hvc1", "-crf", crf,
-	}, append(audio, hls...)...)
+
+	// 硬编失败自动回退软编
+	log.Printf("[%s] %s encode failed (%v), fallback to libx265", quality, hwName(), err)
+	args = softBuildArgs(srcFile, scale, crf, audio, hls)
 	_, retryErr := s.ffmpeg.Run(ctx, args...)
 	return retryErr
 }
