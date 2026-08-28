@@ -6,7 +6,7 @@ kind: Middleware
 metadata: {name: jwt-auth, namespace: mybilibili}
 spec:
   forwardAuth:
-    address: "http://core:8080/api/v1/auth/verify"
+    address: "http://core.mybilibili.svc.cluster.local:8080/api/v1/auth/verify"
     authResponseHeaders:
       - X-User-Id
       - X-User-Role
@@ -66,8 +66,8 @@ spec:
   entryPoints:
     - web
   routes:
-    # 验证端点（不挂 jwt-auth，避免 forwardAuth 死循环）
-    - match: PathPrefix(`/api/v1/auth/verify`)
+    # 认证端点（不挂 jwt-auth，避免 forwardAuth 死循环 + 登录注册不需要 token）
+    - match: PathPrefix(`/api/v1/auth/`) || PathPrefix(`/api/v1/user/login`) || PathPrefix(`/api/v1/admin/login`) || PathPrefix(`/api/v1/user/register`)
       kind: Rule
       priority: 20
       services: [{name: core, port: 8080}]
