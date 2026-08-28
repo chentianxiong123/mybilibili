@@ -1,5 +1,4 @@
-# prod overlay: 部署机连开发机 infra(PG/MinIO/Redis/NATS)，不部署自己的 infra。
-# 开发机 IP 默认 192.168.31.204，改这里即可。
+# prod overlay: 生产环境 infra(PG/MinIO/Redis/NATS) 部署在 k3s 集群内（同 namespace）。
 # 流量入口: traefik IngressRoute(:80) → 按 path 路由到各服务
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
@@ -9,7 +8,7 @@ resources:
   - ../../base
 
 patches:
-  # ConfigMap 指向开发机的基础设施（有数据的那套）
+  # ConfigMap 指向集群内基础设施（k8s service 短名）
   - target: {kind: ConfigMap, name: mybilibili-config}
     patch: |-
       apiVersion: v1
@@ -17,10 +16,10 @@ patches:
       metadata:
         name: mybilibili-config
       data:
-        PG_DSN: "postgres://postgres:postgres@192.168.31.204:5432/mybilibili?sslmode=disable"
-        REDIS_ADDR: "192.168.31.204:6379"
-        NATS_URL: "nats://192.168.31.204:4222"
-        MINIO_ENDPOINT: "http://192.168.31.204:9000"
+        PG_DSN: "postgres://postgres:postgres@postgres:5432/mybilibili?sslmode=disable"
+        REDIS_ADDR: "redis:6379"
+        NATS_URL: "nats://nats:4222"
+        MINIO_ENDPOINT: "http://minio:9000"
         TRANSCODER_ADDR: "http://192.168.31.225:8092"
         LIVE_SERVICE_ADDR: "live:8087"
 
