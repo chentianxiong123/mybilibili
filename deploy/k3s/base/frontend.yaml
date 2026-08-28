@@ -12,7 +12,7 @@ spec:
       containers:
         - name: web
           image: ghcr.io/chentianxiong123/mybilibili-web:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           env:
             - {name: NITRO_PORT, value: "3200"}
           ports: [{containerPort: 3200}]
@@ -37,10 +37,7 @@ spec:
       containers:
         - name: admin
           image: ghcr.io/chentianxiong123/mybilibili-admin:latest
-          imagePullPolicy: Always
-          env:
-            - {name: CORE_ADDR, value: "core:8080"}
-            - {name: AI_ADDR, value: "ai:8088"}
+          imagePullPolicy: IfNotPresent
           ports: [{containerPort: 3100}]
 ---
 apiVersion: v1

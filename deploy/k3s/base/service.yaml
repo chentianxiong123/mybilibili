@@ -1,4 +1,4 @@
-# 后端 ClusterIP Service（供 core 反代 + 前端 nginx 反代使用）
+# Service：每个服务暴露 HTTP + gRPC 双端口，traefik 按 path 路由 HTTP，core 走 gRPC 调下游
 ---
 apiVersion: v1
 kind: Service
@@ -7,6 +7,7 @@ spec:
   selector: {app: core}
   ports:
     - {name: http, port: 8080, targetPort: 8080}
+    - {name: grpc, port: 9090, targetPort: 9090}
 ---
 apiVersion: v1
 kind: Service
@@ -14,6 +15,7 @@ metadata: {name: search, namespace: mybilibili}
 spec:
   selector: {app: search}
   ports:
+    - {name: http, port: 8084, targetPort: 8084}
     - {name: grpc, port: 9084, targetPort: 9084}
 ---
 apiVersion: v1
@@ -22,6 +24,7 @@ metadata: {name: msg-danmaku, namespace: mybilibili}
 spec:
   selector: {app: msg-danmaku}
   ports:
+    - {name: http, port: 8086, targetPort: 8086}
     - {name: grpc, port: 9086, targetPort: 9086}
 ---
 apiVersion: v1
@@ -38,6 +41,7 @@ metadata: {name: ai, namespace: mybilibili}
 spec:
   selector: {app: ai}
   ports:
+    - {name: http, port: 8088, targetPort: 8088}
     - {name: grpc, port: 9088, targetPort: 9088}
 ---
 apiVersion: v1
@@ -47,14 +51,6 @@ spec:
   selector: {app: studio}
   ports:
     - {name: http, port: 8089, targetPort: 8089}
----
-apiVersion: v1
-kind: Service
-metadata: {name: work, namespace: mybilibili}
-spec:
-  selector: {app: work}
-  ports:
-    - {name: http, port: 8082, targetPort: 8082}
 ---
 apiVersion: v1
 kind: Service

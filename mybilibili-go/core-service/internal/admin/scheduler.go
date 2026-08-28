@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -65,7 +66,11 @@ func (s *Scheduler) runTask(ctx context.Context, t *ScheduledTask) {
 	case "hot_search_cleanup":
 		// Call search-service hot cleanup endpoint
 		client := &http.Client{Timeout: 10 * time.Second}
-		url := "http://localhost:8084/api/v1/search/hot/clean-expired"
+		searchAddr := os.Getenv("SEARCH_SERVICE_ADDR")
+		if searchAddr == "" {
+			searchAddr = "localhost:8084"
+		}
+		url := "http://" + searchAddr + "/api/v1/search/hot/clean-expired"
 		resp, err := client.Post(url, "application/json", nil)
 		if err != nil {
 			result = "failed"
