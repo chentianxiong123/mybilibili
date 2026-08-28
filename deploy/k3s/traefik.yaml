@@ -225,8 +225,8 @@ apiVersion: v1
 kind: Service
 metadata: {name: traefik, namespace: kube-system}
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector: {app: traefik}
   ports:
-    - {name: web, port: 80, targetPort: 80}
-    - {name: websecure, port: 443, targetPort: 443}
+    - {name: web, port: 80, targetPort: 80, nodePort: 31418}
+    - {name: websecure, port: 443, targetPort: 443, nodePort: 31419}
