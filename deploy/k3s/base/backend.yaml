@@ -13,7 +13,7 @@ spec:
       containers:
         - name: core
           image: ghcr.io/chentianxiong123/mybilibili-core:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           envFrom:
             - configMapRef: {name: mybilibili-config}
             - secretRef: {name: mybilibili-secret}
@@ -39,7 +39,7 @@ spec:
       containers:
         - name: search
           image: ghcr.io/chentianxiong123/mybilibili-search:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           envFrom:
             - configMapRef: {name: mybilibili-config}
             - secretRef: {name: mybilibili-secret}
@@ -65,7 +65,7 @@ spec:
       containers:
         - name: msg-danmaku
           image: ghcr.io/chentianxiong123/mybilibili-msg-danmaku:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           envFrom:
             - configMapRef: {name: mybilibili-config}
             - secretRef: {name: mybilibili-secret}
@@ -91,7 +91,7 @@ spec:
       containers:
         - name: live
           image: ghcr.io/chentianxiong123/mybilibili-live:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           envFrom:
             - configMapRef: {name: mybilibili-config}
             - secretRef: {name: mybilibili-secret}
@@ -116,7 +116,7 @@ spec:
       containers:
         - name: ai
           image: ghcr.io/chentianxiong123/mybilibili-ai:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           envFrom:
             - configMapRef: {name: mybilibili-config}
             - secretRef: {name: mybilibili-secret}
@@ -142,7 +142,7 @@ spec:
       containers:
         - name: studio
           image: ghcr.io/chentianxiong123/mybilibili-studio:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           envFrom:
             - configMapRef: {name: mybilibili-config}
             - secretRef: {name: mybilibili-secret}
@@ -171,7 +171,7 @@ spec:
       containers:
         - name: work
           image: ghcr.io/chentianxiong123/mybilibili-work:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           envFrom:
             - configMapRef: {name: mybilibili-config}
             - secretRef: {name: mybilibili-secret}
@@ -201,7 +201,7 @@ spec:
       containers:
         - name: bili
           image: ghcr.io/chentianxiong123/mybilibili-bili:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           envFrom:
             - configMapRef: {name: mybilibili-config}
             - secretRef: {name: mybilibili-secret}
