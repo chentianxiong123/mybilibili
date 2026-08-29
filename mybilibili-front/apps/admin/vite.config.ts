@@ -43,43 +43,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 3100,
-    proxy: {
-      '/api/v1/search/history': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
-      },
-      '/api/v1/search/': {
-        target: 'http://localhost:8084',
-        changeOrigin: true
-      },
-      '/api/v1/recommend/': {
-        target: 'http://localhost:8084',
-        changeOrigin: true
-      },
-      '/api/v1/ai': {
-        target: 'http://localhost:8088',
-        changeOrigin: true
-      },
-      '/api/v1/subtitle': {
-        target: 'http://localhost:8088',
-        changeOrigin: true
-      },
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
-      },
-      '/uploads': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
-      },
-      '/covers': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
-      },
-      '/videos': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
-      }
-    }
+    // dev 不再需要 proxy：前端代码 baseURL 直连 localhost:80 (traefik)，
+    // 与生产 IngressRoute 路由规则完全一致
   }
 })

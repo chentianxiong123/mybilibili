@@ -10,10 +10,15 @@ import {
   clearAdminSession
 } from '../utils/auth'
 
+// dev: 打开发机 traefik (localhost:80)；生产: 相对路径（同源，走 ingress traefik）
+// 注：使用 server-side 直接用浏览器域名（SSR 不能访问容器名）
+const DEV_API_BASE = 'http://localhost:80/api/v1'
 const api = axios.create({
   baseURL: process.server
-    ? `http://localhost:${process.env.NITRO_PORT || 3200}/api/v1`
-    : '/api/v1',
+    ? (process.env.NODE_ENV === 'production'
+        ? `http://mybilibili-traefik:80/api/v1`  // SSR 生产容器内（k3s pod-to-pod 不需要）
+        : 'http://localhost:80/api/v1')          // SSR 开发（前端裸跑，发到宿主 80）
+    : (import.meta.dev ? DEV_API_BASE : '/api/v1'),
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true

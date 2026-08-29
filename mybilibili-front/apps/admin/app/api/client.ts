@@ -10,8 +10,9 @@ import {
   clearAdminSession
 } from '../utils/auth'
 
+// dev: 走 traefik (localhost:80)；生产: 相对路径（同源走 ingress）
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: import.meta.env.DEV ? 'http://localhost:80/api/v1' : '/api/v1',
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true
