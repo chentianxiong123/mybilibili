@@ -47,7 +47,7 @@ bin_of() {
 
 infra_up() {
     docker network inspect mylib >/dev/null 2>&1 || docker network create mylib
-    docker compose -f "$ROOT/infra-compose.yml" up -d
+    docker compose -f "$ROOT/deploy/docker-compose.yml" up -d
     echo -n "等待 PostgreSQL 就绪 "
     until docker exec pg16 pg_isready -U postgres -d mybilibili >/dev/null 2>&1; do
         sleep 1; echo -n .

@@ -10,8 +10,10 @@ import {
   clearAdminSession
 } from '../utils/auth'
 
+// CSR(浏览器): 相对路径 → 走 traefik 80 (统一入口)
+// SSR(服务器, 容器内): 直接访问 core 容器 (docker 与 k8s 服务名通用)
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: process.server ? 'http://core:8080/api/v1' : '/api/v1',
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true
