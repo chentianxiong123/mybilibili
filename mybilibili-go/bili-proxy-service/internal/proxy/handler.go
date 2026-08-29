@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -35,11 +36,18 @@ func NewHandler(db *sql.DB, client *bilibili.Client) *Handler {
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/v1/bili/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
 	})
+	mux.HandleFunc("/api/v1/bili/stream/", h.handleStream)
+	mux.HandleFunc("/api/v1/bili/resolve/", h.handleResolve)
+	// 兼容旧路径（生产可能仍直连 8091 不走 traefik）
 	mux.HandleFunc("/stream/", h.handleStream)
 	mux.HandleFunc("/resolve/", h.handleResolve)
+}
+
+func stripPrefix(p, prefix string) string {
+	return strings.TrimPrefix(p, prefix)
 }
 
 // videoRow 记录 B 站外部视频的解析所需字段。
@@ -65,7 +73,10 @@ func (h *Handler) loadVideo(r *http.Request, videoID int64) (*videoRow, error) {
 }
 
 func (h *Handler) handleResolve(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(r.URL.Path[len("/resolve/"):], 10, 64)
+	id, err := strconv.ParseInt(stripPrefix(r.URL.Path, "/api/v1/bili/resolve/"), 10, 64)
+	if id == 0 {
+		id, err = strconv.ParseInt(stripPrefix(r.URL.Path, "/resolve/"), 10, 64)
+	}
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid video id")
 		return
@@ -96,7 +107,10 @@ func (h *Handler) handleResolve(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleStream(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(r.URL.Path[len("/stream/"):], 10, 64)
+	id, err := strconv.ParseInt(stripPrefix(r.URL.Path, "/api/v1/bili/stream/"), 10, 64)
+	if id == 0 {
+		id, err = strconv.ParseInt(stripPrefix(r.URL.Path, "/stream/"), 10, 64)
+	}
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid video id")
 		return
