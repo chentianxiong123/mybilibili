@@ -40,6 +40,7 @@ services:
       - "traefik.http.routers.core.rule=Host(`localhost`) && (PathPrefix(`/api/v1`) || PathPrefix(`/uploads`) || PathPrefix(`/covers`) || PathPrefix(`/videos`))"
       - "traefik.http.routers.core.entrypoints=web"
       - "traefik.http.services.core.loadbalancer.server.port=8080"
+      - "traefik.http.routers.core.priority=50"
       - "traefik.http.routers.core.middlewares=devcors@docker"
     depends_on:
       pg16: {condition: service_started}
@@ -63,7 +64,7 @@ services:
     ports: ["8084:8084"]
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.search.rule=Host(`localhost`) && PathPrefix(`/api/v1/search`)"
+      - "traefik.http.routers.search.rule=Host(`localhost`) && (PathPrefix(`/api/v1/search`) || PathPrefix(`/api/v1/recommend`))"
       - "traefik.http.routers.search.entrypoints=web"
       - "traefik.http.services.search.loadbalancer.server.port=8084"
       - "traefik.http.routers.search.priority=100"
