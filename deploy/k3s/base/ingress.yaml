@@ -85,6 +85,12 @@ spec:
       priority: 15
       services: [{name: studio, port: 8089}]
       middlewares: [{name: rate-limit}, {name: security-headers}]
+    # B站代理 → bili
+    - match: PathPrefix(`/api/v1/bili/`)
+      kind: Rule
+      priority: 15
+      services: [{name: bili, port: 8091}]
+      middlewares: [{name: rate-limit}, {name: security-headers}]
     # SSE 推送
     - match: PathPrefix(`/sse/`)
       kind: Rule

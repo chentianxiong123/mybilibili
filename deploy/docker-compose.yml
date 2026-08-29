@@ -1,26 +1,111 @@
-# ====== mybilibili 后端服务编排（8 个 Go 服务 + 基础设施）======
-# 本文件通过 include 引入根目录 infra-compose.yml 的基础设施（pg/redis/minio/nats），
-# 因此 docker compose -f deploy/docker-compose.yml up -d --build 一条命令即可全栈启动。
-#
-# 用法:
-#   docker compose -f deploy/docker-compose.yml up -d --build  # 构建并起全部
-#   docker compose -f deploy/docker-compose.yml up -d          # 用已有镜像起
-#   docker compose -f deploy/docker-compose.yml down           # 停全部
-#   或 scripts/backend.sh docker up / docker down
-#
-# 前端（web/admin）开发时仍 bun dev 裸跑，不在此编排。
-# web 用 nuxt routeRules proxy，admin 用 vite server.proxy，转发到下面这些端口。
+# ====== mybilibili 全栈单组编排（前端 + 后端 8 服务 + 基础设施 + traefik）======
+# 一键全起:
+#   docker compose -f deploy/docker-compose.yml up -d --build
+# 架构（与部署机 fnos k3s IngressRoute 完全对齐）:
+#   浏览器 → http://localhost:80 (traefik) → path 路由 → 具体服务
+#   - 后端 8 服务: docker provider labels 定义路由
+#   - 前端 web/admin/wap: 容器化运行 dev 进程, 由 traefik 按 path 路由
+#   - 基础设施: pg/redis/minio/nats 同组
+# 路由表:
+#   /admin/*            → admin:3100      (Vite SPA)
+#   /wap/*              → wap:5174        (Vite SPA)
+#   /api/v1/search/*    → search:8084
+#   /api/v1/recommend/* → search:8084
+#   /api/v1/danmaku/*   → msg-danmaku:8086
+#   /api/v1/message/*   → msg-danmaku:8086
+#   /api/v1/live/*      → live:8087
+#   /api/v1/ai/*        → ai:8088
+#   /api/v1/subtitle/*  → ai:8088
+#   /api/v1/studio/*    → studio:8089
+#   /api/v1/bili/*      → bili:8091
+#   /api/v1/* (default) → core:8080
+#   /uploads /covers /videos → core:8080
+#   /sse/*              → core:8080
+#   /ws/*               → live:8087
+#   /                   → web:3200       (Nuxt SSR, default catch-all)
 
-include:
-  - path: ../infra-compose.yml
-
-# 统一构建配置：所有 Go 服务共用 mybilibili-go/Dockerfile，通过 SERVICE build-arg 区分。
-# x- 为 compose 扩展字段，不产生服务，仅用于 YAML 锚点复用。
+# 统一 Go 构建配置: 所有服务共用 mybilibili-go/Dockerfile, 通过 SERVICE build-arg 区分。
 x-go-build: &go-build
   context: ../mybilibili-go
   dockerfile: Dockerfile
 
 services:
+  # ================= 统一入口 =================
+  traefik:
+    image: traefik:v3.1
+    container_name: mybilibili-traefik
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.traefik.address=:8082"
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--accesslog=true"
+      - "--log.level=WARN"
+    ports:
+      - "80:80"
+      - "8082:8082"  # traefik dashboard (仅 dev)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [mylib]
+
+  # ================= 基础设施 =================
+  pg16:
+    image: pg16-zhparser
+    container_name: pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mybilibili
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg16-data:/var/lib/postgresql/data
+      - ./mybilibili-go/sql:/docker-entrypoint-initdb.d:ro
+    networks: [mylib]
+
+  mybilibili-redis:
+    image: redis:7-alpine
+    container_name: mybilibili-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", ""]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks: [mylib]
+
+  mybilibili-minio:
+    image: minio/minio:latest
+    container_name: mybilibili-minio
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    networks: [mylib]
+
+  nats:
+    image: nats:latest
+    container_name: nats
+    restart: unless-stopped
+    command: ["-js", "--store_dir=/data"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats-data:/data
+    networks: [mylib]
+
+  # ================= 后端 8 服务 =================
   core:
     image: mybilibili-core:latest
     build:
@@ -34,7 +119,13 @@ services:
       - HTTP_ADDR=:8080
       - GRPC_ADDR=:9090
     ports:
-      - "8080:8080"
+      - "8080:8080"   # 本地直连 debug（绕过 traefik）
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.core.entrypoints=web"
+      - "traefik.http.routers.core.rule=Host(`localhost`) && (PathPrefix(`/api/v1/`) || PathPrefix(`/uploads/`) || PathPrefix(`/covers/`) || PathPrefix(`/videos/`) || PathPrefix(`/sse/`))"
+      - "traefik.http.services.core.loadbalancer.server.port=8080"
+      - "traefik.http.routers.core.priority=5"
     depends_on:
       pg16: {condition: service_started}
       mybilibili-redis: {condition: service_started}
@@ -55,6 +146,12 @@ services:
       - HTTP_ADDR=:8084
       - GRPC_ADDR=:9084
     ports: ["8084:8084"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.search.entrypoints=web"
+      - "traefik.http.routers.search.rule=Host(`localhost`) && (PathPrefix(`/api/v1/search/`) || PathPrefix(`/api/v1/recommend/`) || PathPrefix(`/api/v1/creator/stats/`) || PathPrefix(`/api/v1/profile/`))"
+      - "traefik.http.services.search.loadbalancer.server.port=8084"
+      - "traefik.http.routers.search.priority=10"
     depends_on:
       pg16: {condition: service_started}
     networks: [mylib]
@@ -72,6 +169,12 @@ services:
       - HTTP_ADDR=:8086
       - GRPC_ADDR=:9086
     ports: ["8086:8086"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.msg.entrypoints=web"
+      - "traefik.http.routers.msg.rule=Host(`localhost`) && (PathPrefix(`/api/v1/danmaku/`) || PathPrefix(`/api/v1/message/`))"
+      - "traefik.http.services.msg.loadbalancer.server.port=8086"
+      - "traefik.http.routers.msg.priority=10"
     depends_on:
       pg16: {condition: service_started}
       mybilibili-redis: {condition: service_started}
@@ -89,6 +192,12 @@ services:
     environment:
       - HTTP_ADDR=:8087
     ports: ["8087:8087"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.live.entrypoints=web"
+      - "traefik.http.routers.live.rule=Host(`localhost`) && (PathPrefix(`/api/v1/live/`) || PathPrefix(`/ws/`))"
+      - "traefik.http.services.live.loadbalancer.server.port=8087"
+      - "traefik.http.routers.live.priority=10"
     depends_on:
       pg16: {condition: service_started}
     networks: [mylib]
@@ -106,6 +215,12 @@ services:
       - HTTP_ADDR=:8088
       - GRPC_ADDR=:9088
     ports: ["8088:8088"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ai.entrypoints=web"
+      - "traefik.http.routers.ai.rule=Host(`localhost`) && (PathPrefix(`/api/v1/ai/`) || PathPrefix(`/api/v1/subtitle/`))"
+      - "traefik.http.services.ai.loadbalancer.server.port=8088"
+      - "traefik.http.routers.ai.priority=10"
     depends_on:
       pg16: {condition: service_started}
       mybilibili-minio: {condition: service_started}
@@ -123,6 +238,12 @@ services:
     environment:
       - HTTP_ADDR=:8089
     ports: ["8089:8089"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.studio.entrypoints=web"
+      - "traefik.http.routers.studio.rule=Host(`localhost`) && (PathPrefix(`/api/v1/studio/`) || PathPrefix(`/assets/studio/`))"
+      - "traefik.http.services.studio.loadbalancer.server.port=8089"
+      - "traefik.http.routers.studio.priority=10"
     volumes:
       - studio-data:/data/studio
     depends_on:
@@ -139,6 +260,7 @@ services:
     restart: unless-stopped
     env_file: [".env"]
     environment:
+      # transcoder 裸跑宿主机（mylib 网关 172.18.0.1），work 容器经网关调用
       - TRANSCODER_ADDR=http://172.18.0.1:8092
       - AI_ADDR=http://mybilibili-ai:8088
     volumes:
@@ -161,11 +283,90 @@ services:
     environment:
       - LISTEN=:8091
     ports: ["8091:8091"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bili.entrypoints=web"
+      - "traefik.http.routers.bili.rule=Host(`localhost`) && PathPrefix(`/api/v1/bili/`)"
+      - "traefik.http.services.bili.loadbalancer.server.port=8091"
+      - "traefik.http.routers.bili.priority=10"
     depends_on:
       pg16: {condition: service_started}
     networks: [mylib]
 
+  # ================= 前端 3 服务（容器化 dev，挂源码 + HMR）================
+  # 改代码: 编辑宿主 ./mybilibili-front 或 ./mybilibili-wap → 容器 volume 同步 → Vite/Nuxt HMR 自动刷新
+  web:
+    image: oven/bun:1-alpine
+    container_name: mybilibili-web
+    restart: unless-stopped
+    working_dir: /app/apps/web
+    command: ["sh", "-c", "test -d node_modules || bun install; bun run dev"]
+    environment:
+      - NITRO_PORT=3200
+      - HOST=0.0.0.0
+    volumes:
+      - ../mybilibili-front:/app
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.web.entrypoints=web"
+      - "traefik.http.routers.web.rule=Host(`localhost`) && PathPrefix(`/`) && !PathPrefix(`/api/`) && !PathPrefix(`/admin/`) && !PathPrefix(`/wap/`) && !PathPrefix(`/uploads/`) && !PathPrefix(`/covers/`) && !PathPrefix(`/videos/`) && !PathPrefix(`/sse/`) && !PathPrefix(`/ws/`)"
+      - "traefik.http.services.web.loadbalancer.server.port=3200"
+      - "traefik.http.routers.web.priority=1"
+    depends_on:
+      core: {condition: service_started}
+    networks: [mylib]
+
+  admin:
+    image: oven/bun:1-alpine
+    container_name: mybilibili-admin
+    restart: unless-stopped
+    working_dir: /app/apps/admin
+    command: ["sh", "-c", "test -d node_modules || bun install; bun run dev"]
+    environment:
+      - HOST=0.0.0.0
+    volumes:
+      - ../mybilibili-front:/app
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.admin.entrypoints=web"
+      - "traefik.http.routers.admin.rule=Host(`localhost`) && PathPrefix(`/admin/`)"
+      - "traefik.http.services.admin.loadbalancer.server.port=3100"
+      - "traefik.http.routers.admin.priority=10"
+    depends_on:
+      core: {condition: service_started}
+    networks: [mylib]
+
+  wap:
+    image: node:26-alpine
+    container_name: mybilibili-wap
+    restart: unless-stopped
+    working_dir: /app
+    command: ["sh", "-c", "npm i -g pnpm@11 --silent; test -d node_modules || pnpm install; pnpm dev"]
+    environment:
+      - HOST=0.0.0.0
+    volumes:
+      - ../mybilibili-wap:/app
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wap.entrypoints=web"
+      - "traefik.http.routers.wap.rule=Host(`localhost`) && PathPrefix(`/wap/`)"
+      - "traefik.http.services.wap.loadbalancer.server.port=5174"
+      - "traefik.http.routers.wap.priority=10"
+    depends_on:
+      core: {condition: service_started}
+    networks: [mylib]
+
 volumes:
+  pg16-data:
+    external: true
+    name: pg16-data
+  redis-data:
+  minio-data:
+    external: true
+    name: minio-data
+  nats-data:
+    external: true
+    name: deploy_nats-data
   studio-data:
   work-tmp:
 

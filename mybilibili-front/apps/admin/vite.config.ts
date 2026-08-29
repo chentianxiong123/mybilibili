@@ -43,21 +43,5 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 3100,
-    // dev server 反代到具体后端端口（与生产 IngressRoute 一一对应）
-    proxy: {
-      '/api/v1/search':   { target: 'http://localhost:8084', changeOrigin: true },
-      '/api/v1/recommend': { target: 'http://localhost:8084', changeOrigin: true },
-      '/api/v1/ai':       { target: 'http://localhost:8088', changeOrigin: true },
-      '/api/v1/subtitle':  { target: 'http://localhost:8088', changeOrigin: true },
-      '/api/v1/danmaku':  { target: 'http://localhost:8086', changeOrigin: true },
-      '/api/v1/message':  { target: 'http://localhost:8086', changeOrigin: true },
-      '/api/v1/live':     { target: 'http://localhost:8087', changeOrigin: true },
-      '/api/v1/bili':     { target: 'http://localhost:8091', changeOrigin: true },
-      '/api/v1/studio':   { target: 'http://localhost:8089', changeOrigin: true },
-      '/api/v1':          { target: 'http://localhost:8080', changeOrigin: true },
-      '/uploads':         { target: 'http://localhost:8080', changeOrigin: true },
-      '/covers':          { target: 'http://localhost:8080', changeOrigin: true },
-      '/videos':          { target: 'http://localhost:8080', changeOrigin: true },
-    }
   }
 })
