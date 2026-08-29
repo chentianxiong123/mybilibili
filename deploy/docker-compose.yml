@@ -40,6 +40,7 @@ services:
       - "traefik.http.routers.core.rule=Host(`localhost`) && (PathPrefix(`/api/v1`) || PathPrefix(`/uploads`) || PathPrefix(`/covers`) || PathPrefix(`/videos`))"
       - "traefik.http.routers.core.entrypoints=web"
       - "traefik.http.services.core.loadbalancer.server.port=8080"
+      - "traefik.http.routers.core.middlewares=devcors@docker"
     depends_on:
       pg16: {condition: service_started}
       mybilibili-redis: {condition: service_started}
@@ -65,8 +66,8 @@ services:
       - "traefik.http.routers.search.rule=Host(`localhost`) && PathPrefix(`/api/v1/search`)"
       - "traefik.http.routers.search.entrypoints=web"
       - "traefik.http.services.search.loadbalancer.server.port=8084"
-      # 优先级高于 core
       - "traefik.http.routers.search.priority=100"
+      - "traefik.http.routers.search.middlewares=devcors@docker"
     depends_on:
       pg16: {condition: service_started}
     networks: [mylib]
@@ -90,6 +91,7 @@ services:
       - "traefik.http.routers.msg.entrypoints=web"
       - "traefik.http.services.msg.loadbalancer.server.port=8086"
       - "traefik.http.routers.msg.priority=100"
+      - "traefik.http.routers.msg.middlewares=devcors@docker"
     depends_on:
       pg16: {condition: service_started}
       mybilibili-redis: {condition: service_started}
@@ -113,6 +115,7 @@ services:
       - "traefik.http.routers.live.entrypoints=web"
       - "traefik.http.services.live.loadbalancer.server.port=8087"
       - "traefik.http.routers.live.priority=100"
+      - "traefik.http.routers.live.middlewares=devcors@docker"
     depends_on:
       pg16: {condition: service_started}
     networks: [mylib]
@@ -136,6 +139,7 @@ services:
       - "traefik.http.routers.ai.entrypoints=web"
       - "traefik.http.services.ai.loadbalancer.server.port=8088"
       - "traefik.http.routers.ai.priority=100"
+      - "traefik.http.routers.ai.middlewares=devcors@docker"
     depends_on:
       pg16: {condition: service_started}
       mybilibili-minio: {condition: service_started}
@@ -159,6 +163,7 @@ services:
       - "traefik.http.routers.studio.entrypoints=web"
       - "traefik.http.services.studio.loadbalancer.server.port=8089"
       - "traefik.http.routers.studio.priority=100"
+      - "traefik.http.routers.studio.middlewares=devcors@docker"
     volumes:
       - studio-data:/data/studio
     depends_on:
@@ -203,6 +208,7 @@ services:
       - "traefik.http.routers.bili.entrypoints=web"
       - "traefik.http.services.bili.loadbalancer.server.port=8091"
       - "traefik.http.routers.bili.priority=100"
+      - "traefik.http.routers.bili.middlewares=devcors@docker"
     depends_on:
       pg16: {condition: service_started}
     networks: [mylib]
