@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { dynamicApi } from '@/api/dynamic.ts'
 import { ElMessage } from 'element-plus'
+import { hasAuthSession } from '@/utils/auth'
 
 const router = useRouter()
 
@@ -83,6 +84,8 @@ const handleViewAll = () => {
 }
 
 onMounted(() => {
+  // 未登录不请求关注动态（后端会返回 401）
+  if (!hasAuthSession()) return
   fetchDynamics()
 })
 </script>
