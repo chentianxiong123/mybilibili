@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Clock } from '@element-plus/icons-vue'
 import { watchHistoryApi } from '../../../api/watchHistory.ts'
+import { hasAuthSession } from '../../../utils/auth'
 
 const router = useRouter()
 
@@ -130,6 +131,8 @@ const handleVideoClick = (video) => {
 }
 
 onMounted(() => {
+  // 未登录不请求历史接口（后端会返回 401）
+  if (!hasAuthSession()) return
   loadHistory()
 })
 </script>
