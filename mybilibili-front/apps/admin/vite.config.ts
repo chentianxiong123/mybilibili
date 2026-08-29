@@ -43,7 +43,12 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 3100,
-    // dev 不再需要 proxy：前端代码 baseURL 直连 localhost:80 (traefik)，
-    // 与生产 IngressRoute 路由规则完全一致
+    // 前端 CSR 静态资源走 vite dev proxy，避免跨端口到 traefik 80
+    // /api/v1 由前端 baseURL 直连 traefik (与生产同源模式一致)
+    proxy: {
+      '/uploads': { target: 'http://localhost:80', changeOrigin: true },
+      '/covers':  { target: 'http://localhost:80', changeOrigin: true },
+      '/videos':  { target: 'http://localhost:80', changeOrigin: true },
+    }
   }
 })
