@@ -1,44 +1,4 @@
 services:
-  # ====== 反向代理（统一入口：localhost:80）======
-  # 前端裸跑 (3200/3100) + 后端 compose 全走 traefik，对齐生产 k3s 架构
-  # 路由规则：
-  #   /api/v1/search/*  -> search:8084
-  #   /api/v1/ai, /api/v1/subtitle -> ai:8088
-  #   /api/v1/danmaku, /api/v1/message -> msg-danmaku:8086
-  #   /api/v1/live      -> live:8087
-  #   /api/v1/bili      -> bili:8091
-  #   /api/v1/studio    -> studio:8089
-  #   其他 /api/v1      -> core:8080
-  #   /uploads, /covers, /videos -> core (静态资源)
-  traefik:
-    image: traefik:v3.1
-    container_name: mybilibili-traefik
-    restart: unless-stopped
-    command:
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.traefik.address=:8082"
-      - "--api.insecure=true"
-      - "--api.dashboard=true"
-      - "--accesslog=true"
-      - "--log.level=WARN"
-    ports:
-      - "80:80"
-      - "8082:8082"  # traefik dashboard & debug api (仅 dev)
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - mylib
-    # 开发期 CORS（前端裸跑 3200/3100 → 后端 80，跨端口）
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.middlewares.devcors.headers.accessControlAllowOriginList=http://localhost:3100,http://localhost:3200"
-      - "traefik.http.middlewares.devcors.headers.accessControlAllowMethods=GET,POST,PUT,DELETE,OPTIONS,PATCH"
-      - "traefik.http.middlewares.devcors.headers.accessControlAllowHeaders=Content-Type,Authorization,X-Requested-With"
-      - "traefik.http.middlewares.devcors.headers.accessControlAllowCredentials=true"
-      - "traefik.http.middlewares.devcors.headers.accessControlMaxAge=3600"
-
   pg16:
     image: pg16-zhparser
     container_name: pg16
