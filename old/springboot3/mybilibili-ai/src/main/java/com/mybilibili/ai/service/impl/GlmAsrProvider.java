@@ -1,0 +1,122 @@
+package com.mybilibili.ai.service.impl;
+
+import com.mybilibili.ai.entity.AiApiConfig;
+import com.mybilibili.ai.service.AiApiConfigService;
+import com.mybilibili.ai.service.SttProvider;
+import com.mybilibili.ai.service.SttProvider.TranscribeRequest;
+import com.mybilibili.ai.util.AiUsageLogger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import org.springframework.http.*;
+import org.springframework.web.client.RestTemplate;
+
+import java.io.File;
+import java.util.Date;
+
+/**
+ * 智谱 ASR (glm-asr) 语音转文字提供者。
+ * 使用小水管 API 平台的 /v1/audio/transcriptions 接口。
+ */
+@Component
+public class GlmAsrProvider implements SttProvider {
+
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    @Autowired(required = false)
+    private AiApiConfigService aiApiConfigService;
+
+    @Autowired(required = false)
+    private AiUsageLogger aiUsageLogger;
+
+    private volatile AiApiConfig activeConfig;
+
+    @Override
+    public String getName() {
+        return "glm-asr";
+    }
+
+    @Override
+    public boolean isAvailable() {
+        loadConfig();
+        return activeConfig != null && activeConfig.getEnabled();
+    }
+
+    private void loadConfig() {
+        if (activeConfig != null) return;
+        if (aiApiConfigService == null) return;
+        activeConfig = aiApiConfigService.getConfigForFeature("TRANSCRIBE");
+    }
+
+    @Override
+    public Object invoke(TranscribeRequest request) {
+        return transcribe(request.getAudioPath(), request.getLanguage());
+    }
+
+    /**
+     * 调用智谱 ASR API
+     */
+    public String transcribe(String audioPath, String language) {
+        long start = System.currentTimeMillis();
+        try {
+            loadConfig();
+
+            File audioFile = new File(audioPath);
+            if (!audioFile.exists()) {
+                System.err.println("[GlmAsr] 音频文件不存在: " + audioPath);
+                return null;
+            }
+
+            String baseUrl;
+            String apiKey;
+            String model;
+            if (activeConfig != null) {
+                baseUrl = activeConfig.getBaseUrl() != null ? activeConfig.getBaseUrl() : "";
+                apiKey = activeConfig.getApiKey() != null ? activeConfig.getApiKey() : "";
+                model = activeConfig.getModel() != null ? activeConfig.getModel() : "glm-asr";
+            } else {
+                System.err.println("[GlmAsr] 未找到 TRANSCRIBE 渠道配置");
+                return null;
+            }
+
+            org.springframework.util.MultiValueMap<String, Object> form =
+                    new org.springframework.util.LinkedMultiValueMap<>();
+            form.add("file", new org.springframework.core.io.FileSystemResource(audioFile));
+            form.add("model", model);
+            if (language != null) {
+                form.add("language", language);
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            headers.set("Authorization", "Bearer " + apiKey);
+
+            HttpEntity<org.springframework.util.MultiValueMap<String, Object>> entity =
+                    new HttpEntity<>(form, headers);
+
+            ResponseEntity<java.util.Map> response = restTemplate.exchange(
+                    baseUrl + "/v1/audio/transcriptions",
+                    HttpMethod.POST,
+                    entity,
+                    java.util.Map.class
+            );
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                String text = (String) response.getBody().get("text");
+                if (aiUsageLogger != null) {
+                    aiUsageLogger.log("TRANSCRIBE", model, null, null, System.currentTimeMillis() - start, true, null);
+                }
+                return text;
+            }
+            if (aiUsageLogger != null) {
+                aiUsageLogger.log("TRANSCRIBE", model, null, null, System.currentTimeMillis() - start, false, "empty response");
+            }
+            return null;
+        } catch (Exception e) {
+            System.err.println("[GlmAsr] 转写异常: " + e.getMessage());
+            if (aiUsageLogger != null) {
+                aiUsageLogger.log("TRANSCRIBE", "glm-asr", null, null, System.currentTimeMillis() - start, false, e.getMessage());
+            }
+            return null;
+        }
+    }
+}
