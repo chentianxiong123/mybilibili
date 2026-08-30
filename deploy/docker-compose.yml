@@ -1,7 +1,8 @@
 # ====== mybilibili 全栈单组编排（前端 + 后端 8 服务 + 基础设施 + traefik）======
 # 一键全起:
 #   docker compose -f deploy/docker-compose.yml up -d --build
-# 架构: 浏览器 → http://localhost:80 (traefik) → path 路由 → 具体服务
+# 架构（与部署机 fnos k3s IngressRoute 完全对齐）:
+#   浏览器 → http://localhost:80 (traefik) → path 路由 → 具体服务
 #   - 后端 8 服务: docker provider labels 定义路由
 #   - 前端 web/admin/wap: 容器化运行 dev 进程, 由 traefik 按 path 路由
 #   - 基础设施: pg/redis/minio/nats 同组

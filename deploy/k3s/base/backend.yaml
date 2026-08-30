@@ -1,0 +1,215 @@
+# 后端 8 服务 Deployment（镜像来自 GHCR，transcoder 不部署=裸跑宿主机）
+# 公共环境变量通过 envFrom 注入 ConfigMap/Secret。
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: core, namespace: mybilibili}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: core}}
+  template:
+    metadata: {labels: {app: core}}
+    spec:
+      containers:
+        - name: core
+          image: ghcr.io/chentianxiong123/mybilibili-core:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef: {name: mybilibili-config}
+            - secretRef: {name: mybilibili-secret}
+          env:
+            - {name: HTTP_ADDR, value: ":8080"}
+            - {name: GRPC_ADDR, value: ":9090"}
+          ports: [{containerPort: 8080}]
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          readinessProbe: {httpGet: {path: /api/v1/health, port: 8080}, initialDelaySeconds: 5, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /api/v1/health, port: 8080}, initialDelaySeconds: 15, periodSeconds: 20}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: search, namespace: mybilibili}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: search}}
+  template:
+    metadata: {labels: {app: search}}
+    spec:
+      containers:
+        - name: search
+          image: ghcr.io/chentianxiong123/mybilibili-search:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef: {name: mybilibili-config}
+            - secretRef: {name: mybilibili-secret}
+          env:
+            - {name: HTTP_ADDR, value: ":8084"}
+            - {name: GRPC_ADDR, value: ":9084"}
+          ports: [{containerPort: 8084}]
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          readinessProbe: {httpGet: {path: /api/v1/health, port: 8084}, initialDelaySeconds: 5, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /api/v1/health, port: 8084}, initialDelaySeconds: 15, periodSeconds: 20}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: msg-danmaku, namespace: mybilibili}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: msg-danmaku}}
+  template:
+    metadata: {labels: {app: msg-danmaku}}
+    spec:
+      containers:
+        - name: msg-danmaku
+          image: ghcr.io/chentianxiong123/mybilibili-msg-danmaku:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef: {name: mybilibili-config}
+            - secretRef: {name: mybilibili-secret}
+          env:
+            - {name: HTTP_ADDR, value: ":8086"}
+            - {name: GRPC_ADDR, value: ":9086"}
+          ports: [{containerPort: 8086}]
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          readinessProbe: {httpGet: {path: /api/v1/health, port: 8086}, initialDelaySeconds: 5, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /api/v1/health, port: 8086}, initialDelaySeconds: 15, periodSeconds: 20}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: live, namespace: mybilibili}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: live}}
+  template:
+    metadata: {labels: {app: live}}
+    spec:
+      containers:
+        - name: live
+          image: ghcr.io/chentianxiong123/mybilibili-live:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef: {name: mybilibili-config}
+            - secretRef: {name: mybilibili-secret}
+          env:
+            - {name: HTTP_ADDR, value: ":8087"}
+          ports: [{containerPort: 8087}]
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          readinessProbe: {httpGet: {path: /health, port: 8087}, initialDelaySeconds: 5, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /health, port: 8087}, initialDelaySeconds: 15, periodSeconds: 20}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: ai, namespace: mybilibili}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: ai}}
+  template:
+    metadata: {labels: {app: ai}}
+    spec:
+      containers:
+        - name: ai
+          image: ghcr.io/chentianxiong123/mybilibili-ai:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef: {name: mybilibili-config}
+            - secretRef: {name: mybilibili-secret}
+          env:
+            - {name: HTTP_ADDR, value: ":8088"}
+            - {name: GRPC_ADDR, value: ":9088"}
+          ports: [{containerPort: 8088}]
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          readinessProbe: {httpGet: {path: /api/v1/health, port: 8088}, initialDelaySeconds: 5, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /api/v1/health, port: 8088}, initialDelaySeconds: 15, periodSeconds: 20}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: studio, namespace: mybilibili}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: studio}}
+  template:
+    metadata: {labels: {app: studio}}
+    spec:
+      containers:
+        - name: studio
+          image: ghcr.io/chentianxiong123/mybilibili-studio:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef: {name: mybilibili-config}
+            - secretRef: {name: mybilibili-secret}
+          env:
+            - {name: HTTP_ADDR, value: ":8089"}
+          ports: [{containerPort: 8089}]
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          readinessProbe: {httpGet: {path: /api/v1/health, port: 8089}, initialDelaySeconds: 5, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /api/v1/health, port: 8089}, initialDelaySeconds: 15, periodSeconds: 20}
+          volumeMounts: [{name: data, mountPath: /data/studio}]
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: studio-data}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: work, namespace: mybilibili}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: work}}
+  template:
+    metadata: {labels: {app: work}}
+    spec:
+      containers:
+        - name: work
+          image: ghcr.io/chentianxiong123/mybilibili-work:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef: {name: mybilibili-config}
+            - secretRef: {name: mybilibili-secret}
+          env:
+            - {name: AI_ADDR, value: "http://ai:8088"}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          livenessProbe:
+            exec: {command: ["sh", "-c", "test -d /proc/1"]}
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          volumeMounts: [{name: tmp, mountPath: /tmp/work}]
+      volumes:
+        - name: tmp
+          persistentVolumeClaim: {claimName: work-tmp}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: bili, namespace: mybilibili}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: bili}}
+  template:
+    metadata: {labels: {app: bili}}
+    spec:
+      containers:
+        - name: bili
+          image: ghcr.io/chentianxiong123/mybilibili-bili:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef: {name: mybilibili-config}
+            - secretRef: {name: mybilibili-secret}
+          env:
+            - {name: LISTEN, value: ":8091"}
+          ports: [{containerPort: 8091}]
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          readinessProbe: {httpGet: {path: /health, port: 8091}, initialDelaySeconds: 5, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /health, port: 8091}, initialDelaySeconds: 15, periodSeconds: 20}
