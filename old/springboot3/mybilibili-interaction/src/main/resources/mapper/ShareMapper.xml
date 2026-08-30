@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.interaction.mapper.ShareMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO shares (user_id, manuscript_id, channel, ip_address, create_time)
+        VALUES (#{userId}, #{manuscriptId}, #{channel}, #{ipAddress}, NOW())
+    </insert>
+
+    <select id="countByManuscriptId" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM shares WHERE manuscript_id = #{manuscriptId}
+    </select>
+
+    <select id="countByManuscriptIdAndChannel" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM shares WHERE manuscript_id = #{manuscriptId} AND channel = #{channel}
+    </select>
+
+</mapper>

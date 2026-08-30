@@ -1,0 +1,13 @@
+services:
+  srs:
+    image: registry.cn-hangzhou.aliyuncs.com/ossrs/srs:5
+    container_name: mybilibili-srs
+    restart: always
+    command: ["./objs/srs", "-c", "conf/srs.conf"]
+    ports:
+      - "1935:1935"    # RTMP 推流（OBS用）
+      - "28080:28080"  # HTTP-FLV 播放
+      - "8000:8000/udp" # WebRTC UDP端口
+      - "1985:1985"    # SRS HTTP API管理
+    volumes:
+      - ./srs.conf:/usr/local/srs/conf/srs.conf
