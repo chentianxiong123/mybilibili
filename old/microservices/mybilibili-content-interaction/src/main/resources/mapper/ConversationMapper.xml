@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.mybilibili.message.mapper.ConversationMapper">
+
+    <resultMap id="ConversationMap" type="com.mybilibili.common.entity.Conversation">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="target_user_id" property="targetUserId"/>
+        <result column="last_message_id" property="lastMessageId"/>
+        <result column="last_message_content" property="lastMessageContent"/>
+        <result column="last_message_time" property="lastMessageTime"/>
+        <result column="unread_count" property="unreadCount"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <resultMap id="ConversationVOMap" type="com.mybilibili.common.vo.ConversationVO">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="target_user_id" property="targetUserId"/>
+        <result column="target_user_name" property="targetUserName"/>
+        <result column="target_user_avatar" property="targetUserAvatar"/>
+        <result column="last_message_id" property="lastMessageId"/>
+        <result column="last_message_content" property="lastMessageContent"/>
+        <result column="last_message_time" property="lastMessageTime"/>
+        <result column="unread_count" property="unreadCount"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.mybilibili.common.entity.Conversation" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO conversations (user_id, target_user_id, last_message_id, last_message_content, last_message_time, unread_count, created_at, updated_at)
+        VALUES (#{userId}, #{targetUserId}, #{lastMessageId}, #{lastMessageContent}, #{lastMessageTime}, #{unreadCount}, NOW(), NOW())
+    </insert>
+
+    <select id="selectById" parameterType="java.lang.Long" resultMap="ConversationMap">
+        SELECT * FROM conversations WHERE id = #{id}
+    </select>
+
+    <select id="selectByUserAndTarget" resultMap="ConversationMap">
+        SELECT * FROM conversations WHERE user_id = #{userId} AND target_user_id = #{targetUserId}
+    </select>
+
+    <select id="selectByUserId" resultMap="ConversationVOMap">
+        SELECT c.id, c.user_id, c.target_user_id, c.last_message_id, c.last_message_content, c.last_message_time, c.unread_count, c.created_at, c.updated_at,
+               u.username AS target_user_name, u.avatar AS target_user_avatar
+        FROM conversations c
+        LEFT JOIN users u ON c.target_user_id = u.id
+        WHERE c.user_id = #{userId}
+        ORDER BY c.last_message_time DESC
+    </select>
+
+    <update id="update" parameterType="com.mybilibili.common.entity.Conversation">
+        UPDATE conversations
+        SET last_message_id = #{lastMessageId},
+            last_message_content = #{lastMessageContent},
+            last_message_time = #{lastMessageTime},
+            unread_count = #{unreadCount},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateUnreadCount">
+        UPDATE conversations SET unread_count = #{unreadCount}, updated_at = NOW() WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM conversations WHERE id = #{id}
+    </delete>
+
+</mapper>

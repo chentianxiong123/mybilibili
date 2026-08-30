@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.interaction.mapper.FavoriteFolderMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO favorite_folders (user_id, name, collect_count, created_at, updated_at)
+        VALUES (#{userId}, #{name}, 0, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE favorite_folders
+        SET name = #{name}, updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateCollectCount">
+        UPDATE favorite_folders
+        SET collect_count = collect_count + #{increment}
+        WHERE id = #{folderId}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM favorite_folders WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" resultType="com.mybilibili.common.entity.FavoriteFolder">
+        SELECT * FROM favorite_folders WHERE id = #{id}
+    </select>
+
+    <select id="findByUserId" resultType="com.mybilibili.common.entity.FavoriteFolder">
+        SELECT * FROM favorite_folders WHERE user_id = #{userId} ORDER BY created_at DESC
+    </select>
+
+    <select id="findByUserIdAndName" resultType="com.mybilibili.common.entity.FavoriteFolder">
+        SELECT * FROM favorite_folders WHERE user_id = #{userId} AND name = #{name} LIMIT 1
+    </select>
+
+</mapper>
