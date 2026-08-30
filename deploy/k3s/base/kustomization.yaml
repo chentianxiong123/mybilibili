@@ -5,10 +5,17 @@ namespace: mybilibili
 resources:
   - namespace.yaml
   - infra.yaml
-  - configmap.yaml
   - secret.yaml
   - backend.yaml
   - frontend.yaml
   - pvc.yaml
   - service.yaml
   - ingress.yaml
+
+# 配置统一来自 deploy/config/*.env（与 docker compose 同源）
+# common.env = 两机一致；prod.env = 部署机差异（Service 名 + 部署机 IP）
+configMapGenerator:
+  - name: mybilibili-config
+    envs:
+      - config/common.env
+      - config/prod.env
