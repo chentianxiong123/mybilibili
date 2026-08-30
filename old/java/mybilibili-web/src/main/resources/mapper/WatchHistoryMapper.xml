@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.web.mapper.WatchHistoryMapper">
+
+    <resultMap id="ManuscriptBehaviorInfoMap" type="com.mybilibili.web.service.impl.RandomRecommendServiceImpl$ManuscriptBehaviorInfo">
+        <result column="manuscript_id" property="manuscriptId"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="tags" property="tags" typeHandler="com.mybilibili.web.mapper.TagListTypeHandler"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.mybilibili.common.entity.WatchHistory" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO watch_history (user_id, video_id, progress_seconds, watched_at)
+        VALUES (#{userId}, #{videoId}, #{progressSeconds}, NOW())
+    </insert>
+
+    <select id="selectByUserId" resultType="com.mybilibili.common.entity.WatchHistory">
+        SELECT * FROM watch_history
+        WHERE user_id = #{userId}
+        ORDER BY watched_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <delete id="deleteByUserId" parameterType="java.lang.Integer">
+        DELETE FROM watch_history WHERE user_id = #{userId}
+    </delete>
+
+    <delete id="deleteById" parameterType="java.lang.Integer">
+        DELETE FROM watch_history WHERE id = #{id}
+    </delete>
+
+    <update id="updateProgress">
+        UPDATE watch_history
+        SET progress_seconds = #{progressSeconds}, watched_at = NOW()
+        WHERE user_id = #{userId} AND video_id = #{videoId}
+    </update>
+
+    <select id="selectByUserIdAndVideoId" resultType="com.mybilibili.common.entity.WatchHistory">
+        SELECT * FROM watch_history
+        WHERE user_id = #{userId} AND video_id = #{videoId}
+    </select>
+
+    <update id="update" parameterType="com.mybilibili.common.entity.WatchHistory">
+        UPDATE watch_history
+        SET progress_seconds = #{progressSeconds}, watched_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectRecentWatchHistoryWithDetails" resultMap="ManuscriptBehaviorInfoMap">
+        SELECT DISTINCT
+            m.id as manuscript_id,
+            m.category_id,
+            GROUP_CONCAT(DISTINCT t.name) as tags
+        FROM watch_history wh
+        JOIN videos v ON wh.video_id = v.id
+        JOIN manuscripts m ON v.manuscript_id = m.id
+        LEFT JOIN video_tags vt ON v.id = vt.video_id
+        LEFT JOIN tags t ON vt.tag_id = t.id
+        WHERE wh.user_id = #{userId}
+          AND wh.watched_at >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        GROUP BY m.id
+        ORDER BY MAX(wh.watched_at) DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

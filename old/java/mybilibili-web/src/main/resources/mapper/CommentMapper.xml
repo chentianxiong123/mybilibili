@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.web.mapper.CommentMapper">
+    <insert id="insert" parameterType="com.mybilibili.common.entity.Comment" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO comments (manuscript_id, user_id, content, like_count, reply_count, created_at, updated_at, target_type, target_id)
+        VALUES (#{manuscriptId}, #{userId}, #{content}, 0, 0, NOW(), NOW(), #{targetType}, #{targetId})
+    </insert>
+
+    <select id="selectById" parameterType="java.lang.Integer" resultType="com.mybilibili.common.entity.Comment">
+        SELECT * FROM comments WHERE id = #{id}
+    </select>
+
+    <!-- 向后兼容：根据 manuscriptId 查询 -->
+    <select id="selectByManuscriptId" resultType="com.mybilibili.common.entity.Comment">
+        SELECT * FROM comments
+        WHERE manuscript_id = #{manuscriptId}
+        ORDER BY created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <!-- 新增：根据 targetType 和 targetId 查询 -->
+    <select id="selectByTargetTypeAndTargetId" resultType="com.mybilibili.common.entity.Comment">
+        SELECT * FROM comments
+        WHERE target_type = #{targetType}
+        AND target_id = #{targetId}
+        ORDER BY created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <update id="updateLikeCount">
+        UPDATE comments SET like_count = like_count + #{count}, updated_at = NOW() WHERE id = #{id}
+    </update>
+
+    <update id="updateLikeCountDirect">
+        UPDATE comments SET like_count = #{count}, updated_at = NOW() WHERE id = #{id}
+    </update>
+
+    <update id="updateReplyCount">
+        UPDATE comments SET reply_count = reply_count + #{count}, updated_at = NOW() WHERE id = #{id}
+    </update>
+
+    <delete id="delete" parameterType="java.lang.Integer">
+        DELETE FROM comments WHERE id = #{id}
+    </delete>
+
+    <!-- 向后兼容：根据 manuscriptId 统计 -->
+    <select id="countByManuscriptId" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM comments WHERE manuscript_id = #{manuscriptId}
+    </select>
+
+    <!-- 新增：根据 targetType 和 targetId 统计 -->
+    <select id="countByTargetTypeAndTargetId" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM comments
+        WHERE target_type = #{targetType}
+        AND target_id = #{targetId}
+    </select>
+
+    <!-- 创作者评论管理：查询创作者所有稿件的评论 -->
+    <select id="selectByCreatorId" resultType="com.mybilibili.common.entity.Comment">
+        SELECT c.* FROM comments c
+        INNER JOIN manuscripts m ON c.manuscript_id = m.id
+        WHERE m.user_id = #{userId}
+        <if test="manuscriptId != null">
+            AND c.manuscript_id = #{manuscriptId}
+        </if>
+        ORDER BY c.created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <!-- 创作者评论管理：统计创作者所有稿件的评论数 -->
+    <select id="countByCreatorId" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM comments c
+        INNER JOIN manuscripts m ON c.manuscript_id = m.id
+        WHERE m.user_id = #{userId}
+        <if test="manuscriptId != null">
+            AND c.manuscript_id = #{manuscriptId}
+        </if>
+    </select>
+</mapper>
