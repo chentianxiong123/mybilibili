@@ -1,37 +1,36 @@
-# deploy/k3s/ — K3s 部署清单
+# deploy/k3s/ — 部署机（fnos）K3s 部署清单
 
-## 结构
+> **本目录只用于部署机（fnos，192.168.31.225）**。开发机用 `deploy/docker-compose.yml`。
+> 两套配置互相独立：k3s 管生产，compose 管开发。
+
+## 结构（以实际仓库为准）
 
 ```
 k3s/
-├── base/                        # 公共资源（不含 infra）
-│   ├── kustomization.yaml
-│   ├── namespace.yaml           # mybilibili 命名空间
-│   ├── configmap.yaml           # 非敏感配置
-│   ├── secret.yaml             # 敏感项（JWT/MinIO密钥）
-│   ├── backend.yaml             # 8 后端 Deployment
-│   ├── frontend.yaml            # web(Nuxt SSR) + admin(nginx SPA)
-│   ├── pvc.yaml                 # studio-data / work-tmp
-│   └── service.yaml             # ClusterIP Service
+├── traefik.yaml                  # Traefik CRD + IngressRoute 路由定义
+└── base/
+    ├── kustomization.yaml        # 资源编排入口（引用以下全部）
+    ├── namespace.yaml            # mybilibili 命名空间
+    ├── infra.yaml                # 基础设施：postgres/redis/minio/nats (Deployment+Service+PVC)
+    ├── configmap.yaml            # 非敏感配置（PG_DSN/gRPC 地址等，指向集群内服务）
+    ├── secret.yaml               # 敏感项（JWT/MinIO 占位密钥）
+    ├── backend.yaml              # 8 个后端 Deployment (core/search/msg-danmaku/live/ai/studio/work/bili)
+    ├── frontend.yaml             # 前端 Deployment (web + admin)
+    ├── pvc.yaml                  # studio-data / work-tmp 持久卷
+    ├── service.yaml              # ClusterIP Service
+    └── ingress.yaml              # 入口规则
 └── overlays/
-    ├── dev/                      # 开发：自带 infra(pg/redis/minio/nats)，单副本
-    │   ├── kustomization.yaml
-    │   └── infra.yaml            # pg16/redis/minio/nats Deployment+Service+PVC
-    └── prod/                     # 生产：连开发机 infra，不部署自己的
-        └── kustomization.yaml    # ConfigMap 指向 192.168.31.204
+    └── prod/
+        └── kustomization.yaml    # product overlay：只覆盖镜像 tag（锁 git-sha）
 ```
 
-## 两种部署模式
+**注意**：`base/` 已包含全部基础设施（infra.yaml），prod overlay 不再重复定义 infra。
+配置指向集群内服务名（`postgres`/`redis`/`minio`/`nats`）。
 
-### dev：全套自包含（k3s 自己跑 infra）
-```bash
-kubectl apply -k deploy/k3s/overlays/dev
-```
-适用于：k3s 独立环境，自带 PG/Redis/MinIO/NATS（空库，需迁移数据）。
+## 部署（在部署机 fnos 上执行）
 
-### prod：连开发机 infra（推荐两机分离架构）
 ```bash
-# 1. 先建 namespace + ghcr 拉取凭证
+# 1. 准备 ghcr 拉取凭证
 kubectl apply -f deploy/k3s/base/namespace.yaml
 kubectl create secret docker-registry ghcr-secret \
   --docker-server=ghcr.io \
@@ -39,11 +38,18 @@ kubectl create secret docker-registry ghcr-secret \
   --docker-password=<gh-token> \
   -n mybilibili
 
-# 2. 部署（ConfigMap 自动指向开发机 IP 192.168.31.204）
+# 2. 应用清单（prod overlay 锁镜像 tag，见下方升级流程）
 kubectl apply -k deploy/k3s/overlays/prod
 ```
-适用于：部署机连开发机的 PG/MinIO（有数据），不重复部署 infra。
-改开发机 IP：编辑 `overlays/prod/kustomization.yaml` 里的 ConfigMap patch。
+
+## 镜像与升级
+
+- CI（`.github/workflows/ci.yml`）push main 自动构建推 GHCR：
+  `ghcr.io/chentianxiong123/mybilibili-{core,search,msg-danmaku,live,ai,studio,work,bili,web,admin}:latest`（另推 git-sha tag）
+- 部署清单用 `overlays/prod/kustomization.yaml` 的 `images.newTag` 锁版本。
+- **升级**：改 `newTag` 为新 git-sha → `kubectl apply -k deploy/k3s/overlays/prod`
+- **回滚**：改 `newTag` 回旧 git-sha → 重新 apply
+- 改配置：直接编辑 `base/configmap.yaml` → `kubectl apply -f deploy/k3s/base/configmap.yaml`
 
 ## transcoder 裸跑（不在 k3s 内）
 
@@ -59,18 +65,4 @@ make build-transcoder-nvenc    # → /tmp/mybilibili-transcoder-nvenc
 make build-transcoder-soft     # → /tmp/mybilibili-transcoder
 ```
 哪台机器把对应版本放到 `/tmp/mybilibili-transcoder` 启动即可。
-
-## NodePort 端口
-
-| 服务 | NodePort | 宿主机访问 |
-|---|---|---|
-| core | 30080 | http://<node-ip>:30080 |
-| web | 30320 | http://<node-ip>:30320 |
-| admin | 30310 | http://<node-ip>:30310/admin/ |
-
-## 镜像来源
-
-CI（`.github/workflows/ci.yml`）push main 自动构建推 GHCR：
-```
-ghcr.io/chentianxiong123/mybilibili-{core,search,msg-danmaku,live,ai,studio,work,bili,web,admin}:latest
-```
+**注意**：`base/configmap.yaml` 里 `TRANSCODER_ADDR` 指向部署机本机 IP（192.168.31.225），与 compose 的 `172.18.0.1`（docker 网关）不同。
