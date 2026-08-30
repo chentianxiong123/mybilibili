@@ -26,3 +26,19 @@ kubectl apply -k deploy/k3s/overlays/prod
 - 基础设施地址：compose 用容器名（`pg16`/`mybilibili-redis`/`mybilibili-minio`），k3s 用 Service 名（`postgres`/`redis`/`minio`）
 - `TRANSCODER_ADDR`：compose 用 docker 网关 `172.18.0.1`，k3s 用部署机本机 IP `192.168.31.225`
 - 镜像：compose 本地构建，k3s 从 GHCR 拉取（CI 自动推送）
+
+## 统一配置源（两套部署同源）
+
+所有非敏感配置集中在 **`deploy/k3s/base/config/`**：
+
+| 文件 | 内容 | 被谁引用 |
+|------|------|---------|
+| `common.env` | 两机一致：gRPC 地址 / 目录 / 日志 / MQ 类型 | compose + k3s 都读 |
+| `dev.env` | 开发机差异：容器名 + 网关 IP | compose `env_file` |
+| `prod.env` | 部署机差异：Service 名 + 部署机 IP | k3s `configMapGenerator` |
+
+敏感项（JWT/MinIO 凭据）**不落配置文件**：
+- compose 走 `deploy/.env`（示例看 `deploy/.env.example`）
+- k3s 走 `deploy/k3s/base/secret.yaml`
+
+改配置只需编辑对应的 `.env` 文件：compose 改动后 `docker compose up -d` 自动生效；k3s 改动后 `kubectl apply -k deploy/k3s/overlays/prod` 重建 ConfigMap。

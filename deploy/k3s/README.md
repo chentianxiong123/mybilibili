@@ -9,11 +9,14 @@
 k3s/
 ├── traefik.yaml                  # Traefik CRD + IngressRoute 路由定义
 └── base/
-    ├── kustomization.yaml        # 资源编排入口（引用以下全部）
+    ├── kustomization.yaml        # 资源编排入口（含 configMapGenerator 生成 mybilibili-config）
     ├── namespace.yaml            # mybilibili 命名空间
     ├── infra.yaml                # 基础设施：postgres/redis/minio/nats (Deployment+Service+PVC)
-    ├── configmap.yaml            # 非敏感配置（PG_DSN/gRPC 地址等，指向集群内服务）
-    ├── secret.yaml               # 敏感项（JWT/MinIO 占位密钥）
+    ├── config/                   # ★ 统一配置源（与 docker compose 同源）
+    │   ├── common.env            #   两机一致：gRPC 地址 / 目录 / 日志 / MQ 类型
+    │   ├── dev.env               #   开发机差异（compose 用：容器名 + 网关 IP）
+    │   └── prod.env              #   部署机差异（k3s 用：Service 名 + 部署机 IP）
+    ├── secret.yaml               # 敏感项（JWT/MinIO 凭据，不落 ConfigMap）
     ├── backend.yaml              # 8 个后端 Deployment (core/search/msg-danmaku/live/ai/studio/work/bili)
     ├── frontend.yaml             # 前端 Deployment (web + admin)
     ├── pvc.yaml                  # studio-data / work-tmp 持久卷
@@ -24,8 +27,10 @@ k3s/
         └── kustomization.yaml    # product overlay：只覆盖镜像 tag（锁 git-sha）
 ```
 
-**注意**：`base/` 已包含全部基础设施（infra.yaml），prod overlay 不再重复定义 infra。
-配置指向集群内服务名（`postgres`/`redis`/`minio`/`nats`）。
+**注意**：
+- `base/` 已包含全部基础设施（infra.yaml），prod overlay 不再重复定义 infra。
+- 非敏感配置由 `kustomization.yaml` 的 `configMapGenerator` 从 `config/common.env + config/prod.env` 生成（`kubectl apply -k` 时自动变为 `mybilibili-config`）。
+- 敏感项（JWT/MinIO 凭据）只在 `secret.yaml`，compose 侧则走 `deploy/.env`，两边均不写死到配置清单。
 
 ## 部署（在部署机 fnos 上执行）
 
@@ -49,7 +54,8 @@ kubectl apply -k deploy/k3s/overlays/prod
 - 部署清单用 `overlays/prod/kustomization.yaml` 的 `images.newTag` 锁版本。
 - **升级**：改 `newTag` 为新 git-sha → `kubectl apply -k deploy/k3s/overlays/prod`
 - **回滚**：改 `newTag` 回旧 git-sha → 重新 apply
-- 改配置：直接编辑 `base/configmap.yaml` → `kubectl apply -f deploy/k3s/base/configmap.yaml`
+- **改配置**：编辑 `base/config/common.env` 或 `base/config/prod.env` → `kubectl apply -k deploy/k3s/overlays/prod`（configMapGenerator 会自动重建 ConfigMap）
+- TRANSCODER_ADDR 差异：部署机（k3s）用 `base/config/prod.env` 的 `192.168.31.225`；开发机（compose）用 `base/config/dev.env` 的 `172.18.0.1`（docker 网关），两处都已抽为变量。
 
 ## transcoder 裸跑（不在 k3s 内）
 
@@ -65,4 +71,3 @@ make build-transcoder-nvenc    # → /tmp/mybilibili-transcoder-nvenc
 make build-transcoder-soft     # → /tmp/mybilibili-transcoder
 ```
 哪台机器把对应版本放到 `/tmp/mybilibili-transcoder` 启动即可。
-**注意**：`base/configmap.yaml` 里 `TRANSCODER_ADDR` 指向部署机本机 IP（192.168.31.225），与 compose 的 `172.18.0.1`（docker 网关）不同。
