@@ -1,0 +1,79 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: mybilibili-ai
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+      config:
+        server-addr: 127.0.0.1:8848
+        file-extension: yaml
+        import-check:
+          enabled: false
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/mybilibili
+      database: mybilibili
+  datasource:
+    url: jdbc:mysql://localhost:3306/mybilibili?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 3
+      minimum-idle: 1
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.mybilibili.common.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+minio:
+  endpoint: http://127.0.0.1:9000
+  public-endpoint: ${MINIO_PUBLIC_ENDPOINT:http://127.0.0.1:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  bucket-name: mybilibili
+
+video:
+  processing:
+    work-dir: D:/DockerFiles/mybilibili/processing
+
+rocketmq:
+  name-server: 127.0.0.1:9876
+  consumer:
+    group: video-ai-process-group
+
+ai:
+  whisper:
+    cli-path: "D:\\Program Files\\whisper-bin-x64\\Release\\whisper-cli.exe"
+    model-path: "D:\\Program Files\\whisper-bin-x64\\Release\\models\\ggml-small.bin"
+    language: zh
+    threads: 4
+
+logging:
+  level:
+    com.mybilibili: info
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized

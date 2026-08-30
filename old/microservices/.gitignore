@@ -1,0 +1,142 @@
+# 编译输出目录 - 所有服务的 target 目录
+*/target/
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# IDE 文件
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.temp
+*.bak
+*.backup
+.trash/
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# Node/npm/pnpm (前端相关)
+node_modules/
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+bun.lockb
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 前端构建产物
+.nuxt/
+.output/
+.cache/
+dist/
+build/
+out/
+.svelte-kit/
+astro/
+.next/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 上传文件目录
+uploads/
+*/uploads/
+
+# 视频和音频文件 (二进制)
+*.mp4
+*.avi
+*.mkv
+*.mov
+*.flv
+*.wmv
+*.mp3
+*.wav
+*.flac
+
+# AI/字幕生成文件
+ai-generated/
+whisper/
+*.srt
+*.ass
+*.vtt
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlitedb
+backups/
+
+# Docker 相关 (可选保留)
+# docker-compose*.yml
+# Dockerfile
+
+# IDE 工作区文件 (IntelliJ)
+*.ipr
+*.iws
+
+# 环境变量文件 (包含敏感密钥)
+.env
+
+# 开发环境配置文件 (包含本地密钥)
+**/application-dev.yml
+
+# RocketMQ 等消息队列本地存储
+store/
+logs/
+rocketmq logs/
+
+# ElasticSearch 本地数据
+elasticsearch/data/
+
+# Redis 本地数据
+redis/data/
+
+# 其他微服务特定的临时目录
+*/temp/
+*/tempfile/
+
+# 前端临时文件
+*.timestamp-*.mjs
+*.cache
+*.tsbuildinfo
+
+# 临时脚本
+start-nacos.bat
+启动*.bat
+
+# Claude Agent worktrees (massive duplicate directories)
+.claude/worktrees/
+.claude/scheduled_tasks.lock
+
+# Reference projects kept outside version control
+references/
+
+# 图片二进制文件 (项目资源除外)
+# favicon.ico 和 vite.svg 等项目资源保留跟踪
+# *.png
+# *.jpg
+# *.jpeg
+# *.gif
+# *.ico
+# *.svg
+
+# mybilibili-live-desktop source tree is now tracked (no longer excluded).

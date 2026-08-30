@@ -1,0 +1,568 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: mybilibili-gateway
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+    gateway:
+      weightCalculator:
+        enabled: false
+      httpclient:
+        connect-timeout: 5000
+        response-timeout: 600s
+      discovery:
+        locator:
+          enabled: false
+      routes:
+        # ========== 用户服务 ==========
+
+        # 关注列表接口（需要放在 user-service 之前）
+        - id: user-following-list
+          uri: lb://mybilibili-account-social
+          predicates:
+            - Path=/api/user/{userId}/following
+          filters:
+            - SetPath=/follow/user/{userId}/following
+
+        - id: user-follower-list
+          uri: lb://mybilibili-account-social
+          predicates:
+            - Path=/api/user/{userId}/followers
+          filters:
+            - SetPath=/follow/user/{userId}/followers
+
+        # 用户管理接口 - 转发到 user 服务（必须放在 /api/user/** 之前）
+        - id: user-admin
+          uri: lb://mybilibili-account-social
+          predicates:
+            - Path=/api/user/admin/**
+          filters:
+            - StripPrefix=1
+
+        # 用户端接口
+        - id: user-service
+          uri: lb://mybilibili-account-social
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=1
+
+        # 验证码接口
+        - id: captcha-service
+          uri: lb://mybilibili-account-social
+          predicates:
+            - Path=/api/captcha/**
+          filters:
+            - StripPrefix=1
+
+        # 内容审核接口 - 转发到 comment 服务（必须放在 /api/admin/** 之前）
+        - id: content-review
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/admin/content-review/**
+          filters:
+            - StripPrefix=1
+
+        # 举报管理接口 - 转发到 comment 服务（必须放在 /api/admin/** 之前）
+        - id: report-admin
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/admin/report/**
+          filters:
+            - StripPrefix=1
+
+        # 违禁词管理接口 - 转发到 comment 服务（必须放在 /api/admin/** 之前）
+        - id: prohibited-words
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/admin/prohibited-words/**
+          filters:
+            - StripPrefix=1
+
+        # 安全设置接口 - 转发到 comment 服务（必须放在 /api/admin/** 之前）
+        - id: security-settings
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/admin/security-settings/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 管理端接口 ==========
+        # 直播管理（必须放在 /api/admin/** 之前）
+        - id: live-admin-service
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/admin/live/**
+          filters:
+            - StripPrefix=1
+
+        # 会议管理（必须放在 /api/admin/** 之前）
+        - id: meeting-admin-service
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/admin/meeting/**
+          filters:
+            - StripPrefix=1
+
+        # 管理端接口（复用user-service）
+        - id: user-service-admin
+          uri: lb://mybilibili-account-social
+          predicates:
+            - Path=/api/admin/**
+          filters:
+            - StripPrefix=1
+
+        # 统计接口 - 转发到 video 服务
+        - id: statistics-service
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/statistics/**
+          filters:
+            - StripPrefix=1
+
+        # 稿件管理接口 - 转发到 video 服务（带 api 前缀）
+        - id: manuscript-admin
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/manuscript/admin/**
+          filters:
+            - StripPrefix=1
+
+        # 视频管理接口 - 转发到 video 服务
+        - id: video-admin
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/video/admin/**
+          filters:
+            - StripPrefix=1
+
+        # 评论管理接口 - 转发到 comment 服务
+        - id: comment-admin
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/comment/admin/**
+          filters:
+            - StripPrefix=1
+
+        # 关注相关接口（转发到user-service）
+        - id: user-follow
+          uri: lb://mybilibili-account-social
+          predicates:
+            - Path=/api/follow/{userId}
+          filters:
+            - StripPrefix=1
+
+        - id: user-follow-check
+          uri: lb://mybilibili-account-social
+          predicates:
+            - Path=/api/follow/check/{userId}
+          filters:
+            - StripPrefix=1
+
+        # 关注列表简单版接口
+        - id: user-following-simple
+          uri: lb://mybilibili-account-social
+          predicates:
+            - Path=/api/follow/following/simple
+          filters:
+            - StripPrefix=1
+
+        # 关注列表接口（带用户ID）
+        - id: user-following-with-id
+          uri: lb://mybilibili-account-social
+          predicates:
+            - Path=/api/follow/user/{id}/following
+          filters:
+            - StripPrefix=1
+
+        # 粉丝列表接口（带用户ID）
+        - id: user-followers-with-id
+          uri: lb://mybilibili-account-social
+          predicates:
+            - Path=/api/follow/user/{id}/followers
+          filters:
+            - StripPrefix=1
+
+        # 当前用户粉丝列表接口
+        - id: user-me-followers
+          uri: lb://mybilibili-account-social
+          predicates:
+            - Path=/api/follow/me/followers
+          filters:
+            - StripPrefix=1
+
+        # 当前用户关注列表接口
+        - id: user-me-following
+          uri: lb://mybilibili-account-social
+          predicates:
+            - Path=/api/follow/me/following
+          filters:
+            - StripPrefix=1
+
+        # ========== 视频服务 ==========
+        # 视频处理SSE - 转发到 video-media 统一进度中心
+        - id: video-process-sse
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/video/process/sse/**
+          filters:
+            - StripPrefix=1
+
+        # 剪辑工作室接口 - 项目云端导出任务
+        - id: studio-service
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/studio/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 稿件互动相关接口（需要放在 manuscript-service 之前）==========
+
+        - id: manuscript-interaction-like
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/like
+          filters:
+            - SetPath=/manuscript/{id}/like
+
+        - id: manuscript-interaction-coin
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/coin
+          filters:
+            - SetPath=/manuscript/{id}/coin
+
+        - id: manuscript-interaction-collect
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/collect
+          filters:
+            - SetPath=/manuscript/{id}/collect
+
+        - id: manuscript-interaction-share
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/share
+          filters:
+            - SetPath=/manuscript/{id}/share
+
+        - id: manuscript-interaction-status
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/status
+          filters:
+            - SetPath=/manuscript/{id}/status
+
+        - id: manuscript-interaction-danmaku
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/danmaku
+          filters:
+            - SetPath=/danmaku
+
+        - id: manuscript-interaction-danmakus
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/danmakus
+          filters:
+            - StripPrefix=1
+            - RewritePath=/api/manuscript/(?<segment>.*), /manuscript/$\{segment}
+
+        - id: manuscript-favorite-folders
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/manuscript/favorite/folders
+          filters:
+            - SetPath=/manuscript/favorite/folders
+
+        - id: manuscript-favorite-folder-by-id
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/manuscript/favorite/folders/{folderId}
+          filters:
+            - SetPath=/manuscript/favorite/folders/{folderId}
+
+        - id: manuscript-favorite-folders-with-id
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/favorite/folders
+          filters:
+            - SetPath=/manuscript/{id}/favorite/folders
+
+        # 从收藏夹移除稿件（DELETE），必须在通用路由之前
+        - id: manuscript-favorite-folders-remove-video
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/manuscript/favorite/folders/{folderId}/videos/{videoId}
+            - Method=DELETE
+          filters:
+            - StripPrefix=1
+
+        - id: manuscript-interaction-favorite
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/manuscript/{id}/favorite/**
+          filters:
+            - StripPrefix=1
+            - SetPath=/manuscript/{id}/favorite/{remaining}
+
+        - id: manuscript-user-likes
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/manuscript/user/likes
+          filters:
+            - SetPath=/manuscript/user/likes
+
+        - id: manuscript-user-collections
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/manuscript/user/collections
+          filters:
+            - SetPath=/manuscript/user/collections
+
+        - id: manuscript-favorite-folders-videos
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/manuscript/favorite/folders/{folderId}/videos
+          filters:
+            - StripPrefix=1
+            - SetPath=/manuscript/favorite/folders/{folderId}/videos
+
+        # ========== 创作者数据统计 ==========
+        - id: creator-stats
+          uri: lb://mybilibili-search-recommend
+          predicates:
+            - Path=/api/creator/stats/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 平台运营服务 ==========
+        - id: operation-admin
+          uri: lb://mybilibili-search-recommend
+          predicates:
+            - Path=/api/operation/admin/**
+          filters:
+            - StripPrefix=1
+
+        - id: operation-tickets
+          uri: lb://mybilibili-search-recommend
+          predicates:
+            - Path=/api/operation/tickets,/api/operation/tickets/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 默认视频服务路由（放最后）==========
+        - id: video-service
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/video/**
+          filters:
+            - StripPrefix=1
+
+        - id: manuscript-service
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/manuscript/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 合集服务 ==========
+        - id: collection-service
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/collection/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 评论服务 ==========
+        - id: comment-service
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/comment/**
+          filters:
+            - StripPrefix=1
+
+        # 举报接口
+        - id: report-service
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/report/**
+          filters:
+            - StripPrefix=1
+
+        - id: creator-comment
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/creator/comments/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 弹幕服务 ==========
+        - id: danmaku-service
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/danmaku/**
+          filters:
+            - StripPrefix=1
+
+        - id: creator-danmaku
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/creator/danmaku/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 搜索服务 ==========
+        - id: search-service
+          uri: lb://mybilibili-search-recommend
+          predicates:
+            - Path=/api/search/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 消息服务 ==========
+        - id: message-service
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/message/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 互动服务 ==========
+        - id: interaction-watch-history
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/watch-history/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 用户画像 ==========
+        - id: user-profile-api
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/profile/**
+          filters:
+            - StripPrefix=1
+
+        # 动态评论接口
+        - id: dynamic-comment
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/dynamic/comment/**
+          filters:
+            - StripPrefix=1
+
+        - id: interaction-dynamic
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/api/dynamic/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 内容服务（分区、轮播图）- 集成到视频服务 ==========
+        - id: content-service
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/category/**
+          filters:
+            - StripPrefix=1
+
+        - id: content-service-banner
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/banner-images/**
+          filters:
+            - StripPrefix=1
+
+        # ========== AI服务 ==========
+        - id: ai-admin-process
+          uri: lb://mybilibili-ai
+          predicates:
+            - Path=/api/ai/admin/**
+          filters:
+            - StripPrefix=1
+
+        - id: ai-service
+          uri: lb://mybilibili-ai
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 直播服务 ==========
+        - id: live-service
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/live/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 会议服务 ==========
+        - id: meeting-service
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/meeting/**
+          filters:
+            - StripPrefix=1
+
+        # ========== WebSocket 会议/连麦信令 ==========
+        - id: meeting-websocket
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/ws/meeting
+          filters:
+            - StripPrefix=0
+
+        # ========== WebSocket 通知推送 ==========
+        - id: notification-websocket
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/ws/notification
+          filters:
+            - StripPrefix=0
+
+        # ========== WebSocket 弹幕实时推送 ==========
+        - id: danmaku-websocket
+          uri: lb://mybilibili-content-interaction
+          predicates:
+            - Path=/ws/danmaku
+          filters:
+            - StripPrefix=0
+
+        # ========== 字幕服务 ==========
+        - id: subtitle-service
+          uri: lb://mybilibili-video-media
+          predicates:
+            - Path=/api/subtitle/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 推荐服务 ==========
+        - id: recommend-service
+          uri: lb://mybilibili-search-recommend
+          predicates:
+            - Path=/api/recommend/**
+          filters:
+            - StripPrefix=1
+
+logging:
+  level:
+    com.mybilibili: info
+    reactor.netty: info
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+
+

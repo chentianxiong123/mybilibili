@@ -1,0 +1,220 @@
+@import './variables';
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: $text-primary;
+  background: $bg-color;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html[data-wap-theme='dark'],
+html[data-wap-theme='dark'] body,
+html[data-wap-theme='dark'] #app {
+  color: #f2f3f5;
+  background: #111214;
+}
+
+html[data-wap-theme='dark'] {
+  color-scheme: dark;
+}
+
+html[data-wap-theme='dark'] .space-page,
+html[data-wap-theme='dark'] .space-profile-page,
+html[data-wap-theme='dark'] .friends-page,
+html[data-wap-theme='dark'] .profile-edit-page {
+  color: #f2f3f5;
+  background: #111214;
+}
+
+html[data-wap-theme='dark'] .top-nav,
+html[data-wap-theme='dark'] .user-info-section,
+html[data-wap-theme='dark'] .common-tools-grid,
+html[data-wap-theme='dark'] .card-section,
+html[data-wap-theme='dark'] .bottom-tab-bar,
+html[data-wap-theme='dark'] .profile-topbar,
+html[data-wap-theme='dark'] .space-tabs,
+html[data-wap-theme='dark'] .friends-header,
+html[data-wap-theme='dark'] .top-tabs,
+html[data-wap-theme='dark'] .search-section,
+html[data-wap-theme='dark'] .friend-list,
+html[data-wap-theme='dark'] .row-group,
+html[data-wap-theme='dark'] .archive-filter,
+html[data-wap-theme='dark'] .archive-row,
+html[data-wap-theme='dark'] .dynamic-card,
+html[data-wap-theme='dark'] .empty-card,
+html[data-wap-theme='dark'] .favorite-title,
+html[data-wap-theme='dark'] .folder-row,
+html[data-wap-theme='dark'] .home-video-card,
+html[data-wap-theme='dark'] .text-card {
+  color: #f2f3f5;
+  background: #17191c;
+  border-color: rgba(255,255,255,0.08);
+}
+
+html[data-wap-theme='dark'] .nickname,
+html[data-wap-theme='dark'] .num,
+html[data-wap-theme='dark'] .title,
+html[data-wap-theme='dark'] .tool-label,
+html[data-wap-theme='dark'] .profile-row,
+html[data-wap-theme='dark'] .friend-main h2,
+html[data-wap-theme='dark'] .stats-cluster strong,
+html[data-wap-theme='dark'] .name-row h2,
+html[data-wap-theme='dark'] .archive-info h3,
+html[data-wap-theme='dark'] .dynamic-author strong,
+html[data-wap-theme='dark'] .dynamic-text,
+html[data-wap-theme='dark'] .folder-row h3 {
+  color: #f2f3f5;
+}
+
+html[data-wap-theme='dark'] .label,
+html[data-wap-theme='dark'] .coin-item,
+html[data-wap-theme='dark'] .space-link,
+html[data-wap-theme='dark'] .tab-icon,
+html[data-wap-theme='dark'] .tab-name,
+html[data-wap-theme='dark'] .friend-main p,
+html[data-wap-theme='dark'] .row-value,
+html[data-wap-theme='dark'] .signature,
+html[data-wap-theme='dark'] .archive-info time,
+html[data-wap-theme='dark'] .archive-stats,
+html[data-wap-theme='dark'] .folder-row p {
+  color: #aeb2ba;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+#app::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.clear::after {
+  content: '';
+  display: block;
+  clear: both;
+}
+
+// Icon 字体（翻译自 react-bilibili src/assets/stylus/icon.styl）
+@font-face {
+  font-family: 'icon';
+  src: url('../assets/fonts/icon.eot?cxbu9a');
+  src: url('../assets/fonts/icon.eot?cxbu9a#iefix') format('embedded-opentype'),
+       url('../assets/fonts/icon.ttf?cxbu9a') format('truetype'),
+       url('../assets/fonts/icon.woff?cxbu9a') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+[class^="icon-"], [class*=" icon-"] {
+  font-family: 'icon' !important;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-arrow-down::before { content: "\e900"; color: #aaa; }
+.icon-arrow-right::before { content: "\e901"; color: #aaa; }
+.icon-arrow-up::before { content: "\e902"; color: #aaa; }
+.icon-barrage-count::before { content: "\e903"; color: #fff; }
+.icon-play-count::before { content: "\e904"; color: #fff; }
+.icon-ranking::before { content: "\e905"; color: #ffa726; }
+.icon-search::before { content: "\e906"; color: #aaa; }
+.icon-sex-man::before { content: "\e907"; color: #89cff0; }
+.icon-sex-secrecy::before { content: "\e908"; color: #ce21e8; }
+.icon-sex-woman::before { content: "\e909"; color: #fb7299; }
+
+// px2rem（翻译自 react-bilibili src/assets/stylus/px2rem.styl）
+$base-rem: 20;
+
+@function px2rem($px, $base: $base-rem) {
+  @return ($px / $base) * 1rem;
+}
+
+// 1px border（翻译自 react-bilibili src/assets/stylus/1pxborder.styl）
+@mixin border-top($color) {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border-top: 1px solid $color;
+    overflow: hidden;
+    @media (-webkit-min-device-pixel-ratio: 2), (min-device-pixel-ratio: 2) {
+      transform: scaleY(0.5);
+    }
+    @media (-webkit-min-device-pixel-ratio: 3), (min-device-pixel-ratio: 3) {
+      transform: scaleY(0.333);
+    }
+  }
+}
+
+@mixin border-bottom($color) {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    border-bottom: 1px solid $color;
+    overflow: hidden;
+    @media (-webkit-min-device-pixel-ratio: 2), (min-device-pixel-ratio: 2) {
+      transform: scaleY(0.5);
+    }
+    @media (-webkit-min-device-pixel-ratio: 3), (min-device-pixel-ratio: 3) {
+      transform: scaleY(0.333);
+    }
+  }
+}
+
+// Toast 提示
+.wap-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 9999;
+  animation: toast-in 0.3s ease;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}

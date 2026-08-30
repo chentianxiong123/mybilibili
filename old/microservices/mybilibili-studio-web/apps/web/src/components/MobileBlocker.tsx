@@ -1,0 +1,58 @@
+import { useEffect, useState } from "react";
+import { Monitor } from "lucide-react";
+
+export function MobileBlocker() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent.toLowerCase();
+      const mobileKeywords =
+        /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i;
+      const isMobileDevice = mobileKeywords.test(userAgent);
+      const isSmallScreen = window.innerWidth < 768;
+      setIsMobile(isMobileDevice || isSmallScreen);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  if (!isMobile) return null;
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-background flex items-center justify-center p-6">
+      <div className="max-w-md text-center space-y-8">
+        <div className="flex justify-center">
+          <div className="bg-background-secondary border-2 border-primary/30 rounded-2xl p-8 shadow-glow-lg">
+            <Monitor className="w-20 h-20 text-primary" strokeWidth={1.5} />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h1 className="text-5xl font-bold text-text-primary">
+            mybilibili 剪辑工作室
+          </h1>
+          <div className="flex items-center justify-center gap-2">
+            <div className="h-px w-8 bg-primary/50" />
+            <p className="text-lg text-text-secondary font-medium">
+              仅支持桌面端
+            </p>
+            <div className="h-px w-8 bg-primary/50" />
+          </div>
+        </div>
+
+        <div className="space-y-4 bg-background-secondary/50 backdrop-blur-sm rounded-xl p-6 border border-border">
+          <p className="text-base text-text-primary leading-relaxed">
+            mybilibili 剪辑工作室需要在台式机或笔记本电脑上使用。
+          </p>
+          <p className="text-sm text-text-muted">
+            请在桌面设备上打开此页面开始剪辑。
+          </p>
+        </div>
+
+      </div>
+    </div>
+  );
+}

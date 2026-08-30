@@ -1,0 +1,28 @@
+import api from './index.js'
+
+export const meetingApi = {
+  createRoom(roomName) {
+    return api.post('/meeting/create', null, { params: { roomName } })
+  },
+  reserveRoom(data) {
+    return api.post('/meeting/reserve', data)
+  },
+  getRoom(roomCode) {
+    return api.get(`/meeting/room/${roomCode}`)
+  },
+  getMyRooms() {
+    return api.get('/meeting/my-rooms')
+  },
+  joinRoom(roomCode) {
+    return api.post(`/meeting/join/${roomCode}`)
+  },
+  leaveRoom(roomId) {
+    return api.post(`/meeting/leave/${roomId}`)
+  },
+  endRoom(roomId) {
+    return api.post(`/meeting/end/${roomId}`)
+  },
+  getParticipants(roomId) {
+    return api.get(`/meeting/participants/${roomId}`)
+  }
+}
