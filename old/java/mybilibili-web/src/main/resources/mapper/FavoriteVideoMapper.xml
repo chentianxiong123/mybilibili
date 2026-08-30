@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.web.mapper.FavoriteVideoMapper">
+    <!-- 根据收藏夹ID获取收藏列表 -->
+    <select id="findByFolderId" parameterType="java.lang.Integer" resultType="com.mybilibili.common.entity.FavoriteVideo">
+        SELECT * FROM favorite_manuscripts WHERE folder_id = #{folderId} ORDER BY created_at DESC
+    </select>
+
+    <!-- 根据收藏夹ID和稿件ID查找 -->
+    <select id="findByFolderIdAndManuscriptId" resultType="com.mybilibili.common.entity.FavoriteVideo">
+        SELECT * FROM favorite_manuscripts WHERE folder_id = #{folderId} AND manuscript_id = #{manuscriptId}
+    </select>
+
+    <!-- 根据稿件ID获取所有收藏关系 -->
+    <select id="findByManuscriptId" parameterType="java.lang.Integer" resultType="com.mybilibili.common.entity.FavoriteVideo">
+        SELECT * FROM favorite_manuscripts WHERE manuscript_id = #{manuscriptId}
+    </select>
+
+    <!-- 根据用户ID和稿件ID获取收藏关系 -->
+    <select id="findByUserIdAndManuscriptId" resultType="com.mybilibili.common.entity.FavoriteVideo">
+        SELECT fm.* FROM favorite_manuscripts fm
+        JOIN favorite_folders ff ON fm.folder_id = ff.id
+        WHERE ff.user_id = #{userId} AND fm.manuscript_id = #{manuscriptId}
+    </select>
+
+    <!-- 插入收藏关系 -->
+    <insert id="insert" parameterType="com.mybilibili.common.entity.FavoriteVideo">
+        INSERT INTO favorite_manuscripts (folder_id, manuscript_id, created_at)
+        VALUES (#{folderId}, #{manuscriptId}, NOW())
+    </insert>
+
+    <!-- 根据ID删除收藏关系 -->
+    <delete id="deleteById" parameterType="java.lang.Integer">
+        DELETE FROM favorite_manuscripts WHERE id = #{id}
+    </delete>
+
+    <!-- 根据收藏夹ID获取稿件列表（带分页） -->
+    <select id="findManuscriptsByFolderId" resultType="com.mybilibili.common.entity.Manuscript">
+        SELECT m.* FROM manuscripts m
+        JOIN favorite_manuscripts fm ON m.id = fm.manuscript_id
+        WHERE fm.folder_id = #{folderId}
+        ORDER BY fm.created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+</mapper>

@@ -1,0 +1,1 @@
+ALTER TABLE videos ADD COLUMN status INT DEFAULT 0;

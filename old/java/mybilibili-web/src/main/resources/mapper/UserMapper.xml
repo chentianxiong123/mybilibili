@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.web.mapper.UserMapper">
+
+    <select id="findByUsername" parameterType="string" resultType="com.mybilibili.common.entity.User">
+        SELECT * FROM users WHERE username = #{username}
+    </select>
+
+    <insert id="insert" parameterType="com.mybilibili.common.entity.User" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO users (
+            username, password, nickname, avatar, email, phone, gender,
+            birthdate, signature, bio, announcement, level, following_count, follower_count,
+            video_count, liked_count, coin_count, point_count, experience,
+            created_at, updated_at
+        ) VALUES (
+            #{username}, #{password}, #{nickname}, #{avatar}, #{email}, #{phone}, #{gender},
+            #{birthdate}, #{signature}, #{bio}, #{announcement}, #{level}, #{followingCount}, #{followerCount},
+            #{videoCount}, #{likedCount}, #{coinCount}, #{pointCount}, #{experience},
+            NOW(), NOW()
+        )
+    </insert>
+
+    <select id="findById" parameterType="int" resultType="com.mybilibili.common.entity.User">
+        SELECT * FROM users WHERE id = #{id}
+    </select>
+
+    <update id="update" parameterType="com.mybilibili.common.entity.User">
+        UPDATE users SET
+            nickname = #{nickname},
+            avatar = #{avatar},
+            email = #{email},
+            phone = #{phone},
+            gender = #{gender},
+            birthdate = #{birthdate},
+            signature = #{signature},
+            bio = #{bio},
+            announcement = #{announcement},
+            level = #{level},
+            experience = #{experience},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateLikedCount">
+        UPDATE users SET liked_count = liked_count + #{count} WHERE id = #{id}
+    </update>
+
+    <update id="updateCoinCount">
+        UPDATE users SET coin_count = coin_count + #{count} WHERE id = #{id}
+    </update>
+
+    <update id="updateExperience">
+        UPDATE users SET experience = experience + #{count} WHERE id = #{id}
+    </update>
+
+    <!-- 统计用户关注数量 -->
+    <select id="countFollowing" resultType="int">
+        SELECT COUNT(*) FROM user_interactions 
+        WHERE user_id = #{userId} 
+        AND target_type = 'USER' 
+        AND interaction_type = 'FOLLOW'
+    </select>
+
+    <!-- 统计用户粉丝数量 -->
+    <select id="countFollowers" resultType="int">
+        SELECT COUNT(*) FROM user_interactions 
+        WHERE target_id = #{userId} 
+        AND target_type = 'USER' 
+        AND interaction_type = 'FOLLOW'
+    </select>
+
+    <!-- 统计用户动态数量 -->
+    <select id="countDynamics" resultType="int">
+        SELECT COUNT(*) FROM user_dynamics WHERE user_id = #{userId} AND status = 0
+    </select>
+
+    <!-- 查询所有用户 -->
+    <select id="findAll" resultType="com.mybilibili.common.entity.User">
+        SELECT * FROM users
+    </select>
+
+</mapper>

@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mybilibili.web.mapper.UserInteractionMapper">
+
+    <resultMap id="ManuscriptBehaviorInfoMap" type="com.mybilibili.web.service.impl.RandomRecommendServiceImpl$ManuscriptBehaviorInfo">
+        <result column="manuscript_id" property="manuscriptId"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="tags" property="tags" typeHandler="com.mybilibili.web.mapper.TagListTypeHandler"/>
+    </resultMap>
+
+    <resultMap id="BaseResultMap" type="com.mybilibili.common.entity.UserInteraction">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="target_type" property="targetType"/>
+        <result column="target_id" property="targetId"/>
+        <result column="interaction_type" property="interactionType"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <resultMap id="CountResultMap" type="com.mybilibili.common.entity.UserInteraction">
+        <result column="targetId" property="targetId"/>
+        <result column="likeCount" property="id"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_interactions (user_id, target_type, target_id, interaction_type, created_at)
+        VALUES (#{userId}, #{targetType}, #{targetId}, #{interactionType}, NOW())
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM user_interactions
+        WHERE user_id = #{userId}
+          AND target_type = #{targetType}
+          AND target_id = #{targetId}
+          AND interaction_type = #{interactionType}
+    </delete>
+
+    <select id="findByUserAndTarget" resultMap="BaseResultMap">
+        SELECT * FROM user_interactions
+        WHERE user_id = #{userId}
+          AND target_type = #{targetType}
+          AND target_id = #{targetId}
+          AND interaction_type = #{interactionType}
+        LIMIT 1
+    </select>
+
+    <select id="findByUserAndTargets" resultMap="BaseResultMap">
+        SELECT * FROM user_interactions
+        WHERE user_id = #{userId}
+          AND target_type = #{targetType}
+          AND target_id IN
+        <foreach collection="targetIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+          AND interaction_type = #{interactionType}
+    </select>
+
+    <select id="countByTarget" resultType="int">
+        SELECT COUNT(*) FROM user_interactions
+        WHERE target_type = #{targetType}
+          AND target_id = #{targetId}
+          AND interaction_type = #{interactionType}
+    </select>
+
+    <select id="countByTargets" resultMap="CountResultMap">
+        SELECT target_id as targetId, COUNT(*) as likeCount
+        FROM user_interactions
+        WHERE target_type = #{targetType}
+          AND target_id IN
+        <foreach collection="targetIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+          AND interaction_type = #{interactionType}
+        GROUP BY target_id
+    </select>
+
+    <select id="findByUserAndInteractionType" resultMap="BaseResultMap">
+        SELECT * FROM user_interactions
+        WHERE user_id = #{userId}
+          AND target_type = #{targetType}
+          AND interaction_type = #{interactionType}
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- 查询粉丝列表（关注了目标用户的所有用户） -->
+    <select id="findFollowersByTargetId" resultMap="BaseResultMap">
+        SELECT * FROM user_interactions
+        WHERE target_id = #{targetId}
+          AND target_type = #{targetType}
+          AND interaction_type = #{interactionType}
+        ORDER BY created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <!-- 统计粉丝数量 -->
+    <select id="countFollowersByTargetId" resultType="int">
+        SELECT COUNT(*) FROM user_interactions
+        WHERE target_id = #{targetId}
+          AND target_type = #{targetType}
+          AND interaction_type = #{interactionType}
+    </select>
+
+    <!-- 查询互关粉丝列表（双方互相关注） -->
+    <select id="findMutualFollowers" resultMap="BaseResultMap">
+        SELECT ui.* FROM user_interactions ui
+        WHERE ui.target_id = #{userId}
+          AND ui.target_type = #{targetType}
+          AND ui.interaction_type = #{interactionType}
+          AND EXISTS (
+              SELECT 1 FROM user_interactions ui2
+              WHERE ui2.user_id = #{userId}
+                AND ui2.target_id = ui.user_id
+                AND ui2.target_type = #{targetType}
+                AND ui2.interaction_type = #{interactionType}
+          )
+        ORDER BY ui.created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <!-- 统计互关粉丝数量 -->
+    <select id="countMutualFollowers" resultType="int">
+        SELECT COUNT(*) FROM user_interactions ui
+        WHERE ui.target_id = #{userId}
+          AND ui.target_type = #{targetType}
+          AND ui.interaction_type = #{interactionType}
+          AND EXISTS (
+              SELECT 1 FROM user_interactions ui2
+              WHERE ui2.user_id = #{userId}
+                AND ui2.target_id = ui.user_id
+                AND ui2.target_type = #{targetType}
+                AND ui2.interaction_type = #{interactionType}
+          )
+    </select>
+
+    <select id="selectRecentLikeHistoryWithDetails" resultMap="ManuscriptBehaviorInfoMap">
+        SELECT DISTINCT
+            m.id as manuscript_id,
+            m.category_id,
+            GROUP_CONCAT(DISTINCT t.name) as tags
+        FROM user_interactions ui
+        JOIN videos v ON ui.target_id = v.id
+        JOIN manuscripts m ON v.manuscript_id = m.id
+        LEFT JOIN video_tags vt ON v.id = vt.video_id
+        LEFT JOIN tags t ON vt.tag_id = t.id
+        WHERE ui.user_id = #{userId}
+          AND ui.target_type = 'VIDEO'
+          AND ui.interaction_type = 'LIKE'
+          AND ui.created_at >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        GROUP BY m.id
+        ORDER BY MAX(ui.created_at) DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>
