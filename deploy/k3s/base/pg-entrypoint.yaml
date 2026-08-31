@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+data:
+  entrypoint.sh: "#!/bin/bash\n# ============================================================\n\
+    # PG entrypoint: 按 PG_ROLE env 切换 primary / replica\n# primary  = 启动 PG + 创建复制用户\
+    \ + 创建 replication slot\n# replica  = pg_basebackup 拉基线 + 写 standby.signal + 启动\
+    \ PG\n# ============================================================\nset -e\n\
+    \nPG_ROLE=\"${PG_ROLE:-primary}\"\nPG_REPL_USER=\"${PG_REPL_USER:-repluser}\"\n\
+    PG_REPL_PASSWORD=\"${PG_REPL_PASSWORD:-replpass}\"\nPG_PRIMARY_HOST=\"${PG_PRIMARY_HOST:-postgres-primary}\"\
+    \nPG_PRIMARY_PORT=\"${PG_PRIMARY_PORT:-5432}\"\nPG_REPL_SLOT=\"${PG_REPL_SLOT:-replica_slot_1}\"\
+    \n\n# 替换官方 entrypoint 的最后一步：实际启动 PG\nPG_ENTRYPOINT=\"/usr/local/bin/docker-entrypoint.sh\"\
+    \n\nprimary_init() {\n  echo \"[pg-entrypoint] PG_ROLE=primary, 启动 PostgreSQL\"\
+    \n  # 先起 PG 让 initdb/恢复能完成\n  exec \"$PG_ENTRYPOINT\" \"$@\"\n}\n\nprimary_post_start()\
+    \ {\n  # 当 PG 起来后，创建复制账户和 slot\n  # 这个函数由 init container 调用或者用 trap 在后台起\n  for\
+    \ i in $(seq 1 30); do\n    if pg_isready -U \"$POSTGRES_USER\" >/dev/null 2>&1;\
+    \ then\n      break\n    fi\n    sleep 1\n  done\n  psql -v ON_ERROR_STOP=1 -U\
+    \ \"$POSTGRES_USER\" <<EOSQL\nDO \\$\\$\nBEGIN\n  IF NOT EXISTS (SELECT FROM pg_roles\
+    \ WHERE rolname = '${PG_REPL_USER}') THEN\n    CREATE ROLE ${PG_REPL_USER} WITH\
+    \ REPLICATION LOGIN PASSWORD '${PG_REPL_PASSWORD}';\n  END IF;\nEND\n\\$\\$;\n\
+    SELECT pg_create_physical_replication_slot('${PG_REPL_SLOT}') WHERE NOT EXISTS\
+    \ (SELECT 1 FROM pg_replication_slots WHERE slot_name = '${PG_REPL_SLOT}');\n\
+    EOSQL\n\n  # 追加 pg_hba 授权：允许集群网段（192.168.100/22 pod 段与 192.168.104/24 svc 段）做\
+    \ replication\n  PG_HBA=\"$PGDATA/pg_hba.conf\"\n  if [ -f \"$PG_HBA\" ] && !\
+    \ grep -q \"replication .*${PG_REPL_USER} 192.168.0.0/16\" \"$PG_HBA\"; then\n\
+    \    cat >> \"$PG_HBA\" <<EOF\n# k3s 集群 pg replication（entrypoint 自动追加）\nhost\
+    \ all ${PG_REPL_USER} 192.168.0.0/16 md5\nhost replication ${PG_REPL_USER} 192.168.0.0/16\
+    \ md5\nEOF\n    echo \"[pg-entrypoint] pg_hba.conf 追加 replication 授权\"\n  fi\n\
+    \  # 重载配置让授权立即生效\n  psql -v ON_ERROR_STOP=1 -U \"$POSTGRES_USER\" -c \"SELECT\
+    \ pg_reload_conf();\" >/dev/null 2>&1 || true\n\n  echo \"[pg-entrypoint] replication\
+    \ user + slot ready\"\n}\n\nreplica_init() {\n  echo \"[pg-entrypoint] PG_ROLE=replica,\
+    \ 启动 standby\"\n  # 等 primary 可达\n  for i in $(seq 1 60); do\n    if pg_isready\
+    \ -h \"$PG_PRIMARY_HOST\" -p \"$PG_PRIMARY_PORT\" -U \"$POSTGRES_USER\" >/dev/null\
+    \ 2>&1; then\n      echo \"[pg-entrypoint] primary $PG_PRIMARY_HOST:$PG_PRIMARY_PORT\
+    \ ready\"\n      break\n    fi\n    echo \"[pg-entrypoint] waiting for primary...\
+    \ ($i/60)\"\n    sleep 2\n  done\n\n  # 如果 data 目录是空的，做一次基线备份\n  if [ ! -s \"\
+    $PGDATA/PG_VERSION\" ]; then\n    echo \"[pg-entrypoint] empty PGDATA, running\
+    \ pg_basebackup from primary\"\n    PGPASSWORD=\"$PG_REPL_PASSWORD\" pg_basebackup\
+    \ \\\n      -h \"$PG_PRIMARY_HOST\" -p \"$PG_PRIMARY_PORT\" \\\n      -U \"$PG_REPL_USER\"\
+    \ -D \"$PGDATA\" \\\n      -Xs -P -R -S \"$PG_REPL_SLOT\"\n    echo \"[pg-entrypoint]\
+    \ pg_basebackup done\"\n  else\n    echo \"[pg-entrypoint] PGDATA 已存在, 跳过 pg_basebackup\"\
+    \n    # 确保 standby.signal 存在\n    touch \"$PGDATA/standby.signal\"\n  fi\n\n \
+    \ echo \"[pg-entrypoint] starting replica PG\"\n  exec \"$PG_ENTRYPOINT\" \"$@\"\
+    \n}\n\ncase \"$PG_ROLE\" in\n  primary)\n    # 后台跑 post-start 任务\n    (sleep 5\
+    \ && primary_post_start) &\n    primary_init \"$@\"\n    ;;\n  replica)\n    replica_init\
+    \ \"$@\"\n    ;;\n  *)\n    echo \"[pg-entrypoint] unknown PG_ROLE=$PG_ROLE, fallback\
+    \ to primary\"\n    primary_init \"$@\"\n    ;;\nesac\n"
+metadata:
+  name: pg-entrypoint
