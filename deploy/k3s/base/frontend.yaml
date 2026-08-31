@@ -17,7 +17,7 @@ spec:
             matchLabels: {app: web}
       containers:
         - name: web
-          image: ghcr.io/chentianxiong123/mybilibili-web@sha256:e9a39501afd88e4b48f9f8344a52a9ef7be1914ff2bec1ca161c2ee092c1fcb0
+          image: ghcr.io/chentianxiong123/mybilibili-web
           imagePullPolicy: IfNotPresent
           env:
             - {name: NITRO_PORT, value: "3200"}
@@ -53,7 +53,7 @@ spec:
             matchLabels: {app: admin}
       containers:
         - name: admin
-          image: ghcr.io/chentianxiong123/mybilibili-admin@sha256:b9d2e1c46d627faf17476de5aae369a9d21cb6ef83bd99e9c8b78c0fecd8727b
+          image: ghcr.io/chentianxiong123/mybilibili-admin
           imagePullPolicy: IfNotPresent
           ports: [{containerPort: 3100}]
           resources:
