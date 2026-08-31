@@ -18,7 +18,7 @@ spec:
             matchLabels: {app: core}
       containers:
         - name: core
-          image: ghcr.io/chentianxiong123/mybilibili-core
+          image: ghcr.io/chentianxiong123/mybilibili/core
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: mybilibili-config}
@@ -50,7 +50,7 @@ spec:
             matchLabels: {app: search}
       containers:
         - name: search
-          image: ghcr.io/chentianxiong123/mybilibili-search
+          image: ghcr.io/chentianxiong123/mybilibili/search
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: mybilibili-config}
@@ -82,7 +82,7 @@ spec:
             matchLabels: {app: msg-danmaku}
       containers:
         - name: msg-danmaku
-          image: ghcr.io/chentianxiong123/mybilibili-msg-danmaku
+          image: ghcr.io/chentianxiong123/mybilibili/msg-danmaku
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: mybilibili-config}
@@ -114,7 +114,7 @@ spec:
             matchLabels: {app: live}
       containers:
         - name: live
-          image: ghcr.io/chentianxiong123/mybilibili-live
+          image: ghcr.io/chentianxiong123/mybilibili/live
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: mybilibili-config}
@@ -145,7 +145,7 @@ spec:
             matchLabels: {app: ai}
       containers:
         - name: ai
-          image: ghcr.io/chentianxiong123/mybilibili-ai
+          image: ghcr.io/chentianxiong123/mybilibili/ai
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: mybilibili-config}
@@ -173,7 +173,7 @@ spec:
         kubernetes.io/hostname: laptop
       containers:
         - name: studio
-          image: ghcr.io/chentianxiong123/mybilibili-studio
+          image: ghcr.io/chentianxiong123/mybilibili/studio
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: mybilibili-config}
@@ -204,7 +204,7 @@ spec:
         kubernetes.io/hostname: laptop
       containers:
         - name: work
-          image: ghcr.io/chentianxiong123/mybilibili-work
+          image: ghcr.io/chentianxiong123/mybilibili/work
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: mybilibili-config}
@@ -240,7 +240,7 @@ spec:
             matchLabels: {app: bili}
       containers:
         - name: bili
-          image: ghcr.io/chentianxiong123/mybilibili-bili
+          image: ghcr.io/chentianxiong123/mybilibili/bili
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: mybilibili-config}

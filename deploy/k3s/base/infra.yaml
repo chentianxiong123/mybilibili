@@ -48,7 +48,7 @@ spec:
         kubernetes.io/hostname: fnos
       containers:
         - name: postgres
-          image: pg16-zhparser:latest
+          image: ghcr.io/chentianxiong123/mybilibili/pg16-zhparser:latest
           imagePullPolicy: IfNotPresent
           command: ["/usr/local/bin/entrypoint.sh"]
           args: ["postgres"]
@@ -100,7 +100,7 @@ spec:
         kubernetes.io/hostname: laptop
       containers:
         - name: postgres
-          image: pg16-zhparser:latest
+          image: ghcr.io/chentianxiong123/mybilibili/pg16-zhparser:latest
           imagePullPolicy: IfNotPresent
           command: ["/usr/local/bin/entrypoint.sh"]
           args: ["postgres"]
@@ -182,7 +182,7 @@ spec:
         kubernetes.io/hostname: fnos
       containers:
         - name: redis
-          image: redis:7-alpine
+          image: ghcr.io/chentianxiong123/mybilibili/redis:7-alpine
           imagePullPolicy: IfNotPresent
           command: ["redis-server", "--save", ""]
           ports:
@@ -224,7 +224,7 @@ spec:
         kubernetes.io/hostname: laptop
       containers:
         - name: redis
-          image: redis:7-alpine
+          image: ghcr.io/chentianxiong123/mybilibili/redis:7-alpine
           imagePullPolicy: IfNotPresent
           command: ["redis-server", "--save", "", "--replicaof", "redis", "6379"]
           ports:
@@ -257,7 +257,7 @@ spec:
         kubernetes.io/hostname: laptop
       containers:
         - name: minio
-          image: minio/minio:latest
+          image: ghcr.io/chentianxiong123/mybilibili/minio:latest
           imagePullPolicy: IfNotPresent
           command: ["minio", "server", "/data", "--console-address", ":9001"]
           env:
@@ -339,7 +339,7 @@ spec:
                   matchLabels: { app: nats }
       containers:
         - name: nats
-          image: nats:latest
+          image: ghcr.io/chentianxiong123/mybilibili/nats:latest
           imagePullPolicy: IfNotPresent
           env:
             - name: POD_NAME

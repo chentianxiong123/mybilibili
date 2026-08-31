@@ -73,7 +73,7 @@ spec:
     spec:
       containers:
         - name: srs
-          image: registry.cn-hangzhou.aliyuncs.com/ossrs/srs:5
+          image: ghcr.io/chentianxiong123/mybilibili/srs:5
           imagePullPolicy: IfNotPresent
           command: ["./objs/srs", "-c", "conf/srs.conf"]
           ports:
