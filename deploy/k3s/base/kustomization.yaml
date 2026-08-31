@@ -5,7 +5,9 @@ namespace: mybilibili
 resources:
   - namespace.yaml
   - infra.yaml
+  - srs.yaml
   - secret.yaml
+  - pg-entrypoint.yaml
   - backend.yaml
   - frontend.yaml
   - pvc.yaml

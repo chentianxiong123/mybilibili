@@ -1,0 +1,114 @@
+# SRS 推流服务器 — 部署机 k3s (mybilibili namespace)
+# 端口对齐前端约定 (前端硬编码):
+#   1935  RTMP  (OBS 推流)
+#   28080 HTTP-FLV 播放
+#   8000/udp WebRTC UDP
+#   19854 HTTP API / WHIP 推流
+# 用 hostPort 直占部署机宿主端口 (nodePort 默认 30000-32767 区间, 对不上前端约定)
+# 回调: on_publish/on_unpublish → live:8087/api/v1/live/srs/hook (集群内 Service)
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: srs-config
+data:
+  srs.conf: |
+    listen 1935;
+    max_connections 1000;
+    daemon off;
+    srs_log_tank console;
+
+    http_api {
+        enabled on;
+        listen 19854;
+    }
+
+    http_server {
+        enabled on;
+        listen 28080;
+        dir ./objs/nginx/html;
+    }
+
+    rtc_server {
+        enabled on;
+        listen 8000;
+        candidate 192.168.31.225;
+    }
+
+    vhost __defaultVhost__ {
+        http_hooks {
+            enabled on;
+            on_publish http://live:8087/api/v1/live/srs/hook;
+            on_unpublish http://live:8087/api/v1/live/srs/hook;
+        }
+        hls {
+            enabled on;
+        }
+        http_remux {
+            enabled on;
+            mount [vhost]/[app]/[stream].flv;
+        }
+        rtc {
+            enabled on;
+            rtmp_to_rtc off;
+            rtc_to_rtmp on;
+        }
+        play {
+            gop_cache_max_frames 30;
+            queue_length 10;
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: srs
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: srs }
+  template:
+    metadata:
+      labels: { app: srs }
+    spec:
+      containers:
+        - name: srs
+          image: registry.cn-hangzhou.aliyuncs.com/ossrs/srs:5
+          imagePullPolicy: IfNotPresent
+          command: ["./objs/srs", "-c", "conf/srs.conf"]
+          ports:
+            - { name: rtmp, containerPort: 1935, hostPort: 1935 }
+            - { name: flv, containerPort: 28080, hostPort: 28080 }
+            - { name: rtc, containerPort: 8000, hostPort: 8000, protocol: UDP }
+            - { name: api, containerPort: 19854, hostPort: 19854 }
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 1000m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /api/v1/versions, port: 19854}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /api/v1/versions, port: 19854}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          volumeMounts:
+            - { name: config, mountPath: /usr/local/srs/conf/srs.conf, subPath: srs.conf }
+      volumes:
+        - name: config
+          configMap:
+            name: srs-config
+            defaultMode: 0644
+---
+# 集群内 Service: 供集群内部按 srs 服务名寻址
+apiVersion: v1
+kind: Service
+metadata:
+  name: srs
+spec:
+  selector: { app: srs }
+  ports:
+    - { name: rtmp, port: 1935, targetPort: 1935 }
+    - { name: flv, port: 28080, targetPort: 28080 }
+    - { name: rtc, port: 8000, targetPort: 8000, protocol: UDP }
+    - { name: api, port: 19854, targetPort: 19854 }
