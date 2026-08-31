@@ -319,18 +319,21 @@ push main ──► test(go vet + go build 门禁) ──► build-backend(8 服
 ### 镜像与版本策略
 
 - **镜像仓库**：`ghcr.io/chentianxiong123/mybilibili-{core,search,msg-danmaku,live,ai,studio,work,bili,web,admin}`
-- **tag 策略**：
-  - `:latest` —— 默认拉取，部署机（fnos）经 mihomo 代理直拉 GHCR 注入 k3s
-  - `:git-sha` —— 精确回滚/定点部署
+- **tag 策略（分场景）**：
+  - `:latest` —— 仅开发机 compose / 追溯用，不作为生产引用
+  - `:$git-sha` —— CI 随构建推送，仅作版本追溯（GHCR 上偶发不完整，已不用作生产引用）
+  - **生产部署：`@sha256:` 不可变 digest** —— 在 `deploy/k3s/base/kustomization.yaml` 的 `images:` 段**单点锁定**，升级/回滚只改一个 digest
+- **发布流程**：push main → CI 构建并推 `latest`+`git-sha` → 取出新镜像 digest → 更新 `kustomization.yaml` 一处 → `kubectl apply -k` 滚动更新
 - **构建缓存**：`type=gha` 层缓存（`cache-from/cache-to`），增量构建提速
 - **多阶段构建**：`mybilibili-go/Dockerfile` 按 `SERVICE` build-arg + `target` 选服务，复用公共 base
+- **节点绑定**：k3s 两节点拓扑约束——数据层主从按 nodeSelector 钉死节点，业务双副本用 topologySpreadConstraints 强制分散（fnos+laptop 各一）
 
 ### 边界说明
 
 - **transcoder 不打镜像**：裸跑宿主机使用系统 FFmpeg（无容器），故不在矩阵中
 - **wap 不打镜像**：将打包为移动 App
 - 构建仅覆盖 `mybilibili-go/`、`mybilibili-front/`、CI 自身变更（`paths` 过滤，减少无效构建）
-- 部署侧：`docker pull`（fnos）+ `kubectl` 注入 k3s，业务全部多副本滚动更新
+- 部署侧：CI 推镜像后更新 kustomization digest → `kubectl apply -k`（fnos），业务多副本滚动更新
 
 ## 文档
 
