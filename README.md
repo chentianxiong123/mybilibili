@@ -1,8 +1,35 @@
 # mybilibili · 仿哔哩哔哩全栈项目
 
-一套完整仿 B 站的视频社区平台，覆盖用户端 Web（SSR）、管理后台、移动 H5、Flutter / NativeScript / Android WebView 多端，后端为 Go 微服务架构，容器化部署在三机 k3s 集群（部署机 + 开发机 + 边缘 Worker）。
+一套完整仿 B 站的视频社区平台，覆盖用户端 Web（SSR）、管理后台、移动 H5、Flutter / NativeScript / Android WebView 多端。**当前主体为 Go 微服务架构**，容器化部署在三机 k3s 集群（部署机 + 开发机 + 边缘 Worker）。
 
-> **项目历经两代架构演进**：早期为 **Java Spring Cloud 微服务**实现（全业务域 + 直播/视频会议 + AI 能力），现已迭代为 **Go 微服务主体**。Java 版本完整代码保留在 `old/`，价值提炼见 [Java 版本演进历史](./docs/Java版本-SpringCloud微服务历史.md)。目前主体代码为 Go，Java 版本作为历史技术积累与功能原型。经确认继续以 Go 版本为主线推进。
+## 三个版本
+
+本项目完整实现过三代架构，代码均保留在仓库中：
+
+| 版本 | 后端技术 | 状态 | 代码位置 |
+|---|---|---|---|
+| **Go 微服务**（当前主线） | Go + gRPC + NATS JetStream | ✅ 运行中 | `mybilibili-go/` |
+| **Java 微服务**（历史） | Spring Cloud + Nacos + RocketMQ | 存档 | `old/springboot3/`、`old/microservices/` |
+| **Java 单体**（历史） | Spring Boot + MyBatis + Redis + ES | 存档 | `old/java/` |
+
+> 三代版本功能域一致（投稿/弹幕/直播/AI 等），演进方向是**技术栈现代化 + 资源效率 + 高可用**。详见 [Java 版本演进历史](./docs/Java版本-SpringCloud微服务历史.md)。
+
+### Go 版 vs Java 微服务版
+
+同为微服务形态，Go 版针对同域功能做了**极致的资源效率**改造，尤其适合边缘/轻量部署（本项目的 k3s 集群：
+
+| 维度 | **Go 版（当前）** | Java 微服务版（历史） |
+|---|---|---|
+| **内存占用** | **极低**：单服务常驻内存 ≈ **几十 MB 级**，静态编译无 JVM 开销，Fi microservices 版单服务即内存占用显著更低 | **高**：每个服务挂 JVM（堆 + 元空间 + GC 预留）通常数百 MB 起步 |
+| **部署资源** | 10 个服务在 3 机 k3s 轻松多副本冗余，2 副本 × 10 服务容器总量可控 | 同数量服务多副本内存开销翻几倍，轻量机难以承受 |
+| **启动速度** | **毫秒级**启动（原生编译），滚动更新秒级完成 | JVM 冷启动秒级~十秒级，回滚/扩展慢 |
+| **镜像体积** | 单二进制静态编译，镜像 **几十 MB 量级**（多阶段构建） | JRE + 依赖 + 类库，镜像 GB 级 |
+| **运行时依赖** | 无 GC 停顿、可预测延迟，天然适合长连接/高并发 IO | JVM GC 停顿 + 内存压力调优复杂 |
+| **基础设施** | PostgreSQL + NATS JetStream（轻量）+ Redis，全主从/集群化 | MySQL + RocketMQ + Nacos，各自常驻内存开销大 |
+| **脚手架** | `go vet` + `go build` 门禁，编译期类型/接口安全 | 运行时较多（反射/代理，MyBatis/Spring 容器） |
+| **演进价值** | 保留 Java 版全部业务模型，去除重运行时 | 全业务域 + AI + 直播全栈的**功能原型**沉淀 |
+
+> **一句话**：功能完整性继承自 Java 版，但要跑在 3 台轻量机上并做多副本高可用，需要 **Go 这种低内存、快启动的静态二进制**——这也是本项目迁移到 Go 的核心动力。
 
 ## 目录结构
 
@@ -271,9 +298,39 @@ mybilibili/
 SWAGGER/探活：  GET /api/v1/health
 ```
 
-## 生成产物 / 镜像
+## CI/CD
 
-业务镜像统一推送 GHCR（`ghcr.io/...`），由部署机执行 `docker pull` 并注入 k3s。CI 位于 `.github/workflows/`。
+### 流水线总览（GitHub Actions，`.github/workflows/ci.yml`）
+
+`push` 到 `main` 自动触发（也可 `workflow_dispatch` 手动指定服务），产物全部推送到 **GHCR**（`ghcr.io/chentianxiong123/mybilibili-*`）。
+
+```
+push main ──► test(go vet + go build 门禁) ──► build-backend(8 服务镜像) ──► GHCR
+                          │
+                          └───────────────► build-frontend(web/admin 镜像) ──► GHCR
+```
+
+| Job | 内容 | 说明 |
+|---|---|---|
+| **test** | `go vet` + `go build`（逐模块） | 质量门禁，失败则不构建镜像 |
+| **build-backend** | 8 个后端服务镜像 | core / search / msg-danmaku / live / ai / studio / work / bili |
+| **build-frontend** | 2 个前端应用镜像 | web（:3200）/ admin（:3100） |
+
+### 镜像与版本策略
+
+- **镜像仓库**：`ghcr.io/chentianxiong123/mybilibili-{core,search,msg-danmaku,live,ai,studio,work,bili,web,admin}`
+- **tag 策略**：
+  - `:latest` —— 默认拉取，部署机（fnos）经 mihomo 代理直拉 GHCR 注入 k3s
+  - `:git-sha` —— 精确回滚/定点部署
+- **构建缓存**：`type=gha` 层缓存（`cache-from/cache-to`），增量构建提速
+- **多阶段构建**：`mybilibili-go/Dockerfile` 按 `SERVICE` build-arg + `target` 选服务，复用公共 base
+
+### 边界说明
+
+- **transcoder 不打镜像**：裸跑宿主机使用系统 FFmpeg（无容器），故不在矩阵中
+- **wap 不打镜像**：将打包为移动 App
+- 构建仅覆盖 `mybilibili-go/`、`mybilibili-front/`、CI 自身变更（`paths` 过滤，减少无效构建）
+- 部署侧：`docker pull`（fnos）+ `kubectl` 注入 k3s，业务全部多副本滚动更新
 
 ## 文档
 
