@@ -2,6 +2,8 @@
 
 一套完整仿 B 站的视频社区平台，覆盖用户端 Web（SSR）、管理后台、移动 H5、Flutter / NativeScript / Android WebView 多端，后端为 Go 微服务架构，容器化部署在三机 k3s 集群（部署机 + 开发机 + 边缘 Worker）。
 
+> **项目历经两代架构演进**：早期为 **Java Spring Cloud 微服务**实现（全业务域 + 直播/视频会议 + AI 能力），现已迭代为 **Go 微服务主体**。Java 版本完整代码保留在 `old/`，价值提炼见 [Java 版本演进历史](./docs/Java版本-SpringCloud微服务历史.md)。目前主体代码为 Go，Java 版本作为历史技术积累与功能原型。经确认继续以 Go 版本为主线推进。
+
 ## 目录结构
 
 ```
@@ -15,7 +17,7 @@ mybilibili/
 ├── deploy/                   # 部署：k3s manifests + docker compose + 数据库备份 + SRS
 ├── docs/                     # 架构演进与实战踩坑文档
 ├── scripts/                  # 构建/启动脚本
-└── old/                      # 历史遗留
+└── old/                      # Java Spring Cloud 历史版本（单体/微服务/直播桌面临播/OBS插件）
 ```
 
 ## 架构
@@ -276,3 +278,7 @@ SWAGGER/探活：  GET /api/v1/health
 ## 文档
 
 `docs/` 记录了关键架构决策与实战踩坑：CSR→SSR 演进、首屏体积优化、SSR 取舍、构建部署优化、移动端三技术栈对比、企业级性能优化方法论等，详见各 `0X-*.md`。
+
+### 历史版本
+
+- **[Java 版本演进历史](./docs/Java版本-SpringCloud微服务历史.md)**：单体版（Spring Boot 2.7）→ 全量微服务（Spring Cloud + Nacos + RocketMQ）→ 聚合微服务（Spring Boot 3.2）。含全业务域、AI（Whisper 字幕 + DeepSeek 摘要/客服/审核）、直播全栈（SRS + WebRTC 视频会议 + 直播桌面 App + OBS 插件）、前端三端。代码保留在 `old/`。
