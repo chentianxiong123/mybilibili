@@ -36,15 +36,15 @@ mybilibili/
 
 | 服务 | 职责 | 关键能力 |
 |---|---|---|
-| **core-service** | 核心服务 | 用户/登录注册/权限/分类/稿件/评论/动态/历史/上传与静态资源，HTTP :8080 + gRPC :9090 |
-| **ai-service** | 字幕/AI 服务 | AI 字幕、AI 辅助，:8088/:9088 |
-| **bili-proxy-service** | B 站代理 | 代理 B 站数据源，健康检查 `/api/v1/bili/health`，:8091 |
-| **live-service** | 直播服务 | 直播间、语音房（WebSocket `/ws/`），:8087 |
-| **msg-danmaku-service** | 弹幕/消息 | 弹幕、私信/消息中心（SSE `/sse/`），:8086/:9086 |
-| **search-service** | 搜索/推荐 | 搜索、热门、推荐、创作者统计、画像，:8084/:9084 |
-| **studio-service** | 创作中心 | 创作中心、投稿管理、素材，:8089 |
-| **work-service** | 编排/任务 | 视频发布流水线编排（NATS 订阅） |
-| **transcoder-service** | 转码服务 | 视频转码处理 |
+| **core-service** | 核心服务 | 用户/鉴权/分类/稿件/视频/评论/弹幕管理/动态/收藏/关注/历史/互动/分享/审核/举报/违禁词/客服工单/运营统计/定时与运营任务/SSE，HTTP :8080 + gRPC :9090 |
+| **search-service** | 搜索/推荐/画像 | 视频/用户搜索、搜索建议、热搜榜、推荐(for-you/热门/相关)、创作者统计、用户画像、搜索引擎索引管理，:8084/:9084 |
+| **msg-danmaku-service** | 弹幕/消息 | 弹幕(发送/获取/趋势/管理)、私信会话、@/点赞/回复/系统通知、未读数、SSE 弹幕与通知推送，:8086/:9086 |
+| **live-service** | 直播 | 直播间 CRUD/开播停播状态/定时开播、SRS hook、WebSocket 房间会话、连麦(麦位/音视频)，:8087 |
+| **ai-service** | 字幕/AI 中心 | 字幕(生成/上传/SRT导入/扫描/默认)、AI 摘要、AI 审核(评论/回复/举报/内容)、AI 助手对话、AI 客服技能与路由、用量统计，:8088/:9088 |
+| **studio-service** | 创作中心 | 素材上传、导出任务，:8089 |
+| **bili-proxy-service** | B 站代理 | 链接解析、流代理，对接真实 B 站数据源，:8091 |
+| **work-service** | 编排/任务 | NATS 订阅视频处理流水线：转码/抽音/生成字幕/AI 摘要，自动链式编排 + 进度上报 |
+| **transcoder-service** | 转码服务 | 视频方向检测/转码/抽音 |
 | **minio** | 对象存储 | 封面/头像/稿件/视频文件 |
 
 服务间通过 **gRPC** 通信（`mybilibili-go/proto/` 定义），异步任务走 **NATS JetStream**。HTTP 路由按 path 由 **Traefik IngressRoute** 分发，JWT 由各后端服务自行验证。
@@ -75,134 +75,191 @@ mybilibili/
 
 ## 功能清单
 
-### 账号与用户体系
-- 注册 / 登录 / 登出，JWT 鉴权、登录态保持与刷新
-- 忘记密码，支持找回重置
-- 用户信息：头像、昵称、简介、性别、生日、签名等资料编辑
-- 角色 / 权限体系，管理员角色（RBAC）
-- 个人中心：主页、编辑资料、头像管理、登录日志
-- 创作者身份识别（"成为创作者的 X 天"）
+> 以下功能点逐一列出（后端按 `mybilibili-go` 各服务注册的全部 HTTP/gRPC 端点 + 89 张数据表 + 前端各端页面组件整理，详见服务路由章节）。
 
-### 首页与内容分发
-- 顶部导航（首页 / 直播 / 分区 / 搜索 / 投稿等）
-- 轮播 Banner（`banner-images/home`，运营可配置多张轮播）
-- 背景 Banner 大图
-- 推荐视频流（`/recommend/hot`，瀑布流卡片）
-- 热门视频（`/recommend`）
-- 分区（category）浏览：分类列表 + 分类下视频
-- 频道 / 分区页（wap 端 Channel）
+### 1. 账号与用户体系（core-service：user / auth）
+- 注册、登录、登出，JWT 签发与刷新（`/user/token/refresh`）、`/auth/verify` 鉴权验证
+- 邮箱验证码（`/user/email/code`、`/user/email/verify`）
+- 忘记密码 / 重置（`/user/password/forgot`）
+- 图形/行为验证码（`/captcha/`）
+- 用户资料：昵称、头像（`/user/me/avatar`）、性别、生日、简介、个性签名等
+- 默认头像获取（`/user/default-avatar`）、批量用户信息（`/user/batch`）
+- 看空间隐私设置（`/user/privacy/`）、消息偏好设置（`/user/settings/message`）、创作者设置（`/user/settings/creator`）
+- 兴趣标签（`/user/tags`）、个人标签管理
+- **经验等级系统**（`user/experience.go`）：按公式 `floor(100*level^1.8)` 升级，完成任务/行为自动 AwardExperience，跨阈值自动升级并结转经验
+- 我的信息（`/user/me`）、登录日志（`/user/login-logs` 及计数）、钉钉/置顶视频（`/user/pinned-video`）
 
-### 视频与稿件
-- 稿件列表、详情页展示（封面、标题、作者、播放/点赞/评论数、发布时间）
-- 视频播放（清晰度选择、横屏/竖屏适配、播放器）
-- 视频信息与元数据（/videos/、/covers/、/uploads/ 静态资源）
-- 稿件上传（`UploadView`，创作中心内）
-- 视频处理流水线：上传 → work-service 编排 → transcoder 转码 → 发布（NATS JetStream 驱动）
-- 视频审核 / 内容审核队列
-- 转码配置、视频过程管理（后台）
-- 视频竖屏（VerticalFeed / VideoPlayer）
+### 2. 首页与内容分发（core + search）
+- 顶部导航（首页 / 直播 / 分区 / 搜索 / 投稿 / 消息）
+- 轮播 Banner 管理（`banner-images/home` 多张 + `banner-images/background` 背景大图），运营可配 `sortOrder`/`status`/`type`
+- 普通 Banner 位（`/banner/`）
+- 推荐流：热门（`/recommend/hot`）+ **个性推荐**（`/recommend/for-you`）+
+- **相关推荐**（`/recommend/related/`，稿件详情页"相关推荐"）
+- 分类体系（`/category/`）：多级分类、分类下内容
 
-### 互动体系
-- 点赞 / 取消点赞
-- 收藏（favorites）、收藏夹管理（collections 列表 / 创建 / 编辑）
-- 关注与粉丝：关注 / 取关，互关、粉丝列表、关注列表
-- 观看历史（history）
-- 评论（稿件评论区）
-- 弹幕：视频弹幕（msg-danmaku-service），直播间弹幕，弹幕面板
-- @ 提及、回复（ReplyList）、点赞通知（LikeList）
+### 3. 视频、稿件与发布流水线（core + work + transcoder + studio）
+- 稿件（manuscript）齐全的 CRUD（`/manuscript/`），含 `video_tags`、`videos` 多视频、封面、分 P
+- **分块断点上传**（前端 `useChunkedManuscriptUpload`：切片上传、进度、续传）
+- **视频处理流水线**（NATS JetStream 驱动，`work-service/pipeline.go`）：
+  转码（方向检测/转码）→ 抽音频 → 生成字幕（ASR）→ **AI 智能摘要**，`AutoChain` 自动链式处理，进度走 **SSE**（`/video/process/sse/`）
+- 转码服务（`/transcode`）：方向检测、转码、抽音（transcoder-service）
+- 稿件审核状态机（`manuscript_status_events`）、编辑版本（`manuscript_edit_versions`）、每日指标（`manuscript_daily_metrics`）
+- 视频信息获取（`/video/`）、观看历史（`watch_history`，记录播放进度 `progress_seconds`、续播）
+- 上传会话（`upload_sessions`）、素材上传（`/studio/assets/upload`）、导出任务（`/studio/export-tasks`）
+- 视频处理管理端点（`/video/process/admin/*`：当前任务、队列、统计、SSE 流）
+- 分享（`/share/`）：不同渠道分享计数（channel + ip 追踪）
 
-### 动态与社区
-- 动态列表（关注的人动态流，dynamic）
-- 动态详情、动态发布
-- 用户空间（space）：主页、投稿列表、收藏、关注/粉丝、草稿、编辑资料
+### 4. 互动体系（core：interaction / favorite / follow / comment）
+- 点赞/取消、批量点赞计数（`/interaction/`、`/comment/batch-like-counts`）
+- 收藏：收藏夹（`favorite_folders`）创建/编辑/删除，收藏稿件（`favorite_folder_videos`），`/favorites/check` 判断是否已收藏，`/favorites/list` 收藏列表
+- 关注/粉丝：关注、取关、关注检查、我的粉丝/关注列表（`/follow/me/followers`、`/follow/me/following`）、用户粉丝/关注（`/follow/user/`）
+- 评论系统（comment）：发表评论（`/comment/add`）、回复（`/comment/reply`）、评论列表、回复列表、评论/回复点赞（`/comment/{id}/like`）
+  - 评论限流（`comment_rate_limit.go`）、评论审核状态、创作者视角评论管理（`/creator/comments`）、公开 API（`public_api_handler.go`）
 
-### 搜索与发现
-- 全站搜索（search：`/search`）
-- 搜索联想 / 热门搜索（`/search/hot` 热搜榜）
-- 搜索结果筛选（SearchResults：分区/类型筛选）
-- 推荐（`/recommend/`）
-- 排行榜（ranking）
-- 热度排行 / 分区排行（wap）
+### 5. 动态与社区（core：social / dynamic）
+- 动态发布/删除、关注动态流（`/dynamic/all`）
+- 动态点赞（`/dynamic/like/`）、分享（`/dynamic/share/`）
+- 动态评论（发布/删除/列表/回复/点赞/计数，`/dynamic/comment/*`）
+- 交互记录（`user_interactions`）、点赞关系
 
-### 消息与通知中心
-消息中心（message）分类型页签：
-- 私信会话（ConversationList + ChatWindow，实时聊天）
-- @ 提及（AtList）
-- 回复（ReplyList）
-- 点赞/喜欢（LikeList）
-- 系统通知（SystemList）
-- 站内信/订阅（NotificationList）
-- AI 聊天助手（AiChatWindow）
-- 消息设置（MessageSettings：通知开关）、消息侧边栏
-- SSE 实时推送（`/sse/` → core）、私信/通知实时到达
+### 6. 搜索与发现（search-service）
+- **多路搜索**：视频搜索（`/search/videos`）、用户搜索（`/search/users`）、搜索建议（`/search/suggest`）
+- 热搜：榜单（`/search/hot`、`/search/hot/rank`）、关键词获取/删除/自增热度/分数、过期清理（`/hot/clean-expired`）
+- 推荐：热门 `for-you`、相关、创作者推荐
+- **推荐位配置**（`/search/admin/recommend-config` 管理 + 重置）
+- **搜索引擎索引管理**：全量重建、增量、刷新、状态、校验、批量索引（`/search/admin/index/*`）
+- 创作统计（search-service）：
+  - 创作者总览（`/creator/stats/overview`）、粉丝排行（`fans-ranking`）、粉丝趋势（`fans-trend`）、稿件趋势（`manuscript-trend`）、最新评论（`latest-comments`）、总趋势（`trend`）、榜单（`ranking`）
+- **用户画像**（`/profile/`、`/profile/record/`，`clients/profile_recorder.go`）
 
-### 直播（live）
-- 直播列表（分区浏览：游戏/颜值/户外/音乐/聊天等）
-- 直播间：
-  - 直播播放器（`useLiveRoomPlayer`，清晰度 / 码率选择）
-  - 主播关注（`useLiveRoomFollow`，是否关注 + 粉丝数、一键关注）
-  - 房间会话（`useLiveRoomSession`：房间信息、当前用户、主播识别、分享房间）
-  - 实时在线人数（`useLiveRoomRealtime` 实时观众数）
-  - 房间聊天 / 弹幕（sendRoomMessage，WebSocket `/ws/`）
-  - 连麦（`useLiveLinkmic`：语音连麦、麦位、音视频通话）
-  - 麦克风 / 摄像头控制（Mute / VideoPlace）
-- 直播推流（`/live/push`，主播推流端，SRS 承接）
-- 直播回放（ReplayTab：回放列表、回放播放）
-- 直播区域 / 分类页（wap live/Area）
+### 7. 消息与通知（msg-danmaku-service）
+- **私信会话**：会话列表（`/message/conversations`）、会话内消息（`/message/conversations/`）、指定用户会话（`/message/user/`）、发送（`/message/send`）
+- 未读：未读数（`/message/unread`）、未读统计（`/message/unread/counts`）、按会话未读（`/message/conversation/unread/`）、批量已读（`/message/batch/read`）
+- **通知类型**：@提及（`/message/at`）、点赞（`/message/likes`）、回复（`/message/replies`）、系统通知（`/message/system`）、通知落库（`notifications` 表）
+- 消息设置（`/message/settings`，开关各类型通知）
+- **SSE 实时推送**：弹幕流（`/sse/danmaku`）、通知流（`/sse/notification`）、视频处理进度（core `/video/process/sse/`）
+- 弹幕：发送（`/danmaku/send`）、按视频获取（`/danmaku/video/`）、批量计数（`/danmaku/batch-count`）、趋势（`/danmaku/trend`）、创作者弹幕管理（`/creator/danmaku/`）
+- 管理端点：弹幕审核（msg-danmaku 的 `/message/admin/`）
 
-### 创作中心（`/create-center/`）
-- 首页仪表盘（CenterDashboard：作品概览、近期数据）
-- 稿件管理（ManuscriptManager：自己投稿的增删改查、审核状态）
-- 投稿（UploadView：上传稿件）
-- 草稿箱（DraftsBox）
-- 数据中心（DataCenterView：播放/互动数据报表）
-- 粉丝管理（FansManager：粉丝列表/统计）
-- 侧边导航（CenterSidebar）+ 创作者天数徽章
+### 8. 直播（live-service + 前端全量 composables）
+- 直播间管理：创建/详情/按主播查询/分页列表/更新/开播-停播状态（`/live/room*`）
+- **定时开播**（`ScheduleRoom`，设置 scheduledAt）、直播状态机（`RoomStatusLive` 等）、SRS 事件回调（`/live/srs/hook`：推流通知自动置为开播/停播）
+- 直播管理后台（`/live/admin/`）
+- 直播间 WebSocket 会话（`live_ws.go`）：房间内实时消息
+- **连麦系统**（`linkmic.go` + `linkmic_handler.go` + `live_linkmic`/`live_seats` 表）：
+  - **麦位管理**：seat_index 位置、加入/离开、静音（muted）、状态
+  - **WebRTC 基础 P2P 网格**（前端 `usePeerConnectionMesh`：offer/answer/ice-candidate、ICE 重启重协商）
+  - **WHIP 协议推流**（`useWhipPublisher`，连接 SRS 的 `/rtc/v1/whip/stream/`，`getDisplayMedia` 支持**屏幕共享**）
+- 直播推流房间（`/live/push`）：开播设置（`useLivePushRoomSetup`）、房间控制（`useLivePushRoomControls`：麦克风/摄像头/Mute/开播）、观众监控（`useLivePushAudienceMonitor`：实时在线人数）
+- 观众端直播间（LiveRoomView）：播放器（`useLiveRoomPlayer`：清晰度、直播/回放 Tab、回放列表与播放）、关注（`useLiveRoomFollow`）、实时数据（`useLiveRoomRealtime`：在线人数、房间消息）、互动（`useLiveRoomInteractions`）、会话（分享房间、离线房间状态判断 `isOfflineRoomStatus`）
+- 直播列表/分区（`/live/rooms`、`/live/room/list`，wap live/Area、live/List）
 
-### 用户空间（个人主页 Profile）
-- 主页（home）：个人资料、投稿、动态
-- 投稿列表（submissions）
-- 收藏（favorites）、收藏夹（collections）
-- 关注 / 粉丝列表（following / followers）
-- 动态（dynamic）
-- 兴趣标签（interests）
-- 设置（settings）、站内搜索
+### 9. 消息中心 + AI 客服（web 端 message + ai-service）
+- 消息中心分类型页签（私信/提及/回复/点赞/系统/通知）
+- **AI 聊天助手**（AiChatWindow）、**AI 客服技能系统**（ai-service skills）：
+  - 技能 CRUD（`/ai/skills`、`/ai/skills/`）、客服技能默认技能（`/ai/skills/customer-service/defaults`）
+  - 客服路由（`/ai/skills/customer-service/route` 及 route-test 测试）
+  - AI 客服对话（`/ai/customer/chat`）、会话历史（`/ai/customer/history/`）、转人工（`/ai/customer/transfer`）、专家座席（`/ai/customer/`）
+- AI 助手对话（`/ai/assistant/send`）、AI 会话/消息落库（`ai_sessions`、`ai_chat_messages`）
+- AI 技能绑定（`/ai/bindings/`）、配置管理（`/ai/configs/`、配置测试）、用量统计（`/ai/usage/`，`ai_usage_logs` 按月分区）
 
-### 管理后台（`/admin/`，Vue3 + Element Plus）
-- **登录与权限**：管理员登录（LoginView）、角色管理（RolesView）、管理员列表（AdminsView）、无权限页
+### 10. AI 能力中心（ai-service）
+- **字幕全链路**：
+  - 生成字幕（`/subtitle/generate`，ASR）
+  - 字幕上传（`/subtitle/upload`、`/subtitle/upload-srt`、Srt 导入）
+  - 系统字幕导入（`/subtitle/import-system`）、待处理队列（`/subtitle/pending`）、扫描（`/subtitle/scan/`）、设为默认（`/subtitle/set-default`）、按视频查（`/subtitle/video/`）、全部视频（`/subtitle/videos`）
+- **AI 内容审核**：评论审核（`/ai/review/comment`）、回复审核（`/ai/review/reply`）、举报审核（`/ai/review/report`）、内容审核（`/ai/review/content`）
+- **AI 摘要**（`/ai/summary/`，视频摘要）
+- AI 配置与用量管理（前端 adminAi.ts）
+
+### 11. AI 数据处理与画像（search-service + ai-service）
+- 用户画像记录（`/profile/record/`）
+- B 站代理（bili-proxy-service）：链接解析（`/api/v1/bili/resolve/`）、流代理（`/api/v1/bili/stream/`），对接真实 B 站内容源
+
+### 12. 审核与内容安全（core：moderation）
+- 内容审核后台（`/moderation/admin/comments|danmaku|prohibited-words|report`）
+- 违禁词库：CRUD + **批量导入**（`/moderation/admin/prohibited-words/batch-import`）
+- 审核状态机（`content_reviews`）、举报（`/report/submit`）、评论/弹幕审核（`moderation_admin`）
+
+### 13. 平台统计与运营（core）
+- 平台统计（`/statistics/`）
+- **定时任务系统**（`scheduled_tasks` 表 + 后台 `/admin/scheduled-tasks`：列表、启用 toggle、手动 trigger）
+- **运营任务**（`operation_tasks` + `/admin/operation-tasks`）
+- 安全设置（`/admin/security-settings`）、**存储迁移**（`/admin/storage/migrate`：本地/MinIO 迁移）
+- 转码配置管理（`/admin/transcode-config`，`transcode_config` 表）
+
+### 14. 客服工单系统（support）
+- 用户工单（`support_tickets`）
+- 客服会话（`/operation/message/tickets/customer-session`、`/operation/tickets/session/`）
+- 工单后台管理（`/support/admin/tickets`、`/operation/tickets`）
+
+### 15. 管理后台（`/admin/`，Vue3 + Element Plus，`apps/admin/app/views/admin/`）
+- **登录与权限**：管理员登录（LoginView）、角色管理（RolesView、`roles`/`permissions`/`role_permissions`/`admin_user_roles` 表）、管理员列表（AdminsView）、无权限页；权限用 `/admin/permissions`
 - **核心业务管理**：
-  - 视频稿件管理（ManuscriptsView）
+  - 视频稿件管理（ManuscriptsView）＋稿件后台端点（`/manuscript/admin/all|pending|processing|statistics`）
   - 分类管理（CategoriesView）
-  - 用户管理（UsersView）
-  - 评论面板（CommentPanel）+ 评论审核
-  - 弹幕面板（DanmakuPanel）+ 管理
+  - 用户管理（UsersView、`/user/admin/list`、用户后台端点）
+  - 评论面板（CommentPanel）＋评论管理（`/admin/comments`）
+  - 弹幕面板（DanmakuPanel）＋弹幕审核
+  - 视频管理（VideoProcessView，视频处理队列）
 - **运营配置**：
   - 轮播 Banner 管理（BannerImagesView）
   - 首页管理（IndexManagerView）
   - 推荐位配置（RecommendConfigView）
+  - 搜索索引/热搜管理（search admin）
 - **内容审核**：内容审核（ContentReviewView）、违禁词管理（ProhibitedWordsView）、举报中心
 - **直播管理**：直播间管理（LiveRoomsView）
-- **AI 能力**：AI 技能配置（AiSkillsView）、AI 用量（AiUsageView）、AI 对话面板（AdminAiChatPanel / FloatingButton）
+- **AI 能力**：AI 技能配置（AiSkillsView）、AI 用量统计（AiUsageView）、AI 对话面板（AdminAiChatPanel / 悬浮按钮）
 - **字幕管理**：字幕管理（SubtitleManagementView）
-- **系统**：系统通知（SystemNotificationManagerView）、操作审计日志（AuditLogsView）、API 管理（ApiManagementView）、登录日志（LoginLogsView）
-- **任务/Pipeline**：视频处理任务（VideoProcessView）、转码配置（TranscodeConfigView）、定时任务（ScheduledTasksView）、运营任务（OperationTasksView）
-- **客服**：用户在线客服聊天（CustomerChatView + SupportTicketsView 工单）
+- **系统**：系统通知（SystemNotificationManagerView）、操作审计日志（AuditLogsView，`audit_logs` 按月分区）、API 管理（ApiManagementView，`api_configs`/`ai_api_configs`）、登录日志（LoginLogsView）、安全设置
+- **任务/Pipeline**：视频处理（VideoProcessView）、转码配置（TranscodeConfigView）、定时任务（ScheduledTasksView）、运营任务（OperationTasksView）
+- **客服**：在线客服会话（CustomerChatView）、工单（SupportTicketsView）
 - **数据看板**：DashboardView
 
-### 多端（移动）
-- **H5 (wap)**：首页、视频播放（弹幕）、直播（分区/房间/回放）、搜索、排行、动态、空间（投稿/收藏/粉丝/历史/草稿）、消息（私信/通知）、创作中心、登录
+### 16. 数据中心（web datacenter 组件）
+- 数据概览卡（DataCards）
+- 数据总览面板（DataOverviewPanel）
+- **账号诊断**（AccountDiagnosisPanel）
+- **粉丝分析**（FanAnalysisPanel）
+- **稿件分析**（ManuscriptAnalysisPanel）
+- 趋势图（TrendChart）
+
+### 17. 创作中心（`/create-center/`，`CreateCenterView`）
+- 侧边导航（CenterSidebar）＋头部"成为创作者第 X 天"徽章
+- 首页仪表盘（CenterDashboard）
+- 稿件管理（ManuscriptManager）＋**稿件编辑弹窗**（ManuscriptEditDialog）
+- 投稿（UploadView，分块上传）
+- 草稿箱（DraftsBox）
+- 数据中心（DataCenterView）
+- 粉丝管理（FansManager）
+- 收藏夹管理（CollectionManager / CreateDialog / AddVideoDialog / Detail / List）
+
+### 18. 用户空间（个人主页，`profile/personal-center`）
+- 主页 Tab（ProfileHeader + ProfileSidebar + Tab* 全家）
+- 投稿列表（Submission）、视频列表（VideoList）
+- 收藏（Favorite）/ 收藏夹（CollectionGrid / Detail / EditDialog / AddVideoDialog / FavoriteFolder*）
+- 关注/粉丝（FollowList / Fans）、动态（DynamicList）
+- 空间搜索（TabSearch）、设置（TabSettings）、兴趣（InterestsPanel）
+- 创作中心入口、个人中心（home / info / avatar / login-logs）
+
+### 19. 搜索/社交前端组件
+- 搜索页（SearchView + SearchResults：视频/用户/分区筛选）、热搜
+- 动态页（DynamicView + 详情 DynamicDetailView）
+
+### 20. 多端（移动）
+- **H5 (wap，`/m/*` 全部路由)**：首页、频道（channel）、视频播放（横屏）+ **竖屏视频流**（vertical）、直播（areas/list/room）、搜索、热搜、排行、动态、空间（投稿/收藏/粉丝/历史/草稿/资料编辑）、消息（私信 chat/通知 notify）、创作中心、登录
 - **Flutter App**：auth / home / search / live / video / dynamic / follow / message / creator / profile / upload 模块
 - **NativeScript**：跨端备选
 - **Android WebView**：H5 原生壳
 
-### 平台能力
-- 微服务 + gRPC 服务间通信（`proto/` 定义）
-- NATS JetStream 流水线（视频发布/处理/进度主题）
-- SSE 实时推送、WebSocket 通信
-- Traefik 网关：限流（rate-limit）、压缩、安全头、静态资源永久缓存、按 path 路由
+### 21. 平台能力
+- 微服务 + gRPC（`proto/` 定义，服务间 gRPC 客户端：`clients/ai_client`、`msg_danmaku_client`、`search_client`、`profile_recorder`）
+- NATS JetStream 流水线：转码/抽音/字幕/AI 摘要/进度主题，事件发布（`events/event_publisher.go`）
+- SSE 实时推送（弹幕/通知/处理进度）、WebSocket（直播间）
+- Traefik 网关：限流、压缩、安全头、静态资源永久缓存、按 path 路由（含 live 反向代理、bili 反向代理、`/uploads/` 本地/MinIO 双后端）
 - 多副本高可用：业务、PostgreSQL、Redis、NATS 全部主从/集群冗余
-- 数据备份 / 恢复（`deploy/db/` 全量备份）
-- B 站数据代理：对接真实 B 站内容源（bili-proxy-service）
+- 数据备份 / 恢复（`deploy/db/` 全量备份 + `README` 说明）
+- 数据库 89 张表：用户/稿件/视频/评论/弹幕/动态/直播(rooms+seats+linkmic)/收藏/关注/私信/通知/审核/举报/违禁词/热搜/上传会话/订阅/分享/客服工单/操作任务/定时任务/审计日志/登录日志/AI(会话/消息/技能/配置/用量/Api)/画像/交互/短视频 tags 等，多表按月分区
 
 ## 快速访问（生产 k3s）
 
