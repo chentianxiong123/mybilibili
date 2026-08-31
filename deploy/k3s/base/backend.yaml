@@ -18,7 +18,7 @@ spec:
             matchLabels: {app: core}
       containers:
         - name: core
-          image: ghcr.io/chentianxiong123/mybilibili-core@sha256:7021612c8812699a4779e389fa7cab5dd5454e08e00ee4e235cd51c12de8047a
+          image: ghcr.io/chentianxiong123/mybilibili-core
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: mybilibili-config}
@@ -50,7 +50,7 @@ spec:
             matchLabels: {app: search}
       containers:
         - name: search
-          image: ghcr.io/chentianxiong123/mybilibili-search@sha256:57dde5149d3951545bed795c08096c8cc9662e0a2d4e16d298b6fb45c8189851
+          image: ghcr.io/chentianxiong123/mybilibili-search
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: mybilibili-config}
@@ -82,7 +82,7 @@ spec:
             matchLabels: {app: msg-danmaku}
       containers:
         - name: msg-danmaku
-          image: ghcr.io/chentianxiong123/mybilibili-msg-danmaku@sha256:eeac6b72c4b5aa137ddda638ad50d5cd9707ec22a6b4ddf3fd12be649724fa90
+          image: ghcr.io/chentianxiong123/mybilibili-msg-danmaku
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: mybilibili-config}
@@ -114,7 +114,7 @@ spec:
             matchLabels: {app: live}
       containers:
         - name: live
-          image: ghcr.io/chentianxiong123/mybilibili-live@sha256:2018684d9da36123cc103eaea5ecf23dfe680df84900f3b7976f614649ec6c7f
+          image: ghcr.io/chentianxiong123/mybilibili-live
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: mybilibili-config}
@@ -145,7 +145,7 @@ spec:
             matchLabels: {app: ai}
       containers:
         - name: ai
-          image: ghcr.io/chentianxiong123/mybilibili-ai@sha256:8056ea081104f443581ce973097c48a6e35f083cc73712614a30dde4d23cfe31
+          image: ghcr.io/chentianxiong123/mybilibili-ai
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: mybilibili-config}
@@ -173,7 +173,7 @@ spec:
         kubernetes.io/hostname: laptop
       containers:
         - name: studio
-          image: ghcr.io/chentianxiong123/mybilibili-studio@sha256:af8515ae1560b182eaf710a3eaa80baee638bedd20c81937f7325d361ef738bb
+          image: ghcr.io/chentianxiong123/mybilibili-studio
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: mybilibili-config}
@@ -204,7 +204,7 @@ spec:
         kubernetes.io/hostname: laptop
       containers:
         - name: work
-          image: ghcr.io/chentianxiong123/mybilibili-work@sha256:16c136dbf3ccc4cf88081947c9b909c6a6b341744dfd2dc3c7f5650ab7c14410
+          image: ghcr.io/chentianxiong123/mybilibili-work
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: mybilibili-config}
@@ -240,7 +240,7 @@ spec:
             matchLabels: {app: bili}
       containers:
         - name: bili
-          image: ghcr.io/chentianxiong123/mybilibili-bili@sha256:c8f3460a649b4f3ea58375c75927fa168697f78d3a2da15ee1a2d43a11eb2f21
+          image: ghcr.io/chentianxiong123/mybilibili-bili
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: mybilibili-config}
