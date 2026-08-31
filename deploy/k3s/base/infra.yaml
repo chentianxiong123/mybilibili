@@ -261,6 +261,8 @@ spec:
     metadata:
       labels: { app: minio }
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: laptop
       containers:
         - name: minio
           image: minio/minio:latest
