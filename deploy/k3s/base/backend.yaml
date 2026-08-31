@@ -5,7 +5,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: {name: core, namespace: mybilibili}
 spec:
-  replicas: 1
+  replicas: 2
   selector: {matchLabels: {app: core}}
   template:
     metadata: {labels: {app: core}}
@@ -31,7 +31,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: {name: search, namespace: mybilibili}
 spec:
-  replicas: 1
+  replicas: 2
   selector: {matchLabels: {app: search}}
   template:
     metadata: {labels: {app: search}}
@@ -57,7 +57,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: {name: msg-danmaku, namespace: mybilibili}
 spec:
-  replicas: 1
+  replicas: 2
   selector: {matchLabels: {app: msg-danmaku}}
   template:
     metadata: {labels: {app: msg-danmaku}}
@@ -83,7 +83,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: {name: live, namespace: mybilibili}
 spec:
-  replicas: 1
+  replicas: 2
   selector: {matchLabels: {app: live}}
   template:
     metadata: {labels: {app: live}}
@@ -108,7 +108,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: {name: ai, namespace: mybilibili}
 spec:
-  replicas: 1
+  replicas: 2
   selector: {matchLabels: {app: ai}}
   template:
     metadata: {labels: {app: ai}}
@@ -134,7 +134,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: {name: studio, namespace: mybilibili}
 spec:
-  replicas: 1
+  replicas: 2
   selector: {matchLabels: {app: studio}}
   template:
     metadata: {labels: {app: studio}}
@@ -163,7 +163,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: {name: work, namespace: mybilibili}
 spec:
-  replicas: 1
+  replicas: 2
   selector: {matchLabels: {app: work}}
   template:
     metadata: {labels: {app: work}}
@@ -193,7 +193,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: {name: bili, namespace: mybilibili}
 spec:
-  replicas: 1
+  replicas: 2
   selector: {matchLabels: {app: bili}}
   template:
     metadata: {labels: {app: bili}}
@@ -211,5 +211,5 @@ spec:
           resources:
             requests: {cpu: 50m, memory: 64Mi}
             limits: {cpu: 500m, memory: 256Mi}
-          readinessProbe: {httpGet: {path: /health, port: 8091}, initialDelaySeconds: 5, periodSeconds: 10}
-          livenessProbe: {httpGet: {path: /health, port: 8091}, initialDelaySeconds: 15, periodSeconds: 20}
+          readinessProbe: {httpGet: {path: /api/v1/bili/health, port: 8091}, initialDelaySeconds: 5, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /api/v1/bili/health, port: 8091}, initialDelaySeconds: 15, periodSeconds: 20}
