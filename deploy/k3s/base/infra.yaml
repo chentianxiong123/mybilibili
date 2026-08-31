@@ -31,14 +31,6 @@ spec:
   accessModes: [ReadWriteOnce]
   resources: { requests: { storage: 10Gi } }
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: nats-data
-spec:
-  accessModes: [ReadWriteOnce]
-  resources: { requests: { storage: 1Gi } }
----
 # =============== PostgreSQL PRIMARY (fnos) ===============
 apiVersion: apps/v1
 kind: Deployment
