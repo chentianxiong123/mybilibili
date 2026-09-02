@@ -25,22 +25,22 @@ configMapGenerator:
 # ===== 生产镜像版本(唯一修改点：升级时改 digest 或改用 sha tag) =====
 images:
   - name: ghcr.io/chentianxiong123/mybilibili/admin
-    digest: sha256:b9d2e1c46d627faf17476de5aae369a9d21cb6ef83bd99e9c8b78c0fecd8727b
+    digest: sha256:7128092289487ea9d716cc4f7f1da37ea231dfb70d06ec46341451ce00a96f0a
   - name: ghcr.io/chentianxiong123/mybilibili/ai
-    digest: sha256:8056ea081104f443581ce973097c48a6e35f083cc73712614a30dde4d23cfe31
+    digest: sha256:703426b82972c80611286f5853fcf73201a3043d5495733953b16e3d63c214c5
   - name: ghcr.io/chentianxiong123/mybilibili/bili
-    digest: sha256:c8f3460a649b4f3ea58375c75927fa168697f78d3a2da15ee1a2d43a11eb2f21
+    digest: sha256:4ddc241e4520b270d9c31fea6f0f736755d4d03f66d2e03c36617bd191c6393b
   - name: ghcr.io/chentianxiong123/mybilibili/core
-    digest: sha256:7021612c8812699a4779e389fa7cab5dd5454e08e00ee4e235cd51c12de8047a
+    digest: sha256:77fe330f97c421fb3a849d720d1a34ba8876e82ef578cd710c398600625c608b
   - name: ghcr.io/chentianxiong123/mybilibili/live
-    digest: sha256:2018684d9da36123cc103eaea5ecf23dfe680df84900f3b7976f614649ec6c7f
+    digest: sha256:ad82331a6cc5b2b7c50a1476f6c564adbfce143de8c8d32989fc472ae37d961d
   - name: ghcr.io/chentianxiong123/mybilibili/msg-danmaku
-    digest: sha256:eeac6b72c4b5aa137ddda638ad50d5cd9707ec22a6b4ddf3fd12be649724fa90
+    digest: sha256:65d55b5797bc42830b320b4917164358a3ce3adcdc867bafa670bc3491d2f812
   - name: ghcr.io/chentianxiong123/mybilibili/search
-    digest: sha256:57dde5149d3951545bed795c08096c8cc9662e0a2d4e16d298b6fb45c8189851
+    digest: sha256:c4130720f916e5a023c44cf866416634d64002b48100ce7e0a8fc4f8fb0fc925
   - name: ghcr.io/chentianxiong123/mybilibili/studio
-    digest: sha256:af8515ae1560b182eaf710a3eaa80baee638bedd20c81937f7325d361ef738bb
+    digest: sha256:70bf11cb8b10d4934841acfc92a19aa6853ba53accc400639434472fe2b22370
   - name: ghcr.io/chentianxiong123/mybilibili/web
-    digest: sha256:e9a39501afd88e4b48f9f8344a52a9ef7be1914ff2bec1ca161c2ee092c1fcb0
+    digest: sha256:51b843a516cd866b2ca9a85bbf1bc790c3b3454586b64c4e23275a72af768471
   - name: ghcr.io/chentianxiong123/mybilibili/work
-    digest: sha256:16c136dbf3ccc4cf88081947c9b909c6a6b341744dfd2dc3c7f5650ab7c14410
+    digest: sha256:76275a9ee58df27006c55d35b2fc6cd3f04d4364edf9ddb52e0fad85b3c97810

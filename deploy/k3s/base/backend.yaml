@@ -10,6 +10,7 @@ spec:
   template:
     metadata: {labels: {app: core}}
     spec:
+
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
@@ -42,6 +43,7 @@ spec:
   template:
     metadata: {labels: {app: search}}
     spec:
+
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
@@ -74,6 +76,7 @@ spec:
   template:
     metadata: {labels: {app: msg-danmaku}}
     spec:
+
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
@@ -106,6 +109,7 @@ spec:
   template:
     metadata: {labels: {app: live}}
     spec:
+
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
@@ -137,6 +141,7 @@ spec:
   template:
     metadata: {labels: {app: ai}}
     spec:
+
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
@@ -169,6 +174,7 @@ spec:
   template:
     metadata: {labels: {app: studio}}
     spec:
+
       nodeSelector:
         kubernetes.io/hostname: laptop
       containers:
@@ -200,6 +206,7 @@ spec:
   template:
     metadata: {labels: {app: work}}
     spec:
+
       nodeSelector:
         kubernetes.io/hostname: laptop
       containers:
@@ -232,6 +239,7 @@ spec:
   template:
     metadata: {labels: {app: bili}}
     spec:
+
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
