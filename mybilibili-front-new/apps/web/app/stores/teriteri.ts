@@ -44,6 +44,7 @@ export const useTeriteriStore = defineStore('teriteri', {
     updateLikeComment(l) { this.likeComment = l },
     updateDislikeComment(d) { this.dislikeComment = d },
     updateFavorites(f) { this.favorites = f },
+    updateUserFavList(f) { this.userFavList = f || [] },
     updateTrendings(t) { this.trendings = t },
     updateMatchingCount(m) { this.matchingCount = m },
     setWebSocket(ws) { this.ws = ws },
