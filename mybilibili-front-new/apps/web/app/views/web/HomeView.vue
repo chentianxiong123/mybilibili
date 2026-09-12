@@ -1,7 +1,7 @@
 <script setup>
 import { safeStorage } from '@/utils/safeStorage'
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
-import { ArrowLeft, ArrowRight, View, Star } from '@element-plus/icons-vue'
+import { View, Star } from '@element-plus/icons-vue'
 import { recommendApi } from '@/api/recommend.ts'
 import { getHomeBanners } from '@/api/banner.ts'
 import { formatDuration, formatMonthDay, normalizeVideoCard } from '@/utils/videoCard.ts'
@@ -11,29 +11,12 @@ import { useZoomCompact } from '@/composables/useZoomCompact'
 // 轮播图数据
 const bannerList = ref([])
 
-// 轮播图组件引用
-const carouselRef = ref(null)
-
 // 轮播图当前索引
 const currentBannerIndex = ref(0)
 
-// 轮播图控制函数
+// 轮播图控制函数（由 CarouselIndex 组件 emit('change') 触发）
 const handleBannerChange = (index) => {
   currentBannerIndex.value = index
-}
-
-const changeBanner = (index) => {
-  currentBannerIndex.value = index
-  if (carouselRef.value) {
-    carouselRef.value.setActiveItem(index)
-  }
-}
-
-const prevBanner = () => {
-  currentBannerIndex.value = (currentBannerIndex.value - 1 + bannerList.value.length) % bannerList.value.length
-  if (carouselRef.value) {
-    carouselRef.value.prev()
-  }
 }
 
 const { apply: applyTabsVideoAlign } = useTabsVideoAlign()
@@ -41,13 +24,6 @@ const { compactLevel } = useZoomCompact()
 
 // 视频网格列数：level 0→5, level 1→4, level 2→3
 const videoCols = computed(() => [5, 4, 3][compactLevel.value] || 5)
-
-const nextBanner = () => {
-  currentBannerIndex.value = (currentBannerIndex.value + 1) % bannerList.value.length
-  if (carouselRef.value) {
-    carouselRef.value.next()
-  }
-}
 
 // 推荐视频列表
 const videoList = ref([])
@@ -219,41 +195,11 @@ const goToAuthor = (authorId) => {
     <div class="video-grid">
       <!-- 左侧轮播图：占据2x2的位置 -->
       <section class="banner-section" v-if="bannerList.length > 0">
-        <div class="banner-wrapper">
-          <el-carousel ref="carouselRef" :autoplay="true" :interval="3000" arrow="never" indicator-position="none" @change="handleBannerChange">
-            <el-carousel-item v-for="(banner, index) in bannerList" :key="banner.id">
-              <a :href="banner.link" class="banner-item">
-                <img loading="lazy" decoding="async" :src="banner.img" alt="轮播图" class="banner-img">
-              </a>
-            </el-carousel-item>
-          </el-carousel>
-          <!-- 底部透明黑色区域：固定在底部，不随图片切换 -->
-          <div class="banner-overlay">
-            <div class="banner-content">
-              <!-- 左边：标题和点位 -->
-              <div class="banner-left">
-                <h3 class="banner-title">{{ bannerList[currentBannerIndex]?.title }}</h3>
-                <div class="banner-indicators">
-                  <span
-                    v-for="(item, i) in bannerList"
-                    :key="i"
-                    :class="['indicator', { active: i === currentBannerIndex }]"
-                    @click="changeBanner(i)"
-                  ></span>
-                </div>
-              </div>
-              <!-- 右边：左右箭头 -->
-              <div class="banner-right">
-                <button class="arrow-btn arrow-prev" @click="prevBanner">
-                  <el-icon><ArrowLeft /></el-icon>
-                </button>
-                <button class="arrow-btn arrow-next" @click="nextBanner">
-                  <el-icon><ArrowRight /></el-icon>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <CarouselIndex
+          :banners="bannerList"
+          :interval="3500"
+          @change="handleBannerChange"
+        />
       </section>
       
       <!-- 视频项：只显示推荐视频列表 -->
@@ -523,131 +469,7 @@ const goToAuthor = (authorId) => {
 }
 
 .banner-wrapper {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.banner-section :deep(.el-carousel) {
-  width: 100%;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.banner-section :deep(.el-carousel__container) {
-  height: 100%;
-  flex: 1;
-}
-
-.banner-section :deep(.el-carousel__item) {
-  height: 100%;
-}
-
-.banner-item {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 100%;
-  flex: 1;
-}
-
-.banner-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.banner-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 50%, rgba(0, 0, 0, 0) 100%);
-  padding: 20px;
-  display: flex;
-  align-items: flex-end;
-  z-index: 10;
-}
-
-.banner-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  width: 100%;
-}
-
-.banner-left {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.banner-title {
-  color: #fff;
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-.banner-indicators {
-  display: flex;
-  gap: 8px;
-}
-
-.indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.5);
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.indicator:hover {
-  background-color: rgba(255, 255, 255, 0.8);
-}
-
-.indicator.active {
-  background-color: #fff;
-  transform: scale(1.2);
-}
-
-.banner-right {
-  display: flex;
-  gap: 10px;
-}
-
-.arrow-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.2);
-  border: none;
-  color: #fff;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s;
-}
-
-.arrow-btn:hover {
-  background-color: rgba(255, 255, 255, 0.4);
-  transform: scale(1.1);
-}
-
-.arrow-btn:active {
-  transform: scale(0.95);
-}
-
-.arrow-btn .el-icon {
-  font-size: 18px;
+  display: none;
 }
 
 /* 响应式：调整左右白边 */

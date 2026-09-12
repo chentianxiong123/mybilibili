@@ -17,7 +17,8 @@ export default defineNuxtConfig({
         { name: 'referrer', content: 'no-referrer' }
       ],
       link: [
-        { rel: 'icon', type: 'image/svg+xml', href: '/vite.svg' }
+        { rel: 'icon', type: 'image/svg+xml', href: '/vite.svg' },
+        { rel: 'stylesheet', href: 'https://at.alicdn.com/t/c/font_4179759_9hwhc7qk0zc.css' }
       ]
     }
   },
