@@ -7,7 +7,7 @@ import {
   getStoredUser,
   getToken,
   setAuthSession
-} from '@/utils/auth'
+} from '@/teriteri-src/utils/auth'
 
 // 用户store
 export const useUserStore = (defineStore as any)('user', {
