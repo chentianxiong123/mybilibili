@@ -144,7 +144,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div :class="['search-box', { 'focused': isSearchFocused }]">
+  <div :class="['search-box', 'v-search-bar', { 'focused': isSearchFocused, 'is-focus': isSearchFocused }]">
     <el-input
       v-model="searchText"
       placeholder="搜索番剧、影视、UP主..."
@@ -154,10 +154,10 @@ onUnmounted(() => {
       clearable
     >
       <template #suffix>
-        <el-icon class="search-icon" @click="handleSearch"><Search /></el-icon>
+        <i class="iconfont icon-sousuo v-searchform-btn" @click="handleSearch"></i>
       </template>
     </el-input>
-    <div class="search-dropdown" v-show="showSearchDropdown" @mousedown="handleSearchContentMouseDown">
+    <div class="search-dropdown v-search-panel" v-show="showSearchDropdown" @mousedown="handleSearchContentMouseDown">
       <div class="search-suggestions" v-if="suggestList.length > 0 && searchText.trim()">
         <div
           v-for="(item, index) in suggestList"
@@ -165,20 +165,20 @@ onUnmounted(() => {
           class="suggest-item"
           @click="handleSuggestClick(item)"
         >
-          <el-icon class="suggest-icon"><Search /></el-icon>
+          <i class="iconfont icon-sousuo suggest-icon"></i>
           <span class="suggest-text">{{ item }}</span>
         </div>
       </div>
       <div class="search-history" v-if="searchHistory.length > 0 && !searchText.trim()">
-        <div class="search-history-header">
+        <div class="search-history-header v-search-panel-header">
           <span class="search-history-title">搜索历史</span>
-          <span class="clear-history" @click="clearSearchHistory">清除</span>
+          <span class="clear-history v-clear" @click="clearSearchHistory">清除</span>
         </div>
-        <div class="search-history-list" :class="{ 'expanded': showAllHistory }">
+        <div class="search-history-list v-history-list" :class="{ 'expanded': showAllHistory }">
           <div
             v-for="(item, index) in searchHistory"
             :key="index"
-            class="history-item"
+            class="history-item v-history-item"
             @click="handleHistoryClick(item)"
           >
             {{ item }}
@@ -190,20 +190,20 @@ onUnmounted(() => {
           </span>
         </div>
       </div>
-      
+
       <div class="hot-search">
-        <div class="hot-search-header">
+        <div class="hot-search-header v-search-panel-header">
           <span class="hot-search-title">热搜</span>
         </div>
-        <div class="hot-search-list">
+        <div class="hot-search-list v-trending-list">
           <div
             v-for="item in hotSearchList"
             :key="item.rank"
-            class="hot-item"
+            class="hot-item v-trending-item"
             @click="handleHotSearchClick(item.keyword)"
           >
-            <span :class="['hot-rank', { 'top-three': item.rank <= 3 }]">{{ item.rank }}</span>
-            <span class="hot-keyword">{{ item.keyword }}</span>
+            <span :class="['hot-rank', 'v-trending-rank', { 'top-three': item.rank <= 3 }]">{{ item.rank }}</span>
+            <span class="hot-keyword v-trending-text">{{ item.keyword }}</span>
           </div>
         </div>
       </div>
@@ -220,30 +220,39 @@ onUnmounted(() => {
 }
 
 .search-box .el-input {
-  border-radius: 8px;
+  border-radius: var(--v-radius, 8px);
 }
 
 .search-box :deep(.el-input__wrapper) {
-  border-radius: 8px;
-  background-color: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: var(--v-radius, 8px);
+  background-color: var(--v-bg3, #F1F2F3);
+  box-shadow: none;
+  border: 1px solid transparent;
   height: 50px;
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.search-box:hover :deep(.el-input__wrapper) {
+  background-color: var(--v-bg1, #FFFFFF);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .search-box.focused :deep(.el-input__wrapper) {
-  background-color: #fff;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  background-color: var(--v-bg1, #FFFFFF);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  border-color: var(--v-brand-pink, #FF6699);
 }
 
-.search-box .search-icon {
-  color: #00a1d6;
+.search-box .search-icon,
+.search-box .v-searchform-btn {
+  color: var(--v-text3, #9499A0);
   cursor: pointer;
   font-size: 18px;
 }
 
-.search-box .search-icon:hover {
-  color: #0091c6;
+.search-box .search-icon:hover,
+.search-box .v-searchform-btn:hover {
+  color: var(--v-brand-pink, #FF6699);
 }
 
 .search-suggestions {
@@ -260,18 +269,18 @@ onUnmounted(() => {
 }
 
 .suggest-item:hover {
-  background: #f5f7fa;
+  background: var(--v-bg2, #F6F7F8);
 }
 
 .suggest-icon {
-  color: #9499a0;
+  color: var(--v-text3, #9499A0);
   font-size: 14px;
   flex-shrink: 0;
 }
 
 .suggest-text {
   font-size: 14px;
-  color: #18191c;
+  color: var(--v-text1, #18191C);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -282,19 +291,21 @@ onUnmounted(() => {
   top: 100%;
   left: 0;
   width: 500px;
-  background: #fff;
-  border-radius: 0 0 8px 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  margin-top: 0;
+  background: var(--v-bg1, #FFFFFF);
+  border-radius: 0 0 var(--v-radius, 8px) var(--v-radius, 8px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  margin-top: -1px;
   z-index: 1000;
   overflow: hidden;
   max-height: 500px;
   overflow-y: auto;
+  border: 1px solid var(--v-line-light, #F1F2F3);
+  border-top: none;
 }
 
 .search-history {
   padding: 16px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--v-line-light, #F1F2F3);
 }
 
 .search-history-header {
@@ -307,18 +318,18 @@ onUnmounted(() => {
 .search-history-title {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--v-text1, #18191C);
 }
 
 .clear-history {
   font-size: 12px;
-  color: #999;
+  color: var(--v-text3, #9499A0);
   cursor: pointer;
   transition: color 0.3s;
 }
 
 .clear-history:hover {
-  color: #fb7299;
+  color: var(--v-brand-pink, #FF6699);
 }
 
 .search-history-list {
@@ -336,10 +347,10 @@ onUnmounted(() => {
 
 .history-item {
   padding: 6px 12px;
-  background: #f5f5f5;
-  border-radius: 4px;
+  background: var(--v-bg2, #F6F7F8);
+  border-radius: var(--v-radius-sm, 4px);
   font-size: 13px;
-  color: #666;
+  color: var(--v-text1, #18191C);
   cursor: pointer;
   transition: all 0.3s;
   max-width: 150px;
@@ -349,8 +360,8 @@ onUnmounted(() => {
 }
 
 .history-item:hover {
-  background: #e0e0e0;
-  color: #00a1d6;
+  background: var(--v-bg3, #F1F2F3);
+  color: var(--v-brand-pink, #FF6699);
 }
 
 .history-more {
@@ -360,13 +371,13 @@ onUnmounted(() => {
 
 .more-btn {
   font-size: 12px;
-  color: #00a1d6;
+  color: var(--v-brand-blue, #00AEEC);
   cursor: pointer;
   transition: color 0.3s;
 }
 
 .more-btn:hover {
-  color: #0091c6;
+  color: var(--v-brand-pink, #FF6699);
 }
 
 .hot-search {
@@ -380,7 +391,7 @@ onUnmounted(() => {
 .hot-search-title {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--v-text1, #18191C);
 }
 
 .hot-search-list {
@@ -396,12 +407,12 @@ onUnmounted(() => {
   padding: 8px;
   cursor: pointer;
   transition: background 0.3s;
-  border-radius: 4px;
+  border-radius: var(--v-radius-sm, 4px);
   min-width: 0;
 }
 
 .hot-item:hover {
-  background: #f5f5f5;
+  background: var(--v-bg2, #F6F7F8);
 }
 
 .hot-rank {
@@ -412,27 +423,27 @@ onUnmounted(() => {
   justify-content: center;
   font-size: 12px;
   font-weight: 600;
-  color: #999;
-  background: #f0f0f0;
-  border-radius: 4px;
+  color: var(--v-text3, #9499A0);
+  background: var(--v-bg2, #F6F7F8);
+  border-radius: var(--v-radius-sm, 4px);
   flex-shrink: 0;
 }
 
 .hot-rank.top-three {
-  background: #fb7299;
-  color: #fff;
+  background: var(--v-brand-pink, #FF6699);
+  color: var(--v-bg1, #FFFFFF);
 }
 
 .hot-keyword {
   flex: 1;
   font-size: 13px;
-  color: #333;
+  color: var(--v-text1, #18191C);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .hot-item:hover .hot-keyword {
-  color: #00a1d6;
+  color: var(--v-brand-pink, #FF6699);
 }
 </style>

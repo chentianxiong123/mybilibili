@@ -273,6 +273,7 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid var(--v-line-light, #F1F2F3);
 }
 
 .header-container {
@@ -309,16 +310,17 @@ onUnmounted(() => {
 
 .home-icon:hover {
   background: rgba(255, 255, 255, 0.1);
+  color: var(--v-brand-pink, #FF6699);
 }
 
 .app-header.scrolled .home-icon span,
 .app-header.white-mode .home-icon span {
-  color: #333;
+  color: var(--v-text1, #18191C);
 }
 
 .app-header.scrolled .home-icon,
 .app-header.white-mode .home-icon {
-  color: #333;
+  color: var(--v-text1, #18191C);
 }
 
 .home-icon .el-icon {
@@ -348,6 +350,6 @@ onUnmounted(() => {
 
 .app-header.scrolled :deep(.action-btn),
 .app-header.white-mode :deep(.action-btn) {
-  color: #333;
+  color: var(--v-text1, #18191C);
 }
 </style>
