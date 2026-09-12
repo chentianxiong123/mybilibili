@@ -121,6 +121,12 @@ function isDetailUrl(url) {
 }
 
 function adaptResponse(originalUrl, data) {
+  // 空间投稿列表(/video/user-works) → {list: cards, count: total}
+  if (String(originalUrl || '').includes('/video/user-works')) {
+    const list = Array.isArray(data) ? data : (data && data.list ? data.list : [])
+    const cards = list.map(m => adaptCard(snakeToCamel(m)))
+    return { code: 200, data: { list: cards, count: (data && data.total) || cards.length }, message: 'ok' }
+  }
   // 频道列表(/category/getall) → {mcId, mcName, scList}
   if (String(originalUrl || '').includes('/category/getall')) {
     const channels = (Array.isArray(data) ? data : []).map((c, idx) => ({
