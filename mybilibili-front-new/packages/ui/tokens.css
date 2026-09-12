@@ -6,11 +6,34 @@
   --bili-text-secondary: #999;
   --bili-border: #e3e5e7;
 
-  --el-color-primary: #fb7299;
-  --el-color-primary-light-3: #fc8bab;
-  --el-color-primary-light-5: #fda3bc;
-  --el-color-primary-light-7: #febbd0;
-  --el-color-primary-light-8: #ffd3e0;
-  --el-color-primary-light-9: #ffebf0;
-  --el-color-primary-dark-2: #c95b7a;
+  --v-brand-pink: #FF6699;
+  --v-brand-pink-thin: #FFECF1;
+  --v-brand-blue: #00AEEC;
+  --v-brand-blue-thin: #DFF6FD;
+  --v-stress-red: #F85A54;
+  --v-success-green: #2AC864;
+  --v-operate-orange: #FF7F24;
+  --v-pay-yellow: #FFB027;
+  --v-text1: #18191C;
+  --v-text2: #61666D;
+  --v-text3: #9499A0;
+  --v-text4: #C9CCD0;
+  --v-bg1: #FFFFFF;
+  --v-bg2: #F6F7F8;
+  --v-bg3: #F1F2F3;
+  --v-line-light: #F1F2F3;
+  --v-line-regular: #E3E5E7;
+  --v-line-bold: #C9CCD0;
+  --v-radius-sm: 4px;
+  --v-radius: 6px;
+  --v-radius-md: 8px;
+  --v-radius-lg: 10px;
+
+  --el-color-primary: #FF6699;
+  --el-color-primary-light-3: #FF8CB0;
+  --el-color-primary-light-5: #FFB3CA;
+  --el-color-primary-light-7: #FFD9E4;
+  --el-color-primary-light-8: #FFECF1;
+  --el-color-primary-light-9: #FFF3F6;
+  --el-color-primary-dark-2: #E84B85;
 }

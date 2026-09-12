@@ -431,34 +431,12 @@ onUnmounted(() => {
 
           <!-- 六列视频网格布局 -->
           <div class="video-grid" v-loading="loading">
-            <div v-for="video in searchResults" :key="video.manuscriptId" class="video-item">
-              <div class="video-cover" @click="goToVideo(video.manuscriptId)">
-                <img loading="lazy" decoding="async" :src="video.cover" alt="视频封面">
-                <!-- 左下角：播放量和评论量 -->
-                <div class="video-stats-overlay">
-                  <span class="stat-item">
-                    <el-icon><View /></el-icon>
-                    {{ formatCount(video.viewCount) }}
-                  </span>
-                  <span class="stat-item">
-                    <el-icon><Star /></el-icon>
-                    {{ formatCount(video.commentCount) }}
-                  </span>
-                </div>
-                <!-- 右下角：视频时长 -->
-                <span class="video-duration">{{ video.duration }}</span>
-                <!-- 分P数显示 -->
-                <span class="video-count" v-if="video.videoCount > 1">{{ video.videoCount }}P</span>
-              </div>
-              <span class="video-title">
-                <span class="video-title-text" @click="goToVideo(video.manuscriptId)">{{ video.title }}</span>
-              </span>
-              <div class="video-meta">
-                <span class="video-author" @click.stop="goToAuthor(video.userId)">{{ video.author }}</span>
-                <span class="video-separator"> · </span>
-                <span class="video-date">{{ formatDate(video.publishDate) }}</span>
-              </div>
-            </div>
+            <VideoCard
+              v-for="video in searchResults"
+              :key="video.manuscriptId"
+              :video="video"
+              :show-video-count="true"
+            />
           </div>
 
           <!-- 加载更多提示 -->

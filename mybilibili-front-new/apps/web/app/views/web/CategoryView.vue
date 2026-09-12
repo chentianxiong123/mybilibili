@@ -285,35 +285,11 @@ onMounted(async () => {
       </section>
       
       <!-- 视频项：显示分类视频列表 -->
-      <div v-for="video in videoList" :key="video.id" class="video-item">
-        <div class="video-cover">
-          <a :href="'/manuscript/' + (video.manuscriptId || video.id)" class="video-cover-link">
-            <img loading="lazy" decoding="async" :src="video.coverUrl || '/assets/placeholder-cover.svg'" alt="视频封面">
-          </a>
-          <span v-if="video.sourceType === 'bilibili'" class="source-badge">B站</span>
-          <!-- 左下角：播放量和评论量 -->
-          <div class="video-stats-overlay">
-            <span class="stat-item">
-              <el-icon><View /></el-icon>
-              {{ video.viewCount ? video.viewCount.toLocaleString() : 0 }}
-            </span>
-            <span class="stat-item">
-              <el-icon><Star /></el-icon>
-              {{ video.commentCount || 0 }}
-            </span>
-          </div>
-          <!-- 右下角：视频时长 -->
-          <span class="video-duration">{{ video.duration || formatDuration(video.durationSeconds) }}</span>
-        </div>
-        <span class="video-title">
-          <span class="video-title-text" @click="goToVideo(video)">{{ video.title }}</span>
-        </span>
-        <div class="video-meta">
-          <span class="video-author" @click="goToAuthor(video.uploader?.id)">{{ video.uploader?.name || '未知UP主' }}</span>
-          <span class="video-separator"> · </span>
-          <span class="video-date">{{ video.dateText || formatMonthDay(video.uploadTime) }}</span>
-        </div>
-      </div>
+      <VideoCard
+        v-for="video in videoList"
+        :key="video.id"
+        :video="video"
+      />
     </div>
   </div>
 </template>
