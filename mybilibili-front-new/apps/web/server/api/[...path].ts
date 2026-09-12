@@ -24,8 +24,10 @@ const PATH_MAP: Record<string, string> = {
   '/favorite/get-all/visitor': '/favorites',
   '/user/info/get-one': '/user/',
   '/user/info': '/user/',
-  '/user/login': '/user/token',
-  '/user/register': '/user/register',
+  '/video/add': '/manuscript/upload-complete',
+  '/video/upload-chunk': '/manuscript/upload-chunk',
+  '/video/ask-chunk': '/manuscript/upload-session',
+  '/video/cancel-upload': '/manuscript/upload-session',
 }
 
 // 按服务端口分发的路由
