@@ -102,14 +102,23 @@ export default {
     name: "SearchVideo",
     data() {
         return {
+            keyword: this.$route.query.keyword || '',
             page: 1, // 当前页码
             videoList: [],  // 查询到的相关视频
             loading: true,  // 正在查询中
         }
     },
-    props: {
-        // 从路由参数获取的关键词
-        keyword: String,
+    computed: {
+        _kw() {
+            return this.$route.query.keyword || this.keyword || '';
+        }
+    },
+    watch: {
+        '$route.query.keyword'(val) {
+            this.keyword = val || '';
+            this.page = 1;
+            this.searchVideos();
+        }
     },
     methods: {
         // 查询相关视频

@@ -1,5 +1,6 @@
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import { useTeriteriStore } from '@/stores/teriteri'
 import { get, post } from '@/teriteri-src/network/request'
 
@@ -11,6 +12,11 @@ export default defineNuxtPlugin((nuxtApp) => {
   nuxtApp.vueApp.config.globalProperties.$axios = axios
   nuxtApp.vueApp.config.globalProperties.$get = get
   nuxtApp.vueApp.config.globalProperties.$post = post
+
+  // 注册全部 element-plus 图标（teriteri main.js 原样）
+  for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+    nuxtApp.vueApp.component(key, component)
+  }
 
   // Vuex → Pinia 兼容层：teriteri 组件全用 Vuex 语法 this.$store.state.x / .commit / .dispatch
   function createVuexShim() {

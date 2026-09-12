@@ -68,6 +68,9 @@ export default {
         // 根据当前路由计算路由列表下标
         routerIndex() {
             return this.router.findIndex(item => this.$route.path.startsWith(item.path));
+        },
+        keyword() {
+            return this.$route.query.keyword || '';
         }
     },
     methods: {

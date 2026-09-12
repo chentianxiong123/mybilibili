@@ -2,6 +2,7 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
+  ssr: false,
   modules: ['@element-plus/nuxt', '@pinia/nuxt'],
   css: ['@/assets/teriteri/css/base.css'],
   app: {
