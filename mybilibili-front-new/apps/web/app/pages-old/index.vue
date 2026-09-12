@@ -473,8 +473,7 @@ export default {
         // 窗口滚动时根据高度判断是否显示固钉导航栏和固钉频道栏
         this.el = document.documentElement;
         // 根据主体顶部的偏移量计算 header 的高度
-        const mainLayout = document.querySelector(".main__layout");
-        headerHight = mainLayout ? mainLayout.offsetTop : 0;
+        headerHight = document.querySelector(".main__layout").offsetTop;
         window.addEventListener('scroll', this.handleScroll);
         // 初次挂载时执行一次，防止大屏情况下，视频数量不足以撑出滚动条
         await this.handleScroll();
