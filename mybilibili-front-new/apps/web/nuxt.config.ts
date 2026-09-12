@@ -3,11 +3,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   modules: ['@element-plus/nuxt', '@pinia/nuxt'],
-  css: ['@mybilibili/ui',
-    '~/assets/css/base.css',
-    'element-plus/es/components/message-box/style/css',
-    'element-plus/es/components/notification/style/css',
-    'element-plus/es/components/loading/style/css'],
+  css: ['@/assets/teriteri/css/base.css'],
   app: {
     head: {
       htmlAttrs: { lang: 'zh-CN' },
@@ -23,23 +19,17 @@ export default defineNuxtConfig({
     }
   },
   devServer: {
-    host: '0.0.0.0',  // 让 traefik 通过 172.18.0.1 网关能访问到 (裸跑进程)
+    host: '0.0.0.0',
     port: 3200,
   },
+  components: false,
+  alias: {
+    '~assets': '@/assets/teriteri'
+  },
   routeRules: {
-    '/message': { redirect: '/message/private' },
-    '/dynamic/**': { ssr: false },
-    '/profile/**': { ssr: false },
-    '/personal-center/**': { ssr: false },
+    '/': { ssr: false },
     '/message/**': { ssr: false },
-    '/history': { ssr: false },
-    '/avatar': { ssr: false },
-    '/live/**': { ssr: false },
-    '/create-center/**': { ssr: false },
-    '/manuscript/**': { ssr: false },
-    '/login': { ssr: false },
-    '/collections': { ssr: false },
-    '/collection/**': { ssr: false },
+    '/dynamic/**': { ssr: false },
   },
   vite: {
     css: {
