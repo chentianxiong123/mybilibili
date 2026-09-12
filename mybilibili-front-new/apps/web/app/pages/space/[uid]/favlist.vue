@@ -151,11 +151,8 @@ export default {
             rule: 1,    // 排序规则 1 最近收藏 2 最多播放 3 最新投稿
             page: 1,    // 当前分页
             favVideos: [],  // 当前收藏夹的视频列表
+            fid: this.$route.query.fid || '',  // 从路由 query 获取收藏夹 id
         }
-    },
-    props: {
-        // 从路由获取参数
-        fid: String,
     },
     computed: {
         // 空间主人的uid
@@ -179,6 +176,26 @@ export default {
         }
     },
     methods: {
+        // 加载空间主人的收藏夹列表
+        async loadFavList() {
+            let res;
+            if (!localStorage.getItem("teri_token")) {
+                res = await this.$get("/favorite/get-all/visitor", {
+                    params: { uid: this.uid },
+                });
+            } else {
+                res = await this.$get("/favorite/get-all/user", {
+                    params: { uid: this.uid },
+                    headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
+                });
+            }
+            if (!res || !res.data) return;
+            const list = res.data.data || [];
+            this.$store.commit("updateUserFavList", list);
+            const fav = list.find(item => item.type === 1);
+            if (fav) this.$router.push(`/space/${this.uid}/favlist?fid=${fav.fid}`);
+        },
+
         // 获取收藏夹视频
         async getFavVideos() {
             this.favVideos = [];
@@ -238,17 +255,22 @@ export default {
         }
     },
     mounted() {
+        if (this.favList.length === 0) {
+            this.loadFavList();
+            return;
+        }
         if (!this.fid) {
             const fav = this.favList.find(item => item.type === 1);
-            this.$router.push(`/space/${this.uid}/favlist?fid=${fav.fid}`);
+            if (fav) this.$router.push(`/space/${this.uid}/favlist?fid=${fav.fid}`);
         } else {
             this.getFavVideos();
         }
     },
     watch: {
-        "fid"() {
+        "$route.query.fid"(val) {
+            this.fid = val || '';
             this.page = 1;
-            this.getFavVideos();
+            if (this.fid) this.getFavVideos();
         },
         "rule"() {
             this.page = 1;
