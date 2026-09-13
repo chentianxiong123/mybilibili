@@ -92,11 +92,22 @@ function adaptCard(m) {
 }
 
 function adaptDetail(m) {
+  const videos = Array.isArray(m.videos)
+    ? m.videos.map(v => ({
+        vid: String(v.id || ''),
+        title: v.title || '',
+        playUrl: v.playUrlHd || v.playUrl || '',
+        duration: Number(v.durationSeconds) || 0,
+        videoOrder: v.videoOrder || 0,
+      }))
+    : []
   return {
     video: adaptVideo(m),
     user: adaptUser(m.uploader),
     category: { mcId: m.categoryId || 0, mcName: m.categoryName || '', scId: 0, scName: '' },
     stats: adaptStats(m),
+    videos,
+    manuscriptId: String(m.id || ''),
   }
 }
 

@@ -33,9 +33,31 @@
                     </div>
                 </div>
                 <!-- 播放器组件 -->
-                <PlayerWrap :videoUrl="video.videoUrl" :title="video.title" :duration="video.duration" :user="user"
-                    :population="population" v-model:jumpTimePoint="jumpTimePoint" v-model:autonext="autonext"
-                    @resize="updatePlayerSize" @sendDm="sendDanmu" @next="next"></PlayerWrap>
+                <VideoPlayer
+                    ref="videoPlayerRef"
+                    :current-manuscript-id="Number(manuscriptId)"
+                    :manuscript-info="manuscriptInfoForPlayer"
+                    :video-info="videoInfoForPlayer"
+                    :current-p="currentPartIndex + 1"
+                    :current-video-index="currentPartIndex"
+                    :resume-time="0"
+                    :danmu-list="danmuList"
+                    :loading-danmus="false"
+                    @update:video-info="handleVideoInfoUpdate"
+                    @update:danmu-list="handleDanmuListUpdate"
+                    @update:loading-danmus="() => {}"
+                    @time-update="() => {}"
+                />
+                <!-- teriteri 风格状态栏 -->
+                <div class="player-sending-area">
+                    <div class="player-video-info">
+                        <div class="player-video-info-text">
+                            {{ population }} 人正在观看，已装填 {{ danmuList.length }} 条弹幕
+                        </div>
+                    </div>
+                    <!-- ArtPlayer 内部 .art-controls-center DOM 元素搬到这里 -->
+                    <div ref="artControlsCenterSlot" class="art-controls-center-slot"></div>
+                </div>
                 <!-- 三连转发 -->
                 <div class="video-toolbar-container">
                     <div class="video-toolbar-left">
@@ -218,6 +240,23 @@
                     <DanmuBox :boxHeight="playerSize.height" :authorId="user.uid"
                         @jump="(time) => jumpTimePoint = time">
                     </DanmuBox>
+                    <!-- 分P列表 -->
+                    <div class="video-parts-list" v-if="manuscriptParts.length > 1">
+                        <p class="parts-title">视频分P ({{ manuscriptParts.length }}P)</p>
+                        <div class="parts-items">
+                            <div
+                                v-for="(part, index) in manuscriptParts"
+                                :key="part.vid"
+                                class="part-item"
+                                :class="{ 'active': index === currentPartIndex }"
+                                @click="switchPart(index)"
+                            >
+                                <span class="part-index">P{{ index + 1 }}</span>
+                                <span class="part-title" :title="part.title">{{ part.title }}</span>
+                                <span class="part-duration">{{ handleDuration(part.duration) }}</span>
+                            </div>
+                        </div>
+                    </div>
                     <!-- 相关视频列表 -->
                     <div class="recommend-list">
                         <div class="next-play">
@@ -354,7 +393,7 @@
 <script>
 import CommentVue from '@/components/teriteri/comment/CommentVue.vue';
 import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue';
-import PlayerWrap from '@/components/teriteri/player/PlayerWrapper.vue';
+import VideoPlayer from '@/components/VideoPlayer.vue';
 import VPopover from '@/components/teriteri/popover/VPopover.vue';
 import VAvatar from '@/components/teriteri/avatar/VAvatar.vue';
 import UserCard from '@/components/teriteri/UserCard/UserCard.vue';
@@ -368,7 +407,7 @@ export default {
     components: {
         CommentVue,
         HeaderBar,
-        PlayerWrap,
+        VideoPlayer,
         VPopover,
         VAvatar,
         UserCard,
@@ -408,7 +447,47 @@ export default {
             collectedFids: new Set(),   // 收藏了该视频的收藏夹ID集合
             isMounted: false,
             loveLoading: false, // 点赞防抖
+            manuscriptParts: [], // 稿件分P列表
+            currentPartIndex: 0, // 当前分P索引
+            manuscriptId: '', // 稿件ID
+            danmuList: [], // 弹幕列表
+            videoPlayerRef: null, // 播放器引用
         }
+    },
+    computed: {
+        manuscriptInfoForPlayer() {
+            return {
+                id: Number(this.manuscriptId) || 0,
+                title: this.video.title || '',
+                description: this.video.descr || '',
+                coverUrl: this.video.coverUrl || '',
+                tags: this.tags,
+                videos: this.manuscriptParts.map((p, i) => ({
+                    id: Number(p.vid) || 0,
+                    title: p.title || '',
+                    playUrl: p.playUrl || '',
+                    playUrlHd: p.playUrl || '',
+                    playUrlSd: '',
+                    playUrlLd: '',
+                    duration: p.duration || 0,
+                    videoOrder: i,
+                })),
+            }
+        },
+        videoInfoForPlayer() {
+            const current = this.manuscriptParts[this.currentPartIndex] || {}
+            return {
+                title: current.title || this.video.title || '',
+                coverUrl: this.video.coverUrl || '',
+                playUrl: current.playUrl || this.video.videoUrl || '',
+                playUrlHd: current.playUrl || '',
+                playUrlSd: '',
+                playUrlLd: '',
+                duration: this.video.duration || 0,
+                watchingCount: this.population,
+                danmuLoadedCount: this.danmu,
+            }
+        },
     },
     methods: {
         ////// 请求 //////
@@ -420,7 +499,7 @@ export default {
                 },
             });
             if (res.data.code === 404) {
-                this.$router.push("/notfound");
+                this.$router.push("/404");
                 return false;
             }
             if (res.data.data) {
@@ -436,6 +515,13 @@ export default {
                 this.collect = res.data.data.stats.collect;
                 this.share = res.data.data.stats.share;
                 this.comment = res.data.data.stats.comment;
+                // 分P数据
+                this.manuscriptId = res.data.data.manuscriptId || '';
+                this.manuscriptParts = res.data.data.videos || [];
+                // 定位当前分P
+                const currentVid = String(this.$route.params.vid);
+                const idx = this.manuscriptParts.findIndex(p => p.vid === currentVid);
+                this.currentPartIndex = idx >= 0 ? idx : 0;
             }
             this.isDescTooLong();
             if (localStorage.getItem("teri_token")) {
@@ -481,6 +567,10 @@ export default {
         // 初始化实时弹幕的websocket
         async initWebsocket() {
             const wsBaseUrl = process.env.VUE_APP_WS_DANMU_URL;
+            if (!wsBaseUrl) {
+                // 未配置 WS 服务端点，跳过弹幕实时连接（仅展示历史弹幕）
+                return;
+            }
             const socketUrl = `${wsBaseUrl}/ws/danmu/${this.$route.params.vid}`;
             if (this.socket != null) {
                 await this.socket.close();
@@ -631,6 +721,107 @@ export default {
             this.playerSize.height = size.height;
         },
 
+        // 播放器事件处理
+        handleVideoInfoUpdate(info) {
+            // 播放器更新 videoInfo 时同步回来
+        },
+        handleDanmuListUpdate(list) {
+            this.danmuList = list;
+        },
+
+        // 根据窗口大小改变播放器的宽高（移植自 teriteri PlayerWrapper）
+        changeWindowSize() {
+            // 直接用视口宽度，避免 video-container 被撑大后误判
+            const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+            const rightContainer = document.querySelector('.right-container');
+            const rightWidth = rightContainer ? rightContainer.getBoundingClientRect().width : 350;
+
+            // 实际可用宽度 = 视口宽度 - 右边栏 - 间距
+            const gap = 20;
+            const maxLeftWidth = Math.max(320, viewportWidth - rightWidth - gap);
+
+            // 计算高度
+            const windowHeight = window.innerHeight;
+            let height = (windowHeight - 64) * 0.7;
+            let width = height * (16 / 9);
+
+            // 按可用宽度约束
+            if (width > maxLeftWidth) {
+                width = maxLeftWidth;
+                height = width * (9 / 16);
+            }
+
+            height = Math.max(360, Math.min(720, height));
+
+            this.playerSize.width = width;
+            this.playerSize.height = height;
+
+            // 关键：根据实际播放器宽度，动态调整 ArtPlayer 内部 CSS 变量
+            // 防止控件按钮（46px min-width）超出可视区域
+            const playerEl = document.querySelector('.video-player');
+            if (playerEl) {
+                // 计算每个控件应有的最小宽度（CSS px）
+                // 左侧：playAndPause + volume + time ≈ 180px
+                // 右侧：screenshot + setting + pip + airplay + fullscreenWeb + fullscreen + quality ≈ 7×46=322px
+                // 进度条需要至少 100px
+                // 加上 padding 30px
+                // 最小总宽度 = 180 + 100 + 322 + 30 = 632px
+                const minRequired = 632;
+                const actualWidth = width;
+                // 缩放比例 = actualWidth / minRequired, 但要限制在 0.5~1
+                const scale = Math.max(0.5, Math.min(1, actualWidth / minRequired));
+
+                // 缩小 ArtPlayer 内部尺寸变量
+                const root = playerEl.querySelector('.art-video-player');
+                if (root) {
+                    root.style.setProperty('--art-control-height', `${46 * scale}px`);
+                    root.style.setProperty('--art-control-icon-size', `${30 * scale}px`);
+                    root.style.setProperty('--art-padding', `${10 * scale}px`);
+                    root.style.setProperty('--art-bottom-gap', `${5 * scale}px`);
+                    root.style.setProperty('--art-control-opacity', '0.75');
+                }
+            }
+        },
+
+        // 状态栏控制按钮：把 ArtPlayer 内部的 .art-controls-center DOM 元素搬到状态栏右侧
+        moveArtControlsCenter() {
+            const slot = this.$refs.artControlsCenterSlot;
+            if (!slot) return;
+            // 从 ArtPlayer 内部找到 .art-controls-center DOM 节点
+            const center = document.querySelector('.art-video-player .art-controls-center');
+            if (center) {
+                slot.appendChild(center);
+                // 强制覆盖 ArtPlayer 内置的隐藏样式，让它在新位置显示
+                center.style.display = 'flex';
+                center.style.flex = '0 0 auto';
+                center.style.padding = '0';
+                center.style.height = 'auto';
+                center.style.color = '#61666D';
+                center.style.fill = '#61666D';
+                // 遍历内部所有 SVG，强制设置 fill 颜色（白底深色图标）
+                const svgs = center.querySelectorAll('svg');
+                svgs.forEach(svg => {
+                    svg.style.fill = '#61666D';
+                    const paths = svg.querySelectorAll('path');
+                    paths.forEach(p => {
+                        p.style.fill = '#61666D';
+                    });
+                });
+                // 同步 data-danmuku-visible 属性到 slot，方便 CSS 控制开关按钮显隐
+                const observer = new MutationObserver(() => {
+                    const visible = center.getAttribute('data-danmuku-visible');
+                    if (visible !== null) {
+                        slot.setAttribute('data-danmuku-visible', visible);
+                    }
+                });
+                observer.observe(center, { attributes: true, attributeFilter: ['data-danmuku-visible'] });
+                const initialVisible = center.getAttribute('data-danmuku-visible');
+                if (initialVisible !== null) {
+                    slot.setAttribute('data-danmuku-visible', initialVisible);
+                }
+            }
+        },
+
 
         // 处理websocket事件        
         handleWsClose() {
@@ -687,6 +878,14 @@ export default {
             }
         },
 
+        // 切换分P
+        switchPart(index) {
+            if (index === this.currentPartIndex) return;
+            const part = this.manuscriptParts[index];
+            if (!part) return;
+            this.changeVideo(part.vid);
+        },
+
         // 视频播放结束自动连播
         next() {
             if (this.recommendVideos[0]) {
@@ -735,6 +934,7 @@ export default {
         }
     },
     async created() {
+        this.changeWindowSize();
         // 同步自动连播
         if (localStorage.getItem("playerSetting")) {
             let setting = JSON.parse(localStorage.getItem("playerSetting"));
@@ -749,7 +949,25 @@ export default {
     mounted() {
         window.addEventListener('scroll', this.handleScroll);
         this.handleScroll();
+        window.addEventListener('resize', this.changeWindowSize);
+        // 监听 visualViewport 缩放变化（Ctrl +/- / 浏览器缩放）
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', this.changeWindowSize);
+        }
         window.addEventListener('beforeunload', this.closeWebSocket);    // beforeunload 事件监听标签页关闭
+        // 等待 ArtPlayer 初始化完成后，把内部 .art-controls-center DOM 搬到状态栏右侧
+        this.$nextTick(() => {
+            let attempts = 0;
+            const tryMove = () => {
+                const center = document.querySelector('.art-video-player .art-controls-center');
+                if (center) {
+                    this.moveArtControlsCenter();
+                } else if (attempts++ < 20) {
+                    setTimeout(tryMove, 250);
+                }
+            };
+            tryMove();
+        });
         setTimeout(() => {
             this.isMounted = true;
         }, 3000);
@@ -758,6 +976,10 @@ export default {
         await this.closeWebSocket();
         window.removeEventListener('beforeunload', this.closeWebSocket);
         window.removeEventListener('scroll', this.handleScroll);
+        window.removeEventListener('resize', this.changeWindowSize);
+        if (window.visualViewport) {
+            window.visualViewport.removeEventListener('resize', this.changeWindowSize);
+        }
     },
     watch: {
         // 路由变化要关闭收藏对话框
@@ -781,17 +1003,21 @@ export default {
     width: auto;
     padding: 64px 10px 0px;
     max-width: 2540px;
-    min-width: 1080px;
     margin: 0 auto;
     display: flex;
     justify-content: center;
     box-sizing: content-box;
     position: relative;
+    overflow: hidden;
 }
 
 .left-container {
     position: sticky;
     height: fit-content;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    flex-shrink: 1;
 }
 
 .video-info-container {
@@ -1116,15 +1342,21 @@ export default {
     margin-left: 30px;
     position: relative;
     pointer-events: none;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .right-container-inner {
     padding-bottom: 250px;
     position: sticky;
+    overflow: hidden;
+    max-width: 100%;
 }
 
 .right-container-inner * {
     pointer-events: all;
+    max-width: 100%;
 }
 
 .up-info-container {
@@ -1256,6 +1488,220 @@ export default {
 
 .following-dropdown .dropdown-item:hover {
     color: var(--brand_pink);
+}
+
+/* 隐藏旧播放器自带的状态栏 */
+:deep(.video-status-bar-simple) {
+    display: none !important;
+}
+
+.player-sending-area {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    flex: none;
+    font-size: 13px;
+    height: 46px;
+    padding: 0 12px;
+}
+
+.player-video-info {
+    flex-shrink: 1;
+    align-items: center;
+    color: var(--text2);
+    display: flex;
+    height: 16px;
+    line-height: 18px;
+    margin-right: 24px;
+    overflow: hidden;
+    position: relative;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.player-video-info-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ArtPlayer .art-controls-center 搬运到状态栏右侧 */
+.art-controls-center-slot {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 4px;
+}
+
+/* 覆盖 ArtPlayer 内置的 .art-controls-center 默认样式（display:none） */
+.art-controls-center-slot > .art-controls-center {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto !important;
+    height: auto !important;
+    padding: 0 !important;
+    gap: 4px;
+    color: #61666D;
+    fill: #61666D !important;
+}
+
+.art-controls-center-slot > .art-controls-center:hover {
+    color: var(--brand_pink);
+    fill: var(--brand_pink) !important;
+}
+
+.art-controls-center-slot > .art-controls-center:hover .art-icon {
+    fill: var(--brand_pink) !important;
+}
+
+.art-controls-center-slot > .art-controls-center .art-control {
+    min-width: 32px;
+    min-height: 32px;
+    opacity: 0.85;
+}
+
+.art-controls-center-slot > .art-controls-center .art-control:hover {
+    opacity: 1;
+}
+
+.art-controls-center-slot > .art-controls-center .art-icon {
+    width: 22px;
+    height: 22px;
+    fill: #61666D !important;
+}
+
+.art-controls-center-slot > .art-controls-center .art-icon:hover,
+.art-controls-center-slot > .art-controls-center .art-control:hover .art-icon {
+    fill: var(--brand_pink) !important;
+}
+
+.art-controls-center-slot > .art-controls-center svg {
+    fill: #61666D !important;
+}
+
+.art-controls-center-slot > .art-controls-center svg:hover,
+.art-controls-center-slot > .art-controls-center .art-control:hover svg {
+    fill: var(--brand_pink) !important;
+}
+
+/* artplayer-plugin-danmuku 样式适配（用 :deep 穿透 scoped） */
+/* 输入框背景改灰色 */
+.art-controls-center-slot :deep(.apd-emitter) {
+    background-color: #f1f2f3 !important;
+}
+
+.art-controls-center-slot :deep(.apd-input) {
+    color: #18191c !important;
+    background-color: transparent !important;
+}
+
+.art-controls-center-slot :deep(.apd-input::placeholder) {
+    color: #9499a0 !important;
+}
+
+/* 开关弹幕按钮只显示一个：开状态显示 on，关状态显示 off */
+.art-controls-center-slot :deep(.apd-toggle-on) {
+    display: block !important;
+}
+
+.art-controls-center-slot :deep(.apd-toggle-off) {
+    display: none !important;
+}
+
+/* 监听 data-danmuku-visible 属性变化（通过 [data-danmuku-visible="false"] 控制） */
+.art-controls-center-slot[data-danmuku-visible="false"] :deep(.apd-toggle-on) {
+    display: none !important;
+}
+
+.art-controls-center-slot[data-danmuku-visible="false"] :deep(.apd-toggle-off) {
+    display: block !important;
+}
+
+/* danmuku 插件图标颜色 */
+.art-controls-center-slot :deep(.apd-icon) {
+    fill: #61666D !important;
+}
+
+.art-controls-center-slot :deep(.apd-icon:hover) {
+    fill: var(--brand_pink) !important;
+}
+
+.art-controls-center-slot :deep(.apd-send) {
+    background-color: #00AEEC !important;
+    color: #fff !important;
+}
+
+/* 让整个 danmuku 插件 UI bar 的高度合适 */
+.art-controls-center-slot :deep(.artplayer-plugin-danmuku) {
+    color: #18191c;
+    gap: 8px;
+}
+
+.video-parts-list {
+    margin-bottom: 12px;
+    border-radius: 6px;
+    background: var(--bg2);
+    overflow: hidden;
+}
+
+.parts-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text1);
+    padding: 10px 12px 6px;
+}
+
+.parts-items {
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.part-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.part-item:hover {
+    background: var(--bg3);
+}
+
+.part-item.active {
+    background: var(--brand_pink);
+}
+
+.part-item.active .part-index,
+.part-item.active .part-title,
+.part-item.active .part-duration {
+    color: #fff;
+}
+
+.part-index {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    min-width: 28px;
+}
+
+.part-title {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text1);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.part-duration {
+    font-size: 12px;
+    color: var(--text2);
+    min-width: 40px;
+    text-align: right;
 }
 
 .recommend-list {
