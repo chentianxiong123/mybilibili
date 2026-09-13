@@ -1,15 +1,7 @@
 <template>
-    <div class="platform-manuscript">
-        稿件管理
-    </div>
+    <ManuscriptManager />
 </template>
 
-<script>
-export default {
-    name: "PlatformManuscript",
-}
+<script setup>
+import ManuscriptManager from '@/components/createCenter/ManuscriptManager.vue'
 </script>
-
-<style scoped>
-
-</style>

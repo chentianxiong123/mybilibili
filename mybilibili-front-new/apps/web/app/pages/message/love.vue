@@ -1,27 +1,7 @@
 <template>
-    <div class="message-love">
-
-    </div>
+    <LikeList />
 </template>
 
-<script>
-export default {
-    name: "MessageLove",
-    methods: {
-        async clearUnread() {
-            const formData = new FormData();
-            formData.append("column", "love");
-            await this.$post("/msg-unread/clear", formData, {
-                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
-            })
-        }
-    },
-    created() {
-        this.clearUnread();
-    }
-}
+<script setup>
+import LikeList from '@/views/web/message/components/LikeList.vue'
 </script>
-
-<style scoped>
-
-</style>
