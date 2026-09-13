@@ -167,7 +167,7 @@
         <div class="right-entry">
             <!-- 未登录状态 -->
             <div class="header-avatar-wrap" v-if="!this.$store.state.isLogin">
-                <div class="default-login" @click="dialogVisible = true;">
+                <div class="default-login" @click="openLoginDialog();">
                     登录
                 </div>
             </div>
@@ -248,7 +248,7 @@
                 <VPopover pop-style="padding-top: 17px;">
                     <template #reference>
                         <div class="red-num--dynamic" v-if="user.uid && msgUnread > 0">{{ msgUnread > 99 ? '99+' : msgUnread }}</div>
-                        <div class="right-entry--outside" @click="this.$store.state.isLogin ? openNewPage('/message') : dialogVisible = true;">
+                        <div class="right-entry--outside" @click="this.$store.state.isLogin ? openNewPage('/message') : openLoginDialog();">
                             <i class="iconfont icon-xinfeng"></i>
                             <span>消息</span>
                         </div>
@@ -290,7 +290,7 @@
                         </div>
                         <div class="not-login" v-else>
                             <p class="not-login-tips">登录即可查看消息记录</p>
-                            <div class="not-login-btn" @click="dialogVisible = true;">
+                            <div class="not-login-btn" @click="openLoginDialog();">
                                 立即登录
                             </div>
                         </div>
@@ -300,7 +300,7 @@
             <div class="v-popover-wrap">
                 <VPopover pop-style="padding-top: 17px;">
                     <template #reference>
-                        <div class="right-entry--outside" @click="this.$store.state.isLogin ? noPage() : dialogVisible = true;">
+                        <div class="right-entry--outside" @click="this.$store.state.isLogin ? noPage() : openLoginDialog();">
                             <i class="iconfont icon-fengche"></i>
                             <span>动态</span>
                         </div>
@@ -311,7 +311,7 @@
                         </div>
                         <div class="not-login" v-else>
                             <p class="not-login-tips">登录即可查看关注动态</p>
-                            <div class="not-login-btn" @click="dialogVisible = true;">
+                            <div class="not-login-btn" @click="openLoginDialog();">
                                 立即登录
                             </div>
                         </div>
@@ -321,7 +321,7 @@
             <div class="v-popover-wrap">
                 <VPopover :pop-style="this.$store.state.isLogin ? 'padding-top: 17px; margin-left: -100px;' : 'padding-top: 17px;'">
                     <template #reference>
-                        <div class="right-entry--outside" @click="this.$store.state.isLogin ? noPage() : dialogVisible = true;">
+                        <div class="right-entry--outside" @click="this.$store.state.isLogin ? noPage() : openLoginDialog();">
                             <i class="iconfont icon-shoucang"></i>
                             <span>收藏</span>
                         </div>
@@ -332,7 +332,7 @@
                         </div>
                         <div class="not-login" v-else>
                             <p class="not-login-tips">登录即可查看我的收藏</p>
-                            <div class="not-login-btn" @click="dialogVisible = true;">
+                            <div class="not-login-btn" @click="openLoginDialog();">
                                 立即登录
                             </div>
                         </div>
@@ -342,7 +342,7 @@
             <div class="v-popover-wrap">
                 <VPopover :pop-style="this.$store.state.isLogin ? 'padding-top: 17px; margin-left: -50px;' : 'padding-top: 17px;'">
                     <template #reference>
-                        <div class="right-entry--outside" @click="this.$store.state.isLogin ? noPage() : dialogVisible = true;">
+                        <div class="right-entry--outside" @click="this.$store.state.isLogin ? noPage() : openLoginDialog();">
                             <i class="iconfont icon-lishijilu"></i>
                             <span>历史</span>
                         </div>
@@ -353,7 +353,7 @@
                         </div>
                         <div class="not-login" v-else>
                             <p class="not-login-tips">登录即可查看历史记录</p>
-                            <div class="not-login-btn" @click="dialogVisible = true;">
+                            <div class="not-login-btn" @click="openLoginDialog();">
                                 立即登录
                             </div>
                         </div>
@@ -362,7 +362,7 @@
             </div>
             <div 
                 class="right-entry-item"
-                @click="this.$store.state.isLogin ? openNewPage('/platform') : dialogVisible = true;"
+                @click="this.$store.state.isLogin ? openNewPage('/platform') : openLoginDialog();"
             >
                 <div class="right-entry--outside">
                     <i class="iconfont icon-dengpao"></i>
@@ -371,7 +371,7 @@
             </div>
             <div
                 class="right-entry-item right-entry-item--upload"
-                @click="this.$store.state.isLogin ? openNewPage('/platform/upload') : dialogVisible = true;"
+                @click="this.$store.state.isLogin ? openNewPage('/platform/upload') : openLoginDialog();"
             >
                 <div class="upload-buttom">
                     <i class="iconfont icon-shangchuan"></i>
@@ -380,26 +380,20 @@
             </div>
         </div>
     </div>
-    <!-- 登录框 -->
-    <el-dialog v-model="dialogVisible" :close-on-click-modal="false" destroy-on-close align-center>
-        <LoginRegister @loginSuccess="dialogVisible = false;"></LoginRegister>
-    </el-dialog>
 </template>
 
-<script>
+<script lang="ts">
     let inTimer;  // 节流计时器
     let outTimer;
     import VPopover from '../popover/VPopover.vue';
-    import LoginRegister from '../loginRegister/LoginRegister.vue';
     import VLevel from '@/components/teriteri/UserCard/VLevel.vue';
     import { ElMessage } from 'element-plus';
-    import { handleNum, handleLevel, highlightKeyword } from '@/teriteri-src/utils/utils.js';
+    import { handleNum, handleLevel, highlightKeyword } from '@/teriteri-src/utils/utils';
 
     export default {
         name: "HeaderBarIndex",
         components: {
             VPopover,
-            LoginRegister,
             VLevel,
         },
         data() {
@@ -421,8 +415,6 @@
                 // 头像气泡框的显隐
                 popoverDisplay: "none",
                 isPopoverShow: false,
-                // 登录框组件的显隐
-                dialogVisible: false,
                 // 屏幕宽度
                 screenWidth: window.innerWidth,
             }
@@ -443,6 +435,11 @@
                 }
             }
         },
+        inject: {
+            showLoginDialog: {
+                default: null
+            }
+        },
         computed: {
             user() {
                 return this.$store.state.user;
@@ -458,6 +455,13 @@
         },
         methods: {
             //////// 请求 ////////
+
+            // 打开登录弹窗
+            openLoginDialog() {
+                if (this.showLoginDialog) {
+                    this.showLoginDialog.value = true;
+                }
+            },
 
             // 获取搜索推荐
             async getMatchingWord() {
@@ -634,7 +638,7 @@
         watch: {
             "$store.state.openLogin"(curr) {
                 if (curr) {
-                    this.dialogVisible = true;
+                    this.openLoginDialog();
                 }
             }
         }
