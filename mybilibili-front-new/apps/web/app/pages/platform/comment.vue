@@ -1,15 +1,53 @@
 <template>
-    <div class="platform-comment">
-        评论管理
+    <div class="page-placeholder">
+        <i class="iconfont icon-hudong"></i>
+        <h2>评论管理</h2>
+        <p>该功能正在建设中，敬请期待。</p>
+        <p class="hint">可以使用 <a @click="$router.push('/message/reply')">回复我的</a> 处理收到的评论</p>
     </div>
 </template>
 
-<script>
-export default {
-    name: "PlatformComment",
-}
-</script>
-
 <style scoped>
+.page-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 24px;
+    color: var(--text3);
+    text-align: center;
+}
 
+.page-placeholder .iconfont {
+    font-size: 64px;
+    color: var(--graph_weak);
+    margin-bottom: 16px;
+}
+
+.page-placeholder h2 {
+    font-size: 20px;
+    color: var(--text2);
+    font-weight: 500;
+    margin: 0 0 8px 0;
+}
+
+.page-placeholder p {
+    font-size: 14px;
+    margin: 4px 0;
+}
+
+.page-placeholder .hint {
+    margin-top: 16px;
+    color: var(--text3);
+}
+
+.page-placeholder .hint a {
+    color: var(--brand_pink);
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.page-placeholder .hint a:hover {
+    text-decoration: underline;
+}
 </style>

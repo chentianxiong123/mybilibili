@@ -1,15 +1,7 @@
 <template>
-    <div class="message-config">
-
-    </div>
+    <MessageSettings />
 </template>
 
-<script>
-export default {
-    name: "MessageConfig",
-}
+<script setup>
+import MessageSettings from '@/views/web/message/components/MessageSettings.vue'
 </script>
-
-<style scoped>
-
-</style>

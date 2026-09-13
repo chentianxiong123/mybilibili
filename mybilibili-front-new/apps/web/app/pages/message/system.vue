@@ -1,15 +1,7 @@
 <template>
-    <div class="message-system">
-
-    </div>
+    <SystemList />
 </template>
 
-<script>
-export default {
-    name: "MessageSystem",
-}
+<script setup>
+import SystemList from '@/views/web/message/components/SystemList.vue'
 </script>
-
-<style scoped>
-
-</style>

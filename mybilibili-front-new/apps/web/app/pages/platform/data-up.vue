@@ -1,15 +1,7 @@
 <template>
-    <div class="platform-data">
-        数据中心
-    </div>
+    <CenterDashboard />
 </template>
 
-<script>
-export default {
-    name: "PlatformData",
-}
+<script setup>
+import CenterDashboard from '@/components/createCenter/CenterDashboard.vue'
 </script>
-
-<style scoped>
-
-</style>

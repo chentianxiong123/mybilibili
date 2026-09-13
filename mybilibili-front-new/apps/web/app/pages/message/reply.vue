@@ -1,27 +1,7 @@
 <template>
-    <div class="message-reply">
-        
-    </div>
+    <ReplyList />
 </template>
 
-<script>
-export default {
-    name: "MessageReply",
-    methods: {
-        async clearUnread() {
-            const formData = new FormData();
-            formData.append("column", "reply");
-            await this.$post("/msg-unread/clear", formData, {
-                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
-            })
-        }
-    },
-    created() {
-        this.clearUnread();
-    }
-}
+<script setup>
+import ReplyList from '@/views/web/message/components/ReplyList.vue'
 </script>
-
-<style scoped>
-
-</style>

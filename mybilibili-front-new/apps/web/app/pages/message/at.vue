@@ -1,15 +1,7 @@
 <template>
-    <div class="message-at">
-
-    </div>
+    <AtList />
 </template>
 
-<script>
-export default {
-    name: "MessageAt",
-}
+<script setup>
+import AtList from '@/views/web/message/components/AtList.vue'
 </script>
-
-<style scoped>
-
-</style>
