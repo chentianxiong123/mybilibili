@@ -347,8 +347,10 @@ export default {
         return {
             dialogVisible: false,   // 封面裁剪框的显隐
             coverType: 1,   // 当前显示封面裁剪类型，1 视频帧截取 2 上传裁剪
-            selectedVideo: null,    // 选择的视频文件
+            selectedVideo: null,    // 选择视频文件
             hash: null, // 当前视频文件的hash值
+            uploadId: null, // 后端 upload-session id（用 hash 作稳定 id）
+            totalChunks: 0, // 文件总分片数
             videoURL: null, // 上传的视频的内存地址
             videoName: "",  // 视频原文件名
             chunkSize: 10*1024*1024,  // 分片大小小于等于后端，分片越小越多断点续传效果越好，但上传速度相对也会慢
@@ -592,23 +594,38 @@ export default {
             }
             const chunks = this.createChunks(this.selectedVideo);
             // console.log("切片：", chunks);
+            this.totalChunks = chunks.length;
             this.isPause = false;
             this.isFailed = false;
-            // 向服务器查询还没上传的下一个分片序号
-            const result = await this.askCurrentChunk(this.hash);
-            this.current = result.data.data;
+            // 创建上传会话（占位 title=hash, category_id=0, total_chunks），id 由前端用 hash 固定
+            const initRes = await this.createSession({
+                client_id: this.hash,
+                title: this.hash,
+                category_id: 0,
+                total_chunks: chunks.length,
+            });
+            if (!initRes || !initRes.data || !initRes.data.data || !initRes.data.data.upload_id) {
+                this.isFailed = true;
+                this.isPause = true;
+                ElMessage.error('创建上传会话失败');
+                return;
+            }
+            this.uploadId = initRes.data.data.upload_id;
+            // 向服务器查询还没上传的下一个分片序号（后端返回 uploaded_chunks 即已上传数 = 下一个待传序号）
+            const result = await this.askCurrentChunk(this.uploadId);
+            this.current = (result && result.data && result.data.data && result.data.data.uploaded_chunks) || 0;
             // 逐个上传分片
             for (this.current; this.current < chunks.length; this.current++) {
                 const chunk = chunks[this.current];
                 const formData = new FormData();
-                formData.append('chunk', chunk); // 将当前分片作为单独的文件上传
-                formData.append('hash', this.hash);
-                formData.append('index', this.current); // 传递分片索引
-                
+                formData.append('file', chunk); // 后端 multipart 字段名
+                formData.append('uploadId', this.uploadId);
+                formData.append('chunkIndex', this.current); // 传递分片索引
+
                 // 发送分片到服务器
                 try {
                     const res = await this.uploadChunk(formData);
-                    if (res.data.code !== 200) {
+                    if (!res || res.code !== 200) {
                         // ElMessage.error("分片上传失败");
                         this.isFailed = true;
                         this.isPause = true;
@@ -623,7 +640,7 @@ export default {
                 if (this.isPause) {
                     // 取消上传彻底删除已上传分片
                     if (this.isCancel) {
-                        await this.cancelUpload(this.hash);
+                        await this.cancelUpload(this.uploadId);
                         this.isCancel = false;
                     }
                     return;
@@ -655,7 +672,7 @@ export default {
             // 这里是应对没有手动点暂停按钮直接点取消上传按钮，导致下面的同步代码先执行删除后，上传函数仍在执行当前分片的上传
             // 所以要发送取消上传信号，通知上传函数彻底删除上传好的分片
             this.isCancel = true;
-            await this.cancelUpload(this.hash);
+            await this.cancelUpload(this.uploadId);
             this.init();
             setTimeout(() => {
                 this.isCancel = false;
@@ -880,45 +897,44 @@ export default {
                 return;
             }
             this.$store.state.isLoading = true;
-            let cover = null;
             fetch(this.coverURL)
             .then(response => response.blob())
-            .then(blob => {
-                cover = new File([blob], this.hash + Date.now() + '.jpg', { type: 'image/jpeg' });
-                // console.log("封面文件: ", cover);
+            .then(async (blob) => {
+                const cover = new File([blob], this.hash + Date.now() + '.jpg', { type: 'image/jpeg' });
+                // 1) 用真实元数据更新 upload-session（同一 client_id 命中 ON CONFLICT UPDATE）
+                const updateRes = await this.createSession({
+                    client_id: this.hash,
+                    title: this.form.title,
+                    description: this.form.descr,
+                    category_id: this.form.category[1].id,
+                    tags: this.form.tags.slice(),
+                    videos: [{ title: this.form.title, total_chunks: this.totalChunks || 0 }],
+                    total_chunks: this.totalChunks || 0,
+                });
+                if (!updateRes || updateRes.code !== 200) {
+                    ElMessage.error('更新稿件信息失败，请稍后再试');
+                    this.$store.state.isLoading = false;
+                    return;
+                }
+                // 2) 上传封面 + 合并分片创建稿件
                 const formData = new FormData();
                 formData.append('cover', cover);
-                formData.append('hash', this.hash);
-                formData.append('title', this.form.title);
-                formData.append('type', this.form.type);
-                formData.append('auth', this.form.auth);
-                formData.append('duration', this.duration);
-                formData.append('mcid', this.form.category[0].id);
-                formData.append('scid', this.form.category[1].id);
-                let tags = "";
-                this.form.tags.forEach(tag => {
-                    tags = tags + tag + '\n';
-                });
-                formData.append('tags', tags);
-                formData.append('descr', this.form.descr);
-                // 发送POST请求
-                this.$post("/video/add", formData, {
+                formData.append('uploadId', this.uploadId);
+                const res = await this.$post("/manuscript/upload-complete", formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data',
                         Authorization: "Bearer " + localStorage.getItem("teri_token"),
                     }
-                })
-                .then(res => {
-                    if (res.data.code === 200) {
-                        ElMessage.success('投稿成功，视频马上就能和大家见面啦');
-                        this.init();
-                        this.$emit("changeNavBarShow", true);
-                        this.$store.state.isLoading = false;
-                    } else {
-                        ElMessage.error('投稿失败，请稍后再试');
-                        this.$store.state.isLoading = false;
-                    }
-                })
+                });
+                if (res && res.code === 200) {
+                    ElMessage.success('投稿成功，视频马上就能和大家见面啦');
+                    this.init();
+                    this.$emit("changeNavBarShow", true);
+                    this.$store.state.isLoading = false;
+                } else {
+                    ElMessage.error('投稿失败，请稍后再试');
+                    this.$store.state.isLoading = false;
+                }
             })
             .catch(() => {
                 ElMessage.error('特丽丽被玩坏了(¯﹃¯)');
@@ -927,18 +943,23 @@ export default {
         },
 
 
-        // 请求
-        // 获取当前还没上传的序号 断点续传
-        async askCurrentChunk(hash) {
-            return await this.$get("/video/ask-chunk", {
-                params: { hash: hash },
+        // 创建上传会话（同一 client_id 重复调用会 ON CONFLICT 更新 title/desc/category/tags/videos/total_chunks）
+        async createSession(payload) {
+            return await this.$post("/manuscript/upload-session", payload, {
+                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
+            });
+        },
+
+        // 查询上传进度（后端 GET 返回 uploaded_chunks = 已上传分片数 = 下一个待传序号）
+        async askCurrentChunk(uploadId) {
+            return await this.$get(`/manuscript/upload-session/${uploadId}`, {
                 headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
             });
         },
 
         // 上传分片
         async uploadChunk(formData) {
-            return await this.$post("/video/upload-chunk", formData, {
+            return await this.$post("/manuscript/upload-chunk", formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     Authorization: "Bearer " + localStorage.getItem("teri_token"),
@@ -946,10 +967,9 @@ export default {
             })
         },
 
-        // 取消上传
-        async cancelUpload(hash) {
-            return await this.$get("/video/cancel-upload", {
-                params: { hash: hash },
+        // 取消上传（DELETE 会话）
+        async cancelUpload(uploadId) {
+            return await this.$axios.delete(`/manuscript/upload-session/${uploadId}`, {
                 headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
             });
         },

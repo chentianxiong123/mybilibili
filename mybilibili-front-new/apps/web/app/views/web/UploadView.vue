@@ -195,7 +195,7 @@ const handleSubmit = () => {
         isSubmittingRequest.value = false
         ElMessage.success('投稿成功，已进入审核/处理中队列')
         router.push({
-          path: '/create-center/content-articles',
+          path: '/platform/content-articles',
           query: { status: 'processing' }
         })
       })
@@ -254,7 +254,7 @@ const saveDraft = () => {
 }
 
 const goDraftsBox = () => {
-  router.push('/create-center/drafts')
+  router.push('/platform/drafts')
 }
 
 const cancelUpload = () => {

@@ -145,7 +145,7 @@ const goToUserProfile = () => {
 
 // 回到创作中心首页
 const goToCreateCenterHome = () => {
-  router.push('/create-center/home')
+  router.push('/platform/home')
   // 滚动到顶部
   window.scrollTo(0, 0)
 }
@@ -159,14 +159,14 @@ watch(
   (newPath) => {
     // 根据当前路径设置activeIndex
     const pathMap = {
-      '/create-center/home': 'home',
-      '/create-center/upload': 'upload',
-      '/create-center/drafts': 'drafts',
-      '/create-center/content': 'content',
-      '/create-center/content-articles': 'content-articles',
+      '/platform/home': 'home',
+      '/platform/upload': 'upload',
+      '/platform/drafts': 'drafts',
+      '/platform/content': 'content',
+      '/platform/content-articles': 'content-articles',
 
-      '/create-center/data': 'data',
-      '/create-center/fans': 'fans',
+      '/platform/data': 'data',
+      '/platform/fans': 'fans',
     }
 
     if (pathMap[newPath]) {

@@ -263,15 +263,17 @@ export default {
             rootComment.replies = rootComment.replies.filter(cmt => cmt.id !== comment.id);
         },
 
-        // 获取UP主觉得很赞
+        // 获取UP主觉得很赞（后端暂未实现，端点不存在时降级为空数组）
         async getUpLike() {
-            const res = await this.$get("/comment/get-up-like", {
-                params: {
-                    uid: this.upUid
-                }
-            });
-            if (!res.data) return;
-            this.upLike = res.data.data;
+            try {
+                const res = await this.$get("/comment/get-up-like", {
+                    params: { uid: this.upUid }
+                });
+                if (!res || !res.data) return;
+                this.upLike = res.data.data || [];
+            } catch {
+                this.upLike = [];
+            }
         },
 
         // 清空评论列表

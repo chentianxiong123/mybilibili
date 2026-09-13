@@ -4,7 +4,10 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   ssr: false,
   modules: ['@element-plus/nuxt', '@pinia/nuxt'],
-  css: ['@/assets/teriteri/css/base.css'],
+  css: ['@/assets/teriteri/css/base.css', '@mybilibili/ui',
+    'element-plus/es/components/message-box/style/css',
+    'element-plus/es/components/notification/style/css',
+    'element-plus/es/components/loading/style/css'],
   app: {
     head: {
       htmlAttrs: { lang: 'zh-CN' },
@@ -29,8 +32,19 @@ export default defineNuxtConfig({
   },
   routeRules: {
     '/': { ssr: false },
+    '/message': { redirect: '/message/whisper' },
     '/message/**': { ssr: false },
     '/dynamic/**': { ssr: false },
+    '/profile/**': { ssr: false },
+    '/personal-center/**': { ssr: false },
+    '/history': { ssr: false },
+    '/avatar': { ssr: false },
+    '/live/**': { ssr: false },
+    '/create-center/**': { ssr: false },
+    '/manuscript/**': { ssr: false },
+    '/login': { ssr: false },
+    '/collections': { ssr: false },
+    '/collection/**': { ssr: false },
   },
   vite: {
     css: {

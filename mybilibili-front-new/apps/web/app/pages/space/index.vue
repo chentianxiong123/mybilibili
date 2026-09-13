@@ -219,10 +219,10 @@ export default {
             });
             if (!res.data) return;
             if (!res.data.data) {
-                this.$router.push('/notfound');
+                this.$router.push('/404');
                 return;
             } else if (res.data.data.state === 2) {
-                this.$router.push('/notfound');  // 账号已注销
+                this.$router.push('/404');  // 账号已注销
                 return;
             }
             this.user = res.data.data;
@@ -338,7 +338,7 @@ export default {
                 await this.getUserInfo(uid);
                 await this.getUserWorksCount(uid);
             } else {
-                this.$router.push('/notfound');
+                this.$router.push('/404');
             }
         }
     },
@@ -355,7 +355,7 @@ export default {
                 await this.getUserInfo(uid);
                 await this.getUserWorksCount(uid);
             } else {
-                this.$router.push('/notfound');
+                this.$router.push('/404');
             }
         }
     },

@@ -17,7 +17,7 @@ const navItems = [
   { name: '我的头像', icon: 'Avatar', path: '/personal-center/avatar' },
   { name: '登录记录', icon: 'Clock', path: '/personal-center/login-logs' },
   { name: '个人空间', icon: 'UserFilled', path: 'space', special: true },
-  { name: '创作中心', icon: 'Brush', path: '/create-center', special: true }
+  { name: '创作中心', icon: 'Brush', path: '/platform/home', special: true }
 ]
 
 const iconMap = {
@@ -51,7 +51,7 @@ const handleNavClick = (item) => {
     // 特殊处理：创作中心
     else if (item.name === '创作中心') {
       // 打开新标签页到创作中心
-      const url = `${window.location.origin}/create-center`
+      const url = `${window.location.origin}/platform/home`
       window.open(url, '_blank')
     }
     // 其他特殊项
