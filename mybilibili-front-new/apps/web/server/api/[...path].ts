@@ -36,7 +36,7 @@ const PATH_MAP: Record<string, string> = {
 // 按服务端口分发的路由
 function pickUpstream(realPath: string): string {
   if (realPath.startsWith('/search/')) return 'http://127.0.0.1:8084'
-  if (realPath.startsWith('/danmaku/') || realPath.startsWith('/danmu')) return 'http://127.0.0.1:8086'
+  if (realPath.includes('/danmaku/') || realPath.startsWith('/danmu') || realPath.startsWith('/creator/danmaku')) return 'http://127.0.0.1:8086'
   return 'http://127.0.0.1:8080'
 }
 
@@ -92,7 +92,9 @@ export default defineEventHandler(async (event) => {
     return { error: true, statusCode: 404, statusMessage: 'Not an API prefix', path }
   }
 
-  const teriteriUrl = path.slice('/api'.length) || '/'
+  // 兼容 /api/v1/xxx（client.ts 用 /api/v1）与 /api/xxx（teriteri 旧调用）
+  const apiPrefix = path.startsWith('/api/v1/') ? '/api/v1' : '/api'
+  const teriteriUrl = path.slice(apiPrefix.length) || '/'
   const query = new URLSearchParams(fullUrl.search || '')
   const method = getMethod(event)
 
