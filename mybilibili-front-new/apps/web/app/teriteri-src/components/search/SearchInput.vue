@@ -95,7 +95,7 @@
 </template>
 
 <script>
-import { highlightKeyword } from '@/teriteri-src/utils/utils.js';
+import { highlightKeyword } from '@/teriteri-src/utils/utils';
 
 export default {
     name: "SearchInput",

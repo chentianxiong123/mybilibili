@@ -48,7 +48,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue';
 
 export default {

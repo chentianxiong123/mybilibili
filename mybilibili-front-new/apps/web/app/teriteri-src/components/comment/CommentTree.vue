@@ -151,7 +151,7 @@ import ReplyTextarea from './ReplyTextarea.vue';
 import VLevel from '@/components/teriteri/UserCard/VLevel.vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
-import { handleNum, handleLevel, handleDateTime3, emojiText } from '@/teriteri-src/utils/utils.js';
+import { handleNum, handleLevel, handleDateTime3, emojiText } from '@/teriteri-src/utils/utils';
 
 
 export default {

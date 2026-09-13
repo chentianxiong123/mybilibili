@@ -301,11 +301,11 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue';
 import HeaderChannel from '@/components/teriteri/headerChannel/HeaderChannel.vue';
 import CarouselIndex from '@/components/teriteri/carousel/CarouselIndex.vue';
-import { handleTime, handleNum, handleDate } from '@/teriteri-src/utils/utils.js';
+import { handleTime, handleNum, handleDate } from '@/teriteri-src/utils/utils';
 
 let headerHight, bottomDistance;
 

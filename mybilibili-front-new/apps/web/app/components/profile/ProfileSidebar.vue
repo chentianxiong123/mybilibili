@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { userApi } from '@/api/client'
 
 const props = defineProps({

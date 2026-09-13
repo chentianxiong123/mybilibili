@@ -130,7 +130,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import VPopover from '@/components/teriteri/popover/VPopover.vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 

@@ -20,7 +20,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import EmojiJson from '@/assets/teriteri/json/emoji.json';
 
 export default {

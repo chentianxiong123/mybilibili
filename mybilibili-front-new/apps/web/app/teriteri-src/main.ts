@@ -1,3 +1,4 @@
+// @ts-nocheck  // 参考源码（teriteri 原 Vue2 入口），不参与 Nuxt 构建，保留仅供迁移参照
 import { createApp } from 'vue'
 import App from './App.vue'
 import ElementPlus from 'element-plus'

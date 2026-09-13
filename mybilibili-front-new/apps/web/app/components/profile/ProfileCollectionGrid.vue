@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { Plus, VideoPlay, Grid, List, View, ArrowRight } from '@element-plus/icons-vue'
 import { ElButton } from 'element-plus'

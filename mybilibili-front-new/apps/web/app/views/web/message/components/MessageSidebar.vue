@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ChatDotRound, ChatLineRound, Bell, Star, Setting, MagicStick } from '@element-plus/icons-vue'
 
 const props = defineProps({

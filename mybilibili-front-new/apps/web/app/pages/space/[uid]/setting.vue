@@ -40,7 +40,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import { userApi } from '@/api/client';
 import { ElMessage } from 'element-plus';
 

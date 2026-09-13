@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
 import { VideoCamera, CopyDocument, Cellphone, UserFilled, ChatDotRound, Monitor, Close, Picture, Upload } from '@element-plus/icons-vue'
 import { requestNotificationPermission } from '@/utils/notification.ts'

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { safeStorage } from '@/utils/safeStorage'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { safeStorage } from '@/utils/safeStorage'
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import { View, Star } from '@element-plus/icons-vue'

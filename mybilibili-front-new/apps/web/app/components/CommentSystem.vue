@@ -185,7 +185,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { safeStorage } from '@/utils/safeStorage'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'

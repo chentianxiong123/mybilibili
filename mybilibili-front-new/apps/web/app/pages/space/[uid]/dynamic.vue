@@ -42,7 +42,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import { dynamicApi } from '@/api/dynamic';
 
 export default {

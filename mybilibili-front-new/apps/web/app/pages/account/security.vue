@@ -38,7 +38,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import { ElMessage, ElMessageBox } from 'element-plus';
 
 export default {

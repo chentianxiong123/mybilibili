@@ -83,7 +83,7 @@
 </template>
 
 <script>
-import { handleTime, handleNum, handleDate } from '@/teriteri-src/utils/utils.js';
+import { handleTime, handleNum, handleDate } from '@/teriteri-src/utils/utils';
 
 export default {
     name: "SpaceVideo",

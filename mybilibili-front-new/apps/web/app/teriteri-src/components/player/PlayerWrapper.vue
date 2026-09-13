@@ -493,7 +493,7 @@ import PlayerProgress from './PlayerProgress.vue';
 import SliderColumn from '@/components/teriteri/slider/SliderColumn.vue';
 import SliderRow from '@/components/teriteri/slider/SliderRow.vue';
 import ColorPicker from '@/components/teriteri/color/ColorPicker.vue';
-import { handleTime } from '@/teriteri-src/utils/utils.js';
+import { handleTime } from '@/teriteri-src/utils/utils';
 import { ElMessage } from 'element-plus';
 
 

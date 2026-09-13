@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { MoreFilled, Share, ChatDotRound, Star, VideoPlay, Clock, View } from '@element-plus/icons-vue'
 import CommentSystem from '@/components/CommentSystem.vue'
 

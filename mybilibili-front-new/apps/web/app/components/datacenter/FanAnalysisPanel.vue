@@ -42,7 +42,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import TrendChart from './TrendChart.vue'
 import { useCreatorStats } from '@/composables/useCreatorStats'

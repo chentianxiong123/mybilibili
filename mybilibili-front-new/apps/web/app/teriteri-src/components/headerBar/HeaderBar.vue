@@ -393,7 +393,7 @@
     import LoginRegister from '../loginRegister/LoginRegister.vue';
     import VLevel from '@/components/teriteri/UserCard/VLevel.vue';
     import { ElMessage } from 'element-plus';
-    import { handleNum, handleLevel, highlightKeyword } from '@/teriteri-src/utils/utils.js';
+    import { handleNum, handleLevel, highlightKeyword } from '@/teriteri-src/utils/utils';
 
     export default {
         name: "HeaderBarIndex",

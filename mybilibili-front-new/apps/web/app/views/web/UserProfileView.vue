@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { useAuth } from '@/composables/useAuth'
 import { safeStorage } from '@/utils/safeStorage'
 import { ref, computed, onMounted, watch } from 'vue'

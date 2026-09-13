@@ -42,7 +42,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue';
 import SearchInput from '@/components/teriteri/search/SearchInput.vue';
 

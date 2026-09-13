@@ -22,7 +22,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import FansList from '@/components/FansList.vue';
 import { userApi } from '@/api/client';
 import { ElMessage } from 'element-plus';

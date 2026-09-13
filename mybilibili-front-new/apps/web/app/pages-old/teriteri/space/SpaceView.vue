@@ -152,7 +152,7 @@
 import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue';
 import VAvatar from '@/components/teriteri/avatar/VAvatar.vue';
 import VLevel from '@/components/teriteri/UserCard/VLevel.vue';
-import { handleNum, handleLevel } from '@/teriteri-src/utils/utils.js';
+import { handleNum, handleLevel } from '@/teriteri-src/utils/utils';
 import { ElMessage } from 'element-plus';
 
 export default {

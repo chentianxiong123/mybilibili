@@ -52,7 +52,7 @@ export default defineNuxtConfig({
         scss: {
           api: 'modern-compiler',
           silenceDeprecations: ['legacy-js-api', 'import']
-        }
+        } as any
       }
     }
   }

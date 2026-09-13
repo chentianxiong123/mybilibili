@@ -140,8 +140,8 @@ import VPopover from '@/components/teriteri/popover/VPopover.vue';
 import UserCard from '@/components/teriteri/UserCard/UserCard.vue';
 import VLevel from '@/components/teriteri/UserCard/VLevel.vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { emojiText } from '@/teriteri-src/utils/utils.js';
-import { handleNum, handleLevel, handleDateTime3 } from '@/teriteri-src/utils/utils.js';
+import { emojiText } from '@/teriteri-src/utils/utils';
+import { handleNum, handleLevel, handleDateTime3 } from '@/teriteri-src/utils/utils';
 
 export default {
     name: "SubComment",

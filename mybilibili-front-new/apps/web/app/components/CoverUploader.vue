@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ElMessage } from 'element-plus'
 import { UploadFilled, Plus } from '@element-plus/icons-vue'
 import { toWebP } from '@/utils/toWebP'

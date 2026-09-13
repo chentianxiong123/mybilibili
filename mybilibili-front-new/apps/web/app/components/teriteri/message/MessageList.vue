@@ -33,9 +33,9 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import MessageLoading from './MessageLoading.vue';
-import { handleDateTime, emojiText } from '@/teriteri-src/utils/utils.js';
+import { handleDateTime, emojiText } from '@/teriteri-src/utils/utils';
 
 export default {
     name: "MessageList",

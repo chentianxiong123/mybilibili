@@ -360,7 +360,7 @@ import VAvatar from '@/components/teriteri/avatar/VAvatar.vue';
 import UserCard from '@/components/teriteri/UserCard/UserCard.vue';
 import DanmuBox from '@/components/teriteri/danmu/DanmuBox.vue';
 import AddToFavorite from '@/components/teriteri/favorite/AddToFavorite.vue';
-import { handleTime, handleNum, handleDate, linkify } from '@/teriteri-src/utils/utils.js';
+import { handleTime, handleNum, handleDate, linkify } from '@/teriteri-src/utils/utils';
 import { ElMessage } from 'element-plus';
 
 export default {

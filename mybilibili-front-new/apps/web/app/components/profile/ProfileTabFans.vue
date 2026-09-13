@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Search } from '@element-plus/icons-vue'
 import FansList from '@/components/FansList.vue'
 

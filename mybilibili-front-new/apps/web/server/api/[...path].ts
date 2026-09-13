@@ -43,7 +43,7 @@ function pickUpstream(realPath: string): string {
 function adaptUrl(url: string, query: URLSearchParams): { target: string; port: string; qs: string } {
   // /video/getone 特殊：vid 从 query 或路径
   if (url.startsWith('/video/getone')) {
-    const vid = query.get('vid') || url.split('/').pop()
+    const vid = query.get('vid') || url.split('/').pop() || ''
     return { target: `/manuscript/${vid}`, port: 'http://127.0.0.1:8080', qs: '' }
   }
   // /video/user-works → /manuscript/user/{uid}，参数 page/quantity → page/pageSize
@@ -57,7 +57,7 @@ function adaptUrl(url: string, query: URLSearchParams): { target: string; port: 
   // /video/user-love → /manuscript/user/likes（需鉴权）
   if (url.startsWith('/video/user-love')) {
     const offset = Number(query.get('offset')) || 0
-    const page = Math.floor(offset / 20) + 1
+    const page = String(Math.floor(offset / 20) + 1)
     const size = query.get('quantity') || query.get('pageSize') || '20'
     const qs = new URLSearchParams({ page, pageSize: size }).toString()
     return { target: '/manuscript/user/likes', port: 'http://127.0.0.1:8080', qs }
@@ -76,7 +76,7 @@ function adaptUrl(url: string, query: URLSearchParams): { target: string; port: 
   const keys = Object.keys(PATH_MAP).sort((a, b) => b.length - a.length)
   for (const from of keys) {
     if (url === from || url.startsWith(from + '/') || url.startsWith(from + '?')) {
-      const real = url.replace(from, PATH_MAP[from])
+      const real = url.replace(from, PATH_MAP[from]!)
       return { target: real, port: pickUpstream(real), qs: '' }
     }
   }
@@ -128,8 +128,7 @@ export default defineEventHandler(async (event) => {
     const respHeaders: Record<string, string> = {}
     resp.headers.forEach((v, k) => { respHeaders[k] = v })
     setResponseHeaders(event, respHeaders)
-    const buf = await resp.arrayBuffer()
-    return Buffer.from(buf)
+    return Buffer.from(await resp.arrayBuffer())
   } catch (e) {
     setResponseStatus(event, 500)
     return { code: 500, message: String(e), data: null }

@@ -38,7 +38,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
     import carouselJson from '@/assets/teriteri/json/carousel.json';
 
     let timer;  // 定时器

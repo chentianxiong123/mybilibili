@@ -45,7 +45,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import { ElMessage } from 'element-plus';
 import VAvatar from '../avatar/VAvatar.vue';
 import EmojiBox from '../emoji/EmojiBox.vue';

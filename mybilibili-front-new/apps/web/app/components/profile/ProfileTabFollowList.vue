@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { More, Check, Grid, Search } from '@element-plus/icons-vue'
 
 const props = defineProps({

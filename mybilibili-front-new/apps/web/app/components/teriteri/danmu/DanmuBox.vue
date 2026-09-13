@@ -59,9 +59,9 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { handleTime, handleDateTime2 } from '@/teriteri-src/utils/utils.js';
+import { handleTime, handleDateTime2 } from '@/teriteri-src/utils/utils';
 
 export default {
     name: "DanmuBox",

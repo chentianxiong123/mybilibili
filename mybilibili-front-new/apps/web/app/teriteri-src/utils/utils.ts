@@ -1,4 +1,4 @@
-import EmojiList from '@/assets/teriteri/json/emoji.json';
+import EmojiList from '@/assets/teriteri/json/emoji.json'
 
 
 /**
@@ -6,13 +6,13 @@ import EmojiList from '@/assets/teriteri/json/emoji.json';
  * @param {String} text 需要识别的文本
  * @returns {String} 带有超链接a标签的文本
  */
-export function linkify(text) {
+export function linkify(text: string | null | undefined): string | null | undefined {
     if (text) {
         // 匹配URL的正则表达式
-        var urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#/%=~_|$?!:,.]*[A-Z0-9+&@#/%=~_|$])/gi;
+        const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#/%=~_|$?!:,.]*[A-Z0-9+&@#/%=~_|$])/gi;
 
         // 将匹配到的URL替换为带有链接的HTML
-        var linkedText = text.replace(urlRegex, function (url) {
+        const linkedText = text.replace(urlRegex, function (url) {
             return '<a href="' + url + '" class="v-url" target="_blank">' + url + '</a>';
         });
 
@@ -28,7 +28,7 @@ export function linkify(text) {
  * @param {String} text 需要识别的文本
  * @returns {String} 带有表情的html文本
  */
-export function emojiText(text) {
+export function emojiText(text: string | null | undefined): string | null | undefined {
     if (text) {
         // 匹配 [表情] 格式的字符串
         const regex = /\[(.*?)\]/g;
@@ -59,7 +59,7 @@ export function emojiText(text) {
  * @param {String} keyword 要高亮的关键词
  * @param {String} inputString 要转换的文本
  */
-export function highlightKeyword(keyword, inputString) {
+export function highlightKeyword(keyword: string, inputString: string): string {
     // 使用正则表达式创建一个匹配关键词的模式
     const regex = new RegExp(`(${keyword.split('').join('|')})`, 'gi');
     // 使用字符串替换函数进行替换，添加高亮标签
@@ -72,11 +72,11 @@ export function highlightKeyword(keyword, inputString) {
  * @param {Number} time 传入的总时长，以秒为单位
  * @returns {String} 处理后的时间字符串，格式为 'mm:ss'
  */
-export function handleTime(time) {
-    time = parseInt(time);
+export function handleTime(time: number | string): string {
+    time = parseInt(String(time));
     time = Math.floor(time);
-    let m = Math.floor(time / 60);
-    let s = Math.floor(time % 60);
+    let m: string | number = Math.floor(time / 60);
+    let s: string | number = Math.floor(time % 60);
     m = m < 10 ? '0' + m : m;
     s = s < 10 ? '0' + s : s;
     return m + ':' + s;
@@ -88,11 +88,9 @@ export function handleTime(time) {
  * @param {String} time 格式为 'mm:ss' 的时间字符串
  * @returns {Number} 总时长秒数
  */
-export function returnSecond(time) {
-    time = time.split(':');
-    let m = parseInt(time[0]);
-    let s = parseInt(time[1]);
-    return m * 60 + s;
+export function returnSecond(time: string): number {
+    const [m, s] = time.split(':');
+    return parseInt(m) * 60 + parseInt(s);
 }
 
 
@@ -101,10 +99,10 @@ export function returnSecond(time) {
  * @param {Number} num 如：198765
  * @returns {String} 转换后：'19.9万'
  */
-export function handleNum(num) {
+export function handleNum(num: number): string | number {
     if (num > 10000) {
-        num = (num / 10000).toFixed(1);
-        return num + '万';
+        const n = (num / 10000).toFixed(1);
+        return n + '万';
     } else {
         return num;
     }
@@ -116,12 +114,12 @@ export function handleNum(num) {
  * @param {Number|String|Date} dateTime 传入的日期时间，可以是数字、字符串或日期对象
  * @returns {String} 处理后的日期字符串 2023-11-11 / 3-24 / 8小时前 / 30分钟前
  */
-export function handleDate(dateTime) {
+export function handleDate(dateTime: number | string | Date): string {
     const currentDate = new Date();
     const inputDate = new Date(dateTime);
     // 计算时间差（以毫秒为单位）
-    const timeDifference = currentDate - inputDate;
-    
+    const timeDifference = currentDate.getTime() - inputDate.getTime();
+
     if (timeDifference < 60 * 60 * 1000) {
         const minutes = Math.floor(timeDifference / 1000 / 60);
         return `${minutes}分钟前`;
@@ -149,7 +147,7 @@ export function handleDate(dateTime) {
  * @param {Number|String|Date} dateTime 传入的日期时间，可以是数字、字符串或日期对象
  * @returns {String} 处理后的日期字符串 2023年12月18日 04:46 / 今天 15:00 / 昨天 00:00
  */
-export function handleDateTime(dateTime) {
+export function handleDateTime(dateTime: number | string | Date): string {
     // 将传入的日期时间转换为 Date 对象
     const inputDate = new Date(dateTime);
     // 如果转换后的日期无效，返回 '未知时间'
@@ -198,7 +196,7 @@ export function handleDateTime(dateTime) {
  * @param {Number|String|Date} dateTime 传入的日期时间，可以是数字、字符串或日期对象
  * @returns {String} 处理后的日期字符串 12-26 02:53
  */
-export function handleDateTime2(dateTime) {
+export function handleDateTime2(dateTime: number | string | Date): string {
     // 将传入的日期时间转换为 Date 对象
     const inputDate = new Date(dateTime);
     // 如果转换后的日期无效，返回 '未知时间'
@@ -217,14 +215,14 @@ export function handleDateTime2(dateTime) {
  * @param {Number|String|Date} dateTime 传入的日期时间，可以是数字、字符串或日期对象
  * @returns {String} YYYY-MM-DD HH:mm / n小时前 / n分钟前 / 刚刚
  */
-export function handleDateTime3(dateTime) {
+export function handleDateTime3(dateTime: number | string | Date): string {
     const inputDate = new Date(dateTime);
     if (isNaN(inputDate.getTime())) {
         return "未知时间";
     }
 
-    var currentTime = new Date();
-    var timeDiff = currentTime.getTime() - inputDate.getTime();
+    const currentTime = new Date();
+    const timeDiff = currentTime.getTime() - inputDate.getTime();
 
 
     if (timeDiff < 30 * 1000) { // 30s 前
@@ -254,7 +252,7 @@ export function handleDateTime3(dateTime) {
  * @param {String} nickname 用户输入的昵称名
  * @returns {Number} 昵称的官方长度
  */
-export function getNicknameLength(nickname) {
+export function getNicknameLength(nickname: string): number {
     let length = 0;
     for (let i = 0; i < nickname.length; i++) {
         // 使用正则表达式检测字符是否为中文或日文
@@ -273,7 +271,7 @@ export function getNicknameLength(nickname) {
  * @param {Number} exp 经验值
  * @returns {Number} 等级
  */
-export function handleLevel(exp) {
+export function handleLevel(exp: number): number {
     if (exp < 50) {
         return 0;
     } else if (exp < 200) {
@@ -296,9 +294,9 @@ export function handleLevel(exp) {
  * 生成随机uuid
  * @returns {String} 随机的uuid 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
  */
-export function generateUUID() {
+export function generateUUID(): string {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-        var r = (Math.random() * 16) | 0,
+        const r = (Math.random() * 16) | 0,
             v = c === 'x' ? r : (r & 0x3) | 0x8;
         return v.toString(16);
     });
