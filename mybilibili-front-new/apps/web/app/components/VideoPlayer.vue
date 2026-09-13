@@ -357,7 +357,7 @@ const initPlayer = async () => {
     loop: false,
     flip: true,
     playbackRate: true,
-    aspectRatio: true,
+    aspectRatio: false,
     fullscreen: true,
     fullscreenWeb: true,
     miniProgressBar: true,
@@ -491,6 +491,25 @@ const initPlayer = async () => {
       setTimeout(() => applyResumeTime(props.resumeTime), 100)
     }
   })
+
+  // 监听容器尺寸变化（缩放/窗口变化时），让 art-controls 跟着重新布局
+  if (playerRef.value && typeof ResizeObserver !== 'undefined') {
+    let resizeTimer: any = null
+    const ro = new ResizeObserver(() => {
+      if (resizeTimer) clearTimeout(resizeTimer)
+      resizeTimer = setTimeout(() => {
+        try {
+          if (art && typeof art.resize === 'function') {
+            art.resize()
+          }
+        } catch (e) {
+          // ignore
+        }
+      }, 100)
+    })
+    ro.observe(playerRef.value)
+    ;(playerRef.value as any).__artResizeObserver = ro
+  }
 
   let lastLoggedSecond = -1
 
@@ -746,12 +765,25 @@ onUnmounted(() => {
 }
 
 .video-player {
-  flex: 1;
+  width: 100% !important;
+  height: auto !important;
+  max-width: 100%;
   aspect-ratio: 16/9;
   background-color: #000;
-  min-height: 450px;
   position: relative;
   overflow: hidden;
+}
+
+/* ArtPlayer 内部也强制跟随容器 */
+.video-player :deep(.art-video-player) {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+}
+
+/* ArtPlayer 内部控件不要换行（保持单行布局，用 CSS var 缩放解决空间问题） */
+.video-player :deep(.art-controls) {
+    flex-wrap: nowrap !important;
 }
 
 .subtitle-settings-panel {
