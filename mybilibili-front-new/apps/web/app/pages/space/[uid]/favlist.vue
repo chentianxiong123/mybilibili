@@ -135,9 +135,9 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import VPopover from '@/components/teriteri/popover/VPopover.vue';
-import { handleTime, handleNum, handleDate } from '@/teriteri-src/utils/utils.js';
+import { handleTime, handleNum, handleDate } from '@/teriteri-src/utils/utils';
 import { ElMessage } from 'element-plus';
 
 export default {

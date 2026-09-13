@@ -46,8 +46,8 @@
     </div>
 </template>
 
-<script>
-import { handleLevel } from '@/teriteri-src/utils/utils.js';
+<script lang="ts">
+import { handleLevel } from '@/teriteri-src/utils/utils';
 
 export default {
     name: "AccountHome",

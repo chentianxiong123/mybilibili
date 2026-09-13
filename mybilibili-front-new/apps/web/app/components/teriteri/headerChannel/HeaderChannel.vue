@@ -200,7 +200,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
     import VPopover from '../popover/VPopover.vue';
 
     export default {

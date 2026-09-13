@@ -1,9 +1,10 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import type { AxiosRequestConfig, AxiosResponse } from 'axios'
+import { useTeriteriStore } from '@/stores/teriteri'
 
 function getStore() {
   try {
-    const { useTeriteriStore } = require('@/stores/teriteri')
     return useTeriteriStore()
   } catch (e) {
     return null
@@ -11,10 +12,10 @@ function getStore() {
 }
 
 // ===== Go 后端 ManuscriptInfo(扁平) → teriteri 组件(嵌套) 转换 =====
-function snakeToCamel(obj) {
+function snakeToCamel(obj: any): any {
   if (Array.isArray(obj)) return obj.map(snakeToCamel)
   if (obj && typeof obj === 'object') {
-    const out = {}
+    const out: any = {}
     for (const [k, v] of Object.entries(obj)) {
       out[k.replace(/_([a-z])/g, (_, c) => c.toUpperCase())] = snakeToCamel(v)
     }
@@ -23,10 +24,10 @@ function snakeToCamel(obj) {
   return obj
 }
 
-function adaptVideo(v) {
+function adaptVideo(v: any) {
   if (!v) return {}
   const video = (v.videos && v.videos[0]) || {}
-  let duration = v.durationSeconds || v.duration || 0
+  let duration: number | string = v.durationSeconds || v.duration || 0
   if (typeof duration === 'string' && duration.includes(':')) {
     const [m, s] = duration.split(':').map(Number)
     duration = m * 60 + (s || 0)
@@ -55,7 +56,7 @@ function adaptVideo(v) {
   }
 }
 
-function adaptUser(u) {
+function adaptUser(u: any) {
   if (!u) return { uid: 0 }
   return {
     uid: String(u.id),
@@ -75,7 +76,7 @@ function adaptUser(u) {
   }
 }
 
-function adaptStats(m) {
+function adaptStats(m: any) {
   return {
     play: m.viewCount || 0,
     danmu: m.danmakuCount || 0,
@@ -87,13 +88,13 @@ function adaptStats(m) {
   }
 }
 
-function adaptCard(m) {
+function adaptCard(m: any) {
   return { video: adaptVideo(m), stats: adaptStats(m), user: adaptUser(m.uploader) }
 }
 
-function adaptDetail(m) {
+function adaptDetail(m: any) {
   const videos = Array.isArray(m.videos)
-    ? m.videos.map(v => ({
+    ? m.videos.map((v: any) => ({
         vid: String(v.id || ''),
         title: v.title || '',
         playUrl: v.playUrlHd || v.playUrl || '',
@@ -111,7 +112,7 @@ function adaptDetail(m) {
   }
 }
 
-function isListUrl(url) {
+function isListUrl(url: string) {
   return url.includes('/manuscript/recommended')
     || url.includes('/manuscript/hot')
     || url.includes('/manuscript/list')
@@ -127,20 +128,20 @@ function isListUrl(url) {
     || url.includes('/video/cumulative/visitor')
 }
 
-function isDetailUrl(url) {
+function isDetailUrl(url: string) {
   return /^\/manuscript\/\d+/.test(url) || /^\/video\/getone/.test(url)
 }
 
-function adaptResponse(originalUrl, data) {
+function adaptResponse(originalUrl: string, data: any) {
   // 空间投稿列表(/video/user-works) → {list: cards, count: total}
   if (String(originalUrl || '').includes('/video/user-works')) {
     const list = Array.isArray(data) ? data : (data && data.list ? data.list : [])
-    const cards = list.map(m => adaptCard(snakeToCamel(m)))
+    const cards = list.map((m: any) => adaptCard(snakeToCamel(m)))
     return { code: 200, data: { list: cards, count: (data && data.total) || cards.length }, message: 'ok' }
   }
   // 频道列表(/category/getall) → {mcId, mcName, scList}
   if (String(originalUrl || '').includes('/category/getall')) {
-    const channels = (Array.isArray(data) ? data : []).map((c, idx) => ({
+    const channels = (Array.isArray(data) ? data : []).map((c: any, idx: number) => ({
       mcId: c.id,
       mcName: c.name,
       scList: idx < 2 ? [{ mcId: c.id, scId: 0, scName: '全部' }] : [],
@@ -156,14 +157,14 @@ function adaptResponse(originalUrl, data) {
   // 搜索视频 → {video, stats, user}
   if (String(originalUrl || '').includes('/search/video') || String(originalUrl || '').includes('/search/videos')) {
     const list = data && data.list ? data.list : []
-    const cards = list.map(item => adaptCard(snakeToCamel(item)))
+    const cards = list.map((item: any) => adaptCard(snakeToCamel(item)))
     return { code: 200, data: cards, message: 'ok' }
   }
 
   // 搜索用户 → {uid, nickname, avatar_url}
   if (String(originalUrl || '').includes('/search/user')) {
     const u = Array.isArray(data) ? data : (data && data.list ? data.list : [])
-    const users = u.map(item => {
+    const users = u.map((item: any) => {
       const c = snakeToCamel(item)
       return {
         uid: String(c.id || c.uid || c.mid || ''),
@@ -184,7 +185,7 @@ function adaptResponse(originalUrl, data) {
   // 评论列表(/comment/get) → {comments, more}
   if (String(originalUrl || '').includes('/comment/get')) {
     const raw = Array.isArray(data) ? data : []
-    const comments = raw.map(c => ({
+    const comments = raw.map((c: any) => ({
       id: c.id || 0,
       content: c.content || '',
       createTime: c.createTime || c.createdAt || '',
@@ -201,7 +202,7 @@ function adaptResponse(originalUrl, data) {
         auth: 0,
         ...(c.user || {}),
       },
-      replies: (c.replies || []).map(r => ({
+      replies: (c.replies || []).map((r: any) => ({
         id: r.id || 0,
         parentId: r.commentId || 0,
         content: r.content || '',
@@ -252,7 +253,7 @@ function adaptResponse(originalUrl, data) {
   return { code: 200, data, message: 'ok' }
 }
 
-function handleAuthFailure(err) {
+function handleAuthFailure(err: any) {
   const store = getStore()
   if (err.response && err.response.headers && err.response.headers.message === 'not login') {
     if (store) {
@@ -270,7 +271,11 @@ function handleAuthFailure(err) {
   if (store) store.isLoading = false
 }
 
-export function get(url, config) {
+export interface RequestConfig extends AxiosRequestConfig {
+  headers?: any
+}
+
+export function get<T = any>(url: string, config?: RequestConfig): Promise<AxiosResponse<T>> {
   const instance = axios.create({
     baseURL: '/api',
     timeout: 30000,
@@ -309,7 +314,7 @@ export function get(url, config) {
   return instance.get(url)
 }
 
-export function post(url, data, headers) {
+export function post<T = any>(url: string, data?: any, headers?: any): Promise<AxiosResponse<T>> {
   const instance = axios.create({
     baseURL: '/api',
     timeout: 30000,

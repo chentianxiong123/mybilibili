@@ -325,7 +325,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import { ElMessage, ElMessageBox } from 'element-plus';
 import SparkMD5 from 'spark-md5';
 import CropperComp from '@/components/teriteri/cropper/CropperComp.vue';

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { profileApi } from '@/api/profile'
 import { categoryApi } from '@/api/client'

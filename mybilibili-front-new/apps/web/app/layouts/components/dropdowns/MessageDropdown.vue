@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { ChatLineRound, Bell, Star, Message } from '@element-plus/icons-vue'
 

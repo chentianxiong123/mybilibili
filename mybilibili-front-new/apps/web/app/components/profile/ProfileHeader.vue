@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ElMessage } from 'element-plus'
 import { Edit, Check } from '@element-plus/icons-vue'
 import { userApi } from '@/api/client'

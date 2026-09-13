@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, ArrowRight, Edit, Plus, VideoPlay, MoreFilled, Clock } from '@element-plus/icons-vue'
 

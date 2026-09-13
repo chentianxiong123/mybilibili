@@ -1,3 +1,4 @@
+// @ts-nocheck  // 参考源码（teriteri 原 Vue2 入口），不参与 Nuxt 构建，保留仅供迁移参照
 import { createRouter, createWebHistory } from 'vue-router'
 const Index = () => import('views/IndexVue.vue')
 const NotFound = () => import('@/pages/teriteri/NotFound.vue')

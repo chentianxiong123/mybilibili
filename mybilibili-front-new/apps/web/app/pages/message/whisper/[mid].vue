@@ -48,7 +48,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import VPopover from '@/components/teriteri/popover/VPopover.vue';
 import EmojiBox from '@/components/teriteri/emoji/EmojiBox.vue';
 import MessageList from '@/components/teriteri/message/MessageList.vue';

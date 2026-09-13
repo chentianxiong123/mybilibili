@@ -390,7 +390,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import CommentVue from '@/components/teriteri/comment/CommentVue.vue';
 import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue';
 import VideoPlayer from '@/components/VideoPlayer.vue';
@@ -399,7 +399,7 @@ import VAvatar from '@/components/teriteri/avatar/VAvatar.vue';
 import UserCard from '@/components/teriteri/UserCard/UserCard.vue';
 import DanmuBox from '@/components/teriteri/danmu/DanmuBox.vue';
 import AddToFavorite from '@/components/teriteri/favorite/AddToFavorite.vue';
-import { handleTime, handleNum, handleDate, linkify } from '@/teriteri-src/utils/utils.js';
+import { handleTime, handleNum, handleDate, linkify } from '@/teriteri-src/utils/utils';
 import { ElMessage } from 'element-plus';
 
 export default {

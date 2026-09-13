@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { inject } from 'vue'
 import AppHeader from './components/AppHeader.vue'
 import FeedbackFloat from '../components/FeedbackFloat.vue'

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { VideoCamera, Star, Search, Refresh } from '@element-plus/icons-vue'

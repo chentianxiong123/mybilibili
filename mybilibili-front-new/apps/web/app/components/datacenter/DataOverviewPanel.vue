@@ -49,7 +49,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import DataCards from './DataCards.vue'
 import TrendChart from './TrendChart.vue'

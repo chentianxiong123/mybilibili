@@ -4,7 +4,7 @@ function decodeJwtPayload(token: string): { user_id?: number; role?: string } | 
   try {
     const parts = token.split('.')
     if (parts.length < 2) return null
-    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const b64 = parts[1]!.replace(/-/g, '+').replace(/_/g, '/')
     const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4)
     const json = Buffer.from(padded, 'base64').toString('utf8')
     return JSON.parse(json)
@@ -20,7 +20,7 @@ export default defineEventHandler((event) => {
   if (!auth || typeof auth !== 'string') return
   const m = auth.match(/^Bearer\s+(.+)$/i)
   if (!m) return
-  const payload = decodeJwtPayload(m[1].trim())
+  const payload = decodeJwtPayload(m[1]!.trim())
   if (!payload || typeof payload.user_id !== 'number' || payload.user_id <= 0) return
   // 后端 manuscript handler 读 X-User-Id / X-Admin-Id 决定身份
   event.node.req.headers['x-user-id'] = String(payload.user_id)

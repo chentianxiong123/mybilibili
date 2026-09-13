@@ -13,7 +13,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 let inTimer;  // 节流计时器
 let outTimer;
 

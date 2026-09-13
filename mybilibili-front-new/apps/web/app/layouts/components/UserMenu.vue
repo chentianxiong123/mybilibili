@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { User, Lock, Coin, Upload } from '@element-plus/icons-vue'
 import { usePrefetch as _usePrefetch } from '@/composables/usePrefetch'

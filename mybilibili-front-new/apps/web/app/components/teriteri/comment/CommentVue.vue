@@ -40,7 +40,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import CommentTree from './CommentTree.vue';
 import ReplyTextarea from './ReplyTextarea.vue';
 

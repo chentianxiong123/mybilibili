@@ -94,8 +94,8 @@
     </div>
 </template>
 
-<script>
-import { highlightKeyword } from '@/teriteri-src/utils/utils.js';
+<script lang="ts">
+import { highlightKeyword } from '@/teriteri-src/utils/utils';
 
 export default {
     name: "SearchInput",

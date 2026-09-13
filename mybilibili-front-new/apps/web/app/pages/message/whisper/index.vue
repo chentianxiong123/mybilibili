@@ -37,7 +37,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import VAvatar from '@/components/teriteri/avatar/VAvatar.vue';
 
 export default {

@@ -41,10 +41,10 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import VAvatar from '@/components/teriteri/avatar/VAvatar.vue';
 import VLevel from '@/components/teriteri/UserCard/VLevel.vue';
-import { handleNum, handleLevel } from '@/teriteri-src/utils/utils.js';
+import { handleNum, handleLevel } from '@/teriteri-src/utils/utils';
 
 export default {
     name: "SearchUser",

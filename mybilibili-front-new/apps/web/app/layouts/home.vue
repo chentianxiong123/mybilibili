@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { inject } from 'vue'
 import TopBackground from './components/TopBackground.vue'
 import CategoryTabs from './components/CategoryTabs.vue'

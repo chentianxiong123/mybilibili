@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { ChatDotRound, Picture, Link } from '@element-plus/icons-vue'
 import EmojiPopover from '@/components/EmojiPopover.vue'

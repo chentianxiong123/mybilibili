@@ -45,7 +45,7 @@
     </div>
 </template>
 
-<script>
+<script lang="ts">
 import { ElMessage } from 'element-plus';
 import { getNicknameLength } from '@/teriteri-src/utils/utils';
 

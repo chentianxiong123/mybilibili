@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { safeStorage } from '@/utils/safeStorage'
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'

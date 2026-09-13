@@ -75,7 +75,7 @@
   </el-dialog>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { Search, Check, VideoPlay } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'

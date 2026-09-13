@@ -2,6 +2,6 @@
     <LikeList />
 </template>
 
-<script setup>
+<script setup lang="ts">
 import LikeList from '@/views/web/message/components/LikeList.vue'
 </script>
