@@ -174,7 +174,7 @@
                                                     <span class="video-card__stats--item">
                                                         <i class="iconfont icon-danmushu"></i>
                                                         <span class="video-card__stats--text">
-                                                            {{ handleNum(randomVideos[index - 1].stats.danmu) }}
+                                                            {{ handleNum(randomVideos[index - 1].stats.comment) }}
                                                         </span>
                                                     </span>
                                                 </div>
@@ -243,7 +243,7 @@
                                                 <span class="video-card__stats--item">
                                                     <i class="iconfont icon-danmushu"></i>
                                                     <span class="video-card__stats--text">
-                                                        {{ handleNum(item.stats.danmu) }}
+                                                        {{ handleNum(item.stats.comment) }}
                                                     </span>
                                                 </span>
                                             </div>

@@ -69,7 +69,7 @@ const showDynamicDropdown = ref(false)
     <DynamicDropdown v-show="showDynamicDropdown" />
   </div>
 
-  <el-button type="primary" @click="router.push('/create-center')" @mouseenter="prefetch('/create-center')" class="upload-btn upload-btn-right">
+  <el-button type="primary" @click="router.push('/platform/home')" @mouseenter="prefetch('/platform/home')" class="upload-btn upload-btn-right">
     <el-icon><Upload /></el-icon>
     <span>投稿</span>
   </el-button>

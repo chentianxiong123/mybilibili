@@ -72,7 +72,7 @@ const handleLogout = () => {
             <span>个人中心</span>
             <span class="option-arrow">></span>
           </div>
-          <div class="option-item" @click="router.push('/create-center')" @mouseenter="prefetch('/create-center')">
+          <div class="option-item" @click="router.push('/platform/home')" @mouseenter="prefetch('/platform/home')">
             <el-icon><Upload /></el-icon>
             <span>投稿管理</span>
             <span class="option-arrow">></span>

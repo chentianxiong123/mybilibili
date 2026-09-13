@@ -164,7 +164,7 @@ const validArticleStatusFilters = new Set(['published', 'processing', 'rejected'
 watch(
   () => [route.path, route.query.status],
   () => {
-    if (route.path !== '/create-center/content-articles') {
+    if (route.path !== '/platform/content-articles') {
       return
     }
     const queryStatus = Array.isArray(route.query.status) ? route.query.status[0] : route.query.status

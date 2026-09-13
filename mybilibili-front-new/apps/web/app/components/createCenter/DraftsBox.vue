@@ -102,11 +102,11 @@ const formatTime = (ts) => {
 }
 
 const goUpload = () => {
-  router.push('/create-center/upload')
+  router.push('/platform/upload')
 }
 
 const continueEdit = (row) => {
-  router.push(`/create-center/upload?draftId=${row.id}`)
+  router.push(`/platform/upload?draftId=${row.id}`)
 }
 
 const removeDraft = (row) => {

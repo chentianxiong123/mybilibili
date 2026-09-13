@@ -73,14 +73,13 @@ const menuRef = ref(null)
 const handleMenuSelect = (index, indexPath) => {
   // 根据索引导航到对应的路由
   const routeMap = {
-    'home': '/create-center/home',
-    'upload': '/create-center/upload',
-    'content': '/create-center/content',
-    'content-articles': '/create-center/content-articles',
-    'drafts': '/create-center/drafts',
-
-    'data': '/create-center/data',
-    'fans': '/create-center/fans',
+    'home': '/platform/home',
+    'upload': '/platform/upload',
+    'content': '/platform/content',
+    'content-articles': '/platform/content-articles',
+    'drafts': '/platform/drafts',
+    'data': '/platform/data',
+    'fans': '/platform/fans',
   }
 
   if (routeMap[index]) {
@@ -93,7 +92,7 @@ const handleMenuSelect = (index, indexPath) => {
 
 // 跳转到投稿页面（修改为在创作中心内部显示）
 const goToUpload = () => {
-  router.push('/create-center/upload')
+  router.push('/platform/upload')
   // 滚动到顶部
   window.scrollTo(0, 0)
 }

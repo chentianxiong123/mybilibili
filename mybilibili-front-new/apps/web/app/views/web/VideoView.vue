@@ -134,7 +134,7 @@ const handleSendMessage = () => {
   }
 
   // 跳转到消息页面，带上对方用户ID
-  router.push(`/message/private?userId=${videoInfo.value.uploader.id}`)
+  router.push(`/message/whisper?userId=${videoInfo.value.uploader.id}`)
 }
 
 // 相关视频

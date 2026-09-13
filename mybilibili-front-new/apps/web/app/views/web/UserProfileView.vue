@@ -223,7 +223,7 @@ const handleSendMessage = () => {
   }
 
   // 跳转到消息页面，带上对方用户ID
-  router.push(`/message/private?userId=${userId.value}`)
+  router.push(`/message/whisper?userId=${userId.value}`)
 }
 
 // 加载状态

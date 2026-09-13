@@ -247,6 +247,11 @@ export const useTeriteriStore = defineStore('teriteri', {
           this.setWebSocket(null)
         }
         const wsBaseUrl = (typeof window !== 'undefined' && window.__TERI_WS_URL__) || ''
+        if (!wsBaseUrl) {
+          // 未配置 IM WS 端点（环境变量 VUE_APP_WS_IM_URL 未设置），跳过实时连接
+          resolve()
+          return
+        }
         const ws = new WebSocket(`${wsBaseUrl}/im`)
         this.setWebSocket(ws)
         ws.addEventListener('open', () => {

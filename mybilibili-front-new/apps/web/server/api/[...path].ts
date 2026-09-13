@@ -28,6 +28,9 @@ const PATH_MAP: Record<string, string> = {
   '/video/upload-chunk': '/manuscript/upload-chunk',
   '/video/ask-chunk': '/manuscript/upload-session',
   '/video/cancel-upload': '/manuscript/upload-session',
+  '/user/account/login': '/user/login',
+  '/user/account/register': '/user/register',
+  '/user/account/logout': '/user/logout',
 }
 
 // 按服务端口分发的路由
