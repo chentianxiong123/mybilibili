@@ -47,7 +47,7 @@ bin_of() {
 
 infra_up() {
     docker network inspect mylib >/dev/null 2>&1 || docker network create mylib
-    docker compose -f "$ROOT/deploy/docker-compose.yml" up -d
+    docker compose -f "$ROOT/dev/docker-compose.yml" up -d
     echo -n "等待 PostgreSQL 就绪 "
     until docker exec pg16 pg_isready -U postgres -d mybilibili >/dev/null 2>&1; do
         sleep 1; echo -n .
@@ -117,7 +117,7 @@ logs() {
 }
 
 # ====== 容器化模式 ======
-COMPOSE_FILE="$ROOT/deploy/docker-compose.yml"
+COMPOSE_FILE="$ROOT/dev/docker-compose.yml"
 
 docker_up() {
     echo "== 容器化: 构建镜像 + 启动全部 =="

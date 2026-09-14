@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"mybilibili/pkg/abstraction"
 	"mybilibili/pkg/imageutil"
 )
 
@@ -20,11 +22,12 @@ func writeJSON(w http.ResponseWriter, data interface{}) {
 }
 
 type Handler struct {
-	svc *Service
+	svc     *Service
+	storage *abstraction.MinioStorageService
 }
 
-func NewHandler(svc *Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc *Service, storage *abstraction.MinioStorageService) *Handler {
+	return &Handler{svc: svc, storage: storage}
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
@@ -169,6 +172,28 @@ func (h *Handler) handleBanner(w http.ResponseWriter, r *http.Request) {
 			f.Close()
 			file.Close()
 			imageutil.CompressAndReplace(dst)
+
+			// 双写 MinIO（与 /uploads/ 反代路由对齐）。storage 未配置或写入失败时降级为本地，
+			// 不阻塞 banner 上传；前端 imageUrl 仍是 /uploads/images/<name>，访问时由 core-service 反代到 MinIO。
+			if h.storage != nil {
+				key := "images/" + filepath.Base(dst)
+				if rdr, oerr := os.Open(dst); oerr == nil {
+					ct := "image/webp"
+					switch strings.ToLower(ext) {
+					case ".jpg", ".jpeg":
+						ct = "image/jpeg"
+					case ".png":
+						ct = "image/png"
+					case ".gif":
+						ct = "image/gif"
+					}
+					if perr := h.storage.Put(r.Context(), "mybilibili", key, rdr, ct); perr != nil {
+						log.Printf("WARN: minio put %s failed: %v (fallback to local)", key, perr)
+					}
+					rdr.Close()
+				}
+			}
+
 			writeJSON(w, map[string]string{"url": "/uploads/images/" + filepath.Base(dst)})
 			return
 		}
@@ -244,7 +269,16 @@ func (h *Handler) handleBannerCategory(w http.ResponseWriter, r *http.Request, p
 func (h *Handler) handleBannerSingle(w http.ResponseWriter, r *http.Request, bannerType int32) {
 	switch r.Method {
 	case "GET":
+		// type=3 (background) 返回列表：支持 morning/afternoon/evening 三时段图；
+		// type=4 (user-profile) 仍取首条（单图背景）。
 		list, _ := h.svc.ListBanners(r.Context(), bannerType)
+		if bannerType == 3 {
+			if list == nil {
+				list = []*BannerImage{}
+			}
+			writeJSON(w, list)
+			return
+		}
 		var b *BannerImage
 		if len(list) > 0 {
 			b = list[0]
@@ -273,12 +307,16 @@ func decodeBanner(r *http.Request) *BannerImage {
 		LinkURL   string `json:"link_url"`
 		SortOrder int32  `json:"sort_order"`
 		Status    int32  `json:"status"`
+		TimeSlot  string `json:"time_slot"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	if req.Status == 0 {
 		req.Status = 1
 	}
-	return &BannerImage{Title: req.Title, ImageURL: req.ImageURL, LinkURL: req.LinkURL, SortOrder: req.SortOrder, Status: req.Status}
+	if req.TimeSlot == "" {
+		req.TimeSlot = "default"
+	}
+	return &BannerImage{Title: req.Title, ImageURL: req.ImageURL, LinkURL: req.LinkURL, SortOrder: req.SortOrder, Status: req.Status, TimeSlot: req.TimeSlot}
 }
 
 func (h *Handler) handleStatistics(w http.ResponseWriter, r *http.Request) {

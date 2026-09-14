@@ -55,6 +55,8 @@ func (s *Service) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.Re
 	if err != nil {
 		return nil, errors.ErrAlreadyExists("username already exists")
 	}
+	// 新注册用户默认启用（数据库 schema 默认 0，注册即启用）
+	_, _ = s.repo.db.ExecContext(ctx, `UPDATE users SET status=1 WHERE id=$1`, id)
 
 	token, err := s.jwt.Generate(id)
 	if err != nil {

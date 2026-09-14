@@ -1,6 +1,6 @@
 # deploy/k3s/ — 部署机（fnos）K3s 部署清单
 
-> **本目录只用于部署机（fnos，192.168.31.225）**。开发机用 `deploy/docker-compose.yml`。
+> **本目录只用于部署机（fnos，192.168.31.225）**。开发机用 `dev/docker-compose.yml`。
 > 两套配置互相独立：k3s 管生产，compose 管开发。
 
 ## 结构（以实际仓库为准）
@@ -30,7 +30,7 @@ k3s/
 **注意**：
 - `base/` 已包含全部基础设施（infra.yaml），prod overlay 不再重复定义 infra。
 - 非敏感配置由 `kustomization.yaml` 的 `configMapGenerator` 从 `config/common.env + config/prod.env` 生成（`kubectl apply -k` 时自动变为 `mybilibili-config`）。
-- 敏感项（JWT/MinIO 凭据）只在 `secret.yaml`，compose 侧则走 `deploy/.env`，两边均不写死到配置清单。
+- 敏感项（JWT/MinIO 凭据）只在 `secret.yaml`，compose 侧则走 `dev/.env`，两边均不写死到配置清单。
 
 ## 部署（在部署机 fnos 上执行）
 

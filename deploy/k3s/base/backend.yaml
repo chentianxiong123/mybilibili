@@ -17,6 +17,8 @@ spec:
           whenUnsatisfiable: DoNotSchedule
           labelSelector:
             matchLabels: {app: core}
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: core
           image: ghcr.io/chentianxiong123/mybilibili/core
@@ -50,6 +52,8 @@ spec:
           whenUnsatisfiable: DoNotSchedule
           labelSelector:
             matchLabels: {app: search}
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: search
           image: ghcr.io/chentianxiong123/mybilibili/search
@@ -83,6 +87,8 @@ spec:
           whenUnsatisfiable: DoNotSchedule
           labelSelector:
             matchLabels: {app: msg-danmaku}
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: msg-danmaku
           image: ghcr.io/chentianxiong123/mybilibili/msg-danmaku
@@ -116,6 +122,8 @@ spec:
           whenUnsatisfiable: DoNotSchedule
           labelSelector:
             matchLabels: {app: live}
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: live
           image: ghcr.io/chentianxiong123/mybilibili/live
@@ -148,6 +156,8 @@ spec:
           whenUnsatisfiable: DoNotSchedule
           labelSelector:
             matchLabels: {app: ai}
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: ai
           image: ghcr.io/chentianxiong123/mybilibili/ai
@@ -177,6 +187,8 @@ spec:
 
       nodeSelector:
         kubernetes.io/hostname: laptop
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: studio
           image: ghcr.io/chentianxiong123/mybilibili/studio
@@ -209,6 +221,8 @@ spec:
 
       nodeSelector:
         kubernetes.io/hostname: laptop
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: work
           image: ghcr.io/chentianxiong123/mybilibili/work
@@ -246,6 +260,8 @@ spec:
           whenUnsatisfiable: DoNotSchedule
           labelSelector:
             matchLabels: {app: bili}
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: bili
           image: ghcr.io/chentianxiong123/mybilibili/bili

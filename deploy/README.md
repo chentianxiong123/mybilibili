@@ -1,18 +1,15 @@
-# deploy/ — 部署配置总览
+# deploy/ — 生产部署配置（K3s）
 
-本项目有两套部署方式，**按机器严格区分**：
+`deploy/` 只放**生产部署**用的 manifest，**开发机编排已迁出到 `dev/docker-compose.yml`**。
 
 | 目录 | 适用机器 | 说明 |
 |------|---------|------|
-| `docker-compose.yml` | **开发机**（工作站） | 一键全起：infra + 后端 8 服务 + 前端，traefik 统一入口 |
 | `k3s/` | **部署机**（fnos，192.168.31.225） | K3s 生产清单：kustomize 编排，镜像锁 git-sha |
 
-## 开发机 → docker compose
+## 开发机 → 见 `dev/README.md`（或直接 `dev/docker-compose.yml`）
 
 ```bash
-docker compose -f deploy/docker-compose.yml up -d --build
-# 或一键脚本
-scripts/backend.sh docker up
+docker compose -f dev/docker-compose.yml up -d --build
 ```
 
 ## 部署机 → k3s
@@ -29,16 +26,17 @@ kubectl apply -k deploy/k3s/overlays/prod
 
 ## 统一配置源（两套部署同源）
 
-所有非敏感配置集中在 **`deploy/k3s/base/config/`**：
+非敏感配置按"环境差异"分散：
 
-| 文件 | 内容 | 被谁引用 |
+| 文件 | 在哪 | 被谁引用 |
 |------|------|---------|
-| `common.env` | 两机一致：gRPC 地址 / 目录 / 日志 / MQ 类型 | compose + k3s 都读 |
-| `dev.env` | 开发机差异：容器名 + 网关 IP | compose `env_file` |
-| `prod.env` | 部署机差异：Service 名 + 部署机 IP | k3s `configMapGenerator` |
+| `dev/_env/common.env` | dev/ | dev `env_file` |
+| `dev/_env/dev.env` | dev/ | dev `env_file` |
+| `deploy/k3s/base/config/common.env` | deploy/k3s/base/config/ | k3s `configMapGenerator` |
+| `deploy/k3s/base/config/prod.env` | deploy/k3s/base/config/ | k3s `configMapGenerator` |
 
 敏感项（JWT/MinIO 凭据）**不落配置文件**：
-- compose 走 `deploy/.env`（示例看 `deploy/.env.example`）
+- compose 走 `dev/.env`（示例看 `dev/.env.example`，**待补**）
 - k3s 走 `deploy/k3s/base/secret.yaml`
 
 改配置只需编辑对应的 `.env` 文件：compose 改动后 `docker compose up -d` 自动生效；k3s 改动后 `kubectl apply -k deploy/k3s/overlays/prod` 重建 ConfigMap。

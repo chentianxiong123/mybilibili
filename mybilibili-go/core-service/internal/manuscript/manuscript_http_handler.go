@@ -309,20 +309,26 @@ func (h *ManuscriptHTTPHandler) handleUploadSession(w http.ResponseWriter, r *ht
 		return
 	}
 	var req struct {
-		Title       string         `json:"title"`
-		Description string         `json:"description"`
-		CategoryID  int64          `json:"category_id"`
-		Tags        []string       `json:"tags"`
+		ClientID    string           `json:"client_id"`
+		Title       string           `json:"title"`
+		Description string           `json:"description"`
+		CategoryID  int64            `json:"category_id"`
+		Tags        []string         `json:"tags"`
 		Videos      []map[string]any `json:"videos"`
-		TotalChunks *int           `json:"total_chunks"`
+		TotalChunks *int             `json:"total_chunks"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
-	if req.Title == "" && req.CategoryID == 0 && req.TotalChunks == nil {
+	if req.ClientID == "" && req.Title == "" && req.CategoryID == 0 && req.TotalChunks == nil {
 		http.Error(w, "invalid upload session request", 400)
 		return
 	}
-	sum := md5.Sum([]byte(fmt.Sprintf("%d-%d-%s", userID, req.CategoryID, req.Title)))
-	uploadID := hex.EncodeToString(sum[:])
+	var uploadID string
+	if req.ClientID != "" {
+		uploadID = req.ClientID
+	} else {
+		sum := md5.Sum([]byte(fmt.Sprintf("%d-%d-%s", userID, req.CategoryID, req.Title)))
+		uploadID = hex.EncodeToString(sum[:])
+	}
 	total := 0
 	if req.TotalChunks != nil {
 		total = *req.TotalChunks
@@ -337,7 +343,14 @@ func (h *ManuscriptHTTPHandler) handleUploadSession(w http.ResponseWriter, r *ht
 	_, err := h.db.ExecContext(r.Context(),
 		`INSERT INTO upload_sessions (id, user_id, title, description, category_id, tags, videos, total_chunks, status)
 		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending')
-		 ON CONFLICT (id) DO UPDATE SET title=$3, updated_at=NOW()`,
+		 ON CONFLICT (id) DO UPDATE SET
+		   title=EXCLUDED.title,
+		   description=EXCLUDED.description,
+		   category_id=EXCLUDED.category_id,
+		   tags=EXCLUDED.tags,
+		   videos=EXCLUDED.videos,
+		   total_chunks=EXCLUDED.total_chunks,
+		   updated_at=NOW()`,
 		uploadID, userID, req.Title, req.Description, req.CategoryID, string(tags), string(videos), total)
 	if err != nil {
 		http.Error(w, err.Error(), 500)

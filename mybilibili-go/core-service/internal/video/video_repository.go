@@ -40,6 +40,7 @@ type BannerImage struct {
 	Status     int32      `json:"status"`
 	Type       int32      `json:"type"`
 	CategoryID int64      `json:"categoryId"`
+	TimeSlot   string     `json:"timeSlot"`
 	StartTime  *time.Time `json:"startTime"`
 	EndTime    *time.Time `json:"endTime"`
 }
@@ -187,7 +188,7 @@ func (r *Repository) ListBannersByCategory(ctx context.Context, bannerType int32
 
 func (r *Repository) listBanners(ctx context.Context, bannerType int32, categoryID int64) ([]*BannerImage, error) {
 	query := `SELECT id, title, image_url, link_url, sort_order, status, type, COALESCE(category_id,0),
-		        start_time, end_time FROM banner_images
+		        time_slot, start_time, end_time FROM banner_images
 		 WHERE type = $1 AND status = 1 AND (start_time IS NULL OR start_time <= NOW())
 		   AND (end_time IS NULL OR end_time >= NOW())`
 	args := []any{bannerType}
@@ -195,41 +196,41 @@ func (r *Repository) listBanners(ctx context.Context, bannerType int32, category
 		query += ` AND category_id = $2`
 		args = append(args, categoryID)
 	}
-	query += ` ORDER BY sort_order`
+	query += ` ORDER BY sort_order, id`
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var list []*BannerImage
+	var result []*BannerImage
 	for rows.Next() {
 		b := &BannerImage{}
 		var st, et sql.NullTime
-		rows.Scan(&b.ID, &b.Title, &b.ImageURL, &b.LinkURL, &b.SortOrder, &b.Status, &b.Type, &b.CategoryID, &st, &et)
+		rows.Scan(&b.ID, &b.Title, &b.ImageURL, &b.LinkURL, &b.SortOrder, &b.Status, &b.Type, &b.CategoryID, &b.TimeSlot, &st, &et)
 		if st.Valid {
 			b.StartTime = &st.Time
 		}
 		if et.Valid {
 			b.EndTime = &et.Time
 		}
-		list = append(list, b)
+		result = append(result, b)
 	}
-	return list, nil
+	return result, nil
 }
 
 func (r *Repository) CreateBanner(ctx context.Context, b *BannerImage) (int64, error) {
 	var id int64
 	err := r.db.QueryRowContext(ctx,
-		`INSERT INTO banner_images (title, image_url, link_url, sort_order, type, category_id, start_time, end_time)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-		b.Title, b.ImageURL, b.LinkURL, b.SortOrder, b.Type, repository.NullInt64(b.CategoryID), b.StartTime, b.EndTime).Scan(&id)
+		`INSERT INTO banner_images (title, image_url, link_url, sort_order, type, category_id, time_slot, start_time, end_time)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+		b.Title, b.ImageURL, b.LinkURL, b.SortOrder, b.Type, repository.NullInt64(b.CategoryID), b.TimeSlot, b.StartTime, b.EndTime).Scan(&id)
 	return id, err
 }
 
 func (r *Repository) UpdateBanner(ctx context.Context, id int64, b *BannerImage) error {
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE banner_images SET title=$1, image_url=$2, link_url=$3, sort_order=$4, status=$5, category_id=$6, start_time=$7, end_time=$8 WHERE id=$9`,
-		b.Title, b.ImageURL, b.LinkURL, b.SortOrder, b.Status, repository.NullInt64(b.CategoryID), b.StartTime, b.EndTime, id)
+		`UPDATE banner_images SET title=$1, image_url=$2, link_url=$3, sort_order=$4, status=$5, category_id=$6, time_slot=$7, start_time=$8, end_time=$9 WHERE id=$10`,
+		b.Title, b.ImageURL, b.LinkURL, b.SortOrder, b.Status, repository.NullInt64(b.CategoryID), b.TimeSlot, b.StartTime, b.EndTime, id)
 	return err
 }
 
