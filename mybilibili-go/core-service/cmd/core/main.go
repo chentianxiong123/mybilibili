@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -115,8 +116,36 @@ func main() {
 	socialH := social.NewSocialHandler(followSvc, dynamicSvc, collectSvc, shareRepo, db, auth.NewJWT(jwtSecret))
 
 	videoRepo := video.NewRepository(db)
-	videoSvc := video.NewService(videoRepo)
-	videoH := video.NewHandler(videoSvc)
+
+	minioCfg := abstraction.DefaultMinioConfig()
+	// minio-go 不接受带 scheme 的 endpoint，剥掉 http(s):// 前缀。
+	stripScheme := func(s string) string { return strings.TrimPrefix(strings.TrimPrefix(s, "https://"), "http://") }
+	if v := os.Getenv("MINIO_ENDPOINT"); v != "" {
+		minioCfg.Endpoint = stripScheme(v)
+		minioCfg.PublicEndpoint = stripScheme(v)
+	} else {
+		minioCfg.Endpoint = stripScheme(minioCfg.Endpoint)
+		minioCfg.PublicEndpoint = stripScheme(minioCfg.PublicEndpoint)
+	}
+	if v := os.Getenv("MINIO_ACCESS_KEY"); v != "" {
+		minioCfg.AccessKey = v
+	}
+	if v := os.Getenv("MINIO_SECRET_KEY"); v != "" {
+		minioCfg.SecretKey = v
+	}
+	if v := os.Getenv("MINIO_BUCKET"); v != "" {
+		minioCfg.BucketName = v
+	}
+	videoStorage, storageErr := abstraction.NewMinioStorageService(minioCfg)
+	if storageErr != nil {
+		log.Printf("WARN: minio storage unavailable: %v (banner upload will fallback to local only)", storageErr)
+		videoStorage = nil
+	} else {
+		log.Printf("minio storage: endpoint=%s bucket=%s", minioCfg.Endpoint, minioCfg.BucketName)
+	}
+
+	videoSvc := video.NewService(videoRepo, videoStorage)
+	videoH := video.NewHandler(videoSvc, videoStorage)
 
 	adminRepo := admin.NewRepository(db)
 	adminSvc := admin.NewService(adminRepo)

@@ -53,7 +53,9 @@ kind: IngressRoute
 metadata: {name: mybilibili, namespace: mybilibili}
 spec:
   entryPoints:
-    - web
+    - websecure
+  tls:
+    certResolver: letsencrypt
   routes:
     # 搜索/推荐/创作者/画像 → search
     - match: PathPrefix(`/api/v1/search/`) || PathPrefix(`/api/v1/recommend/`) || PathPrefix(`/api/v1/creator/stats/`) || PathPrefix(`/api/v1/profile/`)

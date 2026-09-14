@@ -1,9 +1,12 @@
 # 生产基础设施（PG/Redis/MinIO/NATS）— 部署到 mybilibili namespace
 # 数据通过 local-path StorageClass 持久化到 /vol1/k3s
 #
+# 节点标签：每个节点必须打 node-role label（自定义，运维在装机时执行）：
+#   kubectl label node <primary-name>   node-role=primary
+#   kubectl label node <secondary-name> node-role=secondary
 # PG 主从拓扑：
-#   - postgres-primary  → fnos 节点 (writes)
-#   - postgres-replica  → laptop 节点 (reads, streaming replication)
+#   - postgres-primary  → node-role=primary (writes)
+#   - postgres-replica  → node-role=secondary (reads, streaming replication)
 # 两 Deployment 共用同一镜像 pg16-zhparser:latest, 通过 PG_ROLE env 切换
 # 启动模式: primary = postgres ; replica = pg_basebackup + standby.signal
 ---
@@ -45,7 +48,9 @@ spec:
       labels: { app: postgres, role: primary }
     spec:
       nodeSelector:
-        kubernetes.io/hostname: fnos
+        node-role: primary
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: postgres
           image: ghcr.io/chentianxiong123/pg16-zhparser:latest
@@ -97,7 +102,9 @@ spec:
       labels: { app: postgres, role: replica }
     spec:
       nodeSelector:
-        kubernetes.io/hostname: laptop
+        node-role: secondary
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: postgres
           image: ghcr.io/chentianxiong123/pg16-zhparser:latest
@@ -179,7 +186,9 @@ spec:
       labels: { app: redis, role: master }
     spec:
       nodeSelector:
-        kubernetes.io/hostname: fnos
+        node-role: primary
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: redis
           image: ghcr.io/chentianxiong123/redis:7-alpine
@@ -221,7 +230,9 @@ spec:
       labels: { app: redis, role: replica }
     spec:
       nodeSelector:
-        kubernetes.io/hostname: laptop
+        node-role: secondary
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: redis
           image: ghcr.io/chentianxiong123/redis:7-alpine
@@ -254,7 +265,9 @@ spec:
       labels: { app: minio }
     spec:
       nodeSelector:
-        kubernetes.io/hostname: laptop
+        node-role: secondary
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: minio
           image: ghcr.io/chentianxiong123/minio:latest
@@ -337,6 +350,8 @@ spec:
                 topologyKey: kubernetes.io/hostname
                 labelSelector:
                   matchLabels: { app: nats }
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: nats
           image: ghcr.io/chentianxiong123/nats:latest

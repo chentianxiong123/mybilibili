@@ -3,15 +3,17 @@ package video
 import (
 	"context"
 
+	"mybilibili/pkg/abstraction"
 	"mybilibili/pkg/models"
 )
 
 type Service struct {
-	repo *Repository
+	repo    *Repository
+	storage *abstraction.MinioStorageService
 }
 
-func NewService(repo *Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo *Repository, storage *abstraction.MinioStorageService) *Service {
+	return &Service{repo: repo, storage: storage}
 }
 
 func (s *Service) GetVideo(ctx context.Context, id int64) (*Video, error) {

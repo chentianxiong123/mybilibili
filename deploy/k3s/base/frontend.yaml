@@ -15,6 +15,8 @@ spec:
           whenUnsatisfiable: DoNotSchedule
           labelSelector:
             matchLabels: {app: web}
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: web
           image: ghcr.io/chentianxiong123/mybilibili/web
@@ -51,6 +53,8 @@ spec:
           whenUnsatisfiable: DoNotSchedule
           labelSelector:
             matchLabels: {app: admin}
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: admin
           image: ghcr.io/chentianxiong123/mybilibili/admin
