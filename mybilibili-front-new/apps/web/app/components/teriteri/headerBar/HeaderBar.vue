@@ -380,6 +380,22 @@
             </div>
         </div>
     </div>
+
+    <el-dialog
+        v-model="dialogVisible"
+        :close-on-click-modal="false"
+        destroy-on-close
+        align-center
+        width="400px"
+        class="login-dialog"
+    >
+        <button class="dialog-close-btn" @click="dialogVisible = false">
+            <el-icon><Close /></el-icon>
+        </button>
+        <div class="dialog-content-wrapper">
+            <LoginRegister @loginSuccess="dialogVisible = false;"></LoginRegister>
+        </div>
+    </el-dialog>
 </template>
 
 <script lang="ts">
@@ -387,6 +403,7 @@
     let outTimer;
     import VPopover from '../popover/VPopover.vue';
     import VLevel from '@/components/teriteri/UserCard/VLevel.vue';
+    import LoginRegister from '../loginRegister/LoginRegister.vue';
     import { ElMessage } from 'element-plus';
     import { handleNum, handleLevel, highlightKeyword } from '@/teriteri-src/utils/utils';
 
@@ -395,6 +412,7 @@
         components: {
             VPopover,
             VLevel,
+            LoginRegister,
         },
         data() {
             return {
@@ -417,6 +435,8 @@
                 isPopoverShow: false,
                 // 屏幕宽度
                 screenWidth: window.innerWidth,
+                // 登录弹窗
+                dialogVisible: false,
             }
         },
         props: {
@@ -436,9 +456,6 @@
             }
         },
         inject: {
-            showLoginDialog: {
-                default: null
-            }
         },
         computed: {
             user() {
@@ -458,9 +475,7 @@
 
             // 打开登录弹窗
             openLoginDialog() {
-                if (this.showLoginDialog) {
-                    this.showLoginDialog.value = true;
-                }
+                this.dialogVisible = true;
             },
 
             // 获取搜索推荐

@@ -1,341 +1,599 @@
 <template>
     <div class="login-register">
-        <div class="canvas-wrapper">
-            <div class="video-wrapper">
-                <video
-                    src="@/assets/teriteri/video/BadApple.mp4"
-                    id="login-video" ref="loginVideo"
-                    muted autoplay loop
-                ></video>
-            </div>
-            <canvas id="cvs" width="360" height="360"></canvas>
-            <canvas id="cvs2" width="360" height="360" @click="playVideo" loop></canvas>
+        <div class="dialog-logo">
+            <el-icon><VideoPlay /></el-icon>
+            <span>哔哩哔哩</span>
         </div>
-        <div class="login-register-container">
-            <el-tabs stretch class="login-tabs" @tab-click="handleClick">
-                <el-tab-pane label="登录" lazy>
-                    <div class="login-box">
-                        <el-input type="text" class="input" v-model="usernameLogin" placeholder="请输入账号" />
-                        <el-input type="password" show-password class="input" v-model="passwordLogin" placeholder="请输入密码" />
-                        <div class="submit" @click="submitLogin">登&nbsp;录</div>
-                        <div class="tips">登录即代表你同意我们的<span class="agreement">用户协议</span></div>
-                    </div>
-                </el-tab-pane>
-                <el-tab-pane label="注册" lazy>
-                    <div class="register-box">
-                        <el-input type="text" class="input" v-model="usernameRegister" placeholder="请输入账号" maxlength="50" />
-                        <el-input type="password" show-password class="input" v-model="passwordRegister" placeholder="请输入密码" />
-                        <el-input type="password" show-password class="input" v-model="confirmedPassword" placeholder="再次确认密码" />
-                        <div class="submit" @click="submitRegister">注&nbsp;册</div>
-                    </div>
-                </el-tab-pane>
-            </el-tabs>
+
+        <!-- 登录 -->
+        <div v-if="dialogMode === 'login'">
+            <div class="login-tabs">
+                <span :class="{ active: loginMode === 'password' }" @click="loginMode = 'password'">密码登录</span>
+                <span :class="{ active: loginMode === 'email_code' }" @click="loginMode = 'email_code'">验证码登录</span>
+            </div>
+
+            <el-input
+                v-if="loginMode === 'password'"
+                v-model="loginForm.username"
+                class="input"
+                placeholder="请输入用户名/邮箱"
+                :prefix-icon="User"
+                clearable
+                @keydown.enter="handleLogin"
+            />
+            <el-input
+                v-if="loginMode === 'password'"
+                v-model="loginForm.password"
+                class="input"
+                type="password"
+                placeholder="请输入密码"
+                :prefix-icon="Lock"
+                show-password
+                @keydown.enter="handleLogin"
+            />
+
+            <el-input
+                v-if="loginMode === 'email_code'"
+                v-model="emailLoginForm.email"
+                class="input"
+                type="email"
+                placeholder="请输入邮箱"
+                :prefix-icon="Message"
+                clearable
+                @keydown.enter="handleEmailLogin"
+            />
+
+            <div class="captcha-row">
+                <el-input
+                    v-model="loginCaptchaAnswer"
+                    class="input"
+                    placeholder="请输入右侧算术题答案"
+                    :prefix-icon="Key"
+                    clearable
+                    @keydown.enter="handleLogin"
+                />
+                <span class="captcha-question" :class="{ loading: captchaLoading }">{{ loginCaptchaQuestion }}</span>
+                <el-button link type="primary" @click="loadCaptcha()" :loading="captchaLoading">刷新</el-button>
+            </div>
+
+            <div v-if="loginMode === 'email_code'" class="email-code-row">
+                <el-input
+                    v-model="emailLoginForm.emailCode"
+                    class="input"
+                    placeholder="邮箱验证码"
+                    :prefix-icon="Message"
+                    clearable
+                    @keydown.enter="handleEmailLogin"
+                />
+                <el-button
+                    type="primary"
+                    :disabled="emailSent && emailCountdown > 0"
+                    :loading="sendEmailLoading"
+                    @click="handleSendEmailCode"
+                >
+                    {{ emailCountdown > 0 ? emailCountdown + 's' : '发送验证码' }}
+                </el-button>
+            </div>
+
+            <div class="form-actions">
+                <el-checkbox v-model="loginForm.rememberMe">记住我</el-checkbox>
+                <el-button link class="forget-password" @click="this.$router.push('/forgot-password')">忘记密码？</el-button>
+            </div>
+
+            <div class="submit" @click="loginMode === 'password' ? handleLogin() : handleEmailLogin()">登录</div>
+            <div class="switch-mode">
+                <span>还没有账号？</span>
+                <span class="switch-btn" @click="switchToRegister">立即注册</span>
+            </div>
+        </div>
+
+        <!-- 注册 -->
+        <div v-if="dialogMode === 'register'">
+            <div class="register-title">注册</div>
+            <el-input
+                v-model="registerForm.username"
+                class="input"
+                placeholder="用户名（3-20个字符）"
+                :prefix-icon="User"
+                clearable
+                @keydown.enter="handleRegister"
+            />
+            <el-input
+                v-model="registerForm.email"
+                class="input"
+                type="email"
+                placeholder="请输入邮箱"
+                :prefix-icon="Message"
+                clearable
+                @keydown.enter="handleRegister"
+            />
+            <div class="captcha-row">
+                <el-input
+                    v-model="registerCaptchaAnswer"
+                    class="input"
+                    placeholder="图形验证码"
+                    :prefix-icon="Key"
+                    clearable
+                    @keydown.enter="handleRegister"
+                />
+                <span class="captcha-question" :class="{ loading: registerCaptchaLoading }">{{ registerCaptchaQuestion }}</span>
+                <el-button link type="primary" @click="loadRegisterCaptcha" :loading="registerCaptchaLoading">刷新</el-button>
+            </div>
+            <div class="email-code-row">
+                <el-input
+                    v-model="registerForm.emailCode"
+                    class="input"
+                    placeholder="邮箱验证码"
+                    :prefix-icon="Message"
+                    clearable
+                    @keydown.enter="handleRegister"
+                />
+                <el-button
+                    type="primary"
+                    :disabled="registerEmailSent && registerEmailCountdown > 0"
+                    :loading="sendRegisterEmailLoading"
+                    @click="handleSendRegisterEmailCode"
+                >
+                    {{ registerEmailCountdown > 0 ? registerEmailCountdown + 's' : '发送验证码' }}
+                </el-button>
+            </div>
+            <el-input
+                v-model="registerForm.password"
+                class="input"
+                type="password"
+                placeholder="密码（包含大小写字母和数字）"
+                :prefix-icon="Lock"
+                show-password
+                @keydown.enter="handleRegister"
+            />
+            <el-input
+                v-model="registerForm.confirmPassword"
+                class="input"
+                type="password"
+                placeholder="请确认密码"
+                :prefix-icon="Lock"
+                show-password
+                @keydown.enter="handleRegister"
+            />
+            <el-checkbox v-model="registerForm.agreeTerms" class="agree-terms">
+                我已阅读并同意<span class="link">《用户协议》</span>和<span class="link">《隐私政策》</span>
+            </el-checkbox>
+            <div class="submit" @click="handleRegister">注册</div>
+            <div class="switch-mode">
+                <span>已有账号？</span>
+                <span class="switch-btn" @click="switchToLogin">立即登录</span>
+            </div>
         </div>
     </div>
 </template>
 
 <script lang="ts">
 import { ElMessage } from 'element-plus';
-import axios from 'axios';
+import { User, Lock, Message, VideoPlay } from '@element-plus/icons-vue';
+import { captchaApi, emailCodeApi, userApi } from '@/api/client';
 
 export default {
     name: "LoginRegister",
+    components: { User, Lock, Message, VideoPlay },
     data() {
         return {
-            videoElement: null,
-            usernameLogin: "",
-            passwordLogin: "",
-            usernameRegister: "",
-            passwordRegister: "",
-            confirmedPassword: "",
-            type: 1,    // 1登录 2注册
+            dialogMode: 'login',
+            loginMode: 'password',
+            loginForm: {
+                username: "",
+                password: "",
+                rememberMe: false,
+                captchaAnswer: ""
+            },
+            emailLoginForm: {
+                email: "",
+                emailCode: "",
+                captchaAnswer: ""
+            },
+            registerForm: {
+                username: "",
+                email: "",
+                emailCode: "",
+                password: "",
+                confirmPassword: "",
+                agreeTerms: false
+            },
+            // 验证码相关
+            loginCaptchaId: "",
+            loginCaptchaQuestion: "",
+            loginCaptchaAnswer: "",
+            captchaLoading: false,
+            registerCaptchaId: "",
+            registerCaptchaQuestion: "",
+            registerCaptchaAnswer: "",
+            registerCaptchaLoading: false,
+            sendEmailLoading: false,
+            emailSent: false,
+            emailCountdown: 0,
+            sendRegisterEmailLoading: false,
+            registerEmailSent: false,
+            registerEmailCountdown: 0,
+            loading: false,
         }
     },
     mounted() {
-        this.videoElement = this.$refs.loginVideo;
-        this.init();
+        this.loadCaptcha();
         document.addEventListener('keydown', (e) => this.handleKeyboard(e));
     },
     beforeUnmount() {
         document.removeEventListener('keydown', (e) => this.handleKeyboard(e));
     },
     methods: {
-
-        // canvas 动画
-        init() {
-            const ctx = document.getElementById("cvs").getContext("2d");
-            const ctx2 = document.getElementById("cvs2").getContext("2d");
-
-            this.videoElement.crossOrigin = "anonymous";    // 允许在不同域之间共享资源
-
-            const playVideo = () => {
-                requestAnimationFrame(playVideo);   // 每一帧之间调用 playVideo 函数，实现连续播放
-                const { width, height } = ctx.canvas;
-                ctx.drawImage(this.videoElement, 0, 0, width, height);   // 从视频元素中绘制图像数据到画布上
-                const data = ctx.getImageData(0, 0, width, height).data;
-                ctx2.clearRect(0, 0, width, height);    // 清除第二个画布，以便在每一帧之间重新绘制像素数据
-                const bl = 12;
-                // 计算 x 和 y 坐标的最大值
-                const maxX = Math.ceil(width / bl);
-                const maxY = Math.ceil(height / bl);
-                ctx.font = "5px serif";
-                for (let x = 0; x < maxX; x++) {
-                    for (let y = 0; y < maxY; y++) {
-                        const i = (y * bl * width + x * bl) * 4;
-                        const g = parseInt(
-                            (data[i] + data[i + 1] + data[i + 2]) / 1.5
-                        );  // 计算当前像素的灰度值
-                        ctx2.fillStyle = `rgba(${g}, ${g}, ${g}, ${data[i + 3]})`;  // 绘制文本的颜色，透明度取自当前像素
-                        ctx2.fillText("0", x * bl, y * bl);   // 文本填充
-                    }
-                }
-            };
-            playVideo();
-        },
-        playVideo() {
-            this.videoElement.play();
-        },
-
-        // 点击标签页触发的事件
-        handleClick(tab) {
-            if (tab.props.label === '登录') {
-                this.type = 1;
-            } else {
-                this.type = 2;
-            }
-        },
-
         // 监听键盘回车触发登录
-        handleKeyboard(event) {
-            if (event.keyCode === 13 && this.type === 1) {
-                this.submitLogin();
+        handleKeyboard(event: any) {
+            if (event.keyCode !== 13) return
+            if (this.dialogMode === 'login') {
+                this.loginMode === 'password' ? this.handleLogin() : this.handleEmailLogin()
+            } else {
+                this.handleRegister()
             }
         },
 
-        // 登录的回调
-        async submitLogin() {
-            // 前端先做判断，减轻服务器负担
-            if (this.usernameLogin.trim() == "") {
-                ElMessage.error("请输入账号");
-                return;
+        // ==== 验证码 ====
+        loadCaptcha() {
+            this.captchaLoading = true
+            captchaApi.newCaptcha().then((res: any) => {
+                if (res.code === 200) {
+                    this.loginCaptchaId = res.data.captchaId
+                    this.loginCaptchaQuestion = res.data.question
+                    this.loginCaptchaAnswer = ''
+                }
+            }).finally(() => { this.captchaLoading = false })
+        },
+        loadRegisterCaptcha() {
+            this.registerCaptchaLoading = true
+            captchaApi.newCaptcha().then((res: any) => {
+                if (res.code === 200) {
+                    this.registerCaptchaId = res.data.captchaId
+                    this.registerCaptchaQuestion = res.data.question
+                    this.registerCaptchaAnswer = ''
+                }
+            }).finally(() => { this.registerCaptchaLoading = false })
+        },
+
+        // ==== 邮箱验证码 ====
+        handleSendEmailCode() {
+            if (!this.emailLoginForm.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.emailLoginForm.email)) {
+                ElMessage.error('请先输入有效的邮箱地址')
+                return
             }
-            if (this.passwordLogin == "") {
-                ElMessage.error("请输入密码");
-                return;
+            if (!this.loginCaptchaAnswer.trim()) {
+                ElMessage.error('请先输入图形验证码')
+                return
             }
-            this.$store.state.isLoading = true;
-            // 这里为了更方便捕捉到错误后给出提示，就不使用封装的函数了
-            const result = await axios.post("/api/user/account/login", {
-                username: this.usernameLogin.toString(),
-                password: this.passwordLogin.toString(),
+            captchaApi.verifyCaptcha(this.loginCaptchaId, this.loginCaptchaAnswer).then((res: any) => {
+                if (res.code !== 200 || !res.data) {
+                    ElMessage.error('图形验证码错误')
+                    this.loadCaptcha()
+                    return
+                }
+                this.sendEmailLoading = true
+                emailCodeApi.sendCode(this.emailLoginForm.email).then((res: any) => {
+                    if (res.code === 200) {
+                        this.emailSent = true
+                        this.emailCountdown = 60
+                        ElMessage.success('验证码已发送到邮箱')
+                        const timer = setInterval(() => {
+                            this.emailCountdown--
+                            if (this.emailCountdown <= 0) clearInterval(timer)
+                        }, 1000)
+                    } else {
+                        ElMessage.error(res.message || '发送失败')
+                        this.loadCaptcha()
+                    }
+                }).finally(() => { this.sendEmailLoading = false })
+            })
+        },
+
+        handleSendRegisterEmailCode() {
+            if (!this.registerForm.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.registerForm.email)) {
+                ElMessage.error('请先输入有效的邮箱地址')
+                return
+            }
+            if (!this.registerCaptchaAnswer.trim()) {
+                ElMessage.error('请先输入图形验证码')
+                return
+            }
+            captchaApi.verifyCaptcha(this.registerCaptchaId, this.registerCaptchaAnswer).then((res: any) => {
+                if (res.code !== 200 || !res.data) {
+                    ElMessage.error('图形验证码错误')
+                    this.loadRegisterCaptcha()
+                    return
+                }
+                this.sendRegisterEmailLoading = true
+                emailCodeApi.sendCode(this.registerForm.email).then((res: any) => {
+                    if (res.code === 200) {
+                        this.registerEmailSent = true
+                        this.registerEmailCountdown = 60
+                        ElMessage.success('验证码已发送到邮箱')
+                        const timer = setInterval(() => {
+                            this.registerEmailCountdown--
+                            if (this.registerEmailCountdown <= 0) clearInterval(timer)
+                        }, 1000)
+                    } else {
+                        ElMessage.error(res.message || '发送失败')
+                        this.loadRegisterCaptcha()
+                    }
+                }).finally(() => { this.sendRegisterEmailLoading = false })
+            })
+        },
+
+        // ==== 登录 ====
+        handleLogin() {
+            if (!this.loginForm.username.trim()) { ElMessage.error('请输入用户名/邮箱'); return }
+            if (!this.loginForm.password) { ElMessage.error('请输入密码'); return }
+            if (!this.loginCaptchaAnswer.trim()) { ElMessage.error('请输入图形验证码'); return }
+            this.loading = true
+            captchaApi.verifyCaptcha(this.loginCaptchaId, this.loginCaptchaAnswer).then((res: any) => {
+                if (res.code !== 200 || !res.data) {
+                    ElMessage.error('验证码错误，请重新输入')
+                    this.loadCaptcha()
+                    return
+                }
+                this.doLogin(userApi.login(this.loginForm.username, this.loginForm.password))
             }).catch(() => {
-                ElMessage.error("特丽丽被玩坏了");
-                this.$store.state.isLoading = false;
-            });
-            if (!result) {
-                this.$store.state.isLoading = false;
-                return;
-            }
-            if (result.data.code !== 200) {
-                ElMessage.error(result.data.message);
-                this.$store.state.isLoading = false;
-            }
-            if (result.data.code === 200) {
-                localStorage.setItem("teri_token", result.data.data.token); // 浏览器缓存token
-                this.$store.commit("updateUser", result.data.data.user);    // 更新vuex中当前用户信息
-                await this.$store.dispatch("getMsgUnread");
-                await this.initIMServer();  // 开启即时通信websocket
-                await this.getFavorites();
-                await this.getLikeAndDisLikeComment();
-                ElMessage.success(result.data.message);
-                this.$store.commit("updateIsLogin", true);  // 修改在线状态
-                this.$emit("loginSuccess"); // 触发父组件关闭登录框的回调
-                this.$store.state.isLoading = false;
-            }
+                ElMessage.error('验证码校验失败')
+                this.loadCaptcha()
+            })
         },
 
-        async submitRegister() {
-            // 前端先做判断，减轻服务器负担
-            if (this.usernameRegister.trim() == "") {
-                ElMessage.error("账号不能为空");
-                return;
+        handleEmailLogin() {
+            if (!this.emailLoginForm.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.emailLoginForm.email)) {
+                ElMessage.error('请输入有效的邮箱地址')
+                return
             }
-            if (this.passwordRegister == "" || this.confirmedPassword == "") {
-                ElMessage.error("密码不能为空");
-                return;
-            }
-            if (this.passwordRegister != this.confirmedPassword) {
-                ElMessage.error("两次输入的密码不一致");
-                return;
-            }
-
-            const result = await this.$post("/user/account/register", {
-                username: this.usernameRegister.toString(),
-                password: this.passwordRegister.toString(),
-                confirmedPassword: this.confirmedPassword.toString(),
-            });
-            if (!result) return;
-            if (result.data.code === 200) {
-                ElMessage.success(result.data.message);
-                this.usernameRegister = "";
-                this.passwordRegister = "";
-                this.confirmedPassword = "";
-            }
+            if (!this.emailLoginForm.emailCode) { ElMessage.error('请输入邮箱验证码'); return }
+            if (!this.loginCaptchaAnswer.trim()) { ElMessage.error('请输入图形验证码'); return }
+            this.loading = true
+            captchaApi.verifyCaptcha(this.loginCaptchaId, this.loginCaptchaAnswer).then((res: any) => {
+                if (res.code !== 200 || !res.data) {
+                    ElMessage.error('验证码错误，请重新输入')
+                    this.loadCaptcha()
+                    return
+                }
+                this.doLogin(userApi.login(null, null, 'email_code', this.emailLoginForm.email, this.emailLoginForm.emailCode))
+            }).catch(() => {
+                ElMessage.error('验证码校验失败')
+                this.loadCaptcha()
+            })
         },
 
-        
-        // 开启实时通信消息服务
-        async initIMServer() {
-            await this.$store.dispatch("connectWebSocket");
-            const connection = JSON.stringify({
-                code: 100,
-                content: "Bearer " + localStorage.getItem('teri_token'),
-            });
-            this.$store.state.ws.send(connection);
+        // ==== 注册 ====
+        handleRegister() {
+            if (!this.registerForm.username.trim() || this.registerForm.username.length < 3) { ElMessage.error('用户名至少 3 个字符'); return }
+            if (!this.registerForm.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.registerForm.email)) { ElMessage.error('请输入有效的邮箱地址'); return }
+            if (!this.registerForm.emailCode) { ElMessage.error('请输入邮箱验证码'); return }
+            if (!this.registerCaptchaAnswer.trim()) { ElMessage.error('请输入图形验证码'); return }
+            if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d_]{6,20}$/.test(this.registerForm.password || '')) { ElMessage.error('密码必须包含大小写字母和数字（6-20位）'); return }
+            if (this.registerForm.password !== this.registerForm.confirmPassword) { ElMessage.error('两次输入的密码不一致'); return }
+            if (!this.registerForm.agreeTerms) { ElMessage.error('请阅读并同意用户协议和隐私政策'); return }
+            this.loading = true
+            captchaApi.verifyCaptcha(this.registerCaptchaId, this.registerCaptchaAnswer).then((res: any) => {
+                if (res.code !== 200 || !res.data) {
+                    ElMessage.error('图形验证码错误')
+                    this.loadRegisterCaptcha()
+                    return
+                }
+                userApi.register({
+                    username: this.registerForm.username,
+                    email: this.registerForm.email,
+                    emailCode: this.registerForm.emailCode,
+                    password: this.registerForm.password
+                }).then((response: any) => {
+                    if (response.code === 200) {
+                        ElMessage.success('注册成功，请登录')
+                        this.switchToLogin()
+                    } else {
+                        ElMessage.error(response.message || '注册失败')
+                    }
+                }).catch(() => {
+                    ElMessage.error('注册失败，请检查输入信息')
+                }).finally(() => { this.loading = false })
+            })
         },
 
-        // 获取当前用户的收藏夹列表
-        async getFavorites() {
-            const res = await this.$get("/favorite/get-all/user", {
-                params: { uid: this.$store.state.user.uid },
-                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
-            });
-            if (!res.data.data) return;
-            // 将默认置顶
-            const defaultFav = res.data.data.find(item => item.type === 1);
-            const list = res.data.data.filter(item => item.type !== 1);
-            list.unshift(defaultFav);
-            this.$store.commit("updateFavorites", list);
+        // ==== 内部 ====
+        doLogin(promise: any) {
+            this.loading = true
+            promise.then((response: any) => {
+                if (response.code === 200) {
+                    const data = response.data || {}
+                    localStorage.setItem("teri_token", data.token)
+                    localStorage.setItem("teri_refresh_token", data.refresh_token || data.refreshToken || '')
+                    this.$store.commit("updateUser", data.user || data)
+                    this.$store.commit("updateIsLogin", true)
+                    this.$emit("loginSuccess")
+                    ElMessage.success('登录成功')
+                    window.location.reload()
+                } else {
+                    ElMessage.error(response.message || '登录失败')
+                }
+            }).catch(() => {
+                ElMessage.error('登录失败，请检查用户名和密码')
+            }).finally(() => { this.loading = false })
         },
 
-        // 获取用户赞踩的评论集合
-        async getLikeAndDisLikeComment() {
-            const res = await this.$get("/comment/get-like-and-dislike", {
-                params: { uid: this.$store.state.user.uid },
-                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
-            });
-            if (!res.data) return;
-            this.$store.commit("updateLikeComment", res.data.data.userLike);
-            this.$store.commit("updateDislikeComment", res.data.data.userDislike);
-        }
+        switchToRegister() {
+            this.dialogMode = 'register'
+            if (!this.registerCaptchaId) this.loadRegisterCaptcha()
+        },
+        switchToLogin() {
+            this.dialogMode = 'login'
+            this.loginMode = 'password'
+            this.registerForm.username = ''
+            this.registerForm.email = ''
+            this.registerForm.emailCode = ''
+            this.registerForm.password = ''
+            this.registerForm.confirmPassword = ''
+            this.registerForm.agreeTerms = false
+        },
     }
 }
 </script>
 
 <style scoped>
 .login-register {
-    position: relative;
-    display: flex;
+    display: block;
     width: 100%;
-    height: 100%;
-}
-.canvas-wrapper {
-    position: relative;
-    width: 360px;
-    height: 360px;
+    padding: 10px 4px 6px;
 }
 
-.video-wrapper {
-    visibility: hidden;
-    position: absolute;
-    width: 360px;
-    height: 360px;
+.dialog-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 16px;
 }
 
-.video-wrapper video {
-    object-fit: fill;
-    display: block;
+.dialog-logo .el-icon {
+    font-size: 28px;
+    color: #00a1d6;
 }
 
-#cvs {
-    visibility: hidden;
-    position: absolute;
-}
-
-#cvs2 {
-    position: absolute;
-    top: 4px;
-    left: 5px;
-}
-
-.login-register-container {
-    display: block;
-    width: 360px;
-    height: 360px;
-    padding: 30px 40px;
+.dialog-logo span {
+    font-size: 22px;
+    font-weight: bold;
+    color: #00a1d6;
 }
 
 .login-tabs {
-    width: 80%;
-    margin: 0 auto;
-}
-
-.login-box, .register-box {
     display: flex;
-    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 18px;
+    border-bottom: 2px solid #eee;
+}
+
+.login-tabs span {
+    padding-bottom: 8px;
+    color: #999;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.login-tabs span.active {
+    color: #00a1d6;
+    border-bottom: 2px solid #00a1d6;
+}
+
+.register-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.input {
+    margin-bottom: 14px;
+    width: 100%;
+}
+
+.input /deep/ .el-input__wrapper {
+    border-radius: 4px;
+    height: 40px;
+    padding: 4px 12px;
+}
+
+.input /deep/ .el-input__inner {
+    font-size: 14px;
+    height: 28px;
+    line-height: 28px;
+}
+
+.captcha-row {
+    display: flex;
     align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
 }
 
-.login-box .input, .login-box .submit, .login-box .tips {
-    margin-top: 30px;
-    width: 100%;
+.captcha-row .input {
+    margin-bottom: 0;
+    flex: 1;
 }
 
-.register-box .input, .register-box .submit, .register-box .tips {
-    margin-top: 20px;
-    width: 100%;
+.captcha-question {
+    min-width: 84px;
+    white-space: nowrap;
+    font-size: 13px;
+    color: #333;
+}
+
+.captcha-question.loading {
+    color: #999;
+}
+
+.email-code-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.email-code-row .input {
+    margin-bottom: 0;
+    flex: 1;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    font-size: 12px;
+}
+
+.forget-password {
+    color: #00a1d6;
+    padding: 0;
+    font-size: 12px;
+}
+
+.agree-terms {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 14px;
+}
+
+.link {
+    color: #00a1d6;
+    text-decoration: none;
 }
 
 .submit {
     color: #fff;
+    width: 100%;
     border-radius: 4px;
-    background-color: var(--brand_pink);
+    background-color: #409eff;
     text-align: center;
-    padding: 10px 15px;
+    padding: 11px 15px;
+    font-size: 14px;
     cursor: pointer;
+    transition: all 0.2s;
 }
 
 .submit:hover {
-    background-color: #f992af;
+    background-color: #66b1ff;
 }
 
-.tips {
-    color: var(--text2);
+.switch-mode {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
     font-size: 12px;
-    text-align: center;
+    color: #666;
 }
 
-.tips .agreement {
-    color: var(--brand_blue);
-    margin-left: 4px;
+.switch-btn {
+    color: #409eff;
     cursor: pointer;
-}
-
-/* element 元素 */
-.el-input {
-    --el-input-focus-border: #ccc;
-    --el-input-focus-border-color: #ccc;
-    --el-input-border-radius: 10px;
-    --el-input-height: 40px;
-}
-
-.el-input /deep/ .el-input__inner {
-    padding: 8px 15px;
-}
-
-.el-input /deep/ .el-input__icon {
-    margin-right: 8px;
-}
-
-.login-register-container /deep/ .el-tabs__active-bar {
-    height: 3px;
-}
-
-.login-register-container /deep/ .el-tabs__nav-wrap::after {
-    height: 0;
-}
-
-.login-register-container /deep/ .el-tabs__item {
-    font-size: 17px;
 }
 </style>
