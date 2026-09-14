@@ -1,0 +1,38 @@
+[
+    {
+        "url": "/uploads/manuscripts/31/cover.webp",
+        "title": "github短视频生成工具",
+        "color": "#FF6699",
+        "target": "/video/31"
+    },
+    {
+        "url": "/uploads/manuscripts/29/cover.webp",
+        "title": "少儿乒乓球训练",
+        "color": "#5894d4",
+        "target": "/video/29"
+    },
+    {
+        "url": "/uploads/manuscripts/27/cover.webp",
+        "title": "投篮力线错误？这样改！",
+        "color": "#836e61",
+        "target": "/video/27"
+    },
+    {
+        "url": "/uploads/manuscripts/12/cover.webp",
+        "title": "把 OpenClaw 翻译成“小龙虾”的，出来挨打",
+        "color": "#728cb4",
+        "target": "/video/12"
+    },
+    {
+        "url": "/uploads/manuscripts/10/cover.webp",
+        "title": "无限零成本token，我给OpenClaw换了个永久家",
+        "color": "#564e3e",
+        "target": "/video/10"
+    },
+    {
+        "url": "/uploads/manuscripts/14/cover.webp",
+        "title": "每天学习一个电子知识，今天学习如何测电压",
+        "color": "#724b50",
+        "target": "/video/14"
+    }
+]

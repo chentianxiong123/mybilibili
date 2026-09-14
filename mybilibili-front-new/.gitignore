@@ -1,0 +1,8 @@
+node_modules
+.nuxt
+.output
+dist
+.vite
+*.log
+.pnpm-store
+.DS_Store

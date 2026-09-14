@@ -1,0 +1,16 @@
+@import url('./normalize.css');
+@import url('./element.css');
+@import url('./global.css');
+@import url('./videoCard.css');
+@import url('./header.css');
+
+html {
+  min-width: 1090px;
+}
+
+body {
+  font-family: "PingFang SC", "Microsoft YaHei", "HarmonyOS Sans SC", Arial, sans-serif;
+  font-size: var(--v_fs_4, 14px);
+  color: var(--v_text1, #18191C);
+  background: var(--v_bg1, #FFFFFF);
+}
