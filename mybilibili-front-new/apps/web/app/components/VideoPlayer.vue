@@ -786,6 +786,21 @@ onUnmounted(() => {
     flex-wrap: nowrap !important;
 }
 
+/* artplayer-plugin-danmuku 设置面板：强制覆盖全局 a/inherit 的深色字 */
+.video-player :deep(.apd-config-panel-inner),
+.video-player :deep(.apd-config-panel-inner *),
+.video-player :deep(.apd-style-panel-inner),
+.video-player :deep(.apd-style-panel-inner *) {
+    color: #fff !important;
+}
+.video-player :deep(.apd-config-panel-inner .apd-icon),
+.video-player :deep(.apd-style-panel-inner .apd-icon) {
+    fill: #fff !important;
+}
+.video-player :deep(.apd-config-panel-inner input[type=range]) {
+    background: rgba(255,255,255,0.15) !important;
+}
+
 .subtitle-settings-panel {
   position: absolute;
   bottom: 50px;

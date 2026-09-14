@@ -1,41 +1,64 @@
 <template>
-  <div class="danmu-manage">
+  <div class="danmu-manager">
+    <!-- 主要选择栏 -->
     <div class="content-tabs">
-      <el-tabs v-model="activeTab" type="card" @tab-change="loadData">
+      <el-tabs v-model="mainTab" type="card" @tab-change="loadData">
         <el-tab-pane label="全部弹幕" name="all"></el-tab-pane>
+        <el-tab-pane label="按视频筛选" name="byVideo"></el-tab-pane>
       </el-tabs>
     </div>
 
-    <!-- 统计行 -->
-    <div class="stat-bar" v-if="total > 0">
-      共 <b>{{ total }}</b> 条弹幕
+    <!-- 次级筛选栏 -->
+    <div class="danmu-filters" v-show="mainTab === 'byVideo'">
+      <div class="filter-row">
+        <el-input
+          v-model="videoId"
+          placeholder="输入视频稿ID筛选弹幕"
+          size="small"
+          class="video-id-input"
+        />
+        <el-button type="primary" size="small" @click="handleFilterByVideo">筛选</el-button>
+      </div>
     </div>
 
     <!-- 弹幕列表 -->
     <div class="danmu-list" v-loading="loading">
-      <el-empty v-if="!loading && list.length === 0" description="暂无弹幕" />
+      <el-table :data="list" stripe style="width: 100%">
+        <el-table-column prop="ID" label="弹幕ID" width="100"></el-table-column>
+        <el-table-column label="弹幕内容" min-width="280">
+          <template #default="scope">
+            <span class="danmu-content">{{ scope.row.Content }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="所属稿件" width="140">
+          <template #default="scope">
+            <el-button link type="primary" size="small" @click="goVideo(scope.row.VideoID)">
+              稿件 #{{ scope.row.VideoID }}
+            </el-button>
+          </template>
+        </el-table-column>
+        <el-table-column label="发送时间" width="180">
+          <template #default="scope">{{ formatTime(scope.row.CreatedAt) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="scope">
+            <el-button type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
 
-      <div v-for="item in list" :key="item.ID" class="danmu-item">
-        <span class="danmu-content" :style="{ color: item.Color || '#fff' }">{{ item.Content }}</span>
-        <span class="danmu-time">{{ formatTime(item.CreatedAt) }}</span>
-        <span class="danmu-video" v-if="item.VideoID">
-          <el-button link size="small" @click="goVideo(item.VideoID)">查看视频 #{{ item.VideoID }}</el-button>
-        </span>
-        <span class="danmu-actions">
-          <el-button type="danger" link size="small" @click="handleDelete(item)">删除</el-button>
-        </span>
-      </div>
-
-      <!-- 分页 -->
-      <div class="pagination-wrap" v-if="total > pageSize">
-        <el-pagination
-          layout="total, prev, pager, next"
-          :total="total"
-          :page-size="pageSize"
-          :current-page="page"
-          @current-change="handlePageChange"
-        />
-      </div>
+    <!-- 分页导航栏 -->
+    <div class="pagination">
+      <el-pagination
+        v-model:current-page="page"
+        v-model:page-size="pageSize"
+        :page-sizes="[10, 20, 50]"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="total"
+        @size-change="handlePageChange"
+        @current-change="handlePageChange"
+      />
     </div>
   </div>
 </template>
@@ -56,20 +79,21 @@ interface DanmuItem {
   CreatedAt: string
 }
 
-const activeTab = ref('all')
+const mainTab = ref('all')
+const videoId = ref('')
 const list = ref<DanmuItem[]>([])
 const total = ref(0)
 const page = ref(1)
-const pageSize = 20
+const pageSize = ref(20)
 const loading = ref(false)
 
 const loadData = async () => {
   loading.value = true
   try {
     const res: any = await creatorApi.getDanmakuList({
-      video_id: '',
+      video_id: videoId.value,
       page: page.value,
-      size: pageSize,
+      size: pageSize.value,
     })
     if (res.code === 200) {
       list.value = res.data?.list || []
@@ -84,8 +108,12 @@ const loadData = async () => {
   }
 }
 
-const handlePageChange = (p: number) => {
-  page.value = p
+const handleFilterByVideo = () => {
+  page.value = 1
+  loadData()
+}
+
+const handlePageChange = () => {
   loadData()
 }
 
@@ -125,71 +153,35 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.danmu-manage {
-  padding: 20px 24px;
+.danmu-manager {
+  padding: 12px 0;
 }
 
 .content-tabs {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
-.stat-bar {
-  font-size: 13px;
-  color: var(--text3, #9499a0);
-  margin-bottom: 12px;
+.danmu-filters {
+  padding: 8px 0;
 }
 
-.stat-bar b {
-  color: var(--brand_pink, #fb7299);
-  font-size: 16px;
-}
-
-.danmu-list {
-  min-height: 300px;
-}
-
-.danmu-item {
+.filter-row {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--graph_bg_thin, #f0f0f0);
+  gap: 12px;
 }
 
-.danmu-item:last-child {
-  border-bottom: none;
+.video-id-input {
+  width: 220px;
 }
 
 .danmu-content {
-  flex: 1;
-  font-size: 14px;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  background: rgba(0, 0, 0, 0.08);
-  padding: 4px 12px;
-  border-radius: 4px;
-  color: var(--text1, #18191c);
+  color: var(--text1);
 }
 
-.danmu-time {
-  font-size: 12px;
-  color: var(--text3, #9499a0);
-  flex-shrink: 0;
-}
-
-.danmu-video {
-  flex-shrink: 0;
-}
-
-.danmu-actions {
-  flex-shrink: 0;
-}
-
-.pagination-wrap {
+.pagination {
   display: flex;
-  justify-content: center;
-  padding: 20px 0 0;
+  justify-content: flex-end;
+  padding: 16px 0;
 }
 </style>

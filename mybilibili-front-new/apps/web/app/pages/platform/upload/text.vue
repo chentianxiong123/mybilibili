@@ -1,22 +1,39 @@
 <template>
-  <div class="text-upload">
-    <div class="upload-header">
-      <h2 class="title">文字投稿</h2>
-      <p class="subtitle">发布图文动态，内容将展示在你的主页动态中</p>
+  <div class="upload-container">
+    <!-- 页面标题 -->
+    <div class="page-header">
+      <h1 class="page-title">文字投稿</h1>
+      <p class="page-subtitle">发布图文动态，内容将展示在你的主页动态中</p>
     </div>
 
-    <div class="upload-card">
+    <!-- 信息卡片 -->
+    <div class="info-cards">
+      <div class="info-card">
+        <el-icon class="info-card-icon"><Document /></el-icon>
+        <div class="info-card-content">
+          <h3 class="info-card-title">文字内容</h3>
+          <p class="info-card-desc">支持插入表情与@提及</p>
+        </div>
+      </div>
+      <div class="info-card">
+        <el-icon class="info-card-icon"><Picture /></el-icon>
+        <div class="info-card-content">
+          <h3 class="info-card-title">配图</h3>
+          <p class="info-card-desc">最多9张图片，自动压缩为WebP</p>
+        </div>
+      </div>
+      <div class="info-card">
+        <el-icon class="info-card-icon"><Link /></el-icon>
+        <div class="info-card-content">
+          <h3 class="info-card-title">关联视频</h3>
+          <p class="info-card-desc">可关联你的一个视频稿件</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 表单区域 -->
+    <div class="form-area">
       <DynamicPublishPanel ref="publishPanelRef" @publish="handlePublish" />
-    </div>
-
-    <div class="upload-tips">
-      <el-alert
-        type="info"
-        :closable="false"
-        show-icon
-        title="发布说明"
-        description="文字投稿以图文动态形式发布，可插入表情、添加图片（最多9张）或关联自己的视频稿件。"
-      />
     </div>
   </div>
 </template>
@@ -24,6 +41,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Document, Picture, Link } from '@element-plus/icons-vue'
 import DynamicPublishPanel from '@/components/DynamicPublishPanel.vue'
 import { dynamicApi } from '@/api/dynamic'
 
@@ -53,37 +71,66 @@ const handlePublish = async (payload: any) => {
 </script>
 
 <style scoped>
-.text-upload {
-  padding: 24px;
+.upload-container {
   max-width: 720px;
 }
 
-.upload-header {
-  margin-bottom: 20px;
+.page-header {
+  padding: 20px 0 8px;
 }
 
-.title {
+.page-title {
   font-size: 22px;
-  color: var(--text1, #18191c);
   font-weight: 600;
+  color: var(--text1);
   margin: 0 0 6px 0;
 }
 
-.subtitle {
+.page-subtitle {
   font-size: 13px;
-  color: var(--text3, #9499a0);
+  color: var(--text3);
   margin: 0;
 }
 
-.upload-card {
+.info-cards {
+  display: flex;
+  gap: 12px;
+  margin: 16px 0 20px;
+}
+
+.info-card {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--graph_bg_thin, #f6f7f8);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.info-card-icon {
+  font-size: 22px;
+  color: var(--brand_pink, #fb7299);
+  margin-top: 2px;
+}
+
+.info-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text1);
+  margin: 0 0 4px 0;
+}
+
+.info-card-desc {
+  font-size: 12px;
+  color: var(--text3);
+  margin: 0;
+}
+
+.form-area {
   background: #fff;
   border: 1px solid var(--line_regular, #e3e5e7);
   border-radius: 8px;
   padding: 20px;
-  margin-bottom: 16px;
-}
-
-.upload-tips {
-  margin-top: 8px;
 }
 </style>
