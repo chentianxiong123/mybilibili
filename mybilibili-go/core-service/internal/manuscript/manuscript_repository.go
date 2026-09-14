@@ -115,9 +115,10 @@ func (r *ManuscriptRepository) FirstVideoIsVertical(ctx context.Context, manuscr
 
 func (r *ManuscriptRepository) FindVideosByManuscriptID(ctx context.Context, manuscriptID int64) ([]*Video, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, manuscript_id, video_order, title, play_url_hd, play_url_sd, play_url_ld,
+		SELECT id, manuscript_id, video_order, title,
+		       COALESCE(play_url_hd,''), COALESCE(play_url_sd,''), COALESCE(play_url_ld,''),
 		       upload_time, updated_at, process_progress, COALESCE(process_stage,''), has_subtitle, has_summary,
-		       process_status, COALESCE(process_error,''), source_video_url, duration_seconds, is_vertical
+		       process_status, COALESCE(process_error,''), COALESCE(source_video_url,''), duration_seconds, is_vertical
 		FROM videos WHERE manuscript_id = $1 ORDER BY video_order`, manuscriptID)
 	if err != nil {
 		return nil, err
