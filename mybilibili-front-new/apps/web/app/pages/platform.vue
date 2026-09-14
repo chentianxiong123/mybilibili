@@ -159,6 +159,11 @@ export default {
         }
     },
     created() {
+        // 父路由自身(/platform) → 默认跳到首页
+        if (this.$route.path === '/platform' || this.$route.path === '/platform/') {
+            this.$router.replace('/platform/home');
+            return;
+        }
         for (let i = 0; i < this.path.length; i++) {
             if (this.$route.path.startsWith(this.path[i])) {
                 this.active = this.path[i].slice();

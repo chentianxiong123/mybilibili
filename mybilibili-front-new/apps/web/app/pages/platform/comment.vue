@@ -1,95 +1,100 @@
 <template>
-  <div class="comment-manage">
+  <div class="comment-manager">
+    <!-- 主要选择栏 -->
     <div class="content-tabs">
-      <el-tabs v-model="activeTab" type="card" @tab-change="handleTabChange">
-        <el-tab-pane label="全部" name="all"></el-tab-pane>
-        <el-tab-pane label="评论" name="comment"></el-tab-pane>
-        <el-tab-pane label="回复" name="reply"></el-tab-pane>
+      <el-tabs v-model="mainTab" type="card" @tab-change="handleTabChange">
+        <el-tab-pane label="全部评论" name="all"></el-tab-pane>
+        <el-tab-pane label="收到的评论" name="comment"></el-tab-pane>
+        <el-tab-pane label="收到的回复" name="reply"></el-tab-pane>
       </el-tabs>
     </div>
 
-    <!-- 筛选栏 -->
-    <div class="filter-bar">
-      <div class="filter-item">
+    <!-- 次级选择栏 -->
+    <div class="comment-filters">
+      <div class="filter-row">
         <el-input
-          v-model="filters.keyword"
+          v-model="keyword"
           placeholder="搜索评论内容"
           size="small"
           clearable
+          class="keyword-input"
           @keyup.enter="handleSearch"
           @clear="handleSearch"
-        >
-          <template #prefix><el-icon><Search /></el-icon></template>
-        </el-input>
+        />
+        <el-button type="primary" size="small" @click="handleSearch">搜索</el-button>
       </div>
-      <el-button type="primary" size="small" @click="handleSearch">搜索</el-button>
     </div>
 
     <!-- 评论列表 -->
     <div class="comment-list" v-loading="loading">
-      <el-empty v-if="!loading && list.length === 0" description="暂无评论" />
-
-      <div v-for="item in list" :key="item.id" class="comment-item">
-        <div class="comment-head">
-          <el-avatar :size="32" :src="item.userAvatar || defaultAvatar"></el-avatar>
-          <div class="comment-meta">
-            <div class="username">{{ item.userName }}</div>
-            <div class="time">{{ formatTime(item.createTime) }}</div>
-          </div>
-          <el-tag v-if="item.commentType === 'reply'" size="small" type="info">回复</el-tag>
-          <el-tag v-else size="small" type="primary">评论</el-tag>
-        </div>
-        <div class="comment-content">
-          <template v-if="item.commentType === 'reply' && item.replyToUserName">
-            <span class="reply-to">回复 @{{ item.replyToUserName }}：</span>
+      <el-table :data="list" stripe style="width: 100%">
+        <el-table-column prop="id" label="ID" width="80"></el-table-column>
+        <el-table-column label="用户" width="180">
+          <template #default="scope">
+            <div class="user-cell">
+              <el-avatar :size="28" :src="scope.row.userAvatar || defaultAvatar"></el-avatar>
+              <span class="username">{{ scope.row.userName }}</span>
+            </div>
           </template>
-          {{ item.content }}
-        </div>
-        <div class="comment-foot">
-          <span class="manuscript-title" v-if="item.manuscriptTitle" @click="goManuscript(item.manuscriptId)">
-            稿件：{{ item.manuscriptTitle }}
-          </span>
-          <span class="stats">
-            <span class="stat"><el-icon><Star /></el-icon>{{ item.likeCount || 0 }}</span>
-            <span class="stat" v-if="item.replyCount"><el-icon><ChatDotRound /></el-icon>{{ item.replyCount }}</span>
-          </span>
-          <span class="actions">
+        </el-table-column>
+        <el-table-column label="内容" min-width="300">
+          <template #default="scope">
+            <span v-if="scope.row.commentType === 'reply' && scope.row.replyToUserName" class="reply-to">
+              回复 @{{ scope.row.replyToUserName }}：
+            </span>
+            <span>{{ scope.row.content }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="类型" width="100">
+          <template #default="scope">
+            <el-tag :type="scope.row.commentType === 'reply' ? 'info' : 'primary'" size="small">
+              {{ scope.row.commentType === 'reply' ? '回复' : '评论' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="稿件" min-width="180">
+          <template #default="scope">
+            <span class="manuscript-title" @click="goManuscript(scope.row.manuscriptId)">
+              {{ scope.row.manuscriptTitle || ('稿件#' + scope.row.manuscriptId) }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="likeCount" label="获赞" width="80"></el-table-column>
+        <el-table-column label="创建时间" width="170">
+          <template #default="scope">{{ formatTime(scope.row.createTime) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="scope">
             <el-button
-              v-if="item.commentType === 'reply'"
-              type="danger"
-              link
+              :type="scope.row.commentType === 'reply' ? 'danger' : 'danger'"
               size="small"
-              @click="handleDeleteReply(item)"
-            >删除回复</el-button>
-            <el-button
-              v-else
-              type="danger"
-              link
-              size="small"
-              @click="handleDeleteComment(item)"
-            >删除评论</el-button>
-          </span>
-        </div>
-      </div>
+              @click="scope.row.commentType === 'reply' ? handleDeleteReply(scope.row) : handleDeleteComment(scope.row)"
+            >
+              {{ scope.row.commentType === 'reply' ? '删除回复' : '删除' }}
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
 
-      <!-- 分页 -->
-      <div class="pagination-wrap" v-if="total > pageSize">
-        <el-pagination
-          layout="total, prev, pager, next"
-          :total="total"
-          :page-size="pageSize"
-          :current-page="page"
-          @current-change="handlePageChange"
-        />
-      </div>
+    <!-- 分页导航栏 -->
+    <div class="pagination">
+      <el-pagination
+        v-model:current-page="page"
+        v-model:page-size="pageSize"
+        :page-sizes="[10, 20, 50]"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="total"
+        @size-change="handlePageChange"
+        @current-change="handlePageChange"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Star, ChatDotRound } from '@element-plus/icons-vue'
 import { creatorApi } from '@/api/creator'
 
 const defaultAvatar = 'https://i0.hdslb.com/bfs/face/3378829f555891d2d5a4537e10264593a1d076b1.jpg@50w_50h_1c_1s_!web-avatar-nav.avif'
@@ -98,6 +103,7 @@ interface CommentItem {
   id: number
   manuscriptId: number
   manuscriptTitle?: string
+  manuscriptCover?: string
   userName: string
   userAvatar?: string
   content: string
@@ -111,22 +117,22 @@ interface CommentItem {
   replyToUserName?: string
 }
 
-const activeTab = ref('all')
+const mainTab = ref('all')
 const list = ref<CommentItem[]>([])
 const total = ref(0)
 const page = ref(1)
-const pageSize = 10
+const pageSize = ref(20)
+const keyword = ref('')
 const loading = ref(false)
-const filters = reactive<{ keyword: string }>({ keyword: '' })
 
 const loadData = async () => {
   loading.value = true
   try {
     const res: any = await creatorApi.getComments({
       page: page.value,
-      size: pageSize,
-      commentType: activeTab.value === 'all' ? 'all' : activeTab.value,
-      keyword: filters.keyword || undefined,
+      size: pageSize.value,
+      commentType: mainTab.value === 'all' ? 'all' : mainTab.value,
+      keyword: keyword.value || undefined,
     })
     if (res.code === 200) {
       list.value = (res.data?.list || []).map((item: any) => ({
@@ -154,8 +160,7 @@ const handleSearch = () => {
   loadData()
 }
 
-const handlePageChange = (p: number) => {
-  page.value = p
+const handlePageChange = () => {
   loadData()
 }
 
@@ -215,106 +220,55 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.comment-manage {
-  padding: 20px 24px;
+.comment-manager {
+  padding: 12px 0;
 }
 
 .content-tabs {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
-.filter-bar {
+.comment-filters {
+  padding: 8px 0;
+}
+
+.filter-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
 }
 
-.filter-item {
+.keyword-input {
   width: 280px;
 }
 
-.comment-list {
-  min-height: 300px;
-}
-
-.comment-item {
-  padding: 14px 0;
-  border-bottom: 1px solid var(--graph_bg_thin, #f0f0f0);
-}
-
-.comment-item:last-child {
-  border-bottom: none;
-}
-
-.comment-head {
+.user-cell {
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-
-.comment-meta {
-  flex: 1;
+  gap: 8px;
 }
 
 .username {
-  font-size: 14px;
-  color: var(--text1, #18191c);
-  font-weight: 500;
-}
-
-.time {
-  font-size: 12px;
-  color: var(--text3, #9499a0);
-  margin-top: 2px;
-}
-
-.comment-content {
-  padding: 8px 0 4px 42px;
-  font-size: 14px;
-  color: var(--text1, #18191c);
-  line-height: 1.6;
+  font-size: 13px;
+  color: var(--text1);
 }
 
 .reply-to {
-  color: var(--brand_pink, #fb7299);
-}
-
-.comment-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-left: 42px;
-  margin-top: 6px;
+  color: var(--brand_pink);
 }
 
 .manuscript-title {
-  font-size: 12px;
-  color: var(--text3, #9499a0);
+  color: var(--text2);
   cursor: pointer;
 }
 
 .manuscript-title:hover {
-  color: var(--brand_pink, #fb7299);
+  color: var(--brand_pink);
 }
 
-.stats {
+.pagination {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 12px;
-  color: var(--text3, #9499a0);
-}
-
-.stat {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.pagination-wrap {
-  display: flex;
-  justify-content: center;
-  padding: 20px 0 0;
+  justify-content: flex-end;
+  padding: 16px 0;
 }
 </style>
