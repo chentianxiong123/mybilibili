@@ -9,6 +9,9 @@ package transcoder
 
 func hwName() string  { return "vaapi" }
 func hwAvailable() bool { return true }
+func hwCapabilities() []string {
+	return []string{"vaapi", "h264_vaapi", "hevc_vaapi"}
+}
 
 func hwBuildArgs(srcFile, scale, crf, vaapiDev string, audio, hls []string) []string {
 	return append([]string{

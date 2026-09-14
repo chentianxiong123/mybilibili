@@ -34,12 +34,39 @@ COPY ${SERVICE} ./${SERVICE}/
 RUN SVC="${SERVICE%-service}" && DIR="${CMD_DIR:-$SVC}" \
     && cd ${SERVICE} && go build -o /out/app ./cmd/${DIR}
 
+# ============ 开发阶段（热重载） ============
+FROM ${GO_IMAGE} AS dev
+ARG SERVICE
+ENV CGO_ENABLED=0 GOOS=linux GOFLAGS=-mod=mod GOWORK=off
+ENV GOPROXY=https://goproxy.cn,direct
+ENV GOSUMDB=off
+ENV SERVICE=${SERVICE}
+
+RUN go install github.com/air-verse/air@latest
+
+WORKDIR /app
+COPY pkg ./pkg
+COPY ${SERVICE} ./${SERVICE}/
+COPY entrypoint-dev.sh /usr/local/bin/entrypoint-dev.sh
+RUN chmod +x /usr/local/bin/entrypoint-dev.sh
+
+EXPOSE 8080
+CMD ["/usr/local/bin/entrypoint-dev.sh"]
+
 # ============ 运行阶段 ============
 # 极简基底：Go 服务为 CGO_ENABLED=0 纯静态二进制，Alpine 只需 ca-certificates。
 # 不装 ffmpeg/chrome——图片转 WebP 已前移到前端，转码由裸跑 transcoder 承担。
 # 镜像体积对比：debian-bookworm-slim(~70MB) → alpine(~3.5MB + certs)。
+#
+# 启动模型（参考 postgres/redis/nginx 官方镜像）:
+#   entrypoint.sh 以 root 身份负责初始化(数据目录 chown 等)，
+#   然后 su-exec drop 到非 root 用户 (app) 跑业务二进制。
+#   这样既保证安全 (二进制非 root 跑)，又解决 external volume
+#   任意所有权导致的写权限问题。
 FROM alpine:3.20 AS runtime
-RUN apk add --no-cache ca-certificates tzdata && addgroup -S app && adduser -S -G app app
-USER app
+RUN apk add --no-cache ca-certificates tzdata su-exec \
+    && addgroup -S app && adduser -S -G app app
 COPY --from=build /out/app /app
-ENTRYPOINT ["/app"]
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["/app"]

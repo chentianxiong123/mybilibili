@@ -10,6 +10,9 @@ package transcoder
 
 func hwName() string  { return "nvenc" }
 func hwAvailable() bool { return true }
+func hwCapabilities() []string {
+	return []string{"nvenc", "h264_nvenc", "hevc_nvenc"}
+}
 
 func hwBuildArgs(srcFile, scale, crf, vaapiDev string, audio, hls []string) []string {
 	return append([]string{

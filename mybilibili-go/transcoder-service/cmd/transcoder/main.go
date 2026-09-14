@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -46,6 +48,14 @@ func main() {
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
+	// 能力自描述：供 work 编排器识别 / admin 监控展示
+	mux.HandleFunc("/api/v1/capabilities", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"encoder":%q,"capabilities":%s}`,
+			svc.Encoder(),
+			mustJSON(svc.Capabilities()),
+		)
+	})
 
 	server := &http.Server{Addr: addr, Handler: mux}
 	go func() {
@@ -76,4 +86,9 @@ func stripScheme(s string) string {
 		}
 	}
 	return s
+}
+
+func mustJSON(v any) string {
+	b, _ := json.Marshal(v)
+	return string(b)
 }

@@ -41,6 +41,14 @@ type Service struct {
 	vaapi   string // VAAPI 设备路径（仅 vaapi 版用到）
 }
 
+// Capabilities 返回当前二进制支持的编码能力列表。
+// 由编译时 build tag 决定（hw_nvenc / hw_vaapi / hw_soft），
+// 供 work 编排器识别节点能力和 admin 端展示。
+func (s *Service) Capabilities() []string { return hwCapabilities() }
+
+// Encoder 返回硬件编码器名（nvenc / vaapi / soft）。
+func (s *Service) Encoder() string { return hwName() }
+
 func NewService(storage abstraction.StorageService, _ string) *Service {
 	dev := os.Getenv("VAAPI_DEVICE")
 	if dev == "" {
