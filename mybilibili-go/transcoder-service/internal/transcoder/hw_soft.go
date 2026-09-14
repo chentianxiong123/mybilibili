@@ -7,6 +7,9 @@ package transcoder
 
 func hwName() string  { return "soft" }
 func hwAvailable() bool { return false }
+func hwCapabilities() []string {
+	return []string{"soft", "libx264", "libx265"}
+}
 
 func hwBuildArgs(srcFile, scale, crf, vaapiDev string, audio, hls []string) []string {
 	return softBuildArgs(srcFile, scale, crf, audio, hls)
