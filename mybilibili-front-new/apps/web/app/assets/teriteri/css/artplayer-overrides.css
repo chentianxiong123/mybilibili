@@ -1,0 +1,38 @@
+/*
+ * artplayer-plugin-danmuku 配置弹窗字体颜色覆盖
+ *
+ * 为什么需要这个全局样式：
+ * - VideoPlayer.vue 的 <style scoped> 会被 Vite 编译成带 [data-v-xxx] 的选择器
+ * - artplayer-plugin-danmuku 渲染的 DOM（.apd-config-panel-inner 等）在 <Artplayer> web component 子树里
+ * - Vue scoped style 默认只能命中自己组件模板内的元素，无法穿透 web component
+ * - 即便用 :deep()，作用域拼接后的选择器不一定匹配 .apd-* 这些插件插入的节点
+ *
+ * 所以这里写全局样式（不 scoped），强制覆盖弹窗内所有文字/图标颜色为白色。
+ * 优先级：!important 防止 artplayer 自身样式覆盖。
+ */
+
+.apd-config-panel-inner,
+.apd-config-panel-inner *,
+.apd-style-panel-inner,
+.apd-style-panel-inner * {
+    color: #fff !important;
+}
+
+.apd-config-panel-inner .apd-icon,
+.apd-style-panel-inner .apd-icon {
+    fill: #fff !important;
+}
+
+.apd-slider-steps,
+.apd-slider-step,
+.apd-mode,
+.apd-other,
+.apd-value,
+.apd-check-on,
+.apd-check-off {
+    color: #fff !important;
+}
+
+.apd-config-panel-inner input[type=range] {
+    background: rgba(255, 255, 255, 0.15) !important;
+}

@@ -1,0 +1,511 @@
+<script setup lang="ts">
+import { safeStorage } from '@/utils/safeStorage'
+import { ref, onMounted, nextTick, watch, computed } from 'vue'
+import { View, Star } from '@element-plus/icons-vue'
+import { recommendApi } from '@/api/recommend.ts'
+import { getHomeBanners } from '@/api/banner.ts'
+import { formatDuration, formatMonthDay, normalizeVideoCard } from '@/utils/videoCard.ts'
+import { useTabsVideoAlign } from '@/composables/useTabsVideoAlign'
+import { useZoomCompact } from '@/composables/useZoomCompact'
+
+// 轮播图数据
+const bannerList = ref([])
+
+// 轮播图当前索引
+const currentBannerIndex = ref(0)
+
+// 轮播图控制函数（由 CarouselIndex 组件 emit('change') 触发）
+const handleBannerChange = (index) => {
+  currentBannerIndex.value = index
+}
+
+const { apply: applyTabsVideoAlign } = useTabsVideoAlign()
+const { compactLevel } = useZoomCompact()
+
+// 视频网格列数：level 0→5, level 1→4, level 2→3
+const videoCols = computed(() => [5, 4, 3][compactLevel.value] || 5)
+
+// 推荐视频列表
+const videoList = ref([])
+// 标记是否已经加载过视频列表
+const hasLoadedVideos = ref(false)
+// 组件唯一标识符
+const componentId = Math.random().toString(36).substring(2, 10)
+
+// 加载状态
+const loading = ref(false)
+
+// 动态设置轮播图高度，使其与第二行video-cover底部对齐
+const adjustBannerHeight = () => {
+  if (import.meta.server) return
+  nextTick(() => {
+    // 获取第二行的video-cover元素（第4-6个video-item中的video-cover）
+    const videoCovers = document.querySelectorAll('.video-cover')
+    const bannerSection = document.querySelector('.banner-section')
+    if (!bannerSection) return
+    if (videoCovers.length >= 6) {
+      const secondRowCover = videoCovers[compactLevel.value === 2 ? 1 : compactLevel.value === 1 ? 2 : 3]
+      const videoGrid = document.querySelector('.video-grid')
+      if (secondRowCover && videoGrid) {
+        const gridRect = videoGrid.getBoundingClientRect()
+        const coverRect = secondRowCover.getBoundingClientRect()
+        const bannerHeight = coverRect.bottom - gridRect.top
+        bannerSection.style.height = `${bannerHeight}px`
+      }
+    } else {
+      bannerSection.style.height = '400px'
+    }
+  })
+}
+
+// 从后端API获取稿件列表数据（首页显示稿件而非视频）
+const fetchVideoList = async () => {
+  // 防止重复加载
+  if (hasLoadedVideos.value) {
+    return
+  }
+
+  loading.value = true
+  try {
+    let manuscripts = null
+
+    // 已登录用户尝试个性化推荐
+    const token = safeStorage.getItem("token")
+    if (token) {
+      try {
+        const forYouResponse = await recommendApi.getRecommendedVideos(30)
+        if (forYouResponse.code === 200 && forYouResponse.data && forYouResponse.data.length > 0) {
+          manuscripts = forYouResponse.data
+        }
+      } catch (e) {
+        // 个性化推荐失败，回退到默认列表
+      }
+    }
+
+    // 回退到 ES 热门推荐，首页保持同一个搜索推荐数据源
+    if (!manuscripts || manuscripts.length === 0) {
+      const hotResponse = await recommendApi.getHotVideos(null, 30)
+      if (hotResponse.code === 200) {
+        manuscripts = hotResponse.data
+      }
+    }
+
+    if (manuscripts) {
+
+      // 清空现有视频列表
+      videoList.value = []
+
+      // 添加去重逻辑
+      const uniqueItems = []
+      const itemIds = new Set()
+
+      if (manuscripts && Array.isArray(manuscripts)) {
+        for (const manuscript of manuscripts) {
+          const videoCard = normalizeVideoCard(manuscript)
+          if (videoCard && !itemIds.has(videoCard.manuscriptId)) {
+            itemIds.add(videoCard.manuscriptId)
+            uniqueItems.push(videoCard)
+          }
+        }
+      }
+
+      videoList.value = uniqueItems
+
+      // 标记视频列表已经加载过
+      hasLoadedVideos.value = true
+    }
+  } catch (error) {
+    console.error('获取稿件列表失败:', error)
+  } finally {
+    loading.value = false
+    // 视频列表加载完成后，调整轮播图高度并重新对齐分类栏与视频栏
+    adjustBannerHeight()
+    alignAfterLoad()
+  }
+}
+
+// 从API获取轮播图数据
+const fetchBannerList = async () => {
+  try {
+    const res = await getHomeBanners()
+    if (res.code === 200 && res.data && res.data.length > 0) {
+      bannerList.value = res.data.map(banner => ({
+        id: banner.id,
+        img: banner.imageUrl,
+        link: banner.linkUrl || '/',
+        title: banner.title
+      }))
+    }
+  } catch (error) {
+    console.error('获取轮播图失败:', error)
+  }
+}
+
+onMounted(() => {
+  // 从API获取轮播图数据
+  fetchBannerList()
+
+  // 从API获取数据
+  fetchVideoList()
+
+  // 动态调整轮播图高度
+  adjustBannerHeight()
+
+  // 监听窗口大小变化，重新调整高度
+  window.addEventListener('resize', adjustBannerHeight)
+})
+
+// 缩放紧凑模式切换时，重新计算轮播高度与对齐
+watch(compactLevel, async () => {
+  await nextTick()
+  adjustBannerHeight()
+  applyTabsVideoAlign()
+})
+
+// 视频列表加载完成后重新对齐分类栏与视频栏
+const alignAfterLoad = async () => {
+  await nextTick()
+  applyTabsVideoAlign()
+}
+
+// 跳转到视频详情页（使用稿件ID）
+const goToVideo = (item) => {
+  // item.manuscriptId 是稿件ID
+  if (item.manuscriptId) {
+    window.location.href = `/manuscript/${item.manuscriptId}`
+  } else {
+    // 兼容旧数据
+    window.location.href = `/manuscript/${item.id}`
+  }
+}
+
+// 跳转到作者主页
+const goToAuthor = (authorId) => {
+  if (authorId) {
+    window.open(`/profile/${authorId}/home`, '_blank')
+  }
+}
+
+</script>
+
+<template>
+  <!-- 主内容区域：5列网格布局 -->
+  <div class="main-section" :style="{ '--video-cols': videoCols }">
+    <!-- 统一的视频网格：包含轮播图和视频项 -->
+    <div class="video-grid">
+      <!-- 左侧轮播图：占据2x2的位置 -->
+      <section class="banner-section" v-if="bannerList.length > 0">
+        <CarouselIndex
+          :banners="bannerList"
+          :interval="3500"
+          @change="handleBannerChange"
+        />
+      </section>
+      
+      <!-- 视频项：只显示推荐视频列表 -->
+      <VideoCard
+        v-for="video in videoList"
+        :key="video.id"
+        :video="video"
+      />
+    </div>
+
+
+  </div>
+</template>
+
+<style scoped>
+/* 主内容区域：5列网格布局 */
+.main-section {
+  width: 100%;
+  max-width: 1980px;
+  margin: 0 auto;
+  padding: 0 20px;
+  box-sizing: border-box;
+  margin-bottom: 20px;
+}
+
+/* 热门视频区域 */
+.hot-videos-section {
+  max-width: 1980px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.title-icon {
+  font-size: 24px;
+  color: #fb7299;
+}
+
+.hot-videos-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 20px;
+}
+
+.hot-video-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.rank-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 4px;
+  z-index: 10;
+}
+
+.rank-badge.top-three {
+  background: #fb7299;
+}
+
+/* 统一的视频网格：列数由缩放 level 决定，自动行 */
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--video-cols, 5), 1fr);
+  grid-auto-rows: auto;
+  gap: 20px;
+  width: 100%;
+}
+
+/* 轮播图：占据2x2的位置 */
+.banner-section {
+  grid-column: 1 / 3;
+  grid-row: 1 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  height: 400px;
+}
+
+.video-item {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.video-item:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.video-cover-link {
+  text-decoration: none;
+  color: inherit;
+  display: inline-block;
+}
+
+.video-cover-link img {
+  display: block;
+}
+
+.video-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: #212121;
+  margin: 10px 10px 4px 10px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  height: 42px; /* 固定两行高度：15px * 1.4 * 2 = 42px */
+  flex: 0 0 auto;
+  pointer-events: none; /* 外层不响应鼠标事件 */
+}
+
+.video-title-text {
+  cursor: pointer;
+  transition: color 0.3s;
+  pointer-events: auto; /* 内层响应鼠标事件 */
+}
+
+.video-title-text:hover {
+  color: #00aeec;
+}
+
+.video-meta {
+  margin: 0 10px 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.video-author {
+  font-size: 11px;
+  color: #9499a0;
+  cursor: pointer;
+  transition: color 0.3s;
+  min-width: 0;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-author:hover {
+  color: #00aeec;
+}
+
+.video-date {
+  font-size: 11px;
+  color: #9499a0;
+  flex: 0 0 auto;
+}
+
+.video-separator {
+  color: #9499a0;
+  font-size: 11px;
+  flex: 0 0 auto;
+}
+
+.video-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: #f5f5f5;
+}
+
+.video-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.source-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 3px;
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.video-cover:hover img {
+  transform: scale(1.05);
+  transition: transform 0.3s;
+}
+
+.video-stats-overlay {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: transparent;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #fff;
+  font-size: 12px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.stat-item .el-icon {
+  font-size: 12px;
+}
+
+.video-duration {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background-color: transparent;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.banner-wrapper {
+  display: none;
+}
+
+/* 响应式：调整左右白边 */
+@media (max-width: 2560px) {
+  .main-section,
+  .hot-videos-section {
+    padding-left: 120px;
+    padding-right: 120px;
+  }
+}
+
+@media (max-width: 2200px) {
+  .main-section,
+  .hot-videos-section {
+    padding-left: 100px;
+    padding-right: 100px;
+  }
+}
+
+@media (max-width: 1920px) {
+  .main-section,
+  .hot-videos-section {
+    padding-left: 80px;
+    padding-right: 80px;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+</style>
