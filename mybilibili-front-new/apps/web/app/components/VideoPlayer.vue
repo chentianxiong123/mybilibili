@@ -797,6 +797,15 @@ onUnmounted(() => {
 .video-player :deep(.apd-style-panel-inner .apd-icon) {
     fill: #fff !important;
 }
+.video-player :deep(.apd-slider-steps),
+.video-player :deep(.apd-slider-step),
+.video-player :deep(.apd-mode),
+.video-player :deep(.apd-other),
+.video-player :deep(.apd-value),
+.video-player :deep(.apd-check-on),
+.video-player :deep(.apd-check-off) {
+    color: #fff !important;
+}
 .video-player :deep(.apd-config-panel-inner input[type=range]) {
     background: rgba(255,255,255,0.15) !important;
 }
