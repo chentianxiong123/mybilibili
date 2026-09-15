@@ -1,0 +1,10 @@
+name = "cf-whisper-worker"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+
+[ai]
+binding = "AI"
+
+[vars]
+# 默认模型
+WHISPER_MODEL = "@cf/openai/whisper"
