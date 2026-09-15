@@ -28,7 +28,7 @@
 
 # 统一 Go 构建配置: 所有服务共用 mybilibili-go/Dockerfile, 通过 SERVICE build-arg 区分。
 x-go-build: &go-build
-  context: ../mybilibili-go
+  context: ..
   dockerfile: Dockerfile
 
 services:
@@ -66,7 +66,7 @@ services:
       - "5432:5432"
     volumes:
       - pg16-data:/var/lib/postgresql/data
-      - ./mybilibili-go/sql:/docker-entrypoint-initdb.d:ro
+      - ../sql:/docker-entrypoint-initdb.d:ro
     networks: [mylib]
 
   mybilibili-redis:

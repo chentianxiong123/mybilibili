@@ -1,0 +1,14 @@
+go 1.26.5
+
+use (
+	./services/ai
+	./services/core
+	./services/live
+	./services/work
+	./services/msg-danmaku
+	./services/search
+	./services/studio
+	./services/bili-proxy
+	./services/transcoder
+	./shared/go
+)
