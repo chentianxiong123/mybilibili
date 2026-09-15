@@ -1,4 +1,4 @@
-module mybilibili/transcoder
+module mybilibili/transcoder_vaapi
 
 go 1.26.5
 

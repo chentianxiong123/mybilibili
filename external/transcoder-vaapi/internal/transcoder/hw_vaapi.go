@@ -1,5 +1,3 @@
-//go:build vaapi
-
 package transcoder
 
 // AMD/Intel VAAPI 版。
