@@ -13,6 +13,6 @@ use (
 	./external/transcoder-cpu
 	./external/transcoder-vaapi
 	./external/whisper
-	./external/embedding-vulkan
+	./external/embedding-llamacpp-vulkan
 	./shared/pkg
 )

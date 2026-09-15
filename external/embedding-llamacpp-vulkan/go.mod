@@ -1,4 +1,4 @@
-module mybilibili/embedding_vulkan
+module mybilibili/embedding_llamacpp_vulkan
 
 go 1.26.5
 
