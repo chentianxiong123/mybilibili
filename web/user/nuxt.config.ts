@@ -4,7 +4,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   ssr: false,
   modules: ['@element-plus/nuxt', '@pinia/nuxt'],
-  css: ['@/assets/teriteri/css/base.css', '@/assets/teriteri/css/artplayer-overrides.css', '@mybilibili/ui',
+  css: ['~/assets/teriteri/css/base.css', '~/assets/teriteri/css/artplayer-overrides.css', '@mybilibili/ui',
     'element-plus/es/components/message-box/style/css',
     'element-plus/es/components/notification/style/css',
     'element-plus/es/components/loading/style/css'],

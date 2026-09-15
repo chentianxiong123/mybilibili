@@ -9,6 +9,7 @@ use (
 	./services/search
 	./services/studio
 	./services/bili-proxy
-	./services/transcoder
+	./external/transcoder
+	./external/whisper
 	./shared/pkg
 )

@@ -41,7 +41,7 @@ tmp_dir = "tmp"
 EOF
 
 # 用 sed 替换 cmd 中的占位符
-sed -i "s|PLACEHOLDER_CMD|cd services/${SERVICE} \&\& go build -o ../../tmp/main ./cmd/${CMD_DIR}|" /app/.air.toml
+sed -i "s|PLACEHOLDER_CMD|cd services/${SERVICE} \&\& go build -buildvcs=false -o ../../tmp/main ./cmd/${CMD_DIR}|" /app/.air.toml
 
 echo "▶ Starting air for ${SERVICE} (cmd: ${CMD_DIR})"
 exec air -c /app/.air.toml
