@@ -10,15 +10,12 @@ import (
 	"syscall"
 
 	"mybilibili/pkg/abstraction"
-	"mybilibili/transcoder/internal/transcoder"
+	"mybilibili/transcoder_cpu/internal/transcoder"
 )
 
 func main() {
 	addr := getEnv("HTTP_ADDR", ":8092")
 
-	// MinIO 存储（对象引用方式：从 bucket 读源、写产物）
-	// minio-go 不接受带 scheme 的 endpoint（会报 fully qualified paths），
-	// 统一剥掉 http(s):// 前缀；core 的 /uploads 反代才需要带 scheme。
 	minioCfg := abstraction.DefaultMinioConfig()
 	if v := os.Getenv("MINIO_ENDPOINT"); v != "" {
 		minioCfg.Endpoint = v
@@ -40,15 +37,13 @@ func main() {
 		log.Fatalf("storage: %v", err)
 	}
 
-	encoder := getEnv("TRANSCODE_ENCODER", "auto")
-	svc := transcoder.NewService(storage, encoder)
+	svc := transcoder.NewService(storage, "cpu")
 
 	mux := http.NewServeMux()
 	transcoder.RegisterRoutes(mux, svc)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
-	// 能力自描述：供 work 编排器识别 / admin 监控展示
 	mux.HandleFunc("/api/v1/capabilities", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"encoder":%q,"capabilities":%s}`,
@@ -65,7 +60,7 @@ func main() {
 		server.Close()
 	}()
 
-	log.Printf("transcoder service listening on %s", addr)
+	log.Printf("transcoder-cpu listening on %s", addr)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("http: %v", err)
 	}
@@ -78,7 +73,6 @@ func getEnv(key, def string) string {
 	return def
 }
 
-// stripScheme 去掉 http(s):// 前缀，供 minio-go 客户端使用（其不接受带 scheme 的 endpoint）。
 func stripScheme(s string) string {
 	for _, p := range []string{"https://", "http://"} {
 		if len(s) > len(p) && s[:len(p)] == p {

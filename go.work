@@ -9,7 +9,10 @@ use (
 	./services/search
 	./services/studio
 	./services/bili-proxy
-	./external/transcoder
+	./external/transcoder-nvenc
+	./external/transcoder-cpu
+	./external/transcoder-vaapi
 	./external/whisper
+	./external/embedding
 	./shared/pkg
 )

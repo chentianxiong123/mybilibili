@@ -1,5 +1,3 @@
-//go:build nvenc
-
 package transcoder
 
 // NVIDIA NVENC 版。
