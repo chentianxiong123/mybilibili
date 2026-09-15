@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	_ "github.com/lib/pq"
 	"mybilibili/pkg/abstraction"
@@ -68,12 +70,19 @@ func main() {
 	}
 
 	workDir := getEnv("WORK_DIR", "/tmp/work")
-	transcoderBase := getEnv("TRANSCODER_ADDR", "http://127.0.0.1:8092")
-	transcoderClient := work.NewTranscoderClient(transcoderBase)
+
+	// transcoder 池: 从 YAML 加载配置 (文件不存在则空池启动), 后台 goroutine 周期性探活
+	cfgPath := getEnv("WORK_CONFIG_PATH", "/etc/mybilibili/transcoders.yaml")
+	pool, err := work.NewTranscoderPool(cfgPath)
+	if err != nil {
+		log.Fatalf("transcoder pool: %v", err)
+	}
+	log.Printf("transcoder pool loaded: %d nodes from %s", len(pool.List()), cfgPath)
+
 	aiBase := getEnv("AI_ADDR", "http://127.0.0.1:8088")
 	aiClient := work.NewAIClient(aiBase)
 
-	pipeline := work.NewPipeline(mq, storage, docStore, search, transcoderClient, aiClient, workDir)
+	pipeline := work.NewPipeline(mq, storage, docStore, search, pool, aiClient, workDir)
 	if dsn := getEnv("PG_DSN", ""); dsn != "" {
 		if db, err := sql.Open("postgres", dsn); err == nil {
 			pipeline.SetDatabase(db)
@@ -89,6 +98,30 @@ func main() {
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 		<-sig
 		cancel()
+	}()
+
+	// 启动 transcoder 池后台健康检查
+	pool.Start(ctx)
+	defer pool.Stop()
+
+	// 启动 admin HTTP server (transcoder 节点管理 API)
+	adminAddr := getEnv("ADMIN_HTTP_ADDR", ":8090")
+	adminAPI := work.NewAdminAPI(pool)
+	adminServer := &http.Server{
+		Addr:              adminAddr,
+		Handler:           adminAPI.Handler(),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	go func() {
+		log.Printf("work admin API listening on %s", adminAddr)
+		if err := adminServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("admin server: %v", err)
+		}
+	}()
+	defer func() {
+		shutCtx, shutCancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer shutCancel()
+		adminServer.Shutdown(shutCtx)
 	}()
 
 	log.Println("work service starting (orchestrator)")

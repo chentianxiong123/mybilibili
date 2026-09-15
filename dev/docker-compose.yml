@@ -119,7 +119,7 @@ services:
       - "8000:8000/udp"    # WebRTC UDP 端口
       - "19854:19854"      # HTTP API / WHIP 推流
     volumes:
-      - ../srs/srs.conf:/usr/local/srs/conf/srs.conf:ro
+      - ./srs/srs.conf:/usr/local/srs/conf/srs.conf:ro
     depends_on:
       live: {condition: service_started}
     networks: [mylib]
@@ -299,11 +299,20 @@ services:
     environment:
       # AI 服务地址（work 容器内用服务名直连 compose ai）
       - AI_ADDR=http://mybilibili-ai:8088
-      - SERVICE=work-service
-    volumes:
-      - ../mybilibili-go:/app
+      # transcoder 池配置文件（容器内路径）
+      - WORK_CONFIG_PATH=/etc/mybilibili/transcoders.yaml
+      # admin HTTP 管理端口（节点 CRUD + 健康监控）
+      - ADMIN_HTTP_ADDR=:8090
     tmpfs:
       - /tmp/work:size=512M
+    volumes:
+      - ../mybilibili-go/work-service/configs/transcoders.yaml:/etc/mybilibili/transcoders.yaml:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.work-admin.entrypoints=web"
+      - "traefik.http.routers.work-admin.rule=Host(`localhost`) && PathPrefix(`/api/v1/admin/transcoders`)"
+      - "traefik.http.routers.work-admin.priority=20"
+      - "traefik.http.services.work-admin.loadbalancer.server.port=8090"
     depends_on:
       pg16: {condition: service_started}
       nats: {condition: service_started}

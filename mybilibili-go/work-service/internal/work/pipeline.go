@@ -16,14 +16,14 @@ import (
 
 // Pipeline orchestrates the MQ-driven video processing chain.
 type Pipeline struct {
-	transcoderClient *TranscoderClient
-	aiClient         *AIClient
-	mq               abstraction.MessageQueue
-	storage          abstraction.StorageService
-	docStore         abstraction.DocumentStore
-	search           abstraction.SearchEngine
-	workDir          string
-	db               *sql.DB
+	transcoderPool *TranscoderPool
+	aiClient       *AIClient
+	mq             abstraction.MessageQueue
+	storage        abstraction.StorageService
+	docStore       abstraction.DocumentStore
+	search         abstraction.SearchEngine
+	workDir        string
+	db             *sql.DB
 }
 
 func NewPipeline(
@@ -31,18 +31,18 @@ func NewPipeline(
 	storage abstraction.StorageService,
 	docStore abstraction.DocumentStore,
 	search abstraction.SearchEngine,
-	transcoderClient *TranscoderClient,
+	transcoderPool *TranscoderPool,
 	aiClient *AIClient,
 	workDir string,
 ) *Pipeline {
 	return &Pipeline{
-		transcoderClient: transcoderClient,
-		aiClient:         aiClient,
-		mq:               mq,
-		storage:          storage,
-		docStore:         docStore,
-		search:           search,
-		workDir:          workDir,
+		transcoderPool: transcoderPool,
+		aiClient:       aiClient,
+		mq:             mq,
+		storage:        storage,
+		docStore:       docStore,
+		search:         search,
+		workDir:        workDir,
 	}
 }
 
@@ -103,16 +103,19 @@ func (p *Pipeline) doTranscode(ctx context.Context, task ProcessMessage, dir str
 		return
 	}
 
-	res, err := p.transcoderClient.Transcode(ctx, TranscodeRequest{
+	req := TranscodeRequest{
 		Bucket:       "mybilibili",
 		SourceKey:    sourceKey,
 		ManuscriptID: task.ManuscriptID,
 		VideoID:      task.VideoID,
 		Qualities:    []string{"1080p", "720p", "480p"},
 		ExtractAudio: false,
-	})
-	if err != nil {
-		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "转码失败", 0, 6, err.Error())
+	}
+
+	// 多节点重试: 失败换下一个, 最多 maxTranscodeAttempts 次
+	res, lastErr := p.transcodeWithRetry(ctx, req)
+	if res == nil {
+		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "转码失败", 0, 6, lastErr.Error())
 		return
 	}
 
@@ -137,6 +140,30 @@ func (p *Pipeline) doTranscode(ctx context.Context, task ProcessMessage, dir str
 	p.emitProgress(task.VideoID, task.ManuscriptID, "transcoding", "转码完成", 100, 1, "")
 }
 
+// transcodeWithRetry 按 round-robin 选节点调用 transcoder，失败换下一个，最多 N 次。
+// 返回 (result, lastError): result 非 nil 即成功；lastError 在全部失败时给出原因。
+func (p *Pipeline) transcodeWithRetry(ctx context.Context, req TranscodeRequest) (*TranscodeResult, error) {
+	const maxAttempts = 3
+	var lastErr error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		node, client, perr := p.transcoderPool.Pick(ctx)
+		if perr != nil {
+			return nil, fmt.Errorf("no transcoder available: %w", perr)
+		}
+		log.Printf("transcode attempt=%d node=%s video=%d", attempt, node.Name, req.VideoID)
+		start := time.Now()
+		res, err := client.Transcode(ctx, req)
+		latency := time.Since(start)
+		p.transcoderPool.MarkResult(node.Name, err == nil, latency)
+		if err == nil {
+			return res, nil
+		}
+		lastErr = err
+		log.Printf("transcode node=%s failed: %v, trying next", node.Name, err)
+	}
+	return nil, lastErr
+}
+
 func (p *Pipeline) doExtractAudio(ctx context.Context, task ProcessMessage, dir string) {
 	p.emitProgress(task.VideoID, task.ManuscriptID, "audio", "提取音频", 10, 2, "")
 	sourceKey := sourceKeyFromURL(task.SourceURL)
@@ -144,7 +171,7 @@ func (p *Pipeline) doExtractAudio(ctx context.Context, task ProcessMessage, dir 
 		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "源对象 key 为空", 0, 7, "empty source key")
 		return
 	}
-	_, err := p.transcoderClient.Transcode(ctx, TranscodeRequest{
+	res, err := p.transcodeWithRetry(ctx, TranscodeRequest{
 		Bucket:       "mybilibili",
 		SourceKey:    sourceKey,
 		ManuscriptID: task.ManuscriptID,
@@ -153,6 +180,10 @@ func (p *Pipeline) doExtractAudio(ctx context.Context, task ProcessMessage, dir 
 	})
 	if err != nil {
 		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "音频提取失败", 0, 7, err.Error())
+		return
+	}
+	if res == nil || res.AudioKey == "" {
+		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "音频提取无返回", 0, 7, "no audio key")
 		return
 	}
 	p.emitProgress(task.VideoID, task.ManuscriptID, "audio", "音频提取完成", 100, 2, "")
