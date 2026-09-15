@@ -3,7 +3,7 @@ tmp_dir = "tmp"
 
 [build]
   bin = "./tmp/main"
-  cmd = "cd ai-service && go build -o ../tmp/main ./cmd/ai"
+  cmd = "cd services/ai && go build -o ../../tmp/main ./cmd/ai"
   delay = 1000
   exclude_dir = ["tmp", "vendor", "node_modules"]
   exclude_regex = ["_test.go$"]
