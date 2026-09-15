@@ -10,7 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"mybilibili/embedding/internal/embedding"
+	"mybilibili/embedding_vulkan/internal/embedding"
 )
 
 func main() {
@@ -49,7 +49,7 @@ func main() {
 		server.Close()
 	}()
 
-	log.Printf("embedding service listening on %s", addr)
+	log.Printf("embedding-vulkan service listening on %s", addr)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("http: %v", err)
 	}
