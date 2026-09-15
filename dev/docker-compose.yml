@@ -1,5 +1,5 @@
 # =====================================================================
-#  【开发机】 mybilibili docker compose 编排（ALL-IN-ONE）
+#  【开发机】 mybilibili docker compose 编排（ALL-IN-ONE，全容器化）
 #  适用机器: 开发机（工作站）。生产由部署机 fnos k3s 承担（见 deploy/k3s/）。
 #  一键全起:
 #     docker compose -f dev/docker-compose.yml up -d --build
@@ -8,6 +8,10 @@
 #   - 后端 8 服务: docker provider labels 定义路由
 #   - 前端 web/admin/wap: 容器化运行 dev 进程, 由 traefik 按 path 路由
 #   - 基础设施: pg/redis/minio/nats 同组
+#  端口段（避免多项目冲突）:
+#   基础设施: 15432/16379/14222/19000-19001/11935
+#   后端:     8080/8084/8086-8089/8091 (独立不冲突)
+#   前端:     3100/3200/5174 (独立不冲突)
 # 路由表:
 #   /admin/*            → admin:3100      (Vite SPA)
 #   /wap/*              → wap:5174        (Vite SPA)
@@ -32,6 +36,11 @@ x-go-build: &go-build
   dockerfile: Dockerfile
   target: dev
 
+# Go 缓存 bind mount（复用宿主机现有缓存，不重新下载）
+x-go-cache: &go-cache
+  - /home/a1/go/pkg/mod:/go/pkg/mod
+  - /home/a1/.cache/go-build:/root/.cache/go-build
+
 services:
   # ================= 统一入口 =================
   traefik:
@@ -54,7 +63,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks: [mylib]
 
-  # ================= 基础设施 =================
+  # ================= 基础设施（端口避开其他项目）=================
   pg16:
     image: pg16-zhparser
     container_name: pg16-zhparser
@@ -64,7 +73,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: mybilibili
     ports:
-      - "5432:5432"
+      - "15432:5432"
     volumes:
       - pg16-data:/var/lib/postgresql/data
       - ../sql:/docker-entrypoint-initdb.d:ro
@@ -76,7 +85,7 @@ services:
     restart: no
     command: ["redis-server", "--save", ""]
     ports:
-      - "6379:6379"
+      - "16379:6379"
     volumes:
       - redis-data:/data
     networks: [mylib]
@@ -90,8 +99,8 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "19000:9000"
+      - "19001:9001"
     volumes:
       - minio-data:/data
     networks: [mylib]
@@ -102,8 +111,8 @@ services:
     restart: no
     command: ["-js", "--store_dir=/data"]
     ports:
-      - "4222:4222"
-      - "8222:8222"
+      - "14222:4222"
+      - "18222:8222"
     volumes:
       - nats-data:/data
     networks: [mylib]
@@ -114,17 +123,17 @@ services:
     restart: no
     command: ["./objs/srs", "-c", "conf/srs.conf"]
     ports:
-      - "1935:1935"        # RTMP 推流（OBS）
-      - "28080:28080"      # HTTP-FLV 播放
-      - "8000:8000/udp"    # WebRTC UDP 端口
-      - "19854:19854"      # HTTP API / WHIP 推流
+      - "11935:1935"        # RTMP 推流（OBS）
+      - "12808:28080"      # HTTP-FLV 播放
+      - "18000:8000/udp"    # WebRTC UDP 端口
+      - "11985:19854"      # HTTP API / WHIP 推流
     volumes:
       - ./srs/srs.conf:/usr/local/srs/conf/srs.conf:ro
     depends_on:
       live: {condition: service_started}
     networks: [mylib]
 
-  # ================= 后端 8 服务 =================
+  # ================= 后端 8 服务（Go 缓存复用宿主机）=================
   core:
     image: mybilibili-core:dev
     build:
@@ -142,6 +151,8 @@ services:
       - "8080:8080"   # 本地直连 debug（绕过 traefik）
     volumes:
       - ../:/app
+      - /home/a1/go/pkg/mod:/go/pkg/mod
+      - /home/a1/.cache/go-build:/root/.cache/go-build
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.core.entrypoints=web"
@@ -171,6 +182,8 @@ services:
     ports: ["8084:8084"]
     volumes:
       - ../:/app
+      - /home/a1/go/pkg/mod:/go/pkg/mod
+      - /home/a1/.cache/go-build:/root/.cache/go-build
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.search.entrypoints=web"
@@ -197,6 +210,8 @@ services:
     ports: ["8086:8086"]
     volumes:
       - ../:/app
+      - /home/a1/go/pkg/mod:/go/pkg/mod
+      - /home/a1/.cache/go-build:/root/.cache/go-build
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.msg.entrypoints=web"
@@ -223,6 +238,8 @@ services:
     ports: ["8087:8087"]
     volumes:
       - ../:/app
+      - /home/a1/go/pkg/mod:/go/pkg/mod
+      - /home/a1/.cache/go-build:/root/.cache/go-build
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.live.entrypoints=web"
@@ -249,6 +266,8 @@ services:
     ports: ["8088:8088"]
     volumes:
       - ../:/app
+      - /home/a1/go/pkg/mod:/go/pkg/mod
+      - /home/a1/.cache/go-build:/root/.cache/go-build
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.ai.entrypoints=web"
@@ -283,6 +302,8 @@ services:
     volumes:
       - studio-data:/data/studio
       - ../:/app
+      - /home/a1/go/pkg/mod:/go/pkg/mod
+      - /home/a1/.cache/go-build:/root/.cache/go-build
     depends_on:
       pg16: {condition: service_started}
     networks: [mylib]
@@ -307,6 +328,8 @@ services:
       - /tmp/work:size=512M
     volumes:
       - ../services/work/configs/transcoders.yaml:/etc/mybilibili/transcoders.yaml:ro
+      - /home/a1/go/pkg/mod:/go/pkg/mod
+      - /home/a1/.cache/go-build:/root/.cache/go-build
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.work-admin.entrypoints=web"
@@ -334,6 +357,8 @@ services:
     ports: ["8091:8091"]
     volumes:
       - ../:/app
+      - /home/a1/go/pkg/mod:/go/pkg/mod
+      - /home/a1/.cache/go-build:/root/.cache/go-build
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.bili.entrypoints=web"
@@ -357,6 +382,7 @@ services:
       - HOST=0.0.0.0
     volumes:
       - ../web/user:/app
+      - /home/a1/.bun/install/cache:/root/.bun/install/cache
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.web.entrypoints=web"
@@ -376,7 +402,8 @@ services:
     environment:
       - HOST=0.0.0.0
     volumes:
-      - ../web/user:/app
+      - ../web/admin:/app
+      - /home/a1/.bun/install/cache:/root/.bun/install/cache
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.admin.entrypoints=web"
@@ -397,6 +424,7 @@ services:
       - HOST=0.0.0.0
     volumes:
       - ../mobile/wap:/app
+      - /home/a1/.bun/install/cache:/root/.bun/install/cache
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.wap.entrypoints=web"
