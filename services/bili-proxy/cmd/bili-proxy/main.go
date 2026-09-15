@@ -7,8 +7,8 @@ import (
 	"os"
 
 	_ "github.com/lib/pq"
-	"mybilibili/bili-proxy-service/internal/bilibili"
-	"mybilibili/bili-proxy-service/internal/proxy"
+	"mybilibili/bili-proxy/internal/bilibili"
+	"mybilibili/bili-proxy/internal/proxy"
 )
 
 const defaultListen = ":8091"

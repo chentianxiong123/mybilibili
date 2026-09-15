@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"mybilibili/core-service/internal/user"
+	"mybilibili/core/internal/user"
 	"mybilibili/pkg/repository"
 	pb "mybilibili/pkg/pb"
 )

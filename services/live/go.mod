@@ -1,4 +1,4 @@
-module mybilibili/live-service
+module mybilibili/live
 
 go 1.26.5
 

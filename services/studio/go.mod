@@ -1,4 +1,4 @@
-module mybilibili/studio-service
+module mybilibili/studio
 
 go 1.26.5
 

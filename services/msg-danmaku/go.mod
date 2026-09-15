@@ -1,4 +1,4 @@
-module mybilibili/msg-danmaku-service
+module mybilibili/msg-danmaku
 
 go 1.26.5
 

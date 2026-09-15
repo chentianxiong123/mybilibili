@@ -1,4 +1,4 @@
-module mybilibili/ai-service
+module mybilibili/ai
 
 go 1.26.5
 

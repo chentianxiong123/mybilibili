@@ -12,8 +12,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"mybilibili/msg-danmaku-service/internal/danmaku"
-	"mybilibili/msg-danmaku-service/internal/message"
+	"mybilibili/msg-danmaku/internal/danmaku"
+	"mybilibili/msg-danmaku/internal/message"
 	"mybilibili/pkg/auth"
 	pb "mybilibili/pkg/pb"
 )

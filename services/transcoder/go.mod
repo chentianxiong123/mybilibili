@@ -1,4 +1,4 @@
-module mybilibili/transcoder-service
+module mybilibili/transcoder
 
 go 1.26.5
 

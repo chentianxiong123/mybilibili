@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"mybilibili/core-service/internal/user"
+	"mybilibili/core/internal/user"
 	"mybilibili/pkg/auth"
 	"mybilibili/pkg/httputil"
 )

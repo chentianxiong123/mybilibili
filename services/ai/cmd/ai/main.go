@@ -11,8 +11,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"mybilibili/ai-service/internal/ai"
-	"mybilibili/ai-service/internal/subtitle"
+	"mybilibili/ai/internal/ai"
+	"mybilibili/ai/internal/subtitle"
 	"mybilibili/pkg/abstraction"
 	pb "mybilibili/pkg/pb"
 )

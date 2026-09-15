@@ -1,4 +1,4 @@
-module mybilibili/search-service
+module mybilibili/search
 
 go 1.26.5
 

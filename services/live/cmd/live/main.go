@@ -8,7 +8,7 @@ import (
 
 	_ "github.com/lib/pq"
 
-	"mybilibili/live-service/internal/live"
+	"mybilibili/live/internal/live"
 )
 
 func main() {
