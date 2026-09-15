@@ -1,4 +1,4 @@
-module mybilibili/bili-proxy-service
+module mybilibili/bili-proxy
 
 go 1.26.5
 

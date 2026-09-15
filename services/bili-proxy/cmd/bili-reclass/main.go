@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/lib/pq"
-	"mybilibili/bili-proxy-service/internal/importer"
+	"mybilibili/bili-proxy/internal/importer"
 )
 
 func main() {

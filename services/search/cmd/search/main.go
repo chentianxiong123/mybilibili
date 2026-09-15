@@ -16,10 +16,10 @@ import (
 	"mybilibili/pkg/abstraction"
 	"mybilibili/pkg/auth"
 	pb "mybilibili/pkg/pb"
-	"mybilibili/search-service/internal/analytics"
-	"mybilibili/search-service/internal/hot"
-	"mybilibili/search-service/internal/profile"
-	"mybilibili/search-service/internal/search"
+	"mybilibili/search/internal/analytics"
+	"mybilibili/search/internal/hot"
+	"mybilibili/search/internal/profile"
+	"mybilibili/search/internal/search"
 )
 
 func main() {

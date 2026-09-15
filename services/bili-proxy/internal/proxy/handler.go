@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"mybilibili/bili-proxy-service/internal/bilibili"
+	"mybilibili/bili-proxy/internal/bilibili"
 )
 
 const cdnCacheTTL = 5 * time.Minute

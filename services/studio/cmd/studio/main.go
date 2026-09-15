@@ -9,7 +9,7 @@ import (
 
 	_ "github.com/lib/pq"
 
-	"mybilibili/studio-service/internal/studio"
+	"mybilibili/studio/internal/studio"
 )
 
 func main() {

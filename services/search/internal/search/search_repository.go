@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"mybilibili/search-service/internal/hot"
+	"mybilibili/search/internal/hot"
 )
 
 type Repository struct {

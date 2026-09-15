@@ -15,10 +15,10 @@ import (
 	"strconv"
 	"strings"
 
-	"mybilibili/core-service/internal/comment"
-	"mybilibili/core-service/internal/user"
+	"mybilibili/core/internal/comment"
+	"mybilibili/core/internal/user"
 	"mybilibili/pkg/httputil"
-	"mybilibili/core-service/internal/social"
+	"mybilibili/core/internal/social"
 	"mybilibili/pkg/errors"
 	"mybilibili/pkg/imageutil"
 	pb "mybilibili/pkg/pb"

@@ -1,4 +1,4 @@
-module mybilibili/core-service
+module mybilibili/core
 
 go 1.26.5
 

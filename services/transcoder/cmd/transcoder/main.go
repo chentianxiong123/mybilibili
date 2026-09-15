@@ -10,7 +10,7 @@ import (
 	"syscall"
 
 	"mybilibili/pkg/abstraction"
-	"mybilibili/transcoder-service/internal/transcoder"
+	"mybilibili/transcoder/internal/transcoder"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module mybilibili/work-service
+module mybilibili/work
 
 go 1.26.5
 

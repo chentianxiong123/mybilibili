@@ -12,7 +12,7 @@ import (
 
 	_ "github.com/lib/pq"
 	"mybilibili/pkg/abstraction"
-	"mybilibili/work-service/internal/work"
+	"mybilibili/work/internal/work"
 )
 
 func main() {

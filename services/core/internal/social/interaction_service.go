@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"mybilibili/core-service/internal/events"
+	"mybilibili/core/internal/events"
 	"mybilibili/pkg/errors"
 	"mybilibili/pkg/repository"
 	pb "mybilibili/pkg/pb"

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"mybilibili/core-service/internal/user"
+	"mybilibili/core/internal/user"
 	"mybilibili/pkg/abstraction"
 	"mybilibili/pkg/errors"
 	"mybilibili/pkg/repository"

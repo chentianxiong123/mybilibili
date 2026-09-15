@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"mybilibili/bili-proxy-service/internal/bilibili"
+	"mybilibili/bili-proxy/internal/bilibili"
 )
 
 var bvRe = regexp.MustCompile(`BV[0-9A-Za-z]{10}`)

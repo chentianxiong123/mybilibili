@@ -13,7 +13,7 @@ import (
 	"mybilibili/pkg/httputil"
 	pb "mybilibili/pkg/pb"
 
-	"mybilibili/core-service/internal/user"
+	"mybilibili/core/internal/user"
 )
 
 // PublicAPIHandler 提供评论的公开 HTTP JSON 端点（Flutter App 与 web-ts 直接消费），
