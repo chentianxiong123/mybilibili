@@ -7,4 +7,4 @@ require (
 	mybilibili/pkg v0.0.0
 )
 
-replace mybilibili/pkg => ../../pkg
+replace mybilibili/pkg => ../../shared/pkg

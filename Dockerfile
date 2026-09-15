@@ -24,11 +24,11 @@ ENV GOSUMDB=off
 
 WORKDIR /build
 # 先拷依赖清单利用缓存
-COPY pkg/go.mod pkg/go.sum* ./pkg/
+COPY shared/pkg/go.mod shared/pkg/go.sum* ./shared/pkg/
 COPY services/${SERVICE}/go.mod services/${SERVICE}/go.sum* ./services/${SERVICE}/
 RUN cd services/${SERVICE} && go mod download
 # 拷全部源码
-COPY pkg ./pkg
+COPY shared/pkg ./shared/pkg
 COPY services/${SERVICE} ./services/${SERVICE}/
 # 编译：CMD_DIR 默认与 SERVICE 相同
 RUN DIR="${CMD_DIR:-${SERVICE}}" \
@@ -45,7 +45,7 @@ ENV SERVICE=${SERVICE}
 RUN go install github.com/air-verse/air@latest
 
 WORKDIR /app
-COPY pkg ./pkg
+COPY shared/pkg ./shared/pkg
 COPY services/${SERVICE} ./services/${SERVICE}/
 COPY entrypoint-dev.sh /usr/local/bin/entrypoint-dev.sh
 RUN chmod +x /usr/local/bin/entrypoint-dev.sh
