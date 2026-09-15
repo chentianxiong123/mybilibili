@@ -8,4 +8,4 @@ require (
 	mybilibili/pkg v0.0.0-00010101000000-000000000000
 )
 
-replace mybilibili/pkg => ../../pkg
+replace mybilibili/pkg => ../../shared/pkg

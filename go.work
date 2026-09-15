@@ -10,5 +10,5 @@ use (
 	./services/studio
 	./services/bili-proxy
 	./services/transcoder
-	./shared/go
+	./shared/pkg
 )

@@ -35,4 +35,4 @@ require (
 	gopkg.in/ini.v1 v1.67.2 // indirect
 )
 
-replace mybilibili/pkg => ../../pkg
+replace mybilibili/pkg => ../../shared/pkg
