@@ -72,13 +72,74 @@ func (g *WhisperGenerator) GenerateFromAudio(ctx context.Context, manuscriptID, 
 	return id, cues, nil
 }
 
-// callWhisperAPI 请求 Cloudflare Workers AI 的 whisper 转写接口。
-// 未配置 CLOUDFLARE_AI_ACCOUNT_ID / CLOUDFLARE_AI_API_TOKEN 时返回占位 cue（便于无密钥环境跑通链路）。
+// callWhisperAPI 根据环境变量选择 whisper 后端：
+//   - WHISPER_API_URL: OpenAI 兼容端点（cf-whisper-worker / 本地 whisper 等）
+//   - CLOUDFLARE_AI_ACCOUNT_ID + CLOUDFLARE_AI_API_TOKEN: Cloudflare Workers AI 直连
+//   - 都没配置: 返回占位 cue（便于无密钥环境跑通链路）
 func callWhisperAPI(ctx context.Context, audioData []byte, httpc *http.Client) ([]map[string]interface{}, error) {
-	accountID := os.Getenv("CLOUDFLARE_AI_ACCOUNT_ID")
-	apiToken := os.Getenv("CLOUDFLARE_AI_API_TOKEN")
+	if apiURL := os.Getenv("WHISPER_API_URL"); apiURL != "" {
+		return callWhisperOpenAI(ctx, audioData, httpc, apiURL)
+	}
+	if accountID := os.Getenv("CLOUDFLARE_AI_ACCOUNT_ID"); accountID != "" {
+		return callWhisperCloudflare(ctx, audioData, httpc, accountID, os.Getenv("CLOUDFLARE_AI_API_TOKEN"))
+	}
+	return []map[string]interface{}{
+		{"index": 1, "startTime": 0.0, "endTime": 1.0, "text": "..."},
+	}, nil
+}
 
-	if accountID == "" || apiToken == "" {
+// callWhisperOpenAI 调用 OpenAI 兼容的 /v1/audio/transcriptions 端点。
+// 兼容 cf-whisper-worker、本地 faster-whisper-server 等。
+func callWhisperOpenAI(ctx context.Context, audioData []byte, httpc *http.Client, apiURL string) ([]map[string]interface{}, error) {
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	fw, err := w.CreateFormFile("file", "audio.mp3")
+	if err != nil {
+		return nil, fmt.Errorf("create form file: %w", err)
+	}
+	if _, err := fw.Write(audioData); err != nil {
+		return nil, fmt.Errorf("write audio data: %w", err)
+	}
+	w.WriteField("model", "whisper-1")
+	w.Close()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, &buf)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+
+	resp, err := httpc.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("api request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("whisper api status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("parse response: %w", err)
+	}
+
+	text := strings.TrimSpace(result.Text)
+	if text == "" {
+		return nil, fmt.Errorf("whisper returned empty text")
+	}
+
+	return []map[string]interface{}{
+		{"index": 1, "startTime": 0.0, "endTime": 0.0, "text": text},
+	}, nil
+}
+
+// callWhisperCloudflare 直连 Cloudflare Workers AI 的 whisper 接口。
+func callWhisperCloudflare(ctx context.Context, audioData []byte, httpc *http.Client, accountID, apiToken string) ([]map[string]interface{}, error) {
+	if apiToken == "" {
 		return []map[string]interface{}{
 			{"index": 1, "startTime": 0.0, "endTime": 1.0, "text": "..."},
 		}, nil
