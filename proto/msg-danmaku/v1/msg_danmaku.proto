@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package core.v1;
+package msg_danmaku.v1;
 
 option go_package = "mybilibili/pkg/pb";
 
