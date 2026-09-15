@@ -3,7 +3,7 @@ tmp_dir = "tmp"
 
 [build]
   bin = "./tmp/main"
-  cmd = "cd services/ai && go build -o ../../tmp/main ./cmd/ai"
+  cmd = "cd services/bili-proxy && go build -buildvcs=false -o ../../tmp/main ./cmd/bili-proxy"
   delay = 1000
   exclude_dir = ["tmp", "vendor", "node_modules"]
   exclude_regex = ["_test.go$"]
