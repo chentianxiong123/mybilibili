@@ -29,53 +29,33 @@ export REDIS_ADDR="${REDIS_ADDR:-localhost:6379}"
 export BILI_SESSDATA="${BILI_SESSDATA:-}"
 export BILI_PROXY_ADDR="${BILI_PROXY_ADDR:-http://127.0.0.1:8091}"
 
+# 编译产物输出目录: 默认 ./bin (相对 repo root), 与 scripts/build.sh 一致.
+# 覆盖: BIN_DIR=/usr/local/bin scripts/backend.sh start
+BIN_DIR="${BIN_DIR:-$ROOT/bin}"
+
 SERVICES="core search msg-danmaku live ai studio work bili transcoder"
 
 bin_of() {
     case "$1" in
-        core)       echo /tmp/mybilibili-core ;;
-        search)     echo /tmp/mybilibili-search ;;
-        msg-danmaku) echo /tmp/mybilibili-msg-danmaku ;;
-        live)       echo /tmp/mybilibili-live ;;
-        ai)         echo /tmp/mybilibili-ai ;;
-        studio)     echo /tmp/mybilibili-studio ;;
-        work)       echo /tmp/mybilibili-work ;;
-        # transcoder: 实际二进制按 host 硬件自动选（缓存一次）
-        transcoder)
-            if [ -z "$TRANSCODER_BIN" ]; then
-                TRANSCODER_VARIANT=$(pick_transcoder_bin)
-                case "$TRANSCODER_VARIANT" in
-                    nvenc) TRANSCODER_BIN=/tmp/mybilibili-transcoder-nvenc ;;
-                    vaapi) TRANSCODER_BIN=/tmp/mybilibili-transcoder-vaapi ;;
-                    *)     TRANSCODER_BIN=/tmp/mybilibili-transcoder ;;
-                esac
-            fi
-            echo "$TRANSCODER_BIN"
-            ;;
-        bili)       echo /tmp/mybilibili-bili ;;
+        core)        echo "$BIN_DIR/mybilibili-core" ;;
+        search)      echo "$BIN_DIR/mybilibili-search" ;;
+        msg-danmaku) echo "$BIN_DIR/mybilibili-msg-danmaku" ;;
+        live)        echo "$BIN_DIR/mybilibili-live" ;;
+        ai)          echo "$BIN_DIR/mybilibili-ai" ;;
+        studio)      echo "$BIN_DIR/mybilibili-studio" ;;
+        work)        echo "$BIN_DIR/mybilibili-work" ;;
+        # transcoder 默认软编版. 想用 NVENC/VAAPI 自行:
+        #   scripts/build.sh transcoder          (编全部 3 个变体)
+        #   BIN_DIR=/opt/tx scripts/build.sh transcoder
+        # 然后把新二进制软链/复制到 $BIN_DIR/mybilibili-transcoder-nvenc / -vaapi,
+        # work 的 transcoders.yaml 里通过 addr 字段接进来 (配置驱动).
+        transcoder)  echo "$BIN_DIR/mybilibili-transcoder" ;;
+        bili)        echo "$BIN_DIR/mybilibili-bili" ;;
     esac
 }
 
-# 自动检测 transcoder 硬件加速变体
-#   优先级: NVIDIA(NVENC) > AMD/Intel(VAAPI) > 软编 fallback
-#   由机器实际硬件 + 已编译的二进制决定，单机开发一条命令拉起
-pick_transcoder_bin() {
-    # 1) NVIDIA: nvidia-smi 在 + lspci 看到 NVIDIA 设备 + NVENC 二进制已编
-    if command -v nvidia-smi >/dev/null 2>&1 \
-       && lspci 2>/dev/null | grep -qi 'nvidia' \
-       && [ -x /tmp/mybilibili-transcoder-nvenc ]; then
-        echo "nvenc"
-        return
-    fi
-    # 2) VAAPI: /dev/dri/renderD128 存在 (Intel/AMD) + VAAPI 二进制已编
-    if [ -e /dev/dri/renderD128 ] \
-       && [ -x /tmp/mybilibili-transcoder-vaapi ]; then
-        echo "vaapi"
-        return
-    fi
-    # 3) 软编 fallback
-    echo "soft"
-}
+# 兼容别名: 早期 pick_transcoder_bin 函数被撤销 (用户要求靠配置, 不靠脚本自动探测)
+pick_transcoder_bin() { echo "soft"; }
 
 infra_up() {
     docker network inspect mylib >/dev/null 2>&1 || docker network create mylib
@@ -98,8 +78,8 @@ migrate() {
 start() {
     infra_up
     [ "${1:-}" = "--migrate" ] && migrate
-    echo "== 编译 =="
-    make -s -C "$GO_DIR" build || exit 1
+    echo "== 编译 (BIN_DIR=$BIN_DIR) =="
+    BIN_DIR="$BIN_DIR" "$ROOT/scripts/build.sh" || exit 1
     echo "== 启动服务 =="
     : > "$PID_FILE"
     for s in $SERVICES; do
@@ -109,14 +89,13 @@ start() {
         bin=$(bin_of "$s")
         case "$s" in
             transcoder)
-                # transcoder 裸跑宿主机: 用系统 ffmpeg + 硬件加速变体(由 pick_transcoder_bin 决定)
+                # transcoder 裸跑宿主机: 用系统 ffmpeg; 默认软编. NVENC/VAAPI 由 work 端 transcoders.yaml 配置驱动.
                 if [ ! -x "$bin" ]; then
                     echo "  ! transcoder 二进制不存在: $bin"
-                    echo "    编译: make -C mybilibili-go build-transcoder   (或 -vaapi / -nvenc)"
-                    echo "    当前 host 硬件能力: $(pick_transcoder_bin 2>/dev/null || echo unknown)"
+                    echo "    编译: scripts/build.sh transcoder   (或直接 make -C mybilibili-go build-transcoder-soft/vaapi/nvenc)"
                     continue
                 fi
-                echo "  transcoder 硬件加速: $TRANSCODER_VARIANT ($bin)"
+                echo "  transcoder (软编) $bin"
                 HTTP_ADDR=:8092 \
                 MINIO_ENDPOINT="${MINIO_ENDPOINT:-127.0.0.1:9000}" \
                 nohup "$bin" >> "$LOG_DIR/$s.log" 2>&1 &

@@ -1,0 +1,31 @@
+# mybilibili-go 通用 ignore 规则
+#
+# 设计原则:
+#   - 主防线: Makefile 强制 BIN=./bin (可覆盖), scripts/build.sh 兜底
+#   - 兜底: 标准 Go 后缀规则, 与服务名/路径无关, 任何 service 适用
+#   - 工具: make clean-source 清理源码目录里的 in-source build 残留
+#
+# ⚠️ 子目录 .gitignore 的 path 相对本文件所在目录算, 不要再加 mybilibili-go/ 前缀.
+# ⚠️ 严禁裸名规则 (如 core-service), 会误忽略同名源码目录 — 这是历史 bug.
+#    根 .gitignore 已用 /bin/ 一行覆盖所有编译产物.
+
+# 标准 Go 编译产物 (按后缀, 与服务名/路径无关)
+*.exe
+*.test
+*.out
+
+# Go 测试/覆盖率/性能分析产物
+coverage.out
+coverage.html
+*.prof
+*.pprof
+
+# build 工具输出
+build-errors.log
+*.log.tmp
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
