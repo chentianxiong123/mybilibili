@@ -28,7 +28,7 @@
 
 # 统一 Go 构建配置: 所有服务共用 mybilibili-go/Dockerfile, 通过 SERVICE build-arg 区分。
 x-go-build: &go-build
-  context: ../mybilibili-go
+  context: ..
   dockerfile: Dockerfile
   target: dev
 
@@ -67,7 +67,7 @@ services:
       - "5432:5432"
     volumes:
       - pg16-data:/var/lib/postgresql/data
-      - ../mybilibili-go/sql:/docker-entrypoint-initdb.d:ro
+      - ../sql:/docker-entrypoint-initdb.d:ro
     networks: [mylib]
 
   mybilibili-redis:
@@ -130,18 +130,18 @@ services:
     build:
       <<: *go-build
       args:
-        SERVICE: core-service
+        SERVICE: core
     container_name: mybilibili-core
     restart: no
     env_file: ["_env/common.env", "_env/dev.env", ".env"]
     environment:
       - HTTP_ADDR=:8080
       - GRPC_ADDR=:9090
-      - SERVICE=core-service
+      - SERVICE=core
     ports:
       - "8080:8080"   # 本地直连 debug（绕过 traefik）
     volumes:
-      - ../mybilibili-go:/app
+      - ../:/app
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.core.entrypoints=web"
@@ -160,17 +160,17 @@ services:
     build:
       <<: *go-build
       args:
-        SERVICE: search-service
+        SERVICE: search
     container_name: mybilibili-search
     restart: no
     env_file: ["_env/common.env", "_env/dev.env", ".env"]
     environment:
       - HTTP_ADDR=:8084
       - GRPC_ADDR=:9084
-      - SERVICE=search-service
+      - SERVICE=search
     ports: ["8084:8084"]
     volumes:
-      - ../mybilibili-go:/app
+      - ../:/app
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.search.entrypoints=web"
@@ -186,17 +186,17 @@ services:
     build:
       <<: *go-build
       args:
-        SERVICE: msg-danmaku-service
+        SERVICE: msg-danmaku
     container_name: mybilibili-msg-danmaku
     restart: no
     env_file: ["_env/common.env", "_env/dev.env", ".env"]
     environment:
       - HTTP_ADDR=:8086
       - GRPC_ADDR=:9086
-      - SERVICE=msg-danmaku-service
+      - SERVICE=msg-danmaku
     ports: ["8086:8086"]
     volumes:
-      - ../mybilibili-go:/app
+      - ../:/app
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.msg.entrypoints=web"
@@ -213,16 +213,16 @@ services:
     build:
       <<: *go-build
       args:
-        SERVICE: live-service
+        SERVICE: live
     container_name: mybilibili-live
     restart: no
     env_file: ["_env/common.env", "_env/dev.env", ".env"]
     environment:
       - HTTP_ADDR=:8087
-      - SERVICE=live-service
+      - SERVICE=live
     ports: ["8087:8087"]
     volumes:
-      - ../mybilibili-go:/app
+      - ../:/app
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.live.entrypoints=web"
@@ -238,17 +238,17 @@ services:
     build:
       <<: *go-build
       args:
-        SERVICE: ai-service
+        SERVICE: ai
     container_name: mybilibili-ai
     restart: no
     env_file: ["_env/common.env", "_env/dev.env", ".env"]
     environment:
       - HTTP_ADDR=:8088
       - GRPC_ADDR=:9088
-      - SERVICE=ai-service
+      - SERVICE=ai
     ports: ["8088:8088"]
     volumes:
-      - ../mybilibili-go:/app
+      - ../:/app
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.ai.entrypoints=web"
@@ -265,14 +265,14 @@ services:
     build:
       <<: *go-build
       args:
-        SERVICE: studio-service
+        SERVICE: studio
     container_name: mybilibili-studio
     restart: no
     env_file: ["_env/common.env", "_env/dev.env", ".env"]
     environment:
       - HTTP_ADDR=:8089
       - DATA_DIR=/data/studio
-      - SERVICE=studio-service
+      - SERVICE=studio
     ports: ["8089:8089"]
     labels:
       - "traefik.enable=true"
@@ -282,7 +282,7 @@ services:
       - "traefik.http.routers.studio.priority=10"
     volumes:
       - studio-data:/data/studio
-      - ../mybilibili-go:/app
+      - ../:/app
     depends_on:
       pg16: {condition: service_started}
     networks: [mylib]
@@ -292,7 +292,7 @@ services:
     build:
       <<: *go-build
       args:
-        SERVICE: work-service
+        SERVICE: work
     container_name: mybilibili-work
     restart: no
     env_file: ["_env/common.env", "_env/dev.env", ".env"]
@@ -306,7 +306,7 @@ services:
     tmpfs:
       - /tmp/work:size=512M
     volumes:
-      - ../mybilibili-go/work-service/configs/transcoders.yaml:/etc/mybilibili/transcoders.yaml:ro
+      - ../services/work/configs/transcoders.yaml:/etc/mybilibili/transcoders.yaml:ro
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.work-admin.entrypoints=web"
@@ -324,16 +324,16 @@ services:
     build:
       <<: *go-build
       args:
-        SERVICE: bili-proxy-service
+        SERVICE: bili-proxy
     container_name: mybilibili-bili
     restart: no
     env_file: ["_env/common.env", "_env/dev.env", ".env"]
     environment:
       - LISTEN=:8091
-      - SERVICE=bili-proxy-service
+      - SERVICE=bili-proxy
     ports: ["8091:8091"]
     volumes:
-      - ../mybilibili-go:/app
+      - ../:/app
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.bili.entrypoints=web"

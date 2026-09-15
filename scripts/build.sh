@@ -18,7 +18,7 @@
 
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-GO_DIR="$ROOT/mybilibili-go"
+GO_DIR="$ROOT"
 BIN_DIR="${BIN_DIR:-./bin}"
 
 cmd="${1:-build}"

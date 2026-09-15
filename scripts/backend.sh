@@ -14,7 +14,7 @@ set -u
 cd "$(dirname "$0")/.."
 
 ROOT="$PWD"
-GO_DIR="$ROOT/mybilibili-go"
+GO_DIR="$ROOT"
 LOG_DIR="/tmp/mybilibili-logs"
 PID_FILE="$LOG_DIR/pids"
 mkdir -p "$LOG_DIR"
@@ -92,7 +92,7 @@ start() {
                 # transcoder 裸跑宿主机: 用系统 ffmpeg; 默认软编. NVENC/VAAPI 由 work 端 transcoders.yaml 配置驱动.
                 if [ ! -x "$bin" ]; then
                     echo "  ! transcoder 二进制不存在: $bin"
-                    echo "    编译: scripts/build.sh transcoder   (或直接 make -C mybilibili-go build-transcoder-soft/vaapi/nvenc)"
+                    echo "    编译: scripts/build.sh transcoder   (或直接 make -C . build-transcoder-soft/vaapi/nvenc)"
                     continue
                 fi
                 echo "  transcoder (软编) $bin"
