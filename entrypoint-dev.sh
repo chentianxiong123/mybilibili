@@ -40,8 +40,12 @@ tmp_dir = "tmp"
   clear_on_rebuild = false
 EOF
 
-# 用 sed 替换 cmd 中的占位符
-sed -i "s|PLACEHOLDER_CMD|cd services/${SERVICE} \&\& go build -buildvcs=false -o ../../tmp/main ./cmd/${CMD_DIR}|" /app/.air.toml
+# 用 sed 替换 cmd 中的占位符（支持 services/ 和 external/ 目录）
+if [ -d "/app/external/${SERVICE}" ]; then
+  sed -i "s|PLACEHOLDER_CMD|cd external/${SERVICE} \&\& go build -buildvcs=false -o ../../tmp/main ./cmd/${CMD_DIR}|" /app/.air.toml
+else
+  sed -i "s|PLACEHOLDER_CMD|cd services/${SERVICE} \&\& go build -buildvcs=false -o ../../tmp/main ./cmd/${CMD_DIR}|" /app/.air.toml
+fi
 
 echo "▶ Starting air for ${SERVICE} (cmd: ${CMD_DIR})"
 exec air -c /app/.air.toml
