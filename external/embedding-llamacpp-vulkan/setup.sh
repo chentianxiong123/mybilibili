@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 拉取并编译 llama.cpp (Vulkan 后端, AMD RX580/RX590)
-# 用法: external/embedding-vulkan/setup.sh
+# 用法: external/embedding-llamacpp-vulkan/setup.sh
 set -euo pipefail
 
 REPO_URL="https://github.com/chentianxiong123/llama.cpp-lora-embed.git"
