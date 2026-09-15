@@ -4,7 +4,8 @@
 set -u
 cd "$(dirname "$0")/.."
 
-FRONT="$PWD/mybilibili-front"
+WEB_DIR="$PWD/web/user"
+ADMIN_DIR="$PWD/web/admin"
 LOG_DIR="/tmp/mybilibili-logs"
 PID_FILE="$LOG_DIR/front-pids"
 mkdir -p "$LOG_DIR"
@@ -12,19 +13,26 @@ mkdir -p "$LOG_DIR"
 APPS="web admin"   # web=Nuxt:3200  admin=Vite:3100
 
 port_of() { case "$1" in web) echo 3200 ;; admin) echo 3100 ;; esac; }
+dir_of() { case "$1" in web) echo "$WEB_DIR" ;; admin) echo "$ADMIN_DIR" ;; esac; }
 
 start_one() {
     app="$1"
     if kill -0 "$(awk -F= -v n="$app" '$1==n{print $2}' "$PID_FILE" 2>/dev/null)" 2>/dev/null; then
         echo "  $app 已在运行"; return
     fi
-    (cd "$FRONT" && nohup pnpm --filter "@mybilibili/$app" dev \
+    local dir
+    dir="$(dir_of "$app")"
+    (cd "$dir" && nohup bun run dev \
         >> "$LOG_DIR/front-$app.log" 2>&1 & echo "$app=$!" >> "$PID_FILE")
     echo "  $app pid=$! port=$(port_of "$app") log=$LOG_DIR/front-$app.log"
 }
 
 start() {
-    [ -d "$FRONT/node_modules" ] || { echo "== pnpm install =="; (cd "$FRONT" && pnpm install); }
+    for app in ${1:-$APPS}; do
+        local dir
+        dir="$(dir_of "$app")"
+        [ -d "$dir/node_modules" ] || { echo "== bun install ($app) =="; (cd "$dir" && bun install); }
+    done
     : > "$PID_FILE"
     for app in ${1:-$APPS}; do start_one "$app"; done
     sleep 3

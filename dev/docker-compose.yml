@@ -26,7 +26,7 @@
 #   /ws/*               → live:8087
 #   /                   → web:3200       (Nuxt SSR, default catch-all)
 
-# 统一 Go 构建配置: 所有服务共用 mybilibili-go/Dockerfile, 通过 SERVICE build-arg 区分。
+# 统一 Go 构建配置: 所有服务共用根目录 Dockerfile, 通过 SERVICE build-arg 区分。
 x-go-build: &go-build
   context: ..
   dockerfile: Dockerfile
@@ -345,18 +345,18 @@ services:
     networks: [mylib]
 
   # ================= 前端 3 服务（容器化 dev，挂源码 + HMR）================
-  # 改代码: 编辑宿主 ./mybilibili-front 或 ./mybilibili-wap → 容器 volume 同步 → Vite/Nuxt HMR 自动刷新
+  # 改代码: 编辑宿主 ./web/user、./web/admin 或 ./mobile/wap → 容器 volume 同步 → Vite/Nuxt HMR 自动刷新
   web:
     image: oven/bun:1-alpine
     container_name: mybilibili-web
     restart: no
-    working_dir: /app/apps/web
+    working_dir: /app
     command: ["sh", "-c", "test -d node_modules || bun install; bun run dev"]
     environment:
       - NITRO_PORT=3200
       - HOST=0.0.0.0
     volumes:
-      - ../mybilibili-front:/app
+      - ../web/user:/app
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.web.entrypoints=web"
@@ -371,12 +371,12 @@ services:
     image: oven/bun:1-alpine
     container_name: mybilibili-admin
     restart: no
-    working_dir: /app/apps/admin
+    working_dir: /app
     command: ["sh", "-c", "test -d node_modules || bun install; bun run dev"]
     environment:
       - HOST=0.0.0.0
     volumes:
-      - ../mybilibili-front:/app
+      - ../web/user:/app
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.admin.entrypoints=web"
@@ -396,7 +396,7 @@ services:
     environment:
       - HOST=0.0.0.0
     volumes:
-      - ../mybilibili-wap:/app
+      - ../mobile/wap:/app
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.wap.entrypoints=web"

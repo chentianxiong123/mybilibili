@@ -10,8 +10,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'mybilibili-go/**'
-      - 'mybilibili-front/**'
+      - 'services/**'
+      - 'shared/**'
+      - 'proto/**'
+      - 'web/**'
+      - 'Dockerfile'
       - '.github/workflows/ci.yml'
   workflow_dispatch:
     inputs:
@@ -32,25 +35,22 @@ jobs:
   # ---------- 静态检查 + 编译（门禁，失败则不构建镜像） ----------
   test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mybilibili-go
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: mybilibili-go/go.work
+          go-version-file: go.work
 
       - name: go vet（逐模块）
         run: |
-          for d in */ ; do
+          for d in services/*/ ; do
             [ -f "$d/go.mod" ] && (cd "$d" && echo "vet $d" && go vet ./...)
           done
 
       - name: go build（逐模块）
         run: |
-          for d in */ ; do
+          for d in services/*/ ; do
             [ -f "$d/go.mod" ] && (cd "$d" && echo "build $d" && go build ./...)
           done
 
@@ -62,15 +62,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {service: core-service,          name: core,        target: runtime}
-          - {service: search-service,         name: search,      target: runtime}
-          - {service: msg-danmaku-service,    name: msg-danmaku, target: runtime}
-          - {service: live-service,           name: live,        target: runtime}
-          - {service: ai-service,            name: ai,          target: runtime}
-          - {service: studio-service,         name: studio,      target: runtime}
-          - {service: work-service,          name: work,        target: runtime}
+          - {service: core,          name: core,        target: runtime}
+          - {service: search,        name: search,      target: runtime}
+          - {service: msg-danmaku,   name: msg-danmaku, target: runtime}
+          - {service: live,          name: live,        target: runtime}
+          - {service: ai,            name: ai,          target: runtime}
+          - {service: studio,        name: studio,      target: runtime}
+          - {service: work,          name: work,        target: runtime}
           # transcoder 不做容器（裸跑宿主机用系统 ffmpeg），不建镜像
-          - {service: bili-proxy-service,    name: bili,        target: runtime}
+          - {service: bili-proxy,    name: bili,        target: runtime}
     steps:
       - uses: actions/checkout@v4
 
@@ -87,8 +87,8 @@ jobs:
       - name: Build and push ${{ matrix.name }}
         uses: docker/build-push-action@v6
         with:
-          context: ./mybilibili-go
-          file: ./mybilibili-go/Dockerfile
+          context: .
+          file: ./Dockerfile
           build-args: |
             SERVICE=${{ matrix.service }}
           target: ${{ matrix.target }}
@@ -107,8 +107,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {name: web,    dir: mybilibili-front/apps/web,    context: mybilibili-front,  port: 3200}
-          - {name: admin,  dir: mybilibili-front/apps/admin,  context: mybilibili-front,  port: 3100}
+          - {name: web,    context: web/user,   port: 3200}
+          - {name: admin,  context: web/admin,   port: 3100}
     steps:
       - uses: actions/checkout@v4
 
@@ -126,11 +126,10 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./${{ matrix.context }}
-          file: ./${{ matrix.dir }}/Dockerfile
+          file: ./${{ matrix.context }}/Dockerfile
           push: true
           tags: |
             ${{ env.IMAGE_PREFIX }}/${{ matrix.name }}:latest
             ${{ env.IMAGE_PREFIX }}/${{ matrix.name }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
