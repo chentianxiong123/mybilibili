@@ -7,11 +7,12 @@ require (
 	github.com/lib/pq v1.12.3
 	google.golang.org/grpc v1.83.0
 	google.golang.org/protobuf v1.36.11
+	github.com/stretchr/testify v1.11.1
 	mybilibili/pkg v0.0.0
 )
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.5.2 // indirect
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/nats-io/nats.go v1.53.1 // indirect
 	github.com/nats-io/nkeys v0.4.15 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
