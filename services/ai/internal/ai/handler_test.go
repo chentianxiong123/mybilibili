@@ -154,6 +154,21 @@ func TestHandleConfigs_200(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestHandleSummary_400(t *testing.T) {
+	h, _ := newTestHandler(t)
+	h.WithSummary(NewSummaryService(&mockCaller{summary: "摘要内容"}))
+
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	// 缺少 video_id → 400
+	rr := doAI(t, mux, http.MethodPost, "/api/v1/ai/summary/generate", `{"manuscript_id":1}`)
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+	var resp map[string]interface{}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, float64(400), resp["code"])
+}
+
 func TestHandleSkills_200(t *testing.T) {
 	h, mock := newTestHandler(t)
 
