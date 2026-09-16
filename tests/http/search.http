@@ -1,0 +1,18 @@
+### ============================================
+### Search Service - HTTP Smoke Tests
+### ============================================
+
+### 健康检查
+GET http://localhost:8084/health
+
+### 搜索视频
+GET http://localhost:8084/api/v1/search/videos?keyword=test&page=1&pageSize=5
+
+### 搜索用户
+GET http://localhost:8084/api/v1/search/users?keyword=test&page=1&pageSize=5
+
+### 搜索建议
+GET http://localhost:8084/api/v1/search/suggest?keyword=te
+
+### 热搜列表
+GET http://localhost:8084/api/v1/search/hot

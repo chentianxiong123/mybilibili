@@ -1,0 +1,70 @@
+### ============================================
+### Core Service - HTTP Smoke Tests
+### 使用方式: 在 IntelliJ/WebStorm 中逐请求运行
+### ============================================
+
+### 健康检查
+GET http://localhost:8080/api/v1/health
+
+### ---------- 注册 ----------
+### 正常注册
+POST http://localhost:8080/api/v1/user/register
+Content-Type: application/json
+
+{
+  "username": "smoke_test_{{$timestamp}}",
+  "password": "Test1234",
+  "nickname": "smoke"
+}
+
+### 重复注册（应返回 409）
+POST http://localhost:8080/api/v1/user/register
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "Test1234"
+}
+
+### ---------- 登录 ----------
+### 正确登录
+POST http://localhost:8080/api/v1/user/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+### 错误密码（应返回 401）
+POST http://localhost:8080/api/v1/user/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "wrongpassword"
+}
+
+### ---------- 用户信息 ----------
+### 获取当前用户（需要 token）
+GET http://localhost:8080/api/v1/user/me
+Authorization: Bearer {{$dotenv TOKEN}}
+
+### 获取指定用户
+GET http://localhost:8080/api/v1/user/1
+
+### ---------- 视频 ----------
+### 推荐视频
+GET http://localhost:8080/api/v1/video/random/visitor
+
+### 分类列表
+GET http://localhost:8080/api/v1/category
+
+### ---------- Token 刷新 ----------
+### 刷新 token
+POST http://localhost:8080/api/v1/user/token/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{$dotenv REFRESH_TOKEN}}"
+}
