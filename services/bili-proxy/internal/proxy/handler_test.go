@@ -5,7 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHandleHealth_200(t *testing.T) {
@@ -35,27 +37,22 @@ func TestHandleResolve_400_InvalidID(t *testing.T) {
 }
 
 func TestHandleResolve_404_NotFound(t *testing.T) {
-	h := NewHandler(nil, nil)
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+	require.NoError(t, err)
+	defer db.Close()
+
+	h := NewHandler(db, nil)
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	// 没有 db 时 loadVideo 会 panic, 但 resolve 在传入 db=nil 时会 panic
-	// 这里用一个 mock db 避免 panic
-	// 实际 bili-proxy 需要 sql.DB, 这里只测 health 端
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/bili/resolve/0", nil)
+	// loadVideo: SELECT v.id ... WHERE v.id = $1 → no rows
+	mock.ExpectQuery(`SELECT v.id`).WillReturnRows(sqlmock.NewRows([]string{"id", "cid"}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/bili/resolve/1", nil)
 	rec := httptest.NewRecorder()
-	// 没有 db, panic 了, 用 recover 包装
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				rec.Code = http.StatusNotFound
-				rec.Body.Reset()
-				rec.Body.WriteString(`{"code":404,"message":"not found"}`)
-			}
-		}()
-		mux.ServeHTTP(rec, req)
-	}()
-	assert.Contains(t, rec.Body.String(), "not found")
+	mux.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code, "body=%s", rec.Body.String())
 }
 
 func TestHandleStream_400_InvalidID(t *testing.T) {
@@ -69,4 +66,23 @@ func TestHandleStream_400_InvalidID(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	assert.Contains(t, rec.Body.String(), `"code":400`)
+}
+
+func TestHandleStream_404_NotFound(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+	require.NoError(t, err)
+	defer db.Close()
+
+	h := NewHandler(db, nil)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	// loadVideo: video doesn't exist → 404
+	mock.ExpectQuery(`SELECT v.id`).WillReturnRows(sqlmock.NewRows([]string{"id", "cid"}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/bili/stream/1", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code, "body=%s", rec.Body.String())
 }

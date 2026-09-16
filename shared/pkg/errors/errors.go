@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"fmt"
 	"net/http"
 
 	"google.golang.org/grpc/codes"
@@ -10,31 +11,31 @@ import (
 )
 
 func ErrInvalidArgument(msg string) error {
-	return status.Errorf(codes.InvalidArgument, msg)
+	return status.Errorf(codes.InvalidArgument, "%s", msg)
 }
 
 func ErrAlreadyExists(msg string) error {
-	return status.Errorf(codes.AlreadyExists, msg)
+	return status.Errorf(codes.AlreadyExists, "%s", msg)
 }
 
 func ErrNotFound(msg string) error {
-	return status.Errorf(codes.NotFound, msg)
+	return status.Errorf(codes.NotFound, "%s", msg)
 }
 
 func ErrInternal(msg string) error {
-	return status.Errorf(codes.Internal, msg)
+	return status.Errorf(codes.Internal, "%s", msg)
 }
 
 func ErrUnauthenticated(msg string) error {
-	return status.Errorf(codes.Unauthenticated, msg)
+	return status.Errorf(codes.Unauthenticated, "%s", msg)
 }
 
 func ErrPermissionDenied(msg string) error {
-	return status.Errorf(codes.PermissionDenied, msg)
+	return status.Errorf(codes.PermissionDenied, "%s", msg)
 }
 
 func ErrResourceExhausted(msg string) error {
-	return status.Errorf(codes.ResourceExhausted, msg)
+	return status.Errorf(codes.ResourceExhausted, "%s", msg)
 }
 
 func WriteHTTPError(w http.ResponseWriter, err error) {
@@ -60,3 +61,5 @@ func WriteHTTPError(w http.ResponseWriter, err error) {
 	}
 	httputil.WriteJSON(w, httpStatus, map[string]interface{}{"code": httpStatus, "message": msg, "data": nil})
 }
+
+var _ = fmt.Sprintf
