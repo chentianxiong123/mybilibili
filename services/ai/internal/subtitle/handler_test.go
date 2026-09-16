@@ -173,3 +173,44 @@ func TestParseSRT(t *testing.T) {
 	assert.Equal(t, 60*time.Second, cues[2].Start)
 	assert.Equal(t, 62*time.Second, cues[2].End)
 }
+
+func TestHandleSubtitleGenerate_400(t *testing.T) {
+	h, store, storage := newTestSubtitleHandler(t)
+	h.SetGenerator(NewWhisperGenerator(NewRepository(store), storage))
+
+	// 缺少 video_id → 400
+	rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/generate", `{"manuscript_id":10}`)
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+	var resp map[string]interface{}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, float64(400), resp["code"])
+}
+
+func TestParseSRT_Basic(t *testing.T) {
+	srt := `1
+00:00:00,500 --> 00:00:02,000
+你好世界
+
+2
+00:00:03,000 --> 00:00:05,500
+测试字幕第二句`
+	cues, err := ParseSRT(srt)
+	require.NoError(t, err)
+	require.Len(t, cues, 2)
+
+	assert.Equal(t, 1, cues[0].Index)
+	assert.Equal(t, "你好世界", cues[0].Text)
+	assert.Equal(t, 500*time.Millisecond, cues[0].Start)
+	assert.Equal(t, 2*time.Second, cues[0].End)
+
+	assert.Equal(t, 2, cues[1].Index)
+	assert.Equal(t, "测试字幕第二句", cues[1].Text)
+	assert.Equal(t, 3*time.Second, cues[1].Start)
+	assert.Equal(t, 5*time.Second+500*time.Millisecond, cues[1].End)
+}
+
+func TestParseSRT_Empty(t *testing.T) {
+	cues, err := ParseSRT("")
+	require.NoError(t, err)
+	assert.Empty(t, cues)
+}

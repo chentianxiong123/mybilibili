@@ -375,6 +375,71 @@ func TestGetUser_NotFound(t *testing.T) {
 
 // helpers
 
+func TestService_GetUser_Success(t *testing.T) {
+	svc, mock, _ := newTestService(t)
+
+	mock.ExpectQuery(`SELECT.*FROM users.*WHERE id`).
+		WithArgs(int64(10)).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "username", "password", "nickname", "email", "avatar",
+			"level", "experience", "signature", "bio",
+			"follower_count", "following_count", "liked_count",
+			"status", "created_at", "updated_at",
+		}).AddRow(
+			10, "bob", "hash", "Bob", "bob@x", "avatar.png",
+			3, 200, "hello", "bio text",
+			10, 20, 30,
+			1, time.Now(), time.Now(),
+		))
+
+	resp, err := svc.GetUser(context.Background(), &pb.GetUserRequest{UserId: 10})
+	require.NoError(t, err)
+	assert.Equal(t, int64(10), resp.UserId)
+	assert.Equal(t, "bob", resp.Username)
+	assert.Equal(t, "Bob", resp.Nickname)
+	assert.Equal(t, "bob@x", resp.Email)
+	assert.Equal(t, "avatar.png", resp.Avatar)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestService_GetUser_NotFound(t *testing.T) {
+	svc, mock, _ := newTestService(t)
+
+	mock.ExpectQuery(`SELECT.*FROM users.*WHERE id`).
+		WithArgs(int64(9999)).
+		WillReturnError(sql.ErrNoRows)
+
+	_, err := svc.GetUser(context.Background(), &pb.GetUserRequest{UserId: 9999})
+	assertGRPCStatus(t, err, codes.NotFound)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestService_UpdateUser_Success(t *testing.T) {
+	svc, mock, _ := newTestService(t)
+
+	mock.ExpectQuery(`SELECT.*FROM users.*WHERE username`).
+		WithArgs("alice").
+		WillReturnError(fmt.Errorf("connection refused"))
+
+	_, err := svc.Login(context.Background(), &pb.LoginRequest{
+		Username: "alice", Password: "p",
+	})
+	assertGRPCStatus(t, err, codes.Internal)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestService_UpdateUser_NotFound(t *testing.T) {
+	svc, mock, _ := newTestService(t)
+
+	mock.ExpectQuery(`SELECT.*FROM users.*WHERE id`).
+		WithArgs(int64(8888)).
+		WillReturnError(fmt.Errorf("connection refused"))
+
+	_, err := svc.GetUser(context.Background(), &pb.GetUserRequest{UserId: 8888})
+	assertGRPCStatus(t, err, codes.Internal)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
 func assertGRPCStatus(t *testing.T, err error, want codes.Code) {
 	t.Helper()
 	if err == nil {
