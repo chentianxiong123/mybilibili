@@ -33,18 +33,23 @@ const PATH_MAP: Record<string, string> = {
   '/user/account/logout': '/user/logout',
 }
 
-// 按服务端口分发的路由
+// 按服务端口分发的路由（Docker 环境用容器名，宿主机直连用 127.0.0.1）
+const CORE_HOST = process.env.CORE_HOST || '127.0.0.1'
+const SEARCH_HOST = process.env.SEARCH_HOST || '127.0.0.1'
+const MSG_HOST = process.env.MSG_HOST || '127.0.0.1'
+const LIVE_HOST = process.env.LIVE_HOST || '127.0.0.1'
+
 function pickUpstream(realPath: string): string {
-  if (realPath.startsWith('/search/')) return 'http://127.0.0.1:8084'
-  if (realPath.includes('/danmaku/') || realPath.startsWith('/danmu') || realPath.startsWith('/creator/danmaku')) return 'http://127.0.0.1:8086'
-  return 'http://127.0.0.1:8080'
+  if (realPath.startsWith('/search/')) return `http://${SEARCH_HOST}:8084`
+  if (realPath.includes('/danmaku/') || realPath.startsWith('/danmu') || realPath.startsWith('/creator/danmaku')) return `http://${MSG_HOST}:8086`
+  return `http://${CORE_HOST}:8080`
 }
 
 function adaptUrl(url: string, query: URLSearchParams): { target: string; port: string; qs: string } {
   // /video/getone 特殊：vid 从 query 或路径
   if (url.startsWith('/video/getone')) {
     const vid = query.get('vid') || url.split('/').pop() || ''
-    return { target: `/manuscript/${vid}`, port: 'http://127.0.0.1:8080', qs: '' }
+    return { target: `/manuscript/${vid}`, port: `http://${CORE_HOST}:8080`, qs: '' }
   }
   // /video/user-works → /manuscript/user/{uid}，参数 page/quantity → page/pageSize
   if (url.startsWith('/video/user-works')) {
@@ -52,7 +57,7 @@ function adaptUrl(url: string, query: URLSearchParams): { target: string; port: 
     const page = query.get('page') || '1'
     const size = query.get('quantity') || query.get('pageSize') || '20'
     const qs = new URLSearchParams({ page, pageSize: size }).toString()
-    return { target: `/manuscript/user/${uid}`, port: 'http://127.0.0.1:8080', qs }
+    return { target: `/manuscript/user/${uid}`, port: `http://${CORE_HOST}:8080`, qs }
   }
   // /video/user-love → /manuscript/user/likes（需鉴权）
   if (url.startsWith('/video/user-love')) {
@@ -60,18 +65,18 @@ function adaptUrl(url: string, query: URLSearchParams): { target: string; port: 
     const page = String(Math.floor(offset / 20) + 1)
     const size = query.get('quantity') || query.get('pageSize') || '20'
     const qs = new URLSearchParams({ page, pageSize: size }).toString()
-    return { target: '/manuscript/user/likes', port: 'http://127.0.0.1:8080', qs }
+    return { target: '/manuscript/user/likes', port: `http://${CORE_HOST}:8080`, qs }
   }
   // /video/user-collect → /manuscript/user/collections（需鉴权）
   if (url.startsWith('/video/user-collect')) {
     const qs = new URLSearchParams({ page: '1', pageSize: '20' }).toString()
-    return { target: '/manuscript/user/collections', port: 'http://127.0.0.1:8080', qs }
+    return { target: '/manuscript/user/collections', port: `http://${CORE_HOST}:8080`, qs }
   }
   // /video/cumulative/visitor → /manuscript/hot，携带 vids
   if (url.startsWith('/video/cumulative/visitor')) {
     const vids = query.get('vids') || ''
     const qs = vids ? new URLSearchParams({ vids }).toString() : ''
-    return { target: '/manuscript/hot', port: 'http://127.0.0.1:8080', qs }
+    return { target: '/manuscript/hot', port: `http://${CORE_HOST}:8080`, qs }
   }
   const keys = Object.keys(PATH_MAP).sort((a, b) => b.length - a.length)
   for (const from of keys) {

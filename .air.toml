@@ -3,9 +3,9 @@ tmp_dir = "tmp"
 
 [build]
   bin = "./tmp/main"
-  cmd = "cd services/bili-proxy && go build -buildvcs=false -o ../../tmp/main ./cmd/bili-proxy"
+  cmd = "cd services/msg-danmaku && go build -buildvcs=false -o ../../tmp/main ./cmd/msg-danmaku"
   delay = 1000
-  exclude_dir = ["tmp", "vendor", "node_modules"]
+  exclude_dir = ["tmp", "vendor", "node_modules", "old", "web", "mobile", "scripts", "deploy", "docs", "sql", ".git", "proto"]
   exclude_regex = ["_test.go$"]
   include_ext = ["go", "toml", "yaml"]
   kill_delay = "0s"

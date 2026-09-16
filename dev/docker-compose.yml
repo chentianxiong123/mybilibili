@@ -407,15 +407,26 @@ services:
     environment:
       - NITRO_PORT=3200
       - HOST=0.0.0.0
+      - CORE_HOST=mybilibili-core
+      - SEARCH_HOST=mybilibili-search
+      - MSG_HOST=mybilibili-msg-danmaku
+      - LIVE_HOST=mybilibili-live
     volumes:
       - ../web/user:/app
       - /home/a1/.bun/install/cache:/root/.bun/install/cache
     labels:
       - "traefik.enable=true"
+      # 主站页面路由（排除 /api/）
       - "traefik.http.routers.web.entrypoints=web"
       - "traefik.http.routers.web.rule=Host(`localhost`) && PathPrefix(`/`) && !PathPrefix(`/api/`) && !PathPrefix(`/admin/`) && !PathPrefix(`/wap/`) && !PathPrefix(`/uploads/`) && !PathPrefix(`/covers/`) && !PathPrefix(`/videos/`) && !PathPrefix(`/sse/`) && !PathPrefix(`/ws/`)"
-      - "traefik.http.services.web.loadbalancer.server.port=3200"
+      - "traefik.http.routers.web.service=web-svc"
       - "traefik.http.routers.web.priority=1"
+      # teriteri 旧 API 代理（/api/video/... → Nuxt server proxy → Go 后端）
+      - "traefik.http.routers.web-api.entrypoints=web"
+      - "traefik.http.routers.web-api.rule=Host(`localhost`) && PathPrefix(`/api/`) && !PathPrefix(`/api/v1/`) && !PathPrefix(`/api/admin/`)"
+      - "traefik.http.routers.web-api.service=web-svc"
+      - "traefik.http.routers.web-api.priority=15"
+      - "traefik.http.services.web-svc.loadbalancer.server.port=3200"
     depends_on:
       core: {condition: service_started}
     networks: [mylib]
@@ -425,11 +436,12 @@ services:
     container_name: mybilibili-admin
     restart: no
     working_dir: /app
-    command: ["sh", "-c", "test -d node_modules || bun install; bun run dev"]
+    command: ["sh", "-c", "cd /app && (test -d node_modules || bun install) && bun run dev"]
     environment:
       - HOST=0.0.0.0
     volumes:
       - ../web/admin:/app
+      - ../web/user/packages/ui:/app/packages/ui
       - /home/a1/.bun/install/cache:/root/.bun/install/cache
     labels:
       - "traefik.enable=true"
