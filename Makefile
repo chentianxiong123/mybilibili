@@ -9,7 +9,7 @@ LDFLAGS  := -ldflags="-s -w"
 # 准备 BIN 目录
 $(shell mkdir -p $(BIN))
 
-.PHONY: run build clean build-core build-ai build-search build-msg-danmaku build-work build-live build-studio build-bili build-transcoder build-transcoder-nvenc build-transcoder-vaapi
+.PHONY: run build clean test test-all test-integration test-integration-only build-core build-ai build-search build-msg-danmaku build-work build-live build-studio build-bili build-transcoder build-transcoder-nvenc build-transcoder-vaapi
 
 run:
 	$(GO) build $(LDFLAGS) -o $(BIN)/mybilibili-core ./services/core/cmd/core
@@ -55,6 +55,25 @@ build-transcoder-nvenc:
 
 clean:
 	rm -f $(BIN)/mybilibili-core $(BIN)/mybilibili-ai $(BIN)/mybilibili-search $(BIN)/mybilibili-msg-danmaku $(BIN)/mybilibili-work $(BIN)/mybilibili-studio $(BIN)/mybilibili-live $(BIN)/mybilibili-bili $(BIN)/mybilibili-transcoder
+
+# ---------- 测试 ----------
+
+# 单元测试：逐 Go 模块（services/** + shared），含 external 各执行器
+test: $(shell echo) $(shell mkdir -p /tmp/mybilibili-tests && echo force)
+	@echo "== services/*/ & shared/pkg 单元测试 =="
+	@set -e; for d in services/*/ shared/pkg ; do \
+		[ -f "$$d/go.mod" ] && (echo "  → $$d" && cd "$$d" && go test -count=1 ./...); \
+	done
+
+test-integration: ## 集成测试（需要 docker）
+	cd tests/integration && docker compose -f docker-compose.test.yml up -d --wait
+	go test -tags=integration -count=1 -v ./tests/integration/...
+	cd tests/integration && docker compose -f docker-compose.test.yml down -v
+
+test-all: test test-integration  ## 全部测试（单元+集成）
+
+test-integration-only:  ## 只跑集成测试
+	go test -tags=integration -count=1 -v ./tests/integration/...
 
 # 兜底清理: 扫描源码目录里所有产物, 防止某天 in-source build 污染.
 # 用通配后缀, 不依赖服务名, 任何 *.exe / core / a.out 都会被识别.

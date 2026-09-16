@@ -1,0 +1,34 @@
+### ============================================
+### Nuxt Proxy - HTTP Smoke Tests
+### 测试 Nuxt server-side API 代理是否正常转发
+### ============================================
+
+### ---------- 推荐/分类（core 转发） ----------
+### 推荐视频
+GET http://localhost/api/video/random/visitor
+
+### 分类列表
+GET http://localhost/api/category/getall
+
+### ---------- 搜索（search 转发） ----------
+### 搜索视频
+GET http://localhost/api/search/video/only-pass?keyword=test&page=1
+
+### ---------- 登录（core 转发） ----------
+### 正确登录
+POST http://localhost/api/user/account/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+### 错误密码
+POST http://localhost/api/user/account/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "wrongpassword"
+}

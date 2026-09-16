@@ -1,0 +1,35 @@
+# 隔离测试环境，端口与开发环境完全错开。
+# 用法：
+#   docker compose -f docker-compose.test.yml up -d --wait
+#   go test -tags=integration -count=1 -v ./tests/integration/...
+#   docker compose -f docker-compose.test.yml down -v
+services:
+  pg-test:
+    image: postgres:16-alpine
+    ports: ["25432:5432"]
+    environment:
+      POSTGRES_DB: mybilibili_test
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+    tmpfs: /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d mybilibili_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  redis-test:
+    image: redis:7-alpine
+    ports: ["26379:6379"]
+
+  nats-test:
+    image: nats:2-alpine
+    ports: ["24222:4222"]
+
+  minio-test:
+    image: minio/minio:latest
+    ports: ["29000:9000", "29001:9001"]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: test
+      MINIO_ROOT_PASSWORD: test123456

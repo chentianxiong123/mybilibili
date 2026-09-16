@@ -8,6 +8,7 @@ require (
 	github.com/minio/minio-go/v7 v7.2.1
 	github.com/nats-io/nats.go v1.53.1
 	github.com/redis/go-redis/v9 v9.22.0
+	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.83.0
 	google.golang.org/protobuf v1.36.11
 )
