@@ -150,3 +150,74 @@ func TestHandleHot_200(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+func TestHandleSearch_Keyword(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectQuery(`SELECT m.id, m.title`).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "title", "description", "cover_url", "user_id", "category_id",
+			"view_count", "like_count", "comment_count", "danmaku_count",
+			"duration", "status", "upload_time",
+			"uid", "uname", "unick", "uavatar", "ulevel", "isVertical",
+		}).AddRow(1, "Go语言入门", "Go教程", "http://cover", 5, 3,
+			200, 20, 5, 3,
+			"00:15:00", 3, "2026-09-01 10:00:00",
+			5, "user1", "昵称1", "http://avatar", 4, 0))
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/videos?keyword=Go语言&page=1&pageSize=10", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	resp := decodeList(t, rr)
+	list := resp["list"].([]interface{})
+	require.Len(t, list, 1)
+	m := list[0].(map[string]interface{})
+	assert.Equal(t, "Go语言入门", m["title"])
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleSearch_EmptyKeyword(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectQuery(`SELECT m.id, m.title`).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "title", "description", "cover_url", "user_id", "category_id",
+			"view_count", "like_count", "comment_count", "danmaku_count",
+			"duration", "status", "upload_time",
+			"uid", "uname", "unick", "uavatar", "ulevel", "isVertical",
+		}).AddRow(7, "无关键词视频", "", "http://cv", 2, 1,
+			50, 5, 1, 0,
+			"00:05:00", 3, "2026-09-10 10:00:00",
+			2, "user2", "昵称2", "http://av", 3, 0))
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/videos?keyword=&page=1&pageSize=20", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	resp := decodeList(t, rr)
+	list := resp["list"].([]interface{})
+	require.Len(t, list, 1)
+	assert.Equal(t, "无关键词视频", list[0].(map[string]interface{})["title"])
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleSearchByType(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectQuery(`SELECT m.id, m.title`).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "title", "description", "cover_url", "user_id", "category_id",
+			"view_count", "like_count", "comment_count", "danmaku_count",
+			"duration", "status", "upload_time",
+			"uid", "uname", "unick", "uavatar", "ulevel", "isVertical",
+		}).AddRow(10, "分类筛选视频", "desc", "http://cv", 1, 5,
+			300, 30, 10, 5,
+			"00:20:00", 3, "2026-09-15 10:00:00",
+			1, "user1", "昵称1", "http://av", 5, 1))
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/videos?keyword=视频&category_id=5&page=1&pageSize=10", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	resp := decodeList(t, rr)
+	list := resp["list"].([]interface{})
+	require.Len(t, list, 1)
+	m := list[0].(map[string]interface{})
+	assert.Equal(t, "分类筛选视频", m["title"])
+	require.NoError(t, mock.ExpectationsWereMet())
+}

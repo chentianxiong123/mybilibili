@@ -451,6 +451,135 @@ func TestTranscoderPool_StartStop(t *testing.T) {
 	pool.Stop()
 }
 
+func TestHandleConfigReload_200(t *testing.T) {
+	pool, cfgPath := newTestPool(t)
+	api := NewAdminAPI(pool)
+
+	newCfg := `transcoders:
+  - name: reloaded
+    addr: http://reloaded:8092
+    capabilities: [soft]
+    weight: 1
+`
+	require.NoError(t, os.WriteFile(cfgPath, []byte(newCfg), 0o644))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/transcoders/config/reload", nil)
+	rec := httptest.NewRecorder()
+	api.Handler().ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"reloaded"`)
+}
+
+func TestHandleConfigReload_500(t *testing.T) {
+	pool, cfgPath := newTestPool(t)
+	api := NewAdminAPI(pool)
+
+	require.NoError(t, os.WriteFile(cfgPath, []byte("invalid: yaml: {{{:"), 0o644))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/transcoders/config/reload", nil)
+	rec := httptest.NewRecorder()
+	api.Handler().ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"error"`)
+}
+
+func TestHandleSub_200(t *testing.T) {
+	pool, _ := newTestPool(t)
+	api := NewAdminAPI(pool)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/transcoders/transcoder-local-soft", nil)
+	rec := httptest.NewRecorder()
+	api.Handler().ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"transcoder-local-soft"`)
+	assert.Contains(t, rec.Body.String(), `"status"`)
+}
+
+func TestHandleSub_405(t *testing.T) {
+	pool, _ := newTestPool(t)
+	api := NewAdminAPI(pool)
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/admin/transcoders/transcoder-local-soft", nil)
+	rec := httptest.NewRecorder()
+	api.Handler().ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+}
+
+func TestHandleRoot_200(t *testing.T) {
+	pool, _ := newTestPool(t)
+	api := NewAdminAPI(pool)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/transcoders", nil)
+	rec := httptest.NewRecorder()
+	api.Handler().ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	assert.Contains(t, resp, "nodes")
+	assert.Contains(t, resp, "total")
+}
+
+func TestHandleStats_200_New(t *testing.T) {
+	pool, _ := newTestPool(t)
+	require.NoError(t, pool.Add(Node{Name: "t2", Addr: "http://10.0.0.1:8092", Capabilities: []string{"nvenc"}, Weight: 1}))
+	require.NoError(t, pool.Disable("t2"))
+
+	api := NewAdminAPI(pool)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/transcoders/stats", nil)
+	rec := httptest.NewRecorder()
+	api.Handler().ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	assert.Contains(t, resp, "total_jobs")
+	assert.Contains(t, resp, "total_failed")
+	nodes := resp["nodes"].([]any)
+	assert.Len(t, nodes, 2)
+}
+
+func TestHandleConfig_GET_200(t *testing.T) {
+	pool, _ := newTestPool(t)
+	api := NewAdminAPI(pool)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/transcoders/config", nil)
+	rec := httptest.NewRecorder()
+	api.Handler().ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "transcoder-local-soft")
+	assert.Contains(t, rec.Body.String(), "load_balance")
+}
+
+func TestHandleConfig_PUT_200(t *testing.T) {
+	pool, _ := newTestPool(t)
+	api := NewAdminAPI(pool)
+
+	newCfg := `transcoders:
+  - name: put-test
+    addr: http://put:8092
+    capabilities: [nvenc]
+    weight: 3
+load_balance: round_robin
+`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/transcoders/config", strings.NewReader(newCfg))
+	rec := httptest.NewRecorder()
+	api.Handler().ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"saved`)
+
+	b, err := os.ReadFile(pool.cfgPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(b), "put-test")
+}
+
 func TestTranscoderPool_ProbeOne_Unhealthy(t *testing.T) {
 	// Server that returns non-200
 	badSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

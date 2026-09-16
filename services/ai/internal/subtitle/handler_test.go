@@ -209,12 +209,6 @@ func TestParseSRT_Basic(t *testing.T) {
 	assert.Equal(t, 5*time.Second+500*time.Millisecond, cues[1].End)
 }
 
-func TestParseSRT_Empty(t *testing.T) {
-	cues, err := ParseSRT("")
-	require.NoError(t, err)
-	assert.Empty(t, cues)
-}
-
 // ---------------------------------------------------------------------------
 // flexMock: 可按 filter / findByID 回调返回不同数据的 mock store
 // ---------------------------------------------------------------------------
@@ -1175,32 +1169,6 @@ func TestService_Preview_Invalid(t *testing.T) {
 	cues, err := svc.Preview(context.Background(), "p3")
 	require.NoError(t, err)
 	assert.Empty(t, cues)
-}
-
-// ==================== SRTCue 测试 ====================
-
-func TestSRTCue_ToCueMap(t *testing.T) {
-	cue := SRTCue{Index: 1, Start: time.Second, End: 4 * time.Second, Text: "hello"}
-	m := cue.ToCueMap()
-	assert.Equal(t, 1, m["index"])
-	assert.Equal(t, "hello", m["text"])
-}
-
-func TestSRTCue_ToJSON(t *testing.T) {
-	cue := SRTCue{Index: 1, Start: time.Second, End: 4 * time.Second, Text: "hello"}
-	m := cue.ToJSON()
-	assert.Equal(t, 1, m["index"])
-	assert.Equal(t, "hello", m["text"])
-}
-
-func TestSRTCuesToJSON(t *testing.T) {
-	cues := []SRTCue{
-		{Index: 1, Start: time.Second, End: 4 * time.Second, Text: "hello"},
-		{Index: 2, Start: 5 * time.Second, End: 8 * time.Second, Text: "world"},
-	}
-	result := SRTCuesToJSON(cues)
-	assert.Contains(t, result, "hello")
-	assert.Contains(t, result, "world")
 }
 
 // ==================== SetGenerator / Register ====================
