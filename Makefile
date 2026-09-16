@@ -58,6 +58,8 @@ clean:
 
 # ---------- 测试 ----------
 
+.PHONY: test test-verbose test-cover test-race test-pkg test-core test-auth test-frontend test-integration test-all test-integration-only
+
 # 单元测试：逐 Go 模块（services/** + shared）
 test:
 	@echo "== 单元测试 =="
@@ -68,6 +70,40 @@ test:
 		fi; \
 	done
 	@echo "✓ 所有单元测试通过"
+
+test-verbose:  ## 详细输出（逐模块）
+	@for d in services/*/ shared/pkg ; do \
+		[ -f "$$d/go.mod" ] && (cd "$$d" && go test -count=1 -v ./...); \
+	done
+
+test-cover:  ## 带覆盖率
+	@for d in services/*/ shared/pkg ; do \
+		if [ -f "$$d/go.mod" ]; then \
+			echo "  → $$d"; \
+			(cd "$$d" && go test -count=1 -cover ./...) || exit 1; \
+		fi; \
+	done
+
+test-race:  ## 竞态检测
+	@for d in services/*/ shared/pkg ; do \
+		if [ -f "$$d/go.mod" ]; then \
+			echo "  → $$d"; \
+			(cd "$$d" && go test -count=1 -race ./...) || exit 1; \
+		fi; \
+	done
+
+test-pkg:  ## 只测共享库 shared/pkg
+	cd shared/pkg && go test -count=1 ./...
+
+test-core:  ## 只测 core 服务
+	cd services/core && go test -count=1 ./...
+
+test-auth:  ## 只测 shared/pkg/auth
+	cd shared/pkg && go test -count=1 ./auth/...
+
+test-frontend:  ## 前端测试（vitest）
+	cd web/user && npx vitest run
+	cd web/admin && npx vitest run
 
 test-integration: ## 集成测试（需要 docker）
 	cd tests/integration && docker compose -f docker-compose.test.yml up -d --wait
