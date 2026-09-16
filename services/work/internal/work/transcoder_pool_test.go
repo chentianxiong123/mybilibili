@@ -283,9 +283,9 @@ func TestTranscoderPool_ConfigYAML(t *testing.T) {
 	require.NoError(t, yaml.Unmarshal([]byte(out), &cfg))
 	assert.Len(t, cfg.Transcoders, 2)
 	// 按 name 排序
-	names := make([]string, 0, 2)
-	for _, n := range cfg.Transcoders {
-		names = append(names, n.Name)
+	names := make([]string, 0, len(cfg.Transcoders))
+	for i := range cfg.Transcoders {
+		names = append(names, cfg.Transcoders[i].Name)
 	}
 	sort.Strings(names)
 	assert.Equal(t, names, []string{"a", "b"})

@@ -21,7 +21,8 @@ func newMockModerationRepo(t *testing.T) (*Repository, sqlmock.Sqlmock) {
 func TestRepoListWords(t *testing.T) {
 	repo, mock := newMockModerationRepo(t)
 	createdAt := time.Now().Truncate(time.Second)
-	mock.ExpectQuery(`SELECT id, word, match_type FROM prohibited_words`).
+	mock.ExpectQuery(`SELECT id, word, match_type, COALESCE`).
+		WithArgs(int32(20), int32(0)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "word", "match_type", "category", "is_enabled", "created_at", "updated_at"}).
 			AddRow(int64(1), "badword", "exact", "spam", int32(1), createdAt, createdAt))
 
@@ -56,7 +57,7 @@ func TestRepoDeleteWord(t *testing.T) {
 func TestRepoGetWord(t *testing.T) {
 	repo, mock := newMockModerationRepo(t)
 	createdAt := time.Now().Truncate(time.Second)
-	mock.ExpectQuery(`SELECT id, word, match_type FROM prohibited_words WHERE id`).
+	mock.ExpectQuery(`SELECT id, word, match_type, COALESCE`).
 		WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "word", "match_type", "category", "is_enabled", "created_at", "updated_at"}).
 			AddRow(int64(1), "word", "fuzzy", "ads", int32(0), createdAt, createdAt))

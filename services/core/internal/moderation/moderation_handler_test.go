@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +21,7 @@ func newMockModerationHandler(t *testing.T) (*Handler, sqlmock.Sqlmock) {
 
 func TestHandleWords_GET_List(t *testing.T) {
 	h, mock := newMockModerationHandler(t)
-	mock.ExpectQuery(`SELECT id, word, match_type FROM prohibited_words ORDER BY`).
+	mock.ExpectQuery(`SELECT id, word, match_type, COALESCE`).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "word", "match_type", "category", "is_enabled", "created_at", "updated_at"}))
 	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM prohibited_words`).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
@@ -38,6 +37,20 @@ func TestHandleWords_GET_List(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestHandleWords_POST_EmptyWord(t *testing.T) {
+	h, _ := newMockModerationHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	rec := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/api/v1/moderation/admin/prohibited-words",
+		strings.NewReader(`{"word":"  "}`))
+	mux.ServeHTTP(rec, r)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "word required")
+}
+
 func TestHandleWords_POST_Create(t *testing.T) {
 	h, mock := newMockModerationHandler(t)
 	mock.ExpectExec(`INSERT INTO prohibited_words`).WillReturnResult(sqlmock.NewResult(1, 1))
@@ -46,25 +59,52 @@ func TestHandleWords_POST_Create(t *testing.T) {
 	h.Register(mux)
 	rec := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPost, "/api/v1/moderation/admin/prohibited-words",
-		strings.NewReader(`{"word":"badword","matchType":"exact","category":"spam"}`))
+		strings.NewReader(`{"word":"badword","match_type":"exact","category":"spam"}`))
 	mux.ServeHTTP(rec, r)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"status":"ok"`)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestHandleReports_Submit(t *testing.T) {
+func TestHandleWordByID_NotFound(t *testing.T) {
 	h, mock := newMockModerationHandler(t)
-	// 先查稿件 user_id，再 INSERT
-	mock.ExpectQuery(`SELECT user_id FROM manuscripts`).
-		WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(int64(5)))
+	mock.ExpectQuery(`SELECT id, word, match_type, COALESCE`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "word", "match_type", "category", "is_enabled", "created_at", "updated_at"}))
+
+	mux := http.NewServeMux()
+	h.Register(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodDelete, "/api/v1/moderation/admin/prohibited-words/9", nil))
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestHandleBatchImport(t *testing.T) {
+	h, mock := newMockModerationHandler(t)
+	mock.ExpectExec(`INSERT INTO prohibited_words`).WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`INSERT INTO prohibited_words`).WillReturnResult(sqlmock.NewResult(2, 1))
+
+	mux := http.NewServeMux()
+	h.Register(mux)
+	rec := httptest.NewRecorder()
+	body := `{"words":[{"word":"a"},{"word":"b"},{"word":""}]}`
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/moderation/admin/prohibited-words/batch-import", strings.NewReader(body)))
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"imported":2`)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleSubmitReport(t *testing.T) {
+	h, mock := newMockModerationHandler(t)
 	mock.ExpectQuery(`INSERT INTO reports`).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(9)))
 
 	mux := http.NewServeMux()
 	h.Register(mux)
 	rec := httptest.NewRecorder()
-	body := `{"targetType":"MANUSCRIPT","targetId":7,"reason":"版权","description":"侵权"}`
+	body := `{"target_type":"MANUSCRIPT","target_id":7,"reason":"版权","description":"侵权"}`
 	r := httptest.NewRequest(http.MethodPost, "/api/v1/report/submit", strings.NewReader(body))
 	r.Header.Set("X-User-Id", "3")
 	mux.ServeHTTP(rec, r)
@@ -73,4 +113,13 @@ func TestHandleReports_Submit(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-var _ = time.Now
+func TestHandleSubmitReport_MethodNotAllowed(t *testing.T) {
+	h, _ := newMockModerationHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/report/submit", nil))
+
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+}
