@@ -1,19 +1,20 @@
 go 1.26.5
 
 use (
-	./services/ai
-	./services/core
-	./services/live
-	./services/work
-	./services/msg-danmaku
-	./services/search
-	./services/studio
-	./services/bili-proxy
-	./external/transcoder-nvenc
+	./external/embedding-llamacpp-vulkan
 	./external/transcoder-cpu
+	./external/transcoder-nvenc
 	./external/transcoder-vaapi
 	./external/whisper
 	./external/whisper-local
-	./external/embedding-llamacpp-vulkan
+	./services/ai
+	./services/bili-proxy
+	./services/core
+	./services/live
+	./services/msg-danmaku
+	./services/search
+	./services/studio
+	./services/work
 	./shared/pkg
+	./tests/integration
 )

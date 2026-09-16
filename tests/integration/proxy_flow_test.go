@@ -27,7 +27,7 @@ func TestProxyFlow_NuxtToBackend(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 
 	// 登录（错误密码应被拒绝）
-	resp, _ := doPost(t, nuxtURL+"/api/user/account/login", map[string]string{
+	resp, _ = doPost(t, nuxtURL+"/api/user/account/login", map[string]string{
 		"username": "admin",
 		"password": "wrong-password",
 	})
