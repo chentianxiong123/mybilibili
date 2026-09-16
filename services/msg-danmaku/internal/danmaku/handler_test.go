@@ -1,6 +1,7 @@
 package danmaku
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -297,4 +298,269 @@ func TestHandleDanmakuBatchCount_400(t *testing.T) {
 
 	rr := doDanmaku(t, h, http.MethodGet, "/api/v1/danmaku/batch-count", "")
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+func TestDanmakuRepository_UpsertDailyMetric(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	repo := NewDanmakuRepository(db)
+
+	mock.ExpectExec(`INSERT INTO manuscript_daily_metrics`).
+		WithArgs(int64(10), int64(1001), 1).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = repo.UpsertDailyMetric(context.Background(), 10, 1001, "danmaku_count", 1)
+	assert.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestDanmakuRepository_UpsertDailyMetric_DifferentField(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	repo := NewDanmakuRepository(db)
+
+	mock.ExpectExec(`INSERT INTO manuscript_daily_metrics`).
+		WithArgs(int64(20), int64(2002), 5).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = repo.UpsertDailyMetric(context.Background(), 20, 2002, "view_count", 5)
+	assert.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestDanmakuRepository_CountByVideo(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	repo := NewDanmakuRepository(db)
+
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM danmaku WHERE video_id`).
+		WithArgs(int64(99)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(42))
+
+	count, err := repo.CountByVideo(context.Background(), 99)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(42), count)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestDanmakuRepository_CountByVideo_Zero(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	repo := NewDanmakuRepository(db)
+
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM danmaku WHERE video_id`).
+		WithArgs(int64(999)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+
+	count, err := repo.CountByVideo(context.Background(), 999)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(0), count)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestDanmakuRepository_CountByManuscriptIDs_Empty(t *testing.T) {
+	db, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	repo := NewDanmakuRepository(db)
+
+	result, err := repo.CountByManuscriptIDs(context.Background(), []int64{})
+	assert.NoError(t, err)
+	assert.Empty(t, result)
+}
+
+func TestDanmakuRepository_CountByManuscriptIDs_Multiple(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	repo := NewDanmakuRepository(db)
+
+	mock.ExpectQuery(`SELECT manuscript_id, COUNT\(\*\) FROM danmaku`).
+		WillReturnRows(sqlmock.NewRows([]string{"manuscript_id", "count"}).
+			AddRow(10, 5).AddRow(30, 12))
+
+	result, err := repo.CountByManuscriptIDs(context.Background(), []int64{10, 20, 30})
+	assert.NoError(t, err)
+	assert.Equal(t, int64(5), result[10])
+	assert.Equal(t, int64(0), result[20])
+	assert.Equal(t, int64(12), result[30])
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestDanmakuService_Broadcaster(t *testing.T) {
+	db, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	repo := NewDanmakuRepository(db)
+	broadcaster := NewDanmakuBroadcaster()
+	svc := NewDanmakuService(repo, broadcaster)
+
+	// Test Broadcaster() accessor
+	assert.NotNil(t, svc.Broadcaster())
+
+	// Test Subscribe
+	ch := broadcaster.Subscribe(100)
+	assert.NotNil(t, ch)
+
+	// Test Broadcast - should send to subscriber
+	event := &DanmakuEvent{
+		ID: 1, VideoID: 100, UserID: 1001,
+		Content: "hello", Time: 1.0, Color: "#fff", Mode: 1,
+		CreatedAt: "2024-01-01T00:00:00Z",
+	}
+	broadcaster.Broadcast(100, event)
+
+	received := <-ch
+	assert.Equal(t, int64(1), received.ID)
+	assert.Equal(t, "hello", received.Content)
+
+	// Test Broadcast to non-subscribed video (no panic)
+	broadcaster.Broadcast(999, event)
+
+	// Test Subscribe same video returns same channel
+	ch2 := broadcaster.Subscribe(100)
+	assert.Equal(t, ch, ch2)
+
+	// Test Unsubscribe (no-op, just ensure no panic)
+	broadcaster.Unsubscribe(100, ch)
+}
+
+func TestDanmakuService_Broadcaster_BufferFull(t *testing.T) {
+	db, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	repo := NewDanmakuRepository(db)
+	broadcaster := NewDanmakuBroadcaster()
+	_ = NewDanmakuService(repo, broadcaster)
+
+	ch := broadcaster.Subscribe(200)
+
+	// Fill the buffer (capacity 100)
+	for i := 0; i < 100; i++ {
+		broadcaster.Broadcast(200, &DanmakuEvent{ID: int64(i)})
+	}
+	// 101st should not block (non-blocking send)
+	broadcaster.Broadcast(200, &DanmakuEvent{ID: 999})
+
+	// Should still be able to read
+	received := <-ch
+	assert.Equal(t, int64(0), received.ID)
+}
+
+func TestDanmakuService_CountByVideo(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	repo := NewDanmakuRepository(db)
+	svc := NewDanmakuService(repo, NewDanmakuBroadcaster())
+
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM danmaku WHERE video_id`).
+		WithArgs(int64(55)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(10))
+
+	count, err := svc.CountByVideo(context.Background(), 55)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(10), count)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleSSE_InvalidVideoID(t *testing.T) {
+	h, _ := newTestDanmaku(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/sse/danmaku?video_id=abc", nil)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+func TestHandleSSE_Events(t *testing.T) {
+	h, _ := newTestDanmaku(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	// Subscribe first to get the channel
+	videoID := int64(777)
+	_ = h.broadcaster.Subscribe(videoID)
+
+	// Start SSE in background
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	req := httptest.NewRequest(http.MethodGet, "/sse/danmaku?video_id=777", nil)
+	req = req.WithContext(ctx)
+	rr := httptest.NewRecorder()
+	rr.Header().Set("Content-Type", "text/event-stream")
+
+	done := make(chan struct{})
+	go func() {
+		mux.ServeHTTP(rr, req)
+		close(done)
+	}()
+
+	// Send an event
+	event := &DanmakuEvent{ID: 1, VideoID: 777, Content: "sse test"}
+	h.broadcaster.Broadcast(videoID, event)
+
+	// Wait a bit for the event to be sent, then cancel
+	time.Sleep(100 * time.Millisecond)
+	cancel()
+	<-done
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandleDanmakuByPath_Delete_Unauthorized(t *testing.T) {
+	h, _ := newTestDanmaku(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/danmaku/99", nil)
+	// No X-User-Id header
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusUnauthorized, rr.Code)
+}
+
+func TestHandleDanmakuCreatorByPath_Delete_Unauthorized(t *testing.T) {
+	h, _ := newTestDanmaku(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/creator/danmaku/99", nil)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusUnauthorized, rr.Code)
+}
+
+func TestHandleDanmakuSend_Unauthorized(t *testing.T) {
+	h, _ := newTestDanmaku(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/danmaku/send",
+		strings.NewReader(`{"video_id":1,"content":"test","time":0,"color":"#fff","mode":1}`))
+	// No X-User-Id header
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusUnauthorized, rr.Code)
+}
+
+func TestHandleDanmakuCreatorList_Unauthorized(t *testing.T) {
+	h, _ := newTestDanmaku(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/creator/danmaku/list?page=1&page_size=20", nil)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusUnauthorized, rr.Code)
 }

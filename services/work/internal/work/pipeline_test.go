@@ -81,6 +81,34 @@ func (m *mockMQ) Enqueue(_ context.Context, _ string, _ abstraction.Message, _ t
 }
 func (m *mockMQ) Close() error { return nil }
 
+// --- mockMQ with subscribe support ---
+
+type mockSubscribeMQ struct {
+	published  []abstraction.Message
+	tasks      []abstraction.Message
+	subscribed bool
+}
+
+func (m *mockSubscribeMQ) Publish(_ context.Context, _ string, msg abstraction.Message) error {
+	m.published = append(m.published, msg)
+	return nil
+}
+func (m *mockSubscribeMQ) Subscribe(_ context.Context, _, _ string) (<-chan abstraction.Message, error) {
+	m.subscribed = true
+	ch := make(chan abstraction.Message, len(m.tasks))
+	for _, task := range m.tasks {
+		ch <- task
+	}
+	close(ch)
+	return ch, nil
+}
+func (m *mockSubscribeMQ) Ack(_ context.Context, _ string, _ abstraction.Message) error { return nil }
+func (m *mockSubscribeMQ) Nack(_ context.Context, _ string, _ abstraction.Message) error { return nil }
+func (m *mockSubscribeMQ) Enqueue(_ context.Context, _ string, _ abstraction.Message, _ time.Duration) error {
+	return nil
+}
+func (m *mockSubscribeMQ) Close() error { return nil }
+
 // --- mock DB (no-op for non-UPDATE queries) ---
 
 func newMockDB(t *testing.T) (*sql.DB, sqlmock.Sqlmock) {
@@ -263,6 +291,162 @@ func TestPipelineExtractAudio_EmptySourceKey(t *testing.T) {
 		}
 	}
 	assert.True(t, found, "expected failed event with empty source key")
+}
+
+func TestAIClient_GenerateSummary_Success(t *testing.T) {
+	aiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/api/v1/ai/summary/generate", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"code": 200})
+	}))
+	defer aiSrv.Close()
+
+	aiClient := NewAIClient(aiSrv.URL)
+	err := aiClient.GenerateSummary(context.Background(), 10, 1)
+	assert.NoError(t, err)
+}
+
+func TestAIClient_GenerateSummary_ErrorStatus(t *testing.T) {
+	aiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]any{"code": 500})
+	}))
+	defer aiSrv.Close()
+
+	aiClient := NewAIClient(aiSrv.URL)
+	err := aiClient.GenerateSummary(context.Background(), 10, 1)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "status=500")
+}
+
+func TestAIClient_GenerateSummary_BadDecode(t *testing.T) {
+	aiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte("not json"))
+	}))
+	defer aiSrv.Close()
+
+	aiClient := NewAIClient(aiSrv.URL)
+	err := aiClient.GenerateSummary(context.Background(), 10, 1)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "decode")
+}
+
+func TestPipelineStart_SubscribesAndProcesses(t *testing.T) {
+	// mock transcoder
+	transcodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		result := TranscodeResult{
+			PlayURLs:   map[string]string{"1080p": "https://cdn/1080.mp4"},
+			IsVertical: -1,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": result})
+	}))
+	defer transcodeSrv.Close()
+
+	db, dbmock := newMockDB(t)
+	dbmock.ExpectExec(`UPDATE videos SET play_url_hd`).WillReturnResult(sqlmock.NewResult(0, 1))
+
+	// mockMQ that sends one task then closes channel
+	mq := &mockSubscribeMQ{
+		tasks: []abstraction.Message{
+			{
+				Topic: TopicVideoProcess,
+				Payload: marshal(ProcessMessage{
+					ManuscriptID: 10,
+					VideoID:      1,
+					SourceURL:    "/uploads/manuscripts/10/videos/1/source/video.mp4",
+					ProcessType:  ProcessTypeTranscode,
+					ProcessMode:  ProcessModeManualSingle,
+				}),
+			},
+		},
+	}
+
+	cfgFile := filepath.Join(t.TempDir(), "pool.yaml")
+	pool, err := NewTranscoderPool(cfgFile)
+	require.NoError(t, err)
+	require.NoError(t, pool.Add(Node{Name: "t1", Addr: transcodeSrv.URL, Weight: 1}))
+
+	p := NewPipeline(mq, nil, nil, nil, pool, nil, t.TempDir())
+	p.SetDatabase(db)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err = p.Start(ctx)
+	assert.NoError(t, err)
+	assert.True(t, mq.subscribed, "expected Subscribe to be called")
+}
+
+func TestPipelineAISummary_Success(t *testing.T) {
+	aiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/api/v1/ai/summary/generate", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"code": 200})
+	}))
+	defer aiSrv.Close()
+
+	mq := &mockMQ{}
+	aiClient := NewAIClient(aiSrv.URL)
+
+	p := NewPipeline(mq, nil, nil, nil, nil, aiClient, t.TempDir())
+
+	task := ProcessMessage{
+		ManuscriptID: 10,
+		VideoID:      1,
+		SourceURL:    "/uploads/manuscripts/10/videos/1/source/video.mp4",
+		ProcessType:  ProcessTypeAISummary,
+		ProcessMode:  ProcessModeManualSingle,
+	}
+
+	p.process(context.Background(), task)
+
+	// Should have started, summary-progress, summary-done, done events
+	foundSummary := false
+	foundDone := false
+	for _, msg := range mq.published {
+		var evt ProgressEvent
+		json.Unmarshal(msg.Payload, &evt)
+		if evt.Stage == "summary" && evt.Progress == 100 {
+			foundSummary = true
+		}
+		if evt.Stage == "done" {
+			foundDone = true
+			assert.Equal(t, int32(100), evt.Progress)
+			assert.True(t, evt.Done)
+		}
+	}
+	assert.True(t, foundSummary, "expected summary progress event with 100%")
+	assert.True(t, foundDone, "expected done event")
+}
+
+func TestPipelineAISummary_NoAIClient(t *testing.T) {
+	mq := &mockMQ{}
+	p := NewPipeline(mq, nil, nil, nil, nil, nil, t.TempDir())
+
+	task := ProcessMessage{
+		ManuscriptID: 10,
+		VideoID:      1,
+		ProcessType:  ProcessTypeAISummary,
+		ProcessMode:  ProcessModeManualSingle,
+	}
+
+	p.process(context.Background(), task)
+
+	found := false
+	for _, msg := range mq.published {
+		var evt ProgressEvent
+		json.Unmarshal(msg.Payload, &evt)
+		if evt.Stage == "failed" {
+			found = true
+			assert.Contains(t, evt.Error, "ai client not configured")
+		}
+	}
+	assert.True(t, found, "expected failed event")
 }
 
 func TestPipelineAutoChain_Transcode(t *testing.T) {
