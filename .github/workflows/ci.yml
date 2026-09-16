@@ -61,9 +61,55 @@ jobs:
           done
           go test -count=1 ./shared/pkg/...
 
+      - name: 覆盖率门禁（≥70%）
+        run: |
+          THRESHOLD=70
+          FAIL=0
+          for d in shared/pkg services/core services/search services/ai services/msg-danmaku services/live services/studio services/work services/bili-proxy; do
+            if [ -f "$d/go.mod" ]; then
+              pct=$(cd "$d" && go test -count=1 -coverprofile=/tmp/cov.out ./... 2>&1 | grep "^ok" | awk -F'coverage: ' '{print $2}' | awk -F'%' '{s+=$1; n++}END{if(n>0) printf "%.0f", s/n; else print "0"}')
+              if [ "$pct" -lt "$THRESHOLD" ] 2>/dev/null; then
+                echo "✗ $d: ${pct}% < ${THRESHOLD}%"
+                FAIL=1
+              else
+                echo "✓ $d: ${pct}%"
+              fi
+            fi
+          done
+          if [ "$FAIL" -eq 1 ]; then
+            echo "✗ 覆盖率低于阈值 ${THRESHOLD}%，CI 失败"
+            exit 1
+          fi
+
+  # ---------- 前端单元测试 ----------
+  frontend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            web/user/package-lock.json
+            web/admin/package-lock.json
+
+      - name: web/user 测试
+        run: |
+          cd web/user
+          npm ci --prefer-offline
+          npx vitest run
+
+      - name: web/admin 测试
+        run: |
+          cd web/admin
+          npm ci --prefer-offline
+          npx vitest run
+
   # ---------- 集成测试（需要 docker compose） ----------
   integration-test:
-    needs: test
+    needs: [test, frontend-test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
