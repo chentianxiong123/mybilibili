@@ -98,3 +98,65 @@ func TestHotCleanExpired(t *testing.T) {
 func TestScoreIncrementPositive(t *testing.T) {
 	assert.Greater(t, scoreIncrement(), 0.0)
 }
+
+func TestHotRepository_Top(t *testing.T) {
+	repo, _ := newTestRepository(t)
+	ctx := context.Background()
+
+	require.NoError(t, repo.UpdateScore(ctx, "alpha", 100))
+	require.NoError(t, repo.UpdateScore(ctx, "beta", 200))
+	require.NoError(t, repo.UpdateScore(ctx, "gamma", 50))
+
+	top, err := repo.Top(ctx, 2)
+	require.NoError(t, err)
+	require.Len(t, top, 2)
+	assert.Equal(t, "beta", top[0]["keyword"])
+	assert.Equal(t, int64(200), top[0]["score"])
+	assert.Equal(t, 1, top[0]["rank"])
+	assert.Equal(t, "alpha", top[1]["keyword"])
+	assert.Equal(t, int64(100), top[1]["score"])
+	assert.Equal(t, 2, top[1]["rank"])
+}
+
+func TestHotRepository_Get(t *testing.T) {
+	repo, _ := newTestRepository(t)
+	ctx := context.Background()
+
+	require.NoError(t, repo.Increment(ctx, "golang"))
+	require.NoError(t, repo.Increment(ctx, "golang"))
+
+	item, err := repo.Get(ctx, "golang")
+	require.NoError(t, err)
+	assert.Equal(t, "golang", item["keyword"])
+	assert.NotNil(t, item["score"])
+	assert.NotNil(t, item["search_count"])
+	assert.NotNil(t, item["first_search_time"])
+	assert.NotNil(t, item["last_search_time"])
+
+	_, err = repo.Get(ctx, "nonexistent")
+	assert.Error(t, err)
+}
+
+func TestHotRepository_CleanExpired(t *testing.T) {
+	repo, mr := newTestRepository(t)
+	ctx := context.Background()
+
+	for i := 0; i < 5; i++ {
+		require.NoError(t, repo.UpdateScore(ctx, fmt.Sprintf("kw%d", i), float64(i+1)))
+	}
+
+	require.NoError(t, repo.CleanExpired(ctx, 3))
+
+	remaining, err := mr.SortedSet(rankKey)
+	require.NoError(t, err)
+	assert.Len(t, remaining, 3)
+
+	for _, kw := range []string{"kw2", "kw3", "kw4"} {
+		_, exists := remaining[kw]
+		assert.True(t, exists, "expected %s to be retained", kw)
+	}
+	for _, kw := range []string{"kw0", "kw1"} {
+		_, exists := remaining[kw]
+		assert.False(t, exists, "expected %s to be removed", kw)
+	}
+}

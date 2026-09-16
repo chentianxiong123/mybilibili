@@ -300,6 +300,171 @@ func TestHandleLegacyPaths(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
+func TestProxyRange_206(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT v.id`).WillReturnRows(
+		sqlmock.NewRows([]string{"id", "cid"}).AddRow(42, 999),
+	)
+	mock.ExpectQuery(`SELECT m.bvid FROM manuscripts`).WillReturnRows(
+		sqlmock.NewRows([]string{"bvid"}).AddRow("BV1xx411c7Xx"),
+	)
+
+	h := NewHandler(db, bilibili.NewClient("test"))
+
+	cdnSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "bytes=0-1023", r.Header.Get("Range"))
+		w.Header().Set("Content-Type", "video/mp4")
+		w.Header().Set("Content-Range", "bytes 0-1023/10240")
+		w.Header().Set("Content-Length", "1024")
+		w.WriteHeader(http.StatusPartialContent)
+		w.Write([]byte("partial-video-bytes"))
+	}))
+	defer cdnSrv.Close()
+
+	key := "BV1xx411c7Xx/999/64"
+	h.mu.Lock()
+	h.cache[key] = cdnCacheEntry{url: cdnSrv.URL, kind: "video/mp4", ts: time.Now()}
+	h.mu.Unlock()
+
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/bili/stream/42?qn=64", nil)
+	req.Header.Set("Range", "bytes=0-1023")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusPartialContent, rec.Code, "body=%s", rec.Body.String())
+	assert.Equal(t, "partial-video-bytes", rec.Body.String())
+	assert.Equal(t, "bytes 0-1023/10240", rec.Header().Get("Content-Range"))
+}
+
+func TestProxyRange_InvalidRange(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT v.id`).WillReturnRows(
+		sqlmock.NewRows([]string{"id", "cid"}).AddRow(42, 999),
+	)
+	mock.ExpectQuery(`SELECT m.bvid FROM manuscripts`).WillReturnRows(
+		sqlmock.NewRows([]string{"bvid"}).AddRow("BV1xx411c7Xx"),
+	)
+
+	h := NewHandler(db, bilibili.NewClient("test"))
+
+	cdnSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "video/mp4")
+		w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+		w.Write([]byte("range not satisfiable"))
+	}))
+	defer cdnSrv.Close()
+
+	key := "BV1xx411c7Xx/999/64"
+	h.mu.Lock()
+	h.cache[key] = cdnCacheEntry{url: cdnSrv.URL, kind: "video/mp4", ts: time.Now()}
+	h.mu.Unlock()
+
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/bili/stream/42?qn=64", nil)
+	req.Header.Set("Range", "bytes=999999-1000000")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusRequestedRangeNotSatisfiable, rec.Code)
+}
+
+func TestHandleStream_Redirect(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT v.id`).WillReturnRows(
+		sqlmock.NewRows([]string{"id", "cid"}).AddRow(42, 999),
+	)
+	mock.ExpectQuery(`SELECT m.bvid FROM manuscripts`).WillReturnRows(
+		sqlmock.NewRows([]string{"bvid"}).AddRow("BV1xx411c7Xx"),
+	)
+
+	h := NewHandler(db, bilibili.NewClient("test"))
+
+	finalSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "video/mp4")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("redirected-video"))
+	}))
+	defer finalSrv.Close()
+
+	redirectSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, finalSrv.URL+"/video.mp4", http.StatusFound)
+	}))
+	defer redirectSrv.Close()
+
+	key := "BV1xx411c7Xx/999/64"
+	h.mu.Lock()
+	h.cache[key] = cdnCacheEntry{url: redirectSrv.URL + "/video.mp4", kind: "video/mp4", ts: time.Now()}
+	h.mu.Unlock()
+
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/bili/stream/42?qn=64", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "redirected-video", rec.Body.String())
+}
+
+func TestHandleStream_DirectPlay(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT v.id`).WillReturnRows(
+		sqlmock.NewRows([]string{"id", "cid"}).AddRow(42, 999),
+	)
+	mock.ExpectQuery(`SELECT m.bvid FROM manuscripts`).WillReturnRows(
+		sqlmock.NewRows([]string{"bvid"}).AddRow("BV1xx411c7Xx"),
+	)
+
+	h := NewHandler(db, bilibili.NewClient("test"))
+
+	cdnSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "video/mp4")
+		w.Header().Set("Content-Length", "2048")
+		w.Header().Set("ETag", `"abc123"`)
+		w.Header().Set("Last-Modified", "Mon, 01 Sep 2026 00:00:00 GMT")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("direct-play-bytes"))
+	}))
+	defer cdnSrv.Close()
+
+	key := "BV1xx411c7Xx/999/64"
+	h.mu.Lock()
+	h.cache[key] = cdnCacheEntry{url: cdnSrv.URL, kind: "video/mp4", ts: time.Now()}
+	h.mu.Unlock()
+
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/bili/stream/42?qn=64", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "direct-play-bytes", rec.Body.String())
+	assert.Equal(t, "video/mp4", rec.Header().Get("Content-Type"))
+	assert.Equal(t, "2048", rec.Header().Get("Content-Length"))
+	assert.Equal(t, `"abc123"`, rec.Header().Get("ETag"))
+	assert.Equal(t, "no-store, must-revalidate", rec.Header().Get("Cache-Control"))
+}
+
 func mustJSON(v any) json.RawMessage {
 	b, _ := json.Marshal(v)
 	return b

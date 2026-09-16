@@ -449,6 +449,114 @@ func TestPipelineAISummary_NoAIClient(t *testing.T) {
 	assert.True(t, found, "expected failed event")
 }
 
+func TestDoExtractAudio_200(t *testing.T) {
+	transcodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		result := TranscodeResult{
+			AudioKey:   "manuscripts/10/videos/1/audio/audio.mp3",
+			PlayURLs:   map[string]string{},
+			IsVertical: -1,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": result})
+	}))
+	defer transcodeSrv.Close()
+
+	mq := &mockMQ{}
+
+	cfgFile := filepath.Join(t.TempDir(), "pool.yaml")
+	pool, err := NewTranscoderPool(cfgFile)
+	require.NoError(t, err)
+	require.NoError(t, pool.Add(Node{Name: "t1", Addr: transcodeSrv.URL, Weight: 1}))
+
+	p := NewPipeline(mq, nil, nil, nil, pool, nil, t.TempDir())
+
+	task := ProcessMessage{
+		ManuscriptID: 10,
+		VideoID:      1,
+		SourceURL:    "/uploads/manuscripts/10/videos/1/source/video.mp4",
+		ProcessType:  ProcessTypeExtractAudio,
+		ProcessMode:  ProcessModeManualSingle,
+	}
+
+	p.process(context.Background(), task)
+
+	found := false
+	for _, msg := range mq.published {
+		var evt ProgressEvent
+		json.Unmarshal(msg.Payload, &evt)
+		if evt.Stage == "audio" && evt.Progress == 100 {
+			found = true
+			assert.True(t, evt.Done)
+		}
+	}
+	assert.True(t, found, "expected audio completion event with 100%")
+}
+
+func TestDoExtractAudio_EmptyKey(t *testing.T) {
+	mq := &mockMQ{}
+
+	p := NewPipeline(mq, nil, nil, nil, nil, nil, t.TempDir())
+
+	task := ProcessMessage{
+		ManuscriptID: 10,
+		VideoID:      1,
+		SourceURL:    "",
+		ProcessType:  ProcessTypeExtractAudio,
+		ProcessMode:  ProcessModeManualSingle,
+	}
+
+	p.process(context.Background(), task)
+
+	found := false
+	for _, msg := range mq.published {
+		var evt ProgressEvent
+		json.Unmarshal(msg.Payload, &evt)
+		if evt.Stage == "failed" {
+			found = true
+			assert.Contains(t, evt.Error, "empty source key")
+		}
+	}
+	assert.True(t, found, "expected failed event with empty source key")
+}
+
+func TestDoExtractAudio_Error(t *testing.T) {
+	transcodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]any{"code": 500, "message": "ffmpeg error"})
+	}))
+	defer transcodeSrv.Close()
+
+	mq := &mockMQ{}
+
+	cfgFile := filepath.Join(t.TempDir(), "pool.yaml")
+	pool, err := NewTranscoderPool(cfgFile)
+	require.NoError(t, err)
+	require.NoError(t, pool.Add(Node{Name: "t1", Addr: transcodeSrv.URL, Weight: 1}))
+
+	p := NewPipeline(mq, nil, nil, nil, pool, nil, t.TempDir())
+
+	task := ProcessMessage{
+		ManuscriptID: 10,
+		VideoID:      1,
+		SourceURL:    "/uploads/manuscripts/10/videos/1/source/video.mp4",
+		ProcessType:  ProcessTypeExtractAudio,
+		ProcessMode:  ProcessModeManualSingle,
+	}
+
+	p.process(context.Background(), task)
+
+	found := false
+	for _, msg := range mq.published {
+		var evt ProgressEvent
+		json.Unmarshal(msg.Payload, &evt)
+		if evt.Stage == "failed" && evt.Error != "" {
+			found = true
+			assert.Contains(t, evt.Error, "status=500")
+		}
+	}
+	assert.True(t, found, "expected failed event for audio extraction error")
+}
+
 func TestPipelineAutoChain_Transcode(t *testing.T) {
 	// mock transcoder service
 	transcodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
