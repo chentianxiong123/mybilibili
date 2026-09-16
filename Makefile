@@ -58,12 +58,16 @@ clean:
 
 # ---------- 测试 ----------
 
-# 单元测试：逐 Go 模块（services/** + shared），含 external 各执行器
-test: $(shell echo) $(shell mkdir -p /tmp/mybilibili-tests && echo force)
-	@echo "== services/*/ & shared/pkg 单元测试 =="
-	@set -e; for d in services/*/ shared/pkg ; do \
-		[ -f "$$d/go.mod" ] && (echo "  → $$d" && cd "$$d" && go test -count=1 ./...); \
+# 单元测试：逐 Go 模块（services/** + shared）
+test:
+	@echo "== 单元测试 =="
+	@for d in services/*/ shared/pkg ; do \
+		if [ -f "$$d/go.mod" ]; then \
+			echo "  → $$d"; \
+			(cd "$$d" && go test -count=1 ./...) || exit 1; \
+		fi; \
 	done
+	@echo "✓ 所有单元测试通过"
 
 test-integration: ## 集成测试（需要 docker）
 	cd tests/integration && docker compose -f docker-compose.test.yml up -d --wait
