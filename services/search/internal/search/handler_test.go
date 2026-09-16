@@ -1,6 +1,7 @@
 package search
 
 import (
+	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -9,8 +10,12 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"mybilibili/search/internal/hot"
 )
 
 // newTestHandler 构造 handler + sqlmock DB，返回 handler、sqlmock 与 mux。
@@ -219,5 +224,559 @@ func TestHandleSearchByType(t *testing.T) {
 	require.Len(t, list, 1)
 	m := list[0].(map[string]interface{})
 	assert.Equal(t, "分类筛选视频", m["title"])
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// ==================== helper ====================
+
+func newTestHandlerWithHotRepo(t *testing.T) (*Handler, sqlmock.Sqlmock, *miniredis.Miniredis) {
+	t.Helper()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	repo := NewRepository(db)
+
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	hotRepo := hot.NewRepository(rdb)
+
+	svc := NewService(repo, hotRepo)
+	h := NewHandler(svc)
+	t.Cleanup(func() { db.Close(); rdb.Close() })
+	return h, mock, mr
+}
+
+func newTestHandlerNoHot(t *testing.T) (*Handler, sqlmock.Sqlmock) {
+	t.Helper()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	repo := NewRepository(db)
+	svc := NewService(repo, nil)
+	h := NewHandler(svc)
+	t.Cleanup(func() { db.Close() })
+	return h, mock
+}
+
+// ==================== 用户端 ====================
+
+func TestHandleRelated_200(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectQuery(`SELECT m.id, m.title`).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "title", "description", "cover_url", "user_id", "category_id",
+			"view_count", "like_count", "comment_count", "danmaku_count",
+			"duration", "status", "upload_time",
+			"uid", "uname", "unick", "uavatar", "ulevel", "isVertical",
+		}).AddRow(2, "相关视频", "desc", "http://cv", 1, 1,
+			500, 50, 20, 10,
+			"00:12:00", 3, "2026-09-10 10:00:00",
+			1, "user1", "昵称", "http://av", 3, 0))
+
+	rr := do(t, h, http.MethodGet, "/api/v1/recommend/related/42?size=10", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp struct {
+		Code int                      `json:"code"`
+		Data []map[string]interface{} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	require.Len(t, resp.Data, 1)
+	assert.Equal(t, "相关视频", resp.Data[0]["title"])
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleRelated_DefaultSize(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectQuery(`SELECT m.id, m.title`).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "title", "description", "cover_url", "user_id", "category_id",
+			"view_count", "like_count", "comment_count", "danmaku_count",
+			"duration", "status", "upload_time",
+			"uid", "uname", "unick", "uavatar", "ulevel", "isVertical",
+		}))
+
+	rr := do(t, h, http.MethodGet, "/api/v1/recommend/related/1", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp struct {
+		Code int                      `json:"code"`
+		Data []map[string]interface{} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleForYou_200(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectQuery(`SELECT m.id, m.user_id, m.title, m.cover_url`).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "user_id", "title", "cover_url", "view_count", "like_count",
+			"comment_count", "created_at", "duration_seconds",
+			"uid", "uname", "unick", "uavatar", "ulevel", "isVertical",
+		}).AddRow(10, 5, "为你推荐", "http://cv", 1000, 100,
+			50, "2026-09-01 10:00:00", 3600,
+			5, "user1", "昵称", "http://av", 4, 0))
+
+	rr := do(t, h, http.MethodGet, "/api/v1/recommend/for-you", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp struct {
+		Code int                      `json:"code"`
+		Data []map[string]interface{} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	require.Len(t, resp.Data, 1)
+	assert.Equal(t, "为你推荐", resp.Data[0]["title"])
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleForYou_EmptyResult(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectQuery(`SELECT m.id, m.user_id, m.title, m.cover_url`).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "user_id", "title", "cover_url", "view_count", "like_count",
+			"comment_count", "created_at", "duration_seconds",
+			"uid", "uname", "unick", "uavatar", "ulevel", "isVertical",
+		}))
+
+	rr := do(t, h, http.MethodGet, "/api/v1/recommend/for-you", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp struct {
+		Code int                      `json:"code"`
+		Data []map[string]interface{} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Empty(t, resp.Data)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleHotRecommend_200(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectQuery(`SELECT m.id, m.user_id, m.title, m.cover_url`).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "user_id", "title", "cover_url", "view_count", "like_count",
+			"comment_count", "created_at", "duration_seconds",
+			"uid", "uname", "unick", "uavatar", "ulevel", "isVertical",
+		}).AddRow(20, 3, "热门推荐", "http://cv2", 2000, 200,
+			100, "2026-09-05 10:00:00", 7200,
+			3, "user2", "昵称2", "http://av2", 5, 1))
+
+	rr := do(t, h, http.MethodGet, "/api/v1/recommend/hot?categoryId=1&size=5", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp struct {
+		Code int                      `json:"code"`
+		Data []map[string]interface{} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	require.Len(t, resp.Data, 1)
+	assert.Equal(t, "热门推荐", resp.Data[0]["title"])
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleHotRecommend_DefaultParams(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectQuery(`SELECT m.id, m.user_id, m.title, m.cover_url`).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "user_id", "title", "cover_url", "view_count", "like_count",
+			"comment_count", "created_at", "duration_seconds",
+			"uid", "uname", "unick", "uavatar", "ulevel", "isVertical",
+		}))
+
+	rr := do(t, h, http.MethodGet, "/api/v1/recommend/hot", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp struct {
+		Code int                      `json:"code"`
+		Data []map[string]interface{} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Empty(t, resp.Data)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// ==================== 管理端 hot 操作 ====================
+
+func TestHandleHotIncrement_200(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodPost, "/api/v1/search/hot/increment", `{"keyword":"golang"}`)
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandleHotIncrement_405(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/hot/increment", "")
+	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
+}
+
+func TestHandleHotKeyword_200(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodPost, "/api/v1/search/hot/keyword", `{"keyword":"golang","score":80,"rank":1}`)
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandleHotKeyword_405(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/hot/keyword", "")
+	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
+}
+
+func TestHandleHotRank_200(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodPut, "/api/v1/search/hot/rank", `{"keyword":"golang","rank":1}`)
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandleHotRank_405(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/hot/rank", "")
+	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
+}
+
+func TestHandleHotScore_200(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodPut, "/api/v1/search/hot/score", `{"keyword":"golang","score":95}`)
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandleHotScore_405(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/hot/score", "")
+	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
+}
+
+func TestHandleCleanExpired_200(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodPost, "/api/v1/search/hot/clean-expired", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandleCleanExpired_405(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/hot/clean-expired", "")
+	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
+}
+
+func TestHandleHotDelete_200(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodDelete, "/api/v1/search/hot/delete", `{"keyword":"golang"}`)
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandleHotDelete_405(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/hot/delete", "")
+	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
+}
+
+func TestHandleHotGet_200(t *testing.T) {
+	h, mock, mr := newTestHandlerWithHotRepo(t)
+	_ = mock
+
+	mr.ZAdd("hot_search:rank", 80, "golang")
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/hot/get?keyword=golang", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp struct {
+		Code int                    `json:"code"`
+		Data map[string]interface{} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, "golang", resp.Data["keyword"])
+	assert.Equal(t, float64(80), resp.Data["score"])
+}
+
+func TestHandleHotGet_400(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/hot/get", "")
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+func TestHandleHotGet_404(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/hot/get?keyword=nonexistent", "")
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+}
+
+func TestHandleHotScoreGet_200(t *testing.T) {
+	h, mock, mr := newTestHandlerWithHotRepo(t)
+	_ = mock
+
+	mr.ZAdd("hot_search:rank", 95, "python")
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/hot/score-get?keyword=python", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp struct {
+		Code int                    `json:"code"`
+		Data map[string]interface{} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, "python", resp.Data["keyword"])
+	assert.Equal(t, float64(95), resp.Data["score"])
+}
+
+func TestHandleHotScoreGet_400(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/hot/score-get", "")
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+func TestHandleHotScoreGet_404(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/hot/score-get?keyword=nonexistent", "")
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+}
+
+// ==================== 管理端 index 操作 ====================
+
+func TestHandleIndexStatus_200(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{
+		"total", "published", "indexed", "null_count",
+	}).AddRow(100, 80, 75, 5))
+	mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"cnt"}).AddRow(1))
+	mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"cnt"}).AddRow(1))
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/admin/index/status", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp struct {
+		Code int `json:"code"`
+	}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, 200, resp.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleIndexStatus_500(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectQuery(`SELECT`).WillReturnError(sql.ErrConnDone)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/admin/index/status", "")
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleIndexValidate_200(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{
+		"total", "published", "indexed", "null_count",
+	}).AddRow(50, 40, 40, 0))
+	mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"cnt"}).AddRow(1))
+	mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"cnt"}).AddRow(1))
+
+	rr := do(t, h, http.MethodPost, "/api/v1/search/admin/index/validate", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleIndexValidate_405(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/admin/index/validate", "")
+	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
+}
+
+func TestHandleIndexRebuild_200(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectExec(`UPDATE manuscripts`).WillReturnResult(sqlmock.NewResult(0, 10))
+
+	rr := do(t, h, http.MethodPost, "/api/v1/search/admin/index/rebuild", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp struct {
+		Code int `json:"code"`
+	}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, 200, resp.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleIndexRebuild_405(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/admin/index/rebuild", "")
+	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
+}
+
+func TestHandleIndexRebuild_500(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectExec(`UPDATE manuscripts`).WillReturnError(sql.ErrConnDone)
+
+	rr := do(t, h, http.MethodPost, "/api/v1/search/admin/index/rebuild", "")
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleIndexRefresh_200(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodPost, "/api/v1/search/admin/index/refresh", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandleIndexRefresh_405(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/admin/index/refresh", "")
+	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
+}
+
+func TestHandleIndexNotNeeded_200(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodPost, "/api/v1/search/admin/index/bulk", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandleIndexNotNeeded_405(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/admin/index/bulk", "")
+	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
+}
+
+// ==================== 管理端 recommend-config ====================
+
+func TestHandleRecommendConfig_GET_200(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	cfg := `{"refresh_interval":300,"for_you_size":20,"related_size":10,"hot_size":10,"personalized":true}`
+	mock.ExpectQuery(`SELECT config_json FROM recommend_configs`).
+		WillReturnRows(sqlmock.NewRows([]string{"config_json"}).AddRow(cfg))
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/admin/recommend-config", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp struct {
+		Code int                    `json:"code"`
+		Data map[string]interface{} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, float64(300), resp.Data["refresh_interval"])
+	assert.Equal(t, true, resp.Data["personalized"])
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleRecommendConfig_GET_Empty(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectQuery(`SELECT config_json FROM recommend_configs`).
+		WillReturnError(sql.ErrNoRows)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/admin/recommend-config", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp struct {
+		Code int                    `json:"code"`
+		Data map[string]interface{} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.NotNil(t, resp.Data)
+	assert.Empty(t, resp.Data)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleRecommendConfig_PUT_200(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectExec(`INSERT INTO recommend_configs`).WillReturnResult(sqlmock.NewResult(0, 1))
+
+	body := `{"refresh_interval":600,"for_you_size":30}`
+	rr := do(t, h, http.MethodPut, "/api/v1/search/admin/recommend-config", body)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp struct {
+		Code int                    `json:"code"`
+		Data map[string]interface{} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, float64(600), resp.Data["refresh_interval"])
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleRecommendConfig_PUT_WithUsername(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectExec(`INSERT INTO recommend_configs`).WillReturnResult(sqlmock.NewResult(0, 1))
+
+	body := `{"for_you_size":15}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/search/admin/recommend-config", strings.NewReader(body))
+	req.Header.Set("X-Username", "alice")
+	rr := httptest.NewRecorder()
+
+	mux := http.NewServeMux()
+	h.Register(mux)
+	mux.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleRecommendConfig_PUT_Error(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectExec(`INSERT INTO recommend_configs`).WillReturnError(sql.ErrConnDone)
+
+	body := `{"for_you_size":15}`
+	rr := do(t, h, http.MethodPut, "/api/v1/search/admin/recommend-config", body)
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleRecommendConfig_405(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodDelete, "/api/v1/search/admin/recommend-config", "")
+	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
+}
+
+func TestHandleRecommendConfigReset_200(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectExec(`INSERT INTO recommend_configs`).WillReturnResult(sqlmock.NewResult(0, 1))
+
+	rr := do(t, h, http.MethodPost, "/api/v1/search/admin/recommend-config/reset", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp struct {
+		Code int                    `json:"code"`
+		Data map[string]interface{} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, float64(300), resp.Data["refresh_interval"])
+	assert.Equal(t, float64(20), resp.Data["for_you_size"])
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleRecommendConfigReset_405(t *testing.T) {
+	h, _ := newTestHandlerNoHot(t)
+
+	rr := do(t, h, http.MethodGet, "/api/v1/search/admin/recommend-config/reset", "")
+	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
+}
+
+func TestHandleRecommendConfigReset_Error(t *testing.T) {
+	h, mock := newTestHandler(t)
+
+	mock.ExpectExec(`INSERT INTO recommend_configs`).WillReturnError(sql.ErrConnDone)
+
+	rr := do(t, h, http.MethodPost, "/api/v1/search/admin/recommend-config/reset", "")
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
