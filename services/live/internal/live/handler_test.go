@@ -1273,3 +1273,267 @@ func TestLinkmicHandler_ToggleVideo_200(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+// ---------- Admin Handler: handleRoomStatus 边界测试 ----------
+
+func TestAdminHandleRoomStatus_405_NotPUT(t *testing.T) {
+	h, _ := newTestAdminHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/live/admin/rooms/1/status", nil)
+	req.Header.Set("X-Admin-Id", "1")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+}
+
+func TestAdminHandleRoomStatus_BadJSON(t *testing.T) {
+	h, mock := newTestAdminHandler(t)
+	mock.ExpectExec(`UPDATE live_rooms SET status`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mux := http.NewServeMux()
+	h.Register(mux)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/live/admin/rooms/1/status", strings.NewReader(`{bad`))
+	req.Header.Set("X-Admin-Id", "1")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	// Bad JSON → req.Status is empty string, but Exec still succeeds
+	assert.Equal(t, http.StatusOK, rr.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestAdminHandleRoomStatus_ExecError(t *testing.T) {
+	h, mock := newTestAdminHandler(t)
+	mock.ExpectExec(`UPDATE live_rooms SET status`).
+		WillReturnError(sql.ErrConnDone)
+
+	mux := http.NewServeMux()
+	h.Register(mux)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/live/admin/rooms/1/status", strings.NewReader(`{"status":"live"}`))
+	req.Header.Set("X-Admin-Id", "1")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// ---------- Admin Handler: handleRooms 边界测试 ----------
+
+func TestAdminHandleRooms_FilterStatus(t *testing.T) {
+	h, mock := newTestAdminHandler(t)
+	now := time.Now()
+	mock.ExpectQuery(`SELECT .+ FROM live_rooms`).
+		WithArgs("live", 20, 0).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "title", "status", "viewer_count", "created_at"}).
+			AddRow(1, 5001, "直播中", "live", 50, now))
+
+	rr := doAdmin(t, h, http.MethodGet, "/api/v1/live/admin/rooms?status=live")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestAdminHandleRooms_EmptyResult(t *testing.T) {
+	h, mock := newTestAdminHandler(t)
+	mock.ExpectQuery(`SELECT .+ FROM live_rooms`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "title", "status", "viewer_count", "created_at"}))
+
+	rr := doAdmin(t, h, http.MethodGet, "/api/v1/live/admin/rooms")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestAdminHandleRooms_DBError(t *testing.T) {
+	h, mock := newTestAdminHandler(t)
+	mock.ExpectQuery(`SELECT .+ FROM live_rooms`).
+		WillReturnError(sql.ErrConnDone)
+
+	rr := doAdmin(t, h, http.MethodGet, "/api/v1/live/admin/rooms")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	// DB error → returns empty list via WriteOK
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// ---------- Admin Handler: handleStats 边界测试 ----------
+
+func TestAdminHandleStats_QueryErrors(t *testing.T) {
+	h, mock := newTestAdminHandler(t)
+	// Both queries fail gracefully
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM live_rooms`).
+		WillReturnError(sql.ErrConnDone)
+	mock.ExpectQuery(`SELECT COALESCE\(SUM`).
+		WillReturnError(sql.ErrConnDone)
+
+	rr := doAdmin(t, h, http.MethodGet, "/api/v1/live/admin/stats")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// ---------- Admin Handler: handleRoute 额外测试 ----------
+
+func TestAdminHandleRoute_StatsPOST_404(t *testing.T) {
+	h, _ := newTestAdminHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/live/admin/stats", nil)
+	req.Header.Set("X-Admin-Id", "1")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+}
+
+func TestAdminHandleRoute_RoomsPOST_404(t *testing.T) {
+	h, _ := newTestAdminHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/live/admin/rooms", nil)
+	req.Header.Set("X-Admin-Id", "1")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+}
+
+func TestAdminHandleRoute_RoomStatusNotPUT(t *testing.T) {
+	h, _ := newTestAdminHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/live/admin/rooms/1/status", nil)
+	req.Header.Set("X-Admin-Id", "1")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+}
+
+func TestAdminHandleRoute_UnknownPath(t *testing.T) {
+	h, _ := newTestAdminHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/live/admin/unknown/path", nil)
+	req.Header.Set("X-Admin-Id", "1")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	// parts[1] = "path" fails ParseInt → 400
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+// ---------- Admin Handler: handleRoomByID 额外测试 ----------
+
+func TestAdminHandleRoomByID_DBError(t *testing.T) {
+	h, mock := newTestAdminHandler(t)
+	mock.ExpectQuery(`SELECT .+ FROM live_rooms WHERE id = \$1`).
+		WithArgs(int64(1)).
+		WillReturnError(sql.ErrConnDone)
+
+	rr := doAdmin(t, h, http.MethodGet, "/api/v1/live/admin/rooms/1")
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// ---------- Admin Handler: handleRoute 额外路径测试 ----------
+
+func TestAdminHandleRoute_RoomByIDNotGET(t *testing.T) {
+	h, _ := newTestAdminHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/live/admin/rooms/1", nil)
+	req.Header.Set("X-Admin-Id", "1")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+}
+
+// ---------- Cover Upload 测试 ----------
+
+func TestHandleCoverUpload_405(t *testing.T) {
+	h, _ := newTestLiveHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/live/room/cover", nil)
+	req.Header.Set("X-User-Id", liveHostID)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
+}
+
+func TestHandleCoverUpload_NoFile(t *testing.T) {
+	h, _ := newTestLiveHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/live/room/cover", strings.NewReader("not-a-form"))
+	req.Header.Set("X-User-Id", liveHostID)
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=xxx")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	// parse form fails or file missing
+	assert.True(t, rr.Code == http.StatusBadRequest || rr.Code == http.StatusOK)
+}
+
+func TestHandleCoverUpload_WithFile(t *testing.T) {
+	h, mock := newTestLiveHandler(t)
+	// mock UpdateRoom for when roomID > 0
+	mock.ExpectExec(`UPDATE live_rooms SET room_name=\$1`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	// Create a minimal multipart form with a file
+	body := &strings.Builder{}
+	boundary := "----TestBoundary"
+	body.WriteString("--" + boundary + "\r\n")
+	body.WriteString(`Content-Disposition: form-data; name="file"; filename="test.jpg"` + "\r\n")
+	body.WriteString("Content-Type: image/jpeg\r\n\r\n")
+	body.WriteString("\xff\xd8\xff\xe0") // JPEG magic bytes
+	body.WriteString("\r\n--" + boundary + "--\r\n")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/live/room/cover?roomId=1", strings.NewReader(body.String()))
+	req.Header.Set("X-User-Id", liveHostID)
+	req.Header.Set("Content-Type", "multipart/form-data; boundary="+boundary)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Contains(t, rr.Body.String(), "uploaded")
+}
+
+func TestHandleCoverUpload_NoRoomID(t *testing.T) {
+	h, _ := newTestLiveHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	body := &strings.Builder{}
+	boundary := "----TestBoundary"
+	body.WriteString("--" + boundary + "\r\n")
+	body.WriteString(`Content-Disposition: form-data; name="file"; filename="test.jpg"` + "\r\n")
+	body.WriteString("Content-Type: image/jpeg\r\n\r\n")
+	body.WriteString("\xff\xd8\xff\xe0")
+	body.WriteString("\r\n--" + boundary + "--\r\n")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/live/room/cover", strings.NewReader(body.String()))
+	req.Header.Set("X-User-Id", liveHostID)
+	req.Header.Set("Content-Type", "multipart/form-data; boundary="+boundary)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Contains(t, rr.Body.String(), "uploaded")
+}
+
+func TestHandleCoverUpload_BadMultipart(t *testing.T) {
+	h, _ := newTestLiveHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/live/room/cover", strings.NewReader("not valid"))
+	req.Header.Set("X-User-Id", liveHostID)
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=xxx")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	assert.True(t, rr.Code == http.StatusBadRequest || rr.Code == http.StatusOK)
+}

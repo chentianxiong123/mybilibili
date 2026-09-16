@@ -2,6 +2,7 @@ package live
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -101,5 +102,174 @@ func TestLinkmicService_Delegation(t *testing.T) {
 	mock.ExpectExec(`UPDATE live_linkmic SET status`).WillReturnResult(sqlmock.NewResult(0, 1))
 	require.NoError(t, svc.Disconnect(context.Background(), 9))
 
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestLinkmicRepository_PendingByRoom(t *testing.T) {
+	repo, mock := newMockLinkmicRepo(t)
+	now := time.Now()
+	mock.ExpectQuery(`SELECT id, room_id, streamer_id, viewer_id, status, created_at`).
+		WithArgs(int64(5)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "room_id", "streamer_id", "viewer_id", "status", "created_at"}).
+			AddRow(int64(1), int64(5), int64(1), int64(2), int32(0), now))
+
+	list, err := repo.PendingByRoom(context.Background(), 5)
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.Equal(t, LinkmicStatusApplying, list[0].Status)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestLinkmicRepository_PendingByRoom_Empty(t *testing.T) {
+	repo, mock := newMockLinkmicRepo(t)
+	mock.ExpectQuery(`SELECT id, room_id, streamer_id, viewer_id, status, created_at`).
+		WithArgs(int64(5)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "room_id", "streamer_id", "viewer_id", "status", "created_at"}))
+
+	list, err := repo.PendingByRoom(context.Background(), 5)
+	require.NoError(t, err)
+	assert.Empty(t, list)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestLinkmicRepository_ActiveByRoom_Empty(t *testing.T) {
+	repo, mock := newMockLinkmicRepo(t)
+	mock.ExpectQuery(`SELECT id, room_id, streamer_id`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "room_id", "streamer_id", "viewer_id", "status", "created_at"}))
+
+	list, err := repo.ActiveByRoom(context.Background(), 5)
+	require.NoError(t, err)
+	assert.Empty(t, list)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestLinkmicRepository_ActiveByRoom_Error(t *testing.T) {
+	repo, mock := newMockLinkmicRepo(t)
+	mock.ExpectQuery(`SELECT id, room_id, streamer_id`).
+		WillReturnError(sql.ErrConnDone)
+
+	list, err := repo.ActiveByRoom(context.Background(), 5)
+	assert.Error(t, err)
+	assert.Nil(t, list)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestLinkmicRepository_PendingByRoom_Error(t *testing.T) {
+	repo, mock := newMockLinkmicRepo(t)
+	mock.ExpectQuery(`SELECT id, room_id, streamer_id, viewer_id, status, created_at`).
+		WillReturnError(sql.ErrConnDone)
+
+	list, err := repo.PendingByRoom(context.Background(), 5)
+	assert.Error(t, err)
+	assert.Nil(t, list)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestLinkmicRepository_QueuePosition_Error(t *testing.T) {
+	repo, mock := newMockLinkmicRepo(t)
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM live_linkmic`).
+		WillReturnError(sql.ErrConnDone)
+
+	pos, err := repo.QueuePosition(context.Background(), 5, 7)
+	assert.Error(t, err)
+	assert.Equal(t, 0, pos)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestLinkmicRepository_Apply_Error(t *testing.T) {
+	repo, mock := newMockLinkmicRepo(t)
+	mock.ExpectQuery(`INSERT INTO live_linkmic`).
+		WillReturnError(sql.ErrConnDone)
+
+	lm, err := repo.Apply(context.Background(), 1, 2, 3)
+	assert.Error(t, err)
+	assert.Nil(t, lm)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestLinkmicRepository_UpdateStatus_Error(t *testing.T) {
+	repo, mock := newMockLinkmicRepo(t)
+	mock.ExpectExec(`UPDATE live_linkmic SET status`).
+		WillReturnError(sql.ErrConnDone)
+
+	err := repo.UpdateStatus(context.Background(), 9, LinkmicStatusConnected)
+	assert.Error(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestLinkmicRepository_UpdateStatus_Ended(t *testing.T) {
+	repo, mock := newMockLinkmicRepo(t)
+	mock.ExpectExec(`UPDATE live_linkmic SET status`).
+		WithArgs(int32(LinkmicStatusEnded), int32(LinkmicStatusEnded), int64(9)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err := repo.UpdateStatus(context.Background(), 9, LinkmicStatusEnded)
+	assert.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestLinkmicRepository_UpdateStatus_Disconnected(t *testing.T) {
+	repo, mock := newMockLinkmicRepo(t)
+	mock.ExpectExec(`UPDATE live_linkmic SET status`).
+		WithArgs(int32(LinkmicStatusDisconnected), int32(LinkmicStatusDisconnected), int64(9)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err := repo.UpdateStatus(context.Background(), 9, LinkmicStatusDisconnected)
+	assert.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestLinkmicRepository_UpdateStatus_Rejected(t *testing.T) {
+	repo, mock := newMockLinkmicRepo(t)
+	mock.ExpectExec(`UPDATE live_linkmic SET status`).
+		WithArgs(int32(LinkmicStatusRejected), int32(LinkmicStatusRejected), int64(9)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err := repo.UpdateStatus(context.Background(), 9, LinkmicStatusRejected)
+	assert.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestLinkmicRepository_ToggleVideo(t *testing.T) {
+	repo, mock := newMockLinkmicRepo(t)
+	mock.ExpectQuery(`UPDATE live_linkmic SET video_enabled`).
+		WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows([]string{"video_enabled"}).AddRow(int32(1)))
+
+	enabled, err := repo.ToggleVideo(context.Background(), 9)
+	require.NoError(t, err)
+	assert.Equal(t, int32(1), enabled)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestLinkmicRepository_ToggleVideo_Error(t *testing.T) {
+	repo, mock := newMockLinkmicRepo(t)
+	mock.ExpectQuery(`UPDATE live_linkmic SET video_enabled`).
+		WillReturnError(sql.ErrConnDone)
+
+	_, err := repo.ToggleVideo(context.Background(), 9)
+	assert.Error(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestLinkmicRepository_ToggleAudio_Error(t *testing.T) {
+	repo, mock := newMockLinkmicRepo(t)
+	mock.ExpectQuery(`UPDATE live_linkmic SET audio_enabled`).
+		WillReturnError(sql.ErrConnDone)
+
+	_, err := repo.ToggleAudio(context.Background(), 9)
+	assert.Error(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestLinkmicRepository_QueuePosition_Zero(t *testing.T) {
+	repo, mock := newMockLinkmicRepo(t)
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM live_linkmic`).
+		WithArgs(int64(5), int64(7)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+
+	pos, err := repo.QueuePosition(context.Background(), 5, 7)
+	require.NoError(t, err)
+	assert.Equal(t, 1, pos, "first in queue")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
