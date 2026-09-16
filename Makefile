@@ -9,7 +9,7 @@ LDFLAGS  := -ldflags="-s -w"
 # 准备 BIN 目录
 $(shell mkdir -p $(BIN))
 
-.PHONY: run build clean test test-all test-integration test-integration-only build-core build-ai build-search build-msg-danmaku build-work build-live build-studio build-bili build-transcoder build-transcoder-nvenc build-transcoder-vaapi
+.PHONY: run build clean test test-all test-integration test-integration-only lint coverage coverage-html build-core build-ai build-search build-msg-danmaku build-work build-live build-studio build-bili build-transcoder build-transcoder-nvenc build-transcoder-vaapi
 
 run:
 	$(GO) build $(LDFLAGS) -o $(BIN)/mybilibili-core ./services/core/cmd/core
@@ -110,7 +110,7 @@ test-integration: ## 集成测试（需要 docker）
 	go test -tags=integration -count=1 -v ./tests/integration/...
 	cd tests/integration && docker compose -f docker-compose.test.yml down -v
 
-test-all: test test-integration  ## 全部测试（单元+集成）
+test-all: test test-frontend test-integration  ## 全部测试（Go单元+前端+集成）
 
 test-integration-only:  ## 只跑集成测试
 	go test -tags=integration -count=1 -v ./tests/integration/...
@@ -128,3 +128,60 @@ clean-source:
 	find . -type f \( -name 'core' -o -name 'a.out' -o -name '*.exe' -o -name '*.test' -o -name 'build-errors.log' \) -path './services/bili-proxy/*' -delete 2>/dev/null || true
 	find . -type f \( -name 'core' -o -name 'a.out' -o -name '*.exe' -o -name '*.test' -o -name 'build-errors.log' \) -path './services/transcoder/*' -delete 2>/dev/null || true
 	@echo "✓ 源码目录 in-source build 残留已清理"
+
+# ---------- Lint ----------
+
+lint:  ## Go lint（需安装 golangci-lint）
+	@for d in services/*/ shared/pkg ; do \
+		if [ -f "$$d/go.mod" ]; then \
+			echo "  → lint $$d"; \
+			(cd "$$d" && golangci-lint run ./...) || true; \
+		fi; \
+	done
+
+# ---------- 覆盖率 ----------
+
+COVERAGE_DIR ?= /tmp/mybilibili-coverage
+
+coverage:  ## 汇总各模块覆盖率到终端
+	@echo "========== Go 模块覆盖率 =========="
+	@for d in shared/pkg services/core services/search services/ai services/msg-danmaku services/live services/studio services/work services/bili-proxy; do \
+		if [ -f "$$d/go.mod" ]; then \
+			result=$$(cd "$$d" && go test -count=1 -coverprofile=$(COVERAGE_DIR)/cov_$$(echo $$d | tr '/' '_').out ./... 2>&1 | grep "^ok" | awk -F'coverage: ' '{print $$2}' | awk -F'%' '{s+=$$1; n++}END{if(n>0) printf "%.1f%%", s/n; else print "N/A"}'); \
+			printf "  %-30s %s\n" "$$d" "$$result"; \
+		fi; \
+	done
+	@echo "===================================="
+
+coverage-html:  ## 生成各模块覆盖率 HTML 报告到 $(COVERAGE_DIR)/html/
+	@mkdir -p $(COVERAGE_DIR)/html
+	@for d in shared/pkg services/core services/search services/ai services/msg-danmaku services/live services/studio services/work services/bili-proxy; do \
+		if [ -f "$$d/go.mod" ]; then \
+			name=$$(echo $$d | tr '/' '_'); \
+			cd "$$d" && go test -count=1 -coverprofile=$(COVERAGE_DIR)/$$name.out ./... 2>/dev/null; \
+			go tool cover -html=$(COVERAGE_DIR)/$$name.out -o $(COVERAGE_DIR)/html/$$name.html 2>/dev/null; \
+			cd $(OLDPWD); \
+			echo "  → $(COVERAGE_DIR)/html/$$name.html"; \
+		fi; \
+	done
+	@echo "✓ HTML 报告已生成到 $(COVERAGE_DIR)/html/"
+
+coverage-check:  ## 门禁：总覆盖率不低于阈值（默认 70%）
+	@THRESHOLD=$${THRESHOLD:-70}; \
+	FAIL=0; \
+	for d in shared/pkg services/core services/search services/ai services/msg-danmaku services/live services/studio services/work services/bili-proxy; do \
+		if [ -f "$$d/go.mod" ]; then \
+			pct=$$(cd "$$d" && go test -count=1 -coverprofile=$(COVERAGE_DIR)/cov_check.out ./... 2>&1 | grep "^ok" | awk -F'coverage: ' '{print $$2}' | awk -F'%' '{s+=$$1; n++}END{if(n>0) printf "%.0f", s/n; else print "0"}'); \
+			if [ "$$pct" -lt "$$THRESHOLD" ] 2>/dev/null; then \
+				echo "  ✗ $$d: $$pct% < $$THRESHOLD%"; \
+				FAIL=1; \
+			else \
+				echo "  ✓ $$d: $$pct%"; \
+			fi; \
+		fi; \
+	done; \
+	if [ "$$FAIL" -eq 1 ]; then \
+		echo "✗ 覆盖率低于阈值 $$THRESHOLD%，CI 失败"; \
+		exit 1; \
+	fi; \
+	echo "✓ 所有模块覆盖率达标 (≥$$THRESHOLD%)"
