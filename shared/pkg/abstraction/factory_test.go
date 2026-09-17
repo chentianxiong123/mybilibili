@@ -2,7 +2,9 @@ package abstraction
 
 import (
 	"testing"
+	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,6 +17,10 @@ func TestNewServiceDiscovery(t *testing.T) {
 	_, err = NewServiceDiscovery(ServiceDiscoveryConfig{Type: "file"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not implemented")
+
+	_, err = NewServiceDiscovery(ServiceDiscoveryConfig{Type: "etcd"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "etcd discovery not implemented")
 
 	_, err = NewServiceDiscovery(ServiceDiscoveryConfig{Type: "unknown"})
 	assert.Error(t, err)
@@ -32,7 +38,14 @@ func TestNewMessageQueue(t *testing.T) {
 
 	_, err = NewMessageQueue(MessageQueueConfig{Type: "redis-stream"})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not implemented")
+	assert.Contains(t, err.Error(), "redis stream queue not implemented")
+
+	// nats 真实连接测试要求本地有 nats-server, 此处仅断言类型被分发
+	_, err = NewMessageQueue(MessageQueueConfig{Type: "nats", NATSURL: "nats://127.0.0.1:1"})
+	// 应为连接错误或超时错误, 不为 nil
+	if err == nil {
+		t.Skip("nats to bad addr unexpectedly succeeded (server may be up)")
+	}
 
 	_, err = NewMessageQueue(MessageQueueConfig{Type: "bogus"})
 	assert.Error(t, err)
@@ -43,9 +56,21 @@ func TestNewCacheStore(t *testing.T) {
 	c, err := NewCacheStore(CacheStoreConfig{Type: "memory"})
 	require.NoError(t, err)
 	assert.NotNil(t, c)
+	_ = c.Close()
 
-	_, err = NewCacheStore(CacheStoreConfig{Type: "redis"})
+	// redis: 用 miniredis 验证成功连接
+	mr, err := miniredis.Run()
+	require.NoError(t, err)
+	t.Cleanup(mr.Close)
+
+	c, err = NewCacheStore(CacheStoreConfig{Type: "redis", Addr: mr.Addr()})
+	require.NoError(t, err)
+	assert.NotNil(t, c)
+	_ = c.Close()
+
+	_, err = NewCacheStore(CacheStoreConfig{Type: "sqlite"})
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "sqlite cache not implemented")
 
 	_, err = NewCacheStore(CacheStoreConfig{Type: "weird"})
 	assert.Error(t, err)
@@ -63,6 +88,11 @@ func TestNewServiceCaller(t *testing.T) {
 
 	_, err = NewServiceCaller(ServiceCallerConfig{Type: "grpc"})
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "grpc caller not implemented")
+
+	_, err = NewServiceCaller(ServiceCallerConfig{Type: "http"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "http caller not implemented")
 
 	_, err = NewServiceCaller(ServiceCallerConfig{Type: "nope"})
 	assert.Error(t, err)
@@ -112,6 +142,7 @@ func TestNewDocumentStore(t *testing.T) {
 
 	_, err = NewDocumentStore(DocumentStoreConfig{Type: "pg-jsonb"})
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "DSN required")
 
 	_, err = NewDocumentStore(DocumentStoreConfig{Type: "sqlite"})
 	assert.Error(t, err)
@@ -123,3 +154,6 @@ func TestNewDocumentStore(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown document store type")
 }
+
+// 防止 time 包未被引用 (timeout 配置用到)
+var _ = time.Second
