@@ -369,33 +369,6 @@ services:
       pg16: {condition: service_started}
     networks: [mylib]
 
-  whisper-local:
-    image: mybilibili-whisper-local:dev
-    build:
-      <<: *go-build
-      args:
-        SERVICE: whisper-local
-        TARGET: external
-    container_name: mybilibili-whisper-local
-    restart: no
-    env_file: ["_env/common.env", "_env/dev.env", ".env"]
-    environment:
-      - HTTP_ADDR=:8095
-      - SERVICE=whisper-local
-      - WHISPER_CLI_PATH=/usr/local/bin/whisper-cli
-      - WHISPER_MODEL_DIR=/models/whisper
-      - WHISPER_DEFAULT_MODEL=base
-      - WHISPER_LANGUAGE=zh
-      - WHISPER_THREADS=4
-    ports: ["8095:8095"]
-    volumes:
-      - ../:/app
-      - /home/a1/go/pkg/mod:/go/pkg/mod
-      - /home/a1/.cache/go-build:/root/.cache/go-build
-      - /usr/local/bin/whisper-cli:/usr/local/bin/whisper-cli:ro
-      - /home/a1/models/whisper:/models/whisper:ro
-    networks: [mylib]
-
   # ================= 前端 3 服务（容器化 dev，挂源码 + HMR）================
   # 改代码: 编辑宿主 ./web/user、./web/admin 或 ./mobile/wap → 容器 volume 同步 → Vite/Nuxt HMR 自动刷新
   web:
