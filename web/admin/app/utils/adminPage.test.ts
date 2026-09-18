@@ -155,3 +155,108 @@ describe('runConfirmedAction', () => {
     expect(errorMock).toHaveBeenCalledWith('操作失败')
   })
 })
+
+// ====== 补充：跳转/取消 行为 + 鉴权失败/异常路径 ======
+
+describe('adminPage 补充 - cancel 跳转/取消分支', () => {
+  it('confirm 抛字符串 cancel 不触发 error 提示', async () => {
+    confirmMock.mockRejectedValueOnce('cancel')
+    const action = vi.fn()
+    const ok = await runConfirmedAction({ message: 'm', action })
+    expect(ok).toBe(false)
+    expect(action).not.toHaveBeenCalled()
+    expect(errorMock).not.toHaveBeenCalled()
+  })
+
+  it('confirm 抛字符串 cancel 但提供 errorMessage 时也不触发 error', async () => {
+    confirmMock.mockRejectedValueOnce('cancel')
+    const action = vi.fn()
+    const ok = await runConfirmedAction({ message: 'm', action, errorMessage: '不应触发' })
+    expect(ok).toBe(false)
+    expect(errorMock).not.toHaveBeenCalled()
+  })
+
+  it('action 抛异常时捕获并返回 false 调用 error', async () => {
+    confirmMock.mockResolvedValueOnce(undefined)
+    const action = vi.fn().mockRejectedValue(new Error('鉴权失败'))
+    const ok = await runConfirmedAction({
+      message: 'm',
+      action,
+      errorMessage: '权限不足',
+    })
+    expect(ok).toBe(false)
+    expect(errorMock).toHaveBeenCalledWith('权限不足')
+  })
+
+  it('confirm 抛非 Error 也走 error 分支', async () => {
+    confirmMock.mockRejectedValueOnce(new TypeError('token expired'))
+    const ok = await runConfirmedAction({ message: 'm', action: vi.fn(), errorMessage: '会话过期' })
+    expect(ok).toBe(false)
+    expect(errorMock).toHaveBeenCalledWith('会话过期')
+  })
+
+  it('onSuccess 抛异常时被外层 catch 捕获并返回 false', async () => {
+    confirmMock.mockResolvedValueOnce(undefined)
+    const action = vi.fn().mockResolvedValue(undefined)
+    const onSuccess = vi.fn().mockRejectedValue(new Error('refresh failed'))
+    const ok = await runConfirmedAction({
+      message: 'm',
+      action,
+      onSuccess,
+      errorMessage: '后续失败',
+    })
+    expect(ok).toBe(false)
+    expect(onSuccess).toHaveBeenCalledOnce()
+    expect(errorMock).toHaveBeenCalledWith('后续失败')
+  })
+
+  it('successMessage 与 onSuccess 同时提供都执行', async () => {
+    confirmMock.mockResolvedValueOnce(undefined)
+    const action = vi.fn().mockResolvedValue(undefined)
+    const onSuccess = vi.fn().mockResolvedValue(undefined)
+    await runConfirmedAction({ message: 'm', action, successMessage: 'OK', onSuccess })
+    expect(successMock).toHaveBeenCalledWith('OK')
+    expect(onSuccess).toHaveBeenCalledOnce()
+  })
+})
+
+describe('adminPage 补充 - normalizePagedResult 边界', () => {
+  it('records 为 undefined 时返回空数组 total=0', () => {
+    expect(normalizePagedResult({ records: undefined, total: 5 })).toEqual({ records: [], total: 5 })
+  })
+
+  it('records 为数字时返回空数组 total 走 records.length', () => {
+    expect(normalizePagedResult({ records: 42 })).toEqual({ records: [], total: 0 })
+  })
+
+  it('空数组返回 records=[] total=0', () => {
+    expect(normalizePagedResult([])).toEqual({ records: [], total: 0 })
+  })
+
+  it('total 缺失且 records 数组时 total=length', () => {
+    expect(normalizePagedResult({ records: [1, 2, 3] })).toEqual({ records: [1, 2, 3], total: 3 })
+  })
+
+  it('total 为 0 字符串被 Number 转 0', () => {
+    expect(normalizePagedResult({ records: [], total: '0' })).toEqual({ records: [], total: 0 })
+  })
+})
+
+describe('adminPage 补充 - formatDateTime 边界', () => {
+  it('空字符串返回 "-"', () => {
+    expect(formatDateTime('')).toBe('-')
+  })
+
+  it('字符串中多个 T 只替换第一个', () => {
+    expect(formatDateTime('2024-01-02T03:04:05T00:00:00')).toBe('2024-01-02 03:04:05T00:00:00')
+  })
+
+  it('数字时间戳走 Date 转换路径', () => {
+    const out = formatDateTime(0 as any)
+    expect(typeof out).toBe('string')
+  })
+
+  it('boolean 类型走 Date 转换不抛错', () => {
+    expect(() => formatDateTime(true as any)).not.toThrow()
+  })
+})
