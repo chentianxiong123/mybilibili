@@ -1,20 +1,13 @@
 # 统一多阶段 Dockerfile — 构建上下文为仓库根
 #
-# 普通服务:
+# 用法:
 #   docker build --build-arg SERVICE=core -t mybilibili-core .
 #   docker build --build-arg SERVICE=bili-proxy --build-arg CMD_DIR=bili-proxy -t mybilibili-bili .
 #
-# External 服务:
-#   docker build --build-arg SERVICE=whisper-local --build-arg TARGET=external -t mybilibili-whisper-local .
-#
-# 注: transcoder 服务不做容器，改为裸跑宿主机（用系统 ffmpeg + 对应显卡驱动）。
-#
-# SERVICE 取值（与服务目录名一致）:
+# SERVICE 取值（与 services/ 下目录名一致）:
 #   core ai search msg-danmaku live studio work bili-proxy
-#   whisper-local embedding-llamacpp-vulkan (external 服务)
 # CMD_DIR: 服务 cmd 下的子目录名（默认与 SERVICE 相同）。
 #   bili-proxy 服务需 --build-arg CMD_DIR=bili-proxy
-# TARGET: services（默认）或 external
 
 ARG GO_IMAGE=golang:1.26-bookworm
 
@@ -22,7 +15,6 @@ ARG GO_IMAGE=golang:1.26-bookworm
 FROM ${GO_IMAGE} AS build
 ARG SERVICE
 ARG CMD_DIR
-ARG TARGET=services
 ENV CGO_ENABLED=0 GOOS=linux GOFLAGS=-mod=mod GOWORK=off
 # 国内网络: Go 模块走七牛代理(主) + 直连(备)，关闭校验加速
 ENV GOPROXY=https://goproxy.cn,direct
@@ -31,19 +23,18 @@ ENV GOSUMDB=off
 WORKDIR /build
 # 先拷依赖清单利用缓存
 COPY shared/pkg/go.mod shared/pkg/go.sum* ./shared/pkg/
-COPY ${TARGET}/${SERVICE}/go.mod ${TARGET}/${SERVICE}/go.sum* ./${TARGET}/${SERVICE}/
-RUN cd ${TARGET}/${SERVICE} && go mod download
+COPY services/${SERVICE}/go.mod services/${SERVICE}/go.sum* ./services/${SERVICE}/
+RUN cd services/${SERVICE} && go mod download
 # 拷全部源码
 COPY shared/pkg ./shared/pkg
-COPY ${TARGET}/${SERVICE} ./${TARGET}/${SERVICE}/
+COPY services/${SERVICE} ./services/${SERVICE}/
 # 编译：CMD_DIR 默认与 SERVICE 相同
 RUN DIR="${CMD_DIR:-${SERVICE}}" \
-    && cd ${TARGET}/${SERVICE} && go build -o /out/app ./cmd/${DIR}
+    && cd services/${SERVICE} && go build -o /out/app ./cmd/${DIR}
 
 # ============ 开发阶段（热重载） ============
 FROM ${GO_IMAGE} AS dev
 ARG SERVICE
-ARG TARGET=services
 ENV CGO_ENABLED=0 GOOS=linux GOFLAGS=-mod=mod GOWORK=off
 ENV GOPROXY=https://goproxy.cn,direct
 ENV GOSUMDB=off
@@ -53,7 +44,7 @@ RUN go install github.com/air-verse/air@latest
 
 WORKDIR /app
 COPY shared/pkg ./shared/pkg
-COPY ${TARGET}/${SERVICE} ./${TARGET}/${SERVICE}/
+COPY services/${SERVICE} ./services/${SERVICE}/
 COPY entrypoint-dev.sh /usr/local/bin/entrypoint-dev.sh
 RUN chmod +x /usr/local/bin/entrypoint-dev.sh
 
