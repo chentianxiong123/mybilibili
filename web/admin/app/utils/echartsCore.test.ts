@@ -138,5 +138,100 @@ describe('module-level side effect', () => {
   })
 })
 
+// ====== 补充：dispose / resize / 多次初始化 ======
+
+describe('echartsCore 补充 - 多次初始化与 dispose 协同', () => {
+  beforeEach(() => {
+    mock().init.mockReset()
+    mock().resize.mockReset()
+    mock().dispose.mockReset()
+    mock().getInstanceByDom.mockReset()
+  })
+
+  it('同一 DOM 上多次 init 返回独立实例', () => {
+    const initMock = mock().init
+    initMock.mockReturnValueOnce({ id: 'first' })
+    initMock.mockReturnValueOnce({ id: 'second' })
+    const dom = document.createElement('div')
+    const a = echarts.init(dom)
+    const b = echarts.init(dom)
+    expect(a).toEqual({ id: 'first' })
+    expect(b).toEqual({ id: 'second' })
+    expect(initMock).toHaveBeenCalledTimes(2)
+    expect(initMock.mock.calls[0][0]).toBe(dom)
+    expect(initMock.mock.calls[1][0]).toBe(dom)
+  })
+
+  it('init 不传 theme 与 config 时只传 DOM', () => {
+    const initMock = mock().init
+    initMock.mockReturnValue({ id: 'inst' })
+    const dom = document.createElement('div')
+    echarts.init(dom)
+    expect(initMock.mock.calls[0][0]).toBe(dom)
+    expect(initMock.mock.calls[0].length).toBe(1)
+  })
+
+  it('dispose 之后允许再次 init 同一 DOM', () => {
+    const initMock = mock().init
+    initMock.mockReturnValue({ id: 'fresh' })
+    const dom = document.createElement('div')
+    const inst = echarts.init(dom)
+    echarts.dispose(inst)
+    const inst2 = echarts.init(dom)
+    expect(inst2).toEqual({ id: 'fresh' })
+    expect(mock().dispose).toHaveBeenCalledWith(inst)
+  })
+
+  it('resize 在 dispose 之前/之后均可调用（不抛错）', () => {
+    const inst = { id: 'inst' }
+    expect(() => echarts.resize(inst, 100, 100)).not.toThrow()
+    echarts.dispose(inst)
+    expect(() => echarts.resize(inst)).not.toThrow()
+    expect(mock().resize).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('echartsCore 补充 - dispose 边界', () => {
+  beforeEach(() => {
+    mock().dispose.mockReset()
+  })
+
+  it('dispose(null) 直接转发', () => {
+    echarts.dispose(null as any)
+    expect(mock().dispose).toHaveBeenCalledWith(null)
+  })
+
+  it('连续 dispose 多个不同实例', () => {
+    const inst1 = { id: 'a' }
+    const inst2 = { id: 'b' }
+    echarts.dispose(inst1)
+    echarts.dispose(inst2)
+    expect(mock().dispose).toHaveBeenNthCalledWith(1, inst1)
+    expect(mock().dispose).toHaveBeenNthCalledWith(2, inst2)
+    expect(mock().dispose).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('echartsCore 补充 - resize 边界', () => {
+  beforeEach(() => {
+    mock().resize.mockReset()
+  })
+
+  it('resize 单独传 width 不传 height', () => {
+    const inst = { id: 'i' }
+    echarts.resize(inst, 800)
+    expect(mock().resize).toHaveBeenCalledTimes(1)
+    expect(mock().resize.mock.calls[0][0]).toBe(inst)
+    expect(mock().resize.mock.calls[0][1]).toBe(800)
+    expect(mock().resize.mock.calls[0][2]).toBeUndefined()
+  })
+
+  it('resize 三个参数都传时全部转发', () => {
+    const inst = { id: 'i' }
+    echarts.resize(inst, 1920, 1080)
+    expect(mock().resize).toHaveBeenCalledWith(inst, 1920, 1080)
+  })
+})
+
 // keep reference so unused-var lint passes
 void echartsStub

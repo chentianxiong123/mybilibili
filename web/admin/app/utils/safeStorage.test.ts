@@ -95,3 +95,79 @@ describe('safeStorage - server mode (no window)', () => {
     }
   })
 })
+
+// ====== 补充：多 key 隔离 / 损坏数据 / 边界 ======
+
+describe('safeStorage 补充 - 多 key 隔离', () => {
+  beforeEach(() => { store.clear() })
+
+  it('多个 key 互相独立读取', () => {
+    safeStorage.setItem('user', 'alice')
+    safeStorage.setItem('role', 'admin')
+    safeStorage.setItem('count', '5')
+    expect(safeStorage.getItem('user')).toBe('alice')
+    expect(safeStorage.getItem('role')).toBe('admin')
+    expect(safeStorage.getItem('count')).toBe('5')
+    expect(safeStorage.getItem('nonexistent')).toBeNull()
+  })
+
+  it('删除单个 key 不影响其他 key', () => {
+    safeStorage.setItem('a', '1')
+    safeStorage.setItem('b', '2')
+    safeStorage.setItem('c', '3')
+    safeStorage.removeItem('b')
+    expect(safeStorage.getItem('a')).toBe('1')
+    expect(safeStorage.getItem('b')).toBeNull()
+    expect(safeStorage.getItem('c')).toBe('3')
+  })
+
+  it('顺序覆写与最新值一致', () => {
+    for (let i = 0; i < 10; i++) {
+      safeStorage.setItem('counter', String(i))
+    }
+    expect(safeStorage.getItem('counter')).toBe('9')
+  })
+
+  it('长字符串值能完整存读', () => {
+    const long = 'x'.repeat(5000)
+    safeStorage.setItem('big', long)
+    expect(safeStorage.getItem('big')).toBe(long)
+  })
+})
+
+describe('safeStorage 补充 - 损坏/边界数据', () => {
+  beforeEach(() => { store.clear() })
+
+  it('存储 null 字符串能正确读回', () => {
+    safeStorage.setItem('k', 'null')
+    expect(safeStorage.getItem('k')).toBe('null')
+  })
+
+  it('存储 undefined 字符串能正确读回', () => {
+    safeStorage.setItem('k', 'undefined')
+    expect(safeStorage.getItem('k')).toBe('undefined')
+  })
+
+  it('存储带换行的多行字符串保留原文', () => {
+    const multi = 'line1\nline2\r\nline3\twith tab'
+    safeStorage.setItem('multi', multi)
+    expect(safeStorage.getItem('multi')).toBe(multi)
+  })
+
+  it('存储 unicode/emoji 字符串不损坏', () => {
+    const emoji = '用户名🚀emoji 中文'
+    safeStorage.setItem('u', emoji)
+    expect(safeStorage.getItem('u')).toBe(emoji)
+  })
+
+  it('数字类型值在 setItem 调用时被强转字符串', () => {
+    safeStorage.setItem('n' as any, 123 as any)
+    expect(safeStorage.getItem('n')).toBe('123')
+  })
+
+  it('读损坏 JSON 时不抛异常透传原文', () => {
+    safeStorage.setItem('bad', '{user: "x"')
+    expect(() => safeStorage.getItem('bad')).not.toThrow()
+    expect(safeStorage.getItem('bad')).toBe('{user: "x"')
+  })
+})
