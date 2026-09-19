@@ -146,6 +146,61 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  // /favorite/create → POST /favorites（创建收藏夹）
+  if (teriteriUrl === '/favorite/create' && method === 'POST') {
+    const body = await readRawBody(event)
+    const targetUrl = `http://${CORE_HOST}:8080/api/v1/favorites`
+    const headers: Record<string, string> = { 'content-type': 'application/json' }
+    const reqHeaders = getRequestHeaders(event)
+    for (const k of Object.keys(reqHeaders)) {
+      const v = reqHeaders[k]
+      if (v !== undefined && k.toLowerCase() !== 'host' && k.toLowerCase() !== 'content-length') {
+        headers[k] = String(v)
+      }
+    }
+    headers['host'] = new URL(`http://${CORE_HOST}:8080`).host
+    const resp = await fetch(targetUrl, { method: 'POST', headers, body, redirect: 'follow' })
+    setResponseStatus(event, resp.status)
+    return Buffer.from(await resp.arrayBuffer())
+  }
+
+  // /favorite/update/{id} → PUT /favorites/{id}（编辑收藏夹）
+  if (teriteriUrl.startsWith('/favorite/update/') && method === 'POST') {
+    const id = teriteriUrl.split('/').pop()
+    const body = await readRawBody(event)
+    const targetUrl = `http://${CORE_HOST}:8080/api/v1/favorites/${id}`
+    const headers: Record<string, string> = { 'content-type': 'application/json' }
+    const reqHeaders = getRequestHeaders(event)
+    for (const k of Object.keys(reqHeaders)) {
+      const v = reqHeaders[k]
+      if (v !== undefined && k.toLowerCase() !== 'host' && k.toLowerCase() !== 'content-length') {
+        headers[k] = String(v)
+      }
+    }
+    headers['host'] = new URL(`http://${CORE_HOST}:8080`).host
+    const resp = await fetch(targetUrl, { method: 'PUT', headers, body, redirect: 'follow' })
+    setResponseStatus(event, resp.status)
+    return Buffer.from(await resp.arrayBuffer())
+  }
+
+  // /favorite/delete/{id} → DELETE /favorites/{id}（删除收藏夹）
+  if (teriteriUrl.startsWith('/favorite/delete/') && method === 'POST') {
+    const id = teriteriUrl.split('/').pop()
+    const targetUrl = `http://${CORE_HOST}:8080/api/v1/favorites/${id}`
+    const headers: Record<string, string> = {}
+    const reqHeaders = getRequestHeaders(event)
+    for (const k of Object.keys(reqHeaders)) {
+      const v = reqHeaders[k]
+      if (v !== undefined && k.toLowerCase() !== 'host' && k.toLowerCase() !== 'content-length') {
+        headers[k] = String(v)
+      }
+    }
+    headers['host'] = new URL(`http://${CORE_HOST}:8080`).host
+    const resp = await fetch(targetUrl, { method: 'DELETE', headers, redirect: 'follow' })
+    setResponseStatus(event, resp.status)
+    return Buffer.from(await resp.arrayBuffer())
+  }
+
   let mapped: { target: string; port: string; qs: string }
   try {
     mapped = adaptUrl(teriteriUrl, query)

@@ -7,7 +7,7 @@
                     <i class="iconfont icon-xiajiantou" :style="isFavnavOpen ? 'transform: rotate(180deg);' : ''"></i>
                 </div>
                 <div class="fav-list-container ps">
-                    <div class="nav-title nav-add" v-if="this.$store.state.user.uid === uid">
+                    <div class="nav-title nav-add" v-if="this.$store.state.user.uid === uid" @click="openCreateDialog">
                         <svg t="1711976556258" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4395" width="20" height="20"><path d="M512 62c247.5 0 450 202.5 450 450s-202.5 450-450 450-450-202.5-450-450 202.5-450 450-450z m28.125 421.875V287c0-16.875-11.25-28.125-28.125-28.125s-28.125 11.25-28.125 28.125v196.875H287c-16.875 0-28.125 11.25-28.125 28.125s11.25 28.125 28.125 28.125h196.875V737c0 16.875 11.25 28.125 28.125 28.125s28.125-11.25 28.125-28.125V540.125H737c16.875 0 28.125-11.25 28.125-28.125s-11.25-28.125-28.125-28.125H540.125z" p-id="4396"></path></svg>
                         <div class="text">新建收藏夹</div>
                     </div>
@@ -24,8 +24,8 @@
                                 </template>
                                 <template #content>
                                     <ul class="be-dropdown-menu">
-                                        <li class="be-dropdown-item" :class="{'be-dropdown-item-delimiter': item.type !== 1}" @click="noPage">编辑信息</li>
-                                        <li class="be-dropdown-item" v-if="item.type !== 1" @click="noPage">删除</li>
+                                        <li class="be-dropdown-item" :class="{'be-dropdown-item-delimiter': item.type !== 1}" @click="openEditDialog(item)">编辑信息</li>
+                                        <li class="be-dropdown-item" v-if="item.type !== 1" @click="deleteFav(item)">删除</li>
                                     </ul>
                                 </template>
                             </VPopover>
@@ -132,13 +132,32 @@
                 <img src="@/assets/teriteri/img/nothing.png" alt="">
             </div>
         </div>
+
+        <!-- 新建/编辑收藏夹弹窗 -->
+        <el-dialog v-model="showFavDialog" :title="favDialogTitle" width="400px" :close-on-click-modal="false">
+            <el-form label-width="80px">
+                <el-form-item label="名称">
+                    <el-input v-model="favForm.name" maxlength="20" placeholder="请输入收藏夹名称" />
+                </el-form-item>
+                <el-form-item label="可见性" v-if="!editingFav">
+                    <el-radio-group v-model="favForm.visible">
+                        <el-radio :value="1">公开</el-radio>
+                        <el-radio :value="0">私密</el-radio>
+                    </el-radio-group>
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <el-button @click="showFavDialog = false">取消</el-button>
+                <el-button type="primary" :loading="favSaving" @click="saveFav">确定</el-button>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
 <script lang="ts">
 import VPopover from '@/components/teriteri/popover/VPopover.vue';
 import { handleTime, handleNum, handleDate } from '@/teriteri-src/utils/utils';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 
 export default {
     name: "SpaceFavlist",
@@ -152,6 +171,12 @@ export default {
             page: 1,    // 当前分页
             favVideos: [],  // 当前收藏夹的视频列表
             fid: this.$route.query.fid || '',  // 从路由 query 获取收藏夹 id
+            // 新建/编辑收藏夹
+            showFavDialog: false,
+            favDialogTitle: '新建收藏夹',
+            favForm: { name: '', visible: 1 },
+            editingFav: null as any,
+            favSaving: false,
         }
     },
     computed: {
@@ -250,9 +275,93 @@ export default {
             return handleDate(date);
         },
 
-        noPage() {
-            ElMessage.warning("该功能暂未开放")
-        }
+        // 打开新建收藏夹弹窗
+        openCreateDialog() {
+            this.editingFav = null;
+            this.favDialogTitle = '新建收藏夹';
+            this.favForm = { name: '', visible: 1 };
+            this.showFavDialog = true;
+        },
+
+        // 打开编辑收藏夹弹窗
+        openEditDialog(item) {
+            this.editingFav = item;
+            this.favDialogTitle = '编辑收藏夹';
+            this.favForm = { name: item.title, visible: item.visible };
+            this.showFavDialog = true;
+        },
+
+        // 保存收藏夹（新建/编辑）
+        async saveFav() {
+            const name = this.favForm.name.trim();
+            if (!name) {
+                ElMessage.warning('收藏夹名称不能为空');
+                return;
+            }
+            this.favSaving = true;
+            try {
+                const token = localStorage.getItem('teri_token') || '';
+                if (this.editingFav) {
+                    // 编辑
+                    const res = await this.$post(`/favorite/update/${this.editingFav.fid}`, 
+                        JSON.stringify({ name }),
+                        { headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' } }
+                    );
+                    if (res.data && res.data.code === 200) {
+                        ElMessage.success('修改成功');
+                        this.showFavDialog = false;
+                        await this.loadFavList();
+                    } else {
+                        ElMessage.error(res.data?.message || '修改失败');
+                    }
+                } else {
+                    // 新建
+                    const res = await this.$post('/favorite/create', 
+                        JSON.stringify({ name, visible: this.favForm.visible }),
+                        { headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' } }
+                    );
+                    if (res.data && res.data.code === 200) {
+                        ElMessage.success('创建成功');
+                        this.showFavDialog = false;
+                        await this.loadFavList();
+                    } else {
+                        ElMessage.error(res.data?.message || '创建失败');
+                    }
+                }
+            } catch (e) {
+                ElMessage.error('操作失败');
+            } finally {
+                this.favSaving = false;
+            }
+        },
+
+        // 删除收藏夹
+        async deleteFav(item) {
+            try {
+                await ElMessageBox.confirm(`确定要删除收藏夹"${item.title}"吗？`, '删除确认', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning',
+                });
+                const token = localStorage.getItem('teri_token') || '';
+                const res = await this.$post(`/favorite/delete/${item.fid}`, null, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.data && res.data.code === 200) {
+                    ElMessage.success('删除成功');
+                    await this.loadFavList();
+                    // 如果删除的是当前选中的收藏夹，跳转到默认收藏夹
+                    if (Number(this.fid) === item.fid) {
+                        const fav = this.favList.find(i => i.type === 1);
+                        if (fav) this.$router.push(`/space/${this.uid}/favlist?fid=${fav.fid}`);
+                    }
+                } else {
+                    ElMessage.error(res.data?.message || '删除失败');
+                }
+            } catch (e) {
+                if (e !== 'cancel') ElMessage.error('删除失败');
+            }
+        },
     },
     mounted() {
         if (this.favList.length === 0) {
