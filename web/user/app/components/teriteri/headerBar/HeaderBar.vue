@@ -205,7 +205,7 @@
                                 <div class="count-text">粉丝</div>
                             </a>
                             <a :href="`/space/${user.uid}/dynamic`" target="_blank" class="counts-item">
-                                <div class="count-num">{{ handleNum(0) }}</div>
+                                <div class="count-num">{{ handleNum(user.dynamicCount) }}</div>
                                 <div class="count-text">动态</div>
                             </a>
                         </div>
@@ -306,9 +306,7 @@
                         </div>
                     </template>
                     <template #content>
-                        <div style="height: 557.3px; width: 371.6px;" v-if="this.$store.state.isLogin">
-                            
-                        </div>
+                        <DynamicDropdown v-if="this.$store.state.isLogin" />
                         <div class="not-login" v-else>
                             <p class="not-login-tips">登录即可查看关注动态</p>
                             <div class="not-login-btn" @click="openLoginDialog();">
@@ -327,9 +325,7 @@
                         </div>
                     </template>
                     <template #content>
-                        <div style="height: 556.6px; width: 521.6px;" v-if="this.$store.state.isLogin">
-                            
-                        </div>
+                        <FavoriteDropdown v-if="this.$store.state.isLogin" />
                         <div class="not-login" v-else>
                             <p class="not-login-tips">登录即可查看我的收藏</p>
                             <div class="not-login-btn" @click="openLoginDialog();">
@@ -348,9 +344,7 @@
                         </div>
                     </template>
                     <template #content>
-                        <div style="height: 556.6px; width: 371.6px;" v-if="this.$store.state.isLogin">
-                            
-                        </div>
+                        <HistoryDropdown v-if="this.$store.state.isLogin" />
                         <div class="not-login" v-else>
                             <p class="not-login-tips">登录即可查看历史记录</p>
                             <div class="not-login-btn" @click="openLoginDialog();">
@@ -404,6 +398,9 @@
     import VPopover from '../popover/VPopover.vue';
     import VLevel from '@/components/teriteri/UserCard/VLevel.vue';
     import LoginRegister from '../loginRegister/LoginRegister.vue';
+    import DynamicDropdown from '../dropdowns/DynamicDropdown.vue';
+    import FavoriteDropdown from '../dropdowns/FavoriteDropdown.vue';
+    import HistoryDropdown from '../dropdowns/HistoryDropdown.vue';
     import { ElMessage } from 'element-plus';
     import { handleNum, handleLevel, highlightKeyword } from '@/teriteri-src/utils/utils';
 
@@ -413,6 +410,9 @@
             VPopover,
             VLevel,
             LoginRegister,
+            DynamicDropdown,
+            FavoriteDropdown,
+            HistoryDropdown,
         },
         data() {
             return {

@@ -75,6 +75,19 @@ export const useTeriteriStore = defineStore('teriteri', {
           ElMessage.error(data.data)
           break
         }
+        case 'unread_init':
+        case 'unread_counts': {
+          const d = data.data
+          if (d) {
+            this.msgUnread[0] = d.reply || 0
+            this.msgUnread[1] = d.at || 0
+            this.msgUnread[2] = d.like || 0
+            this.msgUnread[3] = d.system || 0
+            this.msgUnread[4] = d.private || 0
+            this.msgUnread[5] = d.dynamic || 0
+          }
+          break
+        }
         case 'reply': {
           const content = data.data
           if (content.type === '全部已读') this.msgUnread[0] = 0
@@ -192,7 +205,7 @@ export const useTeriteriStore = defineStore('teriteri', {
     },
 
     async getPersonalInfo() {
-      const result = await axios.get('/api/user/personal/info', {
+      const result = await axios.get('/api/v1/user/me', {
         headers: {
           Authorization: 'Bearer ' + (typeof window !== 'undefined' ? localStorage.getItem('teri_token') : '')
         }
@@ -207,7 +220,20 @@ export const useTeriteriStore = defineStore('teriteri', {
       })
       if (!result) return
       if (result.data.code === 200) {
-        this.updateUser(result.data.data)
+        const d = result.data.data
+        this.updateUser({
+          ...d,
+          uid: String(d.id),
+          avatar_url: d.avatar_url || d.avatar || '',
+          followsCount: d.following_count || 0,
+          fansCount: d.follower_count || 0,
+          exp: d.experience || 0,
+          coin: d.coin_count || 0,
+          dynamicCount: d.dynamic_count || 0,
+          gender: d.gender || 0,
+          vip: d.vip || 0,
+          auth: d.auth || 0,
+        })
         this.isLogin = true
       }
     },
@@ -218,26 +244,7 @@ export const useTeriteriStore = defineStore('teriteri', {
         this.ws.close()
         this.setWebSocket(null)
       }
-      axios.get('/api/user/account/logout', {
-        headers: {
-          Authorization: 'Bearer ' + (typeof window !== 'undefined' ? localStorage.getItem('teri_token') : '')
-        }
-      }).catch(() => {})
       if (typeof window !== 'undefined') localStorage.removeItem('teri_token')
-    },
-
-    async getMsgUnread() {
-      const { get } = await import('@/teriteri-src/network/request')
-      const res = await get('/msg-unread/all', {
-        headers: { Authorization: 'Bearer ' + localStorage.getItem('teri_token') }
-      })
-      const data = res.data.data
-      this.msgUnread[0] = data.reply
-      this.msgUnread[1] = data.at
-      this.msgUnread[2] = data.love
-      this.msgUnread[3] = data.system
-      this.msgUnread[4] = data.whisper
-      this.msgUnread[5] = data.dynamic
     },
 
     async connectWebSocket() {

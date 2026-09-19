@@ -82,12 +82,9 @@ onMounted(async () => {
   if (typeof window === 'undefined') return
   if (localStorage.getItem('teri_token')) {
     await store.getPersonalInfo()
-  }
-  if (localStorage.getItem('teri_token')) {
-    store.getMsgUnread()
     await initIMServer()
     await getFavorites()
-    await getLikeAndDisLikeComment()
+    try { await getLikeAndDisLikeComment() } catch { /* 404 route not found */ }
   }
   getChannels()
   getHotSearch()
