@@ -3,33 +3,92 @@
         <h3 class="page-head">
             <span class="t">空间设置</span>
         </h3>
-        <div class="setting-form" v-if="isOwner">
-            <div class="form-item">
-                <label class="form-label">头像</label>
-                <div class="form-content">
-                    <div class="avatar-row">
-                        <img class="avatar-preview" :src="user.avatar_url || defaultAvatar" alt="">
-                        <a class="change-avatar" href="/account/avatar" target="_blank">更换头像</a>
+        <div v-if="isOwner">
+            <div class="settings-group">
+                <h3 class="settings-group-title">隐私设置</h3>
+                <div class="settings-list">
+                    <div class="setting-item">
+                        <span class="setting-label">公开我的收藏</span>
+                        <div class="setting-control">
+                            <el-switch
+                                v-model="privacySettings.publicCollection"
+                                :active-value="true"
+                                :inactive-value="false"
+                                active-text="公开"
+                                inactive-text="隐藏"
+                                @change="handlePrivacyChange('publicCollection', $event)"
+                            />
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">公开我的生日、个人标签</span>
+                        <div class="setting-control">
+                            <el-switch
+                                v-model="privacySettings.publicBirthdayTags"
+                                :active-value="true"
+                                :inactive-value="false"
+                                active-text="公开"
+                                inactive-text="隐藏"
+                                @change="handlePrivacyChange('publicBirthdayTags', $event)"
+                            />
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">公开我的关注列表</span>
+                        <div class="setting-control">
+                            <el-switch
+                                v-model="privacySettings.publicFollowingList"
+                                :active-value="true"
+                                :inactive-value="false"
+                                active-text="公开"
+                                inactive-text="隐藏"
+                                @change="handlePrivacyChange('publicFollowingList', $event)"
+                            />
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">公开我的粉丝列表</span>
+                        <div class="setting-control">
+                            <el-switch
+                                v-model="privacySettings.publicFollowersList"
+                                :active-value="true"
+                                :inactive-value="false"
+                                active-text="公开"
+                                inactive-text="隐藏"
+                                @change="handlePrivacyChange('publicFollowersList', $event)"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="form-item">
-                <label class="form-label">昵称</label>
-                <div class="form-content">
-                    <el-input v-model="nickname" maxlength="24" placeholder="请输入昵称" style="max-width: 320px;"/>
-                </div>
-            </div>
-            <div class="form-item">
-                <label class="form-label">简介</label>
-                <div class="form-content">
-                    <el-input v-model="description" type="textarea" :rows="3" maxlength="120" placeholder="介绍一下你自己" style="max-width: 480px;"/>
-                    <p class="tip">当前版本暂未开放简介修改接口，仅作展示</p>
-                </div>
-            </div>
-            <div class="form-item">
-                <label class="form-label"></label>
-                <div class="form-content">
-                    <el-button type="primary" :loading="saving" @click="saveSetting">保存</el-button>
+
+            <div class="settings-group">
+                <h3 class="settings-group-title">我的个人标签</h3>
+                <div class="tags-section">
+                    <div class="tags-list">
+                        <el-tag
+                            v-for="tag in userTags"
+                            :key="tag"
+                            closable
+                            class="user-tag"
+                            @close="handleRemoveTag(tag)"
+                        >
+                            {{ tag }}
+                        </el-tag>
+                    </div>
+                    <div class="tag-input-wrapper">
+                        <el-input
+                            v-model="newTagInput"
+                            placeholder="输入标签名称"
+                            maxlength="10"
+                            show-word-limit
+                            class="tag-input"
+                            @keyup.enter="handleAddTag"
+                        />
+                        <el-button type="primary" @click="handleAddTag" :disabled="!newTagInput.trim()">
+                            新增
+                        </el-button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -41,17 +100,21 @@
 </template>
 
 <script lang="ts">
-import { userApi } from '@/api/client';
+import { userPrivacyApi } from '@/api/userPrivacy';
 import { ElMessage } from 'element-plus';
 
 export default {
     name: "SpaceSetting",
     data() {
         return {
-            nickname: '',
-            description: '',
-            saving: false,
-            defaultAvatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png',
+            privacySettings: {
+                publicCollection: true,
+                publicBirthdayTags: false,
+                publicFollowingList: false,
+                publicFollowersList: false
+            },
+            userTags: [] as string[],
+            newTagInput: '',
         }
     },
     computed: {
@@ -66,40 +129,82 @@ export default {
         }
     },
     methods: {
-        async getUserInfo() {
+        async loadPrivacySettings() {
+            if (!this.isOwner) return;
             try {
-                const res = await userApi.getUserById(this.uid);
+                const res = await userPrivacyApi.getPrivacySettings();
                 if (res.code === 200) {
-                    this.nickname = res.data.nickname || res.data.username || '';
-                    this.description = res.data.signature || res.data.bio || res.data.introduction || '';
+                    this.privacySettings = {
+                        publicCollection: res.data.publicCollection ?? true,
+                        publicBirthdayTags: res.data.publicBirthdayTags ?? false,
+                        publicFollowingList: res.data.publicFollowingList ?? false,
+                        publicFollowersList: res.data.publicFollowersList ?? false
+                    };
+                    this.userTags = res.data.tags || [];
                 }
-            } catch (e) {
-                console.error('获取用户信息失败:', e);
+            } catch (error: any) {
+                if (error?.response?.status !== 404) {
+                    console.error('加载隐私设置失败:', error);
+                }
             }
         },
-        async saveSetting() {
-            if (!this.nickname.trim()) {
-                ElMessage.warning('昵称不能为空');
-                return;
-            }
-            this.saving = true;
+        async handlePrivacyChange(key: string, value: boolean) {
             try {
-                const res = await userApi.updateUser(this.uid, { nickname: this.nickname.trim() });
+                const data = { [key]: value };
+                const res = await userPrivacyApi.updatePrivacySettings(data);
                 if (res.code === 200) {
-                    ElMessage.success('保存成功');
+                    ElMessage.success('设置已保存');
                 } else {
                     ElMessage.error(res.message || '保存失败');
                 }
-            } catch (e) {
+            } catch (error) {
+                console.error('保存隐私设置失败:', error);
                 ElMessage.error('保存失败');
-            } finally {
-                this.saving = false;
+            }
+        },
+        async handleAddTag() {
+            const tagName = this.newTagInput.trim();
+            if (!tagName) return;
+            if (this.userTags.includes(tagName)) {
+                ElMessage.warning('标签已存在');
+                return;
+            }
+            if (this.userTags.length >= 10) {
+                ElMessage.warning('最多只能添加10个标签');
+                return;
+            }
+            try {
+                const res = await userPrivacyApi.addUserTag(tagName);
+                if (res.code === 200) {
+                    this.userTags.push(tagName);
+                    this.newTagInput = '';
+                    ElMessage.success('添加成功');
+                } else {
+                    ElMessage.error(res.message || '添加失败');
+                }
+            } catch (error) {
+                console.error('添加标签失败:', error);
+                ElMessage.error('添加失败');
+            }
+        },
+        async handleRemoveTag(tag: string) {
+            try {
+                const res = await userPrivacyApi.removeUserTag(tag);
+                if (res.code === 200) {
+                    this.userTags = this.userTags.filter(t => t !== tag);
+                    ElMessage.success('删除成功');
+                } else {
+                    ElMessage.error(res.message || '删除失败');
+                }
+            } catch (error) {
+                console.error('删除标签失败:', error);
+                ElMessage.error('删除失败');
             }
         },
     },
-    created() {
+    mounted() {
         if (this.isOwner) {
-            this.getUserInfo();
+            this.loadPrivacySettings();
         }
     }
 }
@@ -129,47 +234,68 @@ export default {
     font-weight: 500;
 }
 
-.form-item {
+.settings-group {
+    margin-bottom: 32px;
+}
+
+.settings-group-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 20px 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.settings-list {
     display: flex;
-    align-items: flex-start;
-    margin-bottom: 24px;
+    flex-direction: column;
+    gap: 20px;
 }
 
-.form-label {
-    width: 80px;
-    line-height: 32px;
-    color: #61666d;
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+}
+
+.setting-label {
     font-size: 14px;
-    flex-shrink: 0;
+    color: #333;
 }
 
-.avatar-row {
+.setting-control {
     display: flex;
     align-items: center;
+}
+
+.tags-section {
+    display: flex;
+    flex-direction: column;
     gap: 16px;
 }
 
-.avatar-preview {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    object-fit: cover;
+.tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
-.change-avatar {
-    color: var(--brand_pink);
-    font-size: 14px;
-    text-decoration: none;
+.user-tag {
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 4px;
 }
 
-.change-avatar:hover {
-    text-decoration: underline;
+.tag-input-wrapper {
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
 
-.tip {
-    margin: 8px 0 0;
-    font-size: 12px;
-    color: #99a2aa;
+.tag-input {
+    width: 200px;
 }
 
 .not-owner {
