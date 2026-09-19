@@ -46,6 +46,17 @@ function pickUpstream(realPath: string): string {
 }
 
 function adaptUrl(url: string, query: URLSearchParams): { target: string; port: string; qs: string } {
+  // /user/info/get-one?uid=X → /user/X（Go 后端路径参数）
+  if (url.startsWith('/user/info/get-one')) {
+    const uid = query.get('uid') || ''
+    return { target: `/user/${uid}`, port: `http://${CORE_HOST}:8080`, qs: '' }
+  }
+  // /video/user-works-count?uid=X → /manuscript/user/X（取 total 作为投稿数）
+  if (url.startsWith('/video/user-works-count')) {
+    const uid = query.get('uid') || ''
+    const qs = new URLSearchParams({ page: '1', pageSize: '1' }).toString()
+    return { target: `/manuscript/user/${uid}`, port: `http://${CORE_HOST}:8080`, qs }
+  }
   // /video/getone 特殊：vid 从 query 或路径
   if (url.startsWith('/video/getone')) {
     const vid = query.get('vid') || url.split('/').pop() || ''
@@ -67,8 +78,16 @@ function adaptUrl(url: string, query: URLSearchParams): { target: string; port: 
     const qs = new URLSearchParams({ page, pageSize: size }).toString()
     return { target: '/manuscript/user/likes', port: `http://${CORE_HOST}:8080`, qs }
   }
-  // /video/user-collect → /manuscript/user/collections（需鉴权）
+  // /video/user-collect?fid=X → /favorites/X/videos（收藏夹内视频）
   if (url.startsWith('/video/user-collect')) {
+    const fid = query.get('fid') || ''
+    if (fid) {
+      const page = query.get('page') || '1'
+      const size = query.get('quantity') || query.get('pageSize') || '20'
+      const qs = new URLSearchParams({ page, pageSize: size }).toString()
+      return { target: `/favorites/${fid}/videos`, port: `http://${CORE_HOST}:8080`, qs }
+    }
+    // 无 fid 时 fallback 到收藏的稿件列表
     const qs = new URLSearchParams({ page: '1', pageSize: '20' }).toString()
     return { target: '/manuscript/user/collections', port: `http://${CORE_HOST}:8080`, qs }
   }
@@ -82,7 +101,8 @@ function adaptUrl(url: string, query: URLSearchParams): { target: string; port: 
   for (const from of keys) {
     if (url === from || url.startsWith(from + '/') || url.startsWith(from + '?')) {
       const real = url.replace(from, PATH_MAP[from]!)
-      return { target: real, port: pickUpstream(real), qs: '' }
+      const qs = query.toString()
+      return { target: real, port: pickUpstream(real), qs }
     }
   }
   return { target: url, port: pickUpstream(url), qs: '' }
@@ -102,6 +122,29 @@ export default defineEventHandler(async (event) => {
   const teriteriUrl = path.slice(apiPrefix.length) || '/'
   const query = new URLSearchParams(fullUrl.search || '')
   const method = getMethod(event)
+
+  // /video/cancel-collect → DELETE /favorites/{fid}/manuscripts/{vid}
+  if (teriteriUrl.startsWith('/video/cancel-collect') && method === 'POST') {
+    const body = await readRawBody(event)
+    const params = new URLSearchParams(body || '')
+    const fid = params.get('fid') || ''
+    const vid = params.get('vid') || ''
+    if (fid && vid) {
+      const targetUrl = `http://${CORE_HOST}:8080/api/v1/favorites/${fid}/manuscripts/${vid}`
+      const headers: Record<string, string> = {}
+      const reqHeaders = getRequestHeaders(event)
+      for (const k of Object.keys(reqHeaders)) {
+        const v = reqHeaders[k]
+        if (v !== undefined && k.toLowerCase() !== 'host' && k.toLowerCase() !== 'content-length') {
+          headers[k] = String(v)
+        }
+      }
+      headers['host'] = new URL(`http://${CORE_HOST}:8080`).host
+      const resp = await fetch(targetUrl, { method: 'DELETE', headers, redirect: 'follow' })
+      setResponseStatus(event, resp.status)
+      return Buffer.from(await resp.arrayBuffer())
+    }
+  }
 
   let mapped: { target: string; port: string; qs: string }
   try {
