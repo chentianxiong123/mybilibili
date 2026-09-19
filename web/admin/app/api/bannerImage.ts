@@ -56,7 +56,10 @@ export const saveUserProfileBackground = (data) => {
   return request.post('/banner-images/user-profile', data)
 }
 
-export const deleteUserProfileBackground = () => {
+export const deleteUserProfileBackground = (id?: number) => {
+  if (id) {
+    return request.delete(`/banner-images/user-profile/${id}`)
+  }
   return request.delete('/banner-images/user-profile')
 }
 
