@@ -223,7 +223,7 @@ export const useTeriteriStore = defineStore('teriteri', {
         const d = result.data.data
         this.updateUser({
           ...d,
-          uid: String(d.id),
+          uid: d.id,
           avatar_url: d.avatar_url || d.avatar || '',
           followsCount: d.following_count || 0,
           fansCount: d.follower_count || 0,

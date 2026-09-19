@@ -62,7 +62,7 @@ export default {
             return this.$store.state.user;
         },
         isOwner() {
-            return this.user.uid === this.uid;
+            return String(this.user.uid) === String(this.uid);
         }
     },
     methods: {

@@ -51,6 +51,7 @@ function adaptVideo(v: any) {
     danmaku: v.danmakuCount || 0,
     type: v.sourceType || 0,
     top: v.status === 1,
+    status: v.reviewStatus ?? v.status ?? 0,
     auth: v.reviewStatus || 0,
     tags: Array.isArray(v.tags) ? v.tags.join('\r\n') : (v.tags || ''),
   }
@@ -59,20 +60,21 @@ function adaptVideo(v: any) {
 function adaptUser(u: any) {
   if (!u) return { uid: 0 }
   return {
-    uid: String(u.id),
+    uid: u.id || 0,
     nickname: u.name || u.nickname || '',
-    avatar_url: u.avatar || '',
-    exp: u.level || 0,
+    avatar_url: u.avatar || u.avatar_url || '',
+    exp: u.experience || u.level || 0,
     vip: u.vip || 0,
     gender: u.gender || 0,
-    fansCount: u.followerCount || 0,
-    followsCount: u.followingCount || 0,
-    loveCount: u.likedCount || 0,
-    playCount: u.viewCount || 0,
-    description: u.bio || u.signature || '',
-    state: u.status || 0,
-    bg_url: u.bgUrl || '',
+    fansCount: u.followerCount || u.fansCount || 0,
+    followsCount: u.followingCount || u.followsCount || 0,
+    loveCount: u.totalLikeCount || u.likedCount || u.loveCount || 0,
+    playCount: u.totalViewCount || u.viewCount || u.playCount || 0,
+    description: u.bio || u.signature || u.description || '',
+    state: u.status || u.state || 0,
+    bg_url: u.bgUrl || u.bg_url || '',
     auth: u.auth || 0,
+    tags: u.tags || [],
   }
 }
 
@@ -126,6 +128,7 @@ function isListUrl(url: string) {
     || url.includes('/video/user-love')
     || url.includes('/video/user-collect')
     || url.includes('/video/cumulative/visitor')
+    || url.includes('/favorites/')  // 收藏夹内视频列表
 }
 
 function isDetailUrl(url: string) {
@@ -133,11 +136,39 @@ function isDetailUrl(url: string) {
 }
 
 function adaptResponse(originalUrl: string, data: any) {
+  // 空间投稿数(/video/user-works-count) → 直接返回 total 数字
+  if (String(originalUrl || '').includes('/video/user-works-count')) {
+    return { code: 200, data: (data && data.total) || 0, message: 'ok' }
+  }
+  // 收藏夹列表(/favorite/get-all/*) → 适配 teriteri 格式
+  if (String(originalUrl || '').includes('/favorite/get-all')) {
+    const list = Array.isArray(data) ? data : []
+    const adapted = list.map((f: any) => ({
+      fid: f.id,
+      title: f.name,
+      type: f.name === '默认收藏夹' ? 1 : 0,
+      count: f.video_count || 0,
+      cover: f.cover || '',
+      visible: f.visible ?? 1,
+      uid: f.user_id || 0,
+    }))
+    return { code: 200, data: adapted, message: 'ok' }
+  }
   // 空间投稿列表(/video/user-works) → {list: cards, count: total}
   if (String(originalUrl || '').includes('/video/user-works')) {
     const list = Array.isArray(data) ? data : (data && data.list ? data.list : [])
     const cards = list.map((m: any) => adaptCard(snakeToCamel(m)))
     return { code: 200, data: { list: cards, count: (data && data.total) || cards.length }, message: 'ok' }
+  }
+  // 最近点赞/投币(/video/user-love, /video/user-collect) → card 数组
+  if (String(originalUrl || '').includes('/video/user-love') || String(originalUrl || '').includes('/video/user-collect')) {
+    const list = Array.isArray(data) ? data : (data && data.list ? data.list : [])
+    // /favorites/{id}/videos 返回的已经是 teriteri 格式 {info, video, stats, user}，直接透传
+    if (list.length > 0 && list[0].info && list[0].video) {
+      return { code: 200, data: list, message: 'ok' }
+    }
+    const cards = list.map((m: any) => adaptCard(snakeToCamel(m)))
+    return { code: 200, data: cards, message: 'ok' }
   }
   // 频道列表(/category/getall) → {mcId, mcName, scList}
   if (String(originalUrl || '').includes('/category/getall')) {
@@ -167,7 +198,7 @@ function adaptResponse(originalUrl: string, data: any) {
     const users = u.map((item: any) => {
       const c = snakeToCamel(item)
       return {
-        uid: String(c.id || c.uid || c.mid || ''),
+        uid: c.id || c.uid || c.mid || 0,
         nickname: c.name || c.nickname || '',
         avatar_url: c.avatar || c.face || '',
         exp: c.level || 0,
@@ -194,7 +225,7 @@ function adaptResponse(originalUrl: string, data: any) {
       bad: c.dislikeCount || 0,
       liked: !!c.liked,
       user: {
-        uid: String(c.userId ?? c.userUid ?? ''),
+        uid: c.userId ?? c.userUid ?? 0,
         nickname: c.userName || '',
         avatar_url: c.userAvatar || '',
         exp: (c.userLevel || 0) * 50,
@@ -211,7 +242,7 @@ function adaptResponse(originalUrl: string, data: any) {
         bad: r.dislikeCount || 0,
         liked: !!r.liked,
         user: {
-          uid: String(r.userId ?? r.userUid ?? ''),
+          uid: r.userId ?? r.userUid ?? 0,
           nickname: r.userName || '',
           avatar_url: r.userAvatar || '',
           exp: (r.userLevel || 0) * 50,
@@ -220,7 +251,7 @@ function adaptResponse(originalUrl: string, data: any) {
           ...(r.user || {}),
         },
         toUser: r.replyToUserId || r.replyToUserName ? {
-          uid: String(r.replyToUserId || ''),
+          uid: r.replyToUserId || 0,
           nickname: r.replyToUserName || '',
         } : null,
       })),
@@ -240,6 +271,11 @@ function adaptResponse(originalUrl: string, data: any) {
       },
       message: 'ok',
     }
+  }
+
+  // 用户信息(/user/info/get-one) → adaptUser
+  if (String(originalUrl || '').includes('/user/info/get-one') || String(originalUrl || '').includes('/user/info')) {
+    return { code: 200, data: adaptUser(snakeToCamel(data)), message: 'ok' }
   }
 
   const isObj = data && typeof data === 'object' && typeof data.id !== 'undefined' && typeof data.coverUrl !== 'undefined'
