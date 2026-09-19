@@ -132,12 +132,9 @@ export default createStore({
         },
         handleWsMessage(state, e) {
             const data = JSON.parse(e.data);
-            // console.log(data);
             switch (data.type) {
                 case "error": {
-                    // 系统错误
                     if (data.data === "登录已过期") {
-                        // 由于 App.vue 那先做获取用户资料在前，所以基本上这里不会出现登录过期的情况
                         state.isLogin = false;
                         state.user = {};
                         state.msgUnread = [0, 0, 0, 0, 0, 0];
@@ -145,10 +142,22 @@ export default createStore({
                         state.favorites = [];
                         state.likeComment = [];
                         state.dislikeComment = [];
-                        // 清除本地token缓存
                         localStorage.removeItem("teri_token");
                     }
                     ElMessage.error(data.data);
+                    break;
+                }
+                case "unread_init":
+                case "unread_counts": {
+                    const d = data.data;
+                    if (d) {
+                        state.msgUnread[0] = d.reply || 0;
+                        state.msgUnread[1] = d.at || 0;
+                        state.msgUnread[2] = d.like || 0;
+                        state.msgUnread[3] = d.system || 0;
+                        state.msgUnread[4] = d.private || 0;
+                        state.msgUnread[5] = d.dynamic || 0;
+                    }
                     break;
                 }
                 case "reply": {
@@ -349,7 +358,7 @@ export default createStore({
         // 获取当前用户信息
         async getPersonalInfo(context) {
             // 这里为了更方便捕捉到错误后做出反应，就不使用封装的函数了
-            const result = await axios.get("/api/user/personal/info", {
+            const result = await axios.get("/api/v1/user/me", {
                 headers: {
                     Authorization: "Bearer " + localStorage.getItem("teri_token"),
                 },
@@ -375,36 +384,12 @@ export default createStore({
 
         // 退出登录
         logout(context) {
-            // 先修改状态再发送请求，防止token过期导致退出失败
             context.commit("initData");
-            // 关闭websocket
             if (context.state.ws) {
                 context.state.ws.close();
                 context.commit('setWebSocket', null);
             }
-            // 发送退出请求，处理redis中的缓存信息，不能用异步，不然token过期导致退出失败，后面步骤卡死
-            axios.get("/api/user/account/logout", {
-                headers: {
-                    Authorization: "Bearer " + localStorage.getItem("teri_token"),
-                },
-            })
-            .catch(() => {});
-            // 清除本地token缓存
             localStorage.removeItem("teri_token");
-        },
-
-        // 获取全部未读消息数
-        async getMsgUnread({ state }) {
-            const res = await get("/msg-unread/all", {
-                headers: { Authorization: "Bearer " + localStorage.getItem('teri_token') }
-            });
-            const data = res.data.data;
-            state.msgUnread[0] = data.reply;
-            state.msgUnread[1] = data.at;
-            state.msgUnread[2] = data.love;
-            state.msgUnread[3] = data.system;
-            state.msgUnread[4] = data.whisper;
-            state.msgUnread[5] = data.dynamic;
         },
 
         // 初始化websocket实例

@@ -306,9 +306,7 @@
                         </div>
                     </template>
                     <template #content>
-                        <div style="height: 557.3px; width: 371.6px;" v-if="this.$store.state.isLogin">
-                            
-                        </div>
+                        <DynamicDropdown v-if="this.$store.state.isLogin" />
                         <div class="not-login" v-else>
                             <p class="not-login-tips">登录即可查看关注动态</p>
                             <div class="not-login-btn" @click="dialogVisible = true;">
@@ -327,9 +325,7 @@
                         </div>
                     </template>
                     <template #content>
-                        <div style="height: 556.6px; width: 521.6px;" v-if="this.$store.state.isLogin">
-                            
-                        </div>
+                        <FavoriteDropdown v-if="this.$store.state.isLogin" />
                         <div class="not-login" v-else>
                             <p class="not-login-tips">登录即可查看我的收藏</p>
                             <div class="not-login-btn" @click="dialogVisible = true;">
@@ -348,9 +344,7 @@
                         </div>
                     </template>
                     <template #content>
-                        <div style="height: 556.6px; width: 371.6px;" v-if="this.$store.state.isLogin">
-                            
-                        </div>
+                        <HistoryDropdown v-if="this.$store.state.isLogin" />
                         <div class="not-login" v-else>
                             <p class="not-login-tips">登录即可查看历史记录</p>
                             <div class="not-login-btn" @click="dialogVisible = true;">
@@ -401,6 +395,9 @@
             VPopover,
             LoginRegister,
             VLevel,
+            DynamicDropdown: () => import('../dropdowns/DynamicDropdown.vue'),
+            FavoriteDropdown: () => import('../dropdowns/FavoriteDropdown.vue'),
+            HistoryDropdown: () => import('../dropdowns/HistoryDropdown.vue'),
         },
         data() {
             return {

@@ -134,7 +134,6 @@ export default {
             if (result.data.code === 200) {
                 localStorage.setItem("teri_token", result.data.data.token);
                 this.$store.commit("updateUser", result.data.data.user);
-                await this.$store.dispatch("getMsgUnread");
                 await this.initIMServer();
                 await this.getFavorites();
                 await this.getLikeAndDisLikeComment();
