@@ -40,7 +40,6 @@ const currentCategoryId = ref(0)
 // 数据列表
 const bannerList = ref([])
 const backgroundData = ref(null)
-const userProfileBackgroundData = ref(null)
 const loading = ref(false)
 
 // 对话框
@@ -98,7 +97,8 @@ const loadData = async () => {
     } else if (currentType.value === 'userProfile') {
       const res = await getUserProfileBackground()
       if (res.code === 200) {
-        userProfileBackgroundData.value = res.data ? normalizeBanner(res.data) : null
+        const list = res.data || []
+        bannerList.value = Array.isArray(list) ? list.map(normalizeBanner) : []
       }
     }
   } catch (error) {
@@ -112,7 +112,6 @@ const loadData = async () => {
 const handleTypeChange = () => {
   bannerList.value = []
   backgroundData.value = null
-  userProfileBackgroundData.value = null
   loadData()
 }
 
@@ -211,8 +210,10 @@ const handleDelete = async (row) => {
       res = await deleteHomeBanner(row.id)
     } else if (currentType.value === 'category') {
       res = await deleteCategoryBanner(currentCategoryId.value, row.id)
+    } else if (currentType.value === 'userProfile') {
+      res = await deleteUserProfileBackground(row.id)
     }
-    if (res.code === 200) {
+    if (res && res.code === 200) {
       ElMessage.success('删除成功')
       loadData()
     }
@@ -227,18 +228,6 @@ const handleDeleteBackground = async () => {
     if (res.code === 200) {
       ElMessage.success('删除成功')
       backgroundData.value = null
-    }
-  } catch {}
-}
-
-// 删除用户主页背景图
-const handleDeleteUserProfileBackground = async () => {
-  try {
-    await ElMessageBox.confirm('确定要删除用户主页背景图吗？', '提示', { type: 'warning' })
-    const res = await deleteUserProfileBackground()
-    if (res.code === 200) {
-      ElMessage.success('删除成功')
-      userProfileBackgroundData.value = null
     }
   } catch {}
 }
@@ -328,9 +317,9 @@ const loadCategories = async () => {
       </el-button>
     </div>
 
-    <!-- 首页/分类轮播图列表 -->
+    <!-- 首页/分类/用户主页背景轮播图列表 -->
     <el-table
-      v-if="currentType !== 'background' && currentType !== 'userProfile'"
+      v-if="currentType !== 'background'"
       v-loading="loading"
       :data="bannerList"
       style="width: 100%"
@@ -393,28 +382,6 @@ const loadCategories = async () => {
           <div class="background-actions">
             <el-button type="primary" size="small" @click="handleEdit(backgroundData)">编辑</el-button>
             <el-button type="danger" size="small" @click="handleDeleteBackground">删除</el-button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 用户主页背景图展示 -->
-    <div v-else-if="currentType === 'userProfile'" class="background-section">
-      <el-empty v-if="!userProfileBackgroundData" description="暂无用户主页背景图" />
-      <div v-else class="background-card">
-        <el-image
-          :src="userProfileBackgroundData.imageUrl"
-          style="width: 100%; height: 200px; object-fit: cover"
-          fit="cover"
-        />
-        <div class="background-info">
-          <h4>{{ userProfileBackgroundData.title }}</h4>
-          <p>链接: {{ userProfileBackgroundData.linkUrl || '无' }}</p>
-          <p>状态: <el-tag :type="userProfileBackgroundData.status === 1 ? 'success' : 'danger'">{{ getStatusText(userProfileBackgroundData.status) }}</el-tag></p>
-          <p>有效期: {{ formatTime(userProfileBackgroundData.startTime) }} ~ {{ formatTime(userProfileBackgroundData.endTime) }}</p>
-          <div class="background-actions">
-            <el-button type="primary" size="small" @click="handleEdit(userProfileBackgroundData)">编辑</el-button>
-            <el-button type="danger" size="small" @click="handleDeleteUserProfileBackground">删除</el-button>
           </div>
         </div>
       </div>
