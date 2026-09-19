@@ -142,7 +142,7 @@ func (h *Handler) handleBanner(w http.ResponseWriter, r *http.Request) {
 	case "background":
 		h.handleBannerSingle(w, r, 3)
 	case "user-profile":
-		h.handleBannerSingle(w, r, 4)
+		h.handleBannerUserProfiles(w, r, parts)
 	case "upload":
 		if r.Method == "POST" {
 			if err := r.ParseMultipartForm(32 << 20); err != nil {
@@ -266,24 +266,47 @@ func (h *Handler) handleBannerCategory(w http.ResponseWriter, r *http.Request, p
 	}
 }
 
+func (h *Handler) handleBannerUserProfiles(w http.ResponseWriter, r *http.Request, parts []string) {
+	switch r.Method {
+	case "GET":
+		list, _ := h.svc.ListBanners(r.Context(), 4)
+		if list == nil {
+			list = []*BannerImage{}
+		}
+		writeJSON(w, list)
+	case "POST":
+		b := decodeBanner(r)
+		b.Type = 4
+		h.svc.CreateBanner(r.Context(), b)
+		writeJSON(w, map[string]any{"status": "ok"})
+	case "DELETE":
+		// DELETE /banner/user-profile/{id} - 删除单个
+		// DELETE /banner/user-profile     - 删除全部
+		if len(parts) >= 2 && parts[1] != "" {
+			id, _ := strconv.ParseInt(parts[1], 10, 64)
+			h.svc.DeleteBanner(r.Context(), id)
+		} else {
+			list, _ := h.svc.ListBanners(r.Context(), 4)
+			for _, b := range list {
+				h.svc.DeleteBanner(r.Context(), b.ID)
+			}
+		}
+		writeJSON(w, map[string]any{"status": "ok"})
+	default:
+		writeJSON(w, map[string]any{"code": 405, "message": "method not allowed"})
+	}
+}
+
 func (h *Handler) handleBannerSingle(w http.ResponseWriter, r *http.Request, bannerType int32) {
 	switch r.Method {
 	case "GET":
 		// type=3 (background) 返回列表：支持 morning/afternoon/evening 三时段图；
-		// type=4 (user-profile) 仍取首条（单图背景）。
+		// type=4 (user-profile) 返回列表：支持多张用户主页背景图供切换。
 		list, _ := h.svc.ListBanners(r.Context(), bannerType)
-		if bannerType == 3 {
-			if list == nil {
-				list = []*BannerImage{}
-			}
-			writeJSON(w, list)
-			return
+		if list == nil {
+			list = []*BannerImage{}
 		}
-		var b *BannerImage
-		if len(list) > 0 {
-			b = list[0]
-		}
-		writeJSON(w, b)
+		writeJSON(w, list)
 	case "POST":
 		b := decodeBanner(r)
 		b.Type = bannerType
