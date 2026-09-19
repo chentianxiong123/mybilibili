@@ -30,16 +30,26 @@ func (h *FavoriteHandler) Register(mux *http.ServeMux) {
 
 // GET /api/v1/favorites — 用户收藏夹列表
 func (h *FavoriteHandler) handleFavorites(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
-	if userID == 0 {
-		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
-		return
-	}
-
 	switch r.Method {
 	case "GET":
-		h.listFolders(w, r, userID)
+		// 支持 ?uid=X 查看他人收藏夹；不传则用当前登录用户
+		targetUID := httputil.GetUserIDFromHeader(r)
+		if uidStr := r.URL.Query().Get("uid"); uidStr != "" {
+			if uid, err := strconv.ParseInt(uidStr, 10, 64); err == nil && uid > 0 {
+				targetUID = uid
+			}
+		}
+		if targetUID == 0 {
+			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+			return
+		}
+		h.listFolders(w, r, targetUID)
 	case "POST":
+		userID := httputil.GetUserIDFromHeader(r)
+		if userID == 0 {
+			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+			return
+		}
 		h.createFolder(w, r, userID)
 	default:
 		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
@@ -66,6 +76,7 @@ func (h *FavoriteHandler) listFolders(w http.ResponseWriter, r *http.Request, us
 
 	type folder struct {
 		ID         int64  `json:"id"`
+		UserID     int64  `json:"user_id"`
 		Name       string `json:"name"`
 		VideoCount int64  `json:"video_count"`
 		CreatedAt  string `json:"created_at"`
@@ -78,6 +89,7 @@ func (h *FavoriteHandler) listFolders(w http.ResponseWriter, r *http.Request, us
 		if err := rows.Scan(&f.ID, &f.Name, &createdAt, &updatedAt, &f.VideoCount); err != nil {
 			continue
 		}
+		f.UserID = userID
 		f.CreatedAt = createdAt.Format("2006-01-02T15:04:05Z")
 		f.UpdatedAt = updatedAt.Format("2006-01-02T15:04:05Z")
 		list = append(list, f)
@@ -250,19 +262,30 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	userID := httputil.GetUserIDFromHeader(r)
-	if userID == 0 {
-		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+
+	// 验证 folder 存在
+	var exists int
+	h.db.QueryRowContext(r.Context(),
+		`SELECT COUNT(*) FROM favorite_folders WHERE id = $1`, folderID).Scan(&exists)
+	if exists == 0 {
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "收藏夹不存在", "data": nil})
 		return
 	}
 
-	// 确认 folder 属于当前用户
-	var cnt int
-	h.db.QueryRowContext(r.Context(),
-		`SELECT COUNT(*) FROM favorite_folders WHERE id = $1 AND user_id = $2`,
-		folderID, userID).Scan(&cnt)
-	if cnt == 0 {
-		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "收藏夹不存在或无权操作", "data": nil})
-		return
+	// PUT/DELETE 操作需要鉴权且 folder 属于当前用户
+	if r.Method != "GET" {
+		if userID == 0 {
+			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+			return
+		}
+		var cnt int
+		h.db.QueryRowContext(r.Context(),
+			`SELECT COUNT(*) FROM favorite_folders WHERE id = $1 AND user_id = $2`,
+			folderID, userID).Scan(&cnt)
+		if cnt == 0 {
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "收藏夹不存在或无权操作", "data": nil})
+			return
+		}
 	}
 
 	switch r.Method {
@@ -270,9 +293,15 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 		page, size := httputil.ParsePageParams(r)
 		offset := (int(page) - 1) * int(size)
 		rows, err := h.db.QueryContext(r.Context(),
-			`SELECT ffv.manuscript_id, m.title, ffv.created_at
+			`SELECT ffv.manuscript_id, ffv.created_at,
+			        m.title, m.description, m.cover_url, m.status, m.review_status,
+			        m.duration, m.duration_seconds, m.view_count, m.like_count,
+			        m.coin_count, m.collect_count, m.comment_count, m.share_count,
+			        m.category_id, m.upload_time,
+			        u.id, u.nickname, u.avatar
 			 FROM favorite_folder_videos ffv
 			 JOIN manuscripts m ON m.id = ffv.manuscript_id
+			 LEFT JOIN users u ON u.id = m.user_id
 			 WHERE ffv.folder_id = $1
 			 ORDER BY ffv.created_at DESC
 			 LIMIT $2 OFFSET $3`, folderID, size, offset)
@@ -281,19 +310,89 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 			return
 		}
 		defer rows.Close()
-		type item struct {
-			ManuscriptID int64  `json:"manuscript_id"`
-			Title        string `json:"title"`
-			CreatedAt    string `json:"created_at"`
+		type videoItem struct {
+			Info struct {
+				VID  string `json:"vid"`
+				FID  int64  `json:"fid"`
+				Time string `json:"time"`
+			} `json:"info"`
+			Video struct {
+				VID        string `json:"vid"`
+				Title      string `json:"title"`
+				CoverUrl   string `json:"coverUrl"`
+				Descr      string `json:"descr"`
+				Duration   any    `json:"duration"`
+				Status     int    `json:"status"`
+				UploadDate string `json:"uploadDate"`
+			} `json:"video"`
+			Stats struct {
+				Play     int `json:"play"`
+				Collect  int `json:"collect"`
+				Like     int `json:"like"`
+				Coin     int `json:"coin"`
+				Share    int `json:"share"`
+				Comment  int `json:"comment"`
+				Danmaku  int `json:"danmaku"`
+			} `json:"stats"`
+			User struct {
+				UID      int64  `json:"uid"`
+				Nickname string `json:"nickname"`
+				Avatar   string `json:"avatar"`
+			} `json:"user"`
 		}
-		list := []item{}
+		list := []videoItem{}
 		for rows.Next() {
-			var it item
-			var t time.Time
-			if err := rows.Scan(&it.ManuscriptID, &it.Title, &t); err != nil {
+			var it videoItem
+			var manuscriptID int64
+			var collectTime time.Time
+			var uploadTime time.Time
+			var uid int64
+			var coverURL, descr, durationStr, nickname, avatar sql.NullString
+			var status, reviewStatus, durSec, viewCount, likeCount, coinCount, collectCount, commentCount, shareCount, categoryID int
+			if err := rows.Scan(
+				&manuscriptID, &collectTime,
+				&it.Video.Title, &descr, &coverURL, &status, &reviewStatus,
+				&durationStr, &durSec, &viewCount, &likeCount,
+				&coinCount, &collectCount, &commentCount, &shareCount,
+				&categoryID, &uploadTime,
+				&uid, &nickname, &avatar,
+			); err != nil {
 				continue
 			}
-			it.CreatedAt = t.Format("2006-01-02T15:04:05Z")
+			it.Info.VID = strconv.FormatInt(manuscriptID, 10)
+			it.Info.FID = folderID
+			it.Info.Time = collectTime.Format("2006-01-02T15:04:05Z")
+			it.Video.VID = it.Info.VID
+			if coverURL.Valid {
+				it.Video.CoverUrl = coverURL.String
+			}
+			if descr.Valid {
+				it.Video.Descr = descr.String
+			}
+			it.Video.Duration = durSec
+			// 映射状态：status=3+review_status=1 → 1(已发布)，-1 → 3(已删除)，其他 → 0
+			switch {
+			case status == 3 && reviewStatus == 1:
+				it.Video.Status = 1
+			case status == -1:
+				it.Video.Status = 3
+			default:
+				it.Video.Status = 0
+			}
+			it.Video.UploadDate = uploadTime.Format("2006-01-02T15:04:05Z")
+			it.Stats.Play = viewCount
+			it.Stats.Collect = collectCount
+			it.Stats.Like = likeCount
+			it.Stats.Coin = coinCount
+			it.Stats.Share = shareCount
+			it.Stats.Comment = commentCount
+			it.User.UID = uid
+			if nickname.Valid {
+				it.User.Nickname = nickname.String
+			}
+			if avatar.Valid {
+				it.User.Avatar = avatar.String
+			}
 			list = append(list, it)
 		}
 		httputil.WriteOK(w, map[string]any{"list": list, "page": page, "size": size})
