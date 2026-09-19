@@ -16,7 +16,7 @@
                             <svg t="1711977711975" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4395" width="20" height="20"><path d="M865.49525114 335.25237508H158.50474886V246.87856197h706.99050228v88.37381311z m-88.37381311-265.12143802H246.87856197v88.3738118h530.24287606V70.13093706z m176.74762491 441.86906294v353.49525114c0 48.6055974-39.7682157 88.3738131-88.3738118 88.3738118H158.50474886c-48.6055974 0-88.3738131-39.7682157-88.3738118-88.3738118v-353.49525114c0-48.6055974 39.7682157-88.3738131 88.3738118-88.3738131h706.99050228c48.6055974 0 88.3738131 39.7682157 88.3738118 88.3738131z m-265.12143802 176.74762492l-265.12143802-145.8167909v287.21489161l265.12143802-141.39810071z" p-id="4396"></path></svg>
                             <a class="text" @click="changeFav(item.fid)">{{ item.title }}</a>
                             <span class="num">{{ item.count }}</span>
-                            <VPopover class="more" popStyle="position: fixed; padding-top: 10px; z-index: 1000; top: auto; left: auto; transform: translate3d(-75%,0,0);">
+                            <VPopover class="more" popStyle="z-index: 1000;">
                                 <template #reference>
                                     <div class="tool-more">
                                         <i class="iconfont icon-gengduo"></i>
@@ -102,7 +102,7 @@
                         <a :href="`/video/${item.video.vid}`" target="_blank" class="title" :title="item.video.title" v-if="item.video.status === 1">{{ item.video.title }}</a>
                         <p class="title" v-else>已失效视频</p>
                         <div class="meta pubdate">收藏于：{{ handleDate(item.info.time) }}</div>
-                        <VPopover class="video-edit" popStyle="position: fixed; padding-top: 10px; z-index: 1000; top: auto; left: auto; transform: translate3d(-75%,0,0);">
+                        <VPopover class="video-edit" popStyle="z-index: 1000;">
                             <template #reference>
                                 <div class="tool-more">
                                     <i class="iconfont icon-gengduo"></i>
