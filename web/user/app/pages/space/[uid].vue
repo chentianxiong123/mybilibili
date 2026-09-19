@@ -11,7 +11,7 @@
                             <span class="f-txt">该账号封禁中</span>
                         </div>
                     </div>
-                    <div class="h-inner" :style="`background-image: url('${user.bg_url}');`">
+                    <div class="h-inner" :style="user.bg_url ? `background-image: url('${user.bg_url}');` : ''">
                         <div class="h-gradient"></div>
                         <div class="h-user">
                             <div class="h-info">
@@ -59,7 +59,17 @@
                         <div class="theme-panel">
                             <div class="wrapper">
                                 <div class="theme-list">
-
+                                    <div
+                                        v-for="theme in profileThemes"
+                                        :key="theme.id"
+                                        class="theme-item"
+                                        :class="{'theme-active': user.bg_url === theme.imageUrl}"
+                                        @click="selectTheme(theme)"
+                                    >
+                                        <img :src="theme.imageUrl" :alt="theme.title" />
+                                        <span class="theme-title">{{ theme.title }}</span>
+                                    </div>
+                                    <div v-if="profileThemes.length === 0" class="theme-empty">暂无可用头图</div>
                                 </div>
                             </div>
                         </div>
@@ -171,6 +181,7 @@ export default {
             themeShow: false,   // 是否展开更换头图的抽屉
             hoverIdx: -1,   // 悬停导航栏
             mounted: false,
+            profileThemes: [],   // 可选头图列表
         }
     },
     computed: {
@@ -259,6 +270,31 @@ export default {
             this.worksCount = res.data.data;
         },
 
+        // 获取用户主页背景图列表
+        async getUserProfileBg() {
+            try {
+                const res = await this.$get("/banner/user-profile");
+                if (res.data && res.data.data) {
+                    const list = Array.isArray(res.data.data) ? res.data.data : [];
+                    this.profileThemes = list;
+                    // 设置当前背景图（取 status=1 的第一张作为当前）
+                    const active = list.find(b => b.status === 1) || list[0];
+                    if (active && active.imageUrl) {
+                        this.user.bg_url = active.imageUrl;
+                    }
+                }
+            } catch (e) {
+                // 静默失败，使用默认背景
+            }
+        },
+
+        // 选择头图
+        selectTheme(theme) {
+            if (theme && theme.imageUrl) {
+                this.user.bg_url = theme.imageUrl;
+            }
+        },
+
         // 创建聊天
         createChat() {
             if (!this.$store.state.user.uid) {
@@ -330,16 +366,17 @@ export default {
             } else {
                 this.$router.push("/");
             }
-        } else {
-            // 判断路由参数合法性
-            const uid = Number(this.$route.params.uid);
-            if (uid && uid !== 0) {
-                await this.getUserFavList(uid);
-                await this.getUserInfo(uid);
-                await this.getUserWorksCount(uid);
             } else {
-                this.$router.push('/404');
-            }
+                // 判断路由参数合法性
+                const uid = Number(this.$route.params.uid);
+                if (uid && uid !== 0) {
+                    await this.getUserFavList(uid);
+                    await this.getUserInfo(uid);
+                    await this.getUserWorksCount(uid);
+                    await this.getUserProfileBg();
+                } else {
+                    this.$router.push('/404');
+                }
         }
     },
     mounted() {
@@ -430,7 +467,7 @@ export default {
 }
 
 .h-inner {
-    background-image: url('https://tinypic.host/images/2023/11/15/69PB2Q5W9D2U7L.png');
+    background: linear-gradient(135deg, #e4e9f2 0%, #f2f3f5 100%);
     background-position: 50%;
     background-size: cover;
     transition: background-image .2s ease, background-size 1s ease;
@@ -692,7 +729,61 @@ export default {
 .theme-list {
     position: relative;
     height: 280px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    display: flex;
+    gap: 12px;
+    padding: 0 130px;
+    align-items: flex-start;
+}
+
+.theme-item {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    border: 2px solid transparent;
+    border-radius: 6px;
     overflow: hidden;
+    transition: border-color .2s;
+}
+
+.theme-item:hover {
+    border-color: rgba(255, 255, 255, .5);
+}
+
+.theme-item.theme-active {
+    border-color: #fb7299;
+}
+
+.theme-item img {
+    width: 180px;
+    height: 100px;
+    object-fit: cover;
+    display: block;
+}
+
+.theme-title {
+    font-size: 12px;
+    color: #ccc;
+    padding: 4px 8px;
+    text-align: center;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background: #222;
+    width: 100%;
+}
+
+.theme-empty {
+    width: 100%;
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    line-height: 280px;
 }
 
 .n {
