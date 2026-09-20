@@ -6,6 +6,12 @@
 /core
 /media
 tmp/
+tmp-*/
+ai
+msg-danmaku
+search
+studio
+work
 
 # Node
 node_modules/
