@@ -6,7 +6,7 @@
                     <p>{{ this.$store.state.user.uid === uid ? '我' : 'TA' }}的创建</p>
                     <i class="iconfont icon-xiajiantou" :style="isFavnavOpen ? 'transform: rotate(180deg);' : ''"></i>
                 </div>
-                <div class="fav-list-container ps">
+                <div class="fav-list-container">
                     <div class="nav-title nav-add" v-if="this.$store.state.user.uid === uid">
                         <svg t="1711976556258" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4395" width="20" height="20"><path d="M512 62c247.5 0 450 202.5 450 450s-202.5 450-450 450-450-202.5-450-450 202.5-450 450-450z m28.125 421.875V287c0-16.875-11.25-28.125-28.125-28.125s-28.125 11.25-28.125 28.125v196.875H287c-16.875 0-28.125 11.25-28.125 28.125s11.25 28.125 28.125 28.125h196.875V737c0 16.875 11.25 28.125 28.125 28.125s28.125-11.25 28.125-28.125V540.125H737c16.875 0 28.125-11.25 28.125-28.125s-11.25-28.125-28.125-28.125H540.125z" p-id="4396"></path></svg>
                         <div class="text">新建收藏夹</div>
@@ -79,10 +79,26 @@
                         <div class="be-tab-cursor" :style="`transform: translateX(${63 * (rule - 1)}px); width: 48px;`"></div>
                     </div>
                 </div>
+                <div class="fav-actions" v-if="isOwner">
+                    <span class="batch-toggle" v-if="!batchMode" @click="enterBatchMode">批量操作</span>
+                    <div class="batch-bar" v-else>
+                        <el-checkbox
+                            :indeterminate="selectedSet.size > 0 && selectedSet.size < favVideos.length"
+                            :model-value="selectedSet.size === favVideos.length"
+                            @change="toggleSelectAll"
+                        >全选</el-checkbox>
+                        <span class="batch-count">已选 {{ selectedSet.size }} 项</span>
+                        <el-button size="small" type="danger" :disabled="selectedSet.size === 0" :loading="batchDeleting" @click="batchDelete">批量删除</el-button>
+                        <el-button size="small" @click="exitBatchMode">取消</el-button>
+                    </div>
+                </div>
             </div>
             <div class="fav-content" v-if="currFav && currFav.count > 0">
                 <ul class="fav-video-list clearfix">
-                    <li class="small-item" v-for="(item, index) in favVideos" :key="index">
+                    <li class="small-item" :class="{'batch-selected': batchMode && selectedSet.has(item.video.vid)}" v-for="(item, index) in favVideos" :key="index">
+                        <div class="batch-checkbox" v-if="batchMode && isOwner" @click.stop="toggleSelect(item.video.vid)">
+                            <input type="checkbox" :checked="selectedSet.has(item.video.vid)" readonly>
+                        </div>
                         <a :href="`/video/${item.video.vid}`" target="_blank" class="cover" v-if="item.video.status === 1">
                             <img v-if="item.video.coverUrl" :src="item.video.coverUrl" alt="">
                             <span v-if="item.video.duration" class="length">{{ handleDuration(item.video.duration) }}</span>
@@ -138,19 +154,24 @@
 <script>
 import VPopover from '@/components/teriteri/popover/VPopover.vue';
 import { handleTime, handleNum, handleDate } from '@/teriteri-src/utils/utils';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox, ElCheckbox, ElButton } from 'element-plus';
 
 export default {
     name: "SpaceFavlist",
     components: {
         VPopover,
+        ElCheckbox,
+        ElButton,
     },
     data() {
         return {
             isFavnavOpen: true,
-            rule: 1,    // 排序规则 1 最近收藏 2 最多播放 3 最新投稿
-            page: 1,    // 当前分页
-            favVideos: [],  // 当前收藏夹的视频列表
+            rule: 1,
+            page: 1,
+            favVideos: [],
+            batchMode: false,
+            selectedSet: new Set(),
+            batchDeleting: false,
         }
     },
     props: {
@@ -176,6 +197,10 @@ export default {
             } else {
                 return fav;
             }
+        },
+
+        isOwner() {
+            return this.$store.state.user.uid === this.uid;
         }
     },
     methods: {
@@ -234,8 +259,63 @@ export default {
         },
 
         noPage() {
-            ElMessage.warning("该功能暂未开放")
-        }
+            ElMessage.warning("该功能暂未开放");
+        },
+
+        // 批量操作
+        enterBatchMode() {
+            this.batchMode = true;
+            this.selectedSet = new Set();
+        },
+        exitBatchMode() {
+            this.batchMode = false;
+            this.selectedSet = new Set();
+        },
+        toggleSelect(vid) {
+            const s = new Set(this.selectedSet);
+            if (s.has(vid)) s.delete(vid); else s.add(vid);
+            this.selectedSet = s;
+        },
+        toggleSelectAll() {
+            if (this.selectedSet.size === this.favVideos.length) {
+                this.selectedSet = new Set();
+            } else {
+                this.selectedSet = new Set(this.favVideos.map(v => v.video.vid));
+            }
+        },
+        async batchDelete() {
+            if (this.selectedSet.size === 0) return;
+            try {
+                await ElMessageBox.confirm(
+                    `确定要删除选中的 ${this.selectedSet.size} 个视频吗？`,
+                    '批量删除',
+                    { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+                );
+                this.batchDeleting = true;
+                const token = localStorage.getItem('teri_token') || '';
+                let success = 0;
+                for (const vid of this.selectedSet) {
+                    const item = this.favVideos.find(v => v.video.vid === vid);
+                    if (!item) continue;
+                    try {
+                        const formData = new FormData();
+                        formData.append('vid', String(vid));
+                        formData.append('fid', String(item.info.fid));
+                        const res = await this.$post('/video/cancel-collect', formData, {
+                            headers: { Authorization: `Bearer ${token}` }
+                        });
+                        if (res.data && res.data.code === 200) success++;
+                    } catch (e) { /* skip */ }
+                }
+                ElMessage.success(`成功删除 ${success} 个视频`);
+                this.exitBatchMode();
+                await this.getFavVideos();
+            } catch (e) {
+                if (e !== 'cancel') ElMessage.error('批量删除失败');
+            } finally {
+                this.batchDeleting = false;
+            }
+        },
     },
     mounted() {
         if (!this.fid) {
@@ -319,19 +399,11 @@ ol, ul {
     color: #99a2aa;
 }
 
-.ps {
-    overflow: hidden !important;
-    overflow-anchor: none;
-    -ms-overflow-style: none;
-    touch-action: auto;
-    -ms-touch-action: auto;
-}
-
 .fav-list-container {
     position: relative;
     max-height: 420px;
     margin-bottom: 10px;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .nav-title {
@@ -596,6 +668,53 @@ ol, ul {
 
 .fav-header {
     margin: 20px 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.fav-actions {
+    margin-right: 20px;
+}
+
+.batch-toggle {
+    font-size: 12px;
+    color: #999;
+    cursor: pointer;
+    transition: color .2s;
+}
+.batch-toggle:hover {
+    color: var(--brand_pink);
+}
+
+.batch-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+}
+.batch-count {
+    color: #666;
+    font-size: 12px;
+}
+
+.small-item.batch-selected .cover {
+    outline: 2px solid var(--brand_pink);
+    outline-offset: 2px;
+}
+
+.batch-checkbox {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    z-index: 10;
+    cursor: pointer;
+}
+.batch-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--brand_pink);
 }
 
 .fav-info {

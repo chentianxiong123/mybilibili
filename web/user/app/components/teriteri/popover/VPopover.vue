@@ -1,36 +1,42 @@
 <template>
-    <div @mouseleave="handleMouseLeave" style="position: relative;">
+    <div @mouseleave="handleMouseLeave" style="position: relative; display: inline;">
         <div @mouseenter="handleMouseEnter" @click="handleClick" style="position: relative;" ref="vPopRef">
             <slot name="reference"></slot>
         </div>
-        <div class="v-popover" :class="'to-' + placement" :style="popStyle">
+        <Teleport to="body">
             <div
-                class="v-popover-content"
-                ref="vPopCon"
-                :class="isPopoverShow ? 'popShow-' + placement : 'popHide-' + placement"
-                :style="{ display: popoverDisplay }"
+                v-if="popoverDisplay !== 'none'"
+                class="v-popover"
+                :class="'to-' + placement"
+                :style="fixedStyle"
+                ref="vPopBox"
+                @mouseenter="handlePopoverEnter"
+                @mouseleave="handlePopoverLeave"
             >
-                <slot name="content"></slot>
+                <div
+                    class="v-popover-content"
+                    ref="vPopCon"
+                    :class="isPopoverShow ? 'popShow-' + placement : 'popHide-' + placement"
+                >
+                    <slot name="content"></slot>
+                </div>
             </div>
-        </div>
+        </Teleport>
     </div>
 </template>
 
 <script lang="ts">
-let inTimer;  // 节流计时器
-// let outTimer;
+let inTimer;
 
     export default {
         name: "VPopover",
         props: {
-            // 显示方向
             placement: {
                 type: String,
                 default() {
                     return "bottom";
                 }
             },
-            // 触发方式 目前支持悬停hover、点击click
             trigger: {
                 type: String,
                 default() {
@@ -46,13 +52,48 @@ let inTimer;  // 节流计时器
         },
         data() {
             return {
-                // 气泡框的显隐
                 popoverDisplay: "none",
                 isPopoverShow: false,
+                popTop: 0,
+                popLeft: 0,
+            }
+        },
+        computed: {
+            fixedStyle() {
+                const styles = [
+                    `position: fixed`,
+                    `top: ${this.popTop}px`,
+                    `left: ${this.popLeft}px`,
+                    `z-index: 10000`,
+                ];
+                if (this.popStyle) {
+                    styles.push(this.popStyle);
+                }
+                return styles.join('; ');
             }
         },
         methods: {
+            updatePosition() {
+                const ref = this.$refs.vPopRef;
+                if (!ref) return;
+                const rect = ref.getBoundingClientRect();
+                const gap = 5;
+                if (this.placement === 'bottom') {
+                    this.popTop = rect.bottom + gap;
+                    this.popLeft = rect.left + rect.width / 2;
+                } else if (this.placement === 'top') {
+                    this.popTop = rect.top - gap;
+                    this.popLeft = rect.left + rect.width / 2;
+                } else if (this.placement === 'right') {
+                    this.popTop = rect.top + rect.height / 2;
+                    this.popLeft = rect.right + gap;
+                } else if (this.placement === 'left') {
+                    this.popTop = rect.top + rect.height / 2;
+                    this.popLeft = rect.left - gap;
+                }
+            },
             show() {
+                this.updatePosition();
                 this.popoverDisplay = "";
                 this.isPopoverShow = true;
             },
@@ -65,6 +106,7 @@ let inTimer;  // 节流计时器
 
             handleMouseEnter() {
                 if (this.trigger === "hover") {
+                    clearTimeout(inTimer);
                     inTimer = setTimeout(() => {
                         this.show();
                     }, 100);
@@ -73,7 +115,21 @@ let inTimer;  // 节流计时器
             handleMouseLeave() {
                 if (this.trigger === "hover") {
                     clearTimeout(inTimer);
-                    this.hide();
+                    inTimer = setTimeout(() => {
+                        this.hide();
+                    }, 200);
+                }
+            },
+            handlePopoverEnter() {
+                if (this.trigger === "hover") {
+                    clearTimeout(inTimer);
+                }
+            },
+            handlePopoverLeave() {
+                if (this.trigger === "hover") {
+                    inTimer = setTimeout(() => {
+                        this.hide();
+                    }, 200);
                 }
             },
             handleClick() {
@@ -85,11 +141,10 @@ let inTimer;  // 节流计时器
                     }
                 }
             },
-            // 点击空白处关闭气泡
             handleOutsideClick(event) {
                 const vPopRef = this.$refs.vPopRef;
                 const vPopCon = this.$refs.vPopCon;
-                if (!vPopRef.contains(event.target) &&! vPopCon.contains(event.target)) {
+                if (vPopRef && !vPopRef.contains(event.target) && vPopCon && !vPopCon.contains(event.target)) {
                     this.hide();
                 }
             },
@@ -100,6 +155,7 @@ let inTimer;  // 节流计时器
             }
         },
         beforeUnmount() {
+            clearTimeout(inTimer);
             if (this.trigger === 'click') {
                 window.removeEventListener("click", this.handleOutsideClick);
             }
@@ -107,11 +163,9 @@ let inTimer;  // 节流计时器
     }
 </script>
 
-<style scoped>
+<style>
 .v-popover {
-    position: absolute;
     transition: .3s;
-    z-index: 1;
 }
 
 .v-popover-content {
@@ -122,40 +176,28 @@ let inTimer;  // 节流计时器
 }
 
 .to-bottom {
-    top: 100%;
-    left: 50%;
+    transform: translate3d(-50%,0,0);
     padding-top: 5px;
 }
 
 .to-right {
-    top: 50%;
-    left: 100%;
+    transform: translate3d(0,-50%,0);
     padding-left: 5px;
 }
 
 .to-top {
-    bottom: 100%;
-    left: 50%;
+    transform: translate3d(-50%,-100%,0);
     padding-bottom: 5px;
 }
 
 .to-left {
-    top: 50%;
-    right: 100%;
+    transform: translate3d(-100%,-50%,0);
     padding-right: 5px;
-}
-
-.to-top, .to-bottom {
-    transform: translate3d(-50%,0,0);   /* 水平左移半个元素身位，使其水平与父元素居中 */
-}
-
-.to-left, .to-right {
-    transform: translate3d(0,-50%,0);   /* 垂直上移半个元素身位，使其垂直与父元素居中 */
 }
 
 .popHide-bottom {
     animation: fade-out-bottom 0.2s ease-out forwards;
-    transform-origin: top; /* 设置动画的旋转点为顶部 */
+    transform-origin: top;
 }
 
 .popShow-bottom {
@@ -163,28 +205,14 @@ let inTimer;  // 节流计时器
     transform-origin: top;
 }
 
-/* 淡入动画 */
 @keyframes fade-in-bottom {
-    0% {
-        opacity: 0; /* 初始状态透明 */
-        transform: translateY(-5px); /* 向上平移 10px，将元素隐藏在顶部 */
-    }
-    100% {
-        opacity: 1; /* 最终状态不透明 */
-        transform: translateY(0); /* 平移恢复到原始位置 */
-    }
+    0% { opacity: 0; transform: translate3d(-50%,-5px,0); }
+    100% { opacity: 1; transform: translate3d(-50%,0,0); }
 }
 
-/* 淡出动画 */
 @keyframes fade-out-bottom {
-    0% {
-        opacity: 1; /* 初始状态不透明 */
-        transform: translateY(0);   /* 原始位置 */
-    }
-    100% {
-        opacity: 0; /* 最终状态透明 */
-        transform: translateY(-5px); /* 向上平移 10px，将元素隐藏在顶部 */
-    }
+    0% { opacity: 1; transform: translate3d(-50%,0,0); }
+    100% { opacity: 0; transform: translate3d(-50%,-5px,0); }
 }
 
 .popHide-right {
@@ -197,28 +225,14 @@ let inTimer;  // 节流计时器
     transform-origin: left;
 }
 
-/* 淡入动画 */
 @keyframes fade-in-right {
-    0% {
-        opacity: 0;
-        transform: translateX(-5px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateX(0);
-    }
+    0% { opacity: 0; transform: translate3d(-5px,-50%,0); }
+    100% { opacity: 1; transform: translate3d(0,-50%,0); }
 }
 
-/* 淡出动画 */
 @keyframes fade-out-right {
-    0% {
-        opacity: 1;
-        transform: translateX(0);
-    }
-    100% {
-        opacity: 0;
-        transform: translateX(-5px);
-    }
+    0% { opacity: 1; transform: translate3d(0,-50%,0); }
+    100% { opacity: 0; transform: translate3d(-5px,-50%,0); }
 }
 
 .popHide-top {
@@ -231,28 +245,14 @@ let inTimer;  // 节流计时器
     transform-origin: bottom;
 }
 
-/* 淡入动画 */
 @keyframes fade-in-top {
-    0% {
-        opacity: 0;
-        transform: translateY(5px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    0% { opacity: 0; transform: translate3d(-50%,5px,0); }
+    100% { opacity: 1; transform: translate3d(-50%,0,0); }
 }
 
-/* 淡出动画 */
 @keyframes fade-out-top {
-    0% {
-        opacity: 1;
-        transform: translateY(0);
-    }
-    100% {
-        opacity: 0;
-        transform: translateY(5px);
-    }
+    0% { opacity: 1; transform: translate3d(-50%,0,0); }
+    100% { opacity: 0; transform: translate3d(-50%,5px,0); }
 }
 
 .popHide-left {
@@ -265,27 +265,13 @@ let inTimer;  // 节流计时器
     transform-origin: right;
 }
 
-/* 淡入动画 */
 @keyframes fade-in-left {
-    0% {
-        opacity: 0;
-        transform: translateX(5px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateX(0);
-    }
+    0% { opacity: 0; transform: translate3d(5px,-50%,0); }
+    100% { opacity: 1; transform: translate3d(0,-50%,0); }
 }
 
-/* 淡出动画 */
 @keyframes fade-out-left {
-    0% {
-        opacity: 1;
-        transform: translateX(0);
-    }
-    100% {
-        opacity: 0;
-        transform: translateX(5px);
-    }
+    0% { opacity: 1; transform: translate3d(0,-50%,0); }
+    100% { opacity: 0; transform: translate3d(5px,-50%,0); }
 }
 </style>
