@@ -1,6 +1,7 @@
 package message
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -96,6 +97,17 @@ func (h *MessageHTTPHandler) handleNotificationSSE(w http.ResponseWriter, r *htt
 	defer h.notif.Unsubscribe(userID, ch)
 
 	fmt.Fprintf(w, "data: {\"type\":\"connected\"}\n\n")
+	flusher.Flush()
+
+	// 连接建立后立刻推送全量未读数，前端不再 HTTP 轮询
+	unread := h.repo.GetUnreadCountsByType(r.Context(), userID)
+	if h.cache != nil {
+		if cached, err := h.cache.Counts(r.Context(), userID); err == nil {
+			unread = cached
+		}
+	}
+	initData, _ := json.Marshal(map[string]any{"type": "unread_init", "data": unread})
+	fmt.Fprintf(w, "data: %s\n\n", initData)
 	flusher.Flush()
 
 	ctx := r.Context()
@@ -223,6 +235,7 @@ func (h *MessageHTTPHandler) handleSend(w http.ResponseWriter, r *http.Request) 
 		Type: "message", Content: req.Content, FromUID: userID,
 		CreatedAt: msg.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	})
+	h.pushUnread(r.Context(), req.ReceiverID)
 	if h.cache != nil {
 		h.cache.Invalidate(r.Context(), req.ReceiverID)
 	}
@@ -555,6 +568,7 @@ func (h *MessageHTTPHandler) handleBatchRead(w http.ResponseWriter, r *http.Requ
 	if h.cache != nil {
 		h.cache.Invalidate(r.Context(), userID)
 	}
+	h.pushUnread(r.Context(), userID)
 	w.Write([]byte(`{"status":"ok"}`))
 }
 
@@ -631,7 +645,19 @@ func (h *MessageHTTPHandler) handleAdminBroadcast(w http.ResponseWriter, r *http
 		msg, _ := h.repo.SendMessage(r.Context(), 0, uid, req.Content, 5)
 		if msg != nil {
 			h.notif.Send(uid, &NotificationEvent{Type: "system", Content: req.Content, CreatedAt: msg.CreatedAt.Format("2006-01-02T15:04:05Z")})
+			h.pushUnread(r.Context(), uid)
 		}
 	}
 	w.Write([]byte(`{"status":"broadcast_sent"}`))
+}
+
+// pushUnread 算一次全量未读数并推送给指定用户，替代前端轮询。
+func (h *MessageHTTPHandler) pushUnread(ctx context.Context, userID int64) {
+	counts := h.repo.GetUnreadCountsByType(ctx, userID)
+	if h.cache != nil {
+		if cached, err := h.cache.Counts(ctx, userID); err == nil {
+			counts = cached
+		}
+	}
+	h.notif.Send(userID, &NotificationEvent{Type: "unread_counts", Data: counts})
 }

@@ -180,11 +180,12 @@ type NotificationBroadcaster struct {
 }
 
 type NotificationEvent struct {
-	Type      string `json:"type"`
-	Content   string `json:"content"`
-	FromUID   int64  `json:"from_uid"`
-	FromName  string `json:"from_name"`
-	CreatedAt string `json:"created_at"`
+	Type      string         `json:"type"`
+	Content   string         `json:"content,omitempty"`
+	FromUID   int64          `json:"from_uid,omitempty"`
+	FromName  string         `json:"from_name,omitempty"`
+	CreatedAt string         `json:"created_at,omitempty"`
+	Data      map[string]int32 `json:"data,omitempty"`
 }
 
 func NewNotificationBroadcaster() *NotificationBroadcaster {

@@ -28,9 +28,20 @@ func (s *GrpcServer) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 			Content: req.Content,
 			FromUID: req.SenderId,
 		})
+		s.pushUnread(ctx, req.ReceiverId)
 	}
 	if s.cache != nil {
 		s.cache.Invalidate(ctx, req.ReceiverId)
 	}
 	return &pb.SendMessageResponse{MessageId: msg.ID}, nil
+}
+
+func (s *GrpcServer) pushUnread(ctx context.Context, userID int64) {
+	counts := s.repo.GetUnreadCountsByType(ctx, userID)
+	if s.cache != nil {
+		if cached, err := s.cache.Counts(ctx, userID); err == nil {
+			counts = cached
+		}
+	}
+	s.notif.Send(userID, &NotificationEvent{Type: "unread_counts", Data: counts})
 }

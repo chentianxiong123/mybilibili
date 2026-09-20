@@ -334,11 +334,15 @@ func TestHandleBatchRead_WithCacheInvalidate(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE conversations SET unread_count = 0`).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	// pushUnread -> cache.Counts miss -> GetUnreadCountsByType
+	mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private", "reply", "at", "like", "system"}).AddRow(0, 0, 0, 0, 0))
 
 	mr.HSet("unread:1001", "private", "2")
 	rr := doMessage(t, h, http.MethodPut, "/api/v1/message/batch/read", `{"ids":[1]}`)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.False(t, mr.Exists("unread:1001"))
+	// Invalidate deletes old cache; pushUnread repopulates with fresh counts (all 0)
+	val := mr.HGet("unread:1001", "private")
+	assert.Equal(t, "0", val)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
