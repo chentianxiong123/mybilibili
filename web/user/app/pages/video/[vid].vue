@@ -20,7 +20,7 @@
                             </span>
                             <span class="danmu item">
                                 <i class="iconfont icon-danmushu"></i>
-                                &nbsp;{{ handleNum(this.$store.state.danmuList.length) }}&nbsp;
+                                &nbsp;{{ handleNum(store.danmuList.length) }}&nbsp;
                             </span>
                             <span class="date item">
                                 {{ video.uploadDate }}
@@ -63,8 +63,8 @@
                     <div class="video-toolbar-left">
                         <div class="toolbar-left-item-wrap">
                             <div class="video-toolbar-left-item"
-                                :class="{ 'on': this.$store.state.attitudeToVideo.love }"
-                                @click="loveOrNot(true, !this.$store.state.attitudeToVideo.love)">
+                                :class="{ 'on': store.attitudeToVideo.love }"
+                                @click="loveOrNot(true, !store.attitudeToVideo.love)">
                                 <i class="iconfont icon-dianzan"></i>
                                 <span class="video-toolbar-item-text">{{ handleNum(good) }}</span>
                                 <div class="dianzan-gif" :class="isGifShow ? 'gif-show' : 'gif-hide'">
@@ -74,22 +74,22 @@
                         </div>
                         <div class="toolbar-left-item-wrap">
                             <div class="video-toolbar-left-item"
-                                :class="{ 'on': this.$store.state.attitudeToVideo.unlove }"
-                                @click="loveOrNot(false, !this.$store.state.attitudeToVideo.unlove)">
+                                :class="{ 'on': store.attitudeToVideo.unlove }"
+                                @click="loveOrNot(false, !store.attitudeToVideo.unlove)">
                                 <i class="iconfont icon-diancai"></i>
                                 <span class="video-toolbar-item-text">不喜欢</span>
                             </div>
                         </div>
                         <div class="toolbar-left-item-wrap">
                             <div class="video-toolbar-left-item"
-                                :class="{ 'on': this.$store.state.attitudeToVideo.coin > 0 }" @click="noPage">
+                                :class="{ 'on': store.attitudeToVideo.coin > 0 }" @click="noPage">
                                 <i class="iconfont icon-toubi"></i>
                                 <span class="video-toolbar-item-text">{{ handleNum(coin) }}</span>
                             </div>
                         </div>
                         <div class="toolbar-left-item-wrap">
                             <div class="video-toolbar-left-item"
-                                :class="{ 'on': this.$store.state.attitudeToVideo.collect }" @click="openCollectDialog">
+                                :class="{ 'on': store.attitudeToVideo.collect }" @click="openCollectDialog">
                                 <i class="iconfont icon-shoucang1"></i>
                                 <span class="video-toolbar-item-text">{{ handleNum(collect) }}</span>
                             </div>
@@ -390,612 +390,538 @@
     </div>
 </template>
 
-<script lang="ts">
-import CommentVue from '@/components/teriteri/comment/CommentVue.vue';
-import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue';
-import VideoPlayer from '@/components/VideoPlayer.vue';
-import VPopover from '@/components/teriteri/popover/VPopover.vue';
-import VAvatar from '@/components/teriteri/avatar/VAvatar.vue';
-import UserCard from '@/components/teriteri/UserCard/UserCard.vue';
-import DanmuBox from '@/components/teriteri/danmu/DanmuBox.vue';
-import AddToFavorite from '@/components/teriteri/favorite/AddToFavorite.vue';
-import { handleTime, handleNum, handleDate, linkify } from '@/teriteri-src/utils/utils';
-import { ElMessage } from 'element-plus';
+<script setup lang="ts">
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useTeriteriStore } from '@/stores/teriteri'
+import { handleTime, handleNum as _handleNum, handleDate, linkify } from '@/teriteri-src/utils/utils'
+import { ElMessage } from 'element-plus'
 
-export default {
-    name: "VideoDetail",
-    components: {
-        CommentVue,
-        HeaderBar,
-        VideoPlayer,
-        VPopover,
-        VAvatar,
-        UserCard,
-        DanmuBox,
-        AddToFavorite,
-    },
-    data() {
-        return {
-            socket: null,
-            playerSize: {
-                width: 704,
-                height: 442,
-            },
-            video: {},  // 视频信息
-            view: 0,    // 播放数
-            danmu: 0,   // 弹幕数
-            good: 0,    // 点赞数
-            coin: 0,    // 投币数
-            collect: 0, // 收藏数
-            share: 0,   // 分享数
-            comment: 0, // 评论数
-            population: 0,  // 当前观看人数
-            user: {
-                uid: 0,
-            },   // 投稿用户信息
-            category: {},   // 视频分区信息
-            tags: [],   // 投稿标签
-            showAllDesc: true, // 是否展开简介
-            descTooLong: false,   // 简介太长需要展开
-            jumpTimePoint: -1,  // 双击弹幕跳转的时间点
-            autonext: false,    // 是否自动连播
-            recommendVideos: [],    // 推荐视频
-            vids: [],   // 存放本视频和已推荐的视频id
-            isGifShow: false,
-            gifDisplay: false,
-            collectVisible: false,  // 收藏框的显隐
-            collectedFids: new Set(),   // 收藏了该视频的收藏夹ID集合
-            isMounted: false,
-            loveLoading: false, // 点赞防抖
-            manuscriptParts: [], // 稿件分P列表
-            currentPartIndex: 0, // 当前分P索引
-            manuscriptId: '', // 稿件ID
-            danmuList: [], // 弹幕列表
-            videoPlayerRef: null, // 播放器引用
+import CommentVue from '@/components/teriteri/comment/CommentVue.vue'
+import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue'
+import VideoPlayer from '@/components/VideoPlayer.vue'
+import VPopover from '@/components/teriteri/popover/VPopover.vue'
+import VAvatar from '@/components/teriteri/avatar/VAvatar.vue'
+import UserCard from '@/components/teriteri/UserCard/UserCard.vue'
+import DanmuBox from '@/components/teriteri/danmu/DanmuBox.vue'
+import AddToFavorite from '@/components/teriteri/favorite/AddToFavorite.vue'
+
+const store = useTeriteriStore()
+const route = useRoute()
+const router = useRouter()
+
+// ===== State =====
+const socket = ref<WebSocket | null>(null)
+const playerSize = reactive({ width: 704, height: 442 })
+const video = ref<Record<string, any>>({})
+const view = ref(0)
+const danmu = ref(0)
+const good = ref(0)
+const coin = ref(0)
+const collect = ref(0)
+const share = ref(0)
+const comment = ref(0)
+const population = ref(0)
+const user = ref<Record<string, any>>({ uid: 0 })
+const category = ref<Record<string, any>>({})
+const tags = ref<string[]>([])
+const showAllDesc = ref(true)
+const descTooLong = ref(false)
+const jumpTimePoint = ref(-1)
+const autonext = ref(false)
+const recommendVideos = ref<any[]>([])
+const vids = ref<number[]>([])
+const isGifShow = ref(false)
+const gifDisplay = ref(false)
+const collectVisible = ref(false)
+const collectedFids = ref<Set<number>>(new Set())
+const isMounted = ref(false)
+const loveLoading = ref(false)
+const manuscriptParts = ref<any[]>([])
+const currentPartIndex = ref(0)
+const manuscriptId = ref('')
+const danmuList = ref<any[]>([])
+const videoPlayerRef = ref<any>(null)
+const artControlsCenterSlot = ref<HTMLDivElement | null>(null)
+
+// ===== Computed =====
+const manuscriptInfoForPlayer = computed(() => ({
+    id: Number(manuscriptId.value) || 0,
+    title: video.value.title || '',
+    description: video.value.descr || '',
+    coverUrl: video.value.coverUrl || '',
+    tags: tags.value,
+    videos: manuscriptParts.value.map((p: any, i: number) => ({
+        id: Number(p.vid) || 0,
+        title: p.title || '',
+        playUrl: p.playUrl || '',
+        playUrlHd: p.playUrl || '',
+        playUrlSd: '',
+        playUrlLd: '',
+        duration: p.duration || 0,
+        videoOrder: i,
+    })),
+}))
+
+const videoInfoForPlayer = computed(() => {
+    const current = manuscriptParts.value[currentPartIndex.value] || {}
+    return {
+        title: current.title || video.value.title || '',
+        coverUrl: video.value.coverUrl || '',
+        playUrl: current.playUrl || video.value.videoUrl || '',
+        playUrlHd: current.playUrl || '',
+        playUrlSd: '',
+        playUrlLd: '',
+        duration: video.value.duration || 0,
+        watchingCount: population.value,
+        danmuLoadedCount: danmu.value,
+    }
+})
+
+// ===== Utility wrappers (keep template binding names) =====
+function handleNum(number: any) {
+    return _handleNum(number)
+}
+
+function handleDuration(time: number) {
+    return handleTime(time)
+}
+
+function handleLinkify(text: string) {
+    return linkify(text)
+}
+
+function isDescTooLong() {
+    nextTick(() => {
+        const desc = document.querySelector('.basic-desc-info') as HTMLElement
+        if (desc && desc.clientHeight > 84) {
+            descTooLong.value = true
+            showAllDesc.value = false
         }
-    },
-    computed: {
-        manuscriptInfoForPlayer() {
-            return {
-                id: Number(this.manuscriptId) || 0,
-                title: this.video.title || '',
-                description: this.video.descr || '',
-                coverUrl: this.video.coverUrl || '',
-                tags: this.tags,
-                videos: this.manuscriptParts.map((p, i) => ({
-                    id: Number(p.vid) || 0,
-                    title: p.title || '',
-                    playUrl: p.playUrl || '',
-                    playUrlHd: p.playUrl || '',
-                    playUrlSd: '',
-                    playUrlLd: '',
-                    duration: p.duration || 0,
-                    videoOrder: i,
-                })),
-            }
-        },
-        videoInfoForPlayer() {
-            const current = this.manuscriptParts[this.currentPartIndex] || {}
-            return {
-                title: current.title || this.video.title || '',
-                coverUrl: this.video.coverUrl || '',
-                playUrl: current.playUrl || this.video.videoUrl || '',
-                playUrlHd: current.playUrl || '',
-                playUrlSd: '',
-                playUrlLd: '',
-                duration: this.video.duration || 0,
-                watchingCount: this.population,
-                danmuLoadedCount: this.danmu,
-            }
-        },
-    },
-    methods: {
-        ////// 请求 //////
-        // 获取视频详细信息
-        async getVideoDetail() {
-            const res = await this.$get('/video/getone', {
-                params: {
-                    vid: this.$route.params.vid,
-                },
-            });
-            if (res.data.code === 404) {
-                this.$router.push("/404");
-                return false;
-            }
-            if (res.data.data) {
-                // console.log("视频详情: ", res.data.data);
-                this.video = res.data.data.video;
-                this.user = res.data.data.user;
-                this.category = res.data.data.category;
-                this.tags = res.data.data.video.tags.split("\r\n").filter(tag => tag.trim() !== "");
-                this.view = res.data.data.stats.play;
-                this.danmu = res.data.data.stats.danmu;
-                this.good = res.data.data.stats.good;
-                this.coin = res.data.data.stats.coin;
-                this.collect = res.data.data.stats.collect;
-                this.share = res.data.data.stats.share;
-                this.comment = res.data.data.stats.comment;
-                // 分P数据
-                this.manuscriptId = res.data.data.manuscriptId || '';
-                this.manuscriptParts = res.data.data.videos || [];
-                // 定位当前分P
-                const currentVid = String(this.$route.params.vid);
-                const idx = this.manuscriptParts.findIndex(p => p.vid === currentVid);
-                this.currentPartIndex = idx >= 0 ? idx : 0;
-            }
-            this.isDescTooLong();
-            if (localStorage.getItem("teri_token")) {
-                this.getCollectedFids();
-            }
-            return true;
-        },
+    })
+}
 
-        // 获取推荐视频
-        async getRecommendVideos() {
-            this.recommendVideos = [];
-            this.vids = [];
-            this.vids.push(Number(this.$route.params.vid));
-            let ids = this.vids.join(",");  // 用逗号连接成一个字符串
-            const res = await this.$get("/video/cumulative/visitor", {
-                params: { vids: ids }
-            });
-            if (res.data.data) {
-                this.recommendVideos.push(...res.data.data.videos);
-                this.vids.push(...res.data.data.vids);
-                // 默认一次只能查10条，这里再请求一次，总共查20条
-                ids = this.vids.join(",");
-                const res2 = await this.$get("/video/cumulative/visitor", {
-                    params: { vids: ids }
-                });
-                if (res2.data.data) {
-                    this.recommendVideos.push(...res2.data.data.videos);
-                    this.vids.push(...res2.data.data.vids);
-                }
-            }
-        },
+function openNewPage(routePath: string) {
+    window.open(router.resolve(routePath).href, '_blank')
+}
 
-        // 获取弹幕列表
-        async getDanmuList() {
-            const res = await this.$get(`/danmu-list/${this.$route.params.vid}`);
-            if (res.data.data == null || res.data.data.length === 0) {
-                this.$store.commit("updateDanmuList", []);
-            } else if (res.data.data.length > 0) {
-                this.$store.commit("updateDanmuList", res.data.data);
-            }
-        },
+// ===== Request functions =====
+async function getVideoDetail() {
+    const { get } = await import('@/teriteri-src/network/request')
+    const res = await get('/video/getone', {
+        params: { vid: route.params.vid },
+    })
+    if (res.data.code === 404) {
+        router.push('/404')
+        return false
+    }
+    if (res.data.data) {
+        video.value = res.data.data.video
+        user.value = res.data.data.user
+        category.value = res.data.data.category
+        tags.value = res.data.data.video.tags.split('\r\n').filter((tag: string) => tag.trim() !== '')
+        view.value = res.data.data.stats.play
+        danmu.value = res.data.data.stats.danmu
+        good.value = res.data.data.stats.good
+        coin.value = res.data.data.stats.coin
+        collect.value = res.data.data.stats.collect
+        share.value = res.data.data.stats.share
+        comment.value = res.data.data.stats.comment
+        manuscriptId.value = res.data.data.manuscriptId || ''
+        manuscriptParts.value = res.data.data.videos || []
+        const currentVid = String(route.params.vid)
+        const idx = manuscriptParts.value.findIndex((p: any) => p.vid === currentVid)
+        currentPartIndex.value = idx >= 0 ? idx : 0
+    }
+    isDescTooLong()
+    if (localStorage.getItem('teri_token')) {
+        getCollectedFids()
+    }
+    return true
+}
 
-        // 初始化实时弹幕的websocket
-        async initWebsocket() {
-            const wsBaseUrl = process.env.VUE_APP_WS_DANMU_URL;
-            if (!wsBaseUrl) {
-                // 未配置 WS 服务端点，跳过弹幕实时连接（仅展示历史弹幕）
-                return;
-            }
-            const socketUrl = `${wsBaseUrl}/ws/danmu/${this.$route.params.vid}`;
-            if (this.socket != null) {
-                await this.socket.close();
-                this.socket = null;
-            }
-            this.socket = new WebSocket(socketUrl);
-            // 开启监听
-            this.socket.addEventListener('close', this.handleWsClose);
-            this.socket.addEventListener('message', this.handleWsMessage);
-            this.socket.addEventListener('error', this.handleWsError);
-        },
-
-        async closeWebSocket() {
-            if (this.socket != null) {
-                await this.socket.close();
-                this.socket = null;
-            }
-        },
-
-        // 点赞或取消点赞
-        async loveOrNot(isLove, isSet) {
-            if (this.loveLoading) return;
-            if (!this.$store.state.user.uid) {
-                this.$store.state.openLogin = true;
-                this.$nextTick(() => {
-                    this.$store.state.openLogin = false;
-                });
-                return;
-            }
-            if (!this.video.vid) {
-                ElMessage.error("视频不存在");
-                return;
-            }
-            this.loveLoading = true;
-            const originalLove = this.$store.state.attitudeToVideo.love;
-            const formData = new FormData();
-            formData.append("vid", Number(this.video.vid));
-            formData.append("isLove", isLove);
-            formData.append("isSet", isSet);
-            const res = await this.$post("/video/love-or-not", formData, {
-                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
-            });
-            if (!res.data.data) {
-                this.loveLoading = false;
-                return;
-            }
-            const data = res.data.data;
-            const atv = {
-                love: data.love === 1 ? true : false,
-                unlove: data.unlove === 1 ? true : false,
-                coin: data.coin,
-                collect: data.collect === 1 ? true : false
-            };
-            this.$store.commit("updateAttitudeToVideo", atv);
-            if (isLove && isSet) {
-                this.good++;   // 点赞 点赞数加一
-                this.gifShow();
-                setTimeout(() => {
-                    this.gifHide();
-                }, 3000);
-            } else if (isLove || (!isLove && isSet && originalLove)) {
-                this.good = this.good - 1 < 0 ? 0 : this.good - 1;   // 取消点赞或者原来是赞但是点踩了 点赞数减一
-            }
-            this.loveLoading = false;
-        },
-
-        // 获取收藏了该视频的收藏夹ID列表
-        async getCollectedFids() {
-            const res = await this.$get("/video/collected-fids", {
-                params: { vid: Number(this.video.vid) },
-                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
-            });
-            if (!res.data) return;
-            this.collectedFids = new Set(res.data.data);
-            // console.log("该用户收藏了该视频的收藏夹ID集合: ", this.collectedFids);
-        },
-
-
-        ////// 事件 //////
-        // 处理播放时长
-        handleDuration(time) {
-            return handleTime(time);
-        },
-
-        // 处理大于一万的数字
-        handleNum(number) {
-            return handleNum(number);
-        },
-
-        // 处理投稿时间
-        handleDate(date) {
-            return handleDate(date);
-        },
-
-        // 处理超链接文本
-        handleLinkify(text) {
-            return linkify(text);
-        },
-
-        // 判断简介长度是否过长需要收起
-        isDescTooLong() {
-            this.$nextTick(() => {
-                const desc = document.querySelector('.basic-desc-info');
-                if (desc.clientHeight > 84) {
-                    this.descTooLong = true;
-                    this.showAllDesc = false;
-                }
-            });
-        },
-
-        // 打开新标签页
-        openNewPage(route) {
-            window.open(this.$router.resolve(route).href, '_blank');
-        },
-
-        // 创建聊天
-        createChat() {
-            if (!this.$store.state.user.uid) {
-                this.$store.state.openLogin = true;
-                this.$nextTick(() => {
-                    this.$store.state.openLogin = false;
-                });
-                return;
-            }
-            this.openNewPage(`/message/whisper/${this.user.uid}`);
-        },
-
-        // 处理窗口滚动触发的事件
-        handleScroll() {
-            const windowHeight = window.innerHeight;
-            const leftPart = document.querySelector('.left-container');
-            const rightPart = document.querySelector('.right-container-inner');
-            if (leftPart.clientHeight <= windowHeight - 64) {
-                leftPart.style.top = '64px';
-            } else {
-                leftPart.style.top = `-${leftPart.clientHeight - windowHeight}px`;
-            }
-            if (rightPart.clientHeight <= windowHeight - 64) {
-                rightPart.style.top = '64px';
-            } else {
-                rightPart.style.top = `-${rightPart.clientHeight - windowHeight}px`;
-            }
-        },
-
-        // 窗口大小变动时更新相关宽高
-        updatePlayerSize(size) {
-            this.playerSize.width = size.width;
-            this.playerSize.height = size.height;
-        },
-
-        // 播放器事件处理
-        handleVideoInfoUpdate(info) {
-            // 播放器更新 videoInfo 时同步回来
-        },
-        handleDanmuListUpdate(list) {
-            this.danmuList = list;
-        },
-
-        // 根据窗口大小改变播放器的宽高（移植自 teriteri PlayerWrapper）
-        changeWindowSize() {
-            // 直接用视口宽度，避免 video-container 被撑大后误判
-            const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
-            const rightContainer = document.querySelector('.right-container');
-            const rightWidth = rightContainer ? rightContainer.getBoundingClientRect().width : 350;
-
-            // 实际可用宽度 = 视口宽度 - 右边栏 - 间距
-            const gap = 20;
-            const maxLeftWidth = Math.max(320, viewportWidth - rightWidth - gap);
-
-            // 计算高度
-            const windowHeight = window.innerHeight;
-            let height = (windowHeight - 64) * 0.7;
-            let width = height * (16 / 9);
-
-            // 按可用宽度约束
-            if (width > maxLeftWidth) {
-                width = maxLeftWidth;
-                height = width * (9 / 16);
-            }
-
-            height = Math.max(360, Math.min(720, height));
-
-            this.playerSize.width = width;
-            this.playerSize.height = height;
-
-            // 关键：根据实际播放器宽度，动态调整 ArtPlayer 内部 CSS 变量
-            // 防止控件按钮（46px min-width）超出可视区域
-            const playerEl = document.querySelector('.video-player');
-            if (playerEl) {
-                // 计算每个控件应有的最小宽度（CSS px）
-                // 左侧：playAndPause + volume + time ≈ 180px
-                // 右侧：screenshot + setting + pip + airplay + fullscreenWeb + fullscreen + quality ≈ 7×46=322px
-                // 进度条需要至少 100px
-                // 加上 padding 30px
-                // 最小总宽度 = 180 + 100 + 322 + 30 = 632px
-                const minRequired = 632;
-                const actualWidth = width;
-                // 缩放比例 = actualWidth / minRequired, 但要限制在 0.5~1
-                const scale = Math.max(0.5, Math.min(1, actualWidth / minRequired));
-
-                // 缩小 ArtPlayer 内部尺寸变量
-                const root = playerEl.querySelector('.art-video-player');
-                if (root) {
-                    root.style.setProperty('--art-control-height', `${46 * scale}px`);
-                    root.style.setProperty('--art-control-icon-size', `${30 * scale}px`);
-                    root.style.setProperty('--art-padding', `${10 * scale}px`);
-                    root.style.setProperty('--art-bottom-gap', `${5 * scale}px`);
-                    root.style.setProperty('--art-control-opacity', '0.75');
-                }
-            }
-        },
-
-        // 状态栏控制按钮：把 ArtPlayer 内部的 .art-controls-center DOM 元素搬到状态栏右侧
-        moveArtControlsCenter() {
-            const slot = this.$refs.artControlsCenterSlot;
-            if (!slot) return;
-            // 从 ArtPlayer 内部找到 .art-controls-center DOM 节点
-            const center = document.querySelector('.art-video-player .art-controls-center');
-            if (center) {
-                slot.appendChild(center);
-                // 强制覆盖 ArtPlayer 内置的隐藏样式，让它在新位置显示
-                center.style.display = 'flex';
-                center.style.flex = '0 0 auto';
-                center.style.padding = '0';
-                center.style.height = 'auto';
-                center.style.color = '#61666D';
-                center.style.fill = '#61666D';
-                // 遍历内部所有 SVG，强制设置 fill 颜色（白底深色图标）
-                const svgs = center.querySelectorAll('svg');
-                svgs.forEach(svg => {
-                    svg.style.fill = '#61666D';
-                    const paths = svg.querySelectorAll('path');
-                    paths.forEach(p => {
-                        p.style.fill = '#61666D';
-                    });
-                });
-                // 同步 data-danmuku-visible 属性到 slot，方便 CSS 控制开关按钮显隐
-                const observer = new MutationObserver(() => {
-                    const visible = center.getAttribute('data-danmuku-visible');
-                    if (visible !== null) {
-                        slot.setAttribute('data-danmuku-visible', visible);
-                    }
-                });
-                observer.observe(center, { attributes: true, attributeFilter: ['data-danmuku-visible'] });
-                const initialVisible = center.getAttribute('data-danmuku-visible');
-                if (initialVisible !== null) {
-                    slot.setAttribute('data-danmuku-visible', initialVisible);
-                }
-            }
-        },
-
-
-        // 处理websocket事件        
-        handleWsClose() {
-            // console.log("弹幕websocket信道关闭,请刷新页面重试");
-            setTimeout(() => {
-                if (!this.socket) {
-                    this.initWebsocket();    // 如果两秒后还未重连就手动重连
-                }
-            }, 2000);
-        },
-
-        handleWsMessage(e) {
-            if (e.data === '登录已过期') {
-                ElMessage.error(e.data);
-            } else if (e.data.startsWith("当前观看人数")) {
-                let numberPart = e.data.substring(6).trim();
-                this.population = parseInt(numberPart, 10);
-                // console.log("当前观看人数: ", this.population);
-            } else {
-                let dm = JSON.parse(e.data);
-                // console.log("ws message: ", dm);
-                this.$store.state.danmuList.push(dm);
-                // console.log("vuex中的弹幕列表: ", this.$store.state.danmuList);
-            }
-        },
-
-        handleWsError(e) {
-            console.log("弹幕websocket信道报错: ", e);
-        },
-
-        // 发送弹幕
-        sendDanmu(dm) {
-            if (!localStorage.getItem('teri_token')) {
-                this.$store.state.openLogin = true;
-                this.$nextTick(() => {
-                    this.$store.state.openLogin = false;
-                });
-                return;
-            }
-            const dmJson = JSON.stringify({
-                token: "Bearer " + localStorage.getItem('teri_token'),
-                data: dm
-            });
-            this.socket.send(dmJson);
-        },
-
-        // 切换视频
-        async changeVideo(vid) {
-            await this.$router.push(`/video/${vid}`);
-            await this.initWebsocket();
-            if (await this.getVideoDetail()) {
-                await this.getDanmuList();
-                await this.getRecommendVideos();
-            }
-        },
-
-        // 切换分P
-        switchPart(index) {
-            if (index === this.currentPartIndex) return;
-            const part = this.manuscriptParts[index];
-            if (!part) return;
-            this.changeVideo(part.vid);
-        },
-
-        // 视频播放结束自动连播
-        next() {
-            if (this.recommendVideos[0]) {
-                this.changeVideo(this.recommendVideos[0].video.vid);
-            }
-        },
-
-        // 点赞的动画效果
-        gifShow() {
-            this.gifDisplay = true;
-            this.isGifShow = true;
-        },
-
-        gifHide() {
-            this.isGifShow = false;
-            setTimeout(() => {
-                this.gifDisplay = false;
-            }, 300);
-        },
-
-        // 打开收藏对话框
-        openCollectDialog() {
-            if (!this.$store.state.user.uid) {
-                this.$store.state.openLogin = true;
-                this.$nextTick(() => {
-                    this.$store.state.openLogin = false;
-                });
-                return;
-            }
-            if (!this.video.vid) {
-                ElMessage.error("视频不存在");
-                return;
-            }
-            this.collectVisible = true;
-        },
-
-        // 更新收藏
-        updateCollect(info) {
-            this.collectedFids = info.fids;
-            this.collect += info.num;
-            this.collectVisible = false;
-        },
-
-        noPage() {
-            ElMessage.warning("该功能暂未开放");
-        }
-    },
-    async created() {
-        this.changeWindowSize();
-        // 同步自动连播
-        if (localStorage.getItem("playerSetting")) {
-            let setting = JSON.parse(localStorage.getItem("playerSetting"));
-            this.autonext = setting.autonext;
-        }
-        await this.initWebsocket();
-        if (await this.getVideoDetail()) {
-            await this.getDanmuList();
-            await this.getRecommendVideos();
-        }
-    },
-    mounted() {
-        window.addEventListener('scroll', this.handleScroll);
-        this.handleScroll();
-        window.addEventListener('resize', this.changeWindowSize);
-        // 监听 visualViewport 缩放变化（Ctrl +/- / 浏览器缩放）
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', this.changeWindowSize);
-        }
-        window.addEventListener('beforeunload', this.closeWebSocket);    // beforeunload 事件监听标签页关闭
-        // 等待 ArtPlayer 初始化完成后，把内部 .art-controls-center DOM 搬到状态栏右侧
-        this.$nextTick(() => {
-            let attempts = 0;
-            const tryMove = () => {
-                const center = document.querySelector('.art-video-player .art-controls-center');
-                if (center) {
-                    this.moveArtControlsCenter();
-                } else if (attempts++ < 20) {
-                    setTimeout(tryMove, 250);
-                }
-            };
-            tryMove();
-        });
-        setTimeout(() => {
-            this.isMounted = true;
-        }, 3000);
-    },
-    async beforeUnmount() {
-        await this.closeWebSocket();
-        window.removeEventListener('beforeunload', this.closeWebSocket);
-        window.removeEventListener('scroll', this.handleScroll);
-        window.removeEventListener('resize', this.changeWindowSize);
-        if (window.visualViewport) {
-            window.visualViewport.removeEventListener('resize', this.changeWindowSize);
-        }
-    },
-    watch: {
-        // 路由变化要关闭收藏对话框
-        "$route.path"() {
-            this.collectVisible = false;
-        },
-        // 当前页面下重新登录要重新获取收藏夹ID 退出登录要清空收藏夹ID
-        "$store.state.isLogin"(curr) {
-            if (this.isMounted && curr) {
-                this.getCollectedFids();
-            } else if (!curr) {
-                this.collectedFids = new Set();
-            }
+async function getRecommendVideos() {
+    const { get } = await import('@/teriteri-src/network/request')
+    recommendVideos.value = []
+    vids.value = []
+    vids.value.push(Number(route.params.vid))
+    let ids = vids.value.join(',')
+    const res = await get('/video/cumulative/visitor', {
+        params: { vids: ids },
+    })
+    if (res.data.data) {
+        recommendVideos.value.push(...res.data.data.videos)
+        vids.value.push(...res.data.data.vids)
+        ids = vids.value.join(',')
+        const res2 = await get('/video/cumulative/visitor', {
+            params: { vids: ids },
+        })
+        if (res2.data.data) {
+            recommendVideos.value.push(...res2.data.data.videos)
+            vids.value.push(...res2.data.data.vids)
         }
     }
 }
+
+async function getDanmuList() {
+    const { get } = await import('@/teriteri-src/network/request')
+    const res = await get(`/danmu-list/${route.params.vid}`)
+    if (res.data.data == null || res.data.data.length === 0) {
+        store.updateDanmuList([])
+    } else if (res.data.data.length > 0) {
+        store.updateDanmuList(res.data.data)
+    }
+}
+
+async function initWebsocket() {
+    const wsBaseUrl = process.env.VUE_APP_WS_DANMU_URL
+    if (!wsBaseUrl) return
+    const socketUrl = `${wsBaseUrl}/ws/danmu/${route.params.vid}`
+    if (socket.value != null) {
+        await socket.value.close()
+        socket.value = null
+    }
+    socket.value = new WebSocket(socketUrl)
+    socket.value.addEventListener('close', handleWsClose)
+    socket.value.addEventListener('message', handleWsMessage)
+    socket.value.addEventListener('error', handleWsError)
+}
+
+async function closeWebSocket() {
+    if (socket.value != null) {
+        await socket.value.close()
+        socket.value = null
+    }
+}
+
+async function loveOrNot(isLove: boolean, isSet: boolean) {
+    if (loveLoading.value) return
+    if (!store.user.uid) {
+        store.openLogin = true
+        nextTick(() => {
+            store.openLogin = false
+        })
+        return
+    }
+    if (!video.value.vid) {
+        ElMessage.error('视频不存在')
+        return
+    }
+    loveLoading.value = true
+    const originalLove = store.attitudeToVideo.love
+    const { post } = await import('@/teriteri-src/network/request')
+    const formData = new FormData()
+    formData.append('vid', String(Number(video.value.vid)))
+    formData.append('isLove', String(isLove))
+    formData.append('isSet', String(isSet))
+    const res = await post('/video/love-or-not', formData, {
+        headers: { Authorization: 'Bearer ' + localStorage.getItem('teri_token') },
+    })
+    if (!res.data.data) {
+        loveLoading.value = false
+        return
+    }
+    const data = res.data.data
+    const atv = {
+        love: data.love === 1,
+        unlove: data.unlove === 1,
+        coin: data.coin,
+        collect: data.collect === 1,
+    }
+    store.updateAttitudeToVideo(atv)
+    if (isLove && isSet) {
+        good.value++
+        gifShow()
+        setTimeout(() => {
+            gifHide()
+        }, 3000)
+    } else if (isLove || (!isLove && isSet && originalLove)) {
+        good.value = good.value - 1 < 0 ? 0 : good.value - 1
+    }
+    loveLoading.value = false
+}
+
+async function getCollectedFids() {
+    const { get } = await import('@/teriteri-src/network/request')
+    const res = await get('/video/collected-fids', {
+        params: { vid: Number(video.value.vid) },
+        headers: { Authorization: 'Bearer ' + localStorage.getItem('teri_token') },
+    })
+    if (!res.data) return
+    collectedFids.value = new Set(res.data.data)
+}
+
+// ===== Event handlers =====
+function createChat() {
+    if (!store.user.uid) {
+        store.openLogin = true
+        nextTick(() => {
+            store.openLogin = false
+        })
+        return
+    }
+    openNewPage(`/message/whisper/${user.value.uid}`)
+}
+
+function handleScroll() {
+    const windowHeight = window.innerHeight
+    const leftPart = document.querySelector('.left-container') as HTMLElement
+    const rightPart = document.querySelector('.right-container-inner') as HTMLElement
+    if (leftPart) {
+        if (leftPart.clientHeight <= windowHeight - 64) {
+            leftPart.style.top = '64px'
+        } else {
+            leftPart.style.top = `-${leftPart.clientHeight - windowHeight}px`
+        }
+    }
+    if (rightPart) {
+        if (rightPart.clientHeight <= windowHeight - 64) {
+            rightPart.style.top = '64px'
+        } else {
+            rightPart.style.top = `-${rightPart.clientHeight - windowHeight}px`
+        }
+    }
+}
+
+function handleVideoInfoUpdate(_info: any) {
+    // 播放器更新 videoInfo 时同步回来
+}
+
+function handleDanmuListUpdate(list: any[]) {
+    danmuList.value = list
+}
+
+function changeWindowSize() {
+    const viewportWidth = document.documentElement.clientWidth || window.innerWidth
+    const rightContainer = document.querySelector('.right-container')
+    const rightWidth = rightContainer ? rightContainer.getBoundingClientRect().width : 350
+    const gap = 20
+    const maxLeftWidth = Math.max(320, viewportWidth - rightWidth - gap)
+    const windowHeight = window.innerHeight
+    let height = (windowHeight - 64) * 0.7
+    let width = height * (16 / 9)
+    if (width > maxLeftWidth) {
+        width = maxLeftWidth
+        height = width * (9 / 16)
+    }
+    height = Math.max(360, Math.min(720, height))
+    playerSize.width = width
+    playerSize.height = height
+    const playerEl = document.querySelector('.video-player')
+    if (playerEl) {
+        const minRequired = 632
+        const actualWidth = width
+        const scale = Math.max(0.5, Math.min(1, actualWidth / minRequired))
+        const root = playerEl.querySelector('.art-video-player') as HTMLElement
+        if (root) {
+            root.style.setProperty('--art-control-height', `${46 * scale}px`)
+            root.style.setProperty('--art-control-icon-size', `${30 * scale}px`)
+            root.style.setProperty('--art-padding', `${10 * scale}px`)
+            root.style.setProperty('--art-bottom-gap', `${5 * scale}px`)
+            root.style.setProperty('--art-control-opacity', '0.75')
+        }
+    }
+}
+
+function moveArtControlsCenter() {
+    const slot = artControlsCenterSlot.value
+    if (!slot) return
+    const center = document.querySelector('.art-video-player .art-controls-center')
+    if (center) {
+        slot.appendChild(center)
+        ;(center as HTMLElement).style.display = 'flex'
+        ;(center as HTMLElement).style.flex = '0 0 auto'
+        ;(center as HTMLElement).style.padding = '0'
+        ;(center as HTMLElement).style.height = 'auto'
+        ;(center as HTMLElement).style.color = '#61666D'
+        ;(center as HTMLElement).style.fill = '#61666D'
+        const svgs = center.querySelectorAll('svg')
+        svgs.forEach((svg: SVGElement) => {
+            svg.style.fill = '#61666D'
+            const paths = svg.querySelectorAll('path')
+            paths.forEach((p: SVGPathElement) => {
+                p.style.fill = '#61666D'
+            })
+        })
+        const observer = new MutationObserver(() => {
+            const visible = center.getAttribute('data-danmuku-visible')
+            if (visible !== null) {
+                slot.setAttribute('data-danmuku-visible', visible)
+            }
+        })
+        observer.observe(center, { attributes: true, attributeFilter: ['data-danmuku-visible'] })
+        const initialVisible = center.getAttribute('data-danmuku-visible')
+        if (initialVisible !== null) {
+            slot.setAttribute('data-danmuku-visible', initialVisible)
+        }
+    }
+}
+
+function handleWsClose() {
+    setTimeout(() => {
+        if (!socket.value) {
+            initWebsocket()
+        }
+    }, 2000)
+}
+
+function handleWsMessage(e: MessageEvent) {
+    if (e.data === '登录已过期') {
+        ElMessage.error(e.data)
+    } else if (e.data.startsWith('当前观看人数')) {
+        const numberPart = e.data.substring(6).trim()
+        population.value = parseInt(numberPart, 10)
+    } else {
+        const dm = JSON.parse(e.data)
+        store.danmuList.push(dm)
+    }
+}
+
+function handleWsError(e: Event) {
+    console.log('弹幕websocket信道报错: ', e)
+}
+
+function sendDanmu(dm: any) {
+    if (!localStorage.getItem('teri_token')) {
+        store.openLogin = true
+        nextTick(() => {
+            store.openLogin = false
+        })
+        return
+    }
+    const dmJson = JSON.stringify({
+        token: 'Bearer ' + localStorage.getItem('teri_token'),
+        data: dm,
+    })
+    socket.value?.send(dmJson)
+}
+
+async function changeVideo(vid: string | number) {
+    await router.push(`/video/${vid}`)
+    await initWebsocket()
+    if (await getVideoDetail()) {
+        await getDanmuList()
+        await getRecommendVideos()
+    }
+}
+
+function switchPart(index: number) {
+    if (index === currentPartIndex.value) return
+    const part = manuscriptParts.value[index]
+    if (!part) return
+    changeVideo(part.vid)
+}
+
+function next() {
+    if (recommendVideos.value[0]) {
+        changeVideo(recommendVideos.value[0].video.vid)
+    }
+}
+
+function gifShow() {
+    gifDisplay.value = true
+    isGifShow.value = true
+}
+
+function gifHide() {
+    isGifShow.value = false
+    setTimeout(() => {
+        gifDisplay.value = false
+    }, 300)
+}
+
+function openCollectDialog() {
+    if (!store.user.uid) {
+        store.openLogin = true
+        nextTick(() => {
+            store.openLogin = false
+        })
+        return
+    }
+    if (!video.value.vid) {
+        ElMessage.error('视频不存在')
+        return
+    }
+    collectVisible.value = true
+}
+
+function updateCollect(info: { fids: Set<number>; num: number }) {
+    collectedFids.value = info.fids
+    collect.value += info.num
+    collectVisible.value = false
+}
+
+function noPage() {
+    ElMessage.warning('该功能暂未开放')
+}
+
+// ===== created() — top-level await =====
+changeWindowSize()
+if (localStorage.getItem('playerSetting')) {
+    const setting = JSON.parse(localStorage.getItem('playerSetting')!)
+    autonext.value = setting.autonext
+}
+await initWebsocket()
+if (await getVideoDetail()) {
+    await getDanmuList()
+    await getRecommendVideos()
+}
+
+// ===== mounted() =====
+onMounted(() => {
+    window.addEventListener('scroll', handleScroll)
+    handleScroll()
+    window.addEventListener('resize', changeWindowSize)
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', changeWindowSize)
+    }
+    window.addEventListener('beforeunload', closeWebSocket)
+    nextTick(() => {
+        let attempts = 0
+        const tryMove = () => {
+            const center = document.querySelector('.art-video-player .art-controls-center')
+            if (center) {
+                moveArtControlsCenter()
+            } else if (attempts++ < 20) {
+                setTimeout(tryMove, 250)
+            }
+        }
+        tryMove()
+    })
+    setTimeout(() => {
+        isMounted.value = true
+    }, 3000)
+})
+
+// ===== beforeUnmount() =====
+onBeforeUnmount(async () => {
+    await closeWebSocket()
+    window.removeEventListener('beforeunload', closeWebSocket)
+    window.removeEventListener('scroll', handleScroll)
+    window.removeEventListener('resize', changeWindowSize)
+    if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', changeWindowSize)
+    }
+})
+
+// ===== watch =====
+watch(
+    () => route.path,
+    () => {
+        collectVisible.value = false
+    },
+)
+
+watch(
+    () => store.isLogin,
+    (curr) => {
+        if (isMounted.value && curr) {
+            getCollectedFids()
+        } else if (!curr) {
+            collectedFids.value = new Set()
+        }
+    },
+)
 </script>
 
 <style scoped>
