@@ -376,3 +376,5 @@ export function post<T = any>(url: string, data?: any, headers?: any): Promise<A
   if (headers) return instance.post(url, data, headers)
   return instance.post(url, data)
 }
+
+export { adaptVideo, adaptUser, adaptStats, adaptCard, adaptDetail, adaptResponse, isListUrl, isDetailUrl, snakeToCamel }
