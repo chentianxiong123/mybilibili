@@ -450,7 +450,7 @@ export default {
 }
 
 .h-forbid .f-wrap .f-icon {
-    background-image: url('@/assets/teriteri/img/bilibili/icons1.png');
+    background-image: url('~/assets/teriteri/img/bilibili/icons1.png');
     background-position: -664px -458px;
     display: inline-block;
     width: 80px;
@@ -481,7 +481,7 @@ export default {
     left: 0;
     width: 100%;
     height: 84px;
-    background-image: url('@/assets/teriteri/img/bg_shadow.png');
+    background-image: url('~/assets/teriteri/img/bg_shadow.png');
     background-repeat: repeat-x;
 }
 
@@ -551,7 +551,7 @@ export default {
     vertical-align: middle;
     background-repeat: no-repeat;
     display: inline-block;
-    background-image: url('@/assets/teriteri/img/bilibili/icons1.png');
+    background-image: url('~/assets/teriteri/img/bilibili/icons1.png');
 }
 
 .gender {
@@ -668,7 +668,7 @@ export default {
 }
 
 .space-theme-trigger {
-    background-image: url('@/assets/teriteri/img/bilibili/theme-trigger-new.png');
+    background-image: url('~/assets/teriteri/img/bilibili/theme-trigger-new.png');
     background-position: 0px 0px;
     cursor: pointer;
     width: 58px;

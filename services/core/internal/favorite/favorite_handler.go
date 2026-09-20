@@ -3,6 +3,7 @@ package favorite
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -292,8 +293,16 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 	case "GET":
 		page, size := httputil.ParsePageParams(r)
 		offset := (int(page) - 1) * int(size)
+		rule := r.URL.Query().Get("rule")
+		orderBy := "ffv.created_at DESC"
+		switch rule {
+		case "2":
+			orderBy = "m.view_count DESC"
+		case "3":
+			orderBy = "m.like_count DESC"
+		}
 		rows, err := h.db.QueryContext(r.Context(),
-			`SELECT ffv.manuscript_id, ffv.created_at,
+			fmt.Sprintf(`SELECT ffv.manuscript_id, ffv.created_at,
 			        m.title, m.description, m.cover_url, m.status, m.review_status,
 			        m.duration, m.duration_seconds, m.view_count, m.like_count,
 			        m.coin_count, m.collect_count, m.comment_count, m.share_count,
@@ -303,8 +312,8 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 			 JOIN manuscripts m ON m.id = ffv.manuscript_id
 			 LEFT JOIN users u ON u.id = m.user_id
 			 WHERE ffv.folder_id = $1
-			 ORDER BY ffv.created_at DESC
-			 LIMIT $2 OFFSET $3`, folderID, size, offset)
+			 ORDER BY %s
+			 LIMIT $2 OFFSET $3`, orderBy), folderID, size, offset)
 		if err != nil {
 			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "查询失败", "data": nil})
 			return

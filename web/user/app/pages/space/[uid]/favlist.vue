@@ -643,11 +643,11 @@ ol, ul {
 }
 
 .fav-item .more {
-    display: none;
+    display: none !important;
 }
 
 .owner:hover .more {
-    display: inline-block;
+    display: inline-block !important;
     margin-left: 8px;
 }
 

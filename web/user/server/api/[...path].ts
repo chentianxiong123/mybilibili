@@ -84,7 +84,8 @@ function adaptUrl(url: string, query: URLSearchParams): { target: string; port: 
     if (fid) {
       const page = query.get('page') || '1'
       const size = query.get('quantity') || query.get('pageSize') || '20'
-      const qs = new URLSearchParams({ page, pageSize: size }).toString()
+      const rule = query.get('rule') || '1'
+      const qs = new URLSearchParams({ page, pageSize: size, rule }).toString()
       return { target: `/favorites/${fid}/videos`, port: `http://${CORE_HOST}:8080`, qs }
     }
     // 无 fid 时 fallback 到收藏的稿件列表
