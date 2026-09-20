@@ -27,6 +27,7 @@ func NewAdminAPI(pool *TranscoderPool) *AdminAPI {
 func (a *AdminAPI) Handler() http.Handler { return a.mux }
 
 func (a *AdminAPI) register() {
+	a.mux.HandleFunc("/api/v1/work/health", a.handleHealth)
 	a.mux.HandleFunc("/api/v1/admin/transcoders", a.handleRoot)
 	a.mux.HandleFunc("/api/v1/admin/transcoders/", a.handleSub)
 	a.mux.HandleFunc("/api/v1/admin/transcoders/health", a.handleHealthAll)
@@ -140,6 +141,11 @@ func (a *AdminAPI) handleSub(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeErr(w, 405, "method not allowed")
 	}
+}
+
+func (a *AdminAPI) handleHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"ok"}`))
 }
 
 // handleRoot 处理 /api/v1/admin/transcoders (list / create)

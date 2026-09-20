@@ -18,9 +18,15 @@ func NewHandler(svc *Service) *Handler {
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
+	mux.HandleFunc("/api/v1/studio/health", h.handleHealth)
 	mux.HandleFunc("/api/v1/studio/export-tasks", h.handleCreateTask)
 	mux.HandleFunc("/api/v1/studio/export-tasks/", h.handleTaskByID)
 	mux.HandleFunc("/api/v1/studio/assets/upload", h.handleAssetUpload)
+}
+
+func (h *Handler) handleHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"ok"}`))
 }
 
 func (h *Handler) handleCreateTask(w http.ResponseWriter, r *http.Request) {

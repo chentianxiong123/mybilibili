@@ -41,6 +41,7 @@ func (h *Handler) WithCustomer(svc *CustomerService) *Handler {
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
+	mux.HandleFunc("/api/v1/ai/health", h.handleHealth)
 	mux.HandleFunc("/api/v1/ai/configs", h.handleConfigs)
 	mux.HandleFunc("/api/v1/ai/configs/", h.handleConfigByID)
 	mux.HandleFunc("/api/v1/ai/bindings/", h.handleBindingsByPath)
@@ -55,6 +56,11 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/ai/assistant/send", h.handleAssistantSend)
 	mux.HandleFunc("/api/v1/ai/skills/customer-service/route-test", h.handleRouteTest)
 	mux.HandleFunc("/api/v1/ai/skills/customer-service/route", h.handleRouteSkills)
+}
+
+func (h *Handler) handleHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"ok"}`))
 }
 
 func (h *Handler) handleConfigs(w http.ResponseWriter, r *http.Request) {

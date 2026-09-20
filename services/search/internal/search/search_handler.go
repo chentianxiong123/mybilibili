@@ -22,6 +22,7 @@ func NewHandler(svc *Service) *Handler {
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
+	mux.HandleFunc("/api/v1/search/health", h.handleHealth)
 	mux.HandleFunc("/api/v1/search/videos", h.handleSearch)
 	mux.HandleFunc("/api/v1/search/users", h.handleSearchUsers)
 	mux.HandleFunc("/api/v1/search/suggest", h.handleSuggest)
@@ -45,6 +46,11 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/search/hot/delete", h.handleHotDelete)
 	mux.HandleFunc("/api/v1/search/hot/get", h.handleHotGet)
 	mux.HandleFunc("/api/v1/search/hot/score-get", h.handleHotScoreGet)
+}
+
+func (h *Handler) handleHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"ok"}`))
 }
 
 func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {

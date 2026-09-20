@@ -48,6 +48,7 @@ func (h *MessageHTTPHandler) getUserID(r *http.Request) int64 {
 }
 
 func (h *MessageHTTPHandler) Register(mux *http.ServeMux) {
+	mux.HandleFunc("/api/v1/message/health", h.handleHealth)
 	mux.HandleFunc("/api/v1/message/conversations", h.handleConversations)
 	mux.HandleFunc("/api/v1/message/conversations/", h.handleConversationByID)
 	mux.HandleFunc("/api/v1/message/send", h.handleSend)
@@ -64,6 +65,11 @@ func (h *MessageHTTPHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/message/", h.handleMessageByID)
 	mux.HandleFunc("/api/v1/message/admin/", h.handleAdminBroadcast)
 	mux.HandleFunc("/sse/notification", h.handleNotificationSSE)
+}
+
+func (h *MessageHTTPHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"ok"}`))
 }
 
 func (h *MessageHTTPHandler) handleNotificationSSE(w http.ResponseWriter, r *http.Request) {

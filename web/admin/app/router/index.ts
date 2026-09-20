@@ -147,6 +147,12 @@ const router = createRouter({
       meta: { title: '转码配置 - 管理后台', requiresAuth: true, permission: 'video:manage' }
     },
     {
+      path: '/system-notification',
+      name: 'systemNotification',
+      component: () => import('~/views/admin/SystemNotificationManagerView.vue'),
+      meta: { title: '系统通知 - 管理后台', requiresAuth: true, permission: 'message:manage' }
+    },
+    {
       path: '/no-permission',
       name: 'noPermission',
       component: () => import('~/views/admin/NoPermissionView.vue'),

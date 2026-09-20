@@ -37,6 +37,7 @@ func (h *PublicAPIHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/comment/{id}/replies", h.handleCommentReplies)
 	mux.HandleFunc("/api/v1/comment/reply/{id}/like", h.handleReplyLike)
 	mux.HandleFunc("/api/v1/comment/batch-like-counts", h.handleBatchLikeCounts)
+	mux.HandleFunc("/api/v1/comment/get-like-and-dislike", h.handleGetLikeAndDislike)
 }
 
 // ---- 评论序列化 ----
@@ -315,4 +316,32 @@ func (h *PublicAPIHandler) handleBatchLikeCounts(w http.ResponseWriter, r *http.
 		}
 	}
 	httputil.WriteOK(w, out)
+}
+
+// handleGetLikeAndDislike 返回当前用户点赞/点踩过的评论 ID 列表（对齐 teriteri 旧版）。
+func (h *PublicAPIHandler) handleGetLikeAndDislike(w http.ResponseWriter, r *http.Request) {
+	uidStr := r.URL.Query().Get("uid")
+	uid, _ := strconv.ParseInt(uidStr, 10, 64)
+	if uid == 0 {
+		httputil.WriteOK(w, map[string]interface{}{"userLike": []int64{}, "userDislike": []int64{}})
+		return
+	}
+	rows, err := h.db.QueryContext(r.Context(),
+		`SELECT target_id FROM user_interactions WHERE user_id = $1 AND target_type = 'COMMENT' AND interaction_type = 'LIKE'`, uid)
+	if err != nil {
+		httputil.WriteOK(w, map[string]interface{}{"userLike": []int64{}, "userDislike": []int64{}})
+		return
+	}
+	defer rows.Close()
+	var liked []int64
+	for rows.Next() {
+		var id int64
+		if rows.Scan(&id) == nil {
+			liked = append(liked, id)
+		}
+	}
+	httputil.WriteOK(w, map[string]interface{}{
+		"userLike":    liked,
+		"userDislike": []int64{},
+	})
 }
