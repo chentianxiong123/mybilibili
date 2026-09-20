@@ -6,7 +6,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/lib/pq v1.12.3
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/net v0.55.0
+	golang.org/x/net v0.58.0
 	mybilibili/pkg v0.0.0-00010101000000-000000000000
 )
 
