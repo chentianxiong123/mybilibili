@@ -213,12 +213,12 @@ func TestLogin_Success(t *testing.T) {
 			"id", "username", "password", "nickname", "email", "avatar",
 			"level", "experience", "signature", "bio",
 			"follower_count", "following_count", "liked_count",
-			"status", "created_at", "updated_at",
+			"status", "coin_count", "gender", "created_at", "updated_at",
 		}).AddRow(
 			1, username, sha256Hex(password), "Alice", "", "",
 			1, 0, "", "",
 			0, 0, 0,
-			1, time.Now(), time.Now(),
+			1, 0, 0, time.Now(), time.Now(),
 		))
 
 	resp, err := svc.Login(context.Background(), &pb.LoginRequest{
@@ -243,12 +243,12 @@ func TestLogin_WrongPassword(t *testing.T) {
 			"id", "username", "password", "nickname", "email", "avatar",
 			"level", "experience", "signature", "bio",
 			"follower_count", "following_count", "liked_count",
-			"status", "created_at", "updated_at",
+			"status", "coin_count", "gender", "created_at", "updated_at",
 		}).AddRow(
 			1, username, correctHash, "Alice", "", "",
 			1, 0, "", "",
 			0, 0, 0,
-			1, time.Now(), time.Now(),
+			1, 0, 0, time.Now(), time.Now(),
 		))
 
 	_, err := svc.Login(context.Background(), &pb.LoginRequest{
@@ -284,12 +284,12 @@ func TestLogin_AccountDisabled(t *testing.T) {
 			"id", "username", "password", "nickname", "email", "avatar",
 			"level", "experience", "signature", "bio",
 			"follower_count", "following_count", "liked_count",
-			"status", "created_at", "updated_at",
+			"status", "coin_count", "gender", "created_at", "updated_at",
 		}).AddRow(
 			1, username, sha256Hex(password), "Alice", "", "",
 			1, 0, "", "",
 			0, 0, 0,
-			0 /* status=0 disabled */, time.Now(), time.Now(),
+			0 /* status=0 disabled */, 0, 0, time.Now(), time.Now(),
 		))
 
 	_, err := svc.Login(context.Background(), &pb.LoginRequest{
@@ -313,12 +313,12 @@ func TestLogin_LockAfter5Fails(t *testing.T) {
 				"id", "username", "password", "nickname", "email", "avatar",
 				"level", "experience", "signature", "bio",
 				"follower_count", "following_count", "liked_count",
-				"status", "created_at", "updated_at",
+				"status", "coin_count", "gender", "created_at", "updated_at",
 			}).AddRow(
 				1, username, correctHash, "Alice", "", "",
 				1, 0, "", "",
 				0, 0, 0,
-				1, time.Now(), time.Now(),
+				1, 0, 0, time.Now(), time.Now(),
 			))
 
 		_, err := svc.Login(context.Background(), &pb.LoginRequest{
@@ -345,12 +345,13 @@ func TestGetUser_Success(t *testing.T) {
 			"id", "username", "password", "nickname", "email", "avatar",
 			"level", "experience", "signature", "bio",
 			"follower_count", "following_count", "liked_count",
-			"status", "created_at", "updated_at",
+			"status", "coin_count", "gender", "created_at", "updated_at",
 		}).AddRow(
 			7, "alice", "hash", "Alice", "alice@x", "avatar.png",
 			2, 100, "", "",
 			3, 4, 5,
-			1, time.Now(), time.Now(),
+			1, 10, 1,
+			time.Now(), time.Now(),
 		))
 
 	resp, err := svc.GetUser(context.Background(), &pb.GetUserRequest{UserId: 7})
@@ -384,12 +385,13 @@ func TestService_GetUser_Success(t *testing.T) {
 			"id", "username", "password", "nickname", "email", "avatar",
 			"level", "experience", "signature", "bio",
 			"follower_count", "following_count", "liked_count",
-			"status", "created_at", "updated_at",
+			"status", "coin_count", "gender", "created_at", "updated_at",
 		}).AddRow(
 			10, "bob", "hash", "Bob", "bob@x", "avatar.png",
 			3, 200, "hello", "bio text",
 			10, 20, 30,
-			1, time.Now(), time.Now(),
+			1, 50, 0,
+			time.Now(), time.Now(),
 		))
 
 	resp, err := svc.GetUser(context.Background(), &pb.GetUserRequest{UserId: 10})

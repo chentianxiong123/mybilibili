@@ -564,7 +564,7 @@ func (h *UserExtendHandler) handleMe(w http.ResponseWriter, r *http.Request) {
 			errors.WriteHTTPError(w, errors.ErrNotFound("user not found"))
 			return
 		}
-		var followerCount, followingCount, likeCount, manuscriptCount int64
+		var followerCount, followingCount, likeCount, manuscriptCount, dynamicCount int64
 		_ = h.svc.repo.db.QueryRowContext(r.Context(),
 			`SELECT COUNT(*) FROM follows WHERE following_id = $1`, uid).Scan(&followerCount)
 		_ = h.svc.repo.db.QueryRowContext(r.Context(),
@@ -573,6 +573,8 @@ func (h *UserExtendHandler) handleMe(w http.ResponseWriter, r *http.Request) {
 			`SELECT COALESCE(SUM(like_count),0) FROM manuscripts WHERE user_id = $1`, uid).Scan(&likeCount)
 		_ = h.svc.repo.db.QueryRowContext(r.Context(),
 			`SELECT COUNT(*) FROM manuscripts WHERE user_id = $1`, uid).Scan(&manuscriptCount)
+		_ = h.svc.repo.db.QueryRowContext(r.Context(),
+			`SELECT COUNT(*) FROM user_dynamics WHERE user_id = $1`, uid).Scan(&dynamicCount)
 		httputil.WriteOK(w, map[string]interface{}{
 			"id":               user.ID,
 			"username":         user.Username,
@@ -588,6 +590,9 @@ func (h *UserExtendHandler) handleMe(w http.ResponseWriter, r *http.Request) {
 			"following_count":  followingCount,
 			"like_count":       likeCount,
 			"manuscript_count": manuscriptCount,
+			"dynamic_count":    dynamicCount,
+			"coin_count":       user.CoinCount,
+			"gender":           user.Gender,
 			"created_at":       user.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		})
 	case http.MethodPut:

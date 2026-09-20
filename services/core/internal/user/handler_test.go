@@ -53,12 +53,12 @@ func userRow(uid int64, username, password, nickname string, status int32) *sqlm
 		"id", "username", "password", "nickname", "email", "avatar",
 		"level", "experience", "signature", "bio",
 		"follower_count", "following_count", "liked_count",
-		"status", "created_at", "updated_at",
+		"status", "coin_count", "gender", "created_at", "updated_at",
 	}).AddRow(
 		uid, username, password, nickname, "", "",
 		1, 0, "", "",
 		0, 0, 0,
-		status, time.Now(), time.Now(),
+		status, 0, 0, time.Now(), time.Now(),
 	)
 }
 
@@ -224,6 +224,9 @@ func TestHandleMe_200(t *testing.T) {
 	mock.ExpectQuery(`SELECT COALESCE\(SUM`).
 		WillReturnRows(sqlmock.NewRows([]string{"sum"}).AddRow(0))
 	mock.ExpectQuery(`SELECT COUNT.*FROM manuscripts WHERE user_id`).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	// dynamic count
+	mock.ExpectQuery(`SELECT COUNT.*FROM user_dynamics WHERE user_id`).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
 	rec := doRequest(t, mux, "GET", "/api/v1/user/me", nil, map[string]string{
