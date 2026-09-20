@@ -172,34 +172,40 @@ export default {
         // 获取用户收藏夹
         async getFavList() {
             let res;
-            if (!localStorage.getItem("teri_token")) {
+            const token = localStorage.getItem("teri_token");
+            if (!token) {
                 res = await this.$get("/favorite/get-all/visitor", {
                     params: { uid: this.uid },
                 });
             } else {
                 res = await this.$get("/favorite/get-all/user", {
                     params: { uid: this.uid },
-                    headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
+                    headers: { Authorization: "Bearer " + token }
                 });
             }
-            if (!res.data) return;
+            if (!res.data || !res.data.data) return;
             // 将默认置顶
-            const defaultFav = res.data.data.find(item => item.type === 1);
-            const list = res.data.data.filter(item => item.type !== 1);
-            list.unshift(defaultFav);
+            const defaultFav = res.data.data.find((item: any) => item.type === 1);
+            const list = res.data.data.filter((item: any) => item.type !== 1);
+            if (defaultFav) list.unshift(defaultFav);
             this.favList = list;
             // console.log(this.favList)
         },
 
         // 获取用户最近点赞的视频
         async getLoveVideos() {
-            const res = await this.$get("/video/user-love", {
+            const token = localStorage.getItem("teri_token");
+            const config: any = {
                 params: {
                     uid: this.uid,
                     offset: 0,
                     quantity: 20
                 }
-            });
+            };
+            if (token) {
+                config.headers = { Authorization: "Bearer " + token };
+            }
+            const res = await this.$get("/video/user-love", config);
             if (!res.data) return;
             this.loveVideos = res.data.data;
             // console.log(this.loveVideos)
