@@ -172,7 +172,7 @@ export default {
                 })
             })
             .catch(() => {
-                ElMessage.error('特丽丽被玩坏了(¯﹃¯)');
+                ElMessage.error('操作失败，请稍后重试');
             })
             .finally(() => {
                 this.loading = false;

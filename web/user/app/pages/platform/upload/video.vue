@@ -471,7 +471,7 @@ export default {
                 this.upload();  //开始上传
             } else {
                 // 文件大小超出限制
-                ElMessage.error("视频太大了，特丽丽装不下呜~")
+                ElMessage.error("视频文件过大，请压缩后重试")
             }
         },
 
@@ -531,7 +531,7 @@ export default {
                 this.upload();  //开始上传
             } else {
                 // 文件大小超出限制
-                ElMessage.error("视频太大了，特丽丽装不下呜~");
+                ElMessage.error("视频文件过大，请压缩后重试");
             }
         },
 
@@ -937,7 +937,7 @@ export default {
                 }
             })
             .catch(() => {
-                ElMessage.error('特丽丽被玩坏了(¯﹃¯)');
+                ElMessage.error('操作失败，请稍后重试');
                 this.$store.state.isLoading = false;
             })
         },

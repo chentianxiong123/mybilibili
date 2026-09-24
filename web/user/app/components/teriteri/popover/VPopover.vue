@@ -3,25 +3,18 @@
         <div @mouseenter="handleMouseEnter" @click="handleClick" style="position: relative;" ref="vPopRef">
             <slot name="reference"></slot>
         </div>
-        <Teleport to="body">
+        <div class="v-popover" :class="'to-' + placement" :style="popStyle">
             <div
-                v-if="popoverDisplay !== 'none'"
-                class="v-popover"
-                :class="'to-' + placement"
-                :style="fixedStyle"
-                ref="vPopBox"
+                class="v-popover-content"
+                ref="vPopCon"
+                :class="isPopoverShow ? 'popShow-' + placement : 'popHide-' + placement"
+                :style="{ display: popoverDisplay }"
                 @mouseenter="handlePopoverEnter"
                 @mouseleave="handlePopoverLeave"
             >
-                <div
-                    class="v-popover-content"
-                    ref="vPopCon"
-                    :class="isPopoverShow ? 'popShow-' + placement : 'popHide-' + placement"
-                >
-                    <slot name="content"></slot>
-                </div>
+                <slot name="content"></slot>
             </div>
-        </Teleport>
+        </div>
     </div>
 </template>
 
@@ -54,46 +47,10 @@ let inTimer;
             return {
                 popoverDisplay: "none",
                 isPopoverShow: false,
-                popTop: 0,
-                popLeft: 0,
-            }
-        },
-        computed: {
-            fixedStyle() {
-                const styles = [
-                    `position: fixed`,
-                    `top: ${this.popTop}px`,
-                    `left: ${this.popLeft}px`,
-                    `z-index: 10000`,
-                ];
-                if (this.popStyle) {
-                    styles.push(this.popStyle);
-                }
-                return styles.join('; ');
             }
         },
         methods: {
-            updatePosition() {
-                const ref = this.$refs.vPopRef;
-                if (!ref) return;
-                const rect = ref.getBoundingClientRect();
-                const gap = 5;
-                if (this.placement === 'bottom') {
-                    this.popTop = rect.bottom + gap;
-                    this.popLeft = rect.left + rect.width / 2;
-                } else if (this.placement === 'top') {
-                    this.popTop = rect.top - gap;
-                    this.popLeft = rect.left + rect.width / 2;
-                } else if (this.placement === 'right') {
-                    this.popTop = rect.top + rect.height / 2;
-                    this.popLeft = rect.right + gap;
-                } else if (this.placement === 'left') {
-                    this.popTop = rect.top + rect.height / 2;
-                    this.popLeft = rect.left - gap;
-                }
-            },
             show() {
-                this.updatePosition();
                 this.popoverDisplay = "";
                 this.isPopoverShow = true;
             },
@@ -115,9 +72,7 @@ let inTimer;
             handleMouseLeave() {
                 if (this.trigger === "hover") {
                     clearTimeout(inTimer);
-                    inTimer = setTimeout(() => {
-                        this.hide();
-                    }, 200);
+                    this.hide();
                 }
             },
             handlePopoverEnter() {
@@ -163,9 +118,11 @@ let inTimer;
     }
 </script>
 
-<style>
+<style scoped>
 .v-popover {
+    position: absolute;
     transition: .3s;
+    z-index: 3000;
 }
 
 .v-popover-content {
@@ -176,23 +133,31 @@ let inTimer;
 }
 
 .to-bottom {
-    transform: translate3d(-50%,0,0);
+    top: 100%;
+    left: 50%;
     padding-top: 5px;
+    transform: translate3d(-50%,0,0);
 }
 
 .to-right {
-    transform: translate3d(0,-50%,0);
+    top: 50%;
+    left: 100%;
     padding-left: 5px;
+    transform: translate3d(0,-50%,0);
 }
 
 .to-top {
-    transform: translate3d(-50%,-100%,0);
+    bottom: 100%;
+    left: 50%;
     padding-bottom: 5px;
+    transform: translate3d(-50%,-100%,0);
 }
 
 .to-left {
-    transform: translate3d(-100%,-50%,0);
+    top: 50%;
+    right: 100%;
     padding-right: 5px;
+    transform: translate3d(-100%,-50%,0);
 }
 
 .popHide-bottom {

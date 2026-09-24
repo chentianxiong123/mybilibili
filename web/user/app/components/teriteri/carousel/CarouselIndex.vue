@@ -12,7 +12,7 @@
                         <img :src="item.url" alt="">
                     </a>
                 </div>
-                <div class="shadow" :style="`background: linear-gradient(to top, ${color}, ${color}00);`"></div>
+                <div class="shadow" :style="`background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 50%, transparent 100%);`"></div>
             </div>
             <div class="carousel-footer__left">
                 <div class="title"><span>{{ title }}</span></div>
@@ -39,16 +39,35 @@
 </template>
 
 <script lang="ts">
-    import carouselJson from '@/assets/teriteri/json/carousel.json';
-
     let timer;  // 定时器
+
+    // 后端返回的轮播图数据
+    interface BannerItem {
+        id: number
+        title: string
+        imageUrl: string
+        linkUrl: string
+        sortOrder: number
+        color?: string
+    }
+
+    // 前端轮播图数据
+    interface CarouselItem {
+        url: string
+        title: string
+        color: string
+        target: string
+    }
+
+    // 预设底色（与原 carousel.json 风格一致）
+    const PRESET_COLORS = ['#FF6699', '#5894d4', '#836e61', '#728cb4', '#564e3e', '#724b50'];
 
     export default {
         name: "CarouselIndex",
         data() {
             return {
                 // 轮播图列表
-                carousels: [],
+                carousels: [] as CarouselItem[],
                 // 是否滚动，0 不滚，1上一张，2 下一张
                 isRoll: 0,
                 // 当前位置
@@ -60,10 +79,37 @@
             }
         },
         methods: {
-            // 请求
-            getCarousels() {
-                this.carousels = carouselJson;
+            // 从后端 API 获取轮播图
+            async getCarousels() {
+                try {
+                    const res = await this.$get('/banner-images/home')
+                    const list: BannerItem[] = (res?.data?.data || res?.data || []) as BannerItem[]
+                    if (list.length > 0) {
+                        this.carousels = list
+                            .sort((a, b) => a.sortOrder - b.sortOrder)
+                            .map((item, index) => ({
+                                url: item.imageUrl,
+                                title: item.title,
+                                color: item.color || PRESET_COLORS[index % PRESET_COLORS.length],
+                                // 后端 /manuscript/11 → 前端 /video/11
+                                target: item.linkUrl.replace('/manuscript/', '/video/'),
+                            }))
+                    } else {
+                        this.loadFallback()
+                    }
+                } catch {
+                    this.loadFallback()
+                }
                 this.$store.commit("updateCarousels", this.carousels.slice());
+            },
+            // API 失败时回退到静态 JSON
+            loadFallback() {
+                try {
+                    const fallback = require('@/assets/teriteri/json/carousel.json')
+                    this.carousels = fallback
+                } catch {
+                    this.carousels = []
+                }
             },
 
             async refreshTimer() {
@@ -151,15 +197,19 @@
                 this.startTimer();
             },
         },
-        created() {
-            this.getCarousels();
+        async created() {
+            await this.getCarousels();
+            if (this.carousels.length > 0) {
+                this.color = this.carousels[1]?.color || PRESET_COLORS[0];
+                this.title = this.carousels[1]?.title || '';
+            }
         },
         mounted() {
-            this.startTimer();
-            this.color = this.carousels[1].color;
-            this.title = this.carousels[1].title;
+            if (this.carousels.length > 0) {
+                this.startTimer();
+            }
         },
-        beforeMount() {
+        beforeUnmount() {
             clearTimeout(timer);
         }
     }
@@ -180,6 +230,13 @@
     overflow: hidden;
     display: flex;
     align-items: center;
+    height: 100%;
+}
+
+.carousel-slide {
+    height: 100%;
+    overflow: hidden;
+    flex-shrink: 0;
 }
 
 .carousel-inner {
@@ -189,7 +246,7 @@
     display: inline-block;
     line-height: 1;
     vertical-align: middle;
-    background-color: var(--graph_bg_regular);
+    background-color: #000;
     cursor: pointer;
 }
 
@@ -197,7 +254,7 @@
     display: block;
     width: 100%;
     height: 100%;
-    object-fit: inherit;
+    object-fit: contain;
 }
 
 .shadow {

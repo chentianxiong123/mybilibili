@@ -120,7 +120,7 @@ export default {
                 username: this.usernameLogin.toString(),
                 password: this.passwordLogin.toString(),
             }).catch(() => {
-                ElMessage.error("特丽丽被玩坏了");
+                ElMessage.error("操作失败，请稍后重试");
                 this.$store.state.isLoading = false;
             });
             if (!result) {

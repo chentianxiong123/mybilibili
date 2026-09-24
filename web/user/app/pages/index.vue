@@ -210,7 +210,7 @@
                         </div>
                     </div>
                     <!-- 累加推荐 -->
-                    <div class="video-card" v-for="(item, index) in cumulativeVideos" :key="index">
+                    <div class="video-card" v-for="item in cumulativeVideos" :key="item.video.vid">
                         <!-- 骨架屏 -->
                         <div class="video-card__skeleton hide">
                             <div class="video-card__skeleton--cover"></div>
@@ -328,6 +328,8 @@ export default {
             randomVideos: [],
             // 累加视频列表
             cumulativeVideos: [],
+            // 已展示过的视频 vid，用于去重
+            seenVids: new Set(),
             // 累加视频id列表
             vids: [],
             // 是否正在加载随机推荐
@@ -367,11 +369,22 @@ export default {
                 params: { vids: ids }
             });
             if (res.data.data) {
-                this.cumulativeVideos.push(...res.data.data.videos);
-                this.vids.push(...res.data.data.vids);
-                this.hasMore = res.data.data.more;
+                const incoming = res.data.data.videos || [];
+                const fresh = incoming.filter(v => {
+                    const id = v.video && v.video.vid;
+                    if (id == null || this.seenVids.has(id)) return false;
+                    this.seenVids.add(id);
+                    return true;
+                });
+                if (fresh.length) {
+                    this.cumulativeVideos.push(...fresh);
+                    const incomingIds = (res.data.data.vids || []).filter(id => !this.seenVids.has(id));
+                    this.vids.push(...incomingIds);
+                    this.hasMore = !!res.data.data.more;
+                } else {
+                    this.hasMore = false;
+                }
             }
-            // console.log(this.cumulativeVideos);
             this.loadingMore = false;
         },
 

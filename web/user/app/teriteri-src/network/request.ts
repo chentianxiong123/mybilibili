@@ -302,7 +302,7 @@ function handleAuthFailure(err: any) {
     if (typeof window !== 'undefined') localStorage.removeItem('teri_token')
     ElMessage.error('请登录后查看')
   } else {
-    ElMessage.error('特丽丽被玩坏了(¯﹃¯)')
+    ElMessage.error('操作失败，请稍后重试')
   }
   if (store) store.isLoading = false
 }

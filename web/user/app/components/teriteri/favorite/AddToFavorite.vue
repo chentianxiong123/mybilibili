@@ -83,7 +83,7 @@ export default {
                 headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
             });
             if (!res.data) {
-                ElMessage.error("特丽丽被玩坏了QAQ");
+                ElMessage.error("操作失败，请稍后重试");
                 return;
             }
             this.currSelected = new Set([...this.lastSelected]);    // 初始化已选的，防止出现收藏数量偏差
