@@ -70,7 +70,7 @@
 
         <div class="welcome-tip">
             <p>欢迎回到创作中心！从左侧菜单可以管理你的稿件、查看数据统计、处理评论与弹幕。</p>
-            <p v-if="overview.updateTime" class="update-time">数据更新于 {{ overview.updateTime }}</p>
+            <p v-if="overview.updateTime" class="update-time">数据更新于 {{ formatUpdateTime(overview.updateTime) }}</p>
         </div>
     </div>
 </template>
@@ -80,6 +80,14 @@ import { onMounted } from 'vue'
 import { useCreatorStats } from '@/composables/useCreatorStats'
 
 const { loading, overview, loadOverview } = useCreatorStats()
+
+const formatUpdateTime = (t?: string) => {
+  if (!t) return ''
+  const date = new Date(t)
+  if (isNaN(date.getTime())) return t
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
 
 onMounted(() => {
     loadOverview()

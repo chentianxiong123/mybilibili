@@ -151,6 +151,14 @@ attachRoomMessageHandlers({
   handlePeerStateMessage
 })
 
+const formatReplayTime = (t?: string) => {
+  if (!t) return ''
+  const date = new Date(t)
+  if (isNaN(date.getTime())) return t
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 onMounted(() => {
   initializeLiveRoom({
     syncFollowState,
@@ -246,7 +254,7 @@ onUnmounted(() => {
                         </div>
                         <div class="replay-info">
                           <div class="replay-name">{{ r.title }}</div>
-                          <div class="replay-time">{{ r.createTime }}</div>
+                          <div class="replay-time">{{ formatReplayTime(r.createTime) }}</div>
                         </div>
                       </div>
                     </div>

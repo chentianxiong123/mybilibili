@@ -88,7 +88,7 @@
           >
             {{ comment.manuscriptTitle || '查看视频' }}
           </el-link>
-          <span class="item-time">{{ comment.createTime ? formatDate(comment.createTime) : comment.time }}</span>
+          <span class="item-time">{{ formatDate(comment.createTime) }}</span>
           <el-button type="danger" size="small" link @click="handleDeleteComment(comment)" class="item-delete">删除</el-button>
         </div>
         <el-pagination

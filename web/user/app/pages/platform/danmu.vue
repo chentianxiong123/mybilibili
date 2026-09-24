@@ -139,7 +139,10 @@ const handleDelete = (item: DanmuItem) => {
 
 const formatTime = (t: string) => {
   if (!t) return ''
-  return t.replace('T', ' ').slice(0, 19)
+  const date = new Date(t)
+  if (isNaN(date.getTime())) return t
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
 const goVideo = (vid: number) => {

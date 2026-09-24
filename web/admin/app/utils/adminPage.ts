@@ -13,8 +13,13 @@ export function normalizePagedResult(data) {
 
 export function formatDateTime(value) {
   if (!value) return '-'
-  if (typeof value === 'string') return value.replace('T', ' ')
-  return new Date(value).toLocaleString('zh-CN')
+  if (typeof value === 'string' && !value.includes('T') && !value.endsWith('Z')) {
+    return value.slice(0, 19).replace('T', ' ')
+  }
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return String(value)
+  const p = (n) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())} ${p(date.getHours())}:${p(date.getMinutes())}:${p(date.getSeconds())}`
 }
 
 export async function runConfirmedAction({

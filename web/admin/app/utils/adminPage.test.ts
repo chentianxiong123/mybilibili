@@ -247,8 +247,17 @@ describe('adminPage 补充 - formatDateTime 边界', () => {
     expect(formatDateTime('')).toBe('-')
   })
 
-  it('字符串中多个 T 只替换第一个', () => {
-    expect(formatDateTime('2024-01-02T03:04:05T00:00:00')).toBe('2024-01-02 03:04:05T00:00:00')
+  it('ISO 字符串转换为本地时间格式', () => {
+    expect(formatDateTime('2024-01-02T03:04:05')).toBe('2024-01-02 03:04:05')
+  })
+
+  it('带 Z 的 UTC 字符串转换为本地时间格式', () => {
+    const out = formatDateTime('2024-01-02T03:04:05Z')
+    expect(out).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+  })
+
+  it('无法解析的字符串原样返回', () => {
+    expect(formatDateTime('2024-01-02T03:04:05T00:00:00')).toBe('2024-01-02T03:04:05T00:00:00')
   })
 
   it('数字时间戳走 Date 转换路径', () => {

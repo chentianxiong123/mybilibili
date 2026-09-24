@@ -23,7 +23,7 @@
                                 &nbsp;{{ handleNum(this.$store.state.danmuList.length) }}&nbsp;
                             </span>
                             <span class="date item">
-                                {{ video.uploadDate }}
+                                {{ handleDate(video.uploadDate) }}
                             </span>
                             <span class="copyright item" v-if="video.type === 1 && video.auth === 1">
                                 <i class="iconfont icon-jinzhi"></i>

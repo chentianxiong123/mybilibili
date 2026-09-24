@@ -47,6 +47,14 @@ const resetConfig = async () => {
   }
 }
 
+const formatUpdatedAt = (t) => {
+  if (!t) return ''
+  const date = new Date(t)
+  if (isNaN(date.getTime())) return t
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 onMounted(fetchConfig)
 </script>
 
@@ -153,7 +161,7 @@ onMounted(fetchConfig)
         <el-button type="primary" size="large" @click="saveConfig">保存配置</el-button>
         <el-button size="large" @click="resetConfig">重置为默认值</el-button>
         <span class="last-updated" v-if="config.updatedAt">
-          最后更新: {{ config.updatedAt }} ({{ config.updatedBy }})
+          最后更新: {{ formatUpdatedAt(config.updatedAt) }} ({{ config.updatedBy }})
         </span>
       </div>
     </div>
