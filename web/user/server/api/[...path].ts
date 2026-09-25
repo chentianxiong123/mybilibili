@@ -16,7 +16,6 @@ const PATH_MAP: Record<string, string> = {
   '/search/user': '/search/users',
   '/search/count': '/search/count',
   '/video/love-or-not': '/interaction/video/love-or-not',
-  '/video/collected-fids': '/favorites/check',
   '/comment/get': '/comment/list',
   '/comment/add': '/comment/add',
   '/comment/get-up-like': '/comment/get-up-like',
