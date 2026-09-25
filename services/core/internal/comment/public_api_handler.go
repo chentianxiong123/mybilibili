@@ -38,6 +38,7 @@ func (h *PublicAPIHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/comment/reply/{id}/like", h.handleReplyLike)
 	mux.HandleFunc("/api/v1/comment/batch-like-counts", h.handleBatchLikeCounts)
 	mux.HandleFunc("/api/v1/comment/get-like-and-dislike", h.handleGetLikeAndDislike)
+	mux.HandleFunc("/api/v1/comment/get-up-like", h.handleGetUpLike)
 }
 
 // ---- 评论序列化 ----
@@ -313,6 +314,32 @@ func (h *PublicAPIHandler) handleBatchLikeCounts(w http.ResponseWriter, r *http.
 		out[strconv.FormatInt(id, 10)] = map[string]interface{}{
 			"like_count": counts[id],
 			"is_liked":   liked[id],
+		}
+	}
+	httputil.WriteOK(w, out)
+}
+
+// handleGetUpLike 返回 UP 主觉得很赞（UP 自己点过赞的）评论/回复 ID 列表（对齐 teriteri 旧版 /comment/get-up-like）。
+func (h *PublicAPIHandler) handleGetUpLike(w http.ResponseWriter, r *http.Request) {
+	uidStr := r.URL.Query().Get("uid")
+	uid, _ := strconv.ParseInt(uidStr, 10, 64)
+	if uid == 0 {
+		httputil.WriteOK(w, []interface{}{})
+		return
+	}
+	rows, err := h.db.QueryContext(r.Context(),
+		`SELECT target_id FROM user_interactions
+		  WHERE user_id = $1 AND target_type IN ('COMMENT','REPLY') AND interaction_type = 'LIKE'`, uid)
+	if err != nil {
+		httputil.WriteOK(w, []interface{}{})
+		return
+	}
+	defer rows.Close()
+	out := make([]int64, 0)
+	for rows.Next() {
+		var id int64
+		if rows.Scan(&id) == nil {
+			out = append(out, id)
 		}
 	}
 	httputil.WriteOK(w, out)

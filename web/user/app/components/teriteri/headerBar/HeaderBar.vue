@@ -103,7 +103,7 @@
                     </div>
                     <div class="trending" v-if="searchInput == ''">
                         <div class="header">
-                            <div class="title">teriteri热搜</div>
+                            <div class="title">mybili热搜</div>
                         </div>
                         <div class="trendings-double" v-if="screenWidth >= 1450">
                             <div class="trendings-col" style="max-width: calc(50% - 5px);">

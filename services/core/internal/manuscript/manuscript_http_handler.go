@@ -690,8 +690,21 @@ func (h *ManuscriptHTTPHandler) handleManuscriptDetail(w http.ResponseWriter, r 
 		httputil.WriteJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid manuscript id", "data": nil})
 		return
 	}
+	// 兼容旧版 teriteri URL 中的 video id：先按 manuscript id 查，未命中则按 video id 兜底查。
+	var msID int64
+	if err := h.db.QueryRowContext(r.Context(), `SELECT id FROM manuscripts WHERE id = $1`, id).Scan(&msID); err != nil {
+		if err == sql.ErrNoRows {
+			if err := h.db.QueryRowContext(r.Context(), `SELECT manuscript_id FROM videos WHERE id = $1`, id).Scan(&msID); err != nil {
+				errors.WriteHTTPError(w, errors.ErrNotFound("manuscript not found"))
+				return
+			}
+		} else {
+			errors.WriteHTTPError(w, errors.ErrInternal("database error"))
+			return
+		}
+	}
 	uid := httputil.GetUserIDFromHeader(r)
-	resp, err := h.manuscriptSvc.GetManuscriptWithVideos(r.Context(), &pb.GetManuscriptWithVideosRequest{Id: id, CurrentUserId: uid})
+	resp, err := h.manuscriptSvc.GetManuscriptWithVideos(r.Context(), &pb.GetManuscriptWithVideosRequest{Id: msID, CurrentUserId: uid})
 	if err != nil {
 		errors.WriteHTTPError(w, err)
 		return

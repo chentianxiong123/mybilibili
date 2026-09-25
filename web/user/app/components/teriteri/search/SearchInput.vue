@@ -47,7 +47,7 @@
                     </div>
                     <div class="trending" v-if="input == ''">
                         <div class="header">
-                            <div class="title">teriteri热搜</div>
+                            <div class="title">mybili热搜</div>
                         </div>
                         <div class="trendings-double">
                             <div class="trendings-col" style="max-width: calc(50% - 5px);">

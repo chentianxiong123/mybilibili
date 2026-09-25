@@ -19,6 +19,7 @@ const PATH_MAP: Record<string, string> = {
   '/video/collected-fids': '/favorites/check',
   '/comment/get': '/comment/list',
   '/comment/add': '/comment/add',
+  '/comment/get-up-like': '/comment/get-up-like',
   '/comment/love-or-not': '/comment/',
   '/danmu-list': '/danmaku/video',
   '/favorite/get-all/user': '/favorites',
@@ -101,6 +102,13 @@ function adaptUrl(url: string, query: URLSearchParams): { target: string; port: 
     if (seed) params.set('seed', seed)
     if (offset) params.set('offset', offset)
     return { target: '/manuscript/hot', port: `http://${CORE_HOST}:8080`, qs: params.toString() }
+  }
+  // /video/collected-fids?vid=X → /favorites/manuscript/X（稿件所在收藏夹列表）
+  if (url.startsWith('/video/collected-fids')) {
+    const vid = query.get('vid') || query.get('manuscript_id') || ''
+    if (vid) {
+      return { target: `/favorites/manuscript/${vid}`, port: `http://${CORE_HOST}:8080`, qs: '' }
+    }
   }
   const keys = Object.keys(PATH_MAP).sort((a, b) => b.length - a.length)
   for (const from of keys) {

@@ -446,10 +446,13 @@ func (h *FavoriteHandler) handleCheck(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
 		return
 	}
-	// 兼容 manuscript_id 和 manuscriptId 两种参数名
+	// 兼容 manuscript_id / manuscriptId / vid 三种参数名
 	msIDStr := r.URL.Query().Get("manuscript_id")
 	if msIDStr == "" {
 		msIDStr = r.URL.Query().Get("manuscriptId")
+	}
+	if msIDStr == "" {
+		msIDStr = r.URL.Query().Get("vid")
 	}
 	msID, _ := strconv.ParseInt(msIDStr, 10, 64)
 	if msID == 0 {

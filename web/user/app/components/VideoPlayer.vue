@@ -632,7 +632,7 @@ watch(() => props.videoInfo?.playUrl, (newUrl) => {
     initPlayer()
     loadDanmakus()
   }
-})
+}, { immediate: true })
 
 watch(() => [props.videoInfo?.playUrlHd, props.videoInfo?.playUrlSd, props.videoInfo?.playUrlLd], () => {
   if (playerInitialized && props.videoInfo?.playUrl) {

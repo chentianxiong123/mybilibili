@@ -648,7 +648,9 @@ async function getCollectedFids() {
         headers: { Authorization: 'Bearer ' + localStorage.getItem('teri_token') },
     })
     if (!res.data) return
-    collectedFids.value = new Set(res.data.data)
+    // 后端返回 [{id, name}, ...]，前端只取 id 放进 Set
+    const arr = Array.isArray(res.data.data) ? res.data.data : []
+    collectedFids.value = new Set(arr.map((f: any) => f.id))
 }
 
 // ===== Event handlers =====
