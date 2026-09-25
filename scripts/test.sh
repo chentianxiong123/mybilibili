@@ -8,6 +8,7 @@
 #   ./scripts/test.sh backend-cov      # 只跑后端 + 覆盖率门禁
 #   ./scripts/test.sh frontend         # 只跑前端 vitest
 #   ./scripts/test.sh integration      # 只跑集成测试
+#   ./scripts/test.sh contract         # 只跑契约测试 (OpenAPI 3.1 + 打真后端)
 #   ./scripts/test.sh e2e              # 只跑 Python E2E（需本地有后端）
 #
 # 退出码: 0=全过, 1=有失败, 2=覆盖率低于阈值
@@ -133,7 +134,35 @@ integration() {
 }
 
 # -----------------------------------------------------------------------------
-# 4. Python E2E (playwright + pytest)
+# 4. 契约测试 (OpenAPI 3.1 契约 + 打真后端 + jsonschema 校验)
+# -----------------------------------------------------------------------------
+contract() {
+  step "契约测试 (contracts/openapi/v1.yaml + 打真后端 + jsonschema)"
+  if [ ! -f contracts/openapi/v1.yaml ]; then
+    echo "  (跳过: contracts/openapi/v1.yaml 不存在)"
+    return
+  fi
+  if ! command -v pytest >/dev/null 2>&1; then
+    echo "  (跳过: pytest 未安装)"
+    return
+  fi
+  if ! python3 -c "import openapi_spec_validator, jsonschema, yaml" >/dev/null 2>&1; then
+    echo "  (跳过: openapi-spec-validator / jsonschema / pyyaml 未安装)"
+    echo "         pip install --break-system-packages openapi-spec-validator jsonschema pyyaml"
+    return
+  fi
+  # 检测后端是否在跑（默认 localhost:8080）
+  local api_base="${API_BASE_URL:-http://localhost:8080/api/v1}"
+  if ! curl -s -m 2 -o /dev/null -w "%{http_code}" "${api_base%/api/v1}/api/v1/manuscript/hot" 2>/dev/null | grep -q '^[1-5]'; then
+    echo "  (跳过: 后端未运行于 ${api_base})"
+    return
+  fi
+  pytest tests/contract/ -v || fail "契约测试失败"
+  pass "契约测试"
+}
+
+# -----------------------------------------------------------------------------
+# 5. Python E2E (playwright + pytest)
 # -----------------------------------------------------------------------------
 e2e() {
   step "Python E2E (playwright + pytest)"
@@ -157,14 +186,16 @@ case "${1:-all}" in
   backend-cov)     backend; backend_cov ;;
   frontend)        frontend ;;
   integration)     integration ;;
+  contract)        contract ;;
   e2e)             e2e ;;
   all)
     backend
     frontend
     integration
+    contract
     e2e
     backend_cov
     step "全部测试通过"
     ;;
-  *) echo "用法: $0 {all|backend|backend-cov|frontend|integration|e2e}"; exit 2 ;;
+  *) echo "用法: $0 {all|backend|backend-cov|frontend|integration|contract|e2e}"; exit 2 ;;
 esac

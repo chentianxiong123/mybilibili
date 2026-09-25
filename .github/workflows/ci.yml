@@ -89,12 +89,50 @@ integration-test:
       if: always()
       run: cd tests/integration && docker compose -f docker-compose.test.yml down -v
 
+  # ---------- 契约测试 (OpenAPI 3.1 + 打真后端) ----------
+  # 启动 dev compose 后端 → 校验 contracts/openapi/v1.yaml 描述的契约被后端遵守
+  # 契约破坏 = CI fail
+  contract-test:
+    needs: [test, frontend-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.work }
+
+      - name: 装契约测试依赖
+        run: pip install --break-system-packages pytest openapi-spec-validator jsonschema pyyaml requests
+
+      - name: 启动后端 (dev docker compose)
+        run: docker compose -f dev/docker-compose.yml up -d --wait
+
+      - name: 等待 core 就绪
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/v1/manuscript/hot || echo 000)
+            if [ "$code" = "200" ]; then echo "core ready"; exit 0; fi
+            sleep 2
+          done
+          echo "core not ready, last code=$code"
+          exit 1
+
+      - name: 跑契约测试（统一入口）
+        run: bash ./scripts/test.sh contract
+
+      - name: 清理
+        if: always()
+        run: docker compose -f dev/docker-compose.yml down -v
+
   # ---------- Python E2E ----------
   # 当前在 CI 中暂不启用（需要 CI runner 起完整 dev/docker-compose.yml）。
   # 本地入口：bash ./scripts/test.sh e2e
   # 启用方法：uncomment 下面整块 + 把 build-backend.needs / build-frontend.needs 加它
   # e2e-test:
-  #   needs: [test, frontend-test, integration-test]
+  #   needs: [test, frontend-test, integration-test, contract-test]
   #   runs-on: ubuntu-latest
   #   steps:
   #     - uses: actions/checkout@v4
@@ -108,7 +146,7 @@ integration-test:
 
   # ---------- 后端 8 个服务 ----------
   build-backend:
-    needs: [test, frontend-test, integration-test]
+    needs: [test, frontend-test, integration-test, contract-test]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -153,7 +191,7 @@ integration-test:
 
   # ---------- 前端 2 应用 (wap 将来打包为 App，不建镜像) ----------
   build-frontend:
-    needs: [test, frontend-test, integration-test]
+    needs: [test, frontend-test, integration-test, contract-test]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

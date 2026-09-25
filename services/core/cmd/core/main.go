@@ -1,3 +1,14 @@
+// Package main mybilibili core API 服务（HTTP + gRPC）。
+//
+// @title                       mybilibili Core API
+// @version                     1.0
+// @description                 B 站风格全栈视频平台核心 API（稿件/评论/收藏/用户）
+// @host                        localhost:8080
+// @BasePath                    /api/v1
+// @schemes                     http https
+// @securityDefinitions.apikey  BearerAuth
+// @in                          header
+// @name                        Authorization
 package main
 
 import (

@@ -72,6 +72,19 @@ func (h *UserExtendHandler) setSessionCookies(w http.ResponseWriter, token, refr
 	})
 }
 
+// handleLogin 用户登录（用户名/密码），返回 token 与用户基本信息，
+// 并把 token 同时写入 Authorization cookie（兼容 teriteri 旧版前端）。
+//
+// @Summary      用户登录
+// @Description  用 username/password 换取 JWT token（写入 cookie + 返回 JSON）
+// @Tags         user
+// @Accept       json
+// @Produce      json
+// @Param        body  body      object         true  "登录凭证"
+// @Success      200   {object}  string  "Login success with token and user info"
+// @Failure      400   {string}  string  "invalid request"
+// @Failure      401   {string}  string  "登录失败"
+// @Router       /user/login [post]
 func (h *UserExtendHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "method not allowed", 405)
@@ -552,6 +565,16 @@ func (h *UserExtendHandler) handleCreatorSettings(w http.ResponseWriter, r *http
 	}
 }
 
+// handleMe 返回当前登录用户信息（等价于 /user/info，但用 me 语义）。
+//
+// @Summary      当前登录用户信息
+// @Description  通过 Authorization header 中的 JWT 解析 user id，返回该用户公开信息
+// @Tags         user
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  string  "User public info"
+// @Failure      401  {string}  string  "未登录"
+// @Router       /user/me [get]
 func (h *UserExtendHandler) handleMe(w http.ResponseWriter, r *http.Request) {
 	uid, ok := httputil.RequireUser(w, r)
 	if !ok {
@@ -653,6 +676,16 @@ func (h *UserExtendHandler) handleMeAvatar(w http.ResponseWriter, r *http.Reques
 	httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
 }
 
+// handleUserByID 按用户 id 返回公开信息（空间页接口）。
+//
+// @Summary      按 id 取用户公开信息
+// @Description  返回指定用户公开信息（头像/昵称/签名/粉丝数等），用于个人空间页
+// @Tags         user
+// @Produce      json
+// @Param        id  path      int  true  "用户 id"
+// @Success      200 {object}  string  "User public info"
+// @Failure      404 {string}  string  "用户不存在"
+// @Router       /user/{id} [get]
 func (h *UserExtendHandler) handleUserByID(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimPrefix(r.URL.Path, "/api/v1/user/")
 	// Handle avatar upload: /api/v1/user/{id}/avatar

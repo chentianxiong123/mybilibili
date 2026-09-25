@@ -110,7 +110,12 @@ func (h *ManuscriptHTTPHandler) handleManuscriptRoute(w http.ResponseWriter, r *
 		r.SetPathValue("id", parts[2])
 		h.handleFavoriteFolderVideos(w, r)
 	case "detail":
-		r.SetPathValue("id", parts[0])
+		// 兼容两种 URL：/manuscript/{id}（旧）和 /manuscript/detail/{id}（新）
+		if len(parts) == 1 {
+			r.SetPathValue("id", parts[0])
+		} else {
+			r.SetPathValue("id", parts[1])
+		}
 		h.handleManuscriptDetail(w, r)
 	case "updateManuscript":
 		r.SetPathValue("id", parts[0])
@@ -211,6 +216,11 @@ func manuscriptRouteName(parts []string) string {
 	case "list":
 		if len(parts) == 1 {
 			return "list"
+		}
+		return ""
+	case "detail":
+		if len(parts) == 1 || len(parts) == 2 {
+			return "detail"
 		}
 		return ""
 	case "me":
@@ -635,6 +645,15 @@ func manuscriptListToJSON(infos []*pb.ManuscriptInfo) []map[string]interface{} {
 	return out
 }
 
+// handleRecommended 返回首页推荐稿件列表（公开稿件，按热度+新鲜度排序）。
+//
+// @Summary      推荐稿件列表
+// @Description  首页轮播/推荐位的稿件流，refresh_time 递增可获得不同顺序
+// @Tags         manuscript
+// @Produce      json
+// @Param        refresh_time  query     int  false  "随机种子（递增以换一换）"
+// @Success      200           {object}  string  "Manuscript list"
+// @Router       /manuscript/recommended [get]
 func (h *ManuscriptHTTPHandler) handleRecommended(w http.ResponseWriter, r *http.Request) {
 	uid := httputil.GetUserIDFromHeader(r)
 	// 从 query 读 refresh_time，作为随机种子（每次换一换递增，让推荐顺序真正变化）
@@ -654,6 +673,16 @@ func (h *ManuscriptHTTPHandler) handleRecommended(w http.ResponseWriter, r *http
 	httputil.WriteOK(w, manuscriptListToJSON(resp.Manuscripts))
 }
 
+// handleHot 返回热门稿件列表（首页热门区）。
+//
+// @Summary      热门稿件列表
+// @Description  按热度排序的稿件流，分页参数 page/page_size
+// @Tags         manuscript
+// @Produce      json
+// @Param        page       query     int  false  "页码（默认 1）"
+// @Param        page_size  query     int  false  "每页条数（默认 30）"
+// @Success      200        {object}  string  "Hot manuscript list"
+// @Router       /manuscript/hot [get]
 func (h *ManuscriptHTTPHandler) handleHot(w http.ResponseWriter, r *http.Request) {
 	uid := httputil.GetUserIDFromHeader(r)
 	// seed + offset：seed 决定乱序排列，offset 实现分页
@@ -684,6 +713,17 @@ func (h *ManuscriptHTTPHandler) handleHot(w http.ResponseWriter, r *http.Request
 	httputil.WriteOK(w, manuscriptListToJSON(resp.Manuscripts))
 }
 
+// handleManuscriptDetail 稿件详情：按稿件 id 取，未命中时按视频 id 兜底（兼容旧版 teriteri）。
+//
+// @Summary      稿件详情
+// @Description  按路径参数 id 取稿件详情，未命中则按 video id 兜底（兼容 teriteri 旧版 URL）
+// @Tags         manuscript
+// @Produce      json
+// @Param        id  path      int  true  "稿件 id 或视频 id"
+// @Success      200 {object}  string  "Manuscript detail"
+// @Failure      400 {string}  string  "invalid manuscript id"
+// @Failure      404 {string}  string  "稿件不存在"
+// @Router       /manuscript/detail/{id} [get]
 func (h *ManuscriptHTTPHandler) handleManuscriptDetail(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseInt(httputil.PathValue(r, "id"), 10, 64)
 	if id <= 0 {

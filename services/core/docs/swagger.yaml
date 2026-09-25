@@ -1,0 +1,294 @@
+basePath: /api/v1
+host: localhost:8080
+info:
+  contact: {}
+  description: B 站风格全栈视频平台核心 API（稿件/评论/收藏/用户）
+  title: mybilibili Core API
+  version: "1.0"
+paths:
+  /comment/get-up-like:
+    get:
+      description: 返回指定 UP 主手动点赞过的评论/回复 ID 列表，用于前端展示「UP 主觉得很赞」徽章
+      parameters:
+      - description: UP 主用户 id
+        in: query
+        name: uid
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: UP liked comment ids
+          schema:
+            type: string
+      summary: UP 主觉得很赞
+      tags:
+      - comment
+  /comment/list:
+    get:
+      description: 分页获取稿件评论；支持按 sort=hot|time 切换排序
+      parameters:
+      - description: 稿件 id
+        in: query
+        name: manuscriptId
+        required: true
+        type: integer
+      - description: 页码（默认 1）
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数（默认 30）
+        in: query
+        name: page_size
+        type: integer
+      - description: hot|time（默认 time）
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Comment list
+          schema:
+            type: string
+        "400":
+          description: manuscriptId 缺失
+          schema:
+            type: string
+      summary: 评论列表
+      tags:
+      - comment
+  /favorites/check:
+    get:
+      description: 按稿件 id 或视频 id 判断当前用户是否已收藏；兼容 manuscript_id / manuscriptId / vid
+        三种参数名
+      parameters:
+      - description: 稿件 id
+        in: query
+        name: manuscript_id
+        type: integer
+      - description: 稿件 id（驼峰写法）
+        in: query
+        name: manuscriptId
+        type: integer
+      - description: 视频 id
+        in: query
+        name: vid
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Favorite check result
+          schema:
+            type: string
+        "401":
+          description: 未登录
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: 检查是否已收藏
+      tags:
+      - favorite
+  /favorites/list:
+    get:
+      description: 返回当前登录用户收藏过的全部稿件，按收藏时间倒序
+      parameters:
+      - description: 页码（默认 1）
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数（默认 30）
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Favorite list
+          schema:
+            type: string
+        "401":
+          description: 未登录
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: 我的收藏列表（平铺）
+      tags:
+      - favorite
+  /favorites/manuscript/{id}:
+    get:
+      description: 按稿件 id 取该稿件被加入的全部收藏夹
+      parameters:
+      - description: 稿件 id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Manuscript folders
+          schema:
+            type: string
+        "400":
+          description: invalid manuscript id
+          schema:
+            type: string
+      summary: 稿件所属收藏夹列表
+      tags:
+      - favorite
+  /manuscript/detail/{id}:
+    get:
+      description: 按路径参数 id 取稿件详情，未命中则按 video id 兜底（兼容 teriteri 旧版 URL）
+      parameters:
+      - description: 稿件 id 或视频 id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Manuscript detail
+          schema:
+            type: string
+        "400":
+          description: invalid manuscript id
+          schema:
+            type: string
+        "404":
+          description: 稿件不存在
+          schema:
+            type: string
+      summary: 稿件详情
+      tags:
+      - manuscript
+  /manuscript/hot:
+    get:
+      description: 按热度排序的稿件流，分页参数 page/page_size
+      parameters:
+      - description: 页码（默认 1）
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数（默认 30）
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Hot manuscript list
+          schema:
+            type: string
+      summary: 热门稿件列表
+      tags:
+      - manuscript
+  /manuscript/recommended:
+    get:
+      description: 首页轮播/推荐位的稿件流，refresh_time 递增可获得不同顺序
+      parameters:
+      - description: 随机种子（递增以换一换）
+        in: query
+        name: refresh_time
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Manuscript list
+          schema:
+            type: string
+      summary: 推荐稿件列表
+      tags:
+      - manuscript
+  /user/{id}:
+    get:
+      description: 返回指定用户公开信息（头像/昵称/签名/粉丝数等），用于个人空间页
+      parameters:
+      - description: 用户 id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User public info
+          schema:
+            type: string
+        "404":
+          description: 用户不存在
+          schema:
+            type: string
+      summary: 按 id 取用户公开信息
+      tags:
+      - user
+  /user/login:
+    post:
+      consumes:
+      - application/json
+      description: 用 username/password 换取 JWT token（写入 cookie + 返回 JSON）
+      parameters:
+      - description: 登录凭证
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login success with token and user info
+          schema:
+            type: string
+        "400":
+          description: invalid request
+          schema:
+            type: string
+        "401":
+          description: 登录失败
+          schema:
+            type: string
+      summary: 用户登录
+      tags:
+      - user
+  /user/me:
+    get:
+      description: 通过 Authorization header 中的 JWT 解析 user id，返回该用户公开信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User public info
+          schema:
+            type: string
+        "401":
+          description: 未登录
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: 当前登录用户信息
+      tags:
+      - user
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

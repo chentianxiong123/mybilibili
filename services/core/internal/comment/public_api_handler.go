@@ -145,6 +145,19 @@ func decodeCommentBody(r *http.Request, fields map[string]*string) error {
 
 // ---- 评论 ----
 
+// handleCommentList 返回稿件评论列表（按稿件 id 或视频 id，分页）。
+//
+// @Summary      评论列表
+// @Description  分页获取稿件评论；支持按 sort=hot|time 切换排序
+// @Tags         comment
+// @Produce      json
+// @Param        manuscriptId  query     int    true   "稿件 id"
+// @Param        page          query     int    false  "页码（默认 1）"
+// @Param        page_size     query     int    false  "每页条数（默认 30）"
+// @Param        sort          query     string false  "hot|time（默认 time）"
+// @Success      200           {object}  string  "Comment list"
+// @Failure      400           {string}  string  "manuscriptId 缺失"
+// @Router       /comment/list [get]
 func (h *PublicAPIHandler) handleCommentList(w http.ResponseWriter, r *http.Request) {
 	manuscriptID, _ := strconv.ParseInt(r.URL.Query().Get("manuscriptId"), 10, 64)
 	page, size := httputil.ParsePageParams(r)
@@ -320,6 +333,14 @@ func (h *PublicAPIHandler) handleBatchLikeCounts(w http.ResponseWriter, r *http.
 }
 
 // handleGetUpLike 返回 UP 主觉得很赞（UP 自己点过赞的）评论/回复 ID 列表（对齐 teriteri 旧版 /comment/get-up-like）。
+//
+// @Summary      UP 主觉得很赞
+// @Description  返回指定 UP 主手动点赞过的评论/回复 ID 列表，用于前端展示「UP 主觉得很赞」徽章
+// @Tags         comment
+// @Produce      json
+// @Param        uid  query     int  true  "UP 主用户 id"
+// @Success      200  {object}  string  "UP liked comment ids"
+// @Router       /comment/get-up-like [get]
 func (h *PublicAPIHandler) handleGetUpLike(w http.ResponseWriter, r *http.Request) {
 	uidStr := r.URL.Query().Get("uid")
 	uid, _ := strconv.ParseInt(uidStr, 10, 64)

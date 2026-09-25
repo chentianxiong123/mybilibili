@@ -45,6 +45,13 @@ dist/
 # Playwright MCP 测试产物
 .playwright-mcp/
 
+# Python 测试产物
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.pytest_tmpdir/
+
 # Flutter
 **/android/.gradle/
 **/build/

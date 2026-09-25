@@ -440,6 +440,19 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 }
 
 // GET /api/v1/favorites/check?manuscript_id=xxx — 检查稿件是否已收藏
+// handleCheck 检查当前用户是否收藏了某个稿件（接受 manuscript_id / manuscriptId / vid 三种参数名）。
+//
+// @Summary      检查是否已收藏
+// @Description  按稿件 id 或视频 id 判断当前用户是否已收藏；兼容 manuscript_id / manuscriptId / vid 三种参数名
+// @Tags         favorite
+// @Produce      json
+// @Security     BearerAuth
+// @Param        manuscript_id  query     int  false  "稿件 id"
+// @Param        manuscriptId   query     int  false  "稿件 id（驼峰写法）"
+// @Param        vid            query     int  false  "视频 id"
+// @Success      200            {object}  string  "Favorite check result"
+// @Failure      401            {string}  string  "未登录"
+// @Router       /favorites/check [get]
 func (h *FavoriteHandler) handleCheck(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
 	if userID == 0 {
@@ -468,7 +481,18 @@ func (h *FavoriteHandler) handleCheck(w http.ResponseWriter, r *http.Request) {
 	httputil.WriteOK(w, map[string]any{"favorited": cnt > 0, "count": cnt})
 }
 
-// GET /api/v1/favorites/list — 用户全部收藏（平铺，不分文件夹）
+// handleFlatList 当前用户的全部收藏稿件（平铺，不分组）。
+//
+// @Summary      我的收藏列表（平铺）
+// @Description  返回当前登录用户收藏过的全部稿件，按收藏时间倒序
+// @Tags         favorite
+// @Produce      json
+// @Security     BearerAuth
+// @Param        page       query     int  false  "页码（默认 1）"
+// @Param        page_size  query     int  false  "每页条数（默认 30）"
+// @Success      200        {object}  string  "Favorite list"
+// @Failure      401        {string}  string  "未登录"
+// @Router       /favorites/list [get]
 func (h *FavoriteHandler) handleFlatList(w http.ResponseWriter, r *http.Request) {
 	userID := httputil.GetUserIDFromHeader(r)
 	if userID == 0 {
@@ -508,6 +532,16 @@ func (h *FavoriteHandler) handleFlatList(w http.ResponseWriter, r *http.Request)
 }
 
 // GET /api/v1/favorites/manuscript/{manuscriptId} — 稿件所在收藏夹列表
+// handleManuscriptFolders 返回某稿件所在的收藏夹列表（用于稿件页展示）。
+//
+// @Summary      稿件所属收藏夹列表
+// @Description  按稿件 id 取该稿件被加入的全部收藏夹
+// @Tags         favorite
+// @Produce      json
+// @Param        id  path      int  true  "稿件 id"
+// @Success      200 {object}  string  "Manuscript folders"
+// @Failure      400 {string}  string  "invalid manuscript id"
+// @Router       /favorites/manuscript/{id} [get]
 func (h *FavoriteHandler) handleManuscriptFolders(w http.ResponseWriter, r *http.Request) {
 	msIDStr := strings.TrimPrefix(r.URL.Path, "/api/v1/favorites/manuscript/")
 	msID, err := strconv.ParseInt(msIDStr, 10, 64)

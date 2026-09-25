@@ -1,0 +1,525 @@
+openapi: 3.1.0
+info:
+  title: mybilibili Core API (Authoritative Contract)
+  version: 1.0.0
+  description: |
+    后端核心 API 的权威契约（关键端点）。
+    本文件由 pytest 自动校验：
+      1. 契约本身合法（openapi-spec-validator）
+      2. 后端真实响应符合契约（打真后端 + jsonschema）
+    任何契约修改必须同时更新测试，否则 CI fail。
+    端点覆盖范围：已修过 bug + 高频访问 + adapter 强依赖。
+  contact:
+    name: mybilibili backend
+servers:
+  - url: http://localhost:8080/api/v1
+    description: 本地开发
+  - url: https://api.mybilibili.local/api/v1
+    description: 生产（待定）
+tags:
+  - name: user
+    description: 用户域（登录/注册/资料）
+  - name: manuscript
+    description: 稿件域（列表/详情/上传）
+  - name: comment
+    description: 评论域（列表/UP主觉得很赞）
+  - name: favorite
+    description: 收藏域（列表/检查/所属收藏夹）
+paths:
+  # ============ USER ============
+  /user/login:
+    post:
+      tags: [user]
+      summary: 用户登录
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: {type: string, minLength: 1}
+                password: {type: string, minLength: 1}
+      responses:
+        "200":
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /user/me:
+    get:
+      tags: [user]
+      summary: 当前登录用户信息
+      operationId: getMe
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserInfoResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /user/{id}:
+    get:
+      tags: [user]
+      summary: 按 id 取用户公开信息
+      operationId: getUserByID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer, minimum: 1}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserInfoResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  # ============ MANUSCRIPT ============
+  /manuscript/recommended:
+    get:
+      tags: [manuscript]
+      summary: 推荐稿件列表
+      operationId: listRecommended
+      parameters:
+        - name: refresh_time
+          in: query
+          required: false
+          schema: {type: integer, minimum: 0}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManuscriptListResponse"
+  /manuscript/hot:
+    get:
+      tags: [manuscript]
+      summary: 热门稿件列表
+      operationId: listHot
+      parameters:
+        # TODO 后端目前只支持 seed/offset，未实现 page/page_size；建议后续规范化
+        - name: seed
+          in: query
+          required: false
+          schema: {type: number, minimum: -1, maximum: 1}
+          description: 随机种子（决定乱序）
+        - name: offset
+          in: query
+          required: false
+          schema: {type: integer, minimum: 0}
+          description: 分页偏移
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManuscriptListResponse"
+  /manuscript/detail/{id}:
+    get:
+      tags: [manuscript]
+      summary: 稿件详情（稿件 id 或视频 id 兜底）
+      operationId: getManuscriptDetail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer, minimum: 1}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManuscriptDetailResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  # ============ COMMENT ============
+  /comment/list:
+    get:
+      tags: [comment]
+      summary: 评论列表
+      operationId: listComments
+      parameters:
+        - name: manuscriptId
+          in: query
+          required: true
+          schema: {type: integer, minimum: 1}
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1, default: 1}
+        - name: page_size
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1, maximum: 100, default: 30}
+        - name: sort
+          in: query
+          required: false
+          schema: {type: string, enum: [hot, time]}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentListResponse"
+  /comment/get-up-like:
+    get:
+      tags: [comment]
+      summary: UP 主觉得很赞的评论/回复 ID 列表
+      operationId: getUpLike
+      parameters:
+        - name: uid
+          in: query
+          required: true
+          schema: {type: integer, minimum: 1}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpLikeResponse"
+  # ============ FAVORITE ============
+  /favorites/check:
+    get:
+      tags: [favorite]
+      summary: 检查稿件是否已收藏
+      operationId: checkFavorite
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: manuscript_id
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1}
+        - name: manuscriptId
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1}
+        - name: vid
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FavoriteCheckResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /favorites/list:
+    get:
+      tags: [favorite]
+      summary: 我的收藏列表（平铺）
+      operationId: listFavorites
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1, default: 1}
+        - name: page_size
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1, maximum: 100, default: 30}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FavoriteListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /favorites/manuscript/{id}:
+    get:
+      tags: [favorite]
+      summary: 稿件所属收藏夹列表
+      operationId: listManuscriptFolders
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer, minimum: 1}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManuscriptFoldersResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: 参数错误
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Unauthorized:
+      description: 未登录
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+  schemas:
+    # -------- 通用信封 --------
+    BaseResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        data: {}
+    ErrorEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            code: {type: integer, enum: [400, 401, 403, 404, 500]}
+    # -------- User --------
+    LoginResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            code: {type: integer, enum: [200]}
+            data:
+              type: object
+              required: [token, id]
+              properties:
+                token: {type: string}
+                refresh_token: {type: string}
+                id: {type: integer}
+                nickname: {type: string}
+                avatar: {type: string}
+                dailyCoin: {type: boolean}
+    UserInfoResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            code: {type: integer, enum: [200]}
+            data:
+              type: object
+              required: [id, nickname]
+              properties:
+                id: {type: integer}
+                nickname: {type: string}
+                username: {type: string}
+                avatar: {type: string}
+                avatar_url: {type: string}
+                bio: {type: string}
+                birthdate: {type: string, format: date-time}
+                gender: {type: integer}
+                signature: {type: string}
+                sign: {type: string}
+                tags:
+                  type: array
+                  items: {type: string}
+                announcement: {type: string}
+                level: {type: integer}
+                experience: {type: integer}
+                maxExperience: {type: integer}
+                follower_count: {type: integer}
+                following_count: {type: integer}
+                like_count: {type: integer}
+                manuscript_count: {type: integer}
+                dynamic_count: {type: integer}
+                dynamicCount: {type: integer}
+                followerCount: {type: integer}
+                followingCount: {type: integer}
+                totalLikeCount: {type: integer}
+                totalViewCount: {type: integer}
+                created_at: {type: string, format: date-time}
+    # -------- Manuscript --------
+    ManuscriptCard:
+      type: object
+      required: [id, title]
+      properties:
+        id: {type: integer}
+        userId: {type: integer}
+        # uploader 是嵌套的用户摘要对象（不是 string）
+        uploader:
+          type: object
+          properties:
+            id: {type: integer}
+            nickname: {type: string}
+            name: {type: string}
+            avatar: {type: string}
+        title: {type: string}
+        description: {type: string}
+        coverUrl: {type: string}
+        duration: {type: string}
+        durationSeconds: {type: integer}
+        firstVideoId: {type: integer}
+        firstVideoPlayUrl: {type: string}
+        # isVertical 实际为 0/1 int（非标准 boolean；TODO 后续规范化）
+        isVertical: {type: integer, enum: [0, 1]}
+        categoryId: {type: integer}
+        categoryName: {type: string}
+        sourceType: {type: string}
+        status: {type: integer}
+        reviewStatus: {type: integer}
+        reviewReason: {type: string}
+        viewCount: {type: integer}
+        likeCount: {type: integer}
+        coinCount: {type: integer}
+        collectCount: {type: integer}
+        commentCount: {type: integer}
+        shareCount: {type: integer}
+        danmakuCount: {type: integer}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    ManuscriptListResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            code: {type: integer, enum: [200]}
+            data:
+              type: array
+              items: {$ref: "#/components/schemas/ManuscriptCard"}
+    ManuscriptDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            code: {type: integer, enum: [200]}
+            data:
+              allOf:
+                - $ref: "#/components/schemas/ManuscriptCard"
+                - type: object
+                  required: [videos]
+                  properties:
+                    videos:
+                      type: array
+                      items: {$ref: "#/components/schemas/VideoMeta"}
+    VideoMeta:
+      type: object
+      properties:
+        id: {type: integer}
+        title: {type: string}
+        duration: {type: string}
+        durationSeconds: {type: integer}
+        playUrl: {type: string}
+        originalUrl: {type: string}
+        resolutions:
+          type: array
+          items: {type: string}
+        qualityLabels:
+          type: array
+          items: {type: string}
+    # -------- Comment --------
+    CommentItem:
+      type: object
+      required: [id, content, userId]
+      properties:
+        # comment id/manuscriptId/userId 实际为 string（TODO 后续规范化）
+        id: {type: string}
+        content: {type: string}
+        createTime: {type: string, format: date-time}
+        createdAt: {type: string, format: date-time}
+        manuscriptId: {type: string}
+        userId: {type: string}
+        userName: {type: string}
+        username: {type: string}
+        userAvatar: {type: string}
+        userLevel: {type: integer}
+    CommentListResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            code: {type: integer, enum: [200]}
+            data:
+              type: array
+              items: {$ref: "#/components/schemas/CommentItem"}
+    UpLikeResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            code: {type: integer, enum: [200]}
+            data:
+              type: array
+              items: {type: integer}
+    # -------- Favorite --------
+    FavoriteCheckResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            code: {type: integer, enum: [200]}
+            data:
+              type: object
+              required: [favorited]
+              properties:
+                favorited: {type: boolean}
+                count: {type: integer}
+    FavoriteListResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            code: {type: integer, enum: [200]}
+            data:
+              type: object
+              required: [list]
+              properties:
+                list:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      manuscript_id: {type: integer}
+                      folder_name: {type: string}
+                      created_at: {type: string, format: date-time}
+                page: {type: integer}
+                size: {type: integer}
+    ManuscriptFoldersResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            code: {type: integer, enum: [200]}
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: {type: integer}
+                  name: {type: string}
