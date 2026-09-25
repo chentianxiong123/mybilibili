@@ -24,3 +24,10 @@ body {
   min-width: 1090px;
   line-height: 1.25;
 }
+
+img[class*="avatar"]:not(.avatar-container):not(.avatar-content):not(.avatar-cover):not(.avatar-icon):not(.avatar-label):not(.avatar-overlay):not(.avatar-page):not(.avatar-panel-popover):not(.avatar-preview):not(.avatar-wrapper):not(.avatar-wrap):not(.v-avatar):not(.v-avatar-badge):not(.v-avatar-badge-icon):not(.v-avatar-placeholder):not(.account-avatar):not(.user-avatar-large):not(.user-avatars):not(.user-avatar-section):not(.user-avatar-wrapper):not(.fans-user-avatar):not(.up-avatar):not(.up-avatar-wrap):not(.message-avatar):not(.current-avatar-section):not(.more-avatars):not(.following-avatar):not(.header-avatar):not(.header-avatar-wrap):not(.header-avatar-wrap--container):not(.avatar-btn):not(.card-avatar),
+picture[class*="v-img"] > img,
+[class*="avatar-img"]:not(.avatar-icon):not(.avatar-label):not(.avatar-overlay):not(.avatar-panel-popover),
+.el-avatar.el-avatar--circle > img {
+  background-color: #fff;
+}

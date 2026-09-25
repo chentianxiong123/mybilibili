@@ -57,7 +57,7 @@ export default {
 .v-avatar {
     display: block;
     position: relative;
-    background-image: url('https://cube.elemecdn.com/9/c2/f0ee8a3c7c9638a54940382568c9dpng.png');
+    background-color: #fff;
     -webkit-background-size: cover;
     background-size: cover;
     border-radius: 50%;
@@ -86,6 +86,7 @@ export default {
     width: 100%;
     height: 100%;
     border-radius: 50%;
+    background-color: #fff;
 }
 
 .avatar-icon {
