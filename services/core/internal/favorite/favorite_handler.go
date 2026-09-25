@@ -264,29 +264,20 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 	}
 	userID := httputil.GetUserIDFromHeader(r)
 
-	// 验证 folder 存在
-	var exists int
-	h.db.QueryRowContext(r.Context(),
-		`SELECT COUNT(*) FROM favorite_folders WHERE id = $1`, folderID).Scan(&exists)
-	if exists == 0 {
-		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "收藏夹不存在", "data": nil})
+	// 鉴权先于资源检查（避免泄漏 folder 是否存在）
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
 		return
 	}
 
-	// PUT/DELETE 操作需要鉴权且 folder 属于当前用户
-	if r.Method != "GET" {
-		if userID == 0 {
-			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
-			return
-		}
-		var cnt int
-		h.db.QueryRowContext(r.Context(),
-			`SELECT COUNT(*) FROM favorite_folders WHERE id = $1 AND user_id = $2`,
-			folderID, userID).Scan(&cnt)
-		if cnt == 0 {
-			httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "收藏夹不存在或无权操作", "data": nil})
-			return
-		}
+	// 验证 folder 存在且属于当前用户
+	var cnt int
+	h.db.QueryRowContext(r.Context(),
+		`SELECT COUNT(*) FROM favorite_folders WHERE id = $1 AND user_id = $2`,
+		folderID, userID).Scan(&cnt)
+	if cnt == 0 {
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "收藏夹不存在或无权操作", "data": nil})
+		return
 	}
 
 	switch r.Method {

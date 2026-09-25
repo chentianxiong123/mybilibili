@@ -122,11 +122,11 @@ func TestSvcListUserManuscripts(t *testing.T) {
 }
 
 func TestSvcListRecommended(t *testing.T) {
-	svc, msMock, _ := newService(t)
+	svc, msMock, userMock := newService(t)
 	ctx := context.Background()
 	now := time.Now()
 
-	msMock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE status = 3 ORDER BY upload_time`).
+	msMock.ExpectQuery(`WITH _seed AS .+ SELECT .+ FROM manuscripts`).
 		WillReturnRows(sqlmock.NewRows(manuscriptCols).
 			AddRow(1, "t", "d", "c.jpg", int64(10), int64(1),
 				int64(0), int64(0), int64(0), int64(0), int64(0),
@@ -136,20 +136,24 @@ func TestSvcListRecommended(t *testing.T) {
 	msMock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
 
+	userMock.ExpectQuery(`SELECT .+ FROM users WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "nickname", "avatar", "level", "bio", "signature", "follower_count", "following_count", "liked_count"}).
+			AddRow(int64(1), "u", "", 1, "", "", 0, 0, 0))
+
 	msMock.ExpectQuery(`SELECT is_vertical FROM videos`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"is_vertical"}).AddRow(0))
 
-	resp, err := svc.ListRecommended(ctx, &pb.ListRecommendedRequest{UserId: 1})
+	resp, err := svc.ListRecommended(ctx, &pb.ListRecommendedRequest{UserId: 1}, 0)
 	require.NoError(t, err)
 	assert.Len(t, resp.Manuscripts, 1)
 }
 
 func TestSvcListHot(t *testing.T) {
-	svc, msMock, _ := newService(t)
+	svc, msMock, userMock := newService(t)
 	ctx := context.Background()
 	now := time.Now()
 
-	msMock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE status = 3 ORDER BY view_count`).
+	msMock.ExpectQuery(`WITH _seed AS .+ SELECT .+ FROM manuscripts`).
 		WillReturnRows(sqlmock.NewRows(manuscriptCols).
 			AddRow(1, "t", "d", "c.jpg", int64(10), int64(1),
 				int64(0), int64(0), int64(0), int64(0), int64(0),
@@ -159,10 +163,14 @@ func TestSvcListHot(t *testing.T) {
 	msMock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
 
+	userMock.ExpectQuery(`SELECT .+ FROM users WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "nickname", "avatar", "level", "bio", "signature", "follower_count", "following_count", "liked_count"}).
+			AddRow(int64(1), "u", "", 1, "", "", 0, 0, 0))
+
 	msMock.ExpectQuery(`SELECT is_vertical FROM videos`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"is_vertical"}).AddRow(0))
 
-	resp, err := svc.ListHot(ctx, &pb.ListHotRequest{UserId: 1})
+	resp, err := svc.ListHot(ctx, &pb.ListHotRequest{UserId: 1}, 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, resp.Manuscripts, 1)
 }

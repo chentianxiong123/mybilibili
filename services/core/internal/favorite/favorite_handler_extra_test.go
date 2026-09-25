@@ -202,9 +202,23 @@ func TestHandleFolderVideos_Get(t *testing.T) {
 	h, mock := newMockFavorite(t)
 	now := time.Now()
 	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM favorite_folders`).WithArgs(int64(5), int64(1)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
-	mock.ExpectQuery(`SELECT ffv.manuscript_id, m.title, ffv.created_at`).
+	mock.ExpectQuery(`SELECT ffv.manuscript_id`).
 		WithArgs(int64(5), int32(20), int64(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"manuscript_id", "title", "created_at"}).AddRow(9, "title", now))
+		WillReturnRows(sqlmock.NewRows([]string{
+			"manuscript_id", "created_at",
+			"title", "description", "cover_url", "status", "review_status",
+			"duration", "duration_seconds", "view_count", "like_count",
+			"coin_count", "collect_count", "comment_count", "share_count",
+			"category_id", "upload_time",
+			"user_id", "nickname", "avatar",
+		}).AddRow(
+			int64(9), now,
+			"title", "", "", int32(3), int32(1),
+			"", int64(0), int64(0), int64(0),
+			int64(0), int64(0), int64(0), int64(0),
+			int64(0), now,
+			int64(1), "u", "",
+		))
 	w := doReq(muxForFav(h), "GET", "/api/v1/favorites/5/videos", "", map[string]string{"X-User-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 	require.NoError(t, mock.ExpectationsWereMet())

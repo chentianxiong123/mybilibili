@@ -63,7 +63,7 @@ func TestManuscriptHandler_ListRecommended(t *testing.T) {
 	h, mock := newManuscriptHandlerWithMocks(t)
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE status = 3 ORDER BY upload_time`).WillReturnRows(sqlmock.NewRows(manuscriptCols))
+	mock.ExpectQuery(`WITH _seed AS .+ SELECT .+ FROM manuscripts`).WillReturnRows(sqlmock.NewRows(manuscriptCols))
 
 	resp, err := h.ListRecommended(ctx, &pb.ListRecommendedRequest{UserId: 1})
 	require.NoError(t, err)
@@ -74,7 +74,7 @@ func TestManuscriptHandler_ListHot(t *testing.T) {
 	h, mock := newManuscriptHandlerWithMocks(t)
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE status = 3 ORDER BY view_count`).WillReturnRows(sqlmock.NewRows(manuscriptCols))
+	mock.ExpectQuery(`WITH _seed AS .+ SELECT .+ FROM manuscripts`).WillReturnRows(sqlmock.NewRows(manuscriptCols))
 
 	resp, err := h.ListHot(ctx, &pb.ListHotRequest{UserId: 1})
 	require.NoError(t, err)

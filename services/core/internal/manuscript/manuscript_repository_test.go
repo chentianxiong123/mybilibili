@@ -248,9 +248,9 @@ func TestListRecommended(t *testing.T) {
 
 	rows := sqlmock.NewRows(manuscriptCols)
 	scanManuscriptRow(rows)
-	mock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE status = 3 ORDER BY upload_time`).WillReturnRows(rows)
+	mock.ExpectQuery(`WITH _seed AS .+ SELECT .+ FROM manuscripts`).WillReturnRows(rows)
 
-	list, err := repo.ListRecommended(ctx)
+	list, err := repo.ListRecommended(ctx, 0)
 	require.NoError(t, err)
 	assert.Len(t, list, 1)
 }
@@ -259,10 +259,10 @@ func TestListRecommended_Error(t *testing.T) {
 	repo, mock := newRepo(t)
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE status = 3 ORDER BY upload_time`).
+	mock.ExpectQuery(`WITH _seed AS .+ SELECT .+ FROM manuscripts`).
 		WillReturnError(sql.ErrConnDone)
 
-	_, err := repo.ListRecommended(ctx)
+	_, err := repo.ListRecommended(ctx, 0)
 	assert.Error(t, err)
 }
 
@@ -272,9 +272,9 @@ func TestListHot(t *testing.T) {
 
 	rows := sqlmock.NewRows(manuscriptCols)
 	scanManuscriptRow(rows)
-	mock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE status = 3 ORDER BY view_count`).WillReturnRows(rows)
+	mock.ExpectQuery(`WITH _seed AS .+ SELECT .+ FROM manuscripts`).WillReturnRows(rows)
 
-	list, err := repo.ListHot(ctx)
+	list, err := repo.ListHot(ctx, 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, list, 1)
 }
@@ -283,10 +283,10 @@ func TestListHot_Error(t *testing.T) {
 	repo, mock := newRepo(t)
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE status = 3 ORDER BY view_count`).
+	mock.ExpectQuery(`WITH _seed AS .+ SELECT .+ FROM manuscripts`).
 		WillReturnError(sql.ErrConnDone)
 
-	_, err := repo.ListHot(ctx)
+	_, err := repo.ListHot(ctx, 0, 0)
 	assert.Error(t, err)
 }
 

@@ -25,9 +25,19 @@ func newHTTPHandler(t *testing.T) (*ManuscriptHTTPHandler, sqlmock.Sqlmock) {
 	require.NoError(t, err)
 	t.Cleanup(func() { db.Close() })
 
-	userDB, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+	userDB, userMock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
 	require.NoError(t, err)
 	t.Cleanup(func() { userDB.Close() })
+	// user 表查找默认返回完整 19 字段（buildManuscriptInfo 容忍 err，只用 err==nil 分支）
+	userMock.ExpectQuery(`.+`).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "username", "password", "nickname", "email", "avatar",
+			"level", "experience", "signature", "bio",
+			"follower_count", "following_count", "liked_count",
+			"status", "coin_count", "gender", "created_at", "updated_at",
+		}).AddRow(int64(1), "u", "", "u", "", "", int32(1), int64(0), "", "",
+			int32(0), int32(0), int32(0), int32(1), int32(0), int32(0), time.Now(), time.Now()))
+	userMock.MatchExpectationsInOrder(false)
 
 	commentDB, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
 	require.NoError(t, err)
@@ -206,7 +216,7 @@ func TestHTTPHandler_Recommended(t *testing.T) {
 	h, mock := newHTTPHandler(t)
 	now := time.Now()
 
-	mock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE status = 3 ORDER BY upload_time`).
+	mock.ExpectQuery(`WITH _seed AS .+ SELECT .+ FROM manuscripts`).
 		WillReturnRows(sqlmock.NewRows(manuscriptCols).
 			AddRow(1, "t", "d", "c.jpg", int64(10), int64(1),
 				int64(0), int64(0), int64(0), int64(0), int64(0),
@@ -225,7 +235,7 @@ func TestHTTPHandler_Hot(t *testing.T) {
 	h, mock := newHTTPHandler(t)
 	now := time.Now()
 
-	mock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE status = 3 ORDER BY view_count`).
+	mock.ExpectQuery(`WITH _seed AS .+ SELECT .+ FROM manuscripts`).
 		WillReturnRows(sqlmock.NewRows(manuscriptCols).
 			AddRow(1, "t", "d", "c.jpg", int64(10), int64(1),
 				int64(100), int64(0), int64(0), int64(0), int64(0),
@@ -244,6 +254,8 @@ func TestHTTPHandler_ManuscriptDetail(t *testing.T) {
 	h, mock := newHTTPHandler(t)
 	now := time.Now()
 
+	mock.ExpectQuery(`SELECT id FROM manuscripts WHERE id`).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(1)))
 	mock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE id`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows(manuscriptCols).
 			AddRow(1, "t", "d", "c.jpg", int64(10), int64(1),
@@ -251,6 +263,7 @@ func TestHTTPHandler_ManuscriptDetail(t *testing.T) {
 				int64(0), int64(0), int32(3), int32(1), "",
 				now, int64(0), now, now, "", int32(0), "local"))
 	mock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
+	mock.ExpectQuery(`SELECT is_vertical FROM videos`).WillReturnRows(sqlmock.NewRows([]string{"is_vertical"}).AddRow(0))
 	mock.ExpectExec(`UPDATE manuscripts SET view_count`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`INSERT INTO manuscript_daily_metrics`).WillReturnResult(sqlmock.NewResult(0, 1))
 
