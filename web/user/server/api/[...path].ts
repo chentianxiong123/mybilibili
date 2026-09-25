@@ -117,6 +117,10 @@ function adaptUrl(url: string, query: URLSearchParams): { target: string; port: 
       return { target: real, port: pickUpstream(real), qs }
     }
   }
+  // 搜索历史：接口在 core（8080），不走 search 服务的 /search/ 前缀
+  if (url.startsWith('/search/history')) {
+    return { target: '/search/history', port: `http://${CORE_HOST}:8080`, qs: '' }
+  }
   return { target: url, port: pickUpstream(url), qs: '' }
 }
 

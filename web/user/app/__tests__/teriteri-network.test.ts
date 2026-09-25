@@ -303,10 +303,25 @@ describe('adaptResponse', () => {
   })
 
   describe('hot search', () => {
-    it('passes through hot search array', () => {
-      const data = ['keyword1', 'keyword2']
+    it('maps backend {keyword, rank, score} to teriteri {content, type}', () => {
+      const data = [
+        { keyword: 'keyword1', rank: 1, score: 100 },
+        { keyword: 'keyword2', rank: 2, score: 50 }
+      ]
       const result = adaptResponse('/search/hot/get', data)
-      expect(result.data).toEqual(['keyword1', 'keyword2'])
+      expect(result.data).toEqual([
+        { content: 'keyword1', rank: 1, score: 100, type: 0 },
+        { content: 'keyword2', rank: 2, score: 50, type: 0 }
+      ])
+    })
+
+    it('filters out empty keywords', () => {
+      const data = [
+        { keyword: '', rank: 1, score: 111 },
+        { keyword: 'OpenClaw', rank: 2, score: 79 }
+      ]
+      const result = adaptResponse('/search/hot/get', data)
+      expect(result.data).toEqual([{ content: 'OpenClaw', rank: 2, score: 79, type: 0 }])
     })
   })
 

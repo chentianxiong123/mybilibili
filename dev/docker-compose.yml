@@ -187,7 +187,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.search.entrypoints=web"
-      - "traefik.http.routers.search.rule=(PathPrefix(`/api/v1/search/`) || PathPrefix(`/api/v1/recommend/`) || PathPrefix(`/api/v1/creator/stats/`) || PathPrefix(`/api/v1/profile/`))"
+      - "traefik.http.routers.search.rule=(PathPrefix(`/api/v1/search/`) || PathPrefix(`/api/v1/recommend/`) || PathPrefix(`/api/v1/creator/stats/`) || PathPrefix(`/api/v1/profile/`)) && !PathPrefix(`/api/v1/search/history`)"
       - "traefik.http.services.search.loadbalancer.server.port=8084"
       - "traefik.http.routers.search.priority=10"
     depends_on:

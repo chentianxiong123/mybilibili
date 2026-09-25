@@ -55,6 +55,15 @@ export const searchApi = {
   },
 
   /**
+   * 添加搜索历史（后端去重置顶）
+   * @param {string} keyword - 搜索关键词
+   * @returns {Promise}
+   */
+  addSearchHistory: (keyword) => {
+    return api.post('/search/history', { keyword })
+  },
+
+  /**
    * 清除搜索历史
    * @returns {Promise}
    */

@@ -403,6 +403,7 @@
     import HistoryDropdown from '../dropdowns/HistoryDropdown.vue';
     import { ElMessage } from 'element-plus';
     import { handleNum, handleLevel, highlightKeyword } from '@/teriteri-src/utils/utils';
+    import searchApi from '@/api/search';
 
     export default {
         name: "HeaderBarIndex",
@@ -548,17 +549,18 @@
                 }
             },
 
-            // 将搜索历史存到浏览器
+            // 将搜索历史提交到后端
             saveToLocalStorage() {
-                localStorage.setItem("historiesSearch", JSON.stringify(this.histories));
+                if (this.histories.length > 0) {
+                    searchApi.addSearchHistory(this.histories[0]);
+                }
             },
 
-            // 从浏览器中加载搜索历史
-            loadFromLocalStorage() {
-                const storedList = localStorage.getItem("historiesSearch");
-                // console.log("浏览器中的搜索历史: ", storedList);
-                if (storedList) {
-                    this.histories = JSON.parse(storedList);
+            // 从后端加载搜索历史
+            async loadFromLocalStorage() {
+                const res = await searchApi.getSearchHistory();
+                if (res && res.data) {
+                    this.histories = res.data;
                 }
             },
 
@@ -571,15 +573,18 @@
             },
 
             // 删除单个搜索历史
-            removeHistory(index) {
+            async removeHistory(index) {
                 this.histories.splice(index, 1);
-                this.saveToLocalStorage();
+                await searchApi.clearSearchHistory();
+                for (const kw of [...this.histories].reverse()) {
+                    await searchApi.addSearchHistory(kw);
+                }
             },
 
             // 清空全部搜索历史
-            removeAllHistories() {
+            async removeAllHistories() {
                 this.histories = [];
-                localStorage.removeItem("historiesSearch");
+                await searchApi.clearSearchHistory();
             },
 
             // 点击条目搜索

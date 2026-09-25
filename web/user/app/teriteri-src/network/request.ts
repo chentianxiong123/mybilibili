@@ -180,9 +180,18 @@ function adaptResponse(originalUrl: string, data: any) {
     return { code: 200, data: channels, message: 'ok' }
   }
 
-  // 热搜(/search/hot/get) → 保持数组
+  // 热搜(/search/hot/get) → 保持数组, 后端 {keyword, rank, score} → teriteri {content, type}
   if (String(originalUrl || '').includes('/search/hot')) {
-    return { code: 200, data: Array.isArray(data) ? data : (data || []), message: 'ok' }
+    const raw = Array.isArray(data) ? data : (data || [])
+    const adapted = raw
+      .filter((c: any) => c && (c.keyword || c.content))
+      .map((c: any, idx: number) => ({
+        content: c.content || c.keyword || '',
+        rank: c.rank || idx + 1,
+        score: c.score || 0,
+        type: c.type || 0,
+      }))
+    return { code: 200, data: adapted, message: 'ok' }
   }
 
   // 搜索视频 → {video, stats, user}
@@ -375,6 +384,59 @@ export function post<T = any>(url: string, data?: any, headers?: any): Promise<A
 
   if (headers) return instance.post(url, data, headers)
   return instance.post(url, data)
+}
+
+export function del<T = any>(url: string, config?: RequestConfig): Promise<AxiosResponse<T>> {
+  const instance = axios.create({
+    baseURL: '/api',
+    timeout: 30000,
+    withCredentials: true
+  })
+
+  instance.interceptors.response.use(
+    (origResponse) => {
+      if (origResponse.data && origResponse.data.code !== undefined && origResponse.data.code !== 200) {
+        ElMessage.error(origResponse.data.message || '未知错误, 请打开控制台查看')
+      }
+      return origResponse
+    },
+    (err) => {
+      console.log(err)
+      handleAuthFailure(err)
+      return Promise.reject(err)
+    }
+  )
+
+  instance.defaults.withCredentials = true
+
+  if (config && config.params) return instance.delete(url, { params: config.params })
+  return instance.delete(url)
+}
+
+// 通用请求（支持任意 method，如 DELETE /manuscript/{id}/like）
+// 与 post/del 相同的错误处理，但把响应 body 原样返回（不包一层 adapt）
+export function request<T = any>(config: RequestConfig & { method?: string; data?: any }): Promise<AxiosResponse<T>> {
+  const instance = axios.create({
+    baseURL: '/api',
+    timeout: 30000,
+    withCredentials: true
+  })
+
+  instance.interceptors.response.use(
+    (origResponse) => {
+      if (origResponse.data && origResponse.data.code !== undefined && origResponse.data.code !== 200) {
+        ElMessage.error(origResponse.data.message || '未知错误, 请打开控制台查看')
+      }
+      return origResponse
+    },
+    (err) => {
+      console.log(err)
+      handleAuthFailure(err)
+      return Promise.reject(err)
+    }
+  )
+
+  return instance.request(config)
 }
 
 export { adaptVideo, adaptUser, adaptStats, adaptCard, adaptDetail, adaptResponse, isListUrl, isDetailUrl, snakeToCamel }
