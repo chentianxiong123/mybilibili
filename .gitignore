@@ -3,15 +3,26 @@
 *.exe
 *.test
 *.out
+/coverage.out
+*.cover
+*.coverprofile
+
+# Go 编译产物（每个服务根目录的二进制文件）
+# 注意：路径必须以 / 开头才匹配根目录
 /core
-/media
-tmp/
-tmp-*/
-ai
-msg-danmaku
-search
-studio
-work
+/search
+/msg-danmaku
+/ai
+/studio
+/work
+/live
+/bili-proxy
+
+# Go build 临时目录（任何 tmp-<service>/main）
+/tmp-*/
+/tmp/
+# 兜底：任何 tmp-xxx/ 目录里的 main 都不要
+tmp-*/main
 
 # Node
 node_modules/
@@ -52,4 +63,7 @@ mobile/ns/package-lock.json
 
 # NFS temporary files
 .nfs*
+
+# 一次性 filter-repo 备份（170M），保留在本地作 emergency restore 用，不进仓库
+.git.bak-before-filter-repo
 
