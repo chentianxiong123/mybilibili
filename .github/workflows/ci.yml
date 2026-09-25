@@ -33,109 +33,82 @@ env:
 
 jobs:
   # ---------- 静态检查 + 编译 + 单元测试（门禁） ----------
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+# CI 与本地使用同一份 scripts/test.sh —— 禁止维护两套测试逻辑
+test:
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.work
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: go.work
 
-      - name: go vet（逐模块）
-        run: |
-          for d in services/*/ ; do
-            [ -f "$d/go.mod" ] && (cd "$d" && echo "vet $d" && go vet ./...)
-          done
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
 
-      - name: go build（逐模块）
-        run: |
-          for d in services/*/ ; do
-            [ -f "$d/go.mod" ] && (cd "$d" && echo "build $d" && go build ./...)
-          done
-
-      - name: go test（逐模块）
-        run: |
-          for d in services/*/ ; do
-            [ -f "$d/go.mod" ] && (cd "$d" && echo "test $d" && go test -count=1 ./...)
-          done
-          go test -count=1 ./shared/pkg/...
-
-      - name: 覆盖率门禁（≥70%）
-        run: |
-          THRESHOLD=70
-          FAIL=0
-          for d in shared/pkg services/core services/search services/ai services/msg-danmaku services/live services/studio services/work services/bili-proxy; do
-            if [ -f "$d/go.mod" ]; then
-              pct=$(cd "$d" && go test -count=1 -coverprofile=/tmp/cov.out ./... 2>&1 | grep "^ok" | awk -F'coverage: ' '{print $2}' | awk -F'%' '{s+=$1; n++}END{if(n>0) printf "%.0f", s/n; else print "0"}')
-              if [ "$pct" -lt "$THRESHOLD" ] 2>/dev/null; then
-                echo "✗ $d: ${pct}% < ${THRESHOLD}%"
-                FAIL=1
-              else
-                echo "✓ $d: ${pct}%"
-              fi
-            fi
-          done
-          if [ "$FAIL" -eq 1 ]; then
-            echo "✗ 覆盖率低于阈值 ${THRESHOLD}%，CI 失败"
-            exit 1
-          fi
+    - name: 后端 Go 单测 + 覆盖率门禁（加权）
+      run: bash ./scripts/test.sh backend-cov
 
   # ---------- 前端单元测试 ----------
-  frontend-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+frontend-test:
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: |
-            web/user/package-lock.json
-            web/admin/package-lock.json
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
 
-      - name: web/user 测试
-        run: |
-          cd web/user
-          npm ci --prefer-offline
-          npx vitest run
-
-      - name: web/admin 测试
-        run: |
-          cd web/admin
-          npm ci --prefer-offline
-          npx vitest run
+    - name: 前端 vitest（web/user + web/admin）
+      run: bash ./scripts/test.sh frontend
 
   # ---------- 集成测试（需要 docker compose） ----------
-  integration-test:
-    needs: [test, frontend-test]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+integration-test:
+  needs: [test, frontend-test]
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.work
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: go.work
 
-      - name: 启动测试环境
-        run: |
-          cd tests/integration
-          docker compose -f docker-compose.test.yml up -d --wait
+    - name: 启动测试环境
+      run: |
+        cd tests/integration
+        docker compose -f docker-compose.test.yml up -d --wait
 
-      - name: 等待服务就绪
-        run: sleep 15
+    - name: 等待服务就绪
+      run: sleep 15
 
-      - name: 跑集成测试
-        run: go test -tags=integration -count=1 -v ./tests/integration/...
+    - name: 跑集成测试（统一入口）
+      run: bash ./scripts/test.sh integration
 
-      - name: 清理
-        if: always()
-        run: cd tests/integration && docker compose -f docker-compose.test.yml down -v
+    - name: 清理
+      if: always()
+      run: cd tests/integration && docker compose -f docker-compose.test.yml down -v
+
+  # ---------- Python E2E ----------
+  # 当前在 CI 中暂不启用（需要 CI runner 起完整 dev/docker-compose.yml）。
+  # 本地入口：bash ./scripts/test.sh e2e
+  # 启用方法：uncomment 下面整块 + 把 build-backend.needs / build-frontend.needs 加它
+  # e2e-test:
+  #   needs: [test, frontend-test, integration-test]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-python@v5
+  #       with: { python-version: '3.13' }
+  #     - run: pip install pytest playwright pytest-playwright
+  #     - name: 启动后端
+  #       run: docker compose -f dev/docker-compose.yml up -d --wait
+  #     - run: sleep 30
+  #     - run: bash ./scripts/test.sh e2e
 
   # ---------- 后端 8 个服务 ----------
   build-backend:
-    needs: test
+    needs: [test, frontend-test, integration-test]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -180,7 +153,7 @@ jobs:
 
   # ---------- 前端 2 应用 (wap 将来打包为 App，不建镜像) ----------
   build-frontend:
-    needs: test
+    needs: [test, frontend-test, integration-test]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
