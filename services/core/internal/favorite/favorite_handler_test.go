@@ -36,7 +36,7 @@ func TestHandleFavorites_401_NoUser(t *testing.T) {
 func TestHandleFavorites_ListEmpty(t *testing.T) {
 	h, mock := newMockFavorite(t)
 	mock.ExpectQuery(`SELECT f.id, f.name`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "created_at", "updated_at", "video_count"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "created_at", "updated_at", "video_count", "cover"}))
 
 	mux := http.NewServeMux()
 	h.Register(mux)
@@ -54,8 +54,8 @@ func TestHandleFavorites_ListWithFolder(t *testing.T) {
 	h, mock := newMockFavorite(t)
 	createdAt := time.Now().UTC().Truncate(time.Second)
 	mock.ExpectQuery(`SELECT f.id, f.name`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "created_at", "updated_at", "video_count"}).
-			AddRow(int64(5), "我的收藏", createdAt, createdAt, int64(12)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "created_at", "updated_at", "video_count", "cover"}).
+			AddRow(int64(5), "我的收藏", createdAt, createdAt, int64(12), "/covers/1/cover.webp"))
 
 	mux := http.NewServeMux()
 	h.Register(mux)
@@ -67,6 +67,7 @@ func TestHandleFavorites_ListWithFolder(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `"name":"我的收藏"`)
 	assert.Contains(t, rec.Body.String(), `"video_count":12`)
+	assert.Contains(t, rec.Body.String(), `"/covers/1/cover.webp"`)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

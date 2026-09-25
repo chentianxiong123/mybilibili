@@ -584,8 +584,8 @@ func TestHTTPHandler_MeStats(t *testing.T) {
 func TestHTTPHandler_FavoriteFolders_Get(t *testing.T) {
 	h, mock := newHTTPHandler(t)
 
-	mock.ExpectQuery(`SELECT f.id, f.name, COALESCE`).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "cnt"}).
-		AddRow(int64(1), "my folder", int64(5)))
+	mock.ExpectQuery(`SELECT f.id, f.name, COALESCE`).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "cnt", "cover"}).
+		AddRow(int64(1), "my folder", int64(5), "/covers/1/cover.webp"))
 
 	req := newReq("GET", "/api/v1/manuscript/favorite/folders")
 	w := httptest.NewRecorder()

@@ -1100,9 +1100,17 @@ func (h *ManuscriptHTTPHandler) handleFavoriteFolders(w http.ResponseWriter, r *
 	switch r.Method {
 	case http.MethodGet:
 		rows, err := h.db.QueryContext(r.Context(),
-			`SELECT f.id, f.name, COALESCE(fc.cnt,0)
+			`SELECT f.id, f.name, COALESCE(fc.cnt,0), COALESCE(fm.cover_url,'')
 			 FROM favorite_folders f
 			 LEFT JOIN (SELECT folder_id, COUNT(*) AS cnt FROM favorite_folder_videos GROUP BY folder_id) fc ON fc.folder_id = f.id
+			 LEFT JOIN LATERAL (
+			     SELECT m.cover_url
+			     FROM favorite_folder_videos ffv
+			     JOIN manuscripts m ON m.id = ffv.manuscript_id
+			     WHERE ffv.folder_id = f.id
+			     ORDER BY ffv.created_at ASC, ffv.id ASC
+			     LIMIT 1
+			 ) fm ON true
 			 WHERE f.user_id = $1 ORDER BY f.created_at DESC`, uid)
 		if err != nil {
 			errors.WriteHTTPError(w, errors.ErrInternal("database error"))
@@ -1113,11 +1121,12 @@ func (h *ManuscriptHTTPHandler) handleFavoriteFolders(w http.ResponseWriter, r *
 			ID         int64  `json:"id"`
 			Name       string `json:"name"`
 			VideoCount int64  `json:"video_count"`
+			Cover      string `json:"cover"`
 		}
 		list := []folder{}
 		for rows.Next() {
 			var f folder
-			_ = rows.Scan(&f.ID, &f.Name, &f.VideoCount)
+			_ = rows.Scan(&f.ID, &f.Name, &f.VideoCount, &f.Cover)
 			list = append(list, f)
 		}
 		httputil.WriteOK(w, list)

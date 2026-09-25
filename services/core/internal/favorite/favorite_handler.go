@@ -60,13 +60,22 @@ func (h *FavoriteHandler) handleFavorites(w http.ResponseWriter, r *http.Request
 func (h *FavoriteHandler) listFolders(w http.ResponseWriter, r *http.Request, userID int64) {
 	rows, err := h.db.QueryContext(r.Context(),
 		`SELECT f.id, f.name, f.created_at, f.updated_at,
-		        COALESCE(fc.cnt, 0) AS video_count
+		        COALESCE(fc.cnt, 0) AS video_count,
+		        COALESCE(fm.cover_url, '') AS cover
 		 FROM favorite_folders f
 		 LEFT JOIN (
 		     SELECT folder_id, COUNT(*) AS cnt
 		     FROM favorite_folder_videos
 		     GROUP BY folder_id
 		 ) fc ON fc.folder_id = f.id
+		 LEFT JOIN LATERAL (
+		     SELECT m.cover_url
+		     FROM favorite_folder_videos ffv
+		     JOIN manuscripts m ON m.id = ffv.manuscript_id
+		     WHERE ffv.folder_id = f.id
+		     ORDER BY ffv.created_at ASC, ffv.id ASC
+		     LIMIT 1
+		 ) fm ON true
 		 WHERE f.user_id = $1
 		 ORDER BY f.created_at DESC`, userID)
 	if err != nil {
@@ -80,6 +89,7 @@ func (h *FavoriteHandler) listFolders(w http.ResponseWriter, r *http.Request, us
 		UserID     int64  `json:"user_id"`
 		Name       string `json:"name"`
 		VideoCount int64  `json:"video_count"`
+		Cover      string `json:"cover"`
 		CreatedAt  string `json:"created_at"`
 		UpdatedAt  string `json:"updated_at"`
 	}
@@ -87,7 +97,7 @@ func (h *FavoriteHandler) listFolders(w http.ResponseWriter, r *http.Request, us
 	for rows.Next() {
 		var f folder
 		var createdAt, updatedAt time.Time
-		if err := rows.Scan(&f.ID, &f.Name, &createdAt, &updatedAt, &f.VideoCount); err != nil {
+		if err := rows.Scan(&f.ID, &f.Name, &createdAt, &updatedAt, &f.VideoCount, &f.Cover); err != nil {
 			continue
 		}
 		f.UserID = userID
