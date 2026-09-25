@@ -171,13 +171,13 @@ let inTimer;
 }
 
 @keyframes fade-in-bottom {
-    0% { opacity: 0; transform: translate3d(-50%,-5px,0); }
-    100% { opacity: 1; transform: translate3d(-50%,0,0); }
+    0% { opacity: 0; transform: translateY(-5px); }
+    100% { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fade-out-bottom {
-    0% { opacity: 1; transform: translate3d(-50%,0,0); }
-    100% { opacity: 0; transform: translate3d(-50%,-5px,0); }
+    0% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-5px); }
 }
 
 .popHide-right {
@@ -191,13 +191,13 @@ let inTimer;
 }
 
 @keyframes fade-in-right {
-    0% { opacity: 0; transform: translate3d(-5px,-50%,0); }
-    100% { opacity: 1; transform: translate3d(0,-50%,0); }
+    0% { opacity: 0; transform: translateX(-5px); }
+    100% { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes fade-out-right {
-    0% { opacity: 1; transform: translate3d(0,-50%,0); }
-    100% { opacity: 0; transform: translate3d(-5px,-50%,0); }
+    0% { opacity: 1; transform: translateX(0); }
+    100% { opacity: 0; transform: translateX(-5px); }
 }
 
 .popHide-top {
@@ -211,13 +211,13 @@ let inTimer;
 }
 
 @keyframes fade-in-top {
-    0% { opacity: 0; transform: translate3d(-50%,5px,0); }
-    100% { opacity: 1; transform: translate3d(-50%,0,0); }
+    0% { opacity: 0; transform: translateY(5px); }
+    100% { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fade-out-top {
-    0% { opacity: 1; transform: translate3d(-50%,0,0); }
-    100% { opacity: 0; transform: translate3d(-50%,5px,0); }
+    0% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(5px); }
 }
 
 .popHide-left {
@@ -231,12 +231,12 @@ let inTimer;
 }
 
 @keyframes fade-in-left {
-    0% { opacity: 0; transform: translate3d(5px,-50%,0); }
-    100% { opacity: 1; transform: translate3d(0,-50%,0); }
+    0% { opacity: 0; transform: translateX(5px); }
+    100% { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes fade-out-left {
-    0% { opacity: 1; transform: translate3d(0,-50%,0); }
-    100% { opacity: 0; transform: translate3d(5px,-50%,0); }
+    0% { opacity: 1; transform: translateX(0); }
+    100% { opacity: 0; transform: translateX(5px); }
 }
 </style>
