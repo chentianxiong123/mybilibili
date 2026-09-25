@@ -23,7 +23,9 @@ const (
 const (
 	accessTokenMaxAge  = 24 * time.Hour
 	refreshTokenMaxAge = 30 * 24 * time.Hour
-	userInfoMaxAge     = 7 * 24 * time.Hour
+	// user_info 是 JS 能读到的登录态信号，必须活得和 refresh_token 一样久，
+	// 否则会话还有效、前端却已经"看着未登录"。
+	userInfoMaxAge = 30 * 24 * time.Hour
 )
 
 // CookieSecure 由 COOKIE_SECURE=true 开启。

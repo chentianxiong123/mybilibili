@@ -66,9 +66,7 @@ export default {
             const formData = new FormData();
             formData.append("pw", this.password);
             formData.append("npw", this.newPassword);
-            const res = await this.$post("/user/password/update", formData, {
-                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
-            });
+            const res = await this.$post("/user/password/update", formData);
             if (!res.data) {
                 this.isLoading = false;
                 return;

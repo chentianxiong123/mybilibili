@@ -38,7 +38,7 @@ describe('adminAiApi.sendMessage', () => {
     mocks.safeStorage.getItem.mockReturnValue(null)
   })
 
-  it('未登录时 headers 中 token 为空', async () => {
+  it('凭证走 HttpOnly cookie，不设 Authorization，也不自塞身份头', async () => {
     mocks.fetch.mockResolvedValueOnce(buildSSEResponse(['']))
     const handlers = { onData: vi.fn(), onDone: vi.fn(), onError: vi.fn(), onToolCall: vi.fn() }
     await adminAiApi.sendMessage('hello', handlers)
@@ -46,23 +46,23 @@ describe('adminAiApi.sendMessage', () => {
     const opts = mocks.fetch.mock.calls[0][1] as RequestInit
     expect(opts.method).toBe('POST')
     const headers = opts.headers as Record<string, string>
-    expect(headers['Authorization']).toBe('')
+    // 能被 JS 读出来塞进 Authorization 的东西，XSS 也能读——必须为空
+    expect(headers['Authorization']).toBeUndefined()
     expect(headers['X-Admin-Id']).toBeUndefined()
+    expect(headers['X-User-Id']).toBeUndefined()
     expect(opts.body).toBe(JSON.stringify({ content: 'hello' }))
   })
 
-  it('有 token 时填入 Authorization Bearer', async () => {
+  it('即使 localStorage 有 admin_token 也不带进请求头', async () => {
     mocks.safeStorage.getItem.mockImplementation((k: string) => {
       if (k === 'admin_token') return 'admin_t'
-      if (k === 'admin_id') return '9'
       return null
     })
     mocks.fetch.mockResolvedValueOnce(buildSSEResponse(['']))
     await adminAiApi.sendMessage('hi')
     const opts = mocks.fetch.mock.calls[0][1] as RequestInit
     const headers = opts.headers as Record<string, string>
-    expect(headers['Authorization']).toBe('Bearer admin_t')
-    // 管理员身份由后端从验签 token 推导，客户端即使有 admin_id 也不得自塞 X-Admin-Id
+    expect(headers['Authorization']).toBeUndefined()
     expect(headers['X-Admin-Id']).toBeUndefined()
   })
 

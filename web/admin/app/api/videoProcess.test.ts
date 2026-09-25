@@ -58,18 +58,15 @@ describe('videoProcess api', () => {
     expect(requestMock.get).toHaveBeenCalledWith('/video/process/admin/statistics')
   })
 
-  it('getStreamUrl 无凭证时保持纯路径', () => {
+  it('getStreamUrl 永远是纯路径，不带任何凭证参数', () => {
     expect(getStreamUrl()).toBe('/api/v1/video/process/admin/stream')
   })
 
-  it('getStreamUrl 用 access_token 携带凭证（EventSource 无法设置请求头）', () => {
+  it('即使 localStorage 留着升级前的 admin_token 也不拼进 URL（令牌进 URL 会进访问日志）', () => {
     localStorageMock.setItem('admin_token', 'tok-abc')
-    expect(getStreamUrl()).toBe('/api/v1/video/process/admin/stream?access_token=tok-abc')
-  })
-
-  it('getStreamUrl 对特殊字符做 URL 编码', () => {
-    localStorageMock.setItem('admin_token', 'a+b/c=d')
-    expect(getStreamUrl()).toBe('/api/v1/video/process/admin/stream?access_token=a%2Bb%2Fc%3Dd')
+    expect(getStreamUrl()).toBe('/api/v1/video/process/admin/stream')
+    expect(getStreamUrl()).not.toContain('access_token')
+    expect(getStreamUrl()).not.toContain('tok-abc')
   })
 
   it('错误响应透传', async () => {

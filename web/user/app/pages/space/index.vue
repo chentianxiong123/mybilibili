@@ -1,17 +1,18 @@
 <template><div></div></template>
 
 <script lang="ts">
+import { hasAuthSession, getCurrentUserId } from "@/utils/auth.ts"
 export default {
     name: 'SpaceRedirect',
     async created() {
-        if (localStorage.getItem('teri_token')) {
+        if (hasAuthSession()) {
             try {
-                // 解析JWT获取当前用户uid
-                const w = localStorage.getItem('teri_token').split('.')[1];
-                const info = JSON.parse(atob(w));
-                this.$router.push(`/space/${info.sub}`);
+                // uid 来自可读的 user_info cookie（token 是 HttpOnly，JS 拿不到）
+                const uid = getCurrentUserId();
+                if (!uid) throw new Error('no uid');
+                this.$router.push(`/space/${uid}`);
             } catch (e) {
-                console.log('atob exception:', e);
+                console.log('resolve uid exception:', e);
                 this.$router.push('/');
             }
         } else {

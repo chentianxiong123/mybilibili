@@ -96,8 +96,7 @@ export default {
         // 更新窗口在线状态
         async updateOnline() {
             await this.$get("/msg/chat/online", {
-                params: { from: this.user.uid },
-                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
+                params: { from: this.user.uid }
             })
         },
         

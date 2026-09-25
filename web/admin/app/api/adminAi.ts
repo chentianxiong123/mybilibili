@@ -1,4 +1,3 @@
-import { getAdminToken } from '../utils/auth'
 
 const BASE_URL = '/api/v1'
 
@@ -24,14 +23,6 @@ function handleSSEEvent({ event, data }: { event: string, data: string }, callba
   }
 }
 
-function getAuthHeaders() {
-  const token = getAdminToken()
-  // 管理员身份只能由后端从已验签 token 推导，客户端自塞的 X-Admin-Id 会被丢弃
-  return {
-    'Authorization': token ? `Bearer ${token}` : ''
-  }
-}
-
 export const adminAiApi = {
   sendMessage(content: string, callbacks: any = {}) {
     const { onData, onDone, onError, onToolCall } = callbacks
@@ -39,7 +30,9 @@ export const adminAiApi = {
 
     fetch(`${BASE_URL}/ai/assistant/send`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      // 同源请求自动带上 HttpOnly 的 admin_token；客户端不再也不能塞 Authorization
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),
       signal: controller.signal
     })

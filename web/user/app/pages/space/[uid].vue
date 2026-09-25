@@ -159,6 +159,7 @@
 </template>
 
 <script lang="ts">
+import { hasAuthSession, getCurrentUserId } from "@/utils/auth.ts"
 import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue';
 import VAvatar from '@/components/teriteri/avatar/VAvatar.vue';
 import VLevel from '@/components/teriteri/UserCard/VLevel.vue';
@@ -242,14 +243,13 @@ export default {
         // 获取用户的收藏夹列表
         async getUserFavList(uid) {
             let res;
-            if (!localStorage.getItem("teri_token")) {
+            if (!hasAuthSession()) {
                 res = await this.$get("/favorite/get-all/visitor", {
                     params: { uid: uid },
                 });
             } else {
                 res = await this.$get("/favorite/get-all/user", {
-                    params: { uid: uid },
-                    headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
+                    params: { uid: uid }
                 });
             }
             if (!res.data) return;
@@ -353,14 +353,14 @@ export default {
     },
     async created() {
         if (this.$route.path === "/space" || this.$route.path === "/space/") {
-            if (localStorage.getItem("teri_token")) {
+            if (hasAuthSession()) {
                 try {
-                    // 解析JWT获取当前用户uid
-                    const w = localStorage.getItem("teri_token").split('.')[1];
-                    const info = JSON.parse(atob(w));
-                    this.$router.push(`/space/${info.sub}`);
+                    // uid 来自可读的 user_info cookie（token 是 HttpOnly，JS 拿不到）
+                    const uid = getCurrentUserId();
+                    if (!uid) throw new Error("no uid");
+                    this.$router.push(`/space/${uid}`);
                 } catch (e) {
-                    console.log("atob exception:", e)
+                    console.log("resolve uid exception:", e)
                     this.$router.push("/");
                 }
             } else {

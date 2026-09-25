@@ -133,6 +133,7 @@
 </template>
 
 <script lang="ts">
+import { hasAuthSession } from "@/utils/auth.ts"
 import { handleTime, handleNum, handleDate } from '@/teriteri-src/utils/utils';
 
 export default {
@@ -172,15 +173,13 @@ export default {
         // 获取用户收藏夹
         async getFavList() {
             let res;
-            const token = localStorage.getItem("teri_token");
-            if (!token) {
+            if (!hasAuthSession()) {
                 res = await this.$get("/favorite/get-all/visitor", {
                     params: { uid: this.uid },
                 });
             } else {
                 res = await this.$get("/favorite/get-all/user", {
-                    params: { uid: this.uid },
-                    headers: { Authorization: "Bearer " + token }
+                    params: { uid: this.uid }
                 });
             }
             if (!res.data || !res.data.data) return;
@@ -194,8 +193,7 @@ export default {
 
         // 获取用户最近点赞的视频（仅登录后请求，未登录不发起避免 401）
         async getLoveVideos() {
-            const token = localStorage.getItem("teri_token");
-            if (!token) return;
+            if (!hasAuthSession()) return;
             const config: any = {
                 params: {
                     uid: this.uid,
@@ -203,7 +201,6 @@ export default {
                     quantity: 20
                 }
             };
-            config.headers = { Authorization: "Bearer " + token };
             const res = await this.$get("/video/user-love", config);
             if (!res.data) return;
             this.loveVideos = res.data.data;

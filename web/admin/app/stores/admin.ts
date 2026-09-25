@@ -1,10 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { adminLogin } from '@/api/admin'
+import { clearServerSession } from '@/api/session'
+import { scrubCredentials } from '@/utils/auth'
 
 export const useAdminStore = defineStore('admin', () => {
-  const token = ref(localStorage.getItem('admin_token') || '')
-  const userInfo = ref(JSON.parse(localStorage.getItem('admin_user')) || null)
+  // 凭证 admin_token 是 HttpOnly cookie，store 里只留展示与授权信息
+  const userInfo = ref(scrubCredentials(JSON.parse(localStorage.getItem('admin_user')) || null))
   const role = ref(localStorage.getItem('admin_role') || '')
   const permissions = ref(JSON.parse(localStorage.getItem('admin_permissions') || '[]'))
 
@@ -12,13 +14,15 @@ export const useAdminStore = defineStore('admin', () => {
     try {
       const res = await adminLogin(loginData)
       if (res.code === 200 || res.success) {
-        token.value = res.data.token || res.token
-        userInfo.value = res.data.adminUser || res.data.user || res.user || { username: loginData.username }
+        // 后台登录响应给的是 admin_id/username/role，没有 adminUser 对象，
+        // 这里拼出一份展示信息——它同时是前端判断登录态的唯一信号。
+        const adminId = res.data.adminUser?.id || res.data.user?.id || res.data.admin_id || res.data.adminId || null
+        userInfo.value = res.data.adminUser || res.data.user || res.user
+          || { id: adminId, username: res.data.username || loginData.username }
         role.value = res.data.role || '管理员'
         permissions.value = res.data.permissions || []
-        const adminId = res.data.adminUser?.id || res.data.user?.id || null
-        localStorage.setItem('admin_token', token.value)
-        localStorage.setItem('admin_user', JSON.stringify(userInfo.value))
+        // admin_user 会被 persist，登录响应里的 token 不能跟着进去
+        localStorage.setItem('admin_user', JSON.stringify(scrubCredentials(userInfo.value)))
         localStorage.setItem('admin_role', role.value)
         localStorage.setItem('admin_permissions', JSON.stringify(permissions.value))
         if (adminId) localStorage.setItem('admin_id', adminId)
@@ -31,11 +35,12 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   const logout = () => {
-    token.value = ''
+    // 先让服务端作废 HttpOnly 的 admin_token / admin_refresh，否则 cookie 会留到过期
+    void clearServerSession()
     userInfo.value = null
     role.value = ''
     permissions.value = []
-    localStorage.removeItem('admin_token')
+    localStorage.removeItem('admin_token') // 清掉升级前的遗留副本
     localStorage.removeItem('admin_user')
     localStorage.removeItem('admin_role')
     localStorage.removeItem('admin_permissions')
@@ -49,7 +54,6 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   return {
-    token,
     userInfo,
     role,
     permissions,

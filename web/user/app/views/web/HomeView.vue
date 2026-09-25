@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasAuthSession } from "@/utils/auth.ts"
 import { safeStorage } from '@/utils/safeStorage'
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import { View, Star } from '@element-plus/icons-vue'
@@ -70,8 +71,7 @@ const fetchVideoList = async () => {
     let manuscripts = null
 
     // 已登录用户尝试个性化推荐
-    const token = safeStorage.getItem("token")
-    if (token) {
+    if (hasAuthSession()) {
       try {
         const forYouResponse = await recommendApi.getRecommendedVideos(30)
         if (forYouResponse.code === 200 && forYouResponse.data && forYouResponse.data.length > 0) {

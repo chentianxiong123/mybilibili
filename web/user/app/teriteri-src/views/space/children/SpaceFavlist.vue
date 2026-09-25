@@ -250,9 +250,7 @@ export default {
             const formData = new FormData();
             formData.append("vid", info.vid);
             formData.append("fid", info.fid);
-            const res = await this.$post("/video/cancel-collect", formData, {
-                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
-            });
+            const res = await this.$post("/video/cancel-collect", formData);
             if (!res.data || res.data.code !== 200) return;
             this.favVideos = this.favVideos.filter(item => item.video.vid !== info.vid);
         },
@@ -307,7 +305,6 @@ export default {
                     { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
                 );
                 this.batchDeleting = true;
-                const token = localStorage.getItem('teri_token') || '';
                 let success = 0;
                 for (const vid of this.selectedSet) {
                     const item = this.favVideos.find(v => v.video.vid === vid);
@@ -316,9 +313,7 @@ export default {
                         const formData = new FormData();
                         formData.append('vid', String(vid));
                         formData.append('fid', String(item.info.fid));
-                        const res = await this.$post('/video/cancel-collect', formData, {
-                            headers: { Authorization: `Bearer ${token}` }
-                        });
+                        const res = await this.$post('/video/cancel-collect', formData);
                         if (res.data && res.data.code === 200) success++;
                     } catch (e) { /* skip */ }
                 }
@@ -367,11 +362,10 @@ export default {
             }
             this.favSaving = true;
             try {
-                const token = localStorage.getItem('teri_token') || '';
                 if (this.editingFav) {
                     const res = await this.$post(`/favorite/update/${this.editingFav.fid}`, 
                         JSON.stringify({ name }),
-                        { headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' } }
+                        { headers: { 'content-type': 'application/json' } }
                     );
                     if (res.data && res.data.code === 200) {
                         ElMessage.success('修改成功');
@@ -383,7 +377,7 @@ export default {
                 } else {
                     const res = await this.$post('/favorite/create', 
                         JSON.stringify({ name, visible: this.favForm.visible }),
-                        { headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' } }
+                        { headers: { 'content-type': 'application/json' } }
                     );
                     if (res.data && res.data.code === 200) {
                         ElMessage.success('创建成功');
@@ -408,10 +402,7 @@ export default {
                     cancelButtonText: '取消',
                     type: 'warning',
                 });
-                const token = localStorage.getItem('teri_token') || '';
-                const res = await this.$post(`/favorite/delete/${item.fid}`, null, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const res = await this.$post(`/favorite/delete/${item.fid}`, null);
                 if (res.data && res.data.code === 200) {
                     ElMessage.success('删除成功');
                     await this.loadFavList();

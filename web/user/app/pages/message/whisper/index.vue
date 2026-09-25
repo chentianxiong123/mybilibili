@@ -61,9 +61,6 @@ export default {
                 params: {
                     offset: this.$store.state.chatList.length
                 },
-                headers: {
-                    Authorization: "Bearer " + localStorage.getItem("teri_token"),
-                },
             });
             if (res.data && res.data.data) {
                 this.more = res.data.data.more;
@@ -76,11 +73,7 @@ export default {
 
         // 创建聊天
         async createChat() {
-            const res = await this.$get(`/msg/chat/create/${this.$route.params.mid}`, {
-                headers: {
-                    Authorization: "Bearer " + localStorage.getItem("teri_token"),
-                },
-            });
+            const res = await this.$get(`/msg/chat/create/${this.$route.params.mid}`);
             if (res.data.code === 200) {
                 if (res.data.data) {
                     // 新创建
@@ -104,11 +97,7 @@ export default {
                     this.$store.state.chatId = -1;
                 }
             }
-            await this.$get(`/msg/chat/delete/${uid}`, {
-                headers: {
-                    Authorization: "Bearer " + localStorage.getItem("teri_token"),
-                },
-            });
+            await this.$get(`/msg/chat/delete/${uid}`);
         },
 
 

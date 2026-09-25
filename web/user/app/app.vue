@@ -304,9 +304,9 @@ import { ref, provide, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, Lock, Message, Close, VideoPlay } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { userApi, captchaApi, emailCodeApi, startSilentRefresh, stopSilentRefresh } from './api/client'
+import { userApi, captchaApi, emailCodeApi } from './api/client'
 import api from './api/client'
-import { setAuthSession, getRefreshToken, getToken, hasAuthSession } from './utils/auth'
+import { setAuthSession, hasAuthSession } from './utils/auth'
 import { useZoomCompact } from './composables/useZoomCompact'
 import { onMounted, onUnmounted } from 'vue'
 import { useTeriteriStore } from '@/stores/teriteri'
@@ -345,9 +345,10 @@ async function getHotSearch() {
 
 async function initIMServer() {
   await store.connectWebSocket()
+  // 鉴权交给握手时的 HttpOnly cookie，帧里不再携带任何凭证
   const connection = JSON.stringify({
     code: 100,
-    content: 'Bearer ' + getToken()
+    content: 'connected'
   })
   if (store.ws) store.ws.send(connection)
 }
@@ -359,8 +360,7 @@ async function closeIMWebSocket() {
 async function getFavorites() {
   const { get } = await import('@/teriteri-src/network/request')
   const res = await get('/favorite/get-all/user', {
-    params: { uid: store.user.uid },
-    headers: { Authorization: 'Bearer ' + getToken() }
+    params: { uid: store.user.uid }
   })
   if (!res.data) return
   const defaultFav = res.data.data.find(item => item.type === 1)
@@ -372,8 +372,7 @@ async function getFavorites() {
 async function getLikeAndDisLikeComment() {
   const { get } = await import('@/teriteri-src/network/request')
   const res = await get('/comment/get-like-and-dislike', {
-    params: { uid: store.user.uid },
-    headers: { Authorization: 'Bearer ' + getToken() }
+    params: { uid: store.user.uid }
   })
   if (!res.data) return
   store.updateLikeComment(res.data.data.userLike)
@@ -597,7 +596,6 @@ const doLogin = (promise: any) => {
         refreshToken: data.refresh_token || data.refreshToken,
         user: data.user || data
       })
-      startSilentRefresh()
       showLoginDialog.value = false
       ElMessage.success('登录成功')
       loginForm.username = ''
@@ -753,13 +751,12 @@ let zoomBaseObserver: any
 // === 合并 onMounted ===
 onMounted(async () => {
   if (typeof window === 'undefined') return
-  // old: Token 刷新 + 缩放适配
-  if (getRefreshToken()) startSilentRefresh()
+  // old: 缩放适配（Token 续期已完全交给服务端：滑动续期 + 401 时 cookie 刷新）
   syncZoomBase()
   window.addEventListener('resize', syncZoomBase)
   zoomBaseObserver = new ResizeObserver(syncZoomBase)
   zoomBaseObserver.observe(document.documentElement)
-  // teriteri 初始化（hasAuthSession 覆盖 token 与老的 teri_token 两种会话）
+  // teriteri 初始化（登录态由可读的 user_info cookie 回答）
   if (hasAuthSession()) {
     await store.getPersonalInfo()
     await initIMServer()
@@ -780,7 +777,6 @@ onBeforeUnmount(async () => {
 onUnmounted(() => {
   window.removeEventListener('resize', syncZoomBase)
   zoomBaseObserver?.disconnect()
-  stopSilentRefresh()
 })
 
 // teriteri loading watch

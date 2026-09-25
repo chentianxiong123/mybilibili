@@ -27,12 +27,10 @@ function handleSSEEvent({ event, data }: { event?: string; data?: string }, call
   }
 }
 
+// admin_token 是 HttpOnly cookie，浏览器随同源请求自动带上；
+// 管理员身份由后端从已验签 cookie 推导，客户端自塞的 X-Admin-Id 会被丢弃。
 function getAuthHeaders() {
-  const token = safeStorage.getItem('admin_token')
-  // 管理员身份只能由后端从已验签 token 推导，客户端自塞的 X-Admin-Id 会被丢弃
-  return {
-    'Authorization': token ? `Bearer ${token}` : ''
-  }
+  return {}
 }
 
 export const adminAiApi = {

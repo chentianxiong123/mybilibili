@@ -248,8 +248,7 @@ export default {
             const formData = new FormData();
             formData.append("id", cid);
 
-            const res = await this.$post("/comment/delete", formData,
-                { headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") } })
+            const res = await this.$post("/comment/delete", formData)
 
             if (!res.data) return;
 
@@ -306,9 +305,7 @@ export default {
             formData.append("isLike", isLike);
             formData.append("isSet", isSet);
 
-            const res = await this.$post("/comment/love-or-not", formData, {
-                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
-            });
+            const res = await this.$post("/comment/love-or-not", formData);
             if (!res.data) return;
 
             // 更新store中的列表

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasAuthSession } from '@/utils/auth.ts'
 import { safeStorage } from '@/utils/safeStorage'
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -263,10 +264,9 @@ const goToSearch = (keyword) => {
 }
 
 const initUserInfo = () => {
-  const token = safeStorage.getItem("token")
   const userData = safeStorage.getItem('user')
 
-  if (token && userData) {
+  if (hasAuthSession() && userData) {
     try {
       const user = JSON.parse(userData)
       if (!user.id && user.user_id) {
@@ -274,7 +274,6 @@ const initUserInfo = () => {
       }
       userStore.setUserInfo(user)
       userStore.setLoginStatus(true)
-      userStore.token = token
     } catch (error) {
       console.error('解析用户信息失败:', error)
     }

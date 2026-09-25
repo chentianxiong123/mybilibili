@@ -1,5 +1,5 @@
 import api from './client'
-import { getToken } from '../utils/session'
+import { isLogin } from '../utils/session'
 
 // 关注/取消关注
 export async function followUser(userId: number, follow: boolean) {
@@ -69,7 +69,7 @@ export async function shareManuscript(manuscriptId: number) {
 
 // 获取互动状态
 export async function getInteractionStatus(manuscriptId: number) {
-  if (!getToken()) {
+  if (!isLogin()) {
     return { code: '0', data: null }
   }
   try {

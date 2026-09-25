@@ -171,6 +171,7 @@
 </template>
 
 <script lang="ts">
+import { hasAuthSession } from "@/utils/auth.ts"
 import VPopover from '@/components/teriteri/popover/VPopover.vue';
 import { handleTime, handleNum, handleDate } from '@/teriteri-src/utils/utils';
 import { ElMessage, ElMessageBox } from 'element-plus';
@@ -245,14 +246,13 @@ export default {
         // 加载空间主人的收藏夹列表
         async loadFavList() {
             let res;
-            if (!localStorage.getItem("teri_token")) {
+            if (!hasAuthSession()) {
                 res = await this.$get("/favorite/get-all/visitor", {
                     params: { uid: this.uid },
                 });
             } else {
                 res = await this.$get("/favorite/get-all/user", {
-                    params: { uid: this.uid },
-                    headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
+                    params: { uid: this.uid }
                 });
             }
             if (!res || !res.data) return;
@@ -284,9 +284,7 @@ export default {
             const formData = new FormData();
             formData.append("vid", info.vid);
             formData.append("fid", info.fid);
-            const res = await this.$post("/video/cancel-collect", formData, {
-                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
-            });
+            const res = await this.$post("/video/cancel-collect", formData);
             if (!res.data || res.data.code !== 200) return;
             this.favVideos = this.favVideos.filter(item => item.video.vid !== info.vid);
         },
@@ -341,7 +339,6 @@ export default {
                     { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
                 );
                 this.batchDeleting = true;
-                const token = localStorage.getItem('teri_token') || '';
                 let success = 0;
                 for (const vid of this.selectedSet) {
                     const item = this.favVideos.find(v => v.video.vid === vid);
@@ -350,9 +347,7 @@ export default {
                         const formData = new FormData();
                         formData.append('vid', String(vid));
                         formData.append('fid', String(item.info.fid));
-                        const res = await this.$post('/video/cancel-collect', formData, {
-                            headers: { Authorization: `Bearer ${token}` }
-                        });
+                        const res = await this.$post('/video/cancel-collect', formData);
                         if (res.data && res.data.code === 200) success++;
                     } catch (e) { /* skip */ }
                 }
@@ -402,12 +397,11 @@ export default {
             }
             this.favSaving = true;
             try {
-                const token = localStorage.getItem('teri_token') || '';
                 if (this.editingFav) {
                     // 编辑
                     const res = await this.$post(`/favorite/update/${this.editingFav.fid}`, 
                         JSON.stringify({ name }),
-                        { headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' } }
+                        { headers: { 'content-type': 'application/json' } }
                     );
                     if (res.data && res.data.code === 200) {
                         ElMessage.success('修改成功');
@@ -420,7 +414,7 @@ export default {
                     // 新建
                     const res = await this.$post('/favorite/create', 
                         JSON.stringify({ name, visible: this.favForm.visible }),
-                        { headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' } }
+                        { headers: { 'content-type': 'application/json' } }
                     );
                     if (res.data && res.data.code === 200) {
                         ElMessage.success('创建成功');
@@ -445,10 +439,7 @@ export default {
                     cancelButtonText: '取消',
                     type: 'warning',
                 });
-                const token = localStorage.getItem('teri_token') || '';
-                const res = await this.$post(`/favorite/delete/${item.fid}`, null, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const res = await this.$post(`/favorite/delete/${item.fid}`, null);
                 if (res.data && res.data.code === 200) {
                     ElMessage.success('删除成功');
                     await this.loadFavList();

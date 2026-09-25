@@ -207,7 +207,7 @@ export const useTeriteriStore = defineStore('teriteri', {
     },
 
     async getPersonalInfo() {
-      // 走共享 axios 实例：自动带 Authorization，401 时自动续签并重试，
+      // 走共享 axios 实例：同源请求自动带 HttpOnly cookie，401 时自动续签并重试，
       // 否则 access token 过期会把人打回未登录（下拉面板显示空）。
       const result = await api.get('/user/me').catch(() => null)
       if (!result) return

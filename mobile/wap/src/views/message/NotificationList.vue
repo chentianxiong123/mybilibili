@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getNotifications } from '../../api/message'
-import { getToken } from '../../utils/session'
+import { isLogin } from '../../utils/session'
 import noface from '../../assets/noface.gif'
 
 const route = useRoute()
@@ -29,8 +29,7 @@ const load = async () => {
 }
 
 onMounted(() => {
-  const token = getToken()
-  if (!token) {
+  if (!isLogin()) {
     router.replace('/m/login')
     return
   }

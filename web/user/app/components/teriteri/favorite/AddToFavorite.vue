@@ -79,9 +79,7 @@ export default {
             formData.append("title", this.input);
             formData.append("desc", "");
             formData.append("visible", 1);
-            const res = await this.$post("/favorite/create", formData, {
-                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
-            });
+            const res = await this.$post("/favorite/create", formData);
             if (!res.data) {
                 ElMessage.error("操作失败，请稍后重试");
                 return;
@@ -109,9 +107,7 @@ export default {
             formData.append("vid", Number(this.vid));
             formData.append("adds", add.join(','));
             formData.append("removes", remove.join(','));
-            const res = await this.$post("/video/collect", formData, {
-                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
-            })
+            const res = await this.$post("/video/collect", formData)
             if (!res.data) return;
             if (isCollect) {
                 this.$store.state.attitudeToVideo.collect = true;

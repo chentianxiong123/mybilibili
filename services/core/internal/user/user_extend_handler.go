@@ -200,12 +200,20 @@ func (h *UserExtendHandler) handleRefresh(w http.ResponseWriter, r *http.Request
 		RefreshToken string `json:"refreshToken"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
-	if !auth.ConsumeRefreshOnce(r.Context(), h.svc.jwt, req.RefreshToken) {
+	// 阶段 3 起前端读不到 refresh_token（HttpOnly），body 里不会有值；
+	// 凭证一律走 cookie。body 仍可携带是为兼容存量客户端。
+	refreshToken := req.RefreshToken
+	if refreshToken == "" {
+		if c, err := r.Cookie(auth.UserRefreshTokenCookie); err == nil {
+			refreshToken = c.Value
+		}
+	}
+	if !auth.ConsumeRefreshOnce(r.Context(), h.svc.jwt, refreshToken) {
 		// 同一张刷新令牌被用过第二次 → 疑似被窃取后重放，拒绝并让这次作废
 		errors.WriteHTTPError(w, errors.ErrUnauthenticated("refresh token already used"))
 		return
 	}
-	userID, err := h.svc.jwt.ParseUserID(req.RefreshToken)
+	userID, err := h.svc.jwt.ParseUserID(refreshToken)
 	if err != nil {
 		errors.WriteHTTPError(w, errors.ErrUnauthenticated("invalid or expired refresh token"))
 		return

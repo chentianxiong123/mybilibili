@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { getMyInfo } from '../../api/user'
 import { getWapTheme, toggleWapTheme } from '../../utils/theme'
 import noface from '../../assets/noface.gif'
-import { getToken, getLocalUser, clearSession } from '../../utils/session'
+import { isLogin, getLocalUser, logout } from '../../utils/session'
 
 const router = useRouter()
 const userInfo = ref<any>(null)
@@ -12,8 +12,7 @@ const isLoggedIn = ref(false)
 const isDarkMode = ref(getWapTheme() === 'dark')
 
 onMounted(async () => {
-  const token = getToken()
-  if (!token) {
+  if (!isLogin()) {
     // 未登录，跳转登录页
     router.replace('/m/login')
     return
@@ -34,8 +33,8 @@ onMounted(async () => {
 })
 
 // 退出登录
-const handleLogout = () => {
-  clearSession()
+const handleLogout = async () => {
+  await logout() // 服务端作废 HttpOnly 的 token / refresh_token
   router.push('/m/login')
 }
 

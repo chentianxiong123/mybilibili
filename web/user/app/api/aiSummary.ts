@@ -1,4 +1,3 @@
-import { getToken } from '../utils/auth'
 import api from './client'
 
 export const aiSummaryApi = {
@@ -8,14 +7,12 @@ export const aiSummaryApi = {
     const baseURL = typeof window !== 'undefined' ? window.location.origin : ''
     const url = `${baseURL}/api/v1/ai/summary/stream/${videoId}`
 
-    const token = getToken()
-
     const controller = new AbortController()
 
+    // SSE 走同源 fetch，凭证由 HttpOnly cookie 自动携带，不再也不能塞 Authorization
     fetch(url, {
       method: 'GET',
       headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
         'Accept': 'text/event-stream'
       },
       signal: controller.signal

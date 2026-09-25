@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { historyApi } from '../../api/index'
-import { getToken } from '../../utils/session'
+import { isLogin } from '../../utils/session'
 
 const router = useRouter()
 const histories = ref<Array<{ date: string; items: any[] }>>([])
@@ -21,8 +21,7 @@ const tabs = [
 ]
 
 onMounted(async () => {
-  const token = getToken()
-  if (!token) {
+  if (!isLogin()) {
     router.replace('/m/login')
     return
   }

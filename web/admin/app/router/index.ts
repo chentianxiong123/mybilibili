@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { firstAllowedPathByPermissions } from './permissionRoutes'
+import { hasAdminSession } from '@/utils/auth'
 
 const router = createRouter({
   history: createWebHistory('/admin/'),
@@ -181,15 +182,17 @@ const hasPermission = (permission?: string): boolean => {
 }
 
 router.beforeEach((to) => {
-  const token = localStorage.getItem('admin_token')
+  // 凭证在 HttpOnly cookie 里读不到；登录态由 admin_user 这份展示信息回答。
+  // 拿它当门禁只会"过于宽松地放行到页面"，真正的权限由每个接口 401/403 兜底。
+  const loggedIn = hasAdminSession()
   const role = getAdminRole()
 
   let redirect: string | boolean = true
-  if (to.meta.requiresAuth && !token) {
+  if (to.meta.requiresAuth && !loggedIn) {
     redirect = '/login'
-  } else if (to.path === '/login' && token) {
+  } else if (to.path === '/login' && loggedIn) {
     redirect = firstAllowedPathByPermissions(role, getAdminPermissions())
-  } else if (to.path === '/' && token) {
+  } else if (to.path === '/' && loggedIn) {
     redirect = firstAllowedPathByPermissions(role, getAdminPermissions())
   } else if (to.meta.superAdminOnly && role !== '超级管理员') {
     redirect = firstAllowedPathByPermissions(role, getAdminPermissions())

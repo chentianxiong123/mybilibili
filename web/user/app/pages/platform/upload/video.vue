@@ -923,7 +923,6 @@ export default {
                 const res = await this.$post("/manuscript/upload-complete", formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data',
-                        Authorization: "Bearer " + localStorage.getItem("teri_token"),
                     }
                 });
                 if (res && res.code === 200) {
@@ -945,16 +944,12 @@ export default {
 
         // 创建上传会话（同一 client_id 重复调用会 ON CONFLICT 更新 title/desc/category/tags/videos/total_chunks）
         async createSession(payload) {
-            return await this.$post("/manuscript/upload-session", payload, {
-                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
-            });
+            return await this.$post("/manuscript/upload-session", payload);
         },
 
         // 查询上传进度（后端 GET 返回 uploaded_chunks = 已上传分片数 = 下一个待传序号）
         async askCurrentChunk(uploadId) {
-            return await this.$get(`/manuscript/upload-session/${uploadId}`, {
-                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
-            });
+            return await this.$get(`/manuscript/upload-session/${uploadId}`);
         },
 
         // 上传分片
@@ -962,16 +957,13 @@ export default {
             return await this.$post("/manuscript/upload-chunk", formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
-                    Authorization: "Bearer " + localStorage.getItem("teri_token"),
                 }
             })
         },
 
         // 取消上传（DELETE 会话）
         async cancelUpload(uploadId) {
-            return await this.$axios.delete(`/manuscript/upload-session/${uploadId}`, {
-                headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
-            });
+            return await this.$axios.delete(`/manuscript/upload-session/${uploadId}`);
         },
     }
 }

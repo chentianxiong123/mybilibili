@@ -29,13 +29,11 @@ function handleSSEEvent({ event, data }: { event?: string; data?: string }, call
   }
 }
 
-// 只带 Authorization：X-User-Id 由服务端 IdentityMiddleware 从凭证解析注入，
-// 客户端自带头会被网关直接信任，属于可伪造身份的安全洞。
+// 不带任何凭证头：X-User-Id / X-Admin-Id 由服务端 IdentityMiddleware 从
+// 已验签的 HttpOnly cookie 推导注入，客户端给的一律丢弃。
+// fetch 是同源的，cookie 由浏览器自动携带。
 function getAuthHeaders() {
-  const token = safeStorage.getItem('token')
-  return {
-    'Authorization': token ? `Bearer ${token}` : ''
-  }
+  return {}
 }
 
 function getCurrentUser() {

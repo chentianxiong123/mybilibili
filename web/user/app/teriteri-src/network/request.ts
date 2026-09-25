@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { clearAuthSession } from '~/utils/auth'
 import { ElMessage } from 'element-plus'
 import type { AxiosRequestConfig, AxiosResponse } from 'axios'
 import { useTeriteriStore } from '@/stores/teriteri'
@@ -308,7 +309,7 @@ function handleAuthFailure(err: any) {
         store.setWebSocket(null)
       }
     }
-    if (typeof window !== 'undefined') localStorage.removeItem('teri_token')
+    if (typeof window !== 'undefined') clearAuthSession()
     ElMessage.error('请登录后查看')
   } else {
     ElMessage.error('操作失败，请稍后重试')

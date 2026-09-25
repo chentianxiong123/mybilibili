@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getVideoInfo, getRecommendVides, getComments } from '../../api/video'
 import { likeManuscript, collectManuscript, shareManuscript, followUser, getInteractionStatus, checkFollow } from '../../api/interaction'
-import { getToken } from '../../utils/session'
+import { isLogin } from '../../utils/session'
 
 const route = useRoute()
 const router = useRouter()
@@ -93,7 +93,7 @@ async function ensureLoaded(i) {
 
 // 拉取真实互动状态（点赞、收藏、关注），不阻塞渲染
 async function loadInteractionState(it) {
-  if (!getToken() || !it) return
+  if (!isLogin() || !it) return
   try {
     const res = await getInteractionStatus(it.aId)
     if (res.code === '1' && res.data) {
@@ -424,7 +424,7 @@ async function toggleStar(it) {
 }
 
 async function doFollow(it) {
-  if (!getToken()) { router.push('/m/login'); return }
+  if (!isLogin()) { router.push('/m/login'); return }
   it.following = !it.following
   await followUser(it.mid, it.following)
 }

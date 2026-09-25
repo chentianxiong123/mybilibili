@@ -10,7 +10,7 @@ import { followUser, checkFollow, likeManuscript, coinManuscript, collectManuscr
 import { postComment, replyComment, likeComment } from '../../api/comment'
 import storage from '../../utils/storage'
 import { readCache } from '../../utils/cache'
-import { getToken } from '../../utils/session'
+import { isLogin } from '../../utils/session'
 
 const route = useRoute()
 const router = useRouter()
@@ -96,8 +96,7 @@ const handleDanmakuPanelClick = (event) => {
 
 const loadInteractionState = async () => {
   try {
-    const token = getToken()
-    if (!token) return
+    if (!isLogin()) return
     const res = await getInteractionStatus(aId)
     if (res.code === '1' && res.data) {
       const d = res.data
@@ -111,8 +110,7 @@ const loadInteractionState = async () => {
 
 const loadFollowState = async () => {
   try {
-    const token = getToken()
-    if (!token || !video.value?.mid) return
+    if (!isLogin() || !video.value?.mid) return
     const res = await checkFollow(video.value.mid)
     if (res.code === '1') {
       // 后端返回的是 { following: true/false }，兼容直接布尔值
@@ -224,8 +222,7 @@ const loadMoreComments = () => {
 
 // 互动点击操作
 const handleLike = async () => {
-  const token = getToken()
-  if (!token) { router.push('/m/login'); return }
+  if (!isLogin()) { router.push('/m/login'); return }
   try {
     const res = await likeManuscript(aId, !isLiked.value)
     if (res.code === '1') {
@@ -245,8 +242,7 @@ const handleDislike = () => {
 }
 
 const handleCoin = async () => {
-  const token = getToken()
-  if (!token) { router.push('/m/login'); return }
+  if (!isLogin()) { router.push('/m/login'); return }
   if (isCoined.value) return
   try {
     const res = await coinManuscript(aId, 1)
@@ -258,8 +254,7 @@ const handleCoin = async () => {
 }
 
 const handleStar = async () => {
-  const token = getToken()
-  if (!token) { router.push('/m/login'); return }
+  if (!isLogin()) { router.push('/m/login'); return }
   try {
     const res = await collectManuscript(aId, !isStarred.value)
     if (res.code === '1') {
@@ -279,8 +274,7 @@ const handleShare = async () => {
 }
 
 const handleFollow = async () => {
-  const token = getToken()
-  if (!token) { router.push('/m/login'); return }
+  if (!isLogin()) { router.push('/m/login'); return }
   try {
     const res = await followUser(video.value.mid, !isFollowing.value)
     if (res.code === '1') {
@@ -292,8 +286,7 @@ const handleFollow = async () => {
 
 // 提交评论
 const submitComment = async () => {
-  const token = getToken()
-  if (!token) { router.push('/m/login'); return }
+  if (!isLogin()) { router.push('/m/login'); return }
   if (!commentInput.value.trim()) return
   try {
     const res = await postComment(aId, commentInput.value)

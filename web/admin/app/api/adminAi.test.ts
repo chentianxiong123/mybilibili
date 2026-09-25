@@ -30,7 +30,7 @@ beforeEach(() => {
 })
 
 describe('adminAiApi.sendMessage', () => {
-  it('POST /ai/assistant/send 带 content 与 auth 头', async () => {
+  it('POST /ai/assistant/send 带 content，且不设 Authorization（凭证是 HttpOnly cookie）', async () => {
     store.set('admin_token', 'tok-1')
     store.set('admin_id', '42')
     fetchMock.mockResolvedValue({
@@ -49,11 +49,15 @@ describe('adminAiApi.sendMessage', () => {
         method: 'POST',
         headers: expect.objectContaining({
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer tok-1',
         }),
         body: JSON.stringify({ content: 'hello' }),
       }),
     )
+    const { headers, credentials } = fetchMock.mock.calls[0][1]
+    expect(headers['Authorization']).toBeUndefined()
+    expect(headers['X-Admin-Id']).toBeUndefined()
+    // 同源请求靠 cookie 自带凭证
+    expect(credentials).toBe('same-origin')
   })
 
   it('非 ok 状态调用 onError', async () => {
@@ -99,7 +103,7 @@ describe('adminAiApi.sendMessage', () => {
     expect(() => handle.abort()).not.toThrow()
   })
 
-  it('无 token 时 Authorization 为空字符串', async () => {
+  it('无 session 时同样不设 Authorization，也不自塞 X-Admin-Id', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       headers: { get: () => 'application/json' },
@@ -108,8 +112,8 @@ describe('adminAiApi.sendMessage', () => {
     adminAiApi.sendMessage('x')
     await new Promise(r => setTimeout(r, 10))
     const headers = fetchMock.mock.calls[0][1].headers
-    expect(headers['Authorization']).toBe('')
-    // 管理员身份由后端从验签 token 推导，客户端不得自塞 X-Admin-Id
+    expect(headers['Authorization']).toBeUndefined()
+    // 管理员身份由后端从验签 cookie 推导，客户端不得自塞 X-Admin-Id
     expect(headers['X-Admin-Id']).toBeUndefined()
   })
 })

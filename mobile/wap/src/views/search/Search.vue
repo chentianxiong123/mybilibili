@@ -68,8 +68,6 @@ const handleSubmitFeedback = async () => {
   }
 }
 
-const isLogin = () => !!storage.get(K.token)
-
 function showToast(msg) {
   const el = document.createElement('div')
   el.className = 'wap-toast'

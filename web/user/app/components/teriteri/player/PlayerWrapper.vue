@@ -487,6 +487,7 @@
 </template>
 
 <script lang="ts">
+import { hasAuthSession } from "@/utils/auth.ts"
 import PlayerLoading from './PlayerLoading.vue';
 import LoadingBuff from './LoadingBuff.vue';
 import PlayerProgress from './PlayerProgress.vue';
@@ -625,9 +626,7 @@ export default {
             formData.append("vid", Number(this.$route.params.vid));
             if (this.$store.state.user.uid) {
                 // 如果用户登录了，就算该用户观看了视频
-                const res = await this.$post("/video/play/user", formData, {
-                    headers: { Authorization: "Bearer " + localStorage.getItem("teri_token") }
-                });
+                const res = await this.$post("/video/play/user", formData);
                 if (!res.data.data) return;
                 const data = res.data.data;
                 const atv = {
@@ -1201,7 +1200,7 @@ export default {
 
         // 发送弹幕
         sendDm() {
-            if (!localStorage.getItem('teri_token')) {
+            if (!hasAuthSession()) {
                 this.$store.state.openLogin = true;
                 this.$nextTick(() => {
                     this.$store.state.openLogin = false;

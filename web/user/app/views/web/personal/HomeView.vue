@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, Edit } from '@element-plus/icons-vue'
 import { userApi } from '@/api/client'
-import { getCurrentUserId, getStoredUser, getToken, setAuthSession } from '@/utils/auth.ts'
+import { getCurrentUserId, getStoredUser, hasAuthSession, setAuthSession } from '@/utils/auth.ts'
 
 const router = useRouter()
 
@@ -33,10 +33,9 @@ const calculateMaxExperience = (level) => {
 
 // 加载用户信息
 onMounted(async () => {
-  const token = getToken()
   const userData = getStoredUser()
-  
-  if (token && userData) {
+
+  if (hasAuthSession() && userData) {
     try {
       const userId = getCurrentUserId()
       

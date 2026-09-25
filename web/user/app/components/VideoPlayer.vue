@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasAuthSession } from "@/utils/auth.ts"
 import { safeStorage } from '@/utils/safeStorage'
 import Artplayer from 'artplayer'
 import { ElMessage } from 'element-plus'
@@ -389,8 +390,7 @@ const initPlayer = async () => {
         margin: [10, 10, 10, 10],
         emitter: true,
         beforeEmit: async (danmu: any) => {
-          const token = safeStorage.getItem("token")
-          if (!token) {
+          if (!hasAuthSession()) {
             ElMessage.warning('请先登录')
             return false
           }

@@ -76,6 +76,7 @@
 </template>
 
 <script setup lang="ts">
+import { hasAuthSession } from "@/utils/auth.ts"
 import { safeStorage } from '@/utils/safeStorage'
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -245,8 +246,7 @@ const goToUserProfile = () => {
 
 // 处理关注
 const handleFollow = async () => {
-  const token = safeStorage.getItem("token")
-  if (!token) {
+  if (!hasAuthSession()) {
     ElMessage.warning('请先登录')
     return
   }

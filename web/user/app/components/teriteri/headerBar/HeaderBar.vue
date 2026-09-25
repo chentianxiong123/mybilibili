@@ -393,6 +393,7 @@
 </template>
 
 <script lang="ts">
+import { hasAuthSession } from "@/utils/auth.ts"
     let inTimer;  // 节流计时器
     let outTimer;
     import VPopover from '../popover/VPopover.vue';
@@ -552,7 +553,7 @@
             // 将搜索历史提交到后端（未登录时写本地）
             saveToLocalStorage() {
                 if (this.histories.length > 0) {
-                    if (localStorage.getItem("teri_token")) {
+                    if (hasAuthSession()) {
                         searchApi.addSearchHistory(this.histories[0]);
                     } else {
                         localStorage.setItem("historiesSearch", JSON.stringify(this.histories));
@@ -562,7 +563,7 @@
 
             // 加载搜索历史（登录走后端，未登录读本地）
             async loadFromLocalStorage() {
-                if (localStorage.getItem("teri_token")) {
+                if (hasAuthSession()) {
                     const res = await searchApi.getSearchHistory();
                     if (res && res.data) {
                         this.histories = res.data;
@@ -587,7 +588,7 @@
             // 删除单个搜索历史
             async removeHistory(index) {
                 this.histories.splice(index, 1);
-                if (localStorage.getItem("teri_token")) {
+                if (hasAuthSession()) {
                     await searchApi.clearSearchHistory();
                     for (const kw of [...this.histories].reverse()) {
                         await searchApi.addSearchHistory(kw);
@@ -600,7 +601,7 @@
             // 清空全部搜索历史
             async removeAllHistories() {
                 this.histories = [];
-                if (localStorage.getItem("teri_token")) {
+                if (hasAuthSession()) {
                     await searchApi.clearSearchHistory();
                 } else {
                     localStorage.removeItem("historiesSearch");

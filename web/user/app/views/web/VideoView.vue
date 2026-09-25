@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasAuthSession } from "@/utils/auth.ts"
 import { safeStorage } from '@/utils/safeStorage'
 import { interactionApi, userApi, videoApi } from '@/api/client'
 import { recommendApi } from '@/api/recommend.ts'
@@ -121,8 +122,7 @@ const isVideoPartsCollapsed = ref(false)
 
 // 处理发消息
 const handleSendMessage = () => {
-  const token = safeStorage.getItem("token")
-  if (!token) {
+  if (!hasAuthSession()) {
     ElMessage.warning('请先登录')
     return
   }
@@ -190,8 +190,7 @@ const recordWatchHistorySync = () => {
   console.log('离开页面，记录最终播放进度', { progress, duration, watchRatio: (watchRatio * 100).toFixed(1) + '%' })
 
   try {
-    const token = safeStorage.getItem("token")
-    if (!token) return
+    if (!hasAuthSession()) return
     const params = new URLSearchParams({
       manuscript_id: String(videoId.value),
       progress_seconds: String(progress),
@@ -201,7 +200,6 @@ const recordWatchHistorySync = () => {
     fetch(url, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
       keepalive: true
@@ -333,12 +331,10 @@ const loadInteractionStatus = async () => {
   console.log('=== 开始获取互动状态 ===')
   console.log('当前 manuscriptId:', currentManuscriptId.value)
   try {
-    const token = safeStorage.getItem("token")
     const user = JSON.parse(safeStorage.getItem('user') || 'null')
-    console.log('token:', token ? '存在' : '不存在')
     console.log('当前用户信息:', user)
 
-    if (token && currentManuscriptId.value) {
+    if (hasAuthSession() && currentManuscriptId.value) {
       console.log('正在调用 getInteractionStatus API...')
       const statusResponse = await interactionApi.getInteractionStatus(currentManuscriptId.value)
       console.log('API 完整响应:', statusResponse)
@@ -395,8 +391,7 @@ const reportDialogVisible = ref(false)
 // 处理关注/取消关注
 const handleFollow = async () => {
   // 检查是否登录
-  const token = safeStorage.getItem("token")
-  if (!token) {
+  if (!hasAuthSession()) {
     // 未登录，显示登录弹窗
     ElMessage.warning('请先登录')
     return
@@ -462,8 +457,7 @@ const handleFollow = async () => {
 
 onMounted(async () => {
   // 检查token是否存在
-  const token = safeStorage.getItem("token")
-  console.log('【前端调试】localStorage中的token:', token ? '存在' : '不存在')
+  console.log('【前端调试】登录态:', hasAuthSession() ? '已登录' : '未登录')
   console.log('【前端调试】localStorage中的user:', safeStorage.getItem('user'))
   console.log('【前端调试】当前路由参数:', route.params)
   console.log('【前端调试】当前路由查询:', route.query)
@@ -487,7 +481,6 @@ onMounted(async () => {
   try {
     // 使用新的API获取视频数据
     console.log('【前端调试】开始获取视频详情，manuscriptId:', currentManuscriptId.value, 'p:', currentP.value)
-    console.log('【前端调试】请求将携带Authorization header:', token ? '是' : '否')
     const videoResponse = await videoApi.getVideoByManuscriptId(currentManuscriptId.value, { p: currentP.value })
     console.log('【前端调试】视频详情响应:', videoResponse)
 

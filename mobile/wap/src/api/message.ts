@@ -1,9 +1,8 @@
 import api from './client'
-import { getToken } from '../utils/session'
-import { isLogin as hasToken } from '../utils/session'
+import { isLogin } from '../utils/session'
 
 function hasToken() {
-  return !!getToken()
+  return isLogin()
 }
 
 export async function getConversations() {

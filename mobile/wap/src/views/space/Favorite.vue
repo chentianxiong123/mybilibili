@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCollectedVideos, getFavoriteFolders, getFavoriteFolderVideos } from '../../api/favorite'
-import { getToken } from '../../utils/session'
+import { isLogin } from '../../utils/session'
 
 const router = useRouter()
 const favorites = ref<any[]>([])
@@ -19,8 +19,7 @@ const tabs = [
 ]
 
 onMounted(async () => {
-  const token = getToken()
-  if (!token) {
+  if (!isLogin()) {
     router.replace('/m/login')
     return
   }

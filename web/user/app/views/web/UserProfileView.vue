@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasAuthSession } from "@/utils/auth.ts"
 import { useAuth } from '@/composables/useAuth'
 import { safeStorage } from '@/utils/safeStorage'
 import { ref, computed, onMounted, watch } from 'vue'
@@ -170,8 +171,7 @@ const checkFollowStatus = async () => {
 
 // 处理关注/取消关注
 const handleFollow = async () => {
-  const token = safeStorage.getItem("token")
-  if (!token) {
+  if (!hasAuthSession()) {
     ElMessage.warning('请先登录')
     return
   }
@@ -210,8 +210,7 @@ const handleFollow = async () => {
 
 // 处理发消息
 const handleSendMessage = () => {
-  const token = safeStorage.getItem("token")
-  if (!token) {
+  if (!hasAuthSession()) {
     ElMessage.warning('请先登录')
     return
   }

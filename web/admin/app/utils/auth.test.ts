@@ -2,21 +2,16 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   clearAuthSession,
   clearAdminSession,
-  decodeJwtPayload,
   getAdminPermissions,
   getAdminRole,
-  getAdminToken,
   getAdminUser,
   getCurrentUserId,
-  getRefreshToken,
   getStoredUser,
-  getToken,
   hasAdminSession,
   hasAuthSession,
-  hasValidAccessToken,
-  isAccessTokenExpired,
   setAdminSession,
   setAuthSession,
+  scrubCredentials,
 } from '../utils/auth'
 
 // happy-dom 18 未把 localStorage 挂到 window，手动 polyfill
@@ -30,88 +25,126 @@ const localStorageMock = {
 if (typeof window !== 'undefined') (window as any).localStorage = localStorageMock
 ;(globalThis as any).localStorage = localStorageMock
 
-// 生成一个可解码的 JWT（header.payload.signature），payload 可选 exp。
-function makeJWT(payload: Record<string, unknown>): string {
-  const b64 = (s: string) => btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-  const header = b64(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
-  const body = b64(JSON.stringify(payload))
-  return `${header}.${body}.signature`
-}
-
-const unexpiredJWT = makeJWT({ sub: '42', exp: Math.floor(Date.now() / 1000) + 3600 })
-const expiredJWT = makeJWT({ sub: '42', exp: Math.floor(Date.now() / 1000) - 3600 })
-
 beforeEach(() => {
   store.clear()
   clearAuthSession()
   clearAdminSession()
 })
 
-describe('auth 会话管理', () => {
-  it('setAuthSession 写入 token + cookie 后可读回', () => {
-    setAuthSession({ token: unexpiredJWT, refreshToken: 'refresh-1', user: { id: 42, name: '管理员' } })
-    expect(getToken()).toBe(unexpiredJWT)
-    expect(getRefreshToken()).toBe('refresh-1')
+// JS 层只碰展示信息，凭证一律 HttpOnly cookie
+const jwtLike = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI0MiJ9.sig'
+
+describe('auth 会话管理（只留展示信息）', () => {
+  it('setAuthSession 丢弃 token / refreshToken，只保存 user', () => {
+    setAuthSession({ token: jwtLike, refreshToken: 'refresh-1', user: { id: 42, name: '管理员' } })
     expect(getStoredUser()).toEqual({ id: 42, name: '管理员' })
+    expect(store.has('token')).toBe(false)
+    expect(store.has('refreshToken')).toBe(false)
+    expect(JSON.stringify([...store.values()])).not.toContain(jwtLike)
+    expect(JSON.stringify([...store.values()])).not.toContain('refresh-1')
   })
 
-  it('clearAuthSession 清除所有认证信息', () => {
-    setAuthSession({ token: 't', refreshToken: 'r' })
-    clearAuthSession()
-    expect(getToken()).toBe('')
-    expect(getRefreshToken()).toBe('')
+  it('setAuthSession 即使只传凭证也什么都不留', () => {
+    setAuthSession({ token: jwtLike, refreshToken: 'refresh-1' })
+    expect(store.size).toBe(0)
     expect(hasAuthSession()).toBe(false)
   })
 
-  it('hasAuthSession 存在性判断', () => {
+  it('hasAuthSession 由 user 回答，不由凭证回答', () => {
     expect(hasAuthSession()).toBe(false)
-    setAuthSession({ token: 't' })
+    setAuthSession({ token: jwtLike })
+    expect(hasAuthSession()).toBe(false)
+    setAuthSession({ user: { id: 1 } })
     expect(hasAuthSession()).toBe(true)
   })
 
-  it('isAccessTokenExpired 判断过期', () => {
-    expect(isAccessTokenExpired(expiredJWT)).toBe(true)
-    expect(isAccessTokenExpired(unexpiredJWT)).toBe(false)
+  it('setAuthSession 不传 user 时不会清空已存在 user', () => {
+    setAuthSession({ user: { id: 1, name: 'A' } })
+    setAuthSession({ token: 'whatever' })
+    expect(getStoredUser()).toEqual({ id: 1, name: 'A' })
   })
 
-  it('hasValidAccessToken 有效性判断', () => {
-    expect(hasValidAccessToken()).toBe(false)
-    setAuthSession({ token: expiredJWT })
-    expect(hasValidAccessToken()).toBe(false)
-    setAuthSession({ token: unexpiredJWT })
-    expect(hasValidAccessToken()).toBe(true)
+  it('clearAuthSession 清展示信息并顺手清掉升级前的明文凭证明文', () => {
+    localStorage.setItem('token', jwtLike)
+    localStorage.setItem('refreshToken', 'r')
+    localStorage.setItem('teri_token', 't')
+    setAuthSession({ user: { id: 1 } })
+    clearAuthSession()
+    expect(getStoredUser()).toBeNull()
+    expect(hasAuthSession()).toBe(false)
+    expect(localStorage.getItem('token')).toBeNull()
+    expect(localStorage.getItem('refreshToken')).toBeNull()
+    expect(localStorage.getItem('teri_token')).toBeNull()
   })
 
-  it('decodeJwtPayload 解码 payload', () => {
-    const payload = decodeJwtPayload(unexpiredJWT)
-    expect(payload).not.toBeNull()
-    expect(payload!.sub).toBe('42')
-    expect(decodeJwtPayload('')).toBeNull()
-    expect(decodeJwtPayload('not-a-jwt')).toBeNull()
+  it('clearAdminSession 不影响 user session', () => {
+    setAuthSession({ user: { id: 1 } })
+    setAdminSession({ user: { id: 1 }, role: '管理员' })
+    clearAdminSession()
+    expect(hasAdminSession()).toBe(false)
+    expect(hasAuthSession()).toBe(true)
+    expect(getAdminRole()).toBe('')
+  })
+
+  it('clearAuthSession 不影响 admin session', () => {
+    setAdminSession({ user: { id: 1 }, role: '超级管理员', permissions: ['a'] })
+    setAuthSession({ user: { id: 2 } })
+    clearAuthSession()
+    expect(hasAuthSession()).toBe(false)
+    expect(hasAdminSession()).toBe(true)
+    expect(getAdminRole()).toBe('超级管理员')
+    expect(getAdminPermissions()).toEqual(['a'])
+  })
+})
+
+describe('getCurrentUserId', () => {
+  it('从 stored user.id 取值', () => {
+    setAuthSession({ user: { id: 99, name: 'u' } })
+    expect(getCurrentUserId()).toBe(99)
+  })
+
+  it('没有 user 时返回 null（不再回退去解 JWT——token 在 HttpOnly cookie 里读不到）', () => {
+    setAuthSession({ token: jwtLike })
+    expect(getCurrentUserId()).toBeNull()
+  })
+
+  it('user.id 缺失时返回 null', () => {
+    setAuthSession({ user: { name: 'noid' } })
+    expect(getCurrentUserId()).toBeNull()
   })
 })
 
 describe('admin 会话管理', () => {
   it('setAdminSession 写入后可读回', () => {
-    setAdminSession({ token: 'admin-token', user: { id: 1 }, role: 'SUPER', permissions: ['video.review'] })
-    expect(getAdminToken()).toBe('admin-token')
+    setAdminSession({ user: { id: 1 }, role: 'SUPER', permissions: ['video.review'] })
     expect(getAdminUser()).toEqual({ id: 1 })
     expect(getAdminRole()).toBe('SUPER')
     expect(getAdminPermissions()).toEqual(['video.review'])
   })
 
-  it('clearAdminSession 清除所有', () => {
-    setAdminSession({ token: 'admin-token', role: 'SUPER' })
+  it('setAdminSession 丢弃 token，不把凭证写进 localStorage', () => {
+    setAdminSession({ token: 'admin-token', user: { id: 1 } })
+    expect(store.has('admin_token')).toBe(false)
+    expect(JSON.stringify([...store.values()])).not.toContain('admin-token')
+    expect(getAdminUser()).toEqual({ id: 1 })
+  })
+
+  it('clearAdminSession 清除所有并清掉升级前的 admin_token 副本', () => {
+    localStorage.setItem('admin_token', 'legacy')
+    setAdminSession({ user: { id: 1 }, role: 'SUPER', permissions: ['video.review'] })
     clearAdminSession()
-    expect(getAdminToken()).toBe('')
+    expect(getAdminUser()).toBeNull()
     expect(getAdminRole()).toBe('')
     expect(getAdminPermissions()).toEqual([])
     expect(hasAdminSession()).toBe(false)
+    expect(localStorage.getItem('admin_token')).toBeNull()
   })
 
-  it('hasAdminSession 存在性判断', () => {
+  it('hasAdminSession 由 admin_user 回答', () => {
     expect(hasAdminSession()).toBe(false)
     setAdminSession({ token: 'admin-token' })
+    expect(hasAdminSession()).toBe(false)
+    setAdminSession({ user: { id: 1 } })
     expect(hasAdminSession()).toBe(true)
   })
 
@@ -119,94 +152,43 @@ describe('admin 会话管理', () => {
     localStorage.setItem('admin_permissions', 'invalid{json')
     expect(getAdminPermissions()).toEqual([])
   })
-})
 
-// ====== 补充：token 刷新、登出边界、错误边界 ======
-
-describe('auth 补充 - token 刷新判断', () => {
-  it('getCurrentUserId 优先从 stored user.id 取值', () => {
-    setAuthSession({ user: { id: 99, name: 'u' } })
-    expect(getCurrentUserId()).toBe(99)
+  it('admin permissions 重复 key 覆盖而非追加', () => {
+    setAdminSession({ user: { id: 1 }, permissions: ['a', 'b'] })
+    setAdminSession({ user: { id: 1 }, permissions: ['c'] })
+    expect(getAdminPermissions()).toEqual(['c'])
   })
 
-  it('getCurrentUserId 无 user 时回退到 JWT payload.sub', () => {
-    setAuthSession({ token: makeJWT({ sub: '77', exp: Math.floor(Date.now() / 1000) + 3600 }) })
-    expect(getCurrentUserId()).toBe('77')
-  })
-
-  it('getCurrentUserId 无 user 无 JWT 时返回 null', () => {
-    setAuthSession({ token: 'no-payload' })
-    expect(getCurrentUserId()).toBeNull()
-  })
-
-  it('isAccessTokenExpired 支持 leeway 提前判定为过期', () => {
-    const soon = makeJWT({ exp: Math.floor(Date.now() / 1000) + 30 })
-    expect(isAccessTokenExpired(soon, 0)).toBe(false)
-    expect(isAccessTokenExpired(soon, 60_000)).toBe(true)
-  })
-
-  it('isAccessTokenExpired 无 exp 字段视为过期', () => {
-    expect(isAccessTokenExpired(makeJWT({ sub: '1' }))).toBe(true)
-  })
-
-  it('hasValidAccessToken 接受 leeway', () => {
-    setAuthSession({ token: makeJWT({ exp: Math.floor(Date.now() / 1000) + 30 }) })
-    expect(hasValidAccessToken()).toBe(true)
+  it('setAdminSession 只传 user 时 role/permissions 默认值', () => {
+    setAdminSession({ user: { id: 1 } })
+    expect(getAdminRole()).toBe('')
+    expect(getAdminPermissions()).toEqual([])
   })
 })
 
-describe('auth 补充 - 登出/会话隔离边界', () => {
-  it('clearAuthSession 不影响 admin session', () => {
-    setAdminSession({ token: 'admin-1', role: '管理员', permissions: ['a'] })
-    setAuthSession({ token: 'user-1', refreshToken: 'r' })
-    clearAuthSession()
-    expect(getToken()).toBe('')
-    expect(getAdminToken()).toBe('admin-1')
-    expect(getAdminRole()).toBe('管理员')
+describe('scrubCredentials：登录响应里的 token 不能跟着展示信息进 localStorage', () => {
+  it('setAdminSession 收到带 token 的 user 时不会写出去', () => {
+    setAdminSession({ token: 'admin-tok', user: { id: 1, token: 'nested-tok' }, role: '管理员' })
+    const raw = localStorage.getItem('admin_user') || ''
+    expect(raw).not.toContain('nested-tok')
+    expect(raw).not.toContain('admin-tok')
+    expect(getAdminUser()).toEqual({ id: 1 })
+    expect(store.has('admin_token')).toBe(false)
   })
 
-  it('clearAdminSession 不影响 user session', () => {
-    setAuthSession({ token: 'u-1', refreshToken: 'r' })
-    setAdminSession({ token: 'admin-1' })
-    clearAdminSession()
-    expect(getAdminToken()).toBe('')
-    expect(getToken()).toBe('u-1')
-    expect(getRefreshToken()).toBe('r')
+  it('读路径也清洗：升级前落盘的副本被覆盖读出', () => {
+    localStorage.setItem('admin_user', JSON.stringify({ id: 1, token: 'legacy-leak' }))
+    expect(getAdminUser()).toEqual({ id: 1 })
   })
 
-  it('setAuthSession 不传 user 时不会清空已存在 user', () => {
-    setAuthSession({ user: { id: 1, name: 'A' } })
-    setAuthSession({ token: 'new-token' })
-    expect(getStoredUser()).toEqual({ id: 1, name: 'A' })
-    expect(getToken()).toBe('new-token')
-  })
-
-  it('setAuthSession 不传 refreshToken 时不会清空已有值', () => {
-    setAuthSession({ token: 'a', refreshToken: 'r1' })
-    setAuthSession({ token: 'b' })
-    expect(getRefreshToken()).toBe('r1')
-    expect(getToken()).toBe('b')
-  })
-
-  it('hasAuthSession 在仅有 refreshToken 时返回 true', () => {
-    expect(hasAuthSession()).toBe(false)
-    setAuthSession({ refreshToken: 'r-only' })
-    expect(hasAuthSession()).toBe(true)
+  it('不误伤正常业务字段', () => {
+    expect(scrubCredentials({ id: 1, role: '管理员', permissions: ['a'] }))
+      .toEqual({ id: 1, role: '管理员', permissions: ['a'] })
+    expect(scrubCredentials(null)).toBeNull()
   })
 })
 
-describe('auth 补充 - 错误边界', () => {
-  it('decodeJwtPayload 单段字符串返回 null', () => {
-    expect(decodeJwtPayload('one-part')).toBeNull()
-  })
-
-  it('decodeJwtPayload payload 不是合法 JSON 时返回 null', () => {
-    const b64 = (s: string) => btoa(s).replace(/=/g, '')
-    const header = b64('{}')
-    const body = b64('{not-json')
-    expect(decodeJwtPayload(`${header}.${body}.sig`)).toBeNull()
-  })
-
+describe('错误边界', () => {
   it('getAdminUser 解析坏 JSON 返回 null', () => {
     localStorage.setItem('admin_user', '{oops')
     expect(getAdminUser()).toBeNull()
@@ -216,26 +198,8 @@ describe('auth 补充 - 错误边界', () => {
     expect(getStoredUser()).toBeNull()
   })
 
-  it('setAdminSession 只传 token 时 user/role/permissions 默认值', () => {
-    setAdminSession({ token: 'tok' })
-    expect(getAdminUser()).toBeNull()
-    expect(getAdminRole()).toBe('')
-    expect(getAdminPermissions()).toEqual([])
-  })
-
-  it('decodeJwtPayload 默认参数读取 getToken()', () => {
-    setAuthSession({ token: unexpiredJWT })
-    const p = decodeJwtPayload()
-    expect(p?.sub).toBe('42')
-  })
-
-  it('decodeJwtPayload token 为空字符串返回 null', () => {
-    expect(decodeJwtPayload('')).toBeNull()
-  })
-
-  it('admin permissions 重复 key 覆盖而非追加', () => {
-    setAdminSession({ token: 't', permissions: ['a', 'b'] })
-    setAdminSession({ token: 't', permissions: ['c'] })
-    expect(getAdminPermissions()).toEqual(['c'])
+  it('getStoredUser 解析坏 JSON 返回 null', () => {
+    localStorage.setItem('user', '{oops')
+    expect(getStoredUser()).toBeNull()
   })
 })

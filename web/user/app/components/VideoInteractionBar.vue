@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasAuthSession } from "@/utils/auth.ts"
 import { safeStorage } from '@/utils/safeStorage'
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -24,8 +25,7 @@ const newFolderName = ref('')
 const showNewFolderInput = ref(false)
 
 const handleLike = async () => {
-  const token = safeStorage.getItem("token")
-  if (!token) { ElMessage.warning('请先登录'); return }
+  if (!hasAuthSession()) { ElMessage.warning('请先登录'); return }
 
   const status = { ...props.interactionStatus }
   const info = { ...props.videoInfo }
@@ -67,8 +67,7 @@ const handleLike = async () => {
 }
 
 const handleCoin = async () => {
-  const token = safeStorage.getItem("token")
-  if (!token) { ElMessage.warning('请先登录'); return }
+  if (!hasAuthSession()) { ElMessage.warning('请先登录'); return }
 
   try {
     const { value: coinCount } = await ElMessageBox.prompt('请选择投币数量', '投币', {
@@ -127,8 +126,7 @@ const loadFavoriteFolders = async () => {
 }
 
 const handleFavorite = async () => {
-  const token = safeStorage.getItem("token")
-  if (!token) { ElMessage.warning('请先登录'); return }
+  if (!hasAuthSession()) { ElMessage.warning('请先登录'); return }
   await loadFavoriteFolders()
   showFavoriteDialog.value = true
 }

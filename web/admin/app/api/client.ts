@@ -3,12 +3,11 @@ import { safeStorage } from '../utils/safeStorage'
 import { ElMessage } from 'element-plus'
 import {
   clearAuthSession,
-  getRefreshToken,
-  getToken,
-  setAuthSession,
-  getAdminToken,
+  hasAuthSession,
+  hasAdminSession,
   clearAdminSession
 } from '../utils/auth'
+import { clearServerSession } from './session'
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -39,12 +38,8 @@ api.interceptors.request.use(
     const isImageRequest = url.includes('/covers/') || url.includes('/images/') || url.match(/\.(jpg|jpeg|png|gif|mp4)$/i)
     if (isImageRequest) return config
 
-    const adminToken = getAdminToken()
-    const userToken = getToken()
-    const token = adminToken || userToken
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
+    // 凭证只存在于 HttpOnly cookie，同源请求由浏览器自动携带。
+    // 这里刻意不设 Authorization：能被 JS 读出来塞头里的东西，XSS 也能读出来。
 
     if ((config.method || 'get').toLowerCase() === 'get' && cacheEnabled(url)) {
       const key = cacheKeyFor('get', url, config.params)
@@ -100,40 +95,36 @@ api.interceptors.response.use(
     const originalRequest = error.config
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      const refreshToken = getRefreshToken()
-      const adminToken = getAdminToken()
-
-      if (adminToken) {
+      if (hasAdminSession()) {
+        // 后台凭证过期：先让服务端作废 HttpOnly cookie（否则会残留可继续用的凭证），
+        // 再清本地展示信息并回到登录页。
         clearAdminSession()
-        window.location.href = '/admin/login'
+        void clearServerSession()
+        if (typeof window !== 'undefined') window.location.href = '/admin/login'
         return Promise.reject(error)
       }
 
-      if (!refreshToken || originalRequest.url === '/user/token/refresh') {
+      if (!hasAuthSession() || originalRequest.url === '/user/token/refresh') {
         clearAuthSession()
         return Promise.reject(error)
       }
 
+      // 同源刷新：refresh_token 是 HttpOnly cookie，body 里不带值
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
-        }).then(token => {
-          originalRequest.headers.Authorization = `Bearer ${token}`
-          return api(originalRequest)
-        }).catch(err => Promise.reject(err))
+        }).then(() => api(originalRequest)).catch(err => Promise.reject(err))
       }
 
       originalRequest._retry = true
       isRefreshing = true
 
       return new Promise((resolve, reject) => {
-        api.post('/user/token/refresh', { refreshToken })
+        api.post('/user/token/refresh', {})
           .then((res: any) => {
             if (res.code === 200 && res.data) {
-              const { token, refreshToken: newRefreshToken } = res.data
-              setAuthSession({ token, refreshToken: newRefreshToken || refreshToken })
-              originalRequest.headers.Authorization = `Bearer ${token}`
-              processQueue(null, token)
+              // 新令牌同样只落在 HttpOnly cookie
+              processQueue(null, 'ok')
               resolve(api(originalRequest))
             } else {
               clearAuthSession()
@@ -165,72 +156,9 @@ api.interceptors.response.use(
   }
 )
 
-function decodeJwtPayload(token: string) {
-  try {
-    const part = token.split('.')[1]
-    if (!part) return null
-    const b64 = part.replace(/-/g, '+').replace(/_/g, '/')
-    const pad = b64.length % 4
-    const padded = pad ? b64 + '='.repeat(4 - pad) : b64
-    return JSON.parse(atob(padded))
-  } catch (e) {
-    return null
-  }
-}
-
-function getAccessTokenRemainingMs() {
-  const token = getToken()
-  if (!token) return -1
-  const payload = decodeJwtPayload(token)
-  if (!payload || !payload.exp) return -1
-  return payload.exp * 1000 - Date.now()
-}
-
-async function silentRefreshOnce() {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) {
-    stopSilentRefresh()
-    return false
-  }
-  try {
-    const res = await api.post('/user/token/refresh', { refreshToken })
-    if (res && res.code === 200 && res.data && res.data.token) {
-      setAuthSession({
-        token: res.data.token,
-        refreshToken: res.data.refreshToken || refreshToken
-      })
-      return true
-    }
-    clearAuthSession()
-    stopSilentRefresh()
-    return false
-  } catch (e) {
-    return false
-  }
-}
-
-let silentRefreshTimer: ReturnType<typeof setInterval> | null = null
-
-export function startSilentRefresh() {
-  if (silentRefreshTimer) return
-  silentRefreshTimer = setInterval(async () => {
-    if (!getRefreshToken()) {
-      stopSilentRefresh()
-      return
-    }
-    const remaining = getAccessTokenRemainingMs()
-    if (remaining < 10 * 60 * 1000) {
-      await silentRefreshOnce()
-    }
-  }, 60 * 1000)
-}
-
-export function stopSilentRefresh() {
-  if (silentRefreshTimer) {
-    clearInterval(silentRefreshTimer)
-    silentRefreshTimer = null
-  }
-}
+// 登录态与续期交给服务端：凭证是 HttpOnly 的，客户端读不到 exp。
+// IdentityMiddleware 在有效期不足 12h 时重签并回写 cookie（滑动续期），
+// 401 时上面的拦截器回到登录页兜底。
 
 export const captchaApi = {
   newCaptcha: () => api.post('/captcha/new'),
@@ -343,7 +271,7 @@ export const commentApi = {
 }
 
 const requireAuthResult = (data: any) => (
-  getToken()
+  hasAuthSession()
     ? null
     : Promise.resolve({ code: 401, message: '请先登录', data })
 )

@@ -6,6 +6,11 @@ vi.mock('@/api/admin', () => ({
   adminLogin: vi.fn(),
 }))
 
+vi.mock('@/api/session', () => ({
+  clearServerSession: vi.fn(() => Promise.resolve()),
+  default: vi.fn(() => Promise.resolve()),
+}))
+
 // happy-dom 18 未把 localStorage 挂到 window，手动 polyfill
 const store = new Map<string, string>()
 const localStorageMock = {
@@ -27,24 +32,27 @@ describe('admin store', () => {
   describe('初始状态', () => {
     it('无 localStorage 时使用默认空值', () => {
       const s = useAdminStore()
-      expect(s.token).toBe('')
+      expect(store.has('admin_token')).toBe(false)
       expect(s.userInfo).toBeNull()
       expect(s.role).toBe('')
       expect(s.permissions).toEqual([])
     })
 
     it('从 localStorage 恢复状态', () => {
-      localStorage.setItem('admin_token', 'saved-token')
+      localStorage.setItem('admin_token', 'saved-token') // 升级前的明文遗留
       localStorage.setItem('admin_user', JSON.stringify({ id: 1, name: 'A' }))
       localStorage.setItem('admin_role', '管理员')
       localStorage.setItem('admin_permissions', JSON.stringify(['video.view']))
       setActivePinia(createPinia())
 
       const s = useAdminStore()
-      expect(s.token).toBe('saved-token')
+      // 展示/授权信息照常恢复，凭证不进 store 也不进 localStorage
       expect(s.userInfo).toEqual({ id: 1, name: 'A' })
       expect(s.role).toBe('管理员')
       expect(s.permissions).toEqual(['video.view'])
+      // store 上已彻底没有 token 这一栏，遗留副本也不会被读出来
+      expect('token' in s).toBe(false)
+      expect(s).not.toHaveProperty('token')
     })
   })
 
@@ -65,11 +73,11 @@ describe('admin store', () => {
       const res = await s.login({ username: 'admin', password: '123' })
 
       expect(res).toEqual({ success: true })
-      expect(s.token).toBe('tok-123')
+      expect(store.has('admin_token')).toBe(false)
       expect(s.userInfo).toEqual({ id: 1, name: 'Admin' })
       expect(s.role).toBe('管理员')
       expect(s.permissions).toEqual(['video.review'])
-      expect(localStorage.getItem('admin_token')).toBe('tok-123')
+      expect(localStorage.getItem('admin_token')).toBeNull()
       expect(JSON.parse(localStorage.getItem('admin_user')!)).toEqual({ id: 1, name: 'Admin' })
       expect(localStorage.getItem('admin_role')).toBe('管理员')
       expect(JSON.parse(localStorage.getItem('admin_permissions')!)).toEqual(['video.review'])
@@ -89,7 +97,7 @@ describe('admin store', () => {
       const res = await s.login({ username: 'editor', password: 'pwd' })
 
       expect(res).toEqual({ success: true })
-      expect(s.token).toBe('tok-alt')
+      expect(store.has('admin_token')).toBe(false)
       expect(s.userInfo).toEqual({ id: 2, name: 'B' })
       expect(s.role).toBe('编辑')
       expect(s.permissions).toEqual(['edit'])
@@ -106,7 +114,7 @@ describe('admin store', () => {
       const res = await s.login({ username: 'admin', password: 'wrong' })
 
       expect(res).toEqual({ success: false, message: '密码错误' })
-      expect(s.token).toBe('')
+      expect(store.has('admin_token')).toBe(false)
       expect(s.userInfo).toBeNull()
     })
 
@@ -118,11 +126,26 @@ describe('admin store', () => {
       const res = await s.login({ username: 'admin', password: '123' })
 
       expect(res).toEqual({ success: false, message: '网络异常' })
-      expect(s.token).toBe('')
+      expect(store.has('admin_token')).toBe(false)
     })
   })
 
   describe('logout', () => {
+    it('清空所有状态和 localStorage，并作废服务端 HttpOnly cookie', async () => {
+      const { clearServerSession } = await import('@/api/session')
+      const { adminLogin } = await import('@/api/admin')
+      vi.mocked(adminLogin).mockResolvedValue({
+        code: 200,
+        data: { token: 'tok', adminUser: { id: 1 }, role: '管理员', permissions: ['a'] },
+      })
+
+      const s = useAdminStore()
+      await s.login({ username: 'a', password: 'b' })
+      vi.mocked(clearServerSession).mockClear()
+      s.logout()
+      expect(clearServerSession).toHaveBeenCalledTimes(1)
+    })
+
     it('清空所有状态和 localStorage', async () => {
       const { adminLogin } = await import('@/api/admin')
       vi.mocked(adminLogin).mockResolvedValue({
@@ -132,10 +155,10 @@ describe('admin store', () => {
 
       const s = useAdminStore()
       await s.login({ username: 'a', password: 'b' })
-      expect(s.token).toBe('tok')
+      expect(store.has('admin_token')).toBe(false)
 
       s.logout()
-      expect(s.token).toBe('')
+      expect(store.has('admin_token')).toBe(false)
       expect(s.userInfo).toBeNull()
       expect(s.role).toBe('')
       expect(s.permissions).toEqual([])
@@ -236,7 +259,7 @@ describe('admin store 补充 - 嵌套用户信息', () => {
 
     const s = useAdminStore()
     await s.login({ username: 'fallback', password: 'p' })
-    expect(s.userInfo).toEqual({ username: 'fallback' })
+    expect(s.userInfo).toEqual({ id: null, username: 'fallback' })
   })
 
   it('success=true 但无 token 时 token 为 undefined', async () => {
@@ -250,7 +273,7 @@ describe('admin store 补充 - 嵌套用户信息', () => {
     const s = useAdminStore()
     const res = await s.login({ username: 'u', password: 'p' })
     expect(res).toEqual({ success: true })
-    expect(s.token).toBeUndefined()
+    expect(store.has('admin_token')).toBe(false)
   })
 })
 
@@ -325,14 +348,14 @@ describe('admin store 补充 - logout 状态隔离', () => {
     await s.login({ username: 'u', password: 'p' })
     s.logout()
     expect(() => s.logout()).not.toThrow()
-    expect(s.token).toBe('')
+    expect(store.has('admin_token')).toBe(false)
     expect(s.userInfo).toBeNull()
   })
 
   it('未登录时 logout 不抛错', () => {
     const s = useAdminStore()
     expect(() => s.logout()).not.toThrow()
-    expect(s.token).toBe('')
+    expect(store.has('admin_token')).toBe(false)
   })
 
   it('logout 后再次登录可重新建立完整状态', async () => {
@@ -352,10 +375,10 @@ describe('admin store 补充 - logout 状态隔离', () => {
     s.logout()
     const res = await s.login({ username: 'u2', password: 'p' })
     expect(res).toEqual({ success: true })
-    expect(s.token).toBe('tok2')
+    expect(store.has('admin_token')).toBe(false)
     expect(s.role).toBe('编辑')
     expect(s.permissions).toEqual(['b'])
-    expect(localStorage.getItem('admin_token')).toBe('tok2')
+    expect(localStorage.getItem('admin_token')).toBeNull()
     expect(localStorage.getItem('admin_id')).toBe('2')
   })
 })

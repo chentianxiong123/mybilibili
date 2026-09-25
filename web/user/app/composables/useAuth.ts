@@ -1,4 +1,4 @@
-import { getStoredUser, getToken, getRefreshToken } from '~/utils/auth'
+import { getStoredUser } from '~/utils/auth'
 
 export interface AuthUser {
   id?: number
@@ -9,15 +9,15 @@ export interface AuthUser {
 }
 
 /**
- * SSR 安全的认证状态读取。
+ * SSR 安全的登录态读取。
  *
- * - 服务端：从请求头 Cookie 里读 token/user_info（由 Go 登录接口 Set-Cookie 写入），
- *   与真实登录态一致，水合时不再 mismatch。
+ * 只读 user_info（后端下发的可读展示信息）。凭证 token / refresh_token 是 HttpOnly，
+ * 绝不能经 useCookie 或 payload 暴露给客户端——那等于把 HttpOnly 又拆了。
+ *
+ * - 服务端：直接解析请求头 Cookie，与真实登录态一致，水合时不再 mismatch。
  * - 客户端：优先读 Cookie（与 SSR 一致），回退到 localStorage（兼容旧数据）。
  */
 export const useAuth = () => {
-  const cookieToken = useCookie<string | null>('token', { default: () => null })
-  const cookieRefresh = useCookie<string | null>('refresh_token', { default: () => null })
   const cookieUserRaw = useCookie<string | null>('user_info', { default: () => null })
 
   const cookieUser = computed<AuthUser | null>(() => {
@@ -39,21 +39,9 @@ export const useAuth = () => {
     return null
   })
 
-  const token = computed<string | null>(() => {
-    if (cookieToken.value) return cookieToken.value
-    if (import.meta.client) return getToken() || null
-    return null
-  })
+  const isLoggedIn = computed<boolean>(() => Boolean(user.value))
 
-  const refreshToken = computed<string | null>(() => {
-    if (cookieRefresh.value) return cookieRefresh.value
-    if (import.meta.client) return getRefreshToken() || null
-    return null
-  })
-
-  const isLoggedIn = computed<boolean>(() => Boolean(token.value))
-
-  return { token, refreshToken, user, isLoggedIn }
+  return { user, isLoggedIn }
 }
 
 export default useAuth

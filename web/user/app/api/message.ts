@@ -1,8 +1,9 @@
 import api from './client'
+import { hasAuthSession } from '../utils/auth'
 import { safeStorage } from '../utils/safeStorage'
 
 const authRequired = (data) => (
-  safeStorage.getItem('token')
+  hasAuthSession()
     ? null
     : Promise.resolve({ code: 401, message: '请先登录', data })
 )

@@ -138,11 +138,7 @@ export default {
             formData.append("to_user_id", this.commentInfo.to_user_id);
             formData.append("content", this.content);
 
-            const response = await this.$post("/comment/add", formData, {
-                headers: {
-                    Authorization: "Bearer " + localStorage.getItem("teri_token"),
-                }
-            });
+            const response = await this.$post("/comment/add", formData);
             if (!response.data) return;
 
             this.isFocus = false

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { getBarrages, sendBarrage } from '../../api/video'
-import { getToken } from '../../utils/session'
+import { isLogin } from '../../utils/session'
 
 const props = defineProps({
   video: { type: Object, default: null },
@@ -143,8 +143,7 @@ const initPlayer = async () => {
         emitter: true,
         // 发送弹幕：校验登录并写入后端（与 web 端一致）
         beforeEmit: async (danmu: any) => {
-          const token = getToken()
-          if (!token) {
+          if (!isLogin()) {
             showToast('请先登录')
             return false
           }

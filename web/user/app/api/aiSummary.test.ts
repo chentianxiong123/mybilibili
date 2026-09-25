@@ -73,20 +73,12 @@ describe('aiSummaryApi', () => {
       expect(onError).toHaveBeenCalledWith(expect.stringContaining('未登录'))
     })
 
-    it('无 token 时 Authorization 为空', async () => {
+    it('SSE 不带 Authorization——凭证由同源 cookie 自动携带', async () => {
       mocks.fetch.mockResolvedValueOnce(buildSSEResponse(['']))
       aiSummaryApi.streamSummary(10)
       const headers = (mocks.fetch.mock.calls[0][1] as RequestInit).headers as Record<string, string>
-      expect(headers['Authorization']).toBe('')
+      expect(headers['Authorization']).toBeUndefined()
       expect(headers['Accept']).toBe('text/event-stream')
-    })
-
-    it('有 token 时 Authorization 携带 Bearer', async () => {
-      mocks.auth.getToken.mockReturnValue('t123')
-      mocks.fetch.mockResolvedValueOnce(buildSSEResponse(['']))
-      aiSummaryApi.streamSummary(11)
-      const headers = (mocks.fetch.mock.calls[0][1] as RequestInit).headers as Record<string, string>
-      expect(headers['Authorization']).toBe('Bearer t123')
     })
 
     it('解析 data 事件: base64 编码', async () => {

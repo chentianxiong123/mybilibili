@@ -11,7 +11,6 @@ import {
   getCurrentUserId,
   getStoredUser,
   hasAuthSession,
-  hasValidAccessToken,
   setAuthSession
 } from '../../utils/auth.ts'
 import { usePrefetch } from '../../composables/usePrefetch'
@@ -98,12 +97,6 @@ const fetchUserInfo = async () => {
 
 const checkTokenExpiration = () => {
   if (!hasAuthSession()) {
-    isLogged.value = false
-    userInfo.value = null
-    return false
-  }
-
-  if (!hasValidAccessToken() && !getStoredUser()) {
     isLogged.value = false
     userInfo.value = null
     return false

@@ -4,9 +4,9 @@ import { clearServerSession } from '@/api/session'
 import {
   clearAuthSession,
   getCurrentUserId,
-  getRefreshToken,
   getStoredUser,
-  getToken,
+  hasAuthSession,
+  scrubCredentials,
   setAuthSession
 } from '@/utils/auth'
 
@@ -33,12 +33,8 @@ export const useUserStore = (defineStore as any)('user', {
       coinCount: 0,
       pointCount: 0
     },
-    // 登录状态
+    // 登录状态（凭证在 HttpOnly cookie 里，store 里不留任何可读副本）
     isLoggedIn: false,
-    // 登录令牌
-    token: '',
-    // 刷新令牌
-    refreshToken: '',
     // 登录加载状态
     loginLoading: false,
     // 注册加载状态
@@ -75,39 +71,32 @@ export const useUserStore = (defineStore as any)('user', {
     },
 
     // 设置用户信息
+    // userInfo 会被 persist 到 localStorage，所以登录响应里的 token 必须在这里洗掉
     setUserInfo(userInfo) {
-      this.userInfo = { ...this.userInfo, ...userInfo }
+      this.userInfo = { ...this.userInfo, ...scrubCredentials(userInfo) }
     },
 
     // 设置令牌
-    setToken(token, refreshToken) {
-      this.token = token
-      this.refreshToken = refreshToken
-      setAuthSession({ token, refreshToken })
+    // 保留旧签名以兼容调用方；凭证不再落盘，这里只维护展示用的登录态
+    setToken() {
+      this.isLoggedIn = hasAuthSession()
     },
 
     // 清除令牌
     clearToken() {
-      this.token = ''
-      this.refreshToken = ''
       clearAuthSession()
     },
 
-    // 加载本地存储的令牌
+    // 从本地可见的登录态信号恢复（凭证本身在 HttpOnly cookie 里）
     loadTokenFromStorage() {
-      const token = getToken()
-      const refreshToken = getRefreshToken()
-      if (token && refreshToken) {
-        this.token = token
-        this.refreshToken = refreshToken
-        this.isLoggedIn = true
-        const user = getStoredUser()
-        if (user) {
-          if (!user.id && user.user_id) {
-            user.id = user.user_id
-          }
-          this.setUserInfo(user)
+      if (!hasAuthSession()) return
+      this.isLoggedIn = true
+      const user = getStoredUser()
+      if (user) {
+        if (!user.id && user.user_id) {
+          user.id = user.user_id
         }
+        this.setUserInfo(user)
       }
     },
 
@@ -120,9 +109,8 @@ export const useUserStore = (defineStore as any)('user', {
           return { success: false, message: response.message || '登录失败，请检查用户名和密码' }
         }
 
-        setAuthSession({ token: response.data.token, refreshToken: response.data.refresh_token, user: response.data })
-        this.token = response.data.token
-        this.refreshToken = response.data.refresh_token || ''
+        // token/refresh_token 已由服务端写进 HttpOnly cookie，这里只留展示信息
+        setAuthSession({ user: response.data })
         const userData = response.data.user || response.data
         if (!userData.id && userData.user_id) {
           userData.id = userData.user_id
@@ -179,8 +167,6 @@ export const useUserStore = (defineStore as any)('user', {
       
       void clearServerSession()
       clearAuthSession()
-      this.token = ''
-      this.refreshToken = ''
       
       // 设置登录状态
       this.setLoginStatus(false)
@@ -251,7 +237,8 @@ export const useUserStore = (defineStore as any)('user', {
         // 存储方式
         storage: localStorage,
         // 存储字段
-        paths: ['userInfo', 'isLoggedIn', 'token', 'refreshToken']
+        // 不持久化凭证：token / refreshToken 只存在于 HttpOnly cookie
+        paths: ['userInfo', 'isLoggedIn']
       }
     ]
   }

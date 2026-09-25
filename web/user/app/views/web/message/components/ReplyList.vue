@@ -96,9 +96,7 @@ const handleItemClick = async (item) => {
   if (item.manuscriptId) {
     const pParam = item.videoOrder ? `&p=${item.videoOrder}` : ''
     try {
-      const resp = await fetch(`/api/v1/manuscript/${item.manuscriptId}`, {
-        headers: { 'Authorization': safeStorage.getItem('token') ? `Bearer ${safeStorage.getItem('token')}` : '' }
-      })
+      const resp = await fetch(`/api/v1/manuscript/${item.manuscriptId}`)
       const data = await resp.json()
       if (data.code === 404) {
         router.push('/404')
@@ -135,8 +133,7 @@ const handleLike = async (item) => {
     const response = await fetch(`/api/comment/comment/${item.commentId}/like`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': safeStorage.getItem("token") ? `Bearer ${safeStorage.getItem("token")}` : ''
+        'Content-Type': 'application/json'
       }
     })
     const res = await response.json()

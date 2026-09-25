@@ -1,7 +1,7 @@
 // API 客户端 - 与 mybilibili-web/src/api/index.js 保持一致
 import axios from 'axios'
 import storage, { K } from '../utils/storage_layer'
-import { getToken, clearSession, tryRefresh } from '../utils/session'
+import { clearSession, tryRefresh } from '../utils/session'
 
 // 简单 toast 提示（原项目不用 Element Plus）
 function showToast(msg: string) {
@@ -19,17 +19,12 @@ const api = axios.create({
   withCredentials: true
 })
 
-// 请求拦截器：添加token + 用户ID
+// 请求拦截器。凭证只在 HttpOnly cookie 里，同源请求浏览器自动带上；
+// 这里刻意不设 Authorization——能被 JS 读出来塞头里的东西，XSS 也能读出来。
 api.interceptors.request.use(
   config => {
-    const token = getToken()
-    const url = config.url || ''
-    const isImageRequest = url.includes('/covers/') || url.includes('/images/')
-    if (token && !isImageRequest) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    // 注意：不再自塞 X-User-Id —— 该头由服务端 IdentityMiddleware 从凭证解析注入，
-    // 客户端可伪造任意身份。同源请求浏览器自动携带 cookie，作为第二条鉴权通道。
+    // 注意：不自塞 X-User-Id —— 该头由服务端 IdentityMiddleware 从凭证解析注入，
+    // 客户端可伪造任意身份。
     config.headers['X-Client-Platform'] = 'wap'
     return config
   },

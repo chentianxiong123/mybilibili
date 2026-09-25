@@ -391,6 +391,7 @@
 </template>
 
 <script setup lang="ts">
+import { hasAuthSession } from "@/utils/auth.ts"
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTeriteriStore } from '@/stores/teriteri'
@@ -537,7 +538,7 @@ async function getVideoDetail() {
         currentPartIndex.value = idx >= 0 ? idx : 0
     }
     isDescTooLong()
-    if (localStorage.getItem('teri_token')) {
+    if (hasAuthSession()) {
         getCollectedFids()
     }
     return true
@@ -622,7 +623,6 @@ async function onLove() {
         const res = await request({
             url: `/manuscript/${mid}/like`,
             method,
-            headers: { Authorization: 'Bearer ' + (localStorage.getItem('teri_token') || '') },
         })
         if (!res.data || res.data.code !== 200 || !res.data.data) {
             loveLoading.value = false
@@ -679,7 +679,6 @@ async function getCollectedFids() {
     const { get } = await import('@/teriteri-src/network/request')
     const res = await get('/video/collected-fids', {
         params: { vid: Number(video.value.vid) },
-        headers: { Authorization: 'Bearer ' + localStorage.getItem('teri_token') },
     })
     if (!res.data) return
     // 后端返回 [{id, name}, ...]，前端只取 id 放进 Set
@@ -818,7 +817,7 @@ function handleWsError(e: Event) {
 }
 
 function sendDanmu(dm: any) {
-    if (!localStorage.getItem('teri_token')) {
+    if (!hasAuthSession()) {
         store.openLogin = true
         nextTick(() => {
             store.openLogin = false
@@ -826,7 +825,6 @@ function sendDanmu(dm: any) {
         return
     }
     const dmJson = JSON.stringify({
-        token: 'Bearer ' + localStorage.getItem('teri_token'),
         data: dm,
     })
     socket.value?.send(dmJson)

@@ -15,10 +15,10 @@ vi.mock('@/api/client', () => ({
 vi.mock('@/utils/auth', () => ({
   setAuthSession: vi.fn(),
   clearAuthSession: vi.fn(),
-  getToken: vi.fn(() => ''),
-  getRefreshToken: vi.fn(() => ''),
+  hasAuthSession: vi.fn(() => false),
   getStoredUser: vi.fn(() => null),
   getCurrentUserId: vi.fn(() => null),
+  scrubCredentials: vi.fn((v: any) => v),
 }))
 
 import { useUserStore } from './user'
@@ -35,7 +35,6 @@ describe('user store', () => {
     it('默认未登录', () => {
       const store = useUserStore()
       expect(store.isLoggedIn).toBe(false)
-      expect(store.token).toBe('')
       expect(store.userInfo.username).toBe('')
     })
 
@@ -64,11 +63,11 @@ describe('user store', () => {
 
       expect(result.success).toBe(true)
       expect(store.isLoggedIn).toBe(true)
-      expect(store.token).toBe('access-token')
       expect(store.userInfo.username).toBe('testuser')
+      // 凭证只落 HttpOnly cookie，store 里不留任何副本
+      expect(JSON.stringify(store.$state)).not.toContain('access-token')
       expect(setAuthSession).toHaveBeenCalledWith(expect.objectContaining({
-        token: 'access-token',
-        refreshToken: 'refresh-token',
+        user: expect.anything(),
       }))
     })
 
@@ -139,42 +138,30 @@ describe('user store', () => {
     it('退出后状态清空', () => {
       const store = useUserStore()
       // 先模拟登录状态
-      store.token = 'some-token'
-      store.refreshToken = 'some-refresh'
       store.isLoggedIn = true
       store.userInfo.username = 'testuser'
 
       store.logout()
 
       expect(store.isLoggedIn).toBe(false)
-      expect(store.token).toBe('')
-      expect(store.refreshToken).toBe('')
       expect(store.userInfo.username).toBe('')
       expect(clearAuthSession).toHaveBeenCalled()
     })
   })
 
   describe('setToken / clearToken', () => {
-    it('setToken 写入 token 并调用 setAuthSession', () => {
+    it('setToken 只维护登录态，不保存凭证参数', () => {
       const store = useUserStore()
       store.setToken('new-token', 'new-refresh')
 
-      expect(store.token).toBe('new-token')
-      expect(store.refreshToken).toBe('new-refresh')
-      expect(setAuthSession).toHaveBeenCalledWith({
-        token: 'new-token',
-        refreshToken: 'new-refresh',
-      })
+      expect(JSON.stringify(store.$state)).not.toContain('new-token')
+      expect(JSON.stringify(store.$state)).not.toContain('new-refresh')
     })
 
-    it('clearToken 清空 token', () => {
+    it('clearToken 调 clearAuthSession', () => {
       const store = useUserStore()
-      store.token = 't'
-      store.refreshToken = 'r'
       store.clearToken()
 
-      expect(store.token).toBe('')
-      expect(store.refreshToken).toBe('')
       expect(clearAuthSession).toHaveBeenCalled()
     })
   })
