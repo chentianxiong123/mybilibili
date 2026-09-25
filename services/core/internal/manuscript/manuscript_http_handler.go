@@ -1616,30 +1616,48 @@ func (h *ManuscriptHTTPHandler) handleInteractionStatus(w http.ResponseWriter, r
 	})
 }
 
+// handleLike 点赞 / 取消点赞稿件。POST 点赞，DELETE 取消点赞，响应里带最新 likeCount。
+//
+// @Summary      点赞 / 取消点赞稿件
+// @Description  POST 点赞（幂等），DELETE 取消点赞（幂等）。返回当前是否点赞 + 最新 likeCount
+// @Tags         manuscript
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id   path      int  true  "稿件 id"
+// @Success      200  {object}  string  "Like response"
+// @Failure      401  {string}  string  "未登录"
+// @Router       /manuscript/{id}/like [post]
+// @Router       /manuscript/{id}/like [delete]
 func (h *ManuscriptHTTPHandler) handleLike(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseInt(httputil.PathValue(r, "id"), 10, 64)
 	uid, ok := httputil.RequireUser(w, r)
 	if !ok {
 		return
 	}
+	var resp *pb.LikeManuscriptResponse
 	switch r.Method {
 	case http.MethodPost:
-		_, err := h.interactionSvc.LikeManuscript(r.Context(), &pb.LikeManuscriptRequest{ManuscriptId: id, UserId: uid})
+		out, err := h.interactionSvc.LikeManuscript(r.Context(), &pb.LikeManuscriptRequest{ManuscriptId: id, UserId: uid})
 		if err != nil {
 			errors.WriteHTTPError(w, err)
 			return
 		}
+		resp = out
 	case http.MethodDelete:
-		_, err := h.interactionSvc.UnlikeManuscript(r.Context(), &pb.UnlikeManuscriptRequest{ManuscriptId: id, UserId: uid})
+		out, err := h.interactionSvc.UnlikeManuscript(r.Context(), &pb.UnlikeManuscriptRequest{ManuscriptId: id, UserId: uid})
 		if err != nil {
 			errors.WriteHTTPError(w, err)
 			return
 		}
+		resp = &pb.LikeManuscriptResponse{Liked: false, LikeCount: out.LikeCount}
 	default:
 		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
-	httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
+	httputil.WriteOK(w, map[string]interface{}{
+		"liked":     resp.Liked,
+		"likeCount": resp.LikeCount,
+	})
 }
 
 func (h *ManuscriptHTTPHandler) handleCoin(w http.ResponseWriter, r *http.Request) {

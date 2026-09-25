@@ -136,7 +136,7 @@ func TestInteractionService_Like_WithPublisher(t *testing.T) {
 	mock.ExpectExec(`INSERT INTO user_interactions`).WithArgs(int64(1), "MANUSCRIPT", int64(9), "LIKE").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE manuscripts SET like_count`).WithArgs(int64(9)).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`INSERT INTO manuscript_daily_metrics`).WithArgs(int64(9), int64(1), int64(1)).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_interactions WHERE target_type`).WithArgs("MANUSCRIPT", int64(9), "LIKE").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery(`SELECT like_count FROM manuscripts`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"like_count"}).AddRow(4))
 
 	resp, err := svc.LikeManuscript(context.Background(), &pb.LikeManuscriptRequest{UserId: 1, ManuscriptId: 9})
 	require.NoError(t, err)

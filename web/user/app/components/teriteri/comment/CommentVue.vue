@@ -1,6 +1,12 @@
 <template>
     <div class="comment">
-        <div class="teriteri-comment browser-pc">
+        <!-- 折叠态：不喜欢该视频，整块评论区隐藏 -->
+        <div v-if="folded" class="comment-folded" @click="$emit('update:folded', false)">
+            <i class="iconfont icon-diancai"></i>
+            <span class="folded-text">你点了「不喜欢」，评论区已隐藏</span>
+            <span class="folded-action">展开评论</span>
+        </div>
+        <div v-else class="teriteri-comment browser-pc">
             <div class="comment-container">
                 <div class="reply-header">
                     <!-- 加载 -->
@@ -50,6 +56,7 @@ export default {
         CommentTree,
         ReplyTextarea,
     },
+    emits: ['update:folded'],
     props: {
         uid: {
             type: Number,
@@ -58,6 +65,10 @@ export default {
         count: {
             type: Number,
             default: 0
+        },
+        folded: {
+            type: Boolean,
+            default: false
         }
     },
     data() {
@@ -174,6 +185,33 @@ export default {
     margin-top: 24px;
     z-index: 0;
     position: relative;
+}
+
+.comment-folded {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 20px;
+    background-color: #FFFFFF;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.comment-folded:hover {
+    background-color: #F4F4F4;
+}
+.comment-folded .icon-diancai {
+    font-size: 18px;
+    color: #9499A0;
+}
+.comment-folded .folded-text {
+    flex: 1;
+    color: #61666D;
+    font-size: 14px;
+}
+.comment-folded .folded-action {
+    color: #00AEEC;
+    font-size: 14px;
 }
 
 .teriteri-comment .browser-pc {

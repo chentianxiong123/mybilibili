@@ -74,16 +74,21 @@ func (s *InteractionService) LikeManuscript(ctx context.Context, req *pb.LikeMan
 			s.profileRecorder.RecordLike(ctx, req.UserId, catID, nil)
 		}
 	}
-	count, _ := s.repo.CountInteraction(ctx, "MANUSCRIPT", "LIKE", req.ManuscriptId)
+	count, _ := s.repo.GetManuscriptCount(ctx, "like_count", req.ManuscriptId)
 	return &pb.LikeManuscriptResponse{Liked: true, LikeCount: count}, nil
 }
 
 func (s *InteractionService) UnlikeManuscript(ctx context.Context, req *pb.UnlikeManuscriptRequest) (*pb.UnlikeManuscriptResponse, error) {
-	s.repo.RemoveInteraction(ctx, req.UserId, "MANUSCRIPT", "LIKE", req.ManuscriptId)
-	s.repo.DecrementManuscriptCount(ctx, "like_count", req.ManuscriptId)
-	repository.UpsertDailyMetric(ctx, s.db, req.ManuscriptId, req.UserId, "like_count", -1)
-	s.publishAnalytics(ctx, req.ManuscriptId, req.UserId, "MANUSCRIPT_UNLIKE", "like_count", -1)
-	count, _ := s.repo.CountInteraction(ctx, "MANUSCRIPT", "LIKE", req.ManuscriptId)
+	// 未点赞的用户取消点赞是幂等操作：不能无条件 -1，否则反复调用会把
+	// like_count 扣成 0（种子数据本来就跟互动行数不一致，会越扣越歪）。
+	liked, _ := s.repo.HasInteraction(ctx, req.UserId, "MANUSCRIPT", "LIKE", req.ManuscriptId)
+	if liked {
+		s.repo.RemoveInteraction(ctx, req.UserId, "MANUSCRIPT", "LIKE", req.ManuscriptId)
+		s.repo.DecrementManuscriptCount(ctx, "like_count", req.ManuscriptId)
+		repository.UpsertDailyMetric(ctx, s.db, req.ManuscriptId, req.UserId, "like_count", -1)
+		s.publishAnalytics(ctx, req.ManuscriptId, req.UserId, "MANUSCRIPT_UNLIKE", "like_count", -1)
+	}
+	count, _ := s.repo.GetManuscriptCount(ctx, "like_count", req.ManuscriptId)
 	return &pb.UnlikeManuscriptResponse{Liked: false, LikeCount: count}, nil
 }
 

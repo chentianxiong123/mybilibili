@@ -128,6 +128,21 @@ func (r *InteractionRepository) DecrementManuscriptCount(ctx context.Context, fi
 	return err
 }
 
+// GetManuscriptCount 读 manuscripts 表上的展示计数（like_count/coin_count/...）。
+//
+// 点赞/取消点赞的响应必须回这个数，而不是 user_interactions 的行数：
+// 页面卡片、详情、推荐列表展示的都是它，两边口径不一致会让用户点一下赞
+// 看到的数字发生跳变。
+func (r *InteractionRepository) GetManuscriptCount(ctx context.Context, field string, manuscriptID int64) (int32, error) {
+	var count int32
+	err := r.db.QueryRowContext(ctx,
+		`SELECT `+field+` FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func (r *InteractionRepository) GetUserCoinCount(ctx context.Context, userID int64) (int64, error) {
 	var count int64
 	err := r.db.QueryRowContext(ctx, `SELECT coin_count FROM users WHERE id = $1`, userID).Scan(&count)

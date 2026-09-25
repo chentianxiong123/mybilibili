@@ -31,13 +31,15 @@ func TestInteractionService_LikeManuscript_FirstTime(t *testing.T) {
 	mock.ExpectExec(`INSERT INTO user_interactions`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE manuscripts SET like_count`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`INSERT INTO manuscript_daily_metrics`).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_interactions WHERE target_type`).
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(3))
+	// 响应回 manuscripts.like_count（页面展示口径），不是 user_interactions 行数
+	mock.ExpectQuery(`SELECT like_count FROM manuscripts`).
+		WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows([]string{"like_count"}).AddRow(8))
 
 	resp, err := svc.LikeManuscript(ctx, &pb.LikeManuscriptRequest{UserId: 1, ManuscriptId: 9})
 	require.NoError(t, err)
 	assert.True(t, resp.Liked)
-	assert.Equal(t, int32(3), resp.LikeCount)
+	assert.Equal(t, int32(8), resp.LikeCount)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -90,13 +92,14 @@ func TestInteractionService_LikeManuscript_WithRecorderAndNotifier(t *testing.T)
 	mock.ExpectQuery(`SELECT user_id FROM manuscripts`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(100))
 	// profileRecorder 路径：后查分类
 	mock.ExpectQuery(`SELECT category_id FROM manuscripts`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"category_id"}).AddRow(2))
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_interactions WHERE target_type`).
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(3))
+	mock.ExpectQuery(`SELECT like_count FROM manuscripts`).
+		WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows([]string{"like_count"}).AddRow(8))
 
 	resp, err := svc.LikeManuscript(ctx, &pb.LikeManuscriptRequest{UserId: 1, ManuscriptId: 9})
 	require.NoError(t, err)
 	assert.True(t, resp.Liked)
-	assert.Equal(t, int32(3), resp.LikeCount)
+	assert.Equal(t, int32(8), resp.LikeCount)
 	assert.Equal(t, 1, rec.likes)
 	assert.Equal(t, int64(2), rec.lastCat)
 	require.Len(t, not.msgs, 1)
@@ -117,8 +120,9 @@ func TestInteractionService_LikeManuscript_NoOwnerSkipsNotify(t *testing.T) {
 	mock.ExpectExec(`INSERT INTO manuscript_daily_metrics`).WillReturnResult(sqlmock.NewResult(0, 1))
 	// 作者不存在 → 不通知
 	mock.ExpectQuery(`SELECT user_id FROM manuscripts`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(0))
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_interactions WHERE target_type`).
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery(`SELECT like_count FROM manuscripts`).
+		WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows([]string{"like_count"}).AddRow(3))
 
 	_, err := svc.LikeManuscript(ctx, &pb.LikeManuscriptRequest{UserId: 1, ManuscriptId: 9})
 	require.NoError(t, err)
@@ -126,17 +130,22 @@ func TestInteractionService_LikeManuscript_NoOwnerSkipsNotify(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestInteractionService_LikeManuscript_AlreadyLiked(t *testing.T) {	svc, mock := newInteractionSvc(t)
+func TestInteractionService_LikeManuscript_AlreadyLiked(t *testing.T) {
+	svc, mock := newInteractionSvc(t)
 	ctx := context.Background()
 
+	// 已点赞 → 不再 INSERT / UPDATE，但仍回 like_count
 	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_interactions`).
+		WithArgs(int64(1), "MANUSCRIPT", int64(9), "LIKE").
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_interactions WHERE target_type`).
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery(`SELECT like_count FROM manuscripts`).
+		WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows([]string{"like_count"}).AddRow(11))
 
 	resp, err := svc.LikeManuscript(ctx, &pb.LikeManuscriptRequest{UserId: 1, ManuscriptId: 9})
 	require.NoError(t, err)
 	assert.True(t, resp.Liked)
+	assert.Equal(t, int32(11), resp.LikeCount)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -144,16 +153,40 @@ func TestInteractionService_UnlikeManuscript(t *testing.T) {
 	svc, mock := newInteractionSvc(t)
 	ctx := context.Background()
 
+	// HasInteraction → 1，才走删除 + 计数 -1
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_interactions`).
+		WithArgs(int64(1), "MANUSCRIPT", int64(9), "LIKE").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 	mock.ExpectExec(`DELETE FROM user_interactions`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE manuscripts SET like_count = GREATEST`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`INSERT INTO manuscript_daily_metrics`).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_interactions WHERE target_type`).
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	mock.ExpectQuery(`SELECT like_count FROM manuscripts`).
+		WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows([]string{"like_count"}).AddRow(7))
 
 	resp, err := svc.UnlikeManuscript(ctx, &pb.UnlikeManuscriptRequest{UserId: 1, ManuscriptId: 9})
 	require.NoError(t, err)
 	assert.False(t, resp.Liked)
-	assert.Equal(t, int32(0), resp.LikeCount)
+	assert.Equal(t, int32(7), resp.LikeCount)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestInteractionService_UnlikeManuscript_NotLiked_IsIdempotent(t *testing.T) {
+	svc, mock := newInteractionSvc(t)
+	ctx := context.Background()
+
+	// 没点过赞的用户取消点赞：什么都不该动，计数不变
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_interactions`).
+		WithArgs(int64(1), "MANUSCRIPT", int64(9), "LIKE").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	mock.ExpectQuery(`SELECT like_count FROM manuscripts`).
+		WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows([]string{"like_count"}).AddRow(7))
+
+	resp, err := svc.UnlikeManuscript(ctx, &pb.UnlikeManuscriptRequest{UserId: 1, ManuscriptId: 9})
+	require.NoError(t, err)
+	assert.False(t, resp.Liked)
+	assert.Equal(t, int32(7), resp.LikeCount)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

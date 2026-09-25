@@ -201,6 +201,56 @@ class TestFavoriteManuscriptFolders:
         assert isinstance(body["data"], list)
 
 
+# ---------- manuscript/{id}/like (POST 点赞 / DELETE 取消点赞) ----------
+class TestManuscriptLike:
+    def test_like_then_unlike(self, http, base_url, auth_headers, schema_for, assert_contract):
+        """POST 点赞 → DELETE 取消点赞，响应都符合 LikeResponse 契约。"""
+        post_schema = schema_for("/manuscript/{id}/like", "post")
+        del_schema = schema_for("/manuscript/{id}/like", "delete")
+
+        # 点赞
+        resp = http.post(f"{base_url}/manuscript/10/like", headers=auth_headers)
+        assert resp.status_code == 200, f"like failed: {resp.status_code}"
+        body = resp.json()
+        assert_contract(body, post_schema)
+        assert body["data"]["liked"] is True
+        assert isinstance(body["data"]["likeCount"], int)
+        like_count_after = body["data"]["likeCount"]
+
+        # 取消点赞
+        resp = http.delete(f"{base_url}/manuscript/10/like", headers=auth_headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert_contract(body, del_schema)
+        assert body["data"]["liked"] is False
+        assert body["data"]["likeCount"] == like_count_after - 1, \
+            f"likeCount 应 -1，实际 {body['data']['likeCount']}"
+
+    def test_like_unauthenticated(self, http, base_url):
+        """未登录点赞应 401。"""
+        resp = http.post(f"{base_url}/manuscript/10/like")
+        assert resp.status_code == 401
+
+    def test_like_method_not_allowed(self, http, base_url, auth_headers):
+        """PUT/GET 等不支持的方法应 405。"""
+        resp = http.put(f"{base_url}/manuscript/10/like", headers=auth_headers)
+        assert resp.status_code == 405
+
+    def test_like_is_idempotent(self, http, base_url, auth_headers, schema_for, assert_contract):
+        """重复点赞是幂等的（不重复计数）。"""
+        # 清零：先 DELETE（无操作）
+        http.delete(f"{base_url}/manuscript/10/like", headers=auth_headers)
+        # 第一次 POST
+        r1 = http.post(f"{base_url}/manuscript/10/like", headers=auth_headers).json()
+        # 第二次 POST（重复）
+        r2 = http.post(f"{base_url}/manuscript/10/like", headers=auth_headers).json()
+        assert r1["data"]["liked"] is True
+        assert r2["data"]["liked"] is True
+        assert r1["data"]["likeCount"] == r2["data"]["likeCount"], "重复点赞应幂等"
+        # 清理
+        http.delete(f"{base_url}/manuscript/10/like", headers=auth_headers)
+
+
 # ---------- 健康度 ----------
 class TestContractHealth:
     def test_all_paths_have_response_schema(self, spec):

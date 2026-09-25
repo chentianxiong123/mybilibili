@@ -149,6 +149,53 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+  /manuscript/{id}/like:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1}
+    post:
+      tags: [manuscript]
+      summary: 点赞稿件
+      description: |
+        对稿件点赞。幂等：已点赞再调用不会重复计数。
+        写入 user_interactions(interaction_type='LIKE')，manuscripts.like_count + 1，
+        响应回 manuscripts.like_count —— 与卡片/详情列表展示的是同一个数。
+      operationId: likeManuscript
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LikeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [manuscript]
+      summary: 取消点赞
+      description: |
+        撤销之前的点赞（幂等：未点赞时调用不报错）。
+        manuscripts.like_count - 1，返回新计数。
+      operationId: unlikeManuscript
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LikeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   # ============ COMMENT ============
   /comment/list:
     get:
@@ -523,3 +570,15 @@ components:
                 properties:
                   id: {type: integer}
                   name: {type: string}
+    LikeResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            code: {type: integer, enum: [200]}
+            data:
+              type: object
+              required: [liked, likeCount]
+              properties:
+                liked: {type: boolean, description: "当前点赞状态"}
+                likeCount: {type: integer, description: "稿件最新点赞数"}

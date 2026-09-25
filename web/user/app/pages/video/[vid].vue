@@ -64,7 +64,7 @@
                         <div class="toolbar-left-item-wrap">
                             <div class="video-toolbar-left-item"
                                 :class="{ 'on': store.attitudeToVideo.love }"
-                                @click="loveOrNot(true, !store.attitudeToVideo.love)">
+                                @click="onLove()">
                                 <i class="iconfont icon-dianzan"></i>
                                 <span class="video-toolbar-item-text">{{ handleNum(good) }}</span>
                                 <div class="dianzan-gif" :class="isGifShow ? 'gif-show' : 'gif-hide'">
@@ -74,8 +74,8 @@
                         </div>
                         <div class="toolbar-left-item-wrap">
                             <div class="video-toolbar-left-item"
-                                :class="{ 'on': store.attitudeToVideo.unlove }"
-                                @click="loveOrNot(false, !store.attitudeToVideo.unlove)">
+                                :class="{ 'on': dislikedVids.has(Number(video.vid)) }"
+                                @click="onDislike()">
                                 <i class="iconfont icon-diancai"></i>
                                 <span class="video-toolbar-item-text">不喜欢</span>
                             </div>
@@ -150,7 +150,7 @@
                         </div>
                     </div>
                     <!-- 评论 -->
-                    <CommentVue :uid="user.uid" :count="comment"></CommentVue>
+                    <CommentVue :uid="user.uid" :count="comment" :folded="dislikedVids.has(Number(video.vid))" @update:folded="onDislike"></CommentVue>
 
                 </div>
             </div>
@@ -437,6 +437,9 @@ const collectVisible = ref(false)
 const collectedFids = ref<Set<number>>(new Set())
 const isMounted = ref(false)
 const loveLoading = ref(false)
+// dislike 不持久化到后端，只存 localStorage 用作折叠评论区（用户隐私）
+const DISLIKED_VIDS_KEY = 'mybilibili_disliked_vids'
+const dislikedVids = ref<Set<number>>(loadDislikedVids())
 const manuscriptParts = ref<any[]>([])
 const currentPartIndex = ref(0)
 const manuscriptId = ref('')
@@ -594,13 +597,11 @@ async function closeWebSocket() {
     }
 }
 
-async function loveOrNot(isLove: boolean, isSet: boolean) {
+async function onLove() {
     if (loveLoading.value) return
     if (!store.user.uid) {
         store.openLogin = true
-        nextTick(() => {
-            store.openLogin = false
-        })
+        nextTick(() => { store.openLogin = false })
         return
     }
     if (!video.value.vid) {
@@ -608,37 +609,70 @@ async function loveOrNot(isLove: boolean, isSet: boolean) {
         return
     }
     loveLoading.value = true
-    const originalLove = store.attitudeToVideo.love
-    const { post } = await import('@/teriteri-src/network/request')
-    const formData = new FormData()
-    formData.append('vid', String(Number(video.value.vid)))
-    formData.append('isLove', String(isLove))
-    formData.append('isSet', String(isSet))
-    const res = await post('/video/love-or-not', formData, {
-        headers: { Authorization: 'Bearer ' + localStorage.getItem('teri_token') },
-    })
-    if (!res.data.data) {
+    const isSet = !store.attitudeToVideo.love  // 当前未点赞 → 这次是去点赞
+    const mid = Number(manuscriptId.value)
+    if (!mid) {
+        ElMessage.error('稿件不存在')
         loveLoading.value = false
         return
     }
-    const data = res.data.data
-    const atv = {
-        love: data.love === 1,
-        unlove: data.unlove === 1,
-        coin: data.coin,
-        collect: data.collect === 1,
+    const method = isSet ? 'post' : 'delete'
+    try {
+        const { request } = await import('@/teriteri-src/network/request')
+        const res = await request({
+            url: `/manuscript/${mid}/like`,
+            method,
+            headers: { Authorization: 'Bearer ' + (localStorage.getItem('teri_token') || '') },
+        })
+        if (!res.data || res.data.code !== 200 || !res.data.data) {
+            loveLoading.value = false
+            return
+        }
+        // data: { liked, likeCount }
+        const { liked, likeCount } = res.data.data
+        store.updateAttitudeToVideo({ ...store.attitudeToVideo, love: liked })
+        good.value = likeCount
+        if (liked) {
+            gifShow()
+            setTimeout(gifHide, 3000)
+        }
+    } catch (e) {
+        // 静默失败（旧接口打 backend 返回值可能不稳定）
+        console.warn('like failed', e)
+    } finally {
+        loveLoading.value = false
     }
-    store.updateAttitudeToVideo(atv)
-    if (isLove && isSet) {
-        good.value++
-        gifShow()
-        setTimeout(() => {
-            gifHide()
-        }, 3000)
-    } else if (isLove || (!isLove && isSet && originalLove)) {
-        good.value = good.value - 1 < 0 ? 0 : good.value - 1
+}
+
+function onDislike() {
+    const vid = Number(video.value.vid)
+    if (!vid) return
+    // dislike 是 UI 折叠效果：写 localStorage，从 store 更新以触发折叠
+    const next = new Set(dislikedVids.value)
+    if (next.has(vid)) {
+        next.delete(vid)
+    } else {
+        next.add(vid)
     }
-    loveLoading.value = false
+    dislikedVids.value = next
+    saveDislikedVids(next)
+}
+
+function loadDislikedVids(): Set<number> {
+    if (typeof window === 'undefined') return new Set()
+    try {
+        const raw = localStorage.getItem(DISLIKED_VIDS_KEY)
+        if (!raw) return new Set()
+        const arr = JSON.parse(raw)
+        return new Set(Array.isArray(arr) ? arr.map(Number) : [])
+    } catch {
+        return new Set()
+    }
+}
+
+function saveDislikedVids(set: Set<number>) {
+    if (typeof window === 'undefined') return
+    localStorage.setItem(DISLIKED_VIDS_KEY, JSON.stringify(Array.from(set)))
 }
 
 async function getCollectedFids() {
