@@ -54,7 +54,7 @@ func main() {
 	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir(assetsDir))))
 
 	log.Printf("studio HTTP listening on %s, data dir %s", httpAddr, dataDir)
-	log.Fatal(http.ListenAndServe(httpAddr, auth.IdentityMiddleware(newJWT())(mux)))
+	log.Fatal(http.ListenAndServe(httpAddr, auth.IdentityMiddleware(newJWT())(auth.AdminPathGuard(mux))))
 }
 
 // newJWT 构造验签器。secret 与 core 保持一致，缺失时回退开发默认值。

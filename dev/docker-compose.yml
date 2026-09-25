@@ -327,6 +327,7 @@ services:
     tmpfs:
       - /tmp/work:size=512M
     volumes:
+      - ../:/app
       - ../services/work/configs/transcoders.yaml:/etc/mybilibili/transcoders.yaml:ro
       - /home/a1/go/pkg/mod:/go/pkg/mod
       - /home/a1/.cache/go-build:/root/.cache/go-build

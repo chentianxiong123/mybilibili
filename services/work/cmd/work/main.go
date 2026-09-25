@@ -12,6 +12,7 @@ import (
 
 	_ "github.com/lib/pq"
 	"mybilibili/pkg/abstraction"
+	"mybilibili/pkg/auth"
 	"mybilibili/work/internal/work"
 )
 
@@ -105,11 +106,14 @@ func main() {
 	defer pool.Stop()
 
 	// 启动 admin HTTP server (transcoder 节点管理 API)
+	// 这些 /api/v1/admin/transcoders 路由原本注释写"由 traefik 网关鉴权"，
+	// 但网关从未配置 forwardAuth，实测不登录即可增删转码节点——这里补上门禁。
 	adminAddr := getEnv("ADMIN_HTTP_ADDR", ":8090")
 	adminAPI := work.NewAdminAPI(pool)
+	adminHandler := auth.IdentityMiddleware(auth.JWTFromEnv())(auth.AdminPathGuard(adminAPI.Handler()))
 	adminServer := &http.Server{
 		Addr:              adminAddr,
-		Handler:           adminAPI.Handler(),
+		Handler:           adminHandler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	go func() {

@@ -217,9 +217,9 @@ func StartHTTPServer(addr string, jwt *JWT, extras ...LiveHandler) {
 		minioProxy.ServeHTTP(&cacheControlWriter{ResponseWriter: w, cacheControl: cacheControl}, r)
 	}))
 
-	var handler http.Handler = mux
+	var handler http.Handler = auth.AdminPathGuard(mux)
 	if jwt != nil {
-		handler = auth.IdentityMiddleware(jwt)(mux)
+		handler = auth.IdentityMiddleware(jwt)(auth.AdminPathGuard(mux))
 	}
 
 	log.Printf("HTTP server listening on %s", addr)

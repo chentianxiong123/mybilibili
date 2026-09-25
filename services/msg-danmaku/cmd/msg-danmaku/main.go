@@ -87,7 +87,7 @@ func main() {
 	danmakuH.Register(mux)
 	messageH.Register(mux)
 	var handler http.Handler = mux
-	handler = auth.IdentityMiddleware(jwt)(mux)
+	handler = auth.IdentityMiddleware(jwt)(auth.AdminPathGuard(mux))
 	log.Printf("MsgDanmaku HTTP listening on %s", httpAddr)
 	log.Fatal(http.ListenAndServe(httpAddr, handler))
 }

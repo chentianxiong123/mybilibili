@@ -51,7 +51,7 @@ func main() {
 	liveAdminH.Register(mux)
 
 	log.Printf("Live service HTTP listening on %s", httpAddr)
-	log.Fatal(http.ListenAndServe(httpAddr, auth.IdentityMiddleware(newJWT())(mux)))
+	log.Fatal(http.ListenAndServe(httpAddr, auth.IdentityMiddleware(newJWT())(auth.AdminPathGuard(mux))))
 }
 
 // newJWT 构造验签器。secret 与 core 保持一致，缺失时回退开发默认值。

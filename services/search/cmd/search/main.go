@@ -98,7 +98,7 @@ func main() {
 	analyticsH.Register(mux)
 	profileH.Register(mux)
 	log.Printf("Search HTTP listening on %s", httpAddr)
-	log.Fatal(http.ListenAndServe(httpAddr, auth.IdentityMiddleware(auth.NewJWT(jwtSecret))(mux)))
+	log.Fatal(http.ListenAndServe(httpAddr, auth.IdentityMiddleware(auth.NewJWT(jwtSecret))(auth.AdminPathGuard(mux))))
 }
 
 func ctxBackground() context.Context {
