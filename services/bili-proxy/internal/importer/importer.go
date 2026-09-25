@@ -214,10 +214,11 @@ func (i *Importer) importOne(info *bilibili.ViewInfo) error {
 		return err
 	}
 	prefix := strings.TrimRight(i.client.PlayPrefix(), "/")
+	// B 站未登录/低等级账号最多拿到 720P + 360P 两档。
+	// 高 qn 会被静默降级，所以不写 play_url_hd，避免前端展示一个实际拿不到的"1080P"档。
 	_, err = i.db.Exec(`UPDATE videos SET
-		play_url_hd = $1, play_url_sd = $2, play_url_ld = $3
-		WHERE id = $4`,
-		prefix+"/"+strconv.FormatInt(vid, 10)+"?qn=80",
+		play_url_sd = $1, play_url_ld = $2
+		WHERE id = $3`,
 		prefix+"/"+strconv.FormatInt(vid, 10)+"?qn=64",
 		prefix+"/"+strconv.FormatInt(vid, 10)+"?qn=32",
 		vid)
