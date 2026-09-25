@@ -1316,7 +1316,7 @@ watch(
     max-width: 100%;
 }
 
-.right-container-inner * {
+.right-container-inner > * {
     pointer-events: all;
     max-width: 100%;
 }
