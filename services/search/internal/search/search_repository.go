@@ -125,6 +125,26 @@ func (r *Repository) SearchUsers(ctx context.Context, keyword string, page, size
 	return list, nil
 }
 
+func (r *Repository) CountByKeyword(ctx context.Context, keyword string) (int64, int64, error) {
+	var videoCount, userCount int64
+	if keyword == "" {
+		return 0, 0, fmt.Errorf("keyword required")
+	}
+	err := r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM manuscripts m
+		 WHERE m.status = 3 AND m.search_vector @@ plainto_tsquery('zh_cn', $1)`, keyword).Scan(&videoCount)
+	if err != nil {
+		return 0, 0, err
+	}
+	err = r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM users u
+		 WHERE u.status = 1 AND (u.username ILIKE '%' || $1 || '%' OR u.nickname ILIKE '%' || $1 || '%')`, keyword).Scan(&userCount)
+	if err != nil {
+		return 0, 0, err
+	}
+	return videoCount, userCount, nil
+}
+
 func (r *Repository) RecommendRelated(ctx context.Context, manuscriptID, categoryID int64, size int32) ([]map[string]interface{}, error) {
 	return r.SearchManuscripts(ctx, "", categoryID, 1, size)
 }
@@ -163,6 +183,10 @@ func (s *Service) Search(ctx context.Context, keyword string, categoryID int64, 
 
 func (s *Service) SearchUsers(ctx context.Context, keyword string, page, size int32) ([]map[string]interface{}, error) {
 	return s.repo.SearchUsers(ctx, keyword, page, size)
+}
+
+func (s *Service) Count(ctx context.Context, keyword string) (int64, int64, error) {
+	return s.repo.CountByKeyword(ctx, keyword)
 }
 
 func (s *Service) Hot(ctx context.Context) ([]map[string]interface{}, error) {

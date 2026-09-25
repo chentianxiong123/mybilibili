@@ -25,6 +25,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/search/health", h.handleHealth)
 	mux.HandleFunc("/api/v1/search/videos", h.handleSearch)
 	mux.HandleFunc("/api/v1/search/users", h.handleSearchUsers)
+	mux.HandleFunc("/api/v1/search/count", h.handleSearchCount)
 	mux.HandleFunc("/api/v1/search/suggest", h.handleSuggest)
 	mux.HandleFunc("/api/v1/search/hot", h.handleHot)
 	mux.HandleFunc("/api/v1/recommend/related/", h.handleRelated)
@@ -66,6 +67,16 @@ func (h *Handler) handleSearchUsers(w http.ResponseWriter, r *http.Request) {
 	page, size := httputil.ParsePageParams(r)
 	list, _ := h.svc.SearchUsers(r.Context(), keyword, page, size)
 	writeJSON(w, map[string]interface{}{"list": list, "total": len(list)})
+}
+
+func (h *Handler) handleSearchCount(w http.ResponseWriter, r *http.Request) {
+	keyword := r.URL.Query().Get("keyword")
+	videoCount, userCount, err := h.svc.Count(r.Context(), keyword)
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": err.Error(), "data": nil})
+		return
+	}
+	writeJSON(w, []int64{videoCount, userCount})
 }
 
 func (h *Handler) handleHot(w http.ResponseWriter, r *http.Request) {

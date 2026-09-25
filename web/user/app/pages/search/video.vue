@@ -125,7 +125,7 @@ export default {
         async searchVideos() {
             this.videoList = [];
             this.loading = true;
-            const keyword = encodeURIComponent(this.keyword); // 对特殊字符进行编译
+            const keyword = this.keyword; // 由 axios params 自动编码，无需手动 encodeURIComponent
             const res = await this.$get("/search/video/only-pass", {
                 params: {
                     keyword: keyword,

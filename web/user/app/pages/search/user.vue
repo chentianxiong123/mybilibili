@@ -15,8 +15,8 @@
                                 <VLevel class="level" :level="handleLevel(item.exp)" :size="16"></VLevel>
                             </h2>
                             <p class="card-center">
-                                {{ handleNum(item.fansCount) }}粉丝 · {{ handleNum(item.videoCount) }}个视频
-                                <span style="margin-left: 3px;">{{ item.auth > 0 ? item.authMsg : item.description }}</span>
+                                {{ handleNum(item.fansCount) }}粉丝 · {{ handleNum(item.videos) }}个视频
+                                <span style="margin-left: 3px;">{{ item.auth > 0 ? item.authMsg : item.sign }}</span>
                             </p>
                             <div class="card-buttom">
                                 <button class="not-follow" v-if="true">+ 关注</button>
@@ -54,21 +54,30 @@ export default {
     },
     data() {
         return {
+            keyword: this.$route.query.keyword || '',
             page: 1, // 当前页码
             userList: [],  // 查询到的相关视频
             loading: true,  // 正在查询中
         }
     },
-    props: {
-        // 从路由参数获取的关键词
-        keyword: String,
+    computed: {
+        _kw() {
+            return this.$route.query.keyword || this.keyword || '';
+        }
+    },
+    watch: {
+        '$route.query.keyword'(val) {
+            this.keyword = val || '';
+            this.page = 1;
+            this.searchUsers();
+        }
     },
     methods: {
         // 查询相关视频
         async searchUsers() {
             this.userList = [];
             this.loading = true;
-            const keyword = encodeURIComponent(this.keyword); // 对特殊字符进行编译
+            const keyword = this.keyword; // 由 axios params 自动编码，无需手动 encodeURIComponent
             const res = await this.$get("/search/user", {
                 params: {
                     keyword: keyword,
