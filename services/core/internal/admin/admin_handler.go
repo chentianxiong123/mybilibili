@@ -253,6 +253,8 @@ func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
+	// 同用户登出：进吊销名单，被复制走的后台令牌立即失效
+	auth.RevokeRequestSession(r, h.jwt)
 	auth.ClearAdminSessionCookies(w)
 	httputil.WriteOK(w, map[string]any{"status": "ok"})
 }

@@ -87,6 +87,9 @@ func main() {
 	danmakuH.Register(mux)
 	messageH.Register(mux)
 	var handler http.Handler = mux
+	// 吊销名单 / 刷新令牌防重放：Redis 抖动时降级为进程内，不影响可用性
+	auth.LogSetupWarning(auth.SetupStoresFromEnv())
+
 	handler = auth.IdentityMiddleware(jwt)(auth.AdminPathGuard(mux))
 	log.Printf("MsgDanmaku HTTP listening on %s", httpAddr)
 	log.Fatal(http.ListenAndServe(httpAddr, handler))

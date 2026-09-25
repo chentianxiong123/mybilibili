@@ -110,6 +110,9 @@ func main() {
 	// 但网关从未配置 forwardAuth，实测不登录即可增删转码节点——这里补上门禁。
 	adminAddr := getEnv("ADMIN_HTTP_ADDR", ":8090")
 	adminAPI := work.NewAdminAPI(pool)
+	// 吊销名单 / 刷新令牌防重放：Redis 抖动时降级为进程内，不影响可用性
+	auth.LogSetupWarning(auth.SetupStoresFromEnv())
+
 	adminHandler := auth.IdentityMiddleware(auth.JWTFromEnv())(auth.AdminPathGuard(adminAPI.Handler()))
 	adminServer := &http.Server{
 		Addr:              adminAddr,

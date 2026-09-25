@@ -54,6 +54,9 @@ func main() {
 	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir(assetsDir))))
 
 	log.Printf("studio HTTP listening on %s, data dir %s", httpAddr, dataDir)
+	// 吊销名单 / 刷新令牌防重放：Redis 抖动时降级为进程内，不影响可用性
+	auth.LogSetupWarning(auth.SetupStoresFromEnv())
+
 	log.Fatal(http.ListenAndServe(httpAddr, auth.IdentityMiddleware(newJWT())(auth.AdminPathGuard(mux))))
 }
 

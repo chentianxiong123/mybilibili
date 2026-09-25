@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"time"
@@ -40,7 +41,8 @@ func IdentityMiddleware(j *JWT) func(http.Handler) http.Handler {
 			// 2) 只在验签通过时按 claims 重建身份；无凭证/凭证无效 → 身份为空
 			if j != nil {
 				if tok, source := TokenFromRequestWithSource(r); tok != "" {
-					if claims, err := j.Parse(tok); err == nil && claims != nil && claims.IsAccess() {
+					if claims, err := j.Parse(tok); err == nil && claims != nil && claims.IsAccess() &&
+						!isRevoked(r.Context(), claims) {
 						// 2a) 浏览器会话的跨站写操作：凭证本身没问题，但请求不该被允许
 						if source == SourceCookie && unsafeMethod(r.Method) && !CheckSameOrigin(r) {
 							writeJSONError(w, http.StatusForbidden, "cross-site request rejected")
@@ -95,6 +97,25 @@ func renewSessionCookie(w http.ResponseWriter, r *http.Request, j *JWT, presente
 		return
 	}
 	SetAccessCookie(w, name, fresh)
+}
+
+// isRevoked 该令牌是否已被吊销（登出 / 改密 / 封号时写入的名单）。
+//
+// 名单读取出错一律**放行**：Redis 抖动不该把全站在线用户踢下线。
+// 吊销是尽力而为的安全增强，可用性优先；等恢复后新写入自然生效。
+func isRevoked(ctx context.Context, claims *Claims) bool {
+	if claims == nil || claims.Jti == "" {
+		return false // 存量令牌没有 Jti，无法按张吊销，保持兼容
+	}
+	st := CurrentRevocationStore()
+	if st == nil {
+		return false
+	}
+	revoked, err := st.IsRevoked(ctx, claims.Jti)
+	if err != nil {
+		return false
+	}
+	return revoked
 }
 
 func writeJSONError(w http.ResponseWriter, code int, msg string) {

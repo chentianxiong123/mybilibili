@@ -354,6 +354,9 @@ func main() {
 
 	adminContentH := moderation.NewAdminContentHandler(db)
 
+	// 吊销名单 / 刷新令牌防重放：Redis 抖动时降级为进程内，不影响可用性
+	auth.LogSetupWarning(auth.SetupStoresFromEnv())
+
 	coreapi.StartHTTPServer(httpAddr, auth.NewJWT(jwtSecret),
 		liveProxy, biliProxy, followH, socialH, videoH, adminH, modH,
 		supportH, userExtH, favoriteH,

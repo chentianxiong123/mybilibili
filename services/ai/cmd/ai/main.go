@@ -97,6 +97,9 @@ func main() {
 	aiH.Register(mux)
 	aiChatH.Register(mux)
 	log.Printf("AI HTTP listening on %s", httpAddr)
+	// 吊销名单 / 刷新令牌防重放：Redis 抖动时降级为进程内，不影响可用性
+	auth.LogSetupWarning(auth.SetupStoresFromEnv())
+
 	log.Fatal(http.ListenAndServe(httpAddr, auth.IdentityMiddleware(newJWT())(auth.AdminPathGuard(mux))))
 }
 

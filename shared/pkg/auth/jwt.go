@@ -6,6 +6,8 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"os"
 	"strconv"
 	"strings"
@@ -32,12 +34,29 @@ const (
 	TokenTypeRefresh = "refresh"
 )
 
+// NewJTI 生成 128bit 十六进制令牌标识（无外部依赖）。
+func NewJTI() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		// rand.Read 自 Go1.20 起永不返回错误；退化用时间兜底，避免 panic
+		ts := time.Now().UnixNano()
+		for i := range b {
+			b[i] = byte(ts >> (uint(i%8) * 8))
+		}
+	}
+	return hex.EncodeToString(b[:])
+}
+
 // Claims 标准身份声明。UserId 对应用户表或管理员表的 ID，靠 Role 区分。
 type Claims struct {
 	UserId  int64  `json:"user_id"`
 	Role    string `json:"role,omitempty"`
 	IsAdmin bool   `json:"is_admin,omitempty"`
 	Typ     string `json:"typ,omitempty"`
+	// Jti 单张令牌的唯一标识，是吊销名单的键。
+	// 登出/改密时把它写进 Redis，该令牌立刻失效，不必等到自然过期。
+	// 存量令牌没有 Jti（无法按张吊销），仍按有效处理。
+	Jti string `json:"jti,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -109,22 +128,33 @@ func (j *JWT) GenerateWithRole(userID int64, role string) (string, error) {
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
+	claims.Jti = NewJTI()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(j.secret))
 }
 
 // GenerateRefresh 签发 7 天刷新 token（沿用旧行为）。
+// Jti 由调用方通过 GenerateRefreshWithJTI 取走，用于"一次性消费"轮换。
 func (j *JWT) GenerateRefresh(userID int64) (string, error) {
+	tok, _, err := j.GenerateRefreshWithJTI(userID)
+	return tok, err
+}
+
+// GenerateRefreshWithJTI 签发刷新令牌并返回其 Jti，供轮换记录使用。
+func (j *JWT) GenerateRefreshWithJTI(userID int64) (string, string, error) {
+	jti := NewJTI()
 	claims := Claims{
 		UserId: userID,
 		Typ:    TokenTypeRefresh,
+		Jti:    jti,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(j.secret))
+	tok, err := token.SignedString([]byte(j.secret))
+	return tok, jti, err
 }
 
 // Parse 验签并返回 claims。

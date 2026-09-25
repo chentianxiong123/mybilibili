@@ -184,6 +184,9 @@ func (h *UserExtendHandler) handleLogout(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "method not allowed", 405)
 		return
 	}
+	// 只清 cookie 不够：被复制走的令牌照样能用到过期，
+	// 这里把访问令牌写进吊销名单、刷新令牌打上已消费标记。
+	auth.RevokeRequestSession(r, h.svc.jwt)
 	auth.ClearUserSessionCookies(w)
 	httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
 }
@@ -197,6 +200,11 @@ func (h *UserExtendHandler) handleRefresh(w http.ResponseWriter, r *http.Request
 		RefreshToken string `json:"refreshToken"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
+	if !auth.ConsumeRefreshOnce(r.Context(), h.svc.jwt, req.RefreshToken) {
+		// 同一张刷新令牌被用过第二次 → 疑似被窃取后重放，拒绝并让这次作废
+		errors.WriteHTTPError(w, errors.ErrUnauthenticated("refresh token already used"))
+		return
+	}
 	userID, err := h.svc.jwt.ParseUserID(req.RefreshToken)
 	if err != nil {
 		errors.WriteHTTPError(w, errors.ErrUnauthenticated("invalid or expired refresh token"))
