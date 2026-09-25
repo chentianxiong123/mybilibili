@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Header from '../../components/Header.vue'
 import TabBar from '../../components/TabBar.vue'
@@ -23,6 +23,7 @@ const categoryVideos = ref({})
 const partitionLoading = ref(false)
 const activeTabId = ref(0)
 const drawerRef = ref(null)
+const indexRef = ref(null)
 const loading = ref(true)
 const currentSlide = ref(0)
 const currentLiveSlide = ref(0)
@@ -60,6 +61,10 @@ const handleBannerClick = (b) => {
 }
 
 onMounted(async () => {
+  // 等 DOM 渲染后对齐 search-box 与「推荐」tab 的左边缘
+  await nextTick()
+  alignSearchBoxToRecommend()
+  window.addEventListener('resize', alignSearchBoxToRecommend)
   try {
     if (route.query.tab === 'hot') {
       activeTabId.value = -2
@@ -113,6 +118,9 @@ onMounted(async () => {
       }
     }
     initSwiper()
+    // 数据渲染完成后重新对齐 search-box 与「推荐」tab（tab 宽度可能随数据变化）
+    await nextTick()
+    alignSearchBoxToRecommend()
   } catch (e) {
     console.error('首页加载失败:', e)
   } finally {
@@ -122,6 +130,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (swiperTimer) clearInterval(swiperTimer)
+  window.removeEventListener('resize', alignSearchBoxToRecommend)
 })
 
 const initSwiper = () => {
@@ -240,6 +249,22 @@ const loadCategoryVideos = async (categoryId) => {
   }
 }
 
+// 顶栏 search-box 左边缘与下方「推荐」tab 左边缘对齐
+function alignSearchBoxToRecommend() {
+  const root = indexRef.value
+  if (!root) return
+  const searchBox = root.querySelector('.search-box')
+  if (!searchBox) return
+  // 先清零，再量真实位置，避免 resize 叠加
+  searchBox.style.marginLeft = '0px'
+  const recomTab = [...root.querySelectorAll('.tab-item')].find(t => t.innerText.trim() === '推荐')
+  if (!recomTab) return
+  const recomLeft = recomTab.getBoundingClientRect().left
+  const boxLeft = searchBox.getBoundingClientRect().left
+  const delta = Math.round(recomLeft - boxLeft)
+  if (delta > 0) searchBox.style.marginLeft = delta + 'px'
+}
+
 const handleTabClick = async (tab) => {
   // 切换 tab 时重置轮播图索引
   currentSlide.value = 0
@@ -290,7 +315,7 @@ const activeCategoryBanners = computed(() => {
 </script>
 
 <template>
-  <div class="mobile-index">
+  <div class="mobile-index" ref="indexRef">
     <Header :placeholder="searchPlaceholder" />
     <div class="partition-bar">
       <TabBar :data="tabBarData.slice(0, 6)" :active-id="activeTabId" @click="handleTabClick" />

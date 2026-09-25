@@ -72,12 +72,13 @@ onMounted(() => {
     align-items: center;
     min-width: 0;
     height: 38px;
-    background: #f4f4f4;
-    border: 1px solid #d3d6dc;
+    background: #ffffff;
+    border: 1px solid #e5e6eb;
     border-radius: 20px;
     padding: 0 14px;
     color: #757a82;
     font-size: 18px;
+    /* margin-left 由首页 TS 动态对齐「推荐」tab 左边缘 */
 
     .search-icon {
       width: 21px;
