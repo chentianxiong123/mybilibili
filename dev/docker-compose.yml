@@ -156,7 +156,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.core.entrypoints=web"
-      - "traefik.http.routers.core.rule=Host(`localhost`) && (PathPrefix(`/api/v1/`) || PathPrefix(`/uploads/`) || PathPrefix(`/covers/`) || PathPrefix(`/videos/`) || PathPrefix(`/sse/`))"
+      - "traefik.http.routers.core.rule=(PathPrefix(`/api/v1/`) || PathPrefix(`/uploads/`) || PathPrefix(`/covers/`) || PathPrefix(`/videos/`) || PathPrefix(`/sse/`))"
       - "traefik.http.services.core.loadbalancer.server.port=8080"
       - "traefik.http.routers.core.priority=5"
     depends_on:
@@ -187,7 +187,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.search.entrypoints=web"
-      - "traefik.http.routers.search.rule=Host(`localhost`) && (PathPrefix(`/api/v1/search/`) || PathPrefix(`/api/v1/recommend/`) || PathPrefix(`/api/v1/creator/stats/`) || PathPrefix(`/api/v1/profile/`))"
+      - "traefik.http.routers.search.rule=(PathPrefix(`/api/v1/search/`) || PathPrefix(`/api/v1/recommend/`) || PathPrefix(`/api/v1/creator/stats/`) || PathPrefix(`/api/v1/profile/`))"
       - "traefik.http.services.search.loadbalancer.server.port=8084"
       - "traefik.http.routers.search.priority=10"
     depends_on:
@@ -215,7 +215,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.msg.entrypoints=web"
-      - "traefik.http.routers.msg.rule=Host(`localhost`) && (PathPrefix(`/api/v1/danmaku/`) || PathPrefix(`/api/v1/message/`))"
+      - "traefik.http.routers.msg.rule=(PathPrefix(`/api/v1/danmaku/`) || PathPrefix(`/api/v1/message/`))"
       - "traefik.http.services.msg.loadbalancer.server.port=8086"
       - "traefik.http.routers.msg.priority=10"
     depends_on:
@@ -243,7 +243,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.live.entrypoints=web"
-      - "traefik.http.routers.live.rule=Host(`localhost`) && (PathPrefix(`/api/v1/live/`) || PathPrefix(`/ws/`))"
+      - "traefik.http.routers.live.rule=(PathPrefix(`/api/v1/live/`) || PathPrefix(`/ws/`))"
       - "traefik.http.services.live.loadbalancer.server.port=8087"
       - "traefik.http.routers.live.priority=10"
     depends_on:
@@ -271,7 +271,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.ai.entrypoints=web"
-      - "traefik.http.routers.ai.rule=Host(`localhost`) && (PathPrefix(`/api/v1/ai/`) || PathPrefix(`/api/v1/subtitle/`))"
+      - "traefik.http.routers.ai.rule=(PathPrefix(`/api/v1/ai/`) || PathPrefix(`/api/v1/subtitle/`))"
       - "traefik.http.services.ai.loadbalancer.server.port=8088"
       - "traefik.http.routers.ai.priority=10"
     depends_on:
@@ -296,7 +296,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.studio.entrypoints=web"
-      - "traefik.http.routers.studio.rule=Host(`localhost`) && (PathPrefix(`/api/v1/studio/`) || PathPrefix(`/assets/studio/`))"
+      - "traefik.http.routers.studio.rule=(PathPrefix(`/api/v1/studio/`) || PathPrefix(`/assets/studio/`))"
       - "traefik.http.services.studio.loadbalancer.server.port=8089"
       - "traefik.http.routers.studio.priority=10"
     volumes:
@@ -333,7 +333,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.work-admin.entrypoints=web"
-      - "traefik.http.routers.work-admin.rule=Host(`localhost`) && PathPrefix(`/api/v1/admin/transcoders`)"
+      - "traefik.http.routers.work-admin.rule=PathPrefix(`/api/v1/admin/transcoders`)"
       - "traefik.http.routers.work-admin.priority=20"
       - "traefik.http.services.work-admin.loadbalancer.server.port=8090"
     depends_on:
@@ -362,7 +362,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.bili.entrypoints=web"
-      - "traefik.http.routers.bili.rule=Host(`localhost`) && PathPrefix(`/api/v1/bili/`)"
+      - "traefik.http.routers.bili.rule=PathPrefix(`/api/v1/bili/`)"
       - "traefik.http.services.bili.loadbalancer.server.port=8091"
       - "traefik.http.routers.bili.priority=10"
     depends_on:
@@ -391,12 +391,12 @@ services:
       - "traefik.enable=true"
       # 主站页面路由（排除 /api/）
       - "traefik.http.routers.web.entrypoints=web"
-      - "traefik.http.routers.web.rule=Host(`localhost`) && PathPrefix(`/`) && !PathPrefix(`/api/`) && !PathPrefix(`/admin/`) && !PathPrefix(`/wap/`) && !PathPrefix(`/uploads/`) && !PathPrefix(`/covers/`) && !PathPrefix(`/videos/`) && !PathPrefix(`/sse/`) && !PathPrefix(`/ws/`)"
+      - "traefik.http.routers.web.rule=PathPrefix(`/`) && !PathPrefix(`/api/`) && !PathPrefix(`/admin/`) && !PathPrefix(`/wap/`) && !PathPrefix(`/uploads/`) && !PathPrefix(`/covers/`) && !PathPrefix(`/videos/`) && !PathPrefix(`/sse/`) && !PathPrefix(`/ws/`)"
       - "traefik.http.routers.web.service=web-svc"
       - "traefik.http.routers.web.priority=1"
       # teriteri 旧 API 代理（/api/video/... → Nuxt server proxy → Go 后端）
       - "traefik.http.routers.web-api.entrypoints=web"
-      - "traefik.http.routers.web-api.rule=Host(`localhost`) && PathPrefix(`/api/`) && !PathPrefix(`/api/v1/`) && !PathPrefix(`/api/admin/`)"
+      - "traefik.http.routers.web-api.rule=PathPrefix(`/api/`) && !PathPrefix(`/api/v1/`) && !PathPrefix(`/api/admin/`)"
       - "traefik.http.routers.web-api.service=web-svc"
       - "traefik.http.routers.web-api.priority=15"
       - "traefik.http.services.web-svc.loadbalancer.server.port=3200"
@@ -419,7 +419,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.admin.entrypoints=web"
-      - "traefik.http.routers.admin.rule=Host(`localhost`) && PathPrefix(`/admin/`)"
+      - "traefik.http.routers.admin.rule=PathPrefix(`/admin/`)"
       - "traefik.http.services.admin.loadbalancer.server.port=3100"
       - "traefik.http.routers.admin.priority=10"
     depends_on:
@@ -440,7 +440,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.wap.entrypoints=web"
-      - "traefik.http.routers.wap.rule=Host(`localhost`) && PathPrefix(`/wap/`)"
+      - "traefik.http.routers.wap.rule=PathPrefix(`/wap/`)"
       - "traefik.http.services.wap.loadbalancer.server.port=5174"
       - "traefik.http.routers.wap.priority=10"
     depends_on:
