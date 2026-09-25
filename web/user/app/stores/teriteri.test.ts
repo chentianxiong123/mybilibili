@@ -6,9 +6,27 @@ vi.mock('element-plus', () => ({
   ElMessage: { error: vi.fn(), success: vi.fn() }
 }))
 
-vi.mock('axios', () => ({
-  default: { get: vi.fn().mockResolvedValue({ data: { code: 200, data: {} } }) }
-}))
+vi.mock('axios', () => {
+  const instance = {
+    get: vi.fn().mockResolvedValue({ code: 200, data: {} }),
+    post: vi.fn().mockResolvedValue({ code: 200, data: {} }),
+    put: vi.fn().mockResolvedValue({ code: 200, data: {} }),
+    delete: vi.fn().mockResolvedValue({ code: 200, data: {} }),
+    request: vi.fn().mockResolvedValue({ code: 200, data: {} }),
+    interceptors: {
+      request: { use: vi.fn() },
+      response: { use: vi.fn() }
+    }
+  }
+  const axiosFn: any = vi.fn().mockResolvedValue({ code: 200, data: {} })
+  axiosFn.create = vi.fn(() => instance)
+  axiosFn.get = instance.get
+  axiosFn.post = instance.post
+  axiosFn.put = instance.put
+  axiosFn.delete = instance.delete
+  axiosFn.default = axiosFn
+  return { default: axiosFn, ...axiosFn, ...instance }
+})
 
 vi.mock('@/teriteri-src/network/request', () => ({
   get: vi.fn().mockResolvedValue({ data: { data: { reply: 0, at: 0, love: 0, system: 0, whisper: 0, dynamic: 0 } } })

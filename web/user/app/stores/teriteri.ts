@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import api from '@/api/client'
+import { clearAuthSession } from '@/utils/auth'
 
 export const useTeriteriStore = defineStore('teriteri', {
   state: () => ({
@@ -70,7 +71,7 @@ export const useTeriteriStore = defineStore('teriteri', {
         case 'error': {
           if (data.data === '登录已过期') {
             this.initData()
-            if (typeof window !== 'undefined') localStorage.removeItem('teri_token')
+            clearAuthSession()
           }
           ElMessage.error(data.data)
           break
@@ -205,22 +206,21 @@ export const useTeriteriStore = defineStore('teriteri', {
     },
 
     async getPersonalInfo() {
-      const result = await axios.get('/api/v1/user/me', {
-        headers: {
-          Authorization: 'Bearer ' + (typeof window !== 'undefined' ? localStorage.getItem('teri_token') : '')
-        }
-      }).catch(() => {
+      // 走共享 axios 实例：自动带 Authorization，401 时自动续签并重试，
+      // 否则 access token 过期会把人打回未登录（下拉面板显示空）。
+      const result = await api.get('/user/me').catch(() => null)
+      if (!result) return
+      if (result.code === 401) {
+        // client 层已清理失效会话，同步重置 teriteri 登录态
         this.initData()
         if (this.ws) {
           this.ws.close()
           this.setWebSocket(null)
         }
-        if (typeof window !== 'undefined') localStorage.removeItem('teri_token')
-        ElMessage.error('请登录后查看')
-      })
-      if (!result) return
-      if (result.data.code === 200) {
-        const d = result.data.data
+        return
+      }
+      if (result.code === 200) {
+        const d = result.data
         this.updateUser({
           ...d,
           uid: d.id,
@@ -244,7 +244,7 @@ export const useTeriteriStore = defineStore('teriteri', {
         this.ws.close()
         this.setWebSocket(null)
       }
-      if (typeof window !== 'undefined') localStorage.removeItem('teri_token')
+      clearAuthSession()
     },
 
     async connectWebSocket() {

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { VideoPlay, Star, Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { interactionApi } from '@/api/client'
+import { hasAuthSession } from '@/utils/auth'
 
 const router = useRouter()
 
@@ -13,10 +14,9 @@ const favoriteVideos = ref([])
 const loading = ref(false)
 const isLoggedIn = ref(false)
 
-// 检查登录状态
+// 检查登录状态（用 hasAuthSession 而非裸 localStorage key，兼容新旧两套 token key）
 const checkLoginStatus = () => {
-  const token = localStorage.getItem('token')
-  isLoggedIn.value = !!token
+  isLoggedIn.value = hasAuthSession()
   return isLoggedIn.value
 }
 

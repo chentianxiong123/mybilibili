@@ -151,6 +151,7 @@ import { ElMessage } from 'element-plus';
 import { User, Lock, Message, VideoPlay } from '@element-plus/icons-vue';
 // captchaApi / emailCodeApi 暂时注释：验证码、邮箱验证码功能已关闭
 import { userApi } from '@/api/client';
+import { setAuthSession } from '@/utils/auth';
 
 export default {
     name: "LoginRegister",
@@ -269,6 +270,13 @@ export default {
                     const data = response.data || {}
                     localStorage.setItem("teri_token", data.token)
                     localStorage.setItem("teri_refresh_token", data.refresh_token || data.refreshToken || '')
+                    // 同步写标准会话 key：api/client 与 hasAuthSession 都读它，
+                    // 只写 teri_token 会导致动态/收藏/历史面板拿不到 token 而显示空
+                    setAuthSession({
+                        token: data.token,
+                        refreshToken: data.refresh_token || data.refreshToken || '',
+                        user: data.user || data
+                    })
                     this.$store.commit("updateUser", data.user || data)
                     this.$store.commit("updateIsLogin", true)
                     this.$emit("loginSuccess")

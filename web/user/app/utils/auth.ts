@@ -2,6 +2,10 @@ import { safeStorage } from '../utils/safeStorage'
 const TOKEN_KEY = 'token'
 const REFRESH_TOKEN_KEY = 'refreshToken'
 const USER_KEY = 'user'
+// teriteri 老代码（space/account/platform 等页面与 getPersonalInfo）直接读写 localStorage，
+// 与上面这套 key 并存。这里做双向桥接，避免"登了录但两套 key 只写了一套"导致请求无 token。
+const LEGACY_TOKEN_KEY = 'teri_token'
+const LEGACY_REFRESH_KEY = 'teri_refresh_token'
 
 // ====== Cookie 同步（SSR 读取用，与 localStorage 保持一致） ======
 function setClientCookie(name: string, value: string, maxAge: number) {
@@ -44,11 +48,11 @@ export function decodeJwtPayload(token = getToken()) {
 }
 
 export function getToken() {
-  return safeStorage.getItem(TOKEN_KEY) || ''
+  return safeStorage.getItem(TOKEN_KEY) || safeStorage.getItem(LEGACY_TOKEN_KEY) || ''
 }
 
 export function getRefreshToken() {
-  return safeStorage.getItem(REFRESH_TOKEN_KEY) || ''
+  return safeStorage.getItem(REFRESH_TOKEN_KEY) || safeStorage.getItem(LEGACY_REFRESH_KEY) || ''
 }
 
 export function getStoredUser() {
@@ -60,7 +64,7 @@ export function getCurrentUserId() {
   if (user?.id) return user.id
 
   const payload = decodeJwtPayload()
-  return payload?.sub || payload?.userId || null
+  return payload?.sub || payload?.userId || payload?.user_id || null
 }
 
 export function isAccessTokenExpired(token = getToken(), leewayMs = 0) {
@@ -85,12 +89,19 @@ export function setAuthSession(session: {
 } = {}) {
   if (session.token) {
     safeStorage.setItem(TOKEN_KEY, session.token)
+    safeStorage.setItem(LEGACY_TOKEN_KEY, session.token)
     setClientCookie('token', session.token, 86400 * 7)
   }
 
   if (session.refreshToken) {
     safeStorage.setItem(REFRESH_TOKEN_KEY, session.refreshToken)
+    safeStorage.setItem(LEGACY_REFRESH_KEY, session.refreshToken)
     setClientCookie('refresh_token', session.refreshToken, 86400 * 30)
+  } else if (session.token) {
+    // 换发了新 token 但没带 refreshToken：清掉旧的，避免拿到上一次会话的失效 refresh token
+    safeStorage.removeItem(REFRESH_TOKEN_KEY)
+    safeStorage.removeItem(LEGACY_REFRESH_KEY)
+    removeClientCookie('refresh_token')
   }
 
   if (session.user) {
@@ -104,6 +115,8 @@ export function clearAuthSession() {
   safeStorage.removeItem(TOKEN_KEY)
   safeStorage.removeItem(REFRESH_TOKEN_KEY)
   safeStorage.removeItem(USER_KEY)
+  safeStorage.removeItem(LEGACY_TOKEN_KEY)
+  safeStorage.removeItem(LEGACY_REFRESH_KEY)
   removeClientCookie('token')
   removeClientCookie('refresh_token')
   removeClientCookie('user_info')

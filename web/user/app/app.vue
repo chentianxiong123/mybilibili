@@ -306,7 +306,7 @@ import { User, Lock, Message, Close, VideoPlay } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { userApi, captchaApi, emailCodeApi, startSilentRefresh, stopSilentRefresh } from './api/client'
 import api from './api/client'
-import { setAuthSession, getRefreshToken } from './utils/auth'
+import { setAuthSession, getRefreshToken, getToken, hasAuthSession } from './utils/auth'
 import { useZoomCompact } from './composables/useZoomCompact'
 import { onMounted, onUnmounted } from 'vue'
 import { useTeriteriStore } from '@/stores/teriteri'
@@ -347,7 +347,7 @@ async function initIMServer() {
   await store.connectWebSocket()
   const connection = JSON.stringify({
     code: 100,
-    content: 'Bearer ' + (typeof window !== 'undefined' ? localStorage.getItem('teri_token') : '')
+    content: 'Bearer ' + getToken()
   })
   if (store.ws) store.ws.send(connection)
 }
@@ -360,7 +360,7 @@ async function getFavorites() {
   const { get } = await import('@/teriteri-src/network/request')
   const res = await get('/favorite/get-all/user', {
     params: { uid: store.user.uid },
-    headers: { Authorization: 'Bearer ' + localStorage.getItem('teri_token') }
+    headers: { Authorization: 'Bearer ' + getToken() }
   })
   if (!res.data) return
   const defaultFav = res.data.data.find(item => item.type === 1)
@@ -373,7 +373,7 @@ async function getLikeAndDisLikeComment() {
   const { get } = await import('@/teriteri-src/network/request')
   const res = await get('/comment/get-like-and-dislike', {
     params: { uid: store.user.uid },
-    headers: { Authorization: 'Bearer ' + localStorage.getItem('teri_token') }
+    headers: { Authorization: 'Bearer ' + getToken() }
   })
   if (!res.data) return
   store.updateLikeComment(res.data.data.userLike)
@@ -759,8 +759,8 @@ onMounted(async () => {
   window.addEventListener('resize', syncZoomBase)
   zoomBaseObserver = new ResizeObserver(syncZoomBase)
   zoomBaseObserver.observe(document.documentElement)
-  // teriteri 初始化
-  if (localStorage.getItem('teri_token')) {
+  // teriteri 初始化（hasAuthSession 覆盖 token 与老的 teri_token 两种会话）
+  if (hasAuthSession()) {
     await store.getPersonalInfo()
     await initIMServer()
     await getFavorites()
