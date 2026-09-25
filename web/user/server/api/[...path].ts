@@ -92,11 +92,14 @@ function adaptUrl(url: string, query: URLSearchParams): { target: string; port: 
     const qs = new URLSearchParams({ page: '1', pageSize: '20' }).toString()
     return { target: '/manuscript/user/collections', port: `http://${CORE_HOST}:8080`, qs }
   }
-  // /video/cumulative/visitor → /manuscript/hot，携带 vids
+  // /video/cumulative/visitor → /manuscript/hot，透传 seed/offset
   if (url.startsWith('/video/cumulative/visitor')) {
-    const vids = query.get('vids') || ''
-    const qs = vids ? new URLSearchParams({ vids }).toString() : ''
-    return { target: '/manuscript/hot', port: `http://${CORE_HOST}:8080`, qs }
+    const params = new URLSearchParams()
+    const seed = query.get('seed')
+    const offset = query.get('offset')
+    if (seed) params.set('seed', seed)
+    if (offset) params.set('offset', offset)
+    return { target: '/manuscript/hot', port: `http://${CORE_HOST}:8080`, qs: params.toString() }
   }
   const keys = Object.keys(PATH_MAP).sort((a, b) => b.length - a.length)
   for (const from of keys) {

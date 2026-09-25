@@ -637,7 +637,16 @@ func manuscriptListToJSON(infos []*pb.ManuscriptInfo) []map[string]interface{} {
 
 func (h *ManuscriptHTTPHandler) handleRecommended(w http.ResponseWriter, r *http.Request) {
 	uid := httputil.GetUserIDFromHeader(r)
-	resp, err := h.manuscriptSvc.ListRecommended(r.Context(), &pb.ListRecommendedRequest{UserId: uid})
+	// 从 query 读 refresh_time，作为随机种子（每次换一换递增，让推荐顺序真正变化）
+	var refreshTime int64 = 0
+	if v := r.URL.Query().Get("refresh_time"); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n >= 0 {
+			refreshTime = n
+		}
+	}
+	// 映射到 PG setseed 合法范围 (-1, 1)
+	seed := float64(refreshTime%10000)/10000.0*2.0 - 1.0
+	resp, err := h.manuscriptSvc.ListRecommended(r.Context(), &pb.ListRecommendedRequest{UserId: uid}, seed)
 	if err != nil {
 		errors.WriteHTTPError(w, err)
 		return
@@ -647,7 +656,27 @@ func (h *ManuscriptHTTPHandler) handleRecommended(w http.ResponseWriter, r *http
 
 func (h *ManuscriptHTTPHandler) handleHot(w http.ResponseWriter, r *http.Request) {
 	uid := httputil.GetUserIDFromHeader(r)
-	resp, err := h.manuscriptSvc.ListHot(r.Context(), &pb.ListHotRequest{UserId: uid})
+	// seed + offset：seed 决定乱序排列，offset 实现分页
+	var seed float64 = 0
+	var offset int32 = 0
+	if v := r.URL.Query().Get("seed"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			// setseed 合法范围 (-1, 1)，clamp 一下
+			if f > 1 {
+				f = f - float64(int64(f))
+			}
+			if f < -1 {
+				f = f + float64(int64(-f))
+			}
+			seed = f
+		}
+	}
+	if v := r.URL.Query().Get("offset"); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 32); err == nil && n >= 0 {
+			offset = int32(n)
+		}
+	}
+	resp, err := h.manuscriptSvc.ListHot(r.Context(), &pb.ListHotRequest{UserId: uid}, seed, offset)
 	if err != nil {
 		errors.WriteHTTPError(w, err)
 		return

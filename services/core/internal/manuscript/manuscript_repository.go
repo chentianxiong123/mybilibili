@@ -3,6 +3,7 @@ package manuscript
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strconv"
 
 	"mybilibili/pkg/models"
@@ -218,14 +219,35 @@ func (r *ManuscriptRepository) ListByUser(ctx context.Context, userID int64, sta
 	return list, total, nil
 }
 
-func (r *ManuscriptRepository) ListRecommended(ctx context.Context) ([]*Manuscript, error) {
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, title, description, cover_url, user_id, category_id,
-		       view_count, like_count, coin_count, collect_count, share_count,
-		       comment_count, danmaku_count, status, review_status, COALESCE(review_reason,''),
-		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds,
-		       COALESCE(source_type,'local')
-		FROM manuscripts WHERE status = 3 ORDER BY upload_time DESC LIMIT 20`)
+func (r *ManuscriptRepository) ListRecommended(ctx context.Context, seed float64) ([]*Manuscript, error) {
+	// 加权随机抽样：温和线性时间偏好 + 热度微调 + random() 噪声
+	//   - 所有稿件都有非零概率被选中
+	//   - 新视频偏好明显，但与老视频差距不超过 ~2x（不是指数压制）
+	//   - random() 主导决定顺序
+	// setseed 通过 CTE 在同一查询内生效，避免跨连接的 session 问题
+	rows, err := r.db.QueryContext(ctx, fmt.Sprintf(`
+		WITH _seed AS (SELECT setseed(%f) AS _)
+		SELECT m.id, m.title, m.description, m.cover_url, m.user_id, m.category_id,
+		       m.view_count, m.like_count, m.coin_count, m.collect_count, m.share_count,
+		       m.comment_count, m.danmaku_count, m.status, m.review_status, COALESCE(m.review_reason,''),
+		       m.review_time, m.reviewer_id, m.upload_time, m.updated_at, m.duration, m.duration_seconds,
+		       COALESCE(m.source_type,'local')
+		FROM manuscripts m, _seed
+		WHERE m.status = 3 AND m.review_status = 1
+		ORDER BY (
+		  -- 线性时间偏好：30天内 +0.3，30-90天 +0.15，90-180天 +0.05，更老 +0
+		  CASE
+		    WHEN NOW() - m.upload_time < INTERVAL '30 days' THEN 0.3
+		    WHEN NOW() - m.upload_time < INTERVAL '90 days' THEN 0.15
+		    WHEN NOW() - m.upload_time < INTERVAL '180 days' THEN 0.05
+		    ELSE 0.0
+		  END
+		  -- 热度加成：播放量微弱贡献
+		  + ln(1.0 + GREATEST(m.view_count, 1)::numeric) / 200.0
+		  -- 随机噪声：主导因子
+		  + random()
+		) DESC
+		LIMIT 20`, seed))
 	if err != nil {
 		return nil, err
 	}
@@ -246,14 +268,22 @@ func (r *ManuscriptRepository) ListRecommended(ctx context.Context) ([]*Manuscri
 	return list, nil
 }
 
-func (r *ManuscriptRepository) ListHot(ctx context.Context) ([]*Manuscript, error) {
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, title, description, cover_url, user_id, category_id,
-		       view_count, like_count, coin_count, collect_count, share_count,
-		       comment_count, danmaku_count, status, review_status, COALESCE(review_reason,''),
-		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds,
-		       COALESCE(source_type,'local')
-		FROM manuscripts WHERE status = 3 ORDER BY view_count DESC LIMIT 20`)
+func (r *ManuscriptRepository) ListHot(ctx context.Context, seed float64, offset int32) ([]*Manuscript, error) {
+	// seed-based deterministic random ordering + offset pagination
+	//   setseed(seed) 用 CTE 在同查询内生效，避免跨连接问题
+	//   ORDER BY random() 给出确定但乱序的排列
+	//   OFFSET 让前端能分页拿完所有视频
+	rows, err := r.db.QueryContext(ctx, fmt.Sprintf(`
+		WITH _seed AS (SELECT setseed(%f))
+		SELECT m.id, m.title, m.description, m.cover_url, m.user_id, m.category_id,
+		       m.view_count, m.like_count, m.coin_count, m.collect_count, m.share_count,
+		       m.comment_count, m.danmaku_count, m.status, m.review_status, COALESCE(m.review_reason,''),
+		       m.review_time, m.reviewer_id, m.upload_time, m.updated_at, m.duration, m.duration_seconds,
+		       COALESCE(m.source_type,'local')
+		FROM manuscripts m, _seed
+		WHERE m.status = 3 AND m.review_status = 1
+		ORDER BY random()
+		LIMIT 20 OFFSET %d`, seed, offset))
 	if err != nil {
 		return nil, err
 	}

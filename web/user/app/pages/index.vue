@@ -290,12 +290,12 @@
                         </div>
                     </div>
                 </div>
-                <div class="feed-roll-btn">
-                    <div class="roll-btn" @click="getRandomVideos(); refreshTime++;">
-                        <i class="iconfont icon-shuaxin" :style="`transform: rotate(${refreshTime * 360}deg);`"></i>
-                        <span>换一换</span>
+<div class="feed-roll-btn">
+                        <div class="roll-btn" @click="refreshAll">
+                            <i class="iconfont icon-shuaxin" :style="`transform: rotate(${refreshTime * 360}deg);`"></i>
+                            <span>换一换</span>
+                        </div>
                     </div>
-                </div>
             </div>
         </div>
     </div>
@@ -326,8 +326,13 @@ export default {
             isChannelDown: false,
             // 随机推荐视频列表
             randomVideos: [],
+            // 顶部随机区已展示过的 vid（每次"换一换"用，可重置）
+            seenRandomVids: new Set(),
             // 累加视频列表
             cumulativeVideos: [],
+            // 累加分页：seed 决定乱序排列，offset 决定页
+            cumulativeSeed: Math.random(),
+            cumulativeOffset: 0,
             // 已展示过的视频 vid，用于去重
             seenVids: new Set(),
             // 累加视频id列表
@@ -350,42 +355,129 @@ export default {
     },
     methods: {
         // 请求
+        // 随机打乱数组（Fisher-Yates）
+        shuffle(arr) {
+            const a = [...arr];
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        },
+        // "换一换"：顶部 + 底部都重置 seed 重新拉取
+        async refreshAll() {
+            this.refreshTime++;
+            this.refreshCumulativeSeed();
+            await Promise.all([
+                this.getRandomVideos(),
+                this.getCumulativeVideos(),
+            ]);
+        },
+        // 重置累加区的 seed + offset + 状态
+        refreshCumulativeSeed() {
+            this.cumulativeSeed = Math.random();
+            this.cumulativeOffset = 0;
+            this.cumulativeVideos = [];
+            this.seenVids = new Set();
+            this.hasMore = true;
+        },
         // 获取游客随机推荐
         async getRandomVideos() {
             this.loadingRandom = true;
-            const res = await this.$get("/video/random/visitor");
-            if (res.data.data) {
-                this.randomVideos = res.data.data;
+            try {
+                const res = await this.$get("/video/random/visitor", {
+                    params: { refresh_time: this.refreshTime }
+                });
+                const batch = (res.data && res.data.data) || [];
+                if (!batch.length) return;
+
+                // 顶部去重：相对于 seenRandomVids + 当前已显示在底部的 cumulativeVideos
+                const cumulativeShownIds = new Set(
+                    this.cumulativeVideos.map(v => v.video && v.video.vid).filter(Boolean)
+                );
+                const shuffled = this.shuffle(batch);
+                const fresh = [];
+                for (const item of shuffled) {
+                    const id = item.video && item.video.vid;
+                    if (id == null) continue;
+                    // 跳过：换一换已看过 / 当前底部正显示
+                    if (this.seenRandomVids.has(id)) continue;
+                    if (cumulativeShownIds.has(id)) continue;
+                    this.seenRandomVids.add(id);
+                    this.seenVids.add(id);  // 也加入全局，避免底部重复
+                    fresh.push(item);
+                    if (fresh.length >= 11) break;
+                }
+
+                // 凑不到 11 条全新（说明换一换池子用完了），重置换一换池子但避开当前底部
+                if (fresh.length < 11) {
+                    this.seenRandomVids.clear();
+                    const reshuffled = this.shuffle(batch);
+                    const top = [];
+                    for (const item of reshuffled) {
+                        const id = item.video && item.video.vid;
+                        if (id == null) continue;
+                        if (cumulativeShownIds.has(id)) continue;  // 跳过底部正显示的
+                        top.push(item);
+                        if (top.length >= 11) break;
+                    }
+                    // 真凑不够（极端情况：batch 全在底部），允许重复
+                    if (top.length < 11) {
+                        top.length = 0;
+                        for (const item of reshuffled) {
+                            if (!item.video || item.video.vid == null) continue;
+                            top.push(item);
+                            if (top.length >= 11) break;
+                        }
+                    }
+                    top.forEach(v => {
+                        if (v.video && v.video.vid) {
+                            this.seenRandomVids.add(v.video.vid);
+                            this.seenVids.add(v.video.vid);
+                        }
+                    });
+                    this.randomVideos = top;
+                } else {
+                    this.randomVideos = fresh;
+                }
+            } finally {
                 this.loadingRandom = false;
             }
-            // console.log(this.randomVideos);
         },
 
-        // 获取游客累加推荐
+        // 获取游客累加推荐（seed-based 分页）
         async getCumulativeVideos() {
             this.loadingMore = true;
-            let ids = this.vids.join(",");  // 用逗号连接成一个字符串
-            const res = await this.$get("/video/cumulative/visitor", {
-                params: { vids: ids }
-            });
-            if (res.data.data) {
-                const incoming = res.data.data.videos || [];
-                const fresh = incoming.filter(v => {
-                    const id = v.video && v.video.vid;
-                    if (id == null || this.seenVids.has(id)) return false;
-                    this.seenVids.add(id);
-                    return true;
+            try {
+                const res = await this.$get("/video/cumulative/visitor", {
+                    params: {
+                        seed: this.cumulativeSeed,
+                        offset: this.cumulativeOffset,
+                    }
                 });
-                if (fresh.length) {
-                    this.cumulativeVideos.push(...fresh);
-                    const incomingIds = (res.data.data.vids || []).filter(id => !this.seenVids.has(id));
-                    this.vids.push(...incomingIds);
-                    this.hasMore = !!res.data.data.more;
+                if (res.data && res.data.data) {
+                    const incoming = res.data.data.videos || [];
+                    const fresh = incoming.filter(v => {
+                        const id = v.video && v.video.vid;
+                        if (id == null || this.seenVids.has(id)) return false;
+                        this.seenVids.add(id);
+                        return true;
+                    });
+                    if (fresh.length) {
+                        this.cumulativeVideos.push(...fresh);
+                        // 拿到 fresh 后 offset += 20，准备下一页
+                        this.cumulativeOffset += 20;
+                        // 后端返回 < 20 说明已经是最后一页
+                        this.hasMore = fresh.length >= 20;
+                    } else {
+                        this.hasMore = false;
+                    }
                 } else {
                     this.hasMore = false;
                 }
+            } finally {
+                this.loadingMore = false;
             }
-            this.loadingMore = false;
         },
 
 

@@ -28,11 +28,11 @@ func (h *ManuscriptHandler) ListUserManuscripts(ctx context.Context, req *pb.Lis
 }
 
 func (h *ManuscriptHandler) ListRecommended(ctx context.Context, req *pb.ListRecommendedRequest) (*pb.ListRecommendedResponse, error) {
-	return h.svc.ListRecommended(ctx, req)
+	return h.svc.ListRecommended(ctx, req, 0)
 }
 
 func (h *ManuscriptHandler) ListHot(ctx context.Context, req *pb.ListHotRequest) (*pb.ListHotResponse, error) {
-	return h.svc.ListHot(ctx, req)
+	return h.svc.ListHot(ctx, req, 0, 0)
 }
 
 func (h *ManuscriptHandler) ListByCategory(ctx context.Context, req *pb.ListByCategoryRequest) (*pb.ListByCategoryResponse, error) {

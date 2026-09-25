@@ -83,8 +83,8 @@ func (s *ManuscriptService) ListUserManuscripts(ctx context.Context, req *pb.Lis
 	}, nil
 }
 
-func (s *ManuscriptService) ListRecommended(ctx context.Context, req *pb.ListRecommendedRequest) (*pb.ListRecommendedResponse, error) {
-	list, err := s.repo.ListRecommended(ctx)
+func (s *ManuscriptService) ListRecommended(ctx context.Context, req *pb.ListRecommendedRequest, seed float64) (*pb.ListRecommendedResponse, error) {
+	list, err := s.repo.ListRecommended(ctx, seed)
 	if err != nil {
 		return nil, errors.ErrInternal("database error")
 	}
@@ -96,8 +96,8 @@ func (s *ManuscriptService) ListRecommended(ctx context.Context, req *pb.ListRec
 	return &pb.ListRecommendedResponse{Manuscripts: infos}, nil
 }
 
-func (s *ManuscriptService) ListHot(ctx context.Context, req *pb.ListHotRequest) (*pb.ListHotResponse, error) {
-	list, err := s.repo.ListHot(ctx)
+func (s *ManuscriptService) ListHot(ctx context.Context, req *pb.ListHotRequest, seed float64, offset int32) (*pb.ListHotResponse, error) {
+	list, err := s.repo.ListHot(ctx, seed, offset)
 	if err != nil {
 		return nil, errors.ErrInternal("database error")
 	}
