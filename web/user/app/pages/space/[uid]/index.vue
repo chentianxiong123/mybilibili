@@ -192,9 +192,10 @@ export default {
             // console.log(this.favList)
         },
 
-        // 获取用户最近点赞的视频
+        // 获取用户最近点赞的视频（仅登录后请求，未登录不发起避免 401）
         async getLoveVideos() {
             const token = localStorage.getItem("teri_token");
+            if (!token) return;
             const config: any = {
                 params: {
                     uid: this.uid,
@@ -202,9 +203,7 @@ export default {
                     quantity: 20
                 }
             };
-            if (token) {
-                config.headers = { Authorization: "Bearer " + token };
-            }
+            config.headers = { Authorization: "Bearer " + token };
             const res = await this.$get("/video/user-love", config);
             if (!res.data) return;
             this.loveVideos = res.data.data;

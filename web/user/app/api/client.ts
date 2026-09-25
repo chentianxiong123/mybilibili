@@ -97,7 +97,17 @@ api.interceptors.response.use(
         return Promise.reject(error)
       }
 
-      if (!refreshToken || originalRequest.url === '/user/token/refresh') {
+      if (!refreshToken) {
+        // 匿名 GET 访问 401（读接口）：优雅降级为空数据，避免未捕获的 promise rejection
+        // 非 GET（登录/点赞等写操作）保持 reject，由调用方提示登录
+        clearAuthSession()
+        const isRead = (originalRequest.method || 'get').toLowerCase() === 'get'
+        if (import.meta.client && isRead) {
+          return Promise.resolve({ code: 401, data: [], message: '请先登录' })
+        }
+        return Promise.reject(error)
+      }
+      if (originalRequest.url === '/user/token/refresh') {
         clearAuthSession()
         return Promise.reject(error)
       }

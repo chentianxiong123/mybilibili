@@ -9,7 +9,6 @@
                 <FansList
                     :users="followingList"
                     :loading="loading"
-                    title="全部关注"
                     @follow="handleFollow"
                     @unfollow="handleUnfollow"
                 />

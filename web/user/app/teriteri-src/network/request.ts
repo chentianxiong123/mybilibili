@@ -337,6 +337,11 @@ export function get<T = any>(url: string, config?: RequestConfig): Promise<Axios
       return { ...origResponse, data: adapted }
     },
     (err) => {
+      // 未登录(401)：与 client.ts 一致，仅读接口优雅降级为空数据，避免 Uncaught (in promise)
+      const isRead = (err.config && err.config.method || 'get').toLowerCase() === 'get'
+      if (err.response && err.response.status === 401 && isRead) {
+        return Promise.resolve({ ...err.response, data: { code: 401, data: [], message: '请先登录' } })
+      }
       console.log(err)
       handleAuthFailure(err)
       return Promise.reject(err)

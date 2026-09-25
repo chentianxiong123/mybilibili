@@ -549,18 +549,30 @@
                 }
             },
 
-            // 将搜索历史提交到后端
+            // 将搜索历史提交到后端（未登录时写本地）
             saveToLocalStorage() {
                 if (this.histories.length > 0) {
-                    searchApi.addSearchHistory(this.histories[0]);
+                    if (localStorage.getItem("teri_token")) {
+                        searchApi.addSearchHistory(this.histories[0]);
+                    } else {
+                        localStorage.setItem("historiesSearch", JSON.stringify(this.histories));
+                    }
                 }
             },
 
-            // 从后端加载搜索历史
+            // 加载搜索历史（登录走后端，未登录读本地）
             async loadFromLocalStorage() {
-                const res = await searchApi.getSearchHistory();
-                if (res && res.data) {
-                    this.histories = res.data;
+                if (localStorage.getItem("teri_token")) {
+                    const res = await searchApi.getSearchHistory();
+                    if (res && res.data) {
+                        this.histories = res.data;
+                    }
+                } else {
+                    try {
+                        this.histories = JSON.parse(localStorage.getItem("historiesSearch") || "[]");
+                    } catch (e) {
+                        this.histories = [];
+                    }
                 }
             },
 
@@ -575,16 +587,24 @@
             // 删除单个搜索历史
             async removeHistory(index) {
                 this.histories.splice(index, 1);
-                await searchApi.clearSearchHistory();
-                for (const kw of [...this.histories].reverse()) {
-                    await searchApi.addSearchHistory(kw);
+                if (localStorage.getItem("teri_token")) {
+                    await searchApi.clearSearchHistory();
+                    for (const kw of [...this.histories].reverse()) {
+                        await searchApi.addSearchHistory(kw);
+                    }
+                } else {
+                    localStorage.setItem("historiesSearch", JSON.stringify(this.histories));
                 }
             },
 
             // 清空全部搜索历史
             async removeAllHistories() {
                 this.histories = [];
-                await searchApi.clearSearchHistory();
+                if (localStorage.getItem("teri_token")) {
+                    await searchApi.clearSearchHistory();
+                } else {
+                    localStorage.removeItem("historiesSearch");
+                }
             },
 
             // 点击条目搜索
