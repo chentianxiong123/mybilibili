@@ -10,7 +10,7 @@ import (
 
 const mwSecret = "middleware-test"
 
-func TestIdentityMiddleware_TraefikHeaders(t *testing.T) {
+func TestIdentityMiddleware_ClientSpoofedHeaderDropped(t *testing.T) {
 	j := NewJWT(mwSecret)
 	mw := IdentityMiddleware(j)
 
@@ -20,12 +20,61 @@ func TestIdentityMiddleware_TraefikHeaders(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	// 无任何凭证、只伪造身份头 → 必须被丢弃（历史上这里会直通，属伪造漏洞）
 	req := httptest.NewRequest("GET", "/x", nil)
 	req.Header.Set("X-User-Id", "555")
 	rec := httptest.NewRecorder()
 	mw(inner).ServeHTTP(rec, req)
 
-	assert.Equal(t, "555", seenID, "Traefik 注入的头应直通")
+	assert.Equal(t, "", seenID, "客户端伪造的 X-User-Id 必须被丢弃")
+}
+
+func TestIdentityMiddleware_SpoofedHeaderLosesToVerifiedToken(t *testing.T) {
+	j := NewJWT(mwSecret)
+	mw := IdentityMiddleware(j)
+
+	tok, err := j.Generate(777)
+	assert.NoError(t, err)
+
+	var seenID string
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seenID = r.Header.Get("X-User-Id")
+		w.WriteHeader(http.StatusOK)
+	})
+
+	// 有效 token + 冲突的伪造头 → 以验签结果为准
+	req := httptest.NewRequest("GET", "/x", nil)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	req.Header.Set("X-User-Id", "1")
+	rec := httptest.NewRecorder()
+	mw(inner).ServeHTTP(rec, req)
+
+	assert.Equal(t, "777", seenID, "验签结果必须覆盖客户端伪造头")
+}
+
+func TestIdentityMiddleware_SpoofedAdminHeaderDropped(t *testing.T) {
+	j := NewJWT(mwSecret)
+	mw := IdentityMiddleware(j)
+
+	var seenAdmin, seenRole string
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seenAdmin = r.Header.Get("X-Admin-Id")
+		seenRole = r.Header.Get("X-User-Role")
+		w.WriteHeader(http.StatusOK)
+	})
+
+	// 普通用户 token + 伪造管理员头 → 不得提权
+	tok, err := j.Generate(777)
+	assert.NoError(t, err)
+	req := httptest.NewRequest("GET", "/x", nil)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	req.Header.Set("X-Admin-Id", "1")
+	req.Header.Set("X-User-Role", "admin")
+	rec := httptest.NewRecorder()
+	mw(inner).ServeHTTP(rec, req)
+
+	assert.Equal(t, "", seenAdmin, "普通用户不得被伪造头提权为管理员")
+	assert.Equal(t, RoleUser, seenRole, "角色以验签结果为准")
 }
 
 func TestIdentityMiddleware_BearerFallback(t *testing.T) {

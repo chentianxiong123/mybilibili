@@ -47,7 +47,7 @@ describe('adminAiApi.sendMessage', () => {
     expect(opts.method).toBe('POST')
     const headers = opts.headers as Record<string, string>
     expect(headers['Authorization']).toBe('')
-    expect(headers['X-Admin-Id']).toBe('')
+    expect(headers['X-Admin-Id']).toBeUndefined()
     expect(opts.body).toBe(JSON.stringify({ content: 'hello' }))
   })
 
@@ -62,7 +62,8 @@ describe('adminAiApi.sendMessage', () => {
     const opts = mocks.fetch.mock.calls[0][1] as RequestInit
     const headers = opts.headers as Record<string, string>
     expect(headers['Authorization']).toBe('Bearer admin_t')
-    expect(headers['X-Admin-Id']).toBe('9')
+    // 管理员身份由后端从验签 token 推导，客户端即使有 admin_id 也不得自塞 X-Admin-Id
+    expect(headers['X-Admin-Id']).toBeUndefined()
   })
 
   it('解析 SSE event: / data: 并触发 onData', async () => {

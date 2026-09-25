@@ -29,12 +29,12 @@ function handleSSEEvent({ event, data }: { event?: string; data?: string }, call
   }
 }
 
+// 只带 Authorization：X-User-Id 由服务端 IdentityMiddleware 从凭证解析注入，
+// 客户端自带头会被网关直接信任，属于可伪造身份的安全洞。
 function getAuthHeaders() {
   const token = safeStorage.getItem('token')
-  const user = getCurrentUser()
   return {
-    'Authorization': token ? `Bearer ${token}` : '',
-    'X-User-Id': user?.id ? String(user.id) : ''
+    'Authorization': token ? `Bearer ${token}` : ''
   }
 }
 

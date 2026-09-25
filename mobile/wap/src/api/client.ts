@@ -1,7 +1,7 @@
 // API 客户端 - 与 mybilibili-web/src/api/index.js 保持一致
 import axios from 'axios'
 import storage, { K } from '../utils/storage_layer'
-import { getToken, getLocalUserId, clearSession, tryRefresh } from '../utils/session'
+import { getToken, clearSession, tryRefresh } from '../utils/session'
 
 // 简单 toast 提示（原项目不用 Element Plus）
 function showToast(msg: string) {
@@ -28,10 +28,8 @@ api.interceptors.request.use(
     if (token && !isImageRequest) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    const userId = getLocalUserId()
-    if (userId && !isImageRequest) {
-      config.headers['X-User-Id'] = String(userId)
-    }
+    // 注意：不再自塞 X-User-Id —— 该头由服务端 IdentityMiddleware 从凭证解析注入，
+    // 客户端可伪造任意身份。同源请求浏览器自动携带 cookie，作为第二条鉴权通道。
     config.headers['X-Client-Platform'] = 'wap'
     return config
   },

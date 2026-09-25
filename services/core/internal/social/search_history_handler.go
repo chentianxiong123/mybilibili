@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"mybilibili/pkg/auth"
@@ -31,8 +30,7 @@ func (h *SearchHistoryHandler) getUserID(r *http.Request) int64 {
 		return uid
 	}
 	if h.jwt != nil {
-		tokenStr := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if tokenStr != "" && tokenStr != r.Header.Get("Authorization") {
+		if tokenStr := auth.TokenFromRequest(r); tokenStr != "" {
 			if id, err := h.jwt.ParseUserID(tokenStr); err == nil {
 				return id
 			}

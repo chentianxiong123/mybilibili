@@ -33,10 +33,11 @@ func TestGetAdminIDFromHeader_AdminHeader(t *testing.T) {
 	assert.Equal(t, int64(7), GetAdminIDFromHeader(r))
 }
 
-func TestGetAdminIDFromHeader_FallbackToUser(t *testing.T) {
+func TestGetAdminIDFromHeader_UserIdNeverCountsAsAdmin(t *testing.T) {
+	// 回归：X-User-Id 属于 users 表 ID，绝不能被当成 admin_users 的管理员 ID
 	r := httptest.NewRequest("GET", "/", nil)
 	r.Header.Set("X-User-Id", "99")
-	assert.Equal(t, int64(99), GetAdminIDFromHeader(r))
+	assert.Equal(t, int64(0), GetAdminIDFromHeader(r))
 }
 
 func TestGetAdminIDFromHeader_Missing(t *testing.T) {

@@ -18,11 +18,14 @@ func GetUserIDFromHeader(r *http.Request) int64 {
 	return id
 }
 
+// GetAdminIDFromHeader 读取管理员身份。
+//
+// 只认 X-Admin-Id，绝不能回退到 X-User-Id：users.id 与 admin_users.id 是两套
+// 独立自增 ID，一旦回退，任何普通用户都会被当成"同号管理员"提权
+// （实测 users.id=4 的 string 拿到了 admin_users.id=4 system_admin 的全部权限）。
+// X-Admin-Id 由 IdentityMiddleware 在 claims.IsAdmin 为真时才注入，故可信。
 func GetAdminIDFromHeader(r *http.Request) int64 {
 	idStr := r.Header.Get("X-Admin-Id")
-	if idStr == "" {
-		idStr = r.Header.Get("X-User-Id")
-	}
 	if idStr == "" {
 		return 0
 	}

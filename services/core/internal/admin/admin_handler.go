@@ -22,13 +22,21 @@ func NewHandler(svc *Service, jwt *auth.JWT) *Handler {
 	return &Handler{svc: svc, jwt: jwt}
 }
 
+// requirePermission 解析管理员身份并校验权限码。
+//
+// 身份只认两种来源，且都必须来自「已验签的管理员凭证」：
+//  1. X-Admin-Id —— IdentityMiddleware 仅在 claims.IsAdmin 为真时注入该头；
+//  2. Authorization / cookie 里的 token —— 必须是 GenerateAdmin 签发的。
+//
+// 绝不能拿普通用户的 user_id 去 admin_users 表查权限：users.id 与
+// admin_users.id 是两套独立自增 ID，任意撞车都会导致越权
+// （实测 users.id=4 的普通用户 string 拿到了 admin_users.id=4 system_admin 的权限）。
 func (h *Handler) requirePermission(r *http.Request, permission string) (int64, bool) {
 	adminID := httputil.GetAdminIDFromHeader(r)
 	if adminID == 0 {
-		tokenStr := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if tokenStr != "" {
+		if tokenStr := auth.TokenFromRequest(r); tokenStr != "" {
 			claims, err := h.jwt.Parse(tokenStr)
-			if err == nil {
+			if err == nil && claims != nil && claims.IsAdmin {
 				adminID = claims.UserId
 			}
 		}

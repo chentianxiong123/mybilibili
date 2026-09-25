@@ -35,6 +35,25 @@ const clearCacheFor = (url: string) => {
   })
 }
 
+// ====== 401 处理策略 ======
+// 只有「确认凭证失效」才允许清会话：网络层失败（后端重启、代理抖动、DNS）不代表
+// refreshToken 失效，之前在这里无条件 clearAuthSession 导致反复重启就掉登录。
+const MAX_401_BEFORE_DROP = 3
+let consecutive401 = 0
+
+/** 记录一次确认的 401，连续达到阈值才判定凭证失效。网络错误一律返回 false。 */
+function confirmAuthFailure(err: any): boolean {
+  if (!err?.response) return false
+  if (err.response.status !== 401) return false
+  consecutive401 += 1
+  return consecutive401 >= MAX_401_BEFORE_DROP
+}
+
+/** 任意请求成功即重置计数，避免跨时段的零散 401 累加误判。 */
+function resetAuthFailure() {
+  consecutive401 = 0
+}
+
 api.interceptors.request.use(
   config => {
     const url = config.url || ''
@@ -73,6 +92,7 @@ const processQueue = (error: any, token: string | null = null) => {
 
 api.interceptors.response.use(
   response => {
+    resetAuthFailure()
     const config = response.config
     const url = config?.url || ''
     const method = (config?.method || 'get').toLowerCase()
@@ -98,16 +118,25 @@ api.interceptors.response.use(
       }
 
       if (!refreshToken) {
-        // 匿名 GET 访问 401（读接口）：优雅降级为空数据，避免未捕获的 promise rejection
-        // 非 GET（登录/点赞等写操作）保持 reject，由调用方提示登录
-        clearAuthSession()
+        // 没有 refresh token 就无法续签。但单次 401 未必是凭证失效（可能是后端
+        // 重启瞬间返回 401），连续 3 次确认后才清会话。
         const isRead = (originalRequest.method || 'get').toLowerCase() === 'get'
+        if (confirmAuthFailure(error)) {
+          clearAuthSession()
+          if (import.meta.client && isRead) {
+            return Promise.resolve({ code: 401, data: [], message: '请先登录' })
+          }
+          return Promise.reject(error)
+        }
+        // 未确认失效：读接口优雅降级为空数据，写接口保持 reject 让调用方提示登录
         if (import.meta.client && isRead) {
           return Promise.resolve({ code: 401, data: [], message: '请先登录' })
         }
         return Promise.reject(error)
       }
       if (originalRequest.url === '/user/token/refresh') {
+        // 服务端明确拒绝 refresh token → 凭证确实失效，立刻清
+        resetAuthFailure()
         clearAuthSession()
         return Promise.reject(error)
       }
@@ -131,16 +160,23 @@ api.interceptors.response.use(
               const { token, refresh_token: newRefreshToken } = res.data
               setAuthSession({ token, refreshToken: newRefreshToken || refreshToken })
               originalRequest.headers.Authorization = `Bearer ${token}`
+              resetAuthFailure()
               processQueue(null, token)
               resolve(api(originalRequest))
             } else {
+              // 服务端明确返回非 200 → 凭证失效
+              resetAuthFailure()
               clearAuthSession()
               processQueue(new Error('refresh failed'))
               reject(error)
             }
           })
           .catch(err => {
-            clearAuthSession()
+            // 关键：网络层失败（后端重启/代理抖动）不清会话，否则重启一次就掉登录。
+            if (confirmAuthFailure(err)) {
+              resetAuthFailure()
+              clearAuthSession()
+            }
             processQueue(err)
             reject(err)
           })
@@ -151,7 +187,10 @@ api.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
-          if (getToken() && getRefreshToken()) {
+          // 走到这里说明续签后仍 401，或该请求没进上面的续签分支。
+          // 单次 401 不足以判定凭证失效（后端重启瞬间会返回 401），连续 3 次才清。
+          if ((getToken() || getRefreshToken()) && confirmAuthFailure(error)) {
+            resetAuthFailure()
             clearAuthSession()
           }
           if (import.meta.client) {
@@ -204,12 +243,21 @@ async function silentRefreshOnce() {
         token: res.data.token,
         refreshToken: res.data.refresh_token || refreshToken
       })
+      resetAuthFailure()
       return true
     }
+    // 服务端明确拒绝（非 200）→ 凭证失效
+    resetAuthFailure()
     clearAuthSession()
     stopSilentRefresh()
     return false
   } catch (e) {
+    // 网络层失败（后端重启/代理抖动）不清会话，恢复后下一轮自动续上
+    if (confirmAuthFailure(e)) {
+      resetAuthFailure()
+      clearAuthSession()
+      stopSilentRefresh()
+    }
     return false
   }
 }

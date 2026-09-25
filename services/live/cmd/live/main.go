@@ -9,6 +9,7 @@ import (
 	_ "github.com/lib/pq"
 
 	"mybilibili/live/internal/live"
+	"mybilibili/pkg/auth"
 )
 
 func main() {
@@ -50,5 +51,14 @@ func main() {
 	liveAdminH.Register(mux)
 
 	log.Printf("Live service HTTP listening on %s", httpAddr)
-	log.Fatal(http.ListenAndServe(httpAddr, mux))
+	log.Fatal(http.ListenAndServe(httpAddr, auth.IdentityMiddleware(newJWT())(mux)))
+}
+
+// newJWT 构造验签器。secret 与 core 保持一致，缺失时回退开发默认值。
+func newJWT() *auth.JWT {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		secret = "dev-secret-change-in-production"
+	}
+	return auth.NewJWT(secret)
 }

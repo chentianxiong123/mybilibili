@@ -44,8 +44,8 @@ func (h *HTTPHandler) handleAuthVerify(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "auth not configured", http.StatusInternalServerError)
 		return
 	}
-	tokenStr, ok := auth.BearerToken(r.Header.Get("Authorization"))
-	if !ok {
+	tokenStr := auth.TokenFromRequest(r)
+	if tokenStr == "" {
 		http.Error(w, "missing token", http.StatusUnauthorized)
 		return
 	}

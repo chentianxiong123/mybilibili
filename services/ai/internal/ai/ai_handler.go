@@ -303,13 +303,11 @@ func maskKey(key string) string {
 	return key[:6] + "****" + key[len(key)-4:]
 }
 
+// getAdminID 读取管理员操作者 ID。只认 X-Admin-Id（IdentityMiddleware 仅在
+// claims.IsAdmin 为真时注入），绝不回退 X-User-Id——users.id 与 admin_users.id
+// 是两套独立自增 ID，回退会把普通用户的 user_id 记成管理员 ID。
 func getAdminID(r *http.Request) int64 {
-	idStr := r.Header.Get("X-Admin-Id")
-	if idStr == "" {
-		idStr = r.Header.Get("X-User-Id")
-	}
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-	return id
+	return httputil.GetAdminIDFromHeader(r)
 }
 
 func (h *Handler) handleSummary(w http.ResponseWriter, r *http.Request) {

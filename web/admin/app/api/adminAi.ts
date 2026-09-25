@@ -26,10 +26,9 @@ function handleSSEEvent({ event, data }: { event: string, data: string }, callba
 
 function getAuthHeaders() {
   const token = getAdminToken()
-  const adminId = localStorage.getItem('admin_id')
+  // 管理员身份只能由后端从已验签 token 推导，客户端自塞的 X-Admin-Id 会被丢弃
   return {
-    'Authorization': token ? `Bearer ${token}` : '',
-    'X-Admin-Id': adminId || ''
+    'Authorization': token ? `Bearer ${token}` : ''
   }
 }
 

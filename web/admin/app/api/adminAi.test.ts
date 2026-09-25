@@ -50,7 +50,6 @@ describe('adminAiApi.sendMessage', () => {
         headers: expect.objectContaining({
           'Content-Type': 'application/json',
           'Authorization': 'Bearer tok-1',
-          'X-Admin-Id': '42',
         }),
         body: JSON.stringify({ content: 'hello' }),
       }),
@@ -110,6 +109,7 @@ describe('adminAiApi.sendMessage', () => {
     await new Promise(r => setTimeout(r, 10))
     const headers = fetchMock.mock.calls[0][1].headers
     expect(headers['Authorization']).toBe('')
-    expect(headers['X-Admin-Id']).toBe('')
+    // 管理员身份由后端从验签 token 推导，客户端不得自塞 X-Admin-Id
+    expect(headers['X-Admin-Id']).toBeUndefined()
   })
 })

@@ -37,8 +37,7 @@ func (h *MessageHTTPHandler) getUserID(r *http.Request) int64 {
 		return uid
 	}
 	if h.jwt != nil {
-		tokenStr := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if tokenStr != "" {
+		if tokenStr := auth.TokenFromRequest(r); tokenStr != "" {
 			if id, err := h.jwt.ParseUserID(tokenStr); err == nil {
 				return id
 			}

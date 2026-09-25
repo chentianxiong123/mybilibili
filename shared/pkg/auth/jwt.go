@@ -6,6 +6,7 @@ package auth
 
 import (
 	"context"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -39,6 +40,19 @@ type JWT struct {
 
 func NewJWT(secret string) *JWT {
 	return &JWT{secret: secret, duration: 24 * time.Hour}
+}
+
+// DefaultSecret 与各服务 main.go 的本地回退值保持一致（仅 dev 兜底）。
+const DefaultSecret = "dev-secret-change-in-production"
+
+// JWTFromEnv 从 JWT_SECRET 环境变量构造 JWT，缺省回落到 DefaultSecret。
+// 供无法走各服务 main.go 注入的场景（如服务间调用方）使用。
+func JWTFromEnv() *JWT {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		secret = DefaultSecret
+	}
+	return NewJWT(secret)
 }
 
 // NewJWTWithDuration 允许自定义有效期（测试/短期 token 用）。

@@ -1040,6 +1040,22 @@ func TestCheckPermission_JWTInvalid(t *testing.T) {
 	assert.False(t, ok)
 }
 
+// 回归：普通用户 token 绝不能被当成管理员身份。
+// users.id 与 admin_users.id 是两套独立自增 ID（实测 users.id=4 的 string
+// 撞上 admin_users.id=4 的 system_admin 即提权），因此 fallback 必须校验 IsAdmin。
+func TestCheckPermission_RegularUserTokenRejected(t *testing.T) {
+	h, _ := newTestHandler(t)
+	jwtTool := auth.NewJWT(testJWTSecret)
+	token, err := jwtTool.Generate(4) // 普通用户 id=4
+	require.NoError(t, err)
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	id, ok := h.CheckPermission(req, "admin:manage")
+	assert.Equal(t, int64(0), id, "不得把普通用户 id 当 admin_id 查询")
+	assert.False(t, ok)
+}
+
 func TestCheckPermission_DBError(t *testing.T) {
 	h, mock := newTestHandler(t)
 	mock.ExpectQuery(`SELECT DISTINCT p.code`).WithArgs(int64(1)).

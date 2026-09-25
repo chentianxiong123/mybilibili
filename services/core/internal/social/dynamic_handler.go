@@ -33,8 +33,7 @@ func (h *SocialHandler) getUserID(r *http.Request) int64 {
 		return uid
 	}
 	if h.jwt != nil {
-		tokenStr := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if tokenStr != "" && tokenStr != r.Header.Get("Authorization") {
+		if tokenStr := auth.TokenFromRequest(r); tokenStr != "" {
 			if id, err := h.jwt.ParseUserID(tokenStr); err == nil {
 				return id
 			}
