@@ -34,16 +34,23 @@ describe('auth utils', () => {
       expect(getRefreshToken()).toBe('refresh-456')
     })
 
-    it('token 同步写入 cookie', () => {
+    // 阶段 1：token / refresh_token 改由服务端以 HttpOnly 下发，
+    // 前端若再用 document.cookie 写一遍会把 HttpOnly 标记冲掉，等于自毁防线。
+    it('不再把 token 写进 cookie（HttpOnly 由服务端持有）', () => {
       setAuthSession({ token: 'tok-abc' })
-      const cookies = document.cookie
-      expect(cookies).toContain('token=tok-abc')
+      expect(getToken()).toBe('tok-abc')
+      expect(document.cookie).not.toContain('token=tok-abc')
     })
 
-    it('refreshToken 同步写入 cookie', () => {
+    it('不再把 refreshToken 写进 cookie', () => {
       setAuthSession({ refreshToken: 'ref-xyz' })
-      const cookies = document.cookie
-      expect(cookies).toContain('refresh_token=ref-xyz')
+      expect(getRefreshToken()).toBe('ref-xyz')
+      expect(document.cookie).not.toContain('refresh_token=ref-xyz')
+    })
+
+    it('user_info 仍写入 cookie（非凭证，供 useAuth 直接渲染）', () => {
+      setAuthSession({ user: { id: 7, nickname: 'n' } })
+      expect(document.cookie).toContain('user_info=')
     })
 
     it('user 信息写入 localStorage', () => {
@@ -63,12 +70,16 @@ describe('auth utils', () => {
       expect(getRefreshToken()).toBe('')
     })
 
-    it('清除后 cookie 也删除', () => {
-      setAuthSession({ token: 't', refreshToken: 'r' })
+    // HttpOnly cookie JS 删不掉，清 cookie 由 api/session 的 clearServerSession() 走服务端完成
+    it('清除后本地凭证 cookie 不残留', () => {
+      setAuthSession({ token: 't', refreshToken: 'r', user: { id: 1 } })
+      expect(document.cookie).toContain('user_info=')
       clearAuthSession()
-      const cookies = document.cookie
-      expect(cookies).not.toContain('token=t')
-      expect(cookies).not.toContain('refresh_token=r')
+      // happy-dom 删除后可能保留空键名，这里只关心值是否还在
+      const m = document.cookie.match(/(?:^|;\s*)user_info=([^;]*)/)
+      expect(!m || !m[1]).toBe(true)
+      expect(getToken()).toBe('')
+      expect(getRefreshToken()).toBe('')
     })
   })
 

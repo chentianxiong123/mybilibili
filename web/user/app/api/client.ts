@@ -9,6 +9,7 @@ import {
   getAdminToken,
   clearAdminSession
 } from '../utils/auth'
+import { clearServerSession } from './session'
 
 // CSR(浏览器): 相对路径 → 走 traefik 80 (统一入口)
 // SSR(服务器, 容器内): 直接访问 core 容器 (docker 与 k8s 服务名通用)
@@ -33,6 +34,13 @@ const clearCacheFor = (url: string) => {
   ;[...cacheStore.keys()].forEach(key => {
     if (key.includes(url)) cacheStore.delete(key)
   })
+}
+
+// 会话终结：本地状态 + 服务端 HttpOnly cookie 一起清。
+// 只清本地会出现"看着已登出、接口仍带凭证"的假登出。
+const endSession = () => {
+  clearAuthSession()
+  void clearServerSession()
 }
 
 // ====== 401 处理策略 ======
@@ -122,7 +130,7 @@ api.interceptors.response.use(
         // 重启瞬间返回 401），连续 3 次确认后才清会话。
         const isRead = (originalRequest.method || 'get').toLowerCase() === 'get'
         if (confirmAuthFailure(error)) {
-          clearAuthSession()
+          endSession()
           if (import.meta.client && isRead) {
             return Promise.resolve({ code: 401, data: [], message: '请先登录' })
           }
@@ -137,7 +145,7 @@ api.interceptors.response.use(
       if (originalRequest.url === '/user/token/refresh') {
         // 服务端明确拒绝 refresh token → 凭证确实失效，立刻清
         resetAuthFailure()
-        clearAuthSession()
+        endSession()
         return Promise.reject(error)
       }
 
@@ -166,7 +174,7 @@ api.interceptors.response.use(
             } else {
               // 服务端明确返回非 200 → 凭证失效
               resetAuthFailure()
-              clearAuthSession()
+              endSession()
               processQueue(new Error('refresh failed'))
               reject(error)
             }
@@ -175,7 +183,7 @@ api.interceptors.response.use(
             // 关键：网络层失败（后端重启/代理抖动）不清会话，否则重启一次就掉登录。
             if (confirmAuthFailure(err)) {
               resetAuthFailure()
-              clearAuthSession()
+              endSession()
             }
             processQueue(err)
             reject(err)
@@ -191,7 +199,7 @@ api.interceptors.response.use(
           // 单次 401 不足以判定凭证失效（后端重启瞬间会返回 401），连续 3 次才清。
           if ((getToken() || getRefreshToken()) && confirmAuthFailure(error)) {
             resetAuthFailure()
-            clearAuthSession()
+            endSession()
           }
           if (import.meta.client) {
             return Promise.resolve({ code: 401, data: error.response.data?.data || [], message: '请先登录' })
@@ -248,14 +256,14 @@ async function silentRefreshOnce() {
     }
     // 服务端明确拒绝（非 200）→ 凭证失效
     resetAuthFailure()
-    clearAuthSession()
+    endSession()
     stopSilentRefresh()
     return false
   } catch (e) {
     // 网络层失败（后端重启/代理抖动）不清会话，恢复后下一轮自动续上
     if (confirmAuthFailure(e)) {
       resetAuthFailure()
-      clearAuthSession()
+      endSession()
       stopSilentRefresh()
     }
     return false

@@ -3,9 +3,14 @@ package auth
 import (
 	"net/http"
 	"strconv"
+	"time"
 )
 
-// HTTPMiddlewares 身份中间件（零信任第 1 层）。
+// renewThreshold 剩余有效期低于该值时滑动续期一次。
+// 访问令牌 24h，续期后重新回到 24h，因此实际每 12h 才会触发一次。
+const renewThreshold = 12 * time.Hour
+
+// IdentityMiddleware 身份中间件（零信任第 1 层）。
 //
 // 契约：X-User-Id / X-User-Role / X-Admin-Id 是"身份声明"，**只允许由本中间件
 // 从已验签的凭证推导**，绝不接受客户端直接传入。
@@ -20,6 +25,10 @@ import (
 //
 // 将来若真的启用 Traefik forwardAuth：必须先让网关剥离客户端身份头、或改为
 // 仅接受可信网段的注入，否则放开会直接退回本漏洞。
+//
+// 另外承担两件与会话相关的事，都只在凭证来自 Cookie（即浏览器会话）时生效：
+//   - CSRF：跨站发起的写操作直接 403（Bearer 无法被跨站设置，不受此影响）
+//   - 滑动续期：临近过期时换发新令牌并回写 Set-Cookie，让"活跃即不失效"
 func IdentityMiddleware(j *JWT) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -30,8 +39,14 @@ func IdentityMiddleware(j *JWT) func(http.Handler) http.Handler {
 
 			// 2) 只在验签通过时按 claims 重建身份；无凭证/凭证无效 → 身份为空
 			if j != nil {
-				if tokenStr := TokenFromRequest(r); tokenStr != "" {
-					if claims, err := j.Parse(tokenStr); err == nil && claims != nil {
+				if tok, source := TokenFromRequestWithSource(r); tok != "" {
+					if claims, err := j.Parse(tok); err == nil && claims != nil && claims.IsAccess() {
+						// 2a) 浏览器会话的跨站写操作：凭证本身没问题，但请求不该被允许
+						if source == SourceCookie && unsafeMethod(r.Method) && !CheckSameOrigin(r) {
+							writeJSONError(w, http.StatusForbidden, "cross-site request rejected")
+							return
+						}
+
 						r.Header.Set("X-User-Id", strconv.FormatInt(claims.UserId, 10))
 						if claims.IsAdmin {
 							r.Header.Set("X-Admin-Id", strconv.FormatInt(claims.UserId, 10))
@@ -39,10 +54,51 @@ func IdentityMiddleware(j *JWT) func(http.Handler) http.Handler {
 						} else {
 							r.Header.Set("X-User-Role", RoleUser)
 						}
+
+						// 2b) 滑动续期：活跃会话不会因为 24h 到期而被踢下线
+						if source == SourceCookie {
+							renewSessionCookie(w, r, j, tok, claims)
+						}
 					}
 				}
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// renewSessionCookie 临近过期时换发访问令牌，写回原来那一个 cookie。
+// 只在剩余有效期不足 renewThreshold 时触发；换发后有效期回到 24h，
+// 不会每个请求都下发 Set-Cookie。
+func renewSessionCookie(w http.ResponseWriter, r *http.Request, j *JWT, presented string, claims *Claims) {
+	if claims.ExpiresAt == nil {
+		return
+	}
+	if time.Until(claims.ExpiresAt.Time) > renewThreshold {
+		return
+	}
+	// 精确判断凭证来自哪个 cookie，只续期它，避免把用户/管理员的另一个会话改写掉
+	name := ""
+	if v := cookieValue(r, AdminAccessTokenCookie); v != presented {
+		if v := cookieValue(r, UserAccessTokenCookie); v == presented {
+			name = UserAccessTokenCookie
+		}
+	} else {
+		name = AdminAccessTokenCookie
+	}
+	if name == "" {
+		return
+	}
+
+	fresh, err := j.GenerateWithRole(claims.UserId, claims.AccessRole())
+	if err != nil || fresh == "" {
+		return
+	}
+	SetAccessCookie(w, name, fresh)
+}
+
+func writeJSONError(w http.ResponseWriter, code int, msg string) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(code)
+	_, _ = w.Write([]byte(`{"code":` + strconv.Itoa(code) + `,"message":"` + msg + `","data":null}`))
 }

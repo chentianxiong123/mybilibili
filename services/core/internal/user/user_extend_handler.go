@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"mybilibili/pkg/auth"
 	"mybilibili/pkg/httputil"
 	"mybilibili/pkg/errors"
 	"mybilibili/pkg/imageutil"
@@ -34,6 +35,7 @@ func NewUserExtendHandler(svc *Service) *UserExtendHandler {
 
 func (h *UserExtendHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/user/login", h.handleLogin)
+	mux.HandleFunc("/api/v1/user/logout", h.handleLogout)
 	mux.HandleFunc("/api/v1/user/register", h.handleRegister)
 	mux.HandleFunc("/api/v1/user/me", h.handleMe)
 	mux.HandleFunc("/api/v1/user/me/avatar", h.handleMeAvatar)
@@ -54,22 +56,19 @@ func (h *UserExtendHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/captcha/", h.handleCaptcha)
 }
 
+// setSessionCookies 下发登录态 cookie。
+//
+// token / refresh_token 是凭证，必须 HttpOnly——JS 读不到，XSS 就偷不走。
+// 前端仍把 token 存在 localStorage 里发 Bearer，cookie 这条通道是给
+// "后续不再由 JS 携带凭证"准备的，两边值一致互不冲突。
+// user_info 只是展示用的昵称头像，保持可读，供 useAuth 直接渲染。
 func (h *UserExtendHandler) setSessionCookies(w http.ResponseWriter, token, refreshToken string, userID int64, nickname, avatar string) {
-	http.SetCookie(w, &http.Cookie{
-		Name: "token", Value: token, Path: "/",
-		MaxAge: 86400 * 7, HttpOnly: false, SameSite: http.SameSiteLaxMode,
-	})
-	http.SetCookie(w, &http.Cookie{
-		Name: "refresh_token", Value: refreshToken, Path: "/",
-		MaxAge: 86400 * 30, HttpOnly: false, SameSite: http.SameSiteLaxMode,
-	})
+	auth.SetAccessCookie(w, auth.UserAccessTokenCookie, token)
+	auth.SetRefreshCookie(w, auth.UserRefreshTokenCookie, refreshToken)
 	userJSON, _ := json.Marshal(map[string]interface{}{
 		"id": userID, "nickname": nickname, "avatar": avatar,
 	})
-	http.SetCookie(w, &http.Cookie{
-		Name: "user_info", Value: url.QueryEscape(string(userJSON)), Path: "/",
-		MaxAge: 86400 * 7, HttpOnly: false, SameSite: http.SameSiteLaxMode,
-	})
+	auth.SetPlainCookie(w, auth.UserInfoCookie, url.QueryEscape(string(userJSON)))
 }
 
 // handleLogin 用户登录（用户名/密码），返回 token 与用户基本信息，
@@ -172,6 +171,21 @@ func (h *UserExtendHandler) handleRegister(w http.ResponseWriter, r *http.Reques
 		"nickname":      req.Nickname,
 		"avatar":        "",
 	})
+}
+
+// handleLogout 登出：清掉服务端下发的三枚 cookie。
+// 不校验凭证——登出本来就该是幂等的，清不掉也不会泄露什么。
+//
+// @Summary      退出登录
+// @Tags         user
+// @Router       /user/logout [post]
+func (h *UserExtendHandler) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	auth.ClearUserSessionCookies(w)
+	httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
 }
 
 func (h *UserExtendHandler) handleRefresh(w http.ResponseWriter, r *http.Request) {

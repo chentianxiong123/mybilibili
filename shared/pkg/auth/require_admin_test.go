@@ -48,17 +48,17 @@ func TestIsAdminPath_BackendPrefixesWithoutAdminInPath(t *testing.T) {
 
 func TestIsAdminPath_PublicAndUserPaths(t *testing.T) {
 	for _, p := range []string{
-		"/api/v1/admin/login",            // 门卫自己不能要求刷卡
+		"/api/v1/admin/login", // 门卫自己不能要求刷卡
 		"/api/v1/user/login",
 		"/api/v1/user/me",
 		"/api/v1/video/list",
 		"/api/v1/search/videos",
 		"/api/v1/health",
 		"/api/v1/ai/health",
-		"/api/v1/ai/customer/chat",       // 普通用户客服入口
-		"/api/v1/ai/customer/history/4",  // 普通用户客服入口
-		"/api/v1/ai/customer/transfer",   // 普通用户客服入口
-		"/api/v1/ai/summary/generate",    // work 内部编排，不带凭证
+		"/api/v1/ai/customer/chat",         // 普通用户客服入口
+		"/api/v1/ai/customer/history/4",    // 普通用户客服入口
+		"/api/v1/ai/customer/transfer",     // 普通用户客服入口
+		"/api/v1/ai/summary/generate",      // work 内部编排，不带凭证
 		"/api/v1/search/hot/clean-expired", // core 定时任务，不带凭证
 		"/api/v1/work/health",
 	} {

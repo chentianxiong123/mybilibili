@@ -77,6 +77,7 @@ func (h *Handler) SetScheduler(s *Scheduler) {
 
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/admin/login", h.handleLogin)
+	mux.HandleFunc("/api/v1/admin/logout", h.handleLogout)
 	mux.HandleFunc("/api/v1/admin/register", h.requirePerm("admin:manage", h.handleRegister))
 	mux.HandleFunc("/api/v1/admin/list", h.requirePerm("admin:manage", h.handleListAdmins))
 	mux.HandleFunc("/api/v1/admin/roles", h.requirePerm("role:manage", h.handleRoles))
@@ -226,6 +227,11 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if permissions == nil {
 		permissions = []string{}
 	}
+	// 后台会话用独立的 admin_token 命名空间：admin_users.id 与 users.id
+	// 是两套自增 ID，共用 token 这个 cookie 名会让两种登录态互相覆盖，
+	// 并让管理员凭证被用户接口按 users.id 解释。
+	auth.SetAccessCookie(w, auth.AdminAccessTokenCookie, token)
+	auth.SetRefreshCookie(w, auth.AdminRefreshTokenCookie, refreshToken)
 	httputil.WriteOK(w, map[string]any{
 		"token":         token,
 		"refresh_token": refreshToken,
@@ -234,6 +240,21 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		"role":          role,
 		"permissions":   permissions,
 	})
+}
+
+// handleLogout 后台登出：清掉 admin_token / admin_refresh。
+// 幂等，不校验凭证。
+//
+// @Summary      后台退出登录
+// @Tags         admin
+// @Router       /admin/logout [post]
+func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	auth.ClearAdminSessionCookies(w)
+	httputil.WriteOK(w, map[string]any{"status": "ok"})
 }
 
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {

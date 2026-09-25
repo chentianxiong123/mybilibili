@@ -24,12 +24,40 @@ const (
 	RoleAdmin = "admin"
 )
 
+// Token 用途标记。访问令牌与刷新令牌共用同一个 secret，若不区分，
+// 把 7 天的刷新令牌塞进访问位就能绕过 24 小时的访问令牌有效期。
+// 旧令牌没有该字段，按访问令牌处理以保持兼容。
+const (
+	TokenTypeAccess  = "access"
+	TokenTypeRefresh = "refresh"
+)
+
 // Claims 标准身份声明。UserId 对应用户表或管理员表的 ID，靠 Role 区分。
 type Claims struct {
 	UserId  int64  `json:"user_id"`
 	Role    string `json:"role,omitempty"`
 	IsAdmin bool   `json:"is_admin,omitempty"`
+	Typ     string `json:"typ,omitempty"`
 	jwt.RegisteredClaims
+}
+
+// IsAccess 是否为访问令牌（旧令牌无 typ，视作访问令牌）。
+func (c *Claims) IsAccess() bool {
+	return c == nil || c.Typ == "" || c.Typ == TokenTypeAccess
+}
+
+// AccessRole 还原签发时使用的 role。
+func (c *Claims) AccessRole() string {
+	if c == nil {
+		return RoleUser
+	}
+	if c.IsAdmin {
+		return RoleAdmin
+	}
+	if c.Role != "" {
+		return c.Role
+	}
+	return RoleUser
 }
 
 // JWT 封装的签发/验证工具。
@@ -89,6 +117,7 @@ func (j *JWT) GenerateWithRole(userID int64, role string) (string, error) {
 func (j *JWT) GenerateRefresh(userID int64) (string, error) {
 	claims := Claims{
 		UserId: userID,
+		Typ:    TokenTypeRefresh,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -154,7 +183,7 @@ func (j *JWT) GRPCAuthInterceptor() grpc.UnaryServerInterceptor {
 			tokenStr = auths[0]
 		}
 		claims, err := j.Parse(tokenStr)
-		if err != nil {
+		if err != nil || !claims.IsAccess() {
 			return nil, status.Error(codes.Unauthenticated, "invalid token")
 		}
 		return handler(context.WithValue(ctx, claimsKey{}, claims), req)

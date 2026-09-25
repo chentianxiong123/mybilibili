@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { userApi } from '@/api/client'
+import { clearServerSession } from '@/api/session'
 import {
   clearAuthSession,
   getCurrentUserId,
@@ -176,6 +177,7 @@ export const useUserStore = (defineStore as any)('user', {
         pointCount: 0
       })
       
+      void clearServerSession()
       clearAuthSession()
       this.token = ''
       this.refreshToken = ''

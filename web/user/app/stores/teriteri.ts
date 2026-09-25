@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ElMessage } from 'element-plus'
 import api from '@/api/client'
 import { clearAuthSession } from '@/utils/auth'
+import { clearServerSession } from '@/api/session'
 
 export const useTeriteriStore = defineStore('teriteri', {
   state: () => ({
@@ -244,6 +245,7 @@ export const useTeriteriStore = defineStore('teriteri', {
         this.ws.close()
         this.setWebSocket(null)
       }
+      void clearServerSession()
       clearAuthSession()
     },
 

@@ -87,21 +87,21 @@ export function setAuthSession(session: {
   refreshToken?: string
   user?: any
 } = {}) {
+  // token / refresh_token 由服务端以 HttpOnly 下发，JS 不再写这两个 cookie：
+  // document.cookie 的写入会把 HttpOnly 标记冲掉，等于自己拆掉 XSS 防线。
+  // 这里只保留 localStorage 作为请求头与登录态展示的来源（阶段 3 再切换到纯 cookie）。
   if (session.token) {
     safeStorage.setItem(TOKEN_KEY, session.token)
     safeStorage.setItem(LEGACY_TOKEN_KEY, session.token)
-    setClientCookie('token', session.token, 86400 * 7)
   }
 
   if (session.refreshToken) {
     safeStorage.setItem(REFRESH_TOKEN_KEY, session.refreshToken)
     safeStorage.setItem(LEGACY_REFRESH_KEY, session.refreshToken)
-    setClientCookie('refresh_token', session.refreshToken, 86400 * 30)
   } else if (session.token) {
     // 换发了新 token 但没带 refreshToken：清掉旧的，避免拿到上一次会话的失效 refresh token
     safeStorage.removeItem(REFRESH_TOKEN_KEY)
     safeStorage.removeItem(LEGACY_REFRESH_KEY)
-    removeClientCookie('refresh_token')
   }
 
   if (session.user) {
@@ -111,14 +111,15 @@ export function setAuthSession(session: {
   }
 }
 
+// clearAuthSession 只清本地可见状态。
+// HttpOnly 的 token / refresh_token JS 删不掉，需要服务端清的场合
+// 请调用 api/session 的 clearServerSession()（登出与凭证确认失效时）。
 export function clearAuthSession() {
   safeStorage.removeItem(TOKEN_KEY)
   safeStorage.removeItem(REFRESH_TOKEN_KEY)
   safeStorage.removeItem(USER_KEY)
   safeStorage.removeItem(LEGACY_TOKEN_KEY)
   safeStorage.removeItem(LEGACY_REFRESH_KEY)
-  removeClientCookie('token')
-  removeClientCookie('refresh_token')
   removeClientCookie('user_info')
 }
 

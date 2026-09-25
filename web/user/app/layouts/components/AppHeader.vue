@@ -5,6 +5,7 @@ import { House } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { userApi } from '@/api/client'
 import { messageApi } from '../../api/message.ts'
+import { clearServerSession } from '@/api/session'
 import {
   clearAuthSession,
   getCurrentUserId,
@@ -118,6 +119,7 @@ const checkTokenExpiration = () => {
 }
 
 const handleLogout = () => {
+  void clearServerSession()
   clearAuthSession()
   isLogged.value = false
   userInfo.value = null
