@@ -4,14 +4,19 @@
             <slot name="reference"></slot>
         </div>
         <Teleport to="body">
-            <div class="v-popover" :class="'to-' + placement" :style="mergedPopStyle" ref="vPopEl">
+            <div
+                class="v-popover"
+                :class="'to-' + placement"
+                :style="mergedPopStyle"
+                ref="vPopEl"
+                @mouseenter="handlePopoverEnter"
+                @mouseleave="handlePopoverLeave"
+            >
                 <div
                     class="v-popover-content"
                     ref="vPopCon"
                     :class="isPopoverShow ? 'popShow-' + placement : 'popHide-' + placement"
                     :style="{ display: popoverDisplay }"
-                    @mouseenter="handlePopoverEnter"
-                    @mouseleave="handlePopoverLeave"
                 >
                     <slot name="content"></slot>
                 </div>
@@ -21,8 +26,6 @@
 </template>
 
 <script lang="ts">
-let inTimer;
-
     export default {
         name: "VPopover",
         props: {
@@ -49,7 +52,9 @@ let inTimer;
             return {
                 popoverDisplay: "none",
                 isPopoverShow: false,
-                computedStyle: "",
+                computedStyle: "position: fixed; transition: none; top: -9999px; left: -9999px; z-index: 3000;",
+                inTimer: null,
+                hideTimer: null,
             }
         },
         computed: {
@@ -80,9 +85,10 @@ let inTimer;
                     top = `${rect.top + rect.height / 2 - ph / 2}px`;
                     left = `${rect.left - pw - gap}px`;
                 }
-                this.computedStyle = `position: fixed; top: ${top}; left: ${left}; z-index: 3000;`;
+                this.computedStyle = `position: fixed; transition: none; top: ${top}; left: ${left}; z-index: 3000;`;
             },
             show() {
+                clearTimeout(this.hideTimer);
                 this.popoverDisplay = "";
                 this.isPopoverShow = true;
                 this.$nextTick(() => {
@@ -91,38 +97,42 @@ let inTimer;
             },
             hide() {
                 this.isPopoverShow = false;
-                setTimeout(() => {
+                this.hideTimer = setTimeout(() => {
                     this.popoverDisplay = "none";
                 }, 300);
             },
 
             handleMouseEnter() {
                 if (this.trigger === "hover") {
-                    clearTimeout(inTimer);
-                    inTimer = setTimeout(() => {
+                    clearTimeout(this.inTimer);
+                    clearTimeout(this.hideTimer);
+                    this.inTimer = setTimeout(() => {
                         this.show();
                     }, 100);
                 }
             },
             handleMouseLeave() {
                 if (this.trigger === "hover") {
-                    clearTimeout(inTimer);
-                    this.hide();
+                    clearTimeout(this.inTimer);
+                    this.inTimer = setTimeout(() => {
+                        this.hide();
+                    }, 200);
                 }
             },
             handlePopoverEnter() {
                 if (this.trigger === "hover") {
-                    clearTimeout(inTimer);
+                    clearTimeout(this.inTimer);
                 }
             },
             handlePopoverLeave() {
                 if (this.trigger === "hover") {
-                    inTimer = setTimeout(() => {
+                    this.inTimer = setTimeout(() => {
                         this.hide();
                     }, 200);
                 }
             },
             handleClick() {
+                clearTimeout(this.inTimer);
                 if (this.trigger === "click") {
                     if (this.isPopoverShow) {
                         this.hide();
@@ -145,7 +155,8 @@ let inTimer;
             }
         },
         beforeUnmount() {
-            clearTimeout(inTimer);
+            clearTimeout(this.inTimer);
+            clearTimeout(this.hideTimer);
             if (this.trigger === 'click') {
                 window.removeEventListener("click", this.handleOutsideClick);
             }
