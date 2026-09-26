@@ -95,3 +95,18 @@ def test_home_drawer_opens_and_lists_partitions(mobile_page, wap_url):
 
     drawer = mobile_page.locator(".drawer, [class*=drawer]")
     assert drawer.count() >= 1, "drawer should exist after opening"
+
+
+def test_home_favicon_path_is_not_double_prefixed(mobile_page, wap_url):
+    """index.html 里的 icon 路径不能带 /wap 前缀。
+
+    Vite 会按 base('/wap/') 重写资源 URL，HTML 里再写死 /wap/ 就变成
+    /wap/wap/wap-icon.svg → 404。
+    """
+    mobile_page.goto(f"{wap_url}/m/index", wait_until="domcontentloaded")
+
+    href = mobile_page.locator("link[rel=icon]").get_attribute("href")
+    assert href == "/wap/wap-icon.svg", f"favicon href 被重复加了前缀: {href!r}"
+
+    resp = mobile_page.request.get(f"{wap_url}/wap-icon.svg")
+    assert resp.status == 200, f"favicon 返回 {resp.status}"
