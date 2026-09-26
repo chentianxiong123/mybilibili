@@ -35,9 +35,26 @@ export const useAdminStore = defineStore('admin', () => {
         if (adminId) localStorage.setItem('admin_id', adminId)
         return { success: true }
       }
+      // 业务级失败：服务端返回的 message 是中文（"账号或密码错误" 等），
+      // 不要再回退到英文 axios 报错
       return { success: false, message: res.message || '登录失败' }
-    } catch (error) {
-      return { success: false, message: error.message || '登录失败' }
+    } catch (error: any) {
+      // axios 抛错：优先拿服务端 body 里的 message，否则按状态码给友好提示，
+      // 最后才回退到 axios 的英文 message（避免给用户看 "Request failed with status code 401"）
+      const serverMsg = error?.response?.data?.message as string | undefined
+      const status = error?.response?.status as number | undefined
+      const friendly = status === 401 ? '账号或密码错误'
+        : status === 400 ? '请求参数错误'
+        : status === 429 ? '请求过于频繁，请稍后再试'
+        : status && status >= 500 ? '服务器开小差，请稍后重试'
+        : !error?.response ? '网络错误，请检查网络连接'
+        : ''
+      // 优先用服务端 message（最准确，多是中文）；然后按状态码推断的友好提示（避免
+      // 把 axios 的 "Request failed with status code 401" / "Network Error" 给用户看）；
+      // 最后回退到 error.message（caller 自定义 message），兜底 "登录失败"。
+      // 注意：no-response 情况（!error.response）一律视作网络层失败，caller 自定义
+      // message 在这种场景会被覆盖——这是为修复 #6 UX bug 故意做的取舍。
+      return { success: false, message: serverMsg || friendly || error?.message || '登录失败' }
     }
   }
 

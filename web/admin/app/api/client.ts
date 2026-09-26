@@ -105,6 +105,14 @@ api.interceptors.response.use(
         if (typeof window !== 'undefined') window.location.href = '/admin/login'
       }
 
+      // refresh 接口本身 401 → 不要递归刷新（否则 api.post() 的 Promise
+      // 会被自己入队的队列挂住，endAdminSession / processQueue 永不触发，
+      // 用户卡在原页面，isRefreshing 永远 true——后续请求全部排队等死）
+      if (originalRequest.url === '/admin/token/refresh') {
+        endAdminSession()
+        return Promise.reject(error)
+      }
+
       // 续期过一次仍 401 → 凭证确实失效，别再打刷新口
       if (originalRequest._adminRefreshed) {
         endAdminSession()

@@ -128,14 +128,15 @@ describe('admin store', () => {
       expect(s.userInfo).toBeNull()
     })
 
-    it('登录失败 - 抛异常', async () => {
+    it('登录失败 - 抛异常（无 response → 网络错误友好提示，覆盖 axios 英文 message）', async () => {
       const { adminLogin } = await import('@/api/admin')
       vi.mocked(adminLogin).mockRejectedValue(new Error('网络异常'))
 
       const s = useAdminStore()
       const res = await s.login({ username: 'admin', password: '123' })
 
-      expect(res).toEqual({ success: false, message: '网络异常' })
+      // 没有 response → 推断为网络层错误，给出中文友好提示
+      expect(res).toEqual({ success: false, message: '网络错误，请检查网络连接' })
       expect(store.has('admin_token')).toBe(false)
     })
   })
@@ -320,13 +321,13 @@ describe('admin store 补充 - 错误状态', () => {
     expect(res).toEqual({ success: false, message: '登录失败' })
   })
 
-  it('异常无 message 字段时使用默认 "登录失败"', async () => {
+  it('异常无 message 字段时按 status 推断友好提示（无 response → 网络错误）', async () => {
     const { adminLogin } = await import('@/api/admin')
     vi.mocked(adminLogin).mockRejectedValue({})
 
     const s = useAdminStore()
     const res = await s.login({ username: 'u', password: 'p' })
-    expect(res).toEqual({ success: false, message: '登录失败' })
+    expect(res).toEqual({ success: false, message: '网络错误，请检查网络连接' })
   })
 
   it('登录失败时不会写入 localStorage', async () => {
@@ -352,6 +353,63 @@ describe('admin store 补充 - 错误状态', () => {
 
     expect(localStorage.getItem('admin_token')).toBeNull()
     expect(localStorage.getItem('admin_id')).toBeNull()
+  })
+
+  // ===== 错误提示中文友好化（修 #6: "Request failed with status code 401" UX bug） =====
+  it('401 + 服务端返回 message → 优先用服务端 message（中文）', async () => {
+    const { adminLogin } = await import('@/api/admin')
+    const axiosErr: any = new Error('Request failed with status code 401')
+    axiosErr.response = { status: 401, data: { code: 401, message: '账号或密码错误', data: null } }
+    vi.mocked(adminLogin).mockRejectedValueOnce(axiosErr)
+
+    const s = useAdminStore()
+    const res = await s.login({ username: 'u', password: 'p' })
+    expect(res).toEqual({ success: false, message: '账号或密码错误' })
+  })
+
+  it('401 + 服务端无 message → 友好提示 "账号或密码错误"', async () => {
+    const { adminLogin } = await import('@/api/admin')
+    const axiosErr: any = new Error('Request failed with status code 401')
+    axiosErr.response = { status: 401, data: { code: 401 } }
+    vi.mocked(adminLogin).mockRejectedValueOnce(axiosErr)
+
+    const s = useAdminStore()
+    const res = await s.login({ username: 'u', password: 'p' })
+    expect(res).toEqual({ success: false, message: '账号或密码错误' })
+  })
+
+  it('500 服务异常 → 友好提示而非英文 axios 报错', async () => {
+    const { adminLogin } = await import('@/api/admin')
+    const axiosErr: any = new Error('Request failed with status code 500')
+    axiosErr.response = { status: 500, data: { message: 'token生成失败' } }
+    vi.mocked(adminLogin).mockRejectedValueOnce(axiosErr)
+
+    const s = useAdminStore()
+    const res = await s.login({ username: 'u', password: 'p' })
+    // 优先用服务端 message
+    expect(res).toEqual({ success: false, message: 'token生成失败' })
+  })
+
+  it('500 无服务端 message → "服务器开小差，请稍后重试"', async () => {
+    const { adminLogin } = await import('@/api/admin')
+    const axiosErr: any = new Error('boom')
+    axiosErr.response = { status: 500, data: {} }
+    vi.mocked(adminLogin).mockRejectedValueOnce(axiosErr)
+
+    const s = useAdminStore()
+    const res = await s.login({ username: 'u', password: 'p' })
+    expect(res).toEqual({ success: false, message: '服务器开小差，请稍后重试' })
+  })
+
+  it('网络层失败（无 response）→ "网络错误，请检查网络连接"', async () => {
+    const { adminLogin } = await import('@/api/admin')
+    const axiosErr: any = new Error('Network Error')
+    // 没有 response 属性
+    vi.mocked(adminLogin).mockRejectedValueOnce(axiosErr)
+
+    const s = useAdminStore()
+    const res = await s.login({ username: 'u', password: 'p' })
+    expect(res).toEqual({ success: false, message: '网络错误，请检查网络连接' })
   })
 })
 

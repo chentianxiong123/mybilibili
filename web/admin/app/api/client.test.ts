@@ -158,6 +158,20 @@ describe('client.ts 401 处理（错误拦截器）', () => {
     await expect(resErrHandler(e)).rejects.toBe(e)
     expect(hasAdminSession()).toBe(false)
   })
+
+  it('401 + admin session + 自身是 refresh 接口 → 直接作废（不递归刷新）', async () => {
+    // 这个 case 修了一个 deadlock：refresh 自己 401 时原代码会把自己
+    // 入 failedQueue，api.post() 的 Promise 永远 pending，
+    // endAdminSession / processQueue / isRefreshing=false 全部不会触发，
+    // 用户卡死在原页、isRefreshing 锁死 → 后续请求全排队等死。
+    const { setAdminSession, hasAdminSession } = await import('../utils/auth')
+    setAdminSession({ user: { id: 1, name: 'A' }, role: 'admin', permissions: [] })
+    const e = makeErr({ config: { url: '/admin/token/refresh', method: 'post' } })
+
+    await expect(resErrHandler(e)).rejects.toBe(e)
+    expect(hasAdminSession()).toBe(false)
+    expect(apiMethods.post).not.toHaveBeenCalledWith('/admin/token/refresh', {})
+  })
 })
 
 describe('client.ts 导出 API 方法', () => {
