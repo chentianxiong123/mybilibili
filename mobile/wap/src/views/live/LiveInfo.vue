@@ -1,4 +1,6 @@
 <script setup>
+import nocontent from '../../assets/nocontent.png'
+
 defineProps({
   live: { type: Object, required: true }
 })
@@ -7,7 +9,7 @@ defineProps({
 <template>
   <router-link :to="`/m/live/${live.roomId}`" class="live-info-item">
     <div class="cover-wrap">
-      <img :src="live.cover || '../../assets/nocontent.png'" class="cover" />
+      <img :src="live.cover || nocontent" class="cover" />
       <div class="live-tag" v-if="live.isLive === 1">
         <span class="live-dot" />
         LIVE

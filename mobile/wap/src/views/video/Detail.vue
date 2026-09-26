@@ -8,7 +8,6 @@ import ScrollToTop from '../../components/ScrollToTop.vue'
 import { getVideoInfo, getRecommendVides, getComments } from '../../api/video'
 import { followUser, checkFollow, likeManuscript, coinManuscript, collectManuscript, shareManuscript, getInteractionStatus } from '../../api/interaction'
 import { postComment, replyComment, likeComment } from '../../api/comment'
-import storage from '../../utils/storage'
 import { readCache } from '../../utils/cache'
 import { isLogin } from '../../utils/session'
 
@@ -154,8 +153,7 @@ const loadData = async () => {
   }
 }
 
-// 应用视频数据到渲染状态；同一份数据只记一次观看历史，缓存命中不重复记录
-const lastRecorded = { id: 0 }
+// 应用视频数据到渲染状态
 const applyVideoData = (d) => {
   video.value = d
   likeCount.value = d.likeCount || 0
@@ -178,20 +176,8 @@ const applyVideoData = (d) => {
     }))
   }
 
-  // 记录观看历史（服务端已有 watch-history；本地仅记录首次获取时）
-  if (lastRecorded.id !== d.aId) {
-    lastRecorded.id = d.aId
-    saveLocalViewHistory(d)
-  }
-}
-
-const saveLocalViewHistory = (d) => {
-  storage.setViewHistory({
-    aId: d.aId,
-    title: d.title,
-    pic: d.pic,
-    viewAt: new Date().getTime()
-  })
+  // 播放历史走服务端 /watch-history（见 views/space/History.vue），
+  // 不再往本地 view_history 写一份没人读的副本。
 }
 
 const loadComments = async () => {

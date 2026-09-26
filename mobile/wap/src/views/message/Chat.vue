@@ -2,6 +2,7 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../api/client'
+import { getLocalUserId } from '../../utils/session'
 import noface from '../../assets/noface.gif'
 
 const route = useRoute()
@@ -37,7 +38,7 @@ const send = async () => {
   const text = draft.value.trim()
   if (!text) return
   try {
-    const res = await api.post('/message/send', { receiver_id: targetUserId.value, content: text })
+    const res = await api.post('/message/send', { receiverId: targetUserId.value, content: text, messageType: 1 })
     const msg = res?.data || res
     if (msg && msg.id) {
       messages.value.push(msg)
@@ -56,7 +57,7 @@ const formatTime = (value: any) => {
 }
 
 const isMine = (msg: any) => {
-  return msg.sender_id && msg.sender_id === Number(localStorage.getItem('user_id'))
+  return msg.sender_id && Number(msg.sender_id) === getLocalUserId()
 }
 </script>
 

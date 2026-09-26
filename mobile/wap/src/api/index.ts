@@ -122,21 +122,6 @@ export async function getVideosByCategory(categoryId) {
   }
 }
 
-// 视频列表
-export async function getVideoList(page = 1, size = 20) {
-  try {
-    const res = await api.get(`/manuscript/list?page=${page}&size=${size}`)
-    const rawData = res?.data || res
-    const list = rawData?.list || (Array.isArray(rawData) ? rawData : [])
-    return {
-      code: '1',
-      data: list.map(adaptVideo)
-    }
-  } catch (e) {
-    return { code: '0', data: [] }
-  }
-}
-
 // 热门视频（复用 manuscriptApi.getHotManuscripts → /manuscript/hot）
 export async function getHotVideos(categoryId, size = 10) {
   try {

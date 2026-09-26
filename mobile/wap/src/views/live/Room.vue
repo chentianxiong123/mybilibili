@@ -7,8 +7,8 @@ import { formatTenThousand } from '../../utils/format'
 const route = useRoute()
 const roomId = route.params.roomId
 
-const room = ref<any>(null)
-const anchor = ref<any>(null)
+const room = ref(null)
+const anchor = ref(null)
 const loading = ref(true)
 const onlineNum = ref(0)
 const danmakuList = ref([])

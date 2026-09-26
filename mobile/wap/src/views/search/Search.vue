@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Result from './Result.vue'
-import { getHotwords, getSuggests, pushSearchHistory, clearSearchHistory } from '../../api/search'
+import { getHotwords, getSuggests } from '../../api/search'
 import { submitFeedback } from '../../api/index'
 import storage, { K } from '../../utils/storage_layer'
 
@@ -126,14 +126,12 @@ const onSearch = async (value = searchValue.value) => {
   next.unshift(v)
   searchHistories.value = next.slice(0, SEARCH_HISTORY_MAX)
   storage.set(K.searchHistory, searchHistories.value)
-  pushSearchHistory(v)
   showSuggest.value = false
 }
 
 const clearHistory = () => {
   searchHistories.value = []
   storage.remove(K.searchHistory)
-  clearSearchHistory()
 }
 
 const goBack = () => {
