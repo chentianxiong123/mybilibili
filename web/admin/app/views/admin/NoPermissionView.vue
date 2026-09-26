@@ -7,15 +7,13 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
 import { useAdminStore } from '@/stores/admin'
 
-const router = useRouter()
 const adminStore = useAdminStore()
 
-const handleLogout = () => {
-  adminStore.logout()
-  router.push('/login')
+const handleLogout = async () => {
+  // store 内部已负责清 localStorage + 跳 /login
+  await adminStore.logout()
 }
 </script>
 

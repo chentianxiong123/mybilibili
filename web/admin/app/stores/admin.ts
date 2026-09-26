@@ -1,10 +1,17 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { adminLogin } from '@/api/admin'
 import { clearServerSession } from '@/api/session'
 import { scrubCredentials } from '@/utils/auth'
 
 export const useAdminStore = defineStore('admin', () => {
+  // 跳转责任收归 store：之前散落在 app.vue / NoPermissionView 的 router.push('/login')
+  // 任何一处遗漏都会出现「logout 200 但页面停在 dashboard」的 UX bug。
+  // store 里读不到 router 时（比如单测）降级为 no-op，不影响功能。
+  let router: ReturnType<typeof useRouter> | null = null
+  try { router = useRouter() } catch { /* 不在 router 上下文 */ }
+
   // 凭证 admin_token 是 HttpOnly cookie，store 里只留展示与授权信息
   const userInfo = ref(scrubCredentials(JSON.parse(localStorage.getItem('admin_user')) || null))
   const role = ref(localStorage.getItem('admin_role') || '')
@@ -34,9 +41,9 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
-  const logout = () => {
+  const logout = async () => {
     // 先让服务端作废 HttpOnly 的 admin_token / admin_refresh，否则 cookie 会留到过期
-    void clearServerSession()
+    await clearServerSession()
     userInfo.value = null
     role.value = ''
     permissions.value = []
@@ -45,6 +52,10 @@ export const useAdminStore = defineStore('admin', () => {
     localStorage.removeItem('admin_role')
     localStorage.removeItem('admin_permissions')
     localStorage.removeItem('admin_id')
+    // 跳转由 store 兜底，调用方不用关心。已在 /login 上时 push 会触发导航守卫 false，吞掉
+    if (router) {
+      try { await router.push('/login') } catch { /* 已在 /login */ }
+    }
   }
 
   const hasPermission = (permission) => {

@@ -11,6 +11,15 @@ vi.mock('@/api/session', () => ({
   default: vi.fn(() => Promise.resolve()),
 }))
 
+const routerPushSpy = vi.fn(() => Promise.resolve())
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
+  return {
+    ...actual,
+    useRouter: () => ({ push: routerPushSpy })
+  }
+})
+
 // happy-dom 18 未把 localStorage 挂到 window，手动 polyfill
 const store = new Map<string, string>()
 const localStorageMock = {
@@ -26,6 +35,7 @@ beforeEach(() => {
   store.clear()
   setActivePinia(createPinia())
   vi.clearAllMocks()
+  routerPushSpy.mockClear()
 })
 
 describe('admin store', () => {
@@ -142,7 +152,7 @@ describe('admin store', () => {
       const s = useAdminStore()
       await s.login({ username: 'a', password: 'b' })
       vi.mocked(clearServerSession).mockClear()
-      s.logout()
+      await s.logout()
       expect(clearServerSession).toHaveBeenCalledTimes(1)
     })
 
@@ -157,7 +167,7 @@ describe('admin store', () => {
       await s.login({ username: 'a', password: 'b' })
       expect(store.has('admin_token')).toBe(false)
 
-      s.logout()
+      await s.logout()
       expect(store.has('admin_token')).toBe(false)
       expect(s.userInfo).toBeNull()
       expect(s.role).toBe('')
@@ -167,6 +177,19 @@ describe('admin store', () => {
       expect(localStorage.getItem('admin_role')).toBeNull()
       expect(localStorage.getItem('admin_permissions')).toBeNull()
       expect(localStorage.getItem('admin_id')).toBeNull()
+    })
+
+    it('logout 后自动跳转 /login（修复 logout 200 但页面不动的 UX bug）', async () => {
+      const { adminLogin } = await import('@/api/admin')
+      vi.mocked(adminLogin).mockResolvedValue({
+        code: 200,
+        data: { token: 'tok', adminUser: { id: 1 }, role: '管理员', permissions: ['a'] },
+      })
+
+      const s = useAdminStore()
+      await s.login({ username: 'a', password: 'b' })
+      await s.logout()
+      expect(routerPushSpy).toHaveBeenCalledWith('/login')
     })
   })
 
@@ -212,6 +235,7 @@ describe('admin store 补充 - 嵌套用户信息', () => {
     store.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    routerPushSpy.mockClear()
   })
 
   it('登录响应含嵌套 adminUser 时正确提取 adminId', async () => {
@@ -282,6 +306,7 @@ describe('admin store 补充 - 错误状态', () => {
     store.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    routerPushSpy.mockClear()
   })
 
   it('错误响应无 message 时使用默认 "登录失败"', async () => {
@@ -335,6 +360,7 @@ describe('admin store 补充 - logout 状态隔离', () => {
     store.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    routerPushSpy.mockClear()
   })
 
   it('logout 后再次 logout 是幂等的（不抛错）', async () => {
@@ -346,15 +372,15 @@ describe('admin store 补充 - logout 状态隔离', () => {
 
     const s = useAdminStore()
     await s.login({ username: 'u', password: 'p' })
-    s.logout()
-    expect(() => s.logout()).not.toThrow()
+    await s.logout()
+    expect(() => { void s.logout() }).not.toThrow()
     expect(store.has('admin_token')).toBe(false)
     expect(s.userInfo).toBeNull()
   })
 
   it('未登录时 logout 不抛错', () => {
     const s = useAdminStore()
-    expect(() => s.logout()).not.toThrow()
+    expect(() => { void s.logout() }).not.toThrow()
     expect(store.has('admin_token')).toBe(false)
   })
 
@@ -372,7 +398,7 @@ describe('admin store 补充 - logout 状态隔离', () => {
 
     const s = useAdminStore()
     await s.login({ username: 'u1', password: 'p' })
-    s.logout()
+    await s.logout()
     const res = await s.login({ username: 'u2', password: 'p' })
     expect(res).toEqual({ success: true })
     expect(store.has('admin_token')).toBe(false)
@@ -388,6 +414,7 @@ describe('admin store 补充 - hasPermission 边界', () => {
     store.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    routerPushSpy.mockClear()
   })
 
   it('permissions 数组包含 falsy 值不影响判断', () => {

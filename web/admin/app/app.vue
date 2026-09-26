@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import {
   ArrowDown, Connection, Cpu, DataAnalysis, DataBoard, DataLine,
   Document, DocumentChecked, Expand, Fold, Folder, Headset, List,
@@ -12,7 +12,6 @@ import AdminAiFloatingButton from '~/components/AdminAiFloatingButton.vue'
 import AdminAiChatPanel from '~/components/AdminAiChatPanel.vue'
 
 const route = useRoute()
-const router = useRouter()
 const adminStore = useAdminStore()
 const isSuperAdmin = computed(() => adminStore.role === '超级管理员')
 const canUseAdminAssistant = computed(() => adminStore.hasPermission('ai:manage'))
@@ -100,10 +99,10 @@ const activeMenu = computed(() => {
   return path
 })
 
-const handleCommand = (command: string) => {
+const handleCommand = async (command: string) => {
   if (command === 'logout') {
-    adminStore.logout()
-    router.push('/login')
+    // store 内部已负责清 localStorage + 跳 /login
+    await adminStore.logout()
   }
 }
 </script>
