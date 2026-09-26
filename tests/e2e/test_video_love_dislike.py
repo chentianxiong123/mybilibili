@@ -71,15 +71,30 @@ class TestVideoLove:
         page.goto(f"{base_url}/video/25", wait_until="networkidle")
         ui_before = page.evaluate(LIKE_COUNT_TEXT_JS)
 
-        # 点 ❤
+        # 点 ❤，并等到 POST /manuscript/10/like 真正返回
+        # —— 固定 sleep 在整套 e2e 并发跑时会偶发读到尚未更新的 UI
         like_btn = page.evaluate_handle(LIKE_BUTTON_JS).as_element()
         assert like_btn is not None, "找不到点赞按钮"
-        like_btn.click()
-
-        # 等前端把请求打完
-        page.wait_for_timeout(1200)
+        with page.expect_response(
+            lambda r: r.url.endswith("/manuscript/10/like") and r.request.method == "POST",
+            timeout=15000,
+        ) as resp_info:
+            like_btn.click()
+        assert resp_info.value.ok, f"点赞请求失败: {resp_info.value.status}"
 
         # UI 上的计数也应 +1（handleNum 对小数字原样输出）
+        page.wait_for_function(
+            """(n) => {
+                for (const it of document.querySelectorAll('.video-toolbar-left-item')) {
+                    if (it.querySelector('.icon-dianzan')) {
+                        return (it.querySelector('.video-toolbar-item-text')?.textContent || '').trim() === n
+                    }
+                }
+                return false
+            }""",
+            arg=str(before + 1),
+            timeout=10000,
+        )
         ui_after = page.evaluate(LIKE_COUNT_TEXT_JS)
         assert ui_after == str(before + 1), f"UI 计数应变为 {before + 1}，实际 {ui_after!r}（原 {ui_before!r}）"
         assert page.locator(".video-toolbar-left-item.on .icon-dianzan").count() == 1, "点赞按钮应高亮"
