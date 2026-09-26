@@ -23,6 +23,8 @@ var adminPublicPaths = []string{
 // 明确排除：
 //   - /api/v1/ai/summary/*        —— work 服务内部编排调用，不带凭证
 //   - /api/v1/ai/customer/chat|history|transfer —— 普通用户客服入口
+//   - /api/v1/search/hot          —— 首页热搜，web 端匿名读（PATH_MAP: /search/hot/get → /search/hot）
+//   - /api/v1/search/hot/increment —— 搜索页写热度，普通用户匿名调用（PATH_MAP: /search/word/add）
 //   - /api/v1/search/hot/clean-expired —— core 定时任务内部调用，不带凭证
 //   - /api/v1/banner*、/api/v1/category —— 同一路径下用户读、管理员写，需按方法区分
 var adminOnlyPrefixes = []string{
@@ -34,6 +36,14 @@ var adminOnlyPrefixes = []string{
 	"/api/v1/ai/assistant/send",
 	"/api/v1/ai/customer/sessions",
 	"/api/v1/statistics",
+	// 热搜的增删改查管理口。这 6 条全仓零调用方（admin 前端也没接），
+	// 加门禁不影响任何现有功能；上方排除的三条用户/任务路径是同前缀的不同分支。
+	"/api/v1/search/hot/keyword",
+	"/api/v1/search/hot/rank",
+	"/api/v1/search/hot/score",
+	"/api/v1/search/hot/score-get",
+	"/api/v1/search/hot/delete",
+	"/api/v1/search/hot/get",
 }
 
 // IsAdminPath 判断请求路径是否属于必须持有管理员身份的后台接口。

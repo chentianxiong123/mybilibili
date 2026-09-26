@@ -46,6 +46,28 @@ func TestIsAdminPath_BackendPrefixesWithoutAdminInPath(t *testing.T) {
 	}
 }
 
+func TestIsAdminPath_SearchHotManagement(t *testing.T) {
+	// 热搜的 6 条管理口必须关门
+	for _, p := range []string{
+		"/api/v1/search/hot/keyword",
+		"/api/v1/search/hot/rank",
+		"/api/v1/search/hot/score",
+		"/api/v1/search/hot/score-get",
+		"/api/v1/search/hot/delete",
+		"/api/v1/search/hot/get",
+	} {
+		assert.True(t, IsAdminPath(p), "%s 必须被后台门禁覆盖", p)
+	}
+	// 这 3 条有真实调用方，必须保持匿名
+	for _, p := range []string{
+		"/api/v1/search/hot",               // web 首页匿名读热搜
+		"/api/v1/search/hot/increment",     // 搜索页写热度（普通用户）
+		"/api/v1/search/hot/clean-expired", // core 定时清理
+	} {
+		assert.False(t, IsAdminPath(p), "%s 必须保持公开", p)
+	}
+}
+
 func TestIsAdminPath_PublicAndUserPaths(t *testing.T) {
 	for _, p := range []string{
 		"/api/v1/admin/login", // 门卫自己不能要求刷卡

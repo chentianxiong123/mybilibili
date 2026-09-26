@@ -397,6 +397,32 @@ func TestHandleHotRecommend_DefaultParams(t *testing.T) {
 
 // ==================== 管理端 hot 操作 ====================
 
+func TestReadKeyword(t *testing.T) {
+	newReq := func(contentType, body string) *http.Request {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/search/hot/increment", strings.NewReader(body))
+		req.Header.Set("Content-Type", contentType)
+		return req
+	}
+
+	assert.Equal(t, "golang", readKeyword(newReq("application/json", `{"keyword":"golang"}`)))
+	assert.Equal(t, "测试", readKeyword(newReq("application/json", `{"keyword":"测试"}`)))
+	assert.Equal(t, "", readKeyword(newReq("application/json", `{}`)))
+	assert.Equal(t, "", readKeyword(newReq("application/json", `not json at all`)))
+
+	assert.Equal(t, "golang", readKeyword(newReq("application/x-www-form-urlencoded", "keyword=golang")))
+	// urlencoded 路径自带百分号解码
+	assert.Equal(t, "测试", readKeyword(newReq("application/x-www-form-urlencoded", "keyword=%E6%B5%8B%E8%AF%95")))
+	assert.Equal(t, "", readKeyword(newReq("application/x-www-form-urlencoded", "")))
+
+	// web 端 /search/word/add 走的就是 multipart，原来这条路径静默丢弃
+	const mp = "multipart/form-data; boundary=xxx"
+	assert.Equal(t, "测试", readKeyword(newReq(mp,
+		"--xxx\r\nContent-Disposition: form-data; name=\"keyword\"\r\n\r\n测试\r\n--xxx--\r\n")))
+	assert.Equal(t, "", readKeyword(newReq(mp,
+		"--xxx\r\nContent-Disposition: form-data; name=\"other\"\r\n\r\nx\r\n--xxx--\r\n")))
+	assert.Equal(t, "", readKeyword(newReq(mp, "")))
+}
+
 func TestHandleHotIncrement_200(t *testing.T) {
 	h, _ := newTestHandlerNoHot(t)
 

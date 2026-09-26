@@ -80,6 +80,12 @@ func (r *Repository) Top(ctx context.Context, n int64) ([]map[string]interface{}
 
 // UpdateScore 管理员手动设置某关键词热度分
 func (r *Repository) UpdateScore(ctx context.Context, keyword string, newScore float64) error {
+	// 空关键词守卫：SetKeyword→UpdateScore 是第二条写入口，
+	// 没挡住会造出空串 member 顶到 rank 1。
+	keyword = strings.TrimSpace(keyword)
+	if keyword == "" {
+		return nil
+	}
 	pipe := r.rdb.TxPipeline()
 	pipe.ZAdd(ctx, rankKey, redis.Z{Score: newScore, Member: keyword})
 	pipe.Expire(ctx, rankKey, expireDays*24*time.Hour)

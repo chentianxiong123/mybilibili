@@ -1,7 +1,9 @@
 package search
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -89,12 +91,44 @@ func (h *Handler) handleHotIncrement(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
+	_ = h.svc.IncrementHotSearch(r.Context(), readKeyword(r))
+	writeJSON(w, map[string]any{"status": "ok"})
+}
+
+// readKeyword 从请求体里取出 keyword 字段，同时认 JSON 与表单。
+//
+// web 端 /search/word/add 发的是 FormData（multipart/form-data），管理端和
+// 测试发 JSON。原来只用 json.NewDecoder 解，multipart 走进去解析失败、req 停在
+// 零值，IncrementHotSearch 拿到空串直接返回——热搜从来没有被前端真正写入过，
+// 而且是静默成功（永远 200）。
+//
+// 注意：multipart 的值按原样透传（前端 FormData 本来就是原始 UTF-8），只有
+// application/x-www-form-urlencoded 会做百分号解码。JSON 路径不做解码——
+// 那里的值是调用方自己给的字面量，猜它是不是编码过的只会把正经的 % 搜索改坏。
+func readKeyword(r *http.Request) string {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return ""
+	}
+
 	var req struct {
 		Keyword string `json:"keyword"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
-	_ = h.svc.IncrementHotSearch(r.Context(), req.Keyword)
-	writeJSON(w, map[string]any{"status": "ok"})
+	if json.Unmarshal(body, &req) == nil {
+		return req.Keyword
+	}
+
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	if err := r.ParseMultipartForm(1 << 20); err == nil && r.MultipartForm != nil {
+		if v := r.FormValue("keyword"); v != "" {
+			return v
+		}
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	if err := r.ParseForm(); err == nil {
+		return r.FormValue("keyword")
+	}
+	return ""
 }
 
 func (h *Handler) handleHotKeyword(w http.ResponseWriter, r *http.Request) {
@@ -274,7 +308,7 @@ func (h *Handler) handleIndexNotNeeded(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, map[string]interface{}{
-		"status": "success",
+		"status":  "success",
 		"message": "当前引擎为 PostgreSQL 全文搜索，索引由数据库触发器自动维护，无需手动批量索引",
 	})
 }
@@ -336,5 +370,3 @@ func (h *Handler) handleRecommendConfigReset(w http.ResponseWriter, r *http.Requ
 	}
 	writeJSON(w, defaults)
 }
-
-
