@@ -132,6 +132,181 @@ func TestHandleLogin_405_Method(t *testing.T) {
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
 }
 
+// 后台刷新成功：换出新的 admin_token，并把 admin_refresh 写回 cookie。
+func TestHandleRefresh_200(t *testing.T) {
+	h, mock := newTestHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	tok, err := h.jwt.GenerateAdminRefresh(1)
+	require.NoError(t, err)
+
+	mock.ExpectQuery(`SELECT id, username, COALESCE\(admin_level,1\) FROM admin_users WHERE id=\$1`).
+		WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "admin_level"}).AddRow(1, "admin", 1))
+	mock.ExpectQuery(`SELECT r.id, r.name`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "create_time"}).
+			AddRow(1, "超级管理员", "super", ""))
+	mock.ExpectQuery(`SELECT DISTINCT p.code`).WithArgs(int64(1)).
+		WillReturnRows(permRows("admin:manage"))
+
+	rec := doReq(t, mux, "POST", "/api/v1/admin/token/refresh", map[string]string{"refreshToken": tok}, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"admin_id":1`)
+	// 与登录一致：默认不把凭证回进响应体
+	assert.NotContains(t, rec.Body.String(), `"token"`)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// 显式 includeTokens:true 时才回，且换出来的是 typ=admin_refresh 的刷新令牌。
+func TestHandleRefresh_200_IncludeTokens(t *testing.T) {
+	h, mock := newTestHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	tok, err := h.jwt.GenerateAdminRefresh(1)
+	require.NoError(t, err)
+
+	mock.ExpectQuery(`SELECT id, username, COALESCE\(admin_level,1\) FROM admin_users WHERE id=\$1`).
+		WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "admin_level"}).AddRow(1, "admin", 1))
+	mock.ExpectQuery(`SELECT r.id, r.name`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "create_time"}).
+			AddRow(1, "超级管理员", "super", ""))
+	mock.ExpectQuery(`SELECT DISTINCT p.code`).WithArgs(int64(1)).
+		WillReturnRows(permRows("admin:manage"))
+
+	rec := doReq(t, mux, "POST", "/api/v1/admin/token/refresh",
+		map[string]interface{}{"refreshToken": tok, "includeTokens": true}, nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"token"`)
+
+	var resp struct {
+		Data struct {
+			Token        string `json:"token"`
+			RefreshToken string `json:"refresh_token"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+
+	accessClaims, err := h.jwt.Parse(resp.Data.Token)
+	require.NoError(t, err)
+	assert.True(t, accessClaims.IsAccess())
+	assert.True(t, accessClaims.IsAdmin)
+
+	refreshClaims, err := h.jwt.Parse(resp.Data.RefreshToken)
+	require.NoError(t, err)
+	assert.True(t, refreshClaims.IsAdminRefresh())
+	assert.Equal(t, int64(1), refreshClaims.UserId)
+	// 关键：刷新令牌不带 IsAdmin，否则它就是 7 天有效的后台通行证
+	assert.False(t, refreshClaims.IsAdmin)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// 越权防护：普通用户刷新令牌打到这里必须拒收。
+// admin_users.id 与 users.id 是两套独立自增 ID，认下它 = 任意用户换出管理员身份。
+func TestHandleRefresh_401_UserRefreshTokenRejected(t *testing.T) {
+	h, _ := newTestHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	tok, err := h.jwt.GenerateRefresh(1) // users.id=1，和 admin_users.id=1 撞车
+	require.NoError(t, err)
+
+	rec := doReq(t, mux, "POST", "/api/v1/admin/token/refresh", map[string]string{"refreshToken": tok}, nil)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.NotContains(t, rec.Body.String(), `"token"`)
+}
+
+func TestHandleRefresh_401_Invalid(t *testing.T) {
+	h, _ := newTestHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	rec := doReq(t, mux, "POST", "/api/v1/admin/token/refresh", map[string]string{"refreshToken": "not-a-jwt"}, nil)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
+func TestHandleRefresh_405_Method(t *testing.T) {
+	h, _ := newTestHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	rec := doReq(t, mux, "GET", "/api/v1/admin/token/refresh", nil, nil)
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+}
+
+// 同一张后台刷新令牌被重放第二次 → 401。
+func TestHandleRefresh_401_Replay(t *testing.T) {
+	prev := auth.CurrentTokenStore()
+	auth.SetTokenStore(auth.NewMemoryTokenStore())
+	defer auth.SetTokenStore(prev)
+
+	h, mock := newTestHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	tok, err := h.jwt.GenerateAdminRefresh(1)
+	require.NoError(t, err)
+
+	for i := 0; i < 2; i++ {
+		mock.ExpectQuery(`SELECT id, username, COALESCE\(admin_level,1\) FROM admin_users WHERE id=\$1`).
+			WithArgs(int64(1)).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "username", "admin_level"}).AddRow(1, "admin", 1))
+		mock.ExpectQuery(`SELECT r.id, r.name`).WithArgs(int64(1)).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "create_time"}).
+				AddRow(1, "超级管理员", "super", ""))
+		mock.ExpectQuery(`SELECT DISTINCT p.code`).WithArgs(int64(1)).
+			WillReturnRows(permRows("admin:manage"))
+	}
+	// 第二次不该走到查库
+	mock.ExpectQuery(`SELECT id, username, COALESCE\(admin_level,1\) FROM admin_users WHERE id=\$1`).WillReturnRows(
+		sqlmock.NewRows([]string{"id", "username", "admin_level"}).AddRow(1, "admin", 1))
+
+	first := doReq(t, mux, "POST", "/api/v1/admin/token/refresh", map[string]string{"refreshToken": tok}, nil)
+	require.Equal(t, http.StatusOK, first.Code)
+
+	second := doReq(t, mux, "POST", "/api/v1/admin/token/refresh", map[string]string{"refreshToken": tok}, nil)
+	assert.Equal(t, http.StatusUnauthorized, second.Code)
+	assert.Contains(t, second.Body.String(), "already used")
+}
+
+// 后台登录签发的刷新令牌必须是 admin_refresh 用途，否则会被用户刷新口误认。
+func TestHandleLogin_IssuesAdminRefreshToken(t *testing.T) {
+	h, mock := newTestHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	pwd := "admin123"
+	mock.ExpectQuery(`SELECT id, username, password`).WithArgs("admin", sha256Hex(pwd)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "password", "admin_level"}).
+			AddRow(1, "admin", sha256Hex(pwd), 1))
+	mock.ExpectQuery(`SELECT r.id, r.name`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "create_time"}).
+			AddRow(1, "超级管理员", "super", ""))
+	mock.ExpectExec(`INSERT INTO login_logs`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(`SELECT DISTINCT p.code`).WithArgs(int64(1)).
+		WillReturnRows(permRows("admin:manage"))
+
+	rec := doReq(t, mux, "POST", "/api/v1/admin/login",
+		map[string]interface{}{"username": "admin", "password": pwd, "includeTokens": true}, nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var resp struct {
+		Data struct {
+			RefreshToken string `json:"refresh_token"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.NotEmpty(t, resp.Data.RefreshToken)
+
+	claims, err := h.jwt.Parse(resp.Data.RefreshToken)
+	require.NoError(t, err)
+	assert.True(t, claims.IsAdminRefresh())
+	assert.False(t, claims.IsUserRefresh())
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestHandleLogin_WithForwardedFor(t *testing.T) {
 	h, mock := newTestHandler(t)
 	mux := http.NewServeMux()

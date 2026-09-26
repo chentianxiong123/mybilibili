@@ -6,9 +6,14 @@ import (
 )
 
 // adminPublicPaths 位于后台路径下、但必须保持匿名可访问的例外。
-// 目前只有登录入口本身——门卫不能要求先刷卡再刷卡。
+//
+// 门卫不能要求先刷卡再刷卡：访问令牌过期时 X-Admin-Id 注入不进来，
+// 若刷新口也被默认拒绝，就永远换不出新令牌，登录会变成一张单程票。
+// 这两条路径自身就是凭证的签发处，身份由 handler 内部严格校验
+// （refresh 要求 typ=admin_refresh + 一次性消费成功），所以公开是安全的。
 var adminPublicPaths = []string{
 	"/api/v1/admin/login",
+	"/api/v1/admin/token/refresh",
 }
 
 // adminOnlyPrefixes 是后台专用、但路径里不含 /admin/ 的接口前缀。

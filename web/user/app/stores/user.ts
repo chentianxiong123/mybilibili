@@ -105,7 +105,8 @@ export const useUserStore = (defineStore as any)('user', {
       try {
         this.loginLoading = true
         const response = await userApi.login(loginForm.username, loginForm.password, null, null, null)
-        if (response.code !== 200 || !response.data?.token) {
+        // 成功与否只看 code：凭证在 HttpOnly cookie 里，body 默认不再回 token
+        if (response.code !== 200 || !response.data) {
           return { success: false, message: response.message || '登录失败，请检查用户名和密码' }
         }
 

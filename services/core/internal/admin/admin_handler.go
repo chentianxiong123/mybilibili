@@ -78,6 +78,7 @@ func (h *Handler) SetScheduler(s *Scheduler) {
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/admin/login", h.handleLogin)
 	mux.HandleFunc("/api/v1/admin/logout", h.handleLogout)
+	mux.HandleFunc("/api/v1/admin/token/refresh", h.handleRefresh)
 	mux.HandleFunc("/api/v1/admin/register", h.requirePerm("admin:manage", h.handleRegister))
 	mux.HandleFunc("/api/v1/admin/list", h.requirePerm("admin:manage", h.handleListAdmins))
 	mux.HandleFunc("/api/v1/admin/roles", h.requirePerm("role:manage", h.handleRoles))
@@ -196,6 +197,9 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
+
+		// 见 auth.AddTokens：默认不把凭证回进响应体
+		IncludeTokens bool `json:"includeTokens"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	admin, err := h.svc.Login(r.Context(), req.Username, req.Password)
@@ -215,7 +219,8 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "token生成失败", "data": nil})
 		return
 	}
-	refreshToken, _ := h.jwt.GenerateRefresh(admin.ID)
+	// 管理员刷新令牌带 admin_refresh 用途标记，见 GenerateAdminRefresh 注释
+	refreshToken, _ := h.jwt.GenerateAdminRefresh(admin.ID)
 	role := "管理员"
 	for _, rl := range admin.Roles {
 		if rl.Name == "超级管理员" {
@@ -232,14 +237,86 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// 并让管理员凭证被用户接口按 users.id 解释。
 	auth.SetAccessCookie(w, auth.AdminAccessTokenCookie, token)
 	auth.SetRefreshCookie(w, auth.AdminRefreshTokenCookie, refreshToken)
-	httputil.WriteOK(w, map[string]any{
-		"token":         token,
-		"refresh_token": refreshToken,
-		"admin_id":      admin.ID,
-		"username":      admin.Username,
-		"role":          role,
-		"permissions":   permissions,
-	})
+	respBody := map[string]any{
+		"admin_id":    admin.ID,
+		"username":    admin.Username,
+		"role":        role,
+		"permissions": permissions,
+	}
+	auth.AddTokens(respBody, req.IncludeTokens, token, refreshToken)
+	httputil.WriteOK(w, respBody)
+}
+
+// handleRefresh 后台刷新：用 HttpOnly 的 admin_refresh 换一套新的后台令牌。
+//
+// 这里**只认 typ=admin_refresh 的令牌**。admin_users.id 与 users.id 是两套独立
+// 自增 ID，若接受普通用户的刷新令牌，任意 id 撞车都会直接把请求者升成管理员。
+// 同样只认 cookie 优先，body 里的 refreshToken 是给存量客户端留的兼容位。
+//
+// @Summary      后台刷新令牌
+// @Router       /admin/token/refresh [post]
+func (h *Handler) handleRefresh(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	var req struct {
+		RefreshToken string `json:"refreshToken"`
+
+		IncludeTokens bool `json:"includeTokens"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	refreshToken := req.RefreshToken
+	if refreshToken == "" {
+		if c, err := r.Cookie(auth.AdminRefreshTokenCookie); err == nil {
+			refreshToken = c.Value
+		}
+	}
+	claims, err := h.jwt.Parse(refreshToken)
+	if err != nil || claims == nil || !claims.IsAdminRefresh() {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "invalid or expired refresh token", "data": nil})
+		return
+	}
+	// 一次性消费：同一张刷新令牌被并发重放时只有一个成功
+	if !auth.ConsumeRefreshOnce(r.Context(), h.jwt, refreshToken) {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "refresh token already used", "data": nil})
+		return
+	}
+	admin, err := h.svc.repo.GetAdminByID(r.Context(), claims.UserId)
+	if err != nil || admin == nil {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "account is disabled", "data": nil})
+		return
+	}
+
+	token, err := h.jwt.GenerateAdmin(admin.ID)
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "token生成失败", "data": nil})
+		return
+	}
+	newRefresh, _ := h.jwt.GenerateAdminRefresh(admin.ID)
+	auth.SetAccessCookie(w, auth.AdminAccessTokenCookie, token)
+	auth.SetRefreshCookie(w, auth.AdminRefreshTokenCookie, newRefresh)
+
+	role := "管理员"
+	for _, rl := range admin.Roles {
+		if rl.Name == "超级管理员" {
+			role = "超级管理员"
+			break
+		}
+	}
+	permissions, _ := h.svc.repo.GetAdminPermissionCodes(r.Context(), admin.ID)
+	if permissions == nil {
+		permissions = []string{}
+	}
+	respBody := map[string]any{
+		"admin_id":    admin.ID,
+		"username":    admin.Username,
+		"role":        role,
+		"permissions": permissions,
+	}
+	auth.AddTokens(respBody, req.IncludeTokens, token, newRefresh)
+	httputil.WriteOK(w, respBody)
 }
 
 // handleLogout 后台登出：清掉 admin_token / admin_refresh。

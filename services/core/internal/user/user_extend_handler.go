@@ -92,6 +92,8 @@ func (h *UserExtendHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 	var req struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
+		// 见 addTokens：默认不把凭证回进响应体
+		IncludeTokens bool `json:"includeTokens"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request", 400)
@@ -127,12 +129,11 @@ func (h *UserExtendHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 	}
 	h.setSessionCookies(w, resp.Token, refreshToken, resp.UserId, resp.Nickname, avatar)
 	respBody := map[string]interface{}{
-		"token":         resp.Token,
-		"refresh_token": refreshToken,
-		"id":            resp.UserId,
-		"nickname":      resp.Nickname,
-		"avatar":        avatar,
+		"id":       resp.UserId,
+		"nickname": resp.Nickname,
+		"avatar":   avatar,
 	}
+	auth.AddTokens(respBody, req.IncludeTokens, resp.Token, refreshToken)
 	if firstLoginToday {
 		respBody["dailyCoin"] = true
 	}
@@ -149,6 +150,8 @@ func (h *UserExtendHandler) handleRegister(w http.ResponseWriter, r *http.Reques
 		Password string `json:"password"`
 		Nickname string `json:"nickname"`
 		Email    string `json:"email"`
+
+		IncludeTokens bool `json:"includeTokens"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request", 400)
@@ -164,13 +167,13 @@ func (h *UserExtendHandler) handleRegister(w http.ResponseWriter, r *http.Reques
 	}
 	refreshToken, _ := h.svc.jwt.GenerateRefresh(resp.UserId)
 	h.setSessionCookies(w, resp.Token, refreshToken, resp.UserId, req.Nickname, "")
-	httputil.WriteOK(w, map[string]interface{}{
-		"token":         resp.Token,
-		"refresh_token": refreshToken,
-		"id":            resp.UserId,
-		"nickname":      req.Nickname,
-		"avatar":        "",
-	})
+	respBody := map[string]interface{}{
+		"id":       resp.UserId,
+		"nickname": req.Nickname,
+		"avatar":   "",
+	}
+	auth.AddTokens(respBody, req.IncludeTokens, resp.Token, refreshToken)
+	httputil.WriteOK(w, respBody)
 }
 
 // handleLogout 登出：清掉服务端下发的三枚 cookie。
@@ -198,6 +201,8 @@ func (h *UserExtendHandler) handleRefresh(w http.ResponseWriter, r *http.Request
 	}
 	var req struct {
 		RefreshToken string `json:"refreshToken"`
+
+		IncludeTokens bool `json:"includeTokens"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	// 阶段 3 起前端读不到 refresh_token（HttpOnly），body 里不会有值；
@@ -208,16 +213,19 @@ func (h *UserExtendHandler) handleRefresh(w http.ResponseWriter, r *http.Request
 			refreshToken = c.Value
 		}
 	}
+	// 先验签并确认用途，再做一次性消费：管理员刷新令牌打到这里必须直接拒绝，
+	// 而且不能先消费掉它的 jti——那张令牌是给后台刷新口用的。
+	claims, err := h.svc.jwt.Parse(refreshToken)
+	if err != nil || claims == nil || !claims.IsUserRefresh() {
+		errors.WriteHTTPError(w, errors.ErrUnauthenticated("invalid or expired refresh token"))
+		return
+	}
 	if !auth.ConsumeRefreshOnce(r.Context(), h.svc.jwt, refreshToken) {
 		// 同一张刷新令牌被用过第二次 → 疑似被窃取后重放，拒绝并让这次作废
 		errors.WriteHTTPError(w, errors.ErrUnauthenticated("refresh token already used"))
 		return
 	}
-	userID, err := h.svc.jwt.ParseUserID(refreshToken)
-	if err != nil {
-		errors.WriteHTTPError(w, errors.ErrUnauthenticated("invalid or expired refresh token"))
-		return
-	}
+	userID := claims.UserId
 	user, err := h.svc.repo.FindByID(r.Context(), userID)
 	if err != nil || user.Status != 1 {
 		errors.WriteHTTPError(w, errors.ErrUnauthenticated("account is disabled"))
@@ -226,11 +234,9 @@ func (h *UserExtendHandler) handleRefresh(w http.ResponseWriter, r *http.Request
 	newToken, _ := h.svc.jwt.Generate(userID)
 	newRefresh, _ := h.svc.jwt.GenerateRefresh(userID)
 	h.setSessionCookies(w, newToken, newRefresh, userID, user.Nickname, user.Avatar)
-	httputil.WriteOK(w, map[string]interface{}{
-		"token":         newToken,
-		"refresh_token": newRefresh,
-		"id":            userID,
-	})
+	respBody := map[string]interface{}{"id": userID}
+	auth.AddTokens(respBody, req.IncludeTokens, newToken, newRefresh)
+	httputil.WriteOK(w, respBody)
 }
 
 func (h *UserExtendHandler) handleEmailCode(w http.ResponseWriter, r *http.Request) {

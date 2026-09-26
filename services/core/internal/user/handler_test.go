@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"mybilibili/pkg/auth"
 	pb "mybilibili/pkg/pb"
 )
 
@@ -84,7 +85,9 @@ func TestHandleRegister_200(t *testing.T) {
 	rec := doRequest(t, mux, "POST", "/api/v1/user/register", body, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `"id":11`)
-	assert.Contains(t, rec.Body.String(), `"token":`)
+	// 默认不把凭证回进响应体：浏览器读得到 body，读得到就能被 XSS 偷走
+	assert.NotContains(t, rec.Body.String(), `"token"`)
+	assert.NotContains(t, rec.Body.String(), `"refresh_token"`)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -140,7 +143,8 @@ func TestHandleLogin_200(t *testing.T) {
 	body := map[string]string{"username": "alice", "password": pwd}
 	rec := doRequest(t, mux, "POST", "/api/v1/user/login", body, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), `"token"`)
+	assert.NotContains(t, rec.Body.String(), `"token"`)
+	assert.NotContains(t, rec.Body.String(), `"refresh_token"`)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -193,8 +197,77 @@ func TestHandleRefresh_200(t *testing.T) {
 	body := map[string]string{"refreshToken": tok}
 	rec := doRequest(t, mux, "POST", "/api/v1/user/token/refresh", body, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), `"token"`)
+	assert.NotContains(t, rec.Body.String(), `"token"`)
 	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// 显式带 includeTokens:true 时才把凭证回进 body（原生客户端用）。
+func TestHandleLogin_200_IncludeTokens(t *testing.T) {
+	h, mock := newTestHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	pwd := "secret123"
+	mock.ExpectQuery(`SELECT.*FROM users.*WHERE username`).
+		WithArgs("alice").
+		WillReturnRows(userRow(5, "alice", sha256Hex(pwd), "Alice", 1))
+	mock.ExpectQuery(`SELECT COUNT`).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	mock.ExpectExec(`INSERT INTO login_logs`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE users SET coin_count`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(`SELECT.*FROM users.*WHERE id`).
+		WithArgs(int64(5)).
+		WillReturnRows(userRow(5, "alice", sha256Hex(pwd), "Alice", 1))
+
+	body := map[string]interface{}{"username": "alice", "password": pwd, "includeTokens": true}
+	rec := doRequest(t, mux, "POST", "/api/v1/user/login", body, nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"token"`)
+	assert.Contains(t, rec.Body.String(), `"refresh_token"`)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// 用户刷新口必须拒收管理员刷新令牌：两套 ID 命名空间不同，混用即越权。
+func TestHandleRefresh_401_AdminRefreshTokenRejected(t *testing.T) {
+	h, _ := newTestHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	tok, err := h.svc.jwt.GenerateAdminRefresh(7)
+	require.NoError(t, err)
+
+	body := map[string]string{"refreshToken": tok}
+	rec := doRequest(t, mux, "POST", "/api/v1/user/token/refresh", body, nil)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.NotContains(t, rec.Body.String(), `"token"`)
+}
+
+// 同一张刷新令牌重放第二次 → 401。
+func TestHandleRefresh_401_Replay(t *testing.T) {
+	// 一次性消费依赖 TokenStore；测试环境默认没有，装一个内存实现
+	prev := auth.CurrentTokenStore()
+	auth.SetTokenStore(auth.NewMemoryTokenStore())
+	defer auth.SetTokenStore(prev)
+
+	h, mock := newTestHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	tok, err := h.svc.jwt.GenerateRefresh(7)
+	require.NoError(t, err)
+
+	mock.ExpectQuery(`SELECT.*FROM users.*WHERE id`).
+		WithArgs(int64(7)).
+		WillReturnRows(userRow(7, "u7", "h", "Nick7", 1))
+
+	first := doRequest(t, mux, "POST", "/api/v1/user/token/refresh", map[string]string{"refreshToken": tok}, nil)
+	require.Equal(t, http.StatusOK, first.Code)
+
+	second := doRequest(t, mux, "POST", "/api/v1/user/token/refresh", map[string]string{"refreshToken": tok}, nil)
+	assert.Equal(t, http.StatusUnauthorized, second.Code)
+	assert.Contains(t, second.Body.String(), "already used")
 }
 
 func TestHandleRefresh_401_Expired(t *testing.T) {
@@ -386,7 +459,7 @@ func TestHandleTokenRefresh_200(t *testing.T) {
 	body := map[string]string{"refreshToken": tok}
 	rec := doRequest(t, mux, "POST", "/api/v1/user/token/refresh", body, nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), `"token"`)
+	assert.NotContains(t, rec.Body.String(), `"token"`)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 

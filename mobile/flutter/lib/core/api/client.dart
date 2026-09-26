@@ -29,10 +29,11 @@ final dioProvider = Provider<Dio>((ref) {
           try {
             final response = await Dio().post(
               '${dio.options.baseUrl}/user/token/refresh',
-              data: {'refreshToken': refreshToken},
+              data: {'refreshToken': refreshToken, 'includeTokens': true},
             );
-            final newToken = response.data['data']?['accessToken'] ??
-                response.data['accessToken'];
+            // Go 端回的字段是 token / refresh_token（不是 accessToken）
+            final newToken = response.data['data']?['token'] ??
+                response.data['token'];
             if (newToken != null) {
               await TokenStorage.saveAccessToken(newToken.toString());
               error.requestOptions.headers['Authorization'] = 'Bearer $newToken';

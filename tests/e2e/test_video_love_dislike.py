@@ -56,11 +56,11 @@ class TestVideoLove:
     def test_love_toggles_like_count(self, logged_in_page, base_url):
         """点 ❤：后端 likeCount +1；清理回原状。"""
         page = logged_in_page
-        token = page.evaluate("() => localStorage.getItem('teri_token')")
-        hdrs = {"Authorization": f"Bearer {token}"}
+        # 凭证是 HttpOnly cookie；page.request 与 page 共用 context 的 cookie jar，
+        # 所以不需要（也拿不到）Authorization 头。
 
         # 先归零：确保处于未点赞状态（避免上一轮残留导致幂等不计数）
-        page.request.delete(f"{base_url}/api/v1/manuscript/10/like", headers=hdrs)
+        page.request.delete(f"{base_url}/api/v1/manuscript/10/like")
 
         # 基线 likeCount
         resp = page.request.get(f"{base_url}/api/v1/manuscript/detail/10")
@@ -91,7 +91,7 @@ class TestVideoLove:
         assert after == before + 1, f"点赞后 likeCount 应 {before + 1}，实际 {after}"
 
         # 清理：取消点赞恢复原状
-        page.request.delete(f"{base_url}/api/v1/manuscript/10/like", headers=hdrs)
+        page.request.delete(f"{base_url}/api/v1/manuscript/10/like")
         restored = page.request.get(
             f"{base_url}/api/v1/manuscript/detail/10"
         ).json()["data"]["likeCount"]

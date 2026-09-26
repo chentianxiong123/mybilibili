@@ -94,16 +94,54 @@ api.interceptors.response.use(
   error => {
     const originalRequest = error.config
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (hasAdminSession()) {
-        // 后台凭证过期：先让服务端作废 HttpOnly cookie（否则会残留可继续用的凭证），
-        // 再清本地展示信息并回到登录页。
+    // 后台 401：先拿 HttpOnly 的 admin_refresh 换一套新的后台令牌再重试一次，
+    // 续不上才作废 cookie 回登录页（不清掉会残留一张还能继续用的凭证）。
+    // 这段放在 !originalRequest._retry 之外：_retry 同时是用户侧续期的标记，
+    // 两个分支共用会在后台续期后跳过用户续期、直接掉进通用 401 分支。
+    if (error.response?.status === 401 && hasAdminSession()) {
+      const endAdminSession = () => {
         clearAdminSession()
         void clearServerSession()
         if (typeof window !== 'undefined') window.location.href = '/admin/login'
+      }
+
+      // 续期过一次仍 401 → 凭证确实失效，别再打刷新口
+      if (originalRequest._adminRefreshed) {
+        endAdminSession()
         return Promise.reject(error)
       }
 
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject })
+        }).then(() => api(originalRequest)).catch(err => Promise.reject(err))
+      }
+
+      originalRequest._adminRefreshed = true
+      isRefreshing = true
+      return new Promise((resolve, reject) => {
+        // 刷新令牌是 HttpOnly cookie，body 里不带值——由服务端从 cookie 取
+        api.post('/admin/token/refresh', {})
+          .then((res: any) => {
+            if (res.code === 200 && res.data) {
+              processQueue(null, 'ok')
+              resolve(api(originalRequest))
+            } else {
+              endAdminSession()
+              processQueue(new Error('admin refresh failed'))
+              reject(error)
+            }
+          })
+          .catch(() => {
+            endAdminSession()
+            processQueue(error)
+            reject(error)
+          })
+          .finally(() => { isRefreshing = false })
+      })
+    }
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
       if (!hasAuthSession() || originalRequest.url === '/user/token/refresh') {
         clearAuthSession()
         return Promise.reject(error)

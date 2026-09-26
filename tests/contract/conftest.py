@@ -52,7 +52,8 @@ def login_token(base_url):
     """用 string/123456 登录拿到 JWT；session 级只登录一次。"""
     resp = requests.post(
         f"{base_url}/user/login",
-        json={"username": "string", "password": "123456"},
+        # 测试进程不带 cookie，凭证只在响应体里 —— 显式索取
+        json={"username": "string", "password": "123456", "includeTokens": True},
         timeout=5,
     )
     resp.raise_for_status()

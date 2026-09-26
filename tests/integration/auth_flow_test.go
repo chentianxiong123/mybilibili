@@ -23,9 +23,11 @@ func TestAuthFlow_Complete(t *testing.T) {
 	assert.NotEmpty(t, body.Data)
 
 	// Step 2: 登录
-	resp, body = doPost(t, coreURL+"/api/v1/user/login", map[string]string{
+	resp, body = doPost(t, coreURL+"/api/v1/user/login", map[string]interface{}{
 		"username": username,
 		"password": "Test1234",
+		// 测试进程没有 cookie jar，凭证只在响应体里 —— 显式索取
+		"includeTokens": true,
 	})
 	assert.Equal(t, 200, resp.StatusCode)
 	var loginData struct {
@@ -42,8 +44,9 @@ func TestAuthFlow_Complete(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 
 	// Step 4: 刷新 token
-	resp, body = doPost(t, coreURL+"/api/v1/user/token/refresh", map[string]string{
-		"refreshToken": loginData.RefreshToken,
+	resp, body = doPost(t, coreURL+"/api/v1/user/token/refresh", map[string]interface{}{
+		"refreshToken":  loginData.RefreshToken,
+		"includeTokens": true,
 	})
 	assert.Equal(t, 200, resp.StatusCode)
 

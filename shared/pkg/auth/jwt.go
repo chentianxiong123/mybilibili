@@ -30,8 +30,16 @@ const (
 // 把 7 天的刷新令牌塞进访问位就能绕过 24 小时的访问令牌有效期。
 // 旧令牌没有该字段，按访问令牌处理以保持兼容。
 const (
-	TokenTypeAccess  = "access"
+	TokenTypeAccess = "access"
+	// TokenTypeRefresh 普通用户刷新令牌。
 	TokenTypeRefresh = "refresh"
+	// TokenTypeAdminRefresh 管理员刷新令牌。
+	//
+	// 必须与用户刷新令牌分型：两张令牌的载荷结构完全相同，而 admin_users.id 与
+	// users.id 是两套各自独立的自增 ID。若共用 typ=refresh，拿普通用户的刷新令牌
+	// 打后台刷新口、按同一 user_id 查 admin_users 表，就能换到同 id 的管理员身份——
+	// id 稍小一点就必然撞上，是实打实的越权。
+	TokenTypeAdminRefresh = "admin_refresh"
 )
 
 // NewJTI 生成 128bit 十六进制令牌标识（无外部依赖）。
@@ -63,6 +71,17 @@ type Claims struct {
 // IsAccess 是否为访问令牌（旧令牌无 typ，视作访问令牌）。
 func (c *Claims) IsAccess() bool {
 	return c == nil || c.Typ == "" || c.Typ == TokenTypeAccess
+}
+
+// IsUserRefresh 是否为普通用户刷新令牌。
+// 旧令牌没有 typ 字段，按用户刷新处理以保持兼容（上线时存量都是用户令牌）。
+func (c *Claims) IsUserRefresh() bool {
+	return c == nil || c.Typ == "" || c.Typ == TokenTypeRefresh
+}
+
+// IsAdminRefresh 是否为管理员刷新令牌。
+func (c *Claims) IsAdminRefresh() bool {
+	return c != nil && c.Typ == TokenTypeAdminRefresh
 }
 
 // AccessRole 还原签发时使用的 role。
@@ -146,6 +165,33 @@ func (j *JWT) GenerateRefreshWithJTI(userID int64) (string, string, error) {
 	claims := Claims{
 		UserId: userID,
 		Typ:    TokenTypeRefresh,
+		Jti:    jti,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tok, err := token.SignedString([]byte(j.secret))
+	return tok, jti, err
+}
+
+// GenerateAdminRefresh 签发管理员刷新令牌（7 天）。
+//
+// 刻意**不**带 Role/IsAdmin：requirePermission 会直接读 claims.IsAdmin 却不检查 typ，
+// 刷新令牌一旦标成管理员，它就成了 7 天有效的后台通行证，把 24 小时访问令牌的
+// 有效期约束整个绕开。身份只在刷新完成的那一刻由 GenerateAdmin 重新签发。
+func (j *JWT) GenerateAdminRefresh(userID int64) (string, error) {
+	tok, _, err := j.GenerateAdminRefreshWithJTI(userID)
+	return tok, err
+}
+
+// GenerateAdminRefreshWithJTI 签发管理员刷新令牌并返回其 Jti。
+func (j *JWT) GenerateAdminRefreshWithJTI(userID int64) (string, string, error) {
+	jti := NewJTI()
+	claims := Claims{
+		UserId: userID,
+		Typ:    TokenTypeAdminRefresh,
 		Jti:    jti,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),

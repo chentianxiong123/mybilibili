@@ -45,7 +45,9 @@ def logged_in_page(browser, base_url):
     page = ctx.new_page()
     page.set_default_timeout(10000)
 
-    # 直接走 /api/v1/user/login 拿 token，写入 localStorage，触发一次刷新让 store 加载
+    # 凭证是 HttpOnly cookie，body 默认不回 token。page.request 与 page 共用
+    # context 的 cookie jar，所以登录一次后导航过去就是已登录态；localStorage
+    # 只放展示信息（它同时是前端判断登录态的唯一信号）。
     resp = page.request.post(
         f"{base_url}/api/v1/user/login",
         data={"username": "string", "password": "123456"},
@@ -53,7 +55,6 @@ def logged_in_page(browser, base_url):
     assert resp.status == 200, f"login failed: {resp.status}"
     body = resp.json()
     assert body.get("code") == 200, f"login error: {body}"
-    token = body["data"]["token"]
     user = {
         "id": body["data"]["id"],
         "username": "string",
@@ -63,8 +64,8 @@ def logged_in_page(browser, base_url):
 
     page.goto(base_url)
     page.evaluate(
-        "(args) => { localStorage.setItem('teri_token', args.t); localStorage.setItem('user', JSON.stringify(args.u)); }",
-        {"t": token, "u": user},
+        "(args) => { localStorage.setItem('user', JSON.stringify(args.u)); }",
+        {"u": user},
     )
     page.goto(base_url)
     page.wait_for_load_state("networkidle")

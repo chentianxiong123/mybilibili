@@ -21,9 +21,10 @@ func TestLiveFlow_Complete(t *testing.T) {
 	})
 	assert.NotEmpty(t, reg.Data)
 
-	resp, login := doPost(t, coreURL+"/api/v1/user/login", map[string]string{
-		"username": username,
-		"password": "Test1234",
+	resp, login := doPost(t, coreURL+"/api/v1/user/login", map[string]interface{}{
+		"username":      username,
+		"password":      "Test1234",
+		"includeTokens": true,
 	})
 	assert.Equal(t, 200, resp.StatusCode)
 	var loginData struct {

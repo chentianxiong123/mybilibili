@@ -13,6 +13,8 @@ class AuthApi {
     final response = await _dio.post('/user/login', data: {
       'username': username,
       'password': password,
+      // 没有 cookie jar，凭证只能从响应体拿 —— 服务端默认不回
+      'includeTokens': true,
     });
     final data = response.data is Map ? (response.data['data'] ?? response.data) as Map<String, dynamic> : <String, dynamic>{};
     final token = data['token'] as String?;
@@ -37,6 +39,7 @@ class AuthApi {
       'password': password,
       if (nickname != null) 'nickname': nickname,
       if (email != null) 'email': email,
+      'includeTokens': true,
     });
     final data = response.data is Map ? (response.data['data'] ?? response.data) as Map<String, dynamic> : <String, dynamic>{};
     final token = data['token'] as String?;

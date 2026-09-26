@@ -28,6 +28,25 @@ class TestUserLogin:
         schema = schema_for("/user/login", "post")
         assert_contract(body, schema)
 
+    def test_login_omits_tokens_by_default(self, http, base_url):
+        """默认不把凭证回进响应体 —— 响应体是 JS 读得到的，只能靠 HttpOnly 保护。"""
+        resp = http.post(f"{base_url}/user/login",
+                         json={"username": "string", "password": "123456"})
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert "token" not in data
+        assert "refresh_token" not in data
+
+    def test_login_include_tokens(self, http, base_url):
+        """原生客户端显式传 includeTokens:true 才拿得到凭证。"""
+        resp = http.post(f"{base_url}/user/login",
+                         json={"username": "string", "password": "123456",
+                               "includeTokens": True})
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data.get("token")
+        assert data.get("refresh_token")
+
     def test_login_wrong_password(self, http, base_url):
         resp = http.post(f"{base_url}/user/login",
                          json={"username": "string", "password": "wrong"})

@@ -42,6 +42,9 @@ paths:
               properties:
                 username: {type: string, minLength: 1}
                 password: {type: string, minLength: 1}
+                # 仅给没有 cookie jar 的原生客户端用；浏览器一律不传，
+                # 凭证由服务端写进 HttpOnly cookie。
+                includeTokens: {type: boolean, default: false}
       responses:
         "200":
           description: 登录成功
@@ -366,7 +369,9 @@ components:
             code: {type: integer, enum: [200]}
             data:
               type: object
-              required: [token, id]
+              # 凭证默认只走 HttpOnly cookie。token / refresh_token 仅在请求
+              # 显式带 includeTokens:true 时才回进响应体，所以都是可选的。
+              required: [id]
               properties:
                 token: {type: string}
                 refresh_token: {type: string}

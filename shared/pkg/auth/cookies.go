@@ -28,6 +28,20 @@ const (
 	userInfoMaxAge = 30 * 24 * time.Hour
 )
 
+// AddTokens 按需把凭证写进登录/注册/刷新的响应体。
+//
+// 默认**不写**：响应体是浏览器 JS 读得到的，读得到就能被 XSS 整包偷走，
+// 那 HttpOnly 就白做了。凭证一律走 HttpOnly cookie，浏览器三端不传这个开关。
+// 原生客户端（flutter 等）没有 cookie jar，需要显式传 {"includeTokens": true}
+// 才拿得到——这是一个显式的、知道自己在做什么的取舍，而不是默认就把钥匙递出去。
+func AddTokens(body map[string]interface{}, include bool, token, refreshToken string) {
+	if !include {
+		return
+	}
+	body["token"] = token
+	body["refresh_token"] = refreshToken
+}
+
 // CookieSecure 由 COOKIE_SECURE=true 开启。
 // 线上经 Traefik websecure(443) 部署时必须开启；dev 走 http，开启会导致
 // 浏览器直接丢弃 cookie，所以默认关。

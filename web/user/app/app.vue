@@ -591,11 +591,8 @@ const doLogin = (promise: any) => {
   promise.then((response: any) => {
     if (response.code === 200) {
       const data = response.data || {}
-      setAuthSession({
-        token: data.token,
-        refreshToken: data.refresh_token || data.refreshToken,
-        user: data.user || data
-      })
+      // 凭证只在 HttpOnly cookie 里，这里传的 token/refreshToken 已无处可落
+      setAuthSession({ user: data.user || data })
       showLoginDialog.value = false
       ElMessage.success('登录成功')
       loginForm.username = ''
