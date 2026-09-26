@@ -196,7 +196,10 @@ export async function getRankingArchive(params) {
     if (rId) {
       res = await api.get(`/manuscript/category/${rId}?page=${p}&size=${size}`)
     } else {
-      res = await api.get(`/manuscript/list?page=${p}&size=${size}`)
+      // 「全站」排行走公开的热门列表。注意不能用 /manuscript/list —— 那是
+      // RequireUser 的「我的稿件」私有接口，匿名 401、登录后只会列出自己的稿件。
+      // /manuscript/hot 用 offset 分页，每页固定 20 条。
+      res = await api.get(`/manuscript/hot?offset=${(p - 1) * size}`)
     }
     return {
       code: '1',

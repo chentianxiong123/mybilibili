@@ -160,3 +160,61 @@ func TestHotRepository_CleanExpired(t *testing.T) {
 		assert.False(t, exists, "expected %s to be removed", kw)
 	}
 }
+
+// 空关键词不得进热度榜：否则 ZIncrBy 会凭空造出一个空串 member，
+// 顶到 rank 1，被前端当成关键词渲染出来。
+func TestHotIncrementIgnoresEmptyKeyword(t *testing.T) {
+	repo, mr := newTestRepository(t)
+	ctx := context.Background()
+
+	require.NoError(t, repo.Increment(ctx, ""))
+	require.NoError(t, repo.Increment(ctx, "   "))
+
+	assert.False(t, mr.Exists(rankKey))
+
+	// 正常关键词仍可写入
+	require.NoError(t, repo.Increment(ctx, "golang"))
+	assert.True(t, mr.Exists(rankKey))
+}
+
+// Top 必须跳过历史脏数据（空串/纯空白 member），且 rank 从 1 连续编号。
+func TestHotTopSkipsBlankMembers(t *testing.T) {
+	repo, _ := newTestRepository(t)
+	ctx := context.Background()
+
+	require.NoError(t, repo.UpdateScore(ctx, "", 500)) // 脏数据：空关键词却排第一
+	require.NoError(t, repo.UpdateScore(ctx, "  ", 400))
+	require.NoError(t, repo.UpdateScore(ctx, "music", 80))
+	require.NoError(t, repo.UpdateScore(ctx, "game", 30))
+
+	top, err := repo.Top(ctx, 10)
+	require.NoError(t, err)
+	require.Len(t, top, 2)
+
+	assert.Equal(t, "music", top[0]["keyword"])
+	assert.Equal(t, 1, top[0]["rank"])
+	assert.Equal(t, "game", top[1]["keyword"])
+	assert.Equal(t, 2, top[1]["rank"])
+}
+
+// 过滤脏数据后仍要凑满 n 条（多扫 extraScan 条再截断）。
+func TestHotTopReturnsUpToNAfterFiltering(t *testing.T) {
+	repo, _ := newTestRepository(t)
+	ctx := context.Background()
+
+	// 3 条脏数据 + 5 条正常数据
+	for i := 0; i < 3; i++ {
+		require.NoError(t, repo.UpdateScore(ctx, "", float64(1000+i)))
+	}
+	for i := 0; i < 5; i++ {
+		require.NoError(t, repo.UpdateScore(ctx, fmt.Sprintf("kw%d", i), float64(100+i)))
+	}
+
+	top, err := repo.Top(ctx, 4)
+	require.NoError(t, err)
+	require.Len(t, top, 4)
+	for i, item := range top {
+		assert.NotEmpty(t, item["keyword"])
+		assert.Equal(t, i+1, item["rank"])
+	}
+}

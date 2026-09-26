@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"mybilibili/search/internal/hot"
@@ -292,6 +293,10 @@ func (s *Service) UpdateRecommendConfig(ctx context.Context, configJSON, updated
 
 func (s *Service) IncrementHotSearch(ctx context.Context, keyword string) error {
 	if s.hotRepo == nil {
+		return nil
+	}
+	// 空关键词不得进热搜榜：ZIncrBy 会凭空造出一个空串 member，顶到 rank 1
+	if strings.TrimSpace(keyword) == "" {
 		return nil
 	}
 	return s.hotRepo.Increment(ctx, keyword)

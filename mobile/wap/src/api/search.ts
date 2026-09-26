@@ -24,13 +24,24 @@ const adaptUpUser = (u) => ({
 })
 
 // 热搜榜 - 复用 searchApi.getHotSearch() → /search/hot
+// 后端可能返回 keyword 为空串的条目，兜底成整个对象会把模板渲染成 JSON 文本，
+// 这里统一拍平成非空字符串再交给视图。
+const toKeyword = (item) => {
+  if (typeof item === 'string') return item.trim()
+  if (item && typeof item === 'object') {
+    const k = item.keyword
+    return typeof k === 'string' ? k.trim() : ''
+  }
+  return ''
+}
+
 export async function getHotwords() {
   try {
     const res = await api.get('/search/hot')
     const data = res?.data || res || []
     return {
       code: '1',
-      data: data.map(item => ({ keyword: item.keyword || item }))
+      data: data.map(item => ({ keyword: toKeyword(item) })).filter(x => x.keyword)
     }
   } catch (e) {
     return { code: '0', data: [] }
@@ -44,10 +55,10 @@ export async function getSuggests(keyword) {
     const data = res?.data || res || []
     return {
       code: '1',
-      data: data.map(item => ({
-        name: item.keyword || item,
-        value: item.keyword || item
-      }))
+      data: data.map(item => {
+        const name = toKeyword(item)
+        return { name, value: name }
+      }).filter(x => x.name)
     }
   } catch (e) {
     return { code: '0', data: [] }

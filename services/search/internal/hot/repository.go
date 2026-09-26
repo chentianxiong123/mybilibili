@@ -4,18 +4,20 @@ import (
 	"context"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
 const (
-	rankKey       = "hot_search:rank"
-	detailPrefix  = "hot_search:detail:%s"
-	baseScore     = 10.0
-	timeDecay     = 0.1
-	expireDays    = 30
-	maxKeywords   = 100
+	rankKey      = "hot_search:rank"
+	detailPrefix = "hot_search:detail:%s"
+	baseScore    = 10.0
+	timeDecay    = 0.1
+	expireDays   = 30
+	maxKeywords  = 100
+	extraScan    = 20 // Top 过滤空 member 时的额外扫描余量
 )
 
 type Repository struct {
@@ -33,6 +35,10 @@ func scoreIncrement() float64 {
 
 // Increment 搜索时累加关键词热度
 func (r *Repository) Increment(ctx context.Context, keyword string) error {
+	keyword = strings.TrimSpace(keyword)
+	if keyword == "" {
+		return nil
+	}
 	now := time.Now().UnixMilli()
 	score := scoreIncrement()
 	pipe := r.rdb.TxPipeline()
@@ -49,18 +55,25 @@ func (r *Repository) Increment(ctx context.Context, keyword string) error {
 
 // Top 返回热度最高的前 n 个关键词
 func (r *Repository) Top(ctx context.Context, n int64) ([]map[string]interface{}, error) {
-	res, err := r.rdb.ZRevRangeWithScores(ctx, rankKey, 0, n-1).Result()
+	// 多取一些再过滤空 member，避免历史脏数据（空串/仅空白）被当成关键词返回
+	res, err := r.rdb.ZRevRangeWithScores(ctx, rankKey, 0, n+extraScan-1).Result()
 	if err != nil {
 		return nil, err
 	}
-	list := make([]map[string]interface{}, 0, len(res))
-	for i, z := range res {
-		keyword := z.Member.(string)
+	list := make([]map[string]interface{}, 0, n)
+	for _, z := range res {
+		keyword := strings.TrimSpace(z.Member.(string))
+		if keyword == "" {
+			continue
+		}
 		list = append(list, map[string]interface{}{
-			"rank":    i + 1,
+			"rank":    len(list) + 1,
 			"keyword": keyword,
 			"score":   int64(z.Score),
 		})
+		if int64(len(list)) >= n {
+			break
+		}
 	}
 	return list, nil
 }
