@@ -1,75 +1,37 @@
-# Nuxt Minimal Starter
+# mybilibili admin 前端
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+`web/admin` 管理后台（Vite + Vue 3 + Element Plus）。
 
-## Setup
+## 安装依赖
 
-Make sure to install dependencies:
+主力包管理器是 **bun**（与 dev/docker-compose.yml 里的 `oven/bun` 容器一致）：
 
 ```bash
-# npm
-npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
 bun install
 ```
 
-## Development Server
-
-Start the development server on `http://localhost:3000`:
+pnpm 作为可选可保留使用（锁文件覆盖 `bun.lock` + `pnpm-lock.yaml`），但常规开发请用 bun:
 
 ```bash
-# npm
-npm run dev
+# 可选：pnpm
+pnpm install
+```
 
-# pnpm
-pnpm dev
+## 开发
 
-# yarn
-yarn dev
-
-# bun
+```bash
 bun run dev
 ```
 
-## Production
-
-Build the application for production:
+## 测试
 
 ```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
+bun run test
 ```
 
-Locally preview production build:
+## 构建
 
 ```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
+bun run build
 bun run preview
 ```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
