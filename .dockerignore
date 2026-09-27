@@ -26,3 +26,10 @@
 # 文档 / 非源码（不影响构建，跳过提速）
 sql/*.md
 **/README.md
+
+# 前端依赖产物：必须排除，否则 glibc 装的 node_modules 会被带进 alpine 构建层，
+# 导致 bun 无法按 musl 平台重新解析 rollup 等原生可选依赖
+**/node_modules
+**/dist
+**/.output
+**/.nuxt
