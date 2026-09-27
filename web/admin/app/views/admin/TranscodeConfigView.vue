@@ -50,7 +50,7 @@ const saveConfig = async () => {
     if (res.data?.code === 200 || res.status === 'ok' || res.encoder) {
       ElMessage.success('配置已保存，重启转码服务后生效')
     } else {
-      ElMessage.error(res.message || '保存失败')
+      ElMessage.error(res.data?.message || res.message || '保存失败')
     }
   } catch (e) {
     ElMessage.error('保存失败')

@@ -41,6 +41,8 @@ const loadData = () => {
       tableData.value = list.map(normalizeLoginLog)
       total.value = res.data.total
     }
+  }).catch(() => {
+    ElMessage.error('获取登录日志失败')
   }).finally(() => { loading.value = false })
 }
 
