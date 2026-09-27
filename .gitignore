@@ -71,6 +71,13 @@ mobile/ns/package-lock.json
 # NFS temporary files
 .nfs*
 
+# 开发工具本地产物，不入库
+.air/
+external/cf-whisper-worker/.wrangler/
+
+# 调试/临时截图，不入库
+*-blink.png
+
 # 一次性 filter-repo 备份（170M），保留在本地作 emergency restore 用，不进仓库
 .git.bak-before-filter-repo
 
