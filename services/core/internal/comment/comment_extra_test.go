@@ -50,8 +50,9 @@ func replyRow() []interface{} {
 func TestCommentRepository_CreateReply(t *testing.T) {
 	repo, mock := newMockCommentRepo(t)
 	now := time.Now()
+	// status 未指定时落 NORMAL，保持既有行为
 	mock.ExpectQuery(`INSERT INTO replies`).
-		WithArgs(int64(100), int64(200), nil, "nice").
+		WithArgs(int64(100), int64(200), nil, "nice", replyStatusNormal).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(1, now))
 
 	rep := &Reply{CommentID: 100, UserID: 200, Content: "nice"}
@@ -59,13 +60,14 @@ func TestCommentRepository_CreateReply(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), id)
 	assert.Equal(t, now, rep.CreatedAt)
+	assert.Equal(t, replyStatusNormal, rep.Status)
 }
 
 func TestCommentRepository_CreateReply_WithReplyTo(t *testing.T) {
 	repo, mock := newMockCommentRepo(t)
 	now := time.Now()
 	mock.ExpectQuery(`INSERT INTO replies`).
-		WithArgs(int64(100), int64(200), int64(50), "nice").
+		WithArgs(int64(100), int64(200), int64(50), "nice", replyStatusNormal).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(2, now))
 
 	rep := &Reply{CommentID: 100, UserID: 200, Content: "nice", ReplyToUserID: sql.NullInt64{Int64: 50, Valid: true}}

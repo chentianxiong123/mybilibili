@@ -7,8 +7,8 @@ import (
 
 	"mybilibili/pkg/abstraction"
 	"mybilibili/pkg/errors"
-	"mybilibili/pkg/repository"
 	pb "mybilibili/pkg/pb"
+	"mybilibili/pkg/repository"
 )
 
 type Notifier interface {
@@ -16,20 +16,28 @@ type Notifier interface {
 }
 
 type CommentService struct {
-	repo        *CommentRepository
-	limiter     *commentRateLimiter
-	db          *sql.DB
-	notifier    Notifier
-	reviewSvc   interface {
+	repo      *CommentRepository
+	db        *sql.DB
+	notifier  Notifier
+	reviewSvc interface {
 		ReviewComment(ctx context.Context, content string) (bool, error)
 	}
 	cacheStore abstraction.CacheStore
+
+	// 评论与回复各自独立计数，阈值均可后台配置
+	commentLimiter *commentRateLimiter
+	replyLimiter   *commentRateLimiter
+
+	prohibited  *prohibitedWordStore
+	securityCfg *securityConfigProvider
 }
 
 func NewCommentService(repo *CommentRepository) *CommentService {
+	cfg := defaultSecuritySettings()
 	return &CommentService{
-		repo:    repo,
-		limiter: newCommentRateLimiter(10*time.Minute, 20),
+		repo:           repo,
+		commentLimiter: newCommentRateLimiter(time.Duration(cfg.CommentWindowSeconds)*time.Second, cfg.CommentMaxCount),
+		replyLimiter:   newCommentRateLimiter(time.Duration(cfg.ReplyWindowSeconds)*time.Second, cfg.ReplyMaxCount),
 	}
 }
 
@@ -39,6 +47,37 @@ func (s *CommentService) Repo() *CommentRepository {
 
 func (s *CommentService) SetDB(db *sql.DB) {
 	s.db = db
+}
+
+// SetSecurityConfig 接上后台可配的限流阈值与违禁词缓存刷新间隔，
+// 并拉起后台刷新协程。db 为 nil 时只保留默认阈值，不启协程。
+func (s *CommentService) SetSecurityConfig(ctx context.Context, db *sql.DB) {
+	if db == nil {
+		return
+	}
+	s.securityCfg = newSecurityConfigProvider(db)
+	cfg := s.securityCfg.get(ctx)
+	s.apply(cfg)
+	s.prohibited = newProhibitedWordStore(db, time.Duration(cfg.CacheRefreshIntervalSeconds)*time.Second)
+	s.prohibited.StartRefresher(ctx, func() time.Duration {
+		return time.Duration(s.securityCfg.get(ctx).CacheRefreshIntervalSeconds) * time.Second
+	})
+}
+
+// InvalidateSecurityConfig 让下次读取强制回源，后台保存配置后调用以立即生效。
+func (s *CommentService) InvalidateSecurityConfig(ctx context.Context) {
+	if s.securityCfg != nil {
+		s.securityCfg.invalidate()
+	}
+	s.refreshSecurityConfig(ctx)
+}
+
+// prohibitedWord 命中违禁词时返回该词，未命中或缓存不可用返回 ""。
+func (s *CommentService) prohibitedWord(content string) string {
+	if s.prohibited == nil {
+		return ""
+	}
+	return s.prohibited.match(content)
 }
 
 func (s *CommentService) SetCacheStore(cs abstraction.CacheStore) {
@@ -59,25 +98,21 @@ func (s *CommentService) AddComment(ctx context.Context, req *pb.AddCommentReque
 	if req.Content == "" {
 		return nil, errors.ErrInvalidArgument("content required")
 	}
-	if s.limiter.record(req.UserId, time.Now()) {
+	if s.commentLimiter.record(req.UserId, time.Now()) {
 		return nil, errors.ErrResourceExhausted("too many comments, please slow down")
 	}
-	if s.db != nil {
-		var cnt int
-		s.db.QueryRowContext(ctx,
-			`SELECT COUNT(*) FROM prohibited_words WHERE $1 ILIKE '%' || word || '%'`, req.Content).Scan(&cnt)
-		if cnt > 0 {
-			c := &Comment{
-				ManuscriptID: req.ManuscriptId,
-				UserID:       req.UserId,
-				Content:      req.Content,
-				Status:       1,
-			}
-			id, _ := s.repo.CreateComment(ctx, c)
-			c.ID = id
-			info := s.buildComment(ctx, c, req.UserId, nil)
-			return &pb.AddCommentResponse{Comment: info}, nil
+	// 命中违禁词：落库但标为待审核（status=1），跳过后续 AI 审核与计数
+	if word := s.prohibitedWord(req.Content); word != "" {
+		c := &Comment{
+			ManuscriptID: req.ManuscriptId,
+			UserID:       req.UserId,
+			Content:      req.Content,
+			Status:       1,
 		}
+		id, _ := s.repo.CreateComment(ctx, c)
+		c.ID = id
+		info := s.buildComment(ctx, c, req.UserId, nil)
+		return &pb.AddCommentResponse{Comment: info}, nil
 	}
 	c := &Comment{
 		ManuscriptID: req.ManuscriptId,
@@ -128,14 +163,19 @@ func (s *CommentService) AddReply(ctx context.Context, req *pb.AddReplyRequest) 
 	if req.Content == "" {
 		return nil, errors.ErrInvalidArgument("content required")
 	}
-	if s.limiter.record(req.UserId, time.Now()) {
-		return nil, errors.ErrResourceExhausted("too many comments, please slow down")
+	// 回复走独立的限流桶，与评论分开计数
+	if s.replyLimiter.record(req.UserId, time.Now()) {
+		return nil, errors.ErrResourceExhausted("too many replies, please slow down")
 	}
 
 	rep := &Reply{
 		CommentID: req.CommentId,
 		UserID:    req.UserId,
 		Content:   req.Content,
+	}
+	// 命中违禁词：落库但标为待审核，公开列表只显示 NORMAL，管理员面板仍可见
+	if word := s.prohibitedWord(req.Content); word != "" {
+		rep.Status = statusPendingReview
 	}
 	if req.ReplyToUserId > 0 {
 		rep.ReplyToUserID = sql.NullInt64{Int64: req.ReplyToUserId, Valid: true}
@@ -146,6 +186,12 @@ func (s *CommentService) AddReply(ctx context.Context, req *pb.AddReplyRequest) 
 		return nil, errors.ErrInternal("failed to create reply")
 	}
 	rep.ID = id
+
+	// 待审核的回复不计入稿件评论数，也不推送通知
+	if rep.Status == statusPendingReview {
+		info := s.buildReply(ctx, rep, req.UserId)
+		return &pb.AddReplyResponse{Reply: info}, nil
+	}
 
 	s.repo.IncrementReplyCount(ctx, req.CommentId)
 

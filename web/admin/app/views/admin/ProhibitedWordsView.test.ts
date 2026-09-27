@@ -220,25 +220,43 @@ describe('ProhibitedWordsView.vue — 安全设置', () => {
     expect(w.vm.securityForm).toEqual(emptySecurityForm())
   })
 
-  it('⚠️ 契约不匹配：后端返回的是 password_policy/login_policy 嵌套结构，本表单的 5 个扁平字段拿不到值，只能显示内置默认值', async () => {
+  it('后端已返回真实限流字段（GET 会用默认值补齐缺失项），直接回填', async () => {
     securityApis.getSecuritySettings.mockResolvedValue({
       code: 200,
       data: {
-        password_policy: { min_length: 8, require_upper: true },
-        login_policy: { max_attempts: 5, lockout_minutes: 30 },
+        password_policy: { min_length: 8 },
+        login_policy: { max_attempts: 5 },
+        commentMaxCount: 3,
+        commentWindowSeconds: 30,
+        replyMaxCount: 6,
+        replyWindowSeconds: 45,
+        cacheRefreshIntervalSeconds: 120,
       },
     })
+    const w = makeWrapper()
+    await flushPromises()
+    expect(w.vm.securityForm).toEqual({
+      commentMaxCount: 3,
+      commentWindowSeconds: 30,
+      replyMaxCount: 6,
+      replyWindowSeconds: 45,
+      cacheRefreshIntervalSeconds: 120,
+    })
+    expect(w.vm.securityLoading).toBe(false)
+  })
+
+  it('只存了部分字段时，其余保持内置默认值', async () => {
     const w = makeWrapper()
     await flushPromises()
     expect(w.vm.securityForm).toEqual(emptySecurityForm())
   })
 
-  it('⚠️ 0 会被 || 兜底打回默认值，无法把上限配成 0', async () => {
+  it('字段为 0 时保留 0，不被 || 兜底打回默认值', async () => {
     securityApis.getSecuritySettings.mockResolvedValue({ code: 200, data: { commentMaxCount: 0, replyMaxCount: 0 } })
     const w = makeWrapper()
     await flushPromises()
-    expect(w.vm.securityForm.commentMaxCount).toBe(10)
-    expect(w.vm.securityForm.replyMaxCount).toBe(20)
+    expect(w.vm.securityForm.commentMaxCount).toBe(0)
+    expect(w.vm.securityForm.replyMaxCount).toBe(0)
   })
 
   it('拉取失败：提示错误并复位 securityLoading', async () => {

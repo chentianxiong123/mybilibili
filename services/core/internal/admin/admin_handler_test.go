@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -884,13 +886,101 @@ func TestHandleSecuritySettings_PUT_200(t *testing.T) {
 	h.Register(mux)
 
 	expectPermQuery(mock, 1, []string{"security:manage"})
-	mock.ExpectExec(`INSERT INTO system_configs`).WillReturnResult(sqlmock.NewResult(0, 1))
+	stored := map[string]any{"password_policy": map[string]any{"min_length": 8}, "commentMaxCount": 20}
+	rawStored, _ := json.Marshal(stored)
+	mock.ExpectQuery(`SELECT config_value FROM system_configs WHERE config_key='security_settings'`).
+		WillReturnRows(sqlmock.NewRows([]string{"config_value"}).AddRow(string(rawStored)))
+	mock.ExpectExec(`INSERT INTO system_configs`).
+		WithArgs(sqlmock.AnyArg(), int64(1)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	rec := doReq(t, mux, "PUT", "/api/v1/admin/security-settings",
-		map[string]any{"password_policy": map[string]any{"min_length": 12}},
+		map[string]any{"password_policy": map[string]any{"min_length": 12}, "commentMaxCount": 5},
 		map[string]string{"X-Admin-Id": "1"})
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `"status":"ok"`)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// jsonContaining 让 sqlmock 能对落库的 JSON 文本做子串断言。
+type jsonContaining struct{ substrings []string }
+
+func (j jsonContaining) Match(v driver.Value) bool {
+	s, ok := v.(string)
+	if !ok {
+		return false
+	}
+	for _, sub := range j.substrings {
+		if !strings.Contains(s, sub) {
+			return false
+		}
+	}
+	return true
+}
+
+// 保存限流设置时不能把库里已有的 password_policy 抹掉（读-合并-写）。
+func TestHandleSecuritySettings_PUT_MergeKeepsExistingKeys(t *testing.T) {
+	h, mock := newTestHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	expectPermQuery(mock, 1, []string{"security:manage"})
+	stored := map[string]any{
+		"password_policy": map[string]any{"min_length": 8, "max_age_days": 90},
+		"commentMaxCount": 20,
+	}
+	rawStored, _ := json.Marshal(stored)
+	mock.ExpectQuery(`SELECT config_value FROM system_configs WHERE config_key='security_settings'`).
+		WillReturnRows(sqlmock.NewRows([]string{"config_value"}).AddRow(string(rawStored)))
+
+	// 前端只提交它认识的 5 个限流字段，落库结果必须仍带着 password_policy
+	mock.ExpectExec(`INSERT INTO system_configs`).
+		WithArgs(jsonContaining{[]string{
+			`"commentMaxCount":3`,
+			`"password_policy"`,
+			`"min_length":8`,
+		}}, int64(1)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	rec := doReq(t, mux, "PUT", "/api/v1/admin/security-settings",
+		map[string]any{
+			"commentMaxCount":             3,
+			"commentWindowSeconds":        60,
+			"replyMaxCount":               5,
+			"replyWindowSeconds":          60,
+			"cacheRefreshIntervalSeconds": 120,
+		},
+		map[string]string{"X-Admin-Id": "1"})
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandleSecuritySettings_GET_MergesDefaultsForMissingFields(t *testing.T) {
+	h, mock := newTestHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	expectPermQuery(mock, 1, []string{"security:manage"})
+	// 库里只有零星几个字段（早期 admin 只存过 password_policy）
+	stored := map[string]any{"commentMaxCount": 7}
+	rawStored, _ := json.Marshal(stored)
+	mock.ExpectQuery(`SELECT config_value FROM system_configs WHERE config_key='security_settings'`).
+		WillReturnRows(sqlmock.NewRows([]string{"config_value"}).AddRow(string(rawStored)))
+
+	rec := doReq(t, mux, "GET", "/api/v1/admin/security-settings", nil,
+		map[string]string{"X-Admin-Id": "1"})
+	assert.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	// 存量值生效
+	assert.Contains(t, body, `"commentMaxCount":7`)
+	// 缺失字段由默认值补齐，前端不会拿到残缺配置
+	assert.Contains(t, body, `"commentWindowSeconds":600`)
+	assert.Contains(t, body, `"replyMaxCount":20`)
+	assert.Contains(t, body, `"replyWindowSeconds":600`)
+	assert.Contains(t, body, `"cacheRefreshIntervalSeconds":300`)
+	// 原有 policy 不丢
+	assert.Contains(t, body, `"password_policy"`)
+	assert.Contains(t, body, `"login_policy"`)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -900,6 +990,8 @@ func TestHandleSecuritySettings_PUT_DBError(t *testing.T) {
 	h.Register(mux)
 
 	expectPermQuery(mock, 1, []string{"security:manage"})
+	mock.ExpectQuery(`SELECT config_value FROM system_configs WHERE config_key='security_settings'`).
+		WillReturnRows(sqlmock.NewRows([]string{"config_value"}).AddRow("{}"))
 	mock.ExpectExec(`INSERT INTO system_configs`).WillReturnError(fmt.Errorf("db error"))
 
 	rec := doReq(t, mux, "PUT", "/api/v1/admin/security-settings",

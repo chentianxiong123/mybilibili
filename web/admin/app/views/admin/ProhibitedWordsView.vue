@@ -113,11 +113,12 @@ const loadSecuritySettings = async () => {
     const res = await getSecuritySettings()
     if (res.code === 200 || res.success) {
       const data = res.data || {}
-      securityForm.value.commentMaxCount = data.commentMaxCount || 10
-      securityForm.value.commentWindowSeconds = data.commentWindowSeconds || 60
-      securityForm.value.replyMaxCount = data.replyMaxCount || 20
-      securityForm.value.replyWindowSeconds = data.replyWindowSeconds || 60
-      securityForm.value.cacheRefreshIntervalSeconds = data.cacheRefreshIntervalSeconds || 300
+      // 用 ?? 而不是 ||：0 是有意义的配置（0 条即禁用），不能被打回默认值
+      securityForm.value.commentMaxCount = data.commentMaxCount ?? 10
+      securityForm.value.commentWindowSeconds = data.commentWindowSeconds ?? 60
+      securityForm.value.replyMaxCount = data.replyMaxCount ?? 20
+      securityForm.value.replyWindowSeconds = data.replyWindowSeconds ?? 60
+      securityForm.value.cacheRefreshIntervalSeconds = data.cacheRefreshIntervalSeconds ?? 300
     }
   } catch (error) {
     ElMessage.error('获取安全设置失败')

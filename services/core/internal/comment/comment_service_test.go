@@ -23,6 +23,15 @@ func newCommentSvc(t *testing.T) (*CommentService, sqlmock.Sqlmock) {
 	return svc, mock
 }
 
+// seedProhibited 直接往违禁词内存缓存里塞词。
+// 违禁词检查已从"每次查库"改为内存匹配，所以测试不再需要 mock 那条 SQL。
+func seedProhibited(svc *CommentService, words ...ProhibitedWord) {
+	store := newProhibitedWordStore(nil, time.Minute)
+	store.words = words
+	store.loaded = true
+	svc.prohibited = store
+}
+
 func TestAddComment_EmptyContent(t *testing.T) {
 	svc, _ := newCommentSvc(t)
 	_, err := svc.AddComment(context.Background(), &pb.AddCommentRequest{UserId: 1, ManuscriptId: 9})
@@ -35,9 +44,6 @@ func TestAddComment_Success(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 
-	// 违禁词检查 → 无
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM prohibited_words`).
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 	// 创建评论
 	mock.ExpectQuery(`INSERT INTO comments`).
 		WithArgs(int64(9), int64(1), "好看").
@@ -70,8 +76,7 @@ func TestAddComment_ProhibitedWord(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM prohibited_words`).
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	seedProhibited(svc, ProhibitedWord{Word: "脏话", MatchType: matchTypeContains})
 	// 违禁词 → 直接建评论 status=1，无 daily metric / review
 	mock.ExpectQuery(`INSERT INTO comments`).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(6, now))
@@ -92,11 +97,96 @@ func TestAddComment_RateLimited(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 20; i++ {
-		svc.limiter.record(1, time.Now())
+		svc.commentLimiter.record(1, time.Now())
 	}
 	_, err := svc.AddComment(ctx, &pb.AddCommentRequest{UserId: 1, ManuscriptId: 9, Content: "x"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "too many comments")
+}
+
+// 评论与回复现在各用独立的桶，回复打满不影响评论。
+func TestAddComment_ReplyLimitIsIndependent(t *testing.T) {
+	svc, mock := newCommentSvc(t)
+	ctx := context.Background()
+	now := time.Now()
+
+	for i := 0; i < 20; i++ {
+		svc.replyLimiter.record(1, time.Now())
+	}
+
+	// 回复桶满了，但评论桶是空的，评论应该照发
+	mock.ExpectQuery(`INSERT INTO comments`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(8, now))
+	mock.ExpectExec(`INSERT INTO manuscript_daily_metrics`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE manuscripts SET comment_count`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`INSERT INTO content_reviews`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(`SELECT id, username, nickname, avatar, level FROM users`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "nickname", "avatar", "level"}).AddRow(1, "u", "u", "", 1))
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_interactions`).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+
+	_, err := svc.AddComment(ctx, &pb.AddCommentRequest{UserId: 1, ManuscriptId: 9, Content: "x"})
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// 回复超限要给出"回复"而不是"评论"的提示，便于用户知道该降频哪一类。
+func TestAddReply_RateLimited(t *testing.T) {
+	svc, _ := newCommentSvc(t)
+	ctx := context.Background()
+
+	for i := 0; i < 20; i++ {
+		svc.replyLimiter.record(1, time.Now())
+	}
+	_, err := svc.AddReply(ctx, &pb.AddReplyRequest{UserId: 1, CommentId: 3, Content: "x"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "too many replies")
+}
+
+// 回复命中违禁词：落库标 PENDING（公开列表只查 NORMAL），且不计数、不推送通知。
+func TestAddReply_ProhibitedWord(t *testing.T) {
+	svc, mock := newCommentSvc(t)
+	ctx := context.Background()
+	now := time.Now()
+
+	seedProhibited(svc, ProhibitedWord{Word: "脏话", MatchType: matchTypeContains})
+
+	// 断言真的把 PENDING 写进了 replies.status
+	mock.ExpectQuery(`INSERT INTO replies`).
+		WithArgs(int64(3), int64(1), nil, "你个脏话", statusPendingReview).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(11, now))
+	mock.ExpectQuery(`SELECT id, username, nickname, avatar, level FROM users`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "nickname", "avatar", "level"}).AddRow(1, "u", "u", "", 1))
+
+	resp, err := svc.AddReply(ctx, &pb.AddReplyRequest{UserId: 1, CommentId: 3, Content: "你个脏话"})
+	require.NoError(t, err)
+	require.NotNil(t, resp.Reply)
+	// 关键：没有 UPDATE replies SET reply_count / manuscripts.comment_count / 通知
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// 回复正常时行为不变：计数 + 通知都照旧。
+func TestAddReply_NormalStillCounts(t *testing.T) {
+	svc, mock := newCommentSvc(t)
+	ctx := context.Background()
+	now := time.Now()
+
+	seedProhibited(svc, ProhibitedWord{Word: "脏话", MatchType: matchTypeContains})
+
+	mock.ExpectQuery(`INSERT INTO replies`).
+		WithArgs(int64(3), int64(1), nil, "正常回复", replyStatusNormal).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(12, now))
+	mock.ExpectExec(`UPDATE comments SET reply_count`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(`SELECT id, manuscript_id, user_id, content, like_count, reply_count, status, created_at, updated_at
+		 FROM comments`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "manuscript_id", "user_id", "content", "like_count", "reply_count", "status", "created_at", "updated_at"}).
+			AddRow(3, 9, 1, "父评论", 0, 0, 0, now, now))
+	mock.ExpectQuery(`SELECT id, username, nickname, avatar, level FROM users`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "nickname", "avatar", "level"}).AddRow(1, "u", "u", "", 1))
+
+	_, err := svc.AddReply(ctx, &pb.AddReplyRequest{UserId: 1, CommentId: 3, Content: "正常回复"})
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestAddComment_ReviewRejects(t *testing.T) {
@@ -106,8 +196,6 @@ func TestAddComment_ReviewRejects(t *testing.T) {
 
 	svc.SetReviewService(fakeReview{passed: false})
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM prohibited_words`).
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 	mock.ExpectQuery(`INSERT INTO comments`).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(7, now))
 	mock.ExpectExec(`INSERT INTO manuscript_daily_metrics`).WillReturnResult(sqlmock.NewResult(0, 1))
@@ -130,8 +218,6 @@ func TestAddComment_CreateError(t *testing.T) {
 	svc, mock := newCommentSvc(t)
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM prohibited_words`).
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 	mock.ExpectQuery(`INSERT INTO comments`).WillReturnError(sql.ErrConnDone)
 
 	_, err := svc.AddComment(ctx, &pb.AddCommentRequest{UserId: 1, ManuscriptId: 9, Content: "x"})

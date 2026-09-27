@@ -108,6 +108,8 @@ func main() {
 
 	commentSvc.SetDB(db)
 	commentSvc.SetNotifier(msgDanmakuClient)
+	// 接上后台可配的评论/回复限流阈值 + 违禁词内存缓存（后台"违禁词-安全设置"页）
+	commentSvc.SetSecurityConfig(context.Background(), db)
 	interactionSvc.SetDB(db)
 	interactionSvc.SetNotifier(msgDanmakuClient)
 

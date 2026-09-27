@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"mybilibili/core/internal/user"
-	"mybilibili/pkg/repository"
 	pb "mybilibili/pkg/pb"
+	"mybilibili/pkg/repository"
 )
 
 type User = user.User
@@ -108,10 +108,17 @@ func (r *CommentRepository) Delete(ctx context.Context, id, userID int64) error 
 }
 
 func (r *CommentRepository) CreateReply(ctx context.Context, rep *Reply) (int64, error) {
+	// status 允许调用方显式指定（命中违禁词时标 PENDING 送人工审核），
+	// 不指定则沿用列表查询认的 NORMAL，避免历史数据行为变化。
+	status := rep.Status
+	if status == "" {
+		status = replyStatusNormal
+	}
 	var id int64
 	err := r.db.QueryRowContext(ctx,
-		`INSERT INTO replies (comment_id, user_id, reply_to_user_id, content) VALUES ($1, $2, $3, $4) RETURNING id, created_at`,
-		rep.CommentID, rep.UserID, repository.NullInt64FromSQL(rep.ReplyToUserID), rep.Content).Scan(&id, &rep.CreatedAt)
+		`INSERT INTO replies (comment_id, user_id, reply_to_user_id, content, status) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`,
+		rep.CommentID, rep.UserID, repository.NullInt64FromSQL(rep.ReplyToUserID), rep.Content, status).Scan(&id, &rep.CreatedAt)
+	rep.Status = status
 	return id, err
 }
 

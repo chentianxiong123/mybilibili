@@ -640,23 +640,15 @@ func (h *Handler) handleLoginLogs(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleSecuritySettings(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		var settings map[string]any
-		var raw string
-		if err := h.svc.repo.db.QueryRowContext(r.Context(),
-			`SELECT config_value FROM system_configs WHERE config_key='security_settings'`).Scan(&raw); err == nil && raw != "" {
-			if json.Unmarshal([]byte(raw), &settings) != nil || settings == nil {
-				settings = defaultSecuritySettings()
-			}
-		} else {
-			settings = defaultSecuritySettings()
-		}
-		httputil.WriteOK(w, settings)
+		httputil.WriteOK(w, h.loadSecuritySettings(r))
 	case "PUT":
-		var settings map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
+		var incoming map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&incoming); err != nil {
 			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
 			return
 		}
+		// 读-合并-写：前端只提交它认识的那几个字段，直接覆盖会把 password_policy 之类抹掉
+		settings := mergeSecuritySettings(h.loadStoredSecuritySettings(r), incoming)
 		raw, _ := json.Marshal(settings)
 		_, err := h.svc.repo.db.ExecContext(r.Context(),
 			`INSERT INTO system_configs (config_key, config_value, updated_at, updated_by)
@@ -671,6 +663,52 @@ func (h *Handler) handleSecuritySettings(w http.ResponseWriter, r *http.Request)
 	default:
 		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 	}
+}
+
+// loadStoredSecuritySettings 读出 system_configs 里存的原始配置。
+// 查不到/非法 JSON 一律返回空 map，交给上层合并默认值。
+func (h *Handler) loadStoredSecuritySettings(r *http.Request) map[string]any {
+	var raw string
+	if err := h.svc.repo.db.QueryRowContext(r.Context(),
+		`SELECT config_value FROM system_configs WHERE config_key='security_settings'`).Scan(&raw); err != nil || raw == "" {
+		return map[string]any{}
+	}
+	var settings map[string]any
+	if json.Unmarshal([]byte(raw), &settings) != nil || settings == nil {
+		return map[string]any{}
+	}
+	return settings
+}
+
+// loadSecuritySettings 返回给前端的完整配置：默认值打底，存量覆盖。
+// 这样即使库里只存了部分字段，前端也能拿到一份字段齐全的设置。
+func (h *Handler) loadSecuritySettings(r *http.Request) map[string]any {
+	return mergeSecuritySettings(defaultSecuritySettings(), h.loadStoredSecuritySettings(r))
+}
+
+// mergeSecuritySettings 把 override 合并进 base，两层深（顶层 + policy 子对象）。
+func mergeSecuritySettings(base, override map[string]any) map[string]any {
+	out := make(map[string]any, len(base)+len(override))
+	for k, v := range base {
+		out[k] = v
+	}
+	for k, v := range override {
+		nested, isNested := v.(map[string]any)
+		baseNested, baseIsNested := out[k].(map[string]any)
+		if isNested && baseIsNested {
+			merged := make(map[string]any, len(baseNested)+len(nested))
+			for bk, bv := range baseNested {
+				merged[bk] = bv
+			}
+			for nk, nv := range nested {
+				merged[nk] = nv
+			}
+			out[k] = merged
+			continue
+		}
+		out[k] = v
+	}
+	return out
 }
 
 func defaultSecuritySettings() map[string]any {
@@ -690,6 +728,13 @@ func defaultSecuritySettings() map[string]any {
 			"two_factor_required":  false,
 			"ip_whitelist_enabled": false,
 		},
+		// 评论/回复频率限制与违禁词缓存刷新间隔，由 comment 包消费。
+		// 字段名与 admin 前端 ProhibitedWordsView 提交的保持一致。
+		"commentMaxCount":             20,
+		"commentWindowSeconds":        600,
+		"replyMaxCount":               20,
+		"replyWindowSeconds":          600,
+		"cacheRefreshIntervalSeconds": 300,
 	}
 }
 
