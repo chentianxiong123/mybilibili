@@ -11,11 +11,26 @@ import (
 // 若刷新口也被默认拒绝，就永远换不出新令牌，登录会变成一张单程票。
 // 这两条路径自身就是凭证的签发处，身份由 handler 内部严格校验
 // （refresh 要求 typ=admin_refresh + 一次性消费成功），所以公开是安全的。
+//
+// 字幕相关的前缀例外：
+//   - /subtitle/video    视频播放器公开读字幕（嵌入播放器组件，每次播放都拉）
+//   - /subtitle/upload   上传字幕（已登录创作者；handler 拿 X-User-Id 区分创建者）
+//   - /subtitle/upload-srt 上传 SRT 文件（同上）
+//   - /subtitle/generate 触发 Whisper 生成——work 服务转码完成后内部回调，没有
+//     凭证，详见 services/work/internal/work/ai_client.go
 var adminPublicPaths = []string{
 	"/api/v1/admin/login",
 	"/api/v1/admin/token/refresh",
+	"/api/v1/subtitle/video",
+	"/api/v1/subtitle/upload",
+	"/api/v1/subtitle/upload-srt",
+	"/api/v1/subtitle/generate",
 }
 
+// adminPublicPaths 也承担「非 /admin/ 路径里必须保持匿名可访问」的例外。
+// 历史上只有 admin 登录/续期那 2 条，新增了几条带子路径的资源端点
+// （字幕文件/上传/字幕生成）。前缀匹配见上方 IsAdminPath 的实现。
+//
 // adminOnlyPrefixes 是后台专用、但路径里不含 /admin/ 的接口前缀。
 // 这些路由原本同样没有任何鉴权（AI 渠道配置/技能/用量、运营统计看板）。
 // 只列出「实测仅 admin 前端调用、且无服务间内部调用」的前缀。
@@ -44,6 +59,14 @@ var adminOnlyPrefixes = []string{
 	"/api/v1/search/hot/score-get",
 	"/api/v1/search/hot/delete",
 	"/api/v1/search/hot/get",
+	// 字幕管理口：approve/reject/set-default/pending/videos/scan/import-* + DELETE 一律管理员。
+	// 例外的播放器读 + 用户上传 + work 内部 generate 都在上方 adminPublicPaths。
+	"/api/v1/subtitle",
+	// AI 客服转接：把会话转到人工坐席/管理员，admin 专属操作。
+	"/api/v1/ai/customer/transfer",
+	// AI 审核端点（评论/回复/举报内容审核）：全仓零调用方，dead 但暴露，
+	// 任何人都能匿名 POST 触发审核——既消耗 AI 配额又会污染审核日志。
+	"/api/v1/ai/review",
 }
 
 // IsAdminPath 判断请求路径是否属于必须持有管理员身份的后台接口。
@@ -57,8 +80,10 @@ var adminOnlyPrefixes = []string{
 // 用路径级默认拒绝，而不是逐条路由包装，是为了新增后台接口时不会漏挂鉴权
 // （原始设计依赖的 Traefik forwardAuth 从未配置，逐条包装正是当初漏掉的原因）。
 func IsAdminPath(path string) bool {
+	// adminPublicPaths 同时支持精确匹配和前缀匹配：
+	// 前缀匹配用 p+"/" 而非 p，避免 /admin 误中 /admin-anything。
 	for _, p := range adminPublicPaths {
-		if path == p {
+		if path == p || strings.HasPrefix(path, p+"/") {
 			return false
 		}
 	}

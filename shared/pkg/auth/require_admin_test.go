@@ -68,6 +68,57 @@ func TestIsAdminPath_SearchHotManagement(t *testing.T) {
 	}
 }
 
+func TestIsAdminPath_SubtitleAndAI(t *testing.T) {
+	// 字幕 admin 操作：approve/reject/set-default/pending/videos/scan/import-*
+	for _, p := range []string{
+		"/api/v1/subtitle",
+		"/api/v1/subtitle/pending",
+		"/api/v1/subtitle/videos",
+		"/api/v1/subtitle/set-default",
+		"/api/v1/subtitle/import-srt",
+		"/api/v1/subtitle/import-system",
+		"/api/v1/subtitle/scan/11",
+		"/api/v1/subtitle/123/approve",
+		"/api/v1/subtitle/456/reject",
+		"/api/v1/subtitle/789/preview",
+		"/api/v1/subtitle/321/set-default",
+		"/api/v1/subtitle/1", // DELETE
+	} {
+		assert.True(t, IsAdminPath(p), "%s 必须被后台门禁覆盖", p)
+	}
+	// 公开例外：播放器读 + 用户上传 + work 内部 generate
+	for _, p := range []string{
+		"/api/v1/subtitle/video",
+		"/api/v1/subtitle/video/123",
+		"/api/v1/subtitle/video/10/zh-CN",
+		"/api/v1/subtitle/upload",
+		"/api/v1/subtitle/upload-srt",
+		"/api/v1/subtitle/generate",
+	} {
+		assert.False(t, IsAdminPath(p), "%s 必须保持公开", p)
+	}
+	// AI 客服转接 + AI 审核（dead 但暴露）：必须关门
+	assert.True(t, IsAdminPath("/api/v1/ai/customer/transfer"))
+	for _, p := range []string{
+		"/api/v1/ai/review",
+		"/api/v1/ai/review/content",
+		"/api/v1/ai/review/comment",
+		"/api/v1/ai/review/reply",
+		"/api/v1/ai/review/report",
+	} {
+		assert.True(t, IsAdminPath(p), "%s 必须被后台门禁覆盖", p)
+	}
+	// 临近的 user-self 端点不能误伤
+	for _, p := range []string{
+		"/api/v1/ai/customer/chat",
+		"/api/v1/ai/customer/history/4",
+		"/api/v1/ai/summary/generate",
+		"/api/v1/ai/summary/check/10",
+	} {
+		assert.False(t, IsAdminPath(p), "%s 不能误判为后台", p)
+	}
+}
+
 func TestIsAdminPath_PublicAndUserPaths(t *testing.T) {
 	for _, p := range []string{
 		"/api/v1/admin/login", // 门卫自己不能要求刷卡
@@ -77,9 +128,9 @@ func TestIsAdminPath_PublicAndUserPaths(t *testing.T) {
 		"/api/v1/search/videos",
 		"/api/v1/health",
 		"/api/v1/ai/health",
-		"/api/v1/ai/customer/chat",         // 普通用户客服入口
-		"/api/v1/ai/customer/history/4",    // 普通用户客服入口
-		"/api/v1/ai/customer/transfer",     // 普通用户客服入口
+		"/api/v1/ai/customer/chat",      // 普通用户客服入口
+		"/api/v1/ai/customer/history/4", // 普通用户客服入口
+		// 注意：/api/v1/ai/customer/transfer 不在这里——是 admin 转接人工坐席，adminOnlyPrefixes 已收
 		"/api/v1/ai/summary/generate",      // work 内部编排，不带凭证
 		"/api/v1/search/hot/clean-expired", // core 定时任务，不带凭证
 		"/api/v1/work/health",
