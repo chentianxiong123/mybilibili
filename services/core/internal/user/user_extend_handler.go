@@ -497,33 +497,60 @@ func (h *UserExtendHandler) handlePrivacy(w http.ResponseWriter, r *http.Request
 		return
 	}
 	userID := uid
-	path := strings.TrimPrefix(r.URL.Path, "/api/v1/user/privacy/")
-	_ = path
+
+	// camelCase（前端 API 契约）→ 数据库列名白名单。
+	// 之前直接拿请求体 key 拼进 `SET <key> = $1`，登录用户可注入任意 SQL。
+	// 现在只允许白名单内的列，列表外 key 一律忽略。
+	colByCamel := map[string]string{
+		"publicCollection":    "public_collection",
+		"publicBirthdayTags":  "public_birthday_tags",
+		"publicCoinVideos":    "public_coin_videos",
+		"publicLikeVideos":    "public_like_videos",
+		"publicFollowingList": "public_following_list",
+		"publicFollowersList": "public_followers_list",
+	}
+
 	switch r.Method {
 	case "GET":
-		var settings map[string]interface{}
-		h.svc.repo.db.QueryRowContext(r.Context(),
+		// 显式扫描到局部变量再组装 camelCase JSON：
+		// 之前 Scan 进 map 指针是错的（Scan 不支持 map），且返回 snake_case，
+		// 前端按 camelCase 读永远 undefined、永远回退默认值。
+		var publicCollection, publicBirthdayTags, publicCoinVideos, publicLikeVideos int
+		var publicFollowingList, publicFollowersList int
+		err := h.svc.repo.db.QueryRowContext(r.Context(),
 			`SELECT public_collection, public_birthday_tags, public_coin_videos, public_like_videos,
 			        public_following_list, public_followers_list
 			 FROM user_privacy_settings WHERE user_id = $1`, userID).Scan(
-			&settings, &settings, &settings, &settings, &settings, &settings)
-		if settings == nil {
-			settings = map[string]interface{}{
-				"public_collection": 1, "public_birthday_tags": 0, "public_coin_videos": 0,
-				"public_like_videos": 0, "public_following_list": 0, "public_followers_list": 0,
-			}
+			&publicCollection, &publicBirthdayTags, &publicCoinVideos, &publicLikeVideos,
+			&publicFollowingList, &publicFollowersList)
+		if err != nil {
+			// 没设置过：默认收藏夹公开，其余不公开
+			publicCollection, publicBirthdayTags, publicCoinVideos = 1, 0, 0
+			publicLikeVideos, publicFollowingList, publicFollowersList = 0, 0, 0
 		}
-		json.NewEncoder(w).Encode(settings)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"publicCollection":    publicCollection,
+			"publicBirthdayTags":  publicBirthdayTags,
+			"publicCoinVideos":    publicCoinVideos,
+			"publicLikeVideos":    publicLikeVideos,
+			"publicFollowingList": publicFollowingList,
+			"publicFollowersList": publicFollowersList,
+		})
 	case "PUT":
 		var req map[string]interface{}
 		json.NewDecoder(r.Body).Decode(&req)
 		h.svc.repo.db.ExecContext(r.Context(),
 			`INSERT INTO user_privacy_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, userID)
-		for k, v := range req {
+		// 只更新白名单内的列；col 来自上面的常量映射，不是用户输入
+		for camel, v := range req {
+			col, ok := colByCamel[camel]
+			if !ok {
+				continue
+			}
 			h.svc.repo.db.ExecContext(r.Context(),
-				`UPDATE user_privacy_settings SET `+k+` = $1, updated_at = NOW() WHERE user_id = $2`, v, userID)
+				`UPDATE user_privacy_settings SET `+col+` = $1, updated_at = NOW() WHERE user_id = $2`, v, userID)
 		}
-		w.Write([]byte(`{"status":"ok"}`))
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	}
 }
 

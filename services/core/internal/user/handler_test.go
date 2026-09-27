@@ -625,7 +625,9 @@ func TestHandlePrivacy_GET_200(t *testing.T) {
 		"X-User-Id": "99",
 	})
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), `"public_collection"`)
+	// 响应契约是 camelCase（前端 /space/[uid]/setting.vue 读 data.publicCollection）
+	assert.Contains(t, rec.Body.String(), `"publicCollection"`)
+	assert.NotContains(t, rec.Body.String(), `"public_collection"`)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -909,13 +911,50 @@ func TestHandlePrivacy_PUT_200(t *testing.T) {
 	mock.ExpectExec(`UPDATE user_privacy_settings SET`).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	body := map[string]interface{}{"public_collection": 0}
+	// 前端发 camelCase（/space/[uid]/setting.vue handlePrivacyChange）
+	body := map[string]interface{}{"publicCollection": 0}
 	rec := doRequest(t, mux, "PUT", "/api/v1/user/privacy/test", body, map[string]string{
 		"X-User-Id": "99",
 	})
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `"status":"ok"`)
 	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// 注入防护：PUT 里带白名单外 key（如拼 SQL 的列名）必须被忽略，
+// 不能拼进 SET 子句；只有白名单列才发 UPDATE。
+func TestHandlePrivacy_PUT_IgnoresUnknownKeys(t *testing.T) {
+	h, mock := newTestHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	mock.ExpectExec(`INSERT INTO user_privacy_settings`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE user_privacy_settings SET`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	body := map[string]interface{}{
+		"publicCollection": 1,
+		"publicFollowersList; DROP TABLE users--": 1, // 注入尝试，必须被忽略
+		"user_id = 1; UPDATE admin_users SET admin_level=2": 1,
+	}
+	rec := doRequest(t, mux, "PUT", "/api/v1/user/privacy/test", body, map[string]string{
+		"X-User-Id": "99",
+	})
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHandlePrivacy_Anonymous_401(t *testing.T) {
+	h, _ := newTestHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	rec := doRequest(t, mux, "GET", "/api/v1/user/privacy/test", nil, nil)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	rec = doRequest(t, mux, "PUT", "/api/v1/user/privacy/test",
+		map[string]interface{}{"publicCollection": 0}, nil)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
 func TestHandleUserByID_InvalidID(t *testing.T) {
