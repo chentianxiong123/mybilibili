@@ -148,8 +148,15 @@ const handleDelete = async (row) => {
     if (res.code === 200 || res.success) {
       ElMessage.success('删除成功')
       loadCategories()
+    } else {
+      ElMessage.error(res.message || '删除失败')
     }
-  } catch {}
+  } catch (error) {
+    // ElMessageBox 取消时 reject 的是 'cancel' 字符串，不该报错
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error('删除失败')
+    }
+  }
 }
 
 onMounted(() => {

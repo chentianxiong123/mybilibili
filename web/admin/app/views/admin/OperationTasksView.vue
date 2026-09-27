@@ -177,6 +177,8 @@ const loadData = async () => {
       return
     }
     ElMessage.error(res.message || '加载任务失败')
+  } catch {
+    ElMessage.error('加载任务失败')
   } finally {
     loading.value = false
   }
@@ -220,6 +222,8 @@ const showDetail = async (row) => {
       return
     }
     ElMessage.error(res.message || '加载任务详情失败')
+  } catch {
+    ElMessage.error('加载任务详情失败')
   } finally {
     detailLoading.value = false
   }

@@ -104,6 +104,8 @@ const loadData = async () => {
       return
     }
     ElMessage.error(res.message || '加载审计日志失败')
+  } catch {
+    ElMessage.error('加载审计日志失败')
   } finally {
     loading.value = false
   }
@@ -148,6 +150,8 @@ const showDetail = async (row) => {
       return
     }
     ElMessage.error(res.message || '加载审计详情失败')
+  } catch {
+    ElMessage.error('加载审计详情失败')
   } finally {
     detailLoading.value = false
   }
