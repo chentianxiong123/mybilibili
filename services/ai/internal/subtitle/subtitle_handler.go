@@ -147,7 +147,11 @@ func (h *Handler) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := httputil.GetUserIDFromHeader(r)
+	// 创作者上传字幕：匿名写进去会以 userID=0 冒充系统上传，必须登录
+	userID, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
 	var req struct {
 		VideoID      int64  `json:"video_id"`
 		Language     string `json:"language"`
@@ -198,7 +202,10 @@ func (h *Handler) handleUploadSRT(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	userID := httputil.GetUserIDFromHeader(r)
+	userID, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		http.Error(w, "parse form: "+err.Error(), 400)
 		return
@@ -372,5 +379,3 @@ func (h *Handler) handleSubtitleByID(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteOK(w, map[string]string{"status": "ok"})
 	}
 }
-
-

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -102,6 +103,52 @@ func doSubtitle(t *testing.T, h *Handler, method, path, body string) *httptest.R
 	return rr
 }
 
+// doSubtitleAsUser 带登录身份的版本：/subtitle/upload* 现在要求 X-User-Id，
+// 匿名调用会被 RequireUser 拒为 401。
+func doSubtitleAsUser(t *testing.T, h *Handler, method, path, body string, uid int64) *httptest.ResponseRecorder {
+	t.Helper()
+	mux := http.NewServeMux()
+	h.Register(mux)
+	var rdr io.Reader
+	if body != "" {
+		rdr = strings.NewReader(body)
+	}
+	req := httptest.NewRequest(method, path, rdr)
+	req.Header.Set("X-User-Id", strconv.FormatInt(uid, 10))
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	return rr
+}
+
+// doMultipartAsUser 带登录身份的 multipart 版（/subtitle/upload-srt 需要 X-User-Id）。
+func doMultipartAsUser(t *testing.T, h *Handler, path string, fields map[string]string, fileField, fileName, fileContent string, uid int64) *httptest.ResponseRecorder {
+	t.Helper()
+	boundary := "----TestBoundary"
+	var body bytes.Buffer
+	for k, v := range fields {
+		body.WriteString("--" + boundary + "\r\n")
+		body.WriteString("Content-Disposition: form-data; name=\"" + k + "\"\r\n\r\n")
+		body.WriteString(v + "\r\n")
+	}
+	if fileName != "" {
+		body.WriteString("--" + boundary + "\r\n")
+		body.WriteString("Content-Disposition: form-data; name=\"" + fileField + "\"; filename=\"" + fileName + "\"\r\n")
+		body.WriteString("Content-Type: text/plain\r\n\r\n")
+		body.WriteString(fileContent)
+		body.WriteString("\r\n")
+	}
+	body.WriteString("--" + boundary + "--\r\n")
+
+	req := httptest.NewRequest(http.MethodPost, path, &body)
+	req.Header.Set("Content-Type", "multipart/form-data; boundary="+boundary)
+	req.Header.Set("X-User-Id", strconv.FormatInt(uid, 10))
+	mux := http.NewServeMux()
+	h.Register(mux)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	return rr
+}
+
 func TestHandleSubtitleGenerate_200(t *testing.T) {
 	h, store, storage := newTestSubtitleHandler(t)
 	store.insertID = "subtitle-gen-1"
@@ -110,7 +157,7 @@ func TestHandleSubtitleGenerate_200(t *testing.T) {
 	rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/generate", `{"manuscript_id":10,"video_id":99}`)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
-		Code int    `json:"code"`
+		Code int `json:"code"`
 		Data struct {
 			SubtitleID string                   `json:"subtitle_id"`
 			Cues       []map[string]interface{} `json:"cues"`
@@ -128,7 +175,7 @@ func TestHandleSubtitleVideo_200(t *testing.T) {
 	rr := doSubtitle(t, h, http.MethodGet, "/api/v1/subtitle/video/42", "")
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
-		Code int       `json:"code"`
+		Code int               `json:"code"`
 		Data []json.RawMessage `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
@@ -426,8 +473,7 @@ func TestHandleUpload(t *testing.T) {
 	t.Run("POST success with content", func(t *testing.T) {
 		store := &flexMockStore{insertID: "upload-1"}
 		h := newFlexHandler(store)
-		rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/upload",
-			`{"video_id":10,"language":"en","language_name":"English","content":"[{\"index\":1,\"startTime\":0,\"endTime\":1,\"text\":\"hello\"}]"}`)
+		rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/upload", `{"video_id":10,"language":"en","language_name":"English","content":"[{\"index\":1,\"startTime\":0,\"endTime\":1,\"text\":\"hello\"}]"}`, 4)
 		assert.Equal(t, http.StatusOK, rr.Code)
 		var resp struct {
 			Code int                    `json:"code"`
@@ -445,30 +491,27 @@ func TestHandleUpload(t *testing.T) {
 			"video_id":    10,
 			"srt_content": srt,
 		})
-		rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/upload", string(body))
+		rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/upload", string(body), 4)
 		assert.Equal(t, http.StatusOK, rr.Code)
 	})
 
 	t.Run("POST no content -> 400", func(t *testing.T) {
 		h := newFlexHandler(&flexMockStore{})
-		rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/upload",
-			`{"video_id":10}`)
+		rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/upload", `{"video_id":10}`, 4)
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	})
 
 	t.Run("POST default language", func(t *testing.T) {
 		store := &flexMockStore{insertID: "upload-3"}
 		h := newFlexHandler(store)
-		rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/upload",
-			`{"video_id":10,"content":"test"}`)
+		rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/upload", `{"video_id":10,"content":"test"}`, 4)
 		assert.Equal(t, http.StatusOK, rr.Code)
 	})
 
 	t.Run("POST is_default", func(t *testing.T) {
 		store := &flexMockStore{insertID: "upload-4"}
 		h := newFlexHandler(store)
-		rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/upload",
-			`{"video_id":10,"content":"test","is_default":true}`)
+		rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/upload", `{"video_id":10,"content":"test","is_default":true}`, 4)
 		assert.Equal(t, http.StatusOK, rr.Code)
 	})
 
@@ -487,7 +530,7 @@ func TestHandleUpload(t *testing.T) {
 
 	t.Run("GET 405", func(t *testing.T) {
 		h := newFlexHandler(&flexMockStore{})
-		rr := doSubtitle(t, h, http.MethodGet, "/api/v1/subtitle/upload", "")
+		rr := doSubtitleAsUser(t, h, http.MethodGet, "/api/v1/subtitle/upload", "", 4)
 		assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
 	})
 }
@@ -499,9 +542,9 @@ func TestHandleUploadSRT(t *testing.T) {
 		store := &flexMockStore{insertID: "srt-upload-1"}
 		h := newFlexHandler(store)
 		srt := "1\n00:00:01,000 --> 00:00:04,000\nHello\n"
-		rr := doMultipart(t, h, "/api/v1/subtitle/upload-srt",
+		rr := doMultipartAsUser(t, h, "/api/v1/subtitle/upload-srt",
 			map[string]string{"video_id": "10", "language": "en", "language_name": "English"},
-			"file", "test.srt", srt)
+			"file", "test.srt", srt, 4)
 		assert.Equal(t, http.StatusOK, rr.Code)
 	})
 
@@ -509,9 +552,9 @@ func TestHandleUploadSRT(t *testing.T) {
 		store := &flexMockStore{insertID: "srt-upload-2"}
 		h := newFlexHandler(store)
 		srt := "1\n00:00:01,000 --> 00:00:04,000\nHello\n"
-		rr := doMultipart(t, h, "/api/v1/subtitle/upload-srt",
+		rr := doMultipartAsUser(t, h, "/api/v1/subtitle/upload-srt",
 			map[string]string{"video_id": "10"},
-			"file", "test.srt", srt)
+			"file", "test.srt", srt, 4)
 		assert.Equal(t, http.StatusOK, rr.Code)
 	})
 
@@ -525,6 +568,7 @@ func TestHandleUploadSRT(t *testing.T) {
 		body.WriteString("--" + boundary + "--\r\n")
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/subtitle/upload-srt", &body)
 		req.Header.Set("Content-Type", "multipart/form-data; boundary="+boundary)
+		req.Header.Set("X-User-Id", "4")
 		rr := httptest.NewRecorder()
 		mux := http.NewServeMux()
 		h.Register(mux)
@@ -534,9 +578,9 @@ func TestHandleUploadSRT(t *testing.T) {
 
 	t.Run("POST empty file -> 400", func(t *testing.T) {
 		h := newFlexHandler(&flexMockStore{})
-		rr := doMultipart(t, h, "/api/v1/subtitle/upload-srt",
+		rr := doMultipartAsUser(t, h, "/api/v1/subtitle/upload-srt",
 			map[string]string{"video_id": "10"},
-			"file", "empty.srt", "")
+			"file", "empty.srt", "", 4)
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	})
 

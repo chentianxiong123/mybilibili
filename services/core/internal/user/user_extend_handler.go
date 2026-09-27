@@ -355,6 +355,12 @@ func (h *UserExtendHandler) handleForgotPassword(w http.ResponseWriter, r *http.
 }
 
 func (h *UserExtendHandler) handlePinnedVideo(w http.ResponseWriter, r *http.Request) {
+	// GET 是公开的（看别人主页时前端也会拉），POST/DELETE 是操作自己的置顶，必须登录
+	if r.Method != "GET" {
+		if _, ok := httputil.RequireUser(w, r); !ok {
+			return
+		}
+	}
 	userID := httputil.GetUserIDFromHeader(r)
 	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
@@ -396,7 +402,11 @@ func (h *UserExtendHandler) handlePinnedVideo(w http.ResponseWriter, r *http.Req
 }
 
 func (h *UserExtendHandler) handleLoginLogs(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	uid, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	userID := uid
 	page, _ := strconv.ParseInt(r.URL.Query().Get("page"), 10, 32)
 	sizeStr := r.URL.Query().Get("size")
 	if sizeStr == "" {
@@ -440,7 +450,11 @@ func (h *UserExtendHandler) handleLoginLogs(w http.ResponseWriter, r *http.Reque
 
 // GET /api/v1/user/login-logs/count — 按条件计数（countUserLogs / countByCondition）
 func (h *UserExtendHandler) handleLoginLogCount(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	uid, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	userID := uid
 	conds := "WHERE 1=1"
 	args := []interface{}{}
 	argIdx := 0
@@ -478,7 +492,11 @@ func (h *UserExtendHandler) handleLoginLogCount(w http.ResponseWriter, r *http.R
 }
 
 func (h *UserExtendHandler) handlePrivacy(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	uid, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	userID := uid
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/user/privacy/")
 	_ = path
 	switch r.Method {
@@ -510,7 +528,11 @@ func (h *UserExtendHandler) handlePrivacy(w http.ResponseWriter, r *http.Request
 }
 
 func (h *UserExtendHandler) handleTags(w http.ResponseWriter, r *http.Request) {
-	userID := httputil.GetUserIDFromHeader(r)
+	uid, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	userID := uid
 	switch r.Method {
 	case "GET":
 		rows, _ := h.svc.repo.db.QueryContext(r.Context(),
