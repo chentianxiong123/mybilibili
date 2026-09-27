@@ -140,12 +140,25 @@ export default {
                         publicFollowingList: res.data.publicFollowingList ?? false,
                         publicFollowersList: res.data.publicFollowersList ?? false
                     };
-                    this.userTags = res.data.tags || [];
                 }
             } catch (error: any) {
                 if (error?.response?.status !== 404) {
                     console.error('加载隐私设置失败:', error);
                 }
+            }
+        },
+        async loadUserTags() {
+            try {
+                const res = await userPrivacyApi.getUserTags();
+                if (res.code === 200) {
+                    // 后端 /api/v1/user/tags GET 返回 {code,data:[...]}，data 就是数组
+                    this.userTags = Array.isArray(res.data) ? res.data : [];
+                } else {
+                    this.userTags = [];
+                }
+            } catch (error) {
+                console.error('加载标签失败:', error);
+                this.userTags = [];
             }
         },
         async handlePrivacyChange(key: string, value: boolean) {
@@ -205,6 +218,7 @@ export default {
     mounted() {
         if (this.isOwner) {
             this.loadPrivacySettings();
+            this.loadUserTags();
         }
     }
 }

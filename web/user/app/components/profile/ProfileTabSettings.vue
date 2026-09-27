@@ -34,7 +34,6 @@ const loadPrivacySettings = async () => {
         publicFollowingList: res.data.publicFollowingList ?? false,
         publicFollowersList: res.data.publicFollowersList ?? false
       }
-      userTags.value = res.data.tags || []
     }
   } catch (error) {
     // 接口不存在时不输出错误日志，避免控制台报错
@@ -103,8 +102,21 @@ const handleRemoveTag = async (tag) => {
   }
 }
 
+// 加载用户标签：独立端点 /user/tags，不混在隐私设置里
+const loadUserTags = async () => {
+  if (!props.isOwnSpace) return
+  try {
+    const res = await userPrivacyApi.getUserTags()
+    userTags.value = res.code === 200 && Array.isArray(res.data) ? res.data : []
+  } catch (error) {
+    console.error('加载标签失败:', error)
+    userTags.value = []
+  }
+}
+
 onMounted(() => {
   loadPrivacySettings()
+  loadUserTags()
 })
 </script>
 

@@ -26,9 +26,12 @@ export const userPrivacyApi = {
     }
   },
   updatePrivacySettings: (data: any) => api.put('/user/privacy/settings', data),
-  getUserTags: () => api.get('/user/privacy/tags'),
-  addUserTag: (tagName: string) => api.post('/user/privacy/tags', null, { params: { tagName } }),
-  removeUserTag: (tagName: string) => api.delete('/user/privacy/tags', { params: { tagName } })
+  // 标签是独立资源，实现在后端 /api/v1/user/tags（handleTags）。
+  // 原来自定义在 /user/privacy/tags 是错位：旧 handlePrivacy 只处理
+  // GET(隐私JSON)/PUT，POST/DELETE 直接空响应，标签从没生效过。
+  getUserTags: () => api.get('/user/tags'),
+  addUserTag: (tagName: string) => api.post('/user/tags', null, { params: { tagName } }),
+  removeUserTag: (tagName: string) => api.delete('/user/tags', { params: { tagName } })
 }
 
 export default userPrivacyApi

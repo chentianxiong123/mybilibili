@@ -957,6 +957,19 @@ func TestHandlePrivacy_Anonymous_401(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
+func TestHandleTags_Anonymous_401(t *testing.T) {
+	h, _ := newTestHandler(t)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	rec := doRequest(t, mux, "GET", "/api/v1/user/tags", nil, nil)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	rec = doRequest(t, mux, "POST", "/api/v1/user/tags?tagName=x", nil, nil)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	rec = doRequest(t, mux, "DELETE", "/api/v1/user/tags?tagName=x", nil, nil)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
 func TestHandleUserByID_InvalidID(t *testing.T) {
 	h, _ := newTestHandler(t)
 	mux := http.NewServeMux()

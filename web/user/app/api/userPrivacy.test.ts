@@ -64,18 +64,18 @@ describe('userPrivacyApi', () => {
   it('getUserTags', async () => {
     mocks.apiGet.mockResolvedValueOnce({ code: 200, data: [] })
     await userPrivacyApi.getUserTags()
-    expect(mocks.apiGet).toHaveBeenCalledWith('/user/privacy/tags')
+    expect(mocks.apiGet).toHaveBeenCalledWith('/user/tags')
   })
 
   it('addUserTag 用 query params', async () => {
     mocks.apiPost.mockResolvedValueOnce({ code: 200 })
     await userPrivacyApi.addUserTag('x')
-    expect(mocks.apiPost).toHaveBeenCalledWith('/user/privacy/tags', null, { params: { tagName: 'x' } })
+    expect(mocks.apiPost).toHaveBeenCalledWith('/user/tags', null, { params: { tagName: 'x' } })
   })
 
   it('removeUserTag 用 query params', async () => {
     mocks.apiDelete.mockResolvedValueOnce({ code: 200 })
     await userPrivacyApi.removeUserTag('y')
-    expect(mocks.apiDelete).toHaveBeenCalledWith('/user/privacy/tags', { params: { tagName: 'y' } })
+    expect(mocks.apiDelete).toHaveBeenCalledWith('/user/tags', { params: { tagName: 'y' } })
   })
 })

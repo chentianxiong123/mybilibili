@@ -571,17 +571,19 @@ func (h *UserExtendHandler) handleTags(w http.ResponseWriter, r *http.Request) {
 			rows.Scan(&t)
 			tags = append(tags, t)
 		}
-		json.NewEncoder(w).Encode(tags)
+		// WriteOK 统一 {code,data,message} 信封——之前裸 Encode 数组，
+		// 前端 res.data.tags 永远取不到
+		httputil.WriteOK(w, tags)
 	case "POST":
 		tagName := r.URL.Query().Get("tagName")
 		h.svc.repo.db.ExecContext(r.Context(),
 			`INSERT INTO user_tags (user_id, tag_name) VALUES ($1,$2) ON CONFLICT DO NOTHING`, userID, tagName)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]string{"status": "ok"})
 	case "DELETE":
 		tagName := r.URL.Query().Get("tagName")
 		h.svc.repo.db.ExecContext(r.Context(),
 			`DELETE FROM user_tags WHERE user_id = $1 AND tag_name = $2`, userID, tagName)
-		w.Write([]byte(`{"status":"ok"}`))
+		httputil.WriteOK(w, map[string]string{"status": "ok"})
 	}
 }
 
