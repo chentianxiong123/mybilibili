@@ -33,6 +33,7 @@ export const messageApi = {
   deleteMessage: (messageId) => authRequired(null) || api.delete(`/message/${messageId}`),
 
   // 回复我的
+  getAtList: (params) => authRequired([]) || api.get('/message/at', { params }),
   getReplies: (params) => authRequired([]) || api.get('/message/replies', { params }),
 
   // 收到的赞

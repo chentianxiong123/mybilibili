@@ -318,8 +318,8 @@ const loadUserVideos = async () => {
     console.log('【调试】API响应:', response)
 
     if (response.code === 200) {
-      // 处理视频数据，添加date字段
-      let videos = response.data.map(video => {
+      // 后端返回 {list,total}，不是数组
+      let videos = (response.data.list || []).map(video => {
         return {
           ...video,
           date: formatDate(video.uploadTime)
