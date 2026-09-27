@@ -58,7 +58,7 @@ spec:
     certResolver: letsencrypt
   routes:
     # 搜索/推荐/创作者/画像 → search
-    - match: PathPrefix(`/api/v1/search/`) || PathPrefix(`/api/v1/recommend/`) || PathPrefix(`/api/v1/creator/stats/`) || PathPrefix(`/api/v1/profile/`)
+    - match: (PathPrefix(`/api/v1/search/`) || PathPrefix(`/api/v1/recommend/`) || PathPrefix(`/api/v1/creator/stats/`) || PathPrefix(`/api/v1/profile/`)) && !PathPrefix(`/api/v1/search/history`)
       kind: Rule
       priority: 15
       services: [{name: search, port: 8084}]

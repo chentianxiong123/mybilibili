@@ -92,49 +92,8 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    port: 5174,
-    proxy: {
-      '/api/v1/search/history': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
-      },
-      '/api/v1/search/': {
-        target: 'http://localhost:8084',
-        changeOrigin: true
-      },
-      '/api/v1/recommend/': {
-        target: 'http://localhost:8084',
-        changeOrigin: true
-      },
-      '/api/v1/live/': {
-        target: 'http://localhost:8087',
-        changeOrigin: true
-      },
-      '/api/v1/danmaku/': {
-        target: 'http://localhost:8086',
-        changeOrigin: true
-      },
-      '/api/v1/message/': {
-        target: 'http://localhost:8086',
-        changeOrigin: true
-      },
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
-      },
-      '/uploads': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
-      },
-      '/covers': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
-      },
-      '/videos': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
-      }
-    }
+    port: 5174
+    // API 请求由 traefik 路由（dev: localhost:80, prod: IngressRoute），vite 不做反代
   },
   esbuild: {
     target: 'esnext'
