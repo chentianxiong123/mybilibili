@@ -223,7 +223,8 @@ export default {
     },
     watch: {
         "mid"(curr) {
-            let chat = this.$store.state.chatList.find(item => item.user.uid === curr);
+            const chat = this.$store.state.chatList.find(item => item.user.uid === curr);
+            if (!chat) return;
             // 复制一份，防止指向同一个地址
             this.chat = JSON.parse(JSON.stringify(chat));
             // console.log("当前聊天：",this.chat);
@@ -235,6 +236,7 @@ export default {
                 this.$nextTick(() => {
                     const currChat = curr.find(item => item.user.uid === this.mid);
                     // console.log("深度监听到聊天有新消息：", currChat);
+                    if (!currChat) return;
                     // 复制粘贴新的chat
                     this.chat = JSON.parse(JSON.stringify(currChat));
                     if (this.isAtBottom) {

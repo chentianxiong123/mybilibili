@@ -89,6 +89,11 @@ export default {
         // 更新对方用户 以及缓存自己的id
         updateUser() {
             let i = this.$store.state.chatList.findIndex(item => item.user.uid === this.mid);
+            if (i === -1 || !this.$store.state.chatList[i]) {
+                this.user = { uid: this.mid, nickname: '', avatar_url: '', auth: 0 };
+                this.myId = null;
+                return;
+            }
             this.user = this.$store.state.chatList[i].user;
             this.myId = this.$store.state.chatList[i].chat.anotherId;
         },
@@ -108,7 +113,7 @@ export default {
         },
 
         // 发送消息
-        sendMsg() {
+        async sendMsg() {
             if (this.user.uid === this.$store.state.user.uid) {
                 ElMessage.error("不能给自己发消息哦~");
                 return;
@@ -120,16 +125,30 @@ export default {
                 ElMessage.error("随便说点吧");
                 return;
             }
-            if (!this.$store.state.ws) {
-                ElMessage.error("服务已断开，请刷新后尝试");
+            const content = this.input;
+            let sent = null;
+            try {
+                const res = await this.$post('/message/send', { receiverId: this.user.uid, content: content });
+                sent = res && res.data && res.data.data;
+            } catch (e) {
+                sent = null;
+            }
+            if (!sent) {
+                ElMessage.error("发送失败，请稍后重试");
                 return;
             }
-            const msg = {
-                code: 101,
-                anotherId: this.user.uid,
-                content: this.input,
+            // 成功后本地推进消息（服务端已落库，无需等实时通道）
+            let chatItem = this.$store.state.chatList.find(item => item.chat.userId === this.user.uid);
+            if (chatItem) {
+                chatItem.detail.list.push({
+                    id: sent.id,
+                    userId: this.$store.state.user.uid,
+                    content: sent.content,
+                    withdraw: 0,
+                    time: sent.created_at || String(Date.now()),
+                });
+                chatItem.chat.latestTime = String(sent.created_at || Date.now());
             }
-            this.$store.state.ws.send(JSON.stringify(msg));
             // 清空文本
             this.$refs.editor.innerHTML = '';
             this.input = "";
@@ -374,6 +393,17 @@ export default {
     },
     async mounted() {
         this.mid = Number(this.$route.params.mid);
+        // 确保会话在 chatList 中（父页面异步 createChat 可能晚于本组件挂载）
+        const has = this.$store.state.chatList.find(item => item.user.uid === this.mid);
+        if (!has) {
+            try {
+                const res = await this.$get(`/msg/chat/create/${this.mid}`);
+                const item = res && res.data && res.data.data;
+                if (item) this.$store.commit("updateChatList", [item]);
+            } catch (e) {
+                // 会话不存在时跳过，发送消息会自动创建
+            }
+        }
         this.updateUser();
         await this.updateOnline();
         window.addEventListener("click", this.handleOutsideClick);

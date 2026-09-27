@@ -136,7 +136,62 @@ function isDetailUrl(url: string) {
   return /^\/manuscript\/\d+/.test(url) || /^\/video\/getone/.test(url)
 }
 
+// 后端 Conversation(snake_case) → teriteri 私信 chat item {user, chat, detail}
+function adaptChatConversation(c: any): any {
+  const uid = c.target_user_id || c.targetUserId || 0
+  return {
+    user: {
+      uid,
+      nickname: c.target_user_name || c.targetUserName || '',
+      avatar_url: c.target_user_avatar || c.targetUserAvatar || '',
+      auth: c.auth || 0,
+    },
+    chat: {
+      unread: c.unread_count || c.unreadCount || 0,
+      userId: uid,
+      id: c.id || 0,
+    },
+    detail: {
+      more: false,
+      list: [{
+        id: c.last_message_id || c.id || 0,
+        userId: uid,
+        content: c.last_message_content || c.lastMessageContent || '',
+        withdraw: 0,
+        time: c.last_message_time || c.lastMessageTime || '',
+      }],
+    },
+  }
+}
+
 function adaptResponse(originalUrl: string, data: any) {
+  // 私信会话列表(/msg/chat/recent-list) → 后端 Conversation → teriteri {user, chat, detail}
+  if (String(originalUrl || '').includes('/msg/chat/recent-list')) {
+    const raw = Array.isArray(data) ? data : (data && data.list ? data.list : [])
+    const list = raw.map(adaptChatConversation)
+    return { code: 200, data: { list, more: false }, message: 'ok' }
+  }
+
+  // 创建会话(/msg/chat/create/{mid}) → 从会话列表挑出该 mid 的会话，返回单个 chat item
+  if (String(originalUrl || '').includes('/msg/chat/create/')) {
+    const mid = Number(String(originalUrl).split('/msg/chat/create/').pop())
+    const raw = Array.isArray(data) ? data : []
+    const found = raw.find((c: any) => (c.target_user_id || c.targetUserId || 0) === mid)
+    if (found) {
+      return { code: 200, data: adaptChatConversation(found), message: 'ok' }
+    }
+    // 尚无会话：返回占位 chat item，保证页面挂载不崩（发送消息时会自动建会话）
+    return {
+      code: 200,
+      data: {
+        user: { uid: mid, nickname: '', avatar_url: '', auth: 0 },
+        chat: { unread: 0, userId: mid, id: 0 },
+        detail: { more: true, list: [] },
+      },
+      message: 'ok',
+    }
+  }
+
   // 空间投稿数(/video/user-works-count) → 直接返回 total 数字
   if (String(originalUrl || '').includes('/video/user-works-count')) {
     return { code: 200, data: (data && data.total) || 0, message: 'ok' }

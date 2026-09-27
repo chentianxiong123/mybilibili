@@ -32,6 +32,7 @@ const PATH_MAP: Record<string, string> = {
   '/user/account/login': '/user/login',
   '/user/account/register': '/user/register',
   '/user/account/logout': '/user/logout',
+  '/msg/chat/recent-list': '/message/conversations',
 }
 
 // 按服务端口分发的路由（Docker 环境用容器名，宿主机直连用 127.0.0.1）
@@ -43,6 +44,7 @@ const LIVE_HOST = process.env.LIVE_HOST || '127.0.0.1'
 function pickUpstream(realPath: string): string {
   if (realPath.startsWith('/search/')) return `http://${SEARCH_HOST}:8084`
   if (realPath.includes('/danmaku/') || realPath.startsWith('/danmu') || realPath.startsWith('/creator/danmaku')) return `http://${MSG_HOST}:8086`
+  if (realPath.startsWith('/message/') || realPath.includes('/msg/chat')) return `http://${MSG_HOST}:8086`
   return `http://${CORE_HOST}:8080`
 }
 
@@ -109,6 +111,11 @@ function adaptUrl(url: string, query: URLSearchParams): { target: string; port: 
       return { target: `/favorites/manuscript/${vid}`, port: `http://${CORE_HOST}:8080`, qs: '' }
     }
   }
+  // 私信：/msg/chat/create/{mid} → 查会话列表，由前端适配层取对应 mid 的会话
+  if (url.startsWith('/msg/chat/create/')) {
+    return { target: '/message/conversations', port: `http://${MSG_HOST}:8086`, qs: '' }
+  }
+
   const keys = Object.keys(PATH_MAP).sort((a, b) => b.length - a.length)
   for (const from of keys) {
     if (url === from || url.startsWith(from + '/') || url.startsWith(from + '?')) {
@@ -138,6 +145,12 @@ export default defineEventHandler(async (event) => {
   const teriteriUrl = path.slice(apiPrefix.length) || '/'
   const query = new URLSearchParams(fullUrl.search || '')
   const method = getMethod(event)
+
+  // 在线状态心跳(/msg/chat/online|outline)：后端无此路由，原 teriteri 走 WS；
+  // 前端仅调用不消费返回值，直接返回 200 空数据避免 404 报错
+  if (teriteriUrl.startsWith('/msg/chat/online') || teriteriUrl.startsWith('/msg/chat/outline')) {
+    return { code: 200, data: null, message: 'ok' }
+  }
 
   // /video/cancel-collect → DELETE /favorites/{fid}/manuscripts/{vid}
   if (teriteriUrl.startsWith('/video/cancel-collect') && method === 'POST') {
@@ -246,8 +259,9 @@ export default defineEventHandler(async (event) => {
       redirect: 'follow'
     })
     setResponseStatus(event, resp.status)
-    const respHeaders: Record<string, string> = {}
-    resp.headers.forEach((v, k) => { respHeaders[k] = v })
+    const respHeaders: Record<string, string | string[]> = {}
+    resp.headers.forEach((v, k) => { if (k.toLowerCase() !== 'set-cookie') respHeaders[k] = v })
+    respHeaders['set-cookie'] = resp.headers.getSetCookie()
     setResponseHeaders(event, respHeaders)
     return Buffer.from(await resp.arrayBuffer())
   } catch (e) {
