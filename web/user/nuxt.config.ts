@@ -27,9 +27,6 @@ export default defineNuxtConfig({
     port: 3200,
   },
   components: false,
-  alias: {
-    '~assets': '@/assets/teriteri'
-  },
   routeRules: {
     '/': { ssr: false },
     '/message': { redirect: '/message/whisper' },
