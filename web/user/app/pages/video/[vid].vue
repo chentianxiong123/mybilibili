@@ -731,7 +731,10 @@ function changeWindowSize() {
     const rightContainer = document.querySelector('.right-container')
     const rightWidth = rightContainer ? rightContainer.getBoundingClientRect().width : 350
     const gap = 20
-    const maxLeftWidth = Math.max(320, viewportWidth - rightWidth - gap)
+    // 复刻真实B站：左列播放器有固定最小基准宽度（668px），视口不足时宁可整体溢出，
+    // 也不压缩播放器。右列 flexShrink:0 不缩，左列 shrink 但被 min-width 顶住。
+    const minLeftWidth = 668
+    const maxLeftWidth = Math.max(minLeftWidth, viewportWidth - rightWidth - gap)
     const windowHeight = window.innerHeight
     let height = (windowHeight - 64) * 0.7
     let width = height * (16 / 9)
@@ -968,7 +971,7 @@ watch(
     justify-content: center;
     box-sizing: content-box;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .left-container {
