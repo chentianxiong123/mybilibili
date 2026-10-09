@@ -100,7 +100,10 @@ function adaptDetail(m: any) {
     ? m.videos.map((v: any) => ({
         vid: String(v.id || ''),
         title: v.title || '',
-        playUrl: v.playUrlHd || v.playUrl || '',
+        playUrl: v.playUrlHd || v.playUrlSd || v.playUrlLd || v.playUrl || '',
+        playUrlHd: v.playUrlHd || v.playUrl || '',
+        playUrlSd: v.playUrlSd || '',
+        playUrlLd: v.playUrlLd || '',
         duration: Number(v.durationSeconds) || 0,
         videoOrder: v.videoOrder || 0,
       }))
