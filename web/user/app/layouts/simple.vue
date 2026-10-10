@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { inject } from 'vue'
-import AppHeader from './components/AppHeader.vue'
+import HeaderBar from '../components/teriteri/headerBar/HeaderBar.vue'
 import FeedbackFloat from '../components/FeedbackFloat.vue'
 
 const showLoginDialog = inject('showLoginDialog')
@@ -17,7 +17,7 @@ const handleLogout = () => {
 
 <template>
   <div class="layout-simple">
-    <AppHeader mode="white" @show-login="handleShowLogin" @logout="handleLogout" />
+    <HeaderBar :isFixHeaderBar="true" />
     <div class="layout-content">
       <slot />
     </div>
@@ -37,6 +37,6 @@ const handleLogout = () => {
 
 .layout-content {
   flex: 1;
-  min-height: calc(100vh - 80px);
+  min-height: calc(100vh - 64px);
 }
 </style>

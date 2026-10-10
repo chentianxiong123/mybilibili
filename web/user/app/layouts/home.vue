@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { inject } from 'vue'
+import { inject, onMounted, onBeforeUnmount, ref } from 'vue'
 import TopBackground from './components/TopBackground.vue'
 import CategoryTabs from './components/CategoryTabs.vue'
-import AppHeader from './components/AppHeader.vue'
+import HeaderBar from '../components/teriteri/headerBar/HeaderBar.vue'
 import FeedbackFloat from '../components/FeedbackFloat.vue'
 
 const showLoginDialog = inject('showLoginDialog')
@@ -15,11 +15,19 @@ const handleShowLogin = () => {
 
 const handleLogout = () => {
 }
+
+const isFixHeaderBar = ref(false)
+const onScroll = () => {
+  isFixHeaderBar.value = window.scrollY >= 64
+}
+
+onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
+onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 </script>
 
 <template>
   <div class="layout-home">
-    <AppHeader mode="transparent" @show-login="handleShowLogin" @logout="handleLogout" />
+    <HeaderBar :isFixHeaderBar="isFixHeaderBar" />
     <div class="home-hero">
       <TopBackground />
       <CategoryTabs />
@@ -42,12 +50,12 @@ const handleLogout = () => {
 }
 
 .home-hero {
-  margin-top: -80px;
+  margin-top: -64px;
 }
 
 .layout-content {
   flex: 1;
-  min-height: calc(100vh - 80px);
+  min-height: calc(100vh - 64px);
   padding-top: 0;
 }
 </style>
