@@ -416,6 +416,10 @@ func (f *fakeNotifier) SendMessage(ctx context.Context, senderID, receiverID int
 	f.sent++
 }
 
+func (f *fakeNotifier) SendNotification(ctx context.Context, senderID, receiverID int64, content string, msgType int32, targetID, commentID int64) {
+	f.sent++
+}
+
 func TestCommentService_RepoAndSetters(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
 	require.NoError(t, err)
@@ -440,7 +444,13 @@ func TestCommentService_AddReply_Success(t *testing.T) {
 			AddRow(100, 9, 300, "parent", 1, 2, 0, now, now))
 	mock.ExpectExec(`INSERT INTO manuscript_daily_metrics`).WithArgs(int64(9), int64(200), int64(1)).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE manuscripts SET comment_count = comment_count \+ 1`).WithArgs(int64(9)).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(`SELECT user_id FROM comments`).WithArgs(int64(100)).WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(300))
+	mock.ExpectQuery(`SELECT id, manuscript_id, user_id, content`).WithArgs(int64(100)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "manuscript_id", "user_id", "content", "like_count", "reply_count", "status", "created_at", "updated_at"}).
+			AddRow(100, 9, 300, "parent", 1, 2, 0, now, now))
+	// 回复通知查父评论 + @解析查父评论稿件（内容无@，第二次查询仍会执行取稿件 id）
+	mock.ExpectQuery(`SELECT id, manuscript_id, user_id, content`).WithArgs(int64(100)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "manuscript_id", "user_id", "content", "like_count", "reply_count", "status", "created_at", "updated_at"}).
+			AddRow(100, 9, 300, "parent", 1, 2, 0, now, now))
 	mock.ExpectQuery(`SELECT id, username, nickname, avatar, level FROM users`).WithArgs(int64(200)).WillReturnRows(sqlmock.NewRows([]string{"id", "username", "nickname", "avatar", "level"}).AddRow(200, "u", "nick", "a", 1))
 
 	resp, err := svc.AddReply(ctx, &pb.AddReplyRequest{CommentId: 100, UserId: 200, Content: "nice", ReplyToUserId: 50})
@@ -521,7 +531,9 @@ func TestCommentService_LikeComment_Notification(t *testing.T) {
 	mock.ExpectQuery(`SELECT EXISTS\(SELECT 1 FROM comments`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 	mock.ExpectExec(`INSERT INTO user_interactions`).WithArgs(int64(1), "COMMENT", int64(9)).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE comments SET like_count = like_count \+ 1`).WithArgs(int64(9)).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(`SELECT user_id FROM comments`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(50))
+	mock.ExpectQuery(`SELECT id, manuscript_id, user_id, content`).WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "manuscript_id", "user_id", "content", "like_count", "reply_count", "status", "created_at", "updated_at"}).
+			AddRow(9, 7, 50, "被赞的评论", 1, 0, 0, time.Now(), time.Now()))
 
 	_, err := svc.LikeComment(ctx, &pb.LikeCommentRequest{CommentId: 9, UserId: 1})
 	require.NoError(t, err)
@@ -538,7 +550,9 @@ func TestCommentService_LikeComment_OwnerIsSender(t *testing.T) {
 	mock.ExpectQuery(`SELECT EXISTS\(SELECT 1 FROM comments`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 	mock.ExpectExec(`INSERT INTO user_interactions`).WithArgs(int64(1), "COMMENT", int64(9)).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE comments SET like_count = like_count \+ 1`).WithArgs(int64(9)).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(`SELECT user_id FROM comments`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(1))
+	mock.ExpectQuery(`SELECT id, manuscript_id, user_id, content`).WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "manuscript_id", "user_id", "content", "like_count", "reply_count", "status", "created_at", "updated_at"}).
+			AddRow(9, 7, 1, "自己的评论", 1, 0, 0, time.Now(), time.Now()))
 
 	_, err := svc.LikeComment(ctx, &pb.LikeCommentRequest{CommentId: 9, UserId: 1})
 	require.NoError(t, err)

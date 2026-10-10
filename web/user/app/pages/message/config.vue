@@ -3,5 +3,5 @@
 </template>
 
 <script setup lang="ts">
-import MessageSettings from '@/views/web/message/components/MessageSettings.vue'
+import MessageSettings from '@/components/teriteri/message/MessageSettings.vue'
 </script>

@@ -51,7 +51,6 @@
 import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useTeriteriStore } from '@/stores/teriteri'
 import messageBg from '@/assets/teriteri/img/message-bg.png'
-
 definePageMeta({ layout: 'simple' })
 
 const route = useRoute()
@@ -105,6 +104,50 @@ onBeforeUnmount(() => {
 watch(() => store.isLogin, (curr) => {
   if (!curr) {
     router.push('/')
+  }
+})
+
+// 父级 SSE：只管全站红点校准（unread_init/unread_counts）。
+// whisper 子页另有一条流处理私信增量；两条流写同一份红点，幂等。
+let sse: EventSource | null = null
+function applyCounts(d: any) {
+  if (!d) return
+  store.msgUnread[0] = d.reply || 0
+  store.msgUnread[1] = d.at || 0
+  store.msgUnread[2] = d.like || 0
+  store.msgUnread[3] = d.system || 0
+  store.msgUnread[4] = d.private || 0
+  if (store.msgUnread.length > 5) store.msgUnread[5] = d.dynamic || 0
+}
+function connectSSE() {
+  if (sse || !store.isLogin || typeof EventSource === 'undefined') return
+  try {
+    const es = new EventSource('/sse/notification')
+    es.onmessage = (e: MessageEvent) => {
+      try {
+        const msg = JSON.parse(e.data)
+        if (msg && (msg.type === 'unread_init' || msg.type === 'unread_counts')) {
+          applyCounts(msg.data)
+        }
+      } catch (_) {
+        // 坏帧忽略，下次事件会再校准
+      }
+    }
+    sse = es
+  } catch (_) {
+    sse = null
+  }
+}
+watch(() => store.isLogin, (curr) => {
+  if (curr) connectSSE()
+})
+onMounted(() => {
+  connectSSE()
+})
+onBeforeUnmount(() => {
+  if (sse) {
+    sse.close()
+    sse = null
   }
 })
 </script>

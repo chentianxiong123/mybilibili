@@ -202,7 +202,9 @@ func TestPublicAPIHandler_handleCommentLike(t *testing.T) {
 	mock.ExpectQuery(`SELECT EXISTS\(SELECT 1 FROM comments`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 	mock.ExpectExec(`INSERT INTO user_interactions`).WithArgs(int64(1), "COMMENT", int64(9)).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE comments SET like_count = like_count \+ 1`).WithArgs(int64(9)).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(`SELECT user_id FROM comments`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(50))
+	mock.ExpectQuery(`SELECT id, manuscript_id, user_id, content`).WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "manuscript_id", "user_id", "content", "like_count", "reply_count", "status", "created_at", "updated_at"}).
+			AddRow(9, 7, 50, "被赞的评论", 1, 0, 0, time.Now(), time.Now()))
 	w = doReq(muxForPublic(h), "POST", "/api/v1/comment/9/like", "", map[string]string{"X-User-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -236,7 +238,12 @@ func TestPublicAPIHandler_handleReplyLike(t *testing.T) {
 	mock.ExpectQuery(`SELECT EXISTS\(SELECT 1 FROM replies`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 	mock.ExpectExec(`INSERT INTO user_interactions`).WithArgs(int64(1), "REPLY", int64(9)).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE replies SET like_count = like_count \+ 1`).WithArgs(int64(9)).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(`SELECT user_id FROM replies`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(50))
+	mock.ExpectQuery(`SELECT id, comment_id, user_id, reply_to_user_id`).WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "comment_id", "user_id", "reply_to_user_id", "content", "like_count", "status", "created_at", "updated_at"}).
+			AddRow(9, 3, 50, nil, "被赞的回复", 1, "NORMAL", time.Now(), time.Now()))
+	mock.ExpectQuery(`SELECT id, manuscript_id, user_id, content`).WithArgs(int64(3)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "manuscript_id", "user_id", "content", "like_count", "reply_count", "status", "created_at", "updated_at"}).
+			AddRow(3, 7, 60, "父评论", 1, 0, 0, time.Now(), time.Now()))
 	w := doReq(muxForPublic(h), "POST", "/api/v1/comment/reply/9/like", "", map[string]string{"X-User-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 

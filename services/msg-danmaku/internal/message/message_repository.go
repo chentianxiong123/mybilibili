@@ -41,6 +41,28 @@ func (r *MessageRepository) DB() *sql.DB {
 }
 
 func (r *MessageRepository) SendMessage(ctx context.Context, senderID, receiverID int64, content string, msgType int32) (*Message, error) {
+	return r.SendMessageWithTarget(ctx, senderID, receiverID, content, msgType, 0, 0)
+}
+
+// SendMessageWithTarget 发私信(1)走会话双写；通知类(2=回复 3=@ 4=赞稿件 6=赞评论)
+// 只插单行并挂 target_id/comment_id，不碰 conversations 表。
+// （曾对所有类型双写：每次点赞/回复都在私信列表里造出垃圾会话行，还污染 private 未读。）
+func (r *MessageRepository) SendMessageWithTarget(ctx context.Context, senderID, receiverID int64, content string, msgType int32, targetID, commentID int64) (*Message, error) {
+	if msgType != 1 {
+		msg := &Message{}
+		var convID sql.NullInt64
+		err := r.db.QueryRowContext(ctx,
+			`INSERT INTO messages (sender_id, receiver_id, content, message_type, target_id, comment_id)
+			 VALUES ($1, $2, $3, $4, NULLIF($5,0), NULLIF($6,0))
+			 RETURNING id, sender_id, receiver_id, conversation_id, content, message_type, is_read, created_at`,
+			senderID, receiverID, content, msgType, targetID, commentID,
+		).Scan(&msg.ID, &msg.SenderID, &msg.ReceiverID, &convID, &msg.Content, &msg.MessageType, &msg.IsRead, &msg.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		msg.ConversationID = convID.Int64
+		return msg, nil
+	}
 	// 会话是按人镜像的两行（sender→receiver、receiver→sender）。
 	// 消息必须写双份，否则接收方读自己的会话行永远看不到对方发的
 	// （曾导致私信"能发不能收"：历史与 SSE 都只对发送方可见）。

@@ -642,18 +642,41 @@ func (h *MessageHTTPHandler) handleAdminBroadcast(w http.ResponseWriter, r *http
 		http.Error(w, "content required", 400)
 		return
 	}
+	systemSender := h.resolveSystemSender(r)
+	if systemSender == 0 {
+		http.Error(w, "system sender not found: 请先执行 sql/032_System_sender.sql 建系统账号", 500)
+		return
+	}
 	rows, _ := h.repo.db.QueryContext(r.Context(), `SELECT id FROM users`)
 	defer rows.Close()
+	sent, failed := 0, 0
 	for rows.Next() {
 		var uid int64
-		rows.Scan(&uid)
-		msg, _ := h.repo.SendMessage(r.Context(), 0, uid, req.Content, 5)
-		if msg != nil {
-			h.notif.Send(uid, &NotificationEvent{Type: "system", Content: req.Content, CreatedAt: msg.CreatedAt.Format("2006-01-02T15:04:05Z")})
-			h.pushUnread(r.Context(), uid)
+		if err := rows.Scan(&uid); err != nil {
+			continue
 		}
+		// sender_id 有外键指向 users(id)，用系统账号当 sender（不能是 0）
+		msg, err := h.repo.SendMessage(r.Context(), systemSender, uid, req.Content, 5)
+		if err != nil || msg == nil {
+			failed++
+			continue
+		}
+		sent++
+		h.notif.Send(uid, &NotificationEvent{Type: "system", Content: req.Content, CreatedAt: msg.CreatedAt.Format("2006-01-02T15:04:05Z")})
+		h.pushUnread(r.Context(), uid)
 	}
-	w.Write([]byte(`{"status":"broadcast_sent"}`))
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{"status": "broadcast_sent", "sent": sent, "failed": failed})
+}
+
+// resolveSystemSender 取系统通知账号 id（sql/032_System_sender.sql 建）。
+// 用查询而非硬编码 id：不同环境这条记录的 id 不一样。
+func (h *MessageHTTPHandler) resolveSystemSender(r *http.Request) int64 {
+	var id int64
+	if err := h.repo.db.QueryRowContext(r.Context(),
+		`SELECT id FROM users WHERE username = 'system'`).Scan(&id); err != nil {
+		return 0
+	}
+	return id
 }
 
 // pushUnread 算一次全量未读数并推送给指定用户，替代前端轮询。

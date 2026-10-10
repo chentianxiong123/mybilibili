@@ -3,5 +3,5 @@
 </template>
 
 <script setup lang="ts">
-import AiChatWindow from '@/views/web/message/components/AiChatWindow.vue'
+import AiChatWindow from '@/components/teriteri/message/AiChatWindow.vue'
 </script>

@@ -74,6 +74,10 @@ func (f *fakeNotifier) SendMessage(ctx context.Context, senderID, receiverID int
 	f.msgs = append(f.msgs, content)
 }
 
+func (f *fakeNotifier) SendNotification(ctx context.Context, senderID, receiverID int64, content string, msgType int32, targetID, commentID int64) {
+	f.msgs = append(f.msgs, content)
+}
+
 func TestInteractionService_LikeManuscript_WithRecorderAndNotifier(t *testing.T) {
 	svc, mock := newInteractionSvc(t)
 	ctx := context.Background()
@@ -89,7 +93,7 @@ func TestInteractionService_LikeManuscript_WithRecorderAndNotifier(t *testing.T)
 	mock.ExpectExec(`UPDATE manuscripts SET like_count`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`INSERT INTO manuscript_daily_metrics`).WillReturnResult(sqlmock.NewResult(0, 1))
 	// sendLikeNotification 路径：查稿件作者（先于 profileRecorder）
-	mock.ExpectQuery(`SELECT user_id FROM manuscripts`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(100))
+	mock.ExpectQuery(`SELECT user_id.*FROM manuscripts`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"user_id", "title"}).AddRow(100, "测试视频"))
 	// profileRecorder 路径：后查分类
 	mock.ExpectQuery(`SELECT category_id FROM manuscripts`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"category_id"}).AddRow(2))
 	mock.ExpectQuery(`SELECT like_count FROM manuscripts`).
@@ -119,7 +123,7 @@ func TestInteractionService_LikeManuscript_NoOwnerSkipsNotify(t *testing.T) {
 	mock.ExpectExec(`UPDATE manuscripts SET like_count`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`INSERT INTO manuscript_daily_metrics`).WillReturnResult(sqlmock.NewResult(0, 1))
 	// 作者不存在 → 不通知
-	mock.ExpectQuery(`SELECT user_id FROM manuscripts`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(0))
+	mock.ExpectQuery(`SELECT user_id.*FROM manuscripts`).WithArgs(int64(9)).WillReturnRows(sqlmock.NewRows([]string{"user_id", "title"}).AddRow(0, ""))
 	mock.ExpectQuery(`SELECT like_count FROM manuscripts`).
 		WithArgs(int64(9)).
 		WillReturnRows(sqlmock.NewRows([]string{"like_count"}).AddRow(3))

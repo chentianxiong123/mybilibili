@@ -13,6 +13,9 @@ message SendMessageRequest {
   int64 receiver_id = 2;
   string content = 3;
   int32 message_type = 4;
+  // 通知类消息（2=回复 3=@ 4=赞稿件 6=赞评论）的关联对象，私信(1)不用
+  int64 target_id = 6;
+  int64 comment_id = 7;
 }
 
 message SendMessageResponse {

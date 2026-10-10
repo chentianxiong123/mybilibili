@@ -18,7 +18,7 @@ func NewGrpcServer(repo *MessageRepository, notif *NotificationBroadcaster, cach
 }
 
 func (s *GrpcServer) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
-	msg, err := s.repo.SendMessage(ctx, req.SenderId, req.ReceiverId, req.Content, req.MessageType)
+	msg, err := s.repo.SendMessageWithTarget(ctx, req.SenderId, req.ReceiverId, req.Content, req.MessageType, req.TargetId, req.CommentId)
 	if err != nil {
 		return nil, err
 	}

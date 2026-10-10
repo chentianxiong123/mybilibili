@@ -662,53 +662,39 @@ func TestHandleMessagesByUser_405(t *testing.T) {
 func TestHandleAdminBroadcast_200(t *testing.T) {
 	h, mock := newTestMessageHandler(t)
 
+	// 先解析系统账号 sender（sender_id 有外键，不能用 0）
+	mock.ExpectQuery(`SELECT id FROM users WHERE username = 'system'`).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(900))
 	mock.ExpectQuery(`SELECT id FROM users`).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1001).AddRow(1002))
 
-	// For user 1001
-	mock.ExpectQuery(`SELECT id FROM conversations`).
-		WithArgs(int64(0), int64(1001)).
-		WillReturnError(sql.ErrNoRows)
-	mock.ExpectQuery(`INSERT INTO conversations \(user_id, target_user_id\)`).
-		WithArgs(int64(0), int64(1001)).
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(100))
-	mock.ExpectQuery(`ON CONFLICT \(user_id, target_user_id\)`).
-		WithArgs(int64(1001), int64(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(110))
+	// 系统广播(type=5)走单行插入，不碰 conversations 表
 	now := time.Now()
 	broadcastCols := []string{
 		"id", "sender_id", "receiver_id", "conversation_id", "content", "message_type", "is_read", "created_at",
 	}
+	// For user 1001
 	mock.ExpectQuery(`INSERT INTO messages`).
-		WillReturnRows(sqlmock.NewRows(broadcastCols).AddRow(200, 0, 1001, 100, "广播消息", 5, 0, now))
-	mock.ExpectQuery(`INSERT INTO messages`).
-		WillReturnRows(sqlmock.NewRows(broadcastCols).AddRow(202, 0, 1001, 110, "广播消息", 5, 0, now))
-	mock.ExpectExec(`UPDATE conversations SET last_message_content`).
-		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec(`UPDATE conversations SET last_message_content`).
-		WillReturnResult(sqlmock.NewResult(0, 1))
+		WillReturnRows(sqlmock.NewRows(broadcastCols).AddRow(200, 900, 1001, nil, "广播消息", 5, 0, now))
 
 	// For user 1002
-	mock.ExpectQuery(`SELECT id FROM conversations`).
-		WithArgs(int64(0), int64(1002)).
-		WillReturnError(sql.ErrNoRows)
-	mock.ExpectQuery(`INSERT INTO conversations \(user_id, target_user_id\)`).
-		WithArgs(int64(0), int64(1002)).
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(101))
-	mock.ExpectQuery(`ON CONFLICT \(user_id, target_user_id\)`).
-		WithArgs(int64(1002), int64(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(111))
 	mock.ExpectQuery(`INSERT INTO messages`).
-		WillReturnRows(sqlmock.NewRows(broadcastCols).AddRow(201, 0, 1002, 101, "广播消息", 5, 0, now))
-	mock.ExpectQuery(`INSERT INTO messages`).
-		WillReturnRows(sqlmock.NewRows(broadcastCols).AddRow(203, 0, 1002, 111, "广播消息", 5, 0, now))
-	mock.ExpectExec(`UPDATE conversations SET last_message_content`).
-		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec(`UPDATE conversations SET last_message_content`).
-		WillReturnResult(sqlmock.NewResult(0, 1))
+		WillReturnRows(sqlmock.NewRows(broadcastCols).AddRow(201, 900, 1002, nil, "广播消息", 5, 0, now))
 
 	rr := doMessage(t, h, http.MethodPost, "/api/v1/message/admin/broadcast", `{"content":"广播消息"}`)
 	assert.Equal(t, http.StatusOK, rr.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// 系统账号不存在时必须报错，不能假装广播成功
+func TestHandleAdminBroadcast_NoSystemSender(t *testing.T) {
+	h, mock := newTestMessageHandler(t)
+
+	mock.ExpectQuery(`SELECT id FROM users WHERE username = 'system'`).
+		WillReturnError(sql.ErrNoRows)
+
+	rr := doMessage(t, h, http.MethodPost, "/api/v1/message/admin/broadcast", `{"content":"广播消息"}`)
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

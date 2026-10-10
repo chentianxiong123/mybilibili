@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             v3.21.12
-// source: core/v1/msg_danmaku.proto
+// source: msg_danmaku.proto
 
 package pb
 
@@ -19,7 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MsgDanmakuService_SendMessage_FullMethodName = "/core.v1.MsgDanmakuService/SendMessage"
+	MsgDanmakuService_SendMessage_FullMethodName = "/msg_danmaku.v1.MsgDanmakuService/SendMessage"
 )
 
 // MsgDanmakuServiceClient is the client API for MsgDanmakuService service.
@@ -108,7 +108,7 @@ func _MsgDanmakuService_SendMessage_Handler(srv interface{}, ctx context.Context
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var MsgDanmakuService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "core.v1.MsgDanmakuService",
+	ServiceName: "msg_danmaku.v1.MsgDanmakuService",
 	HandlerType: (*MsgDanmakuServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -117,5 +117,5 @@ var MsgDanmakuService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "core/v1/msg_danmaku.proto",
+	Metadata: "msg_danmaku.proto",
 }

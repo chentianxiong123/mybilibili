@@ -14,6 +14,7 @@ type EventPublisher = events.EventPublisher
 
 type Notifier interface {
 	SendMessage(ctx context.Context, senderID, receiverID int64, content string, msgType int32)
+	SendNotification(ctx context.Context, senderID, receiverID int64, content string, msgType int32, targetID, commentID int64)
 }
 
 type ProfileRecorder interface {
@@ -216,10 +217,11 @@ func (s *InteractionService) sendLikeNotification(ctx context.Context, senderID,
 		return
 	}
 	var ownerID int64
+	var title string
 	err := s.db.QueryRowContext(ctx,
-		`SELECT user_id FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&ownerID)
-	if err != nil || ownerID == 0 {
+		`SELECT user_id, COALESCE(title,'') FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&ownerID, &title)
+	if err != nil || ownerID == 0 || ownerID == senderID {
 		return
 	}
-	s.notifier.SendMessage(ctx, senderID, ownerID, "liked your manuscript", 4)
+	s.notifier.SendNotification(ctx, senderID, ownerID, "赞了你的视频《"+title+"》", 4, manuscriptID, 0)
 }

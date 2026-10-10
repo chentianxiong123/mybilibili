@@ -3,5 +3,5 @@
 </template>
 
 <script setup lang="ts">
-import LikeList from '@/views/web/message/components/LikeList.vue'
+import LikeList from '@/components/teriteri/message/LikeList.vue'
 </script>

@@ -3,6 +3,7 @@ package comment
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 
 	"mybilibili/pkg/abstraction"
@@ -13,6 +14,7 @@ import (
 
 type Notifier interface {
 	SendMessage(ctx context.Context, senderID, receiverID int64, content string, msgType int32)
+	SendNotification(ctx context.Context, senderID, receiverID int64, content string, msgType int32, targetID, commentID int64)
 }
 
 type CommentService struct {
@@ -136,6 +138,7 @@ func (s *CommentService) AddComment(ctx context.Context, req *pb.AddCommentReque
 	}
 
 	info := s.buildComment(ctx, c, req.UserId, nil)
+	s.notifyMentions(ctx, req.Content, req.UserId, req.ManuscriptId, id)
 	return &pb.AddCommentResponse{Comment: info}, nil
 }
 
@@ -200,7 +203,10 @@ func (s *CommentService) AddReply(ctx context.Context, req *pb.AddReplyRequest) 
 		_, _ = s.db.ExecContext(ctx, `UPDATE manuscripts SET comment_count = comment_count + 1 WHERE id = $1`, parent.ManuscriptID)
 	}
 
-	s.sendReplyNotification(ctx, req.CommentId, req.UserId)
+	s.sendReplyNotification(ctx, req.CommentId, req.UserId, req.Content, req.ReplyToUserId)
+	if parent, perr := s.repo.FindByID(ctx, req.CommentId); perr == nil {
+		s.notifyMentions(ctx, req.Content, req.UserId, parent.ManuscriptID, req.CommentId)
+	}
 
 	info := s.buildReply(ctx, rep, req.UserId)
 	return &pb.AddReplyResponse{Reply: info}, nil
@@ -314,28 +320,106 @@ func (s *CommentService) sendCommentLikeNotification(ctx context.Context, target
 	if s.db == nil || s.notifier == nil {
 		return
 	}
-	var ownerID int64
-	table := "comments"
+	var ownerID, manuscriptID, commentID int64
+	var text string
 	if targetType == "reply" {
-		table = "replies"
+		rep, err := s.repo.FindReplyByID(ctx, targetID)
+		if err != nil || rep.UserID == senderID {
+			return
+		}
+		ownerID = rep.UserID
+		text = rep.Content
+		commentID = rep.CommentID
+		if parent, err := s.repo.FindByID(ctx, rep.CommentID); err == nil {
+			manuscriptID = parent.ManuscriptID
+		}
+	} else {
+		c, err := s.repo.FindByID(ctx, targetID)
+		if err != nil || c.UserID == senderID {
+			return
+		}
+		ownerID = c.UserID
+		text = c.Content
+		commentID = c.ID
+		manuscriptID = c.ManuscriptID
 	}
-	_ = s.db.QueryRowContext(ctx,
-		`SELECT user_id FROM `+table+` WHERE id = $1`, targetID).Scan(&ownerID)
-	if ownerID == 0 || ownerID == senderID {
+	if ownerID == 0 {
 		return
 	}
-	s.notifier.SendMessage(ctx, senderID, ownerID, "liked your comment", 6)
+	s.notifier.SendNotification(ctx, senderID, ownerID,
+		"赞了你的评论\""+truncateRunes(text, 100)+"\"", 6, manuscriptID, commentID)
 }
 
-func (s *CommentService) sendReplyNotification(ctx context.Context, commentID, senderID int64) {
+func (s *CommentService) sendReplyNotification(ctx context.Context, commentID, senderID int64, replyContent string, replyToUserID int64) {
 	if s.db == nil || s.notifier == nil {
 		return
 	}
-	var ownerID int64
-	_ = s.db.QueryRowContext(ctx,
-		`SELECT user_id FROM comments WHERE id = $1`, commentID).Scan(&ownerID)
-	if ownerID == 0 || ownerID == senderID {
+	parent, err := s.repo.FindByID(ctx, commentID)
+	if err != nil {
 		return
 	}
-	s.notifier.SendMessage(ctx, senderID, ownerID, "replied to your comment", 2)
+	content := "回复了你的评论：" + truncateRunes(replyContent, 140)
+	notified := map[int64]bool{}
+	// 楼中楼被回复的人优先收到
+	if replyToUserID > 0 && replyToUserID != senderID {
+		s.notifier.SendNotification(ctx, senderID, replyToUserID, content, 2, parent.ManuscriptID, commentID)
+		notified[replyToUserID] = true
+	}
+	if parent.UserID != 0 && parent.UserID != senderID && !notified[parent.UserID] {
+		s.notifier.SendNotification(ctx, senderID, parent.UserID, content, 2, parent.ManuscriptID, commentID)
+	}
+}
+
+// notifyMentions 解析内容里的 @昵称 并通知被@的人（type=3）。
+// 评论和楼中楼回复都走这里；自己@自己不通知。
+func (s *CommentService) notifyMentions(ctx context.Context, content string, senderID, manuscriptID, commentID int64) {
+	if s.db == nil || s.notifier == nil {
+		return
+	}
+	names := parseMentionNames(content)
+	if len(names) == 0 {
+		return
+	}
+	snippet := truncateRunes(content, 140)
+	for _, name := range names {
+		var uid int64
+		err := s.db.QueryRowContext(ctx,
+			`SELECT id FROM users WHERE nickname = $1 OR username = $1 LIMIT 1`, name).Scan(&uid)
+		if err != nil || uid == 0 || uid == senderID {
+			continue
+		}
+		s.notifier.SendNotification(ctx, senderID, uid,
+			"在评论中@了你："+snippet, 3, manuscriptID, commentID)
+	}
+}
+
+// parseMentionNames 提取 @xxx（@后连续非空字符，末尾标点剔除），去重返回。
+func parseMentionNames(s string) []string {
+	var out []string
+	seen := map[string]bool{}
+	runes := []rune(s)
+	for i := 0; i < len(runes); i++ {
+		if runes[i] != '@' {
+			continue
+		}
+		j := i + 1
+		for j < len(runes) && runes[j] != '@' && runes[j] != ' ' && runes[j] != '\t' && runes[j] != '\n' {
+			j++
+		}
+		name := strings.TrimRight(string(runes[i+1:j]), ",.;:!?，。；：！？、）】")
+		if name != "" && !seen[name] {
+			seen[name] = true
+			out = append(out, name)
+		}
+		i = j
+	}
+	return out
+}
+
+func truncateRunes(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n])
 }
