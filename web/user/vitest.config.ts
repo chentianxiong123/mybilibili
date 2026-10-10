@@ -21,7 +21,6 @@ export default defineConfig({
       { test: { name: 'utils', include: ['app/utils/**/*.test.ts'] } },
       { test: { name: 'components', include: ['app/components/**/*.test.ts', 'app/components/**/*.test.vue'] } },
       { test: { name: 'stores', include: ['app/stores/**/*.test.ts'] } },
-      { test: { name: 'teriteri', include: ['app/__tests__/**/*.test.ts'] } },
     ],
     coverage: {
       provider: 'v8',

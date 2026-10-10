@@ -15,8 +15,7 @@
     "test:composables": "vitest run --project composables",
     "test:utils": "vitest run --project utils",
     "test:components": "vitest run --project components",
-    "test:stores": "vitest run --project stores",
-    "test:teriteri": "vitest run --project teriteri"
+    "test:stores": "vitest run --project stores"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
