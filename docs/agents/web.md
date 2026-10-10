@@ -57,7 +57,16 @@ Nuxt 4 + Vue 3 + Element Plus。**Nuxt SSR**：`web/user/app` = app 目录，
    调 `getMessages` 分页（DESC 需反转+按 id 去重），撤回下线（后端无接口+原走
    已不存在的 ws）；`adaptChatConversation` 不再预置伪消息（会与第一页重复），
    预览走新增 `preview` 字段；`updateChatList` 加 Array 守卫（401 降级曾致白屏）。
-   已知限制：无实时推送（新消息靠刷新才出现，SSE 未接）、无撤回。
+   已知限制：无撤回。实时推送已接上（见下）。
+- 私信实时推送（2026-10-10 接上）：设计见
+  `docs/archive/backend/refactor/20-websocket-sse-http-comparison.md`（单向推送用 SSE）。
+  链路：`whisper.vue` 的 EventSource → `/sse/notification` → traefik 指到
+  msg-danmaku:8086（compose/k3s ingress 里 `/sse/notification` 之前错指到 core，
+  实测 404，已改）。事件：`unread_init`/`unread_counts` 校准红点，`message`
+  增量进会话（取最新一条落本地，正看着的直接标已读）。注意两坑：
+  （1）挂载时 pinia isLogin 可能还没就绪，必须 watch isLogin 补连；
+  （2）后端 SendMessage 曾只写发送方会话行（接收方永远收不到），已改双写，
+  见 Go 侧注释；migration 不需要（表结构不动）。
    教训：commit 进 store 前的原始对象直接改不触发视图更新，改完必须从
    `store.state` 里重新取 reactive 代理再改（见 `[mid].vue ensureChatItem` 注释）。
 2. **`/user/privacy/tags` vs `/user/tags`**：前端 `userPrivacyApi.userTags` 三个

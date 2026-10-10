@@ -26,7 +26,8 @@
 #   /api/v1/bili/*      → bili:8091
 #   /api/v1/* (default) → core:8080
 #   /uploads /covers /videos → core:8080
-#   /sse/*              → core:8080
+#   /sse/notification   → msg-danmaku:8086 (私信/通知推送，后端 handleNotificationSSE)
+#   /sse/* (其他)        → core:8080
 #   /ws/*               → live:8087
 #   /                   → web:3200       (Nuxt SSR, default catch-all)
 
@@ -215,7 +216,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.msg.entrypoints=web"
-      - "traefik.http.routers.msg.rule=(PathPrefix(`/api/v1/danmaku/`) || PathPrefix(`/api/v1/message/`))"
+      - "traefik.http.routers.msg.rule=(PathPrefix(`/api/v1/danmaku/`) || PathPrefix(`/api/v1/message/`) || PathPrefix(`/sse/notification`))"
       - "traefik.http.services.msg.loadbalancer.server.port=8086"
       - "traefik.http.routers.msg.priority=10"
     depends_on:

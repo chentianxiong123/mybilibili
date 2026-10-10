@@ -41,45 +41,74 @@ func (r *MessageRepository) DB() *sql.DB {
 }
 
 func (r *MessageRepository) SendMessage(ctx context.Context, senderID, receiverID int64, content string, msgType int32) (*Message, error) {
-	convID, err := r.getOrCreateConversation(ctx, senderID, receiverID)
+	// 会话是按人镜像的两行（sender→receiver、receiver→sender）。
+	// 消息必须写双份，否则接收方读自己的会话行永远看不到对方发的
+	// （曾导致私信"能发不能收"：历史与 SSE 都只对发送方可见）。
+	senderConvID, receiverConvID, err := r.getOrCreateConversation(ctx, senderID, receiverID)
 	if err != nil {
 		return nil, err
 	}
 
-	msg := &Message{}
-	err = r.db.QueryRowContext(ctx,
-		`INSERT INTO messages (sender_id, receiver_id, conversation_id, content, message_type)
-		 VALUES ($1, $2, $3, $4, $5) RETURNING id, sender_id, receiver_id, conversation_id, content, message_type, is_read, created_at`,
-		senderID, receiverID, convID, content, msgType,
-	).Scan(&msg.ID, &msg.SenderID, &msg.ReceiverID, &msg.ConversationID, &msg.Content, &msg.MessageType, &msg.IsRead, &msg.CreatedAt)
+	insert := func(convID int64) (*Message, error) {
+		msg := &Message{}
+		err := r.db.QueryRowContext(ctx,
+			`INSERT INTO messages (sender_id, receiver_id, conversation_id, content, message_type)
+			 VALUES ($1, $2, $3, $4, $5) RETURNING id, sender_id, receiver_id, conversation_id, content, message_type, is_read, created_at`,
+			senderID, receiverID, convID, content, msgType,
+		).Scan(&msg.ID, &msg.SenderID, &msg.ReceiverID, &msg.ConversationID, &msg.Content, &msg.MessageType, &msg.IsRead, &msg.CreatedAt)
+		return msg, err
+	}
+
+	msg, err := insert(senderConvID)
 	if err != nil {
 		return nil, err
 	}
+	if _, err := insert(receiverConvID); err != nil {
+		return nil, err
+	}
 
+	// 发送方行只更新最后一条（未读不动：自己发的没有未读）
+	r.db.ExecContext(ctx,
+		`UPDATE conversations SET last_message_content = $1, last_message_time = NOW()
+		 WHERE id = $2`, content, senderConvID)
+	// 接收方行更新最后一条且未读+1
 	r.db.ExecContext(ctx,
 		`UPDATE conversations SET last_message_content = $1, last_message_time = NOW(), unread_count = unread_count + 1
-		 WHERE id = $2`, content, convID)
+		 WHERE id = $2`, content, receiverConvID)
 
 	return msg, nil
 }
 
-func (r *MessageRepository) getOrCreateConversation(ctx context.Context, userID1, userID2 int64) (int64, error) {
-	var convID int64
-	err := r.db.QueryRowContext(ctx,
-		`SELECT id FROM conversations WHERE user_id = $1 AND target_user_id = $2`, userID1, userID2).Scan(&convID)
+// 返回发送方与接收方各自的会话行 id（不存在则建出镜像两行）。
+// 只有一个调用方（SendMessage），签名可直接改。
+func (r *MessageRepository) getOrCreateConversation(ctx context.Context, userID1, userID2 int64) (senderConvID, receiverConvID int64, err error) {
+	err = r.db.QueryRowContext(ctx,
+		`SELECT id FROM conversations WHERE user_id = $1 AND target_user_id = $2`, userID1, userID2).Scan(&senderConvID)
+	if err != nil && err != sql.ErrNoRows {
+		return 0, 0, err
+	}
 	if err == nil {
-		return convID, nil
+		// 发送方行存在时接收方行必然已建（建行时双写），直接查 id
+		err = r.db.QueryRowContext(ctx,
+			`SELECT id FROM conversations WHERE user_id = $1 AND target_user_id = $2`, userID2, userID1).Scan(&receiverConvID)
+		if err != nil {
+			return 0, 0, err
+		}
+		return senderConvID, receiverConvID, nil
 	}
 
 	err = r.db.QueryRowContext(ctx,
-		`INSERT INTO conversations (user_id, target_user_id) VALUES ($1, $2) RETURNING id`, userID1, userID2).Scan(&convID)
+		`INSERT INTO conversations (user_id, target_user_id) VALUES ($1, $2) RETURNING id`, userID1, userID2).Scan(&senderConvID)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
-	_, err = r.db.ExecContext(ctx,
-		`INSERT INTO conversations (user_id, target_user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, userID2, userID1)
-	return convID, err
+	err = r.db.QueryRowContext(ctx,
+		`INSERT INTO conversations (user_id, target_user_id) VALUES ($1, $2) ON CONFLICT (user_id, target_user_id) DO UPDATE SET target_user_id = EXCLUDED.target_user_id RETURNING id`, userID2, userID1).Scan(&receiverConvID)
+	if err != nil {
+		return 0, 0, err
+	}
+	return senderConvID, receiverConvID, nil
 }
 
 func (r *MessageRepository) GetConversations(ctx context.Context, userID int64) ([]*Conversation, error) {

@@ -276,11 +276,19 @@ func TestHandleSend_WithCacheInvalidate(t *testing.T) {
 	mock.ExpectQuery(`SELECT id FROM conversations`).
 		WithArgs(int64(1001), int64(1002)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(50))
+	mock.ExpectQuery(`SELECT id FROM conversations`).
+		WithArgs(int64(1002), int64(1001)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(60))
 	now := time.Now()
+	msgCols := []string{
+		"id", "sender_id", "receiver_id", "conversation_id", "content", "message_type", "is_read", "created_at",
+	}
 	mock.ExpectQuery(`INSERT INTO messages`).
-		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "sender_id", "receiver_id", "conversation_id", "content", "message_type", "is_read", "created_at",
-		}).AddRow(100, 1001, 1002, 50, "hi", 1, 0, now))
+		WillReturnRows(sqlmock.NewRows(msgCols).AddRow(100, 1001, 1002, 50, "hi", 1, 0, now))
+	mock.ExpectQuery(`INSERT INTO messages`).
+		WillReturnRows(sqlmock.NewRows(msgCols).AddRow(101, 1001, 1002, 60, "hi", 1, 0, now))
+	mock.ExpectExec(`UPDATE conversations SET last_message_content`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE conversations SET last_message_content`).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 

@@ -45,6 +45,7 @@ export default {
     data() {
         return {
             loading: false,     // 是否正在加载会话列表
+            sse: null,          // 私信实时推送（EventSource，连 /sse/notification）
         }
     },
     methods: {
@@ -105,6 +106,115 @@ export default {
             }
         },
 
+        ///////// 实时推送 /////////
+        // 连后端 /sse/notification（网关已指到 msg-danmaku:8086）。
+        // EventSource 设不了请求头，靠同源 HttpOnly cookie 鉴权（与 videoProcess.ts 同理）。
+        // 事件：connected（忽略）、unread_init/unread_counts（校准红点）、
+        // message（新私信，增量进会话）。断线浏览器自动重连，无需自建逻辑
+        connectSSE() {
+            if (this.sse || !this.$store.state.isLogin) return;
+            try {
+                const es = new EventSource('/sse/notification');
+                es.onmessage = (e) => this.handleSSEMessage(e);
+                es.onerror = () => {
+                    // 掉登录后服务端拒连，无限重试无意义，关掉等下次进页重连
+                    if (!this.$store.state.isLogin && this.sse) {
+                        this.sse.close();
+                        this.sse = null;
+                    }
+                };
+                this.sse = es;
+            } catch (e) {
+                // 不支持 EventSource 的环境降级为纯刷新模式
+                this.sse = null;
+            }
+        },
+
+        handleSSEMessage(e) {
+            let msg = null;
+            try {
+                msg = JSON.parse(e.data);
+            } catch (err) {
+                return;
+            }
+            if (!msg || !msg.type) return;
+            if (msg.type === 'unread_init' || msg.type === 'unread_counts') {
+                // 校准全站红点（下标见 message.vue 菜单注释）
+                const d = msg.data || {};
+                const unread = this.$store.state.msgUnread;
+                if (unread) {
+                    unread[0] = d.reply || 0;
+                    unread[1] = d.at || 0;
+                    unread[2] = d.like || 0;
+                    unread[3] = d.system || 0;
+                    unread[4] = d.private || 0;
+                    if (unread.length > 5) unread[5] = d.dynamic || 0;
+                }
+                return;
+            }
+            if (msg.type === 'message' && msg.from_uid) {
+                this.handleIncoming(msg);
+            }
+            // connected / system 等与私信无关，忽略
+        },
+
+        // 新私信到达：会话存在则取最新一条落本地（带真实 id，去重安全），
+        // 不存在则先建会话项；正看着的直接标已读，否则红点+1
+        async handleIncoming(msg) {
+            const fromUid = Number(msg.from_uid);
+            const myUid = this.$store.state.user && this.$store.state.user.uid;
+            if (!fromUid || fromUid === myUid) return;
+            try {
+                let item = this.$store.state.chatList.find(i => i.user.uid === fromUid);
+                if (!item) {
+                    const res = await this.$get(`/msg/chat/create/${fromUid}`);
+                    const got = res && res.data && res.data.data;
+                    if (got && got.user) {
+                        this.$store.commit("updateChatList", [got]);
+                        item = this.$store.state.chatList.find(i => i.user.uid === fromUid);
+                    }
+                }
+                if (!item || !item.chat || !item.chat.id) return;
+                // 取该会话最新一条（后端已落库，拿真实 id，避免与本地临时消息重复）
+                const res = await messageApi.getMessages(item.chat.id, 1, 1);
+                const raw = (res && res.code === 200 && Array.isArray(res.data)) ? res.data : [];
+                if (raw.length === 0) return;
+                const m = raw[0];
+                const exists = item.detail.list.some(x => x.id === m.id);
+                if (!exists) {
+                    item.detail.list.push({
+                        id: m.id,
+                        userId: m.sender_id ?? m.senderId ?? fromUid,
+                        content: m.content || msg.content || '',
+                        withdraw: 0,
+                        time: m.created_at || m.createdAt || msg.created_at || '',
+                    });
+                }
+                item.preview = m.content || msg.content || '';
+                // 提到最前（最新会话置顶，与后端排序一致）
+                const i = this.$store.state.chatList.findIndex(x => x.user.uid === fromUid);
+                if (i > 0) {
+                    const [it] = this.$store.state.chatList.splice(i, 1);
+                    this.$store.state.chatList.unshift(it);
+                }
+                if (Number(this.$route.params.mid) === fromUid) {
+                    // 正看着这个对话框：直接标已读，不涨红点
+                    item.chat.unread = 0;
+                    try {
+                        await messageApi.markConversationRead(item.chat.id);
+                    } catch (err) {
+                        // 本地已清零，后端失败不回滚
+                    }
+                } else {
+                    item.chat.unread = (item.chat.unread || 0) + 1;
+                    const unread = this.$store.state.msgUnread;
+                    if (unread) unread[4] = (unread[4] || 0) + 1;
+                }
+            } catch (err) {
+                // 推送处理失败不影响主流程，下次刷新/进页会全量校准
+            }
+        },
+
         ///////// 事件 /////////
         // 切换聊天
         changeChat(mid) {
@@ -119,11 +229,26 @@ export default {
         } else {
             this.$store.state.chatId = -1;
         }
+        this.connectSSE();
     },
     beforeUnmount() {
         this.$store.state.isChatPage = false;
+        if (this.sse) {
+            this.sse.close();
+            this.sse = null;
+        }
     },
     watch: {
+        // 登录态是异步回来的（app.vue getPersonalInfo），挂载时可能还没就绪；
+        // 就绪后补连 SSE，退出后断开
+        "$store.state.isLogin"(v) {
+            if (v) {
+                this.connectSSE();
+            } else if (this.sse) {
+                this.sse.close();
+                this.sse = null;
+            }
+        },
         // 监听路由变化打开对应聊天
         "$route.path"() {
             if (this.$route.path.startsWith('/message/whisper/')) {

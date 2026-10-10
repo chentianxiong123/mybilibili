@@ -140,33 +140,81 @@ func TestMessageRepository_SendMessage_ExistingConversation(t *testing.T) {
 	db, mock := newMessageDB(t)
 	repo := NewMessageRepository(db)
 
-	// SELECT 直接命中，跳过 INSERT conversation
+	// 双写：发送方行与接收方行都已存在，各查各的 id
 	mock.ExpectQuery(`SELECT id FROM conversations`).
 		WithArgs(int64(1001), int64(1002)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(50))
+	mock.ExpectQuery(`SELECT id FROM conversations`).
+		WithArgs(int64(1002), int64(1001)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(60))
 	now := time.Now()
+	msgCols := []string{
+		"id", "sender_id", "receiver_id", "conversation_id", "content", "message_type", "is_read", "created_at",
+	}
+	// 发送方份（conversation 50）
 	mock.ExpectQuery(`INSERT INTO messages`).
-		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "sender_id", "receiver_id", "conversation_id", "content", "message_type", "is_read", "created_at",
-		}).AddRow(100, 1001, 1002, 50, "hi", 1, 0, now))
-	mock.ExpectExec(`UPDATE conversations SET last_message_content`).
+		WithArgs(int64(1001), int64(1002), int64(50), "hi", int32(1)).
+		WillReturnRows(sqlmock.NewRows(msgCols).AddRow(100, 1001, 1002, 50, "hi", 1, 0, now))
+	// 接收方份（conversation 60）
+	mock.ExpectQuery(`INSERT INTO messages`).
+		WithArgs(int64(1001), int64(1002), int64(60), "hi", int32(1)).
+		WillReturnRows(sqlmock.NewRows(msgCols).AddRow(101, 1001, 1002, 60, "hi", 1, 0, now))
+	// 发送方行只更新最后一条
+	mock.ExpectExec(`UPDATE conversations SET last_message_content = \$1, last_message_time = NOW\(\)`).
+		WithArgs("hi", int64(50)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	// 接收方行更新最后一条且未读+1
+	mock.ExpectExec(`UPDATE conversations SET last_message_content = \$1, last_message_time = NOW\(\), unread_count = unread_count \+ 1`).
+		WithArgs("hi", int64(60)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	msg, err := repo.SendMessage(context.Background(), 1001, 1002, "hi", 1)
 	require.NoError(t, err)
+	// 返回发送方的那份（调用方是发送方）
 	assert.Equal(t, int64(100), msg.ID)
 	assert.Equal(t, int64(50), msg.ConversationID)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestMessageRepository_SendMessage_ConversationInsertError(t *testing.T) {
+func TestMessageRepository_SendMessage_CreateConversations(t *testing.T) {
 	db, mock := newMessageDB(t)
 	repo := NewMessageRepository(db)
 
+	// 发送方行不存在：建发送方行，upsert 接收方行
 	mock.ExpectQuery(`SELECT id FROM conversations`).
 		WithArgs(int64(1001), int64(1002)).
-		WillReturnError(errDB) // 非 ErrNoRows，仍走 INSERT
-	mock.ExpectQuery(`INSERT INTO conversations \(user_id, target_user_id\)`).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
+	mock.ExpectQuery(`INSERT INTO conversations \(user_id, target_user_id\) VALUES`).
+		WithArgs(int64(1001), int64(1002)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(50))
+	mock.ExpectQuery(`ON CONFLICT \(user_id, target_user_id\)`).
+		WithArgs(int64(1002), int64(1001)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(60))
+	now := time.Now()
+	msgCols := []string{
+		"id", "sender_id", "receiver_id", "conversation_id", "content", "message_type", "is_read", "created_at",
+	}
+	mock.ExpectQuery(`INSERT INTO messages`).
+		WillReturnRows(sqlmock.NewRows(msgCols).AddRow(100, 1001, 1002, 50, "hi", 1, 0, now))
+	mock.ExpectQuery(`INSERT INTO messages`).
+		WillReturnRows(sqlmock.NewRows(msgCols).AddRow(101, 1001, 1002, 60, "hi", 1, 0, now))
+	mock.ExpectExec(`UPDATE conversations SET last_message_content`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE conversations SET last_message_content`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	msg, err := repo.SendMessage(context.Background(), 1001, 1002, "hi", 1)
+	require.NoError(t, err)
+	assert.Equal(t, int64(50), msg.ConversationID)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestMessageRepository_SendMessage_ConversationSelectError(t *testing.T) {
+	db, mock := newMessageDB(t)
+	repo := NewMessageRepository(db)
+
+	// SELECT 出真错（非 ErrNoRows）直接失败，不再盲目 INSERT
+	mock.ExpectQuery(`SELECT id FROM conversations`).
 		WithArgs(int64(1001), int64(1002)).
 		WillReturnError(errDB)
 
@@ -183,6 +231,9 @@ func TestMessageRepository_SendMessage_MessageInsertError(t *testing.T) {
 	mock.ExpectQuery(`SELECT id FROM conversations`).
 		WithArgs(int64(1001), int64(1002)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(50))
+	mock.ExpectQuery(`SELECT id FROM conversations`).
+		WithArgs(int64(1002), int64(1001)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(60))
 	mock.ExpectQuery(`INSERT INTO messages`).
 		WillReturnError(errDB)
 
@@ -196,14 +247,14 @@ func TestMessageRepository_SendMessage_ReverseInsertError(t *testing.T) {
 	db, mock := newMessageDB(t)
 	repo := NewMessageRepository(db)
 
-	// SELECT ErrNoRows -> INSERT 成功 -> 反向 INSERT (ON CONFLICT) 报错
+	// SELECT ErrNoRows -> INSERT 成功 -> 反向 upsert 报错
 	mock.ExpectQuery(`SELECT id FROM conversations`).
 		WithArgs(int64(1001), int64(1002)).
 		WillReturnError(sql.ErrNoRows)
 	mock.ExpectQuery(`INSERT INTO conversations \(user_id, target_user_id\)`).
 		WithArgs(int64(1001), int64(1002)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(50))
-	mock.ExpectExec(`INSERT INTO conversations \(user_id, target_user_id\) VALUES \(\$1, \$2\) ON CONFLICT DO NOTHING`).
+	mock.ExpectQuery(`ON CONFLICT \(user_id, target_user_id\)`).
 		WithArgs(int64(1002), int64(1001)).
 		WillReturnError(errDB)
 

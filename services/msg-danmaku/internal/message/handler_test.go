@@ -77,15 +77,20 @@ func TestHandleSendMessage_200(t *testing.T) {
 	mock.ExpectQuery(`INSERT INTO conversations \(user_id, target_user_id\)`).
 		WithArgs(int64(1001), int64(1002)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(50))
-	mock.ExpectExec(`INSERT INTO conversations \(user_id, target_user_id\) VALUES \(\$1, \$2\) ON CONFLICT DO NOTHING`).
+	mock.ExpectQuery(`ON CONFLICT \(user_id, target_user_id\)`).
 		WithArgs(int64(1002), int64(1001)).
-		WillReturnResult(sqlmock.NewResult(0, 1))
-	// 写入消息并返回
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(60))
+	// 写入消息并返回（双写：发送方份 + 接收方份）
 	now := time.Now()
+	msgCols := []string{
+		"id", "sender_id", "receiver_id", "conversation_id", "content", "message_type", "is_read", "created_at",
+	}
 	mock.ExpectQuery(`INSERT INTO messages`).
-		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "sender_id", "receiver_id", "conversation_id", "content", "message_type", "is_read", "created_at",
-		}).AddRow(100, 1001, 1002, 50, "你好呀", 1, 0, now))
+		WillReturnRows(sqlmock.NewRows(msgCols).AddRow(100, 1001, 1002, 50, "你好呀", 1, 0, now))
+	mock.ExpectQuery(`INSERT INTO messages`).
+		WillReturnRows(sqlmock.NewRows(msgCols).AddRow(101, 1001, 1002, 60, "你好呀", 1, 0, now))
+	mock.ExpectExec(`UPDATE conversations SET last_message_content`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE conversations SET last_message_content`).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -667,14 +672,19 @@ func TestHandleAdminBroadcast_200(t *testing.T) {
 	mock.ExpectQuery(`INSERT INTO conversations \(user_id, target_user_id\)`).
 		WithArgs(int64(0), int64(1001)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(100))
-	mock.ExpectExec(`INSERT INTO conversations \(user_id, target_user_id\) VALUES \(\$1, \$2\) ON CONFLICT DO NOTHING`).
+	mock.ExpectQuery(`ON CONFLICT \(user_id, target_user_id\)`).
 		WithArgs(int64(1001), int64(0)).
-		WillReturnResult(sqlmock.NewResult(0, 1))
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(110))
 	now := time.Now()
+	broadcastCols := []string{
+		"id", "sender_id", "receiver_id", "conversation_id", "content", "message_type", "is_read", "created_at",
+	}
 	mock.ExpectQuery(`INSERT INTO messages`).
-		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "sender_id", "receiver_id", "conversation_id", "content", "message_type", "is_read", "created_at",
-		}).AddRow(200, 0, 1001, 100, "广播消息", 5, 0, now))
+		WillReturnRows(sqlmock.NewRows(broadcastCols).AddRow(200, 0, 1001, 100, "广播消息", 5, 0, now))
+	mock.ExpectQuery(`INSERT INTO messages`).
+		WillReturnRows(sqlmock.NewRows(broadcastCols).AddRow(202, 0, 1001, 110, "广播消息", 5, 0, now))
+	mock.ExpectExec(`UPDATE conversations SET last_message_content`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE conversations SET last_message_content`).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -685,13 +695,15 @@ func TestHandleAdminBroadcast_200(t *testing.T) {
 	mock.ExpectQuery(`INSERT INTO conversations \(user_id, target_user_id\)`).
 		WithArgs(int64(0), int64(1002)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(101))
-	mock.ExpectExec(`INSERT INTO conversations \(user_id, target_user_id\) VALUES \(\$1, \$2\) ON CONFLICT DO NOTHING`).
+	mock.ExpectQuery(`ON CONFLICT \(user_id, target_user_id\)`).
 		WithArgs(int64(1002), int64(0)).
-		WillReturnResult(sqlmock.NewResult(0, 1))
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(111))
 	mock.ExpectQuery(`INSERT INTO messages`).
-		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "sender_id", "receiver_id", "conversation_id", "content", "message_type", "is_read", "created_at",
-		}).AddRow(201, 0, 1002, 101, "广播消息", 5, 0, now))
+		WillReturnRows(sqlmock.NewRows(broadcastCols).AddRow(201, 0, 1002, 101, "广播消息", 5, 0, now))
+	mock.ExpectQuery(`INSERT INTO messages`).
+		WillReturnRows(sqlmock.NewRows(broadcastCols).AddRow(203, 0, 1002, 111, "广播消息", 5, 0, now))
+	mock.ExpectExec(`UPDATE conversations SET last_message_content`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE conversations SET last_message_content`).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 

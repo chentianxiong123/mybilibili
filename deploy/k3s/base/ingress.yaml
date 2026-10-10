@@ -94,6 +94,12 @@ spec:
       services: [{name: bili, port: 8091}]
       middlewares: [{name: rate-limit}, {name: security-headers}]
     # SSE 推送
+    # 通知推送（私信/未读）→ msg-danmaku；其余 /sse/* 仍走 core
+    - match: PathPrefix(`/sse/notification`)
+      kind: Rule
+      priority: 15
+      services: [{name: msg-danmaku, port: 8086}]
+      middlewares: [{name: security-headers}]
     - match: PathPrefix(`/sse/`)
       kind: Rule
       priority: 12
