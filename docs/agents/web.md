@@ -1,7 +1,7 @@
 # docs/agents/web.md —— web agent 领域文档
 
 > 领域：桌面 Web 用户端（Nuxt SSR），代码在 `web/user/**`
-> 现状：2026-09-27
+> 现状：2026-10-10
 
 ## 职责边界
 
@@ -36,11 +36,23 @@ Nuxt 4 + Vue 3 + Element Plus。**Nuxt SSR**：`web/user/app` = app 目录，
   无此路由），整页死。见遗留。
 - 隐私设置 camelCase 契约：`publicCollection`/`publicBirthdayTags`/`publicCoinVideos`/
   `publicLikeVideos`/`publicFollowingList`/`publicFollowersList`（表列 snake_case）。
+- 全站导航已统一为 teriteri `HeaderBar`（`.header-bar` 64px）：`layouts/simple.vue`/
+  `home.vue` 用布局，首页/空间/搜索/账号页内自带（banner 叠加需要），创作中心
+  `platform.vue` 自有独立头。旧 Element 风格 `AppHeader.vue`（80px）已删，无残留引用。
+- 消息中心已统一为 teriteri 侧栏框架（`pages/message.vue` + `[type].vue` 别名跳转，
+  背景 `message-bg.png` + `msgUnread` 红点），内容沿用现有 List 实现；新增
+  `message/ai.vue`（AI 客服）。旧 `message/index.vue`（自带 HeaderBar 导致双导航）已删。
+- `app/pages-old/` 缓冲目录已删（Git 历史可查）；运行代码只剩 `app/pages/` 一份。
+  `web/next-old/`（230 文件历史快照）、`web/teriteri-reference/`（原版对照）保留。
+- 测试按领域分 5 组（`test:api/composables/utils/components/stores`，vitest projects），
+  全量 `npm test` 932 条不变。
 
 ## 遗留问题（按优先级）
 
 1. **`/message/whisper` 整页死**（`pages/message/whisper/index.vue` 362 行 + 依赖
-   Vuex store 的 chatList/chatId/updateChatList）。多个页面链到它
+   Vuex store 的 chatList/chatId/updateChatList）。console 现有两个报错：
+   `/api/msg/chat/recent-list` 401 + `updateChatList c is not iterable`。
+   `message.vue` 侧栏外壳已统一（只剩内容待修），多个页面链到它
    （`space/[uid].vue`、`message.vue`、`platform.vue`），不能直接删，需改写或
    用新 `/message/conversations` 系 API 替换。
 2. **`/user/privacy/tags` vs `/user/tags`**：前端 `userPrivacyApi.userTags` 三个
@@ -56,4 +68,4 @@ Nuxt 4 + Vue 3 + Element Plus。**Nuxt SSR**：`web/user/app` = app 目录，
 
 - 不碰 `mobile/wap/**`、`web/admin/**`（其他 agent 领地）
 - 不 stage `.air/work.toml`、`external/cf-whisper-worker/.wrangler/**`
-- 不删 `pages-old/`、`web/next-old/`（历史留存）
+- 不删 `web/next-old/`、`web/teriteri-reference/`（历史留存与原版对照）
