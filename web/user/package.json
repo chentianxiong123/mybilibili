@@ -10,7 +10,13 @@
     "postinstall": "nuxt prepare",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:api": "vitest run --project api",
+    "test:composables": "vitest run --project composables",
+    "test:utils": "vitest run --project utils",
+    "test:components": "vitest run --project components",
+    "test:stores": "vitest run --project stores",
+    "test:teriteri": "vitest run --project teriteri"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
