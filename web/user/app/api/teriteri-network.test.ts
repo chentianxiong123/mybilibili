@@ -218,6 +218,44 @@ describe('isDetailUrl', () => {
 })
 
 describe('adaptResponse', () => {
+  describe('whisper conversations', () => {
+    const conv = {
+      id: 9, user_id: 1, target_user_id: 42,
+      target_user_name: '小伙伴', target_user_avatar: 'http://a/b.png',
+      last_message_content: '在吗', last_message_time: '2026-10-01T12:00:00Z',
+      unread_count: 3,
+    }
+
+    it('recent-list 转旧形状：detail 留空待分页，预览走 preview', () => {
+      const result = adaptResponse('/msg/chat/recent-list', [conv])
+      expect(result.code).toBe(200)
+      const item = result.data.list[0]
+      expect(item.user.uid).toBe(42)
+      expect(item.user.nickname).toBe('小伙伴')
+      expect(item.chat.id).toBe(9)
+      expect(item.chat.unread).toBe(3)
+      // 历史由 MessageList 分页拉取，这里不能预置伪消息（否则与第一页重复）
+      expect(item.detail.list).toEqual([])
+      expect(item.detail.more).toBe(true)
+      expect(item.preview).toBe('在吗')
+    })
+
+    it('create 命中返回单个 item，未命中返回占位', () => {
+      const hit = adaptResponse('/msg/chat/create/42', [conv])
+      expect(hit.data.user.uid).toBe(42)
+      expect(hit.data.chat.id).toBe(9)
+      const miss = adaptResponse('/msg/chat/create/99', [conv])
+      expect(miss.data.user.uid).toBe(99)
+      expect(miss.data.chat.id).toBe(0)
+      expect(miss.data.detail.list).toEqual([])
+    })
+
+    it('recent-list 空/异常输入返回空列表（不炸 updateChatList）', () => {
+      expect(adaptResponse('/msg/chat/recent-list', []).data.list).toEqual([])
+      expect(adaptResponse('/msg/chat/recent-list', null).data.list).toEqual([])
+    })
+  })
+
   describe('favorites list', () => {
     it('adapts favorite list to teriteri format', () => {
       const data = [

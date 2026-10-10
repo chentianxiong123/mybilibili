@@ -139,7 +139,10 @@ function isDetailUrl(url: string) {
   return /^\/manuscript\/\d+/.test(url) || /^\/video\/getone/.test(url)
 }
 
-// 后端 Conversation(snake_case) → teriteri 私信 chat item {user, chat, detail}
+// 后端 Conversation(snake_case) → teriteri 私信 chat item {user, chat, detail, preview}
+// 注意：detail.list 刻意留空，历史记录由 MessageList 按 conversation id
+// （= chat.id）调 /message/conversations/{id}/messages 分页拉取；
+// 若在此预置 last_message 会与第一页重复。左栏预览走 preview 字段。
 function adaptChatConversation(c: any): any {
   const uid = c.target_user_id || c.targetUserId || 0
   return {
@@ -155,15 +158,10 @@ function adaptChatConversation(c: any): any {
       id: c.id || 0,
     },
     detail: {
-      more: false,
-      list: [{
-        id: c.last_message_id || c.id || 0,
-        userId: uid,
-        content: c.last_message_content || c.lastMessageContent || '',
-        withdraw: 0,
-        time: c.last_message_time || c.lastMessageTime || '',
-      }],
+      more: true,
+      list: [],
     },
+    preview: c.last_message_content || c.lastMessageContent || '',
   }
 }
 
@@ -190,6 +188,7 @@ function adaptResponse(originalUrl: string, data: any) {
         user: { uid: mid, nickname: '', avatar_url: '', auth: 0 },
         chat: { unread: 0, userId: mid, id: 0 },
         detail: { more: true, list: [] },
+        preview: '',
       },
       message: 'ok',
     }

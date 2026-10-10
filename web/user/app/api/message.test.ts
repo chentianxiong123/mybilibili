@@ -88,6 +88,20 @@ describe('messageApi', () => {
     expect(mocks.apiPut).toHaveBeenNthCalledWith(2, '/message/batch/read', { ids: [1, 2, 3] })
   })
 
+  it('markConversationRead 调 PUT conversations/{id} 清未读', async () => {
+    mocks.hasAuthSession.mockReturnValue(true)
+    mocks.apiPut.mockResolvedValueOnce({ code: 200 })
+    await messageApi.markConversationRead(7)
+    expect(mocks.apiPut).toHaveBeenCalledWith('/message/conversations/7', { unread_count: 0 })
+  })
+
+  it('markConversationRead 未登录直接返回 401', async () => {
+    mocks.hasAuthSession.mockReturnValue(false)
+    const res = await messageApi.markConversationRead(7)
+    expect(res).toEqual({ code: 401, message: '请先登录', data: null })
+    expect(mocks.apiPut).not.toHaveBeenCalled()
+  })
+
   it('getUnreadCounts 已登录', async () => {
     mocks.hasAuthSession.mockReturnValue(true)
     mocks.apiGet.mockResolvedValueOnce({ code: 200, data: {} })

@@ -15,6 +15,9 @@ export const messageApi = {
 
   deleteConversation: (id) => authRequired(null) || api.delete(`/message/conversations/${id}`),
 
+  // 打开会话时清未读（后端 PUT /message/conversations/{id} {unread_count}）
+  markConversationRead: (id) => authRequired(null) || api.put(`/message/conversations/${id}`, { unread_count: 0 }),
+
   getMessages: (conversationId, page = 1, size = 20) =>
     authRequired([]) || api.get(`/message/conversations/${conversationId}/messages`, { params: { page, size } }),
 

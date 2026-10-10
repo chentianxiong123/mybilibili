@@ -17,12 +17,11 @@
                     ></a>
                     <div class="message" @contextmenu="(e) => handleContextMenu(item.id, e)">
                         <div class="message-content" v-html="emojiText(item.content)"></div>
-                        <div class="context-menu" v-if="msgId === item.id" :style="`left: ${menuLeft}px; top: ${menuTop}px;`">
-                            <ul>
-                                <li v-if="item.userId === user.uid" @click="withdraw">撤回</li>
-                                <li @click="deleteMsg">删除</li>
-                            </ul>
-                        </div>
+                                <div class="context-menu" v-if="msgId === item.id" :style="`left: ${menuLeft}px; top: ${menuTop}px;`">
+                                    <ul>
+                                        <li @click="deleteMsg">删除</li>
+                                    </ul>
+                                </div>
                     </div>
                 </div>
                 <div class="notify-wrapper" v-else>
@@ -36,6 +35,22 @@
 <script lang="ts">
 import MessageLoading from './MessageLoading.vue';
 import { handleDateTime, emojiText } from '@/teriteri-src/utils/utils';
+import { messageApi } from '@/api/message.ts';
+
+// 后端一页条数（与 getMessages size 对齐，用于判断是否还有更多）
+const PAGE_SIZE = 20;
+
+// 后端 Message(snake_case) → teriteri detail item {id, userId, content, withdraw, time}。
+// 注意后端按 created_at DESC 返回（最新在前），展示前需反转
+function adaptMessage(m: any) {
+    return {
+        id: m.id,
+        userId: m.sender_id ?? m.senderId ?? 0,
+        content: m.content || '',
+        withdraw: 0,
+        time: m.created_at || m.createdAt || '',
+    };
+}
 
 export default {
     name: "MessageList",
@@ -76,28 +91,40 @@ export default {
         }
     },
     methods: {
-        // 请求更多聊天记录
+        // 请求更多聊天记录：新后端 GET /message/conversations/{id}/messages?page&size
+        // （DESC 返回，unshift 前反转；返回不满一页即没有更多）
         async getMoreDetails() {
             if (!this.chat.detail.more || this.loading) return;
+            const storeChat = this.$store.state.chatList.find(item => item.user.uid === this.mid);
+            const convId = storeChat && storeChat.chat && storeChat.chat.id;
+            if (!convId) {
+                // 占位会话（尚未落库）无历史可拉
+                this.chat.detail.more = false;
+                return;
+            }
             this.loading = true;
-            const res = await this.$get("/msg/chat-detailed/get-more", {
-                params: {
-                    uid: this.mid,
-                    offset: this.chat.detail.list.length
-                },
-            });
+            this.error = false;
             // 记录DOM更新前滚动条的位置
             const scrollContainer = document.getElementById('message-list');
             const lastChild = scrollContainer.lastElementChild;
             const lastTop = scrollContainer.scrollTop;
             const lastHeight = lastChild.clientHeight;
-            if (res.data && res.data.data) {
-                let chat = this.$store.state.chatList.find(item => item.user.uid === this.mid);
-                chat.detail.more = res.data.data.more;
-                chat.detail.list.unshift(...res.data.data.list);
-            } else {
+            try {
+                const page = Math.floor(this.chat.detail.list.length / PAGE_SIZE) + 1;
+                const res = await messageApi.getMessages(convId, page, PAGE_SIZE);
+                const raw = (res && res.code === 200 && Array.isArray(res.data)) ? res.data : null;
+                if (!raw) throw new Error('bad response');
+                // 按 id 去重：本地已有的（刚发出去的、翻页重叠的）不再重复 unshift
+                const seen = new Set(storeChat.detail.list.map(m => m.id));
+                const items = raw.map(adaptMessage).reverse().filter(m => !seen.has(m.id));
+                storeChat.detail.more = raw.length === PAGE_SIZE;
+                storeChat.detail.list.unshift(...items);
+                // 同步本地副本（deep watcher 也会同步，这里直接更新避免闪烁）
+                this.chat.detail.more = storeChat.detail.more;
+            } catch (e) {
                 this.loading = false;
                 this.error = true;
+                return;
             }
             // 等新消息挂载完毕后关掉加载组件
             this.$nextTick(() => {
@@ -184,28 +211,28 @@ export default {
             this.msgId = -1;
         },
 
-        // 撤回消息
-        withdraw() {
-            const context = {
-                code: 102,
-                id: this.msgId
-            }
-            this.$store.state.ws.send(JSON.stringify(context));
-            this.msgId = -1;
-        },
-
-        // 删除消息
+        // 删除消息：新后端 DELETE /message/{id}。
+        // 撤回已下线（后端无撤回接口，原实现走已不存在的 ws 通道），右键菜单只保留删除
         async deleteMsg() {
-            const formData = new FormData();
-            formData.append("id", this.msgId);
-            const res = await this.$post("/msg/chat-detailed/delete", formData);
-            if (res.data.code && res.data.code === 200) {
-                let chat = this.$store.state.chatList.find(item => item.user.uid === this.mid);
-                let index = chat.detail.list.findIndex(item => item.id);
+            try {
+                const res = await messageApi.deleteMessage(this.msgId);
+                if (!res || res.code !== 200) throw new Error('delete failed');
+                const chat = this.$store.state.chatList.find(item => item.user.uid === this.mid);
+                if (!chat) return;
+                const index = chat.detail.list.findIndex(item => item.id === this.msgId);
                 if (index !== -1) {
                     chat.detail.list.splice(index, 1);
                     this.msgId = -1;
                 }
+            } catch (e) {
+                // 删除失败保持原样
+            }
+        },
+
+        // 对话框打开/切换且本地无消息时拉第一页（store 为空时父组件会先建占位）
+        async ensureInitialLoad() {
+            if (this.chat.detail.list.length === 0 && this.chat.detail.more && !this.loading) {
+                await this.getMoreDetails();
             }
         }
 
@@ -216,6 +243,7 @@ export default {
         this.goBottom("auto");
         window.addEventListener("click", this.handleOutsideClick);
         window.addEventListener("contextmenu", this.handleOutsideClick);
+        this.ensureInitialLoad();
     },
     beforeUnmount() {
         window.removeEventListener("click", this.handleOutsideClick);
@@ -229,6 +257,7 @@ export default {
             this.chat = JSON.parse(JSON.stringify(chat));
             // console.log("当前聊天：",this.chat);
             this.goBottom("auto");
+            this.ensureInitialLoad();
         },
         // 深度监听vuex中聊天列表的变化
         "$store.state.chatList": {
@@ -243,6 +272,8 @@ export default {
                         // 如果原本在底部的话还要滚到底部 等元素渲染完再滚
                         this.goBottom("smooth");
                     }
+                    // 会话迟到（父组件异步建占位/真 item）：补拉第一页
+                    this.ensureInitialLoad();
                 })
             },
             deep: true

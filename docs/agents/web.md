@@ -49,12 +49,17 @@ Nuxt 4 + Vue 3 + Element Plus。**Nuxt SSR**：`web/user/app` = app 目录，
 
 ## 遗留问题（按优先级）
 
-1. **`/message/whisper` 整页死**（`pages/message/whisper/index.vue` 362 行 + 依赖
-   Vuex store 的 chatList/chatId/updateChatList）。console 现有两个报错：
-   `/api/msg/chat/recent-list` 401 + `updateChatList c is not iterable`。
-   `message.vue` 侧栏外壳已统一（只剩内容待修），多个页面链到它
-   （`space/[uid].vue`、`message.vue`、`platform.vue`），不能直接删，需改写或
-   用新 `/message/conversations` 系 API 替换。
+1. **`/message/whisper` 已修好**（2026-10-10，前端改调新接口，后端不动）。
+   改法：`pages/message/whisper.vue` 新父组件（左栏会话+`<NuxtPage/>`，原 index.vue
+   的 `<router-view>` 嵌套在 Nuxt 下不生效）；`whisper/index.vue` 瘦身为占位+自动
+   跳首个会话；`[mid].vue` 对话框调 `messageApi.sendMessage`/`markConversationRead`，
+   无会话时用 `/user/info/get-one` 补标题，发首条后占位转正；`MessageList.vue`
+   调 `getMessages` 分页（DESC 需反转+按 id 去重），撤回下线（后端无接口+原走
+   已不存在的 ws）；`adaptChatConversation` 不再预置伪消息（会与第一页重复），
+   预览走新增 `preview` 字段；`updateChatList` 加 Array 守卫（401 降级曾致白屏）。
+   已知限制：无实时推送（新消息靠刷新才出现，SSE 未接）、无撤回。
+   教训：commit 进 store 前的原始对象直接改不触发视图更新，改完必须从
+   `store.state` 里重新取 reactive 代理再改（见 `[mid].vue ensureChatItem` 注释）。
 2. **`/user/privacy/tags` vs `/user/tags`**：前端 `userPrivacyApi.userTags` 三个
    函数调 `/user/privacy/tags`，但后端 `handlePrivacy` 只处理 GET(隐私JSON)/PUT，
    不做 tags；真正的 tags 在 `/api/v1/user/tags`（handleTags）。等于用户标签

@@ -41,7 +41,9 @@ export const useTeriteriStore = defineStore('teriteri', {
     updateChannels(c) { this.channels = c },
     updateCarousels(c) { this.carousels = c },
     updateDanmuList(d) { this.danmuList = d },
-    updateChatList(c) { this.chatList.push(...c) },
+    // 私信会话追加：非数组（如 401 降级返回的 undefined）直接忽略，
+    // 否则 ...c 当场炸 "c is not iterable"（whisper 页曾因此白屏）
+    updateChatList(c) { if (Array.isArray(c)) this.chatList.push(...c) },
     updateAttitudeToVideo(a) { this.attitudeToVideo = a },
     updateLikeComment(l) { this.likeComment = l },
     updateDislikeComment(d) { this.dislikeComment = d },

@@ -53,6 +53,7 @@ import VPopover from '@/components/teriteri/popover/VPopover.vue';
 import EmojiBox from '@/components/teriteri/emoji/EmojiBox.vue';
 import MessageList from '@/components/teriteri/message/MessageList.vue';
 import EmojiJson from '@/assets/teriteri/json/emoji.json';
+import { messageApi } from '@/api/message.ts';
 import { ElMessage } from 'element-plus';
 
 // 辅助函数，用于转义正则表达式中的特殊字符
@@ -86,33 +87,70 @@ export default {
     },
     methods: {
         ///////// 请求 /////////
-        // 更新对方用户 以及缓存自己的id
-        updateUser() {
-            let i = this.$store.state.chatList.findIndex(item => item.user.uid === this.mid);
-            if (i === -1 || !this.$store.state.chatList[i]) {
-                this.user = { uid: this.mid, nickname: '', avatar_url: '', auth: 0 };
-                this.myId = null;
-                return;
+        // 确保会话在 chatList 中（父页面异步拉取可能晚于本组件挂载，
+        // 直接用 URL 进入时也可能缺失）。走适配层：命中返回旧形状 item，
+        // 无会话返回占位 item（发送第一条消息时后端自动建会话）。
+        // 注意：必须返回 store 里的 reactive 代理对象，不能返回 commit 前的
+        // 原始对象——直接改原始对象不会触发视图更新（曾经标题空白的根因）
+        async ensureChatItem() {
+            const pick = () => this.$store.state.chatList.find(item => item.user.uid === this.mid);
+            let item = pick();
+            if (item) return item;
+            try {
+                const res = await this.$get(`/msg/chat/create/${this.mid}`);
+                const got = res && res.data && res.data.data;
+                if (got && got.user) {
+                    this.$store.commit("updateChatList", [got]);
+                    return pick();
+                }
+            } catch (e) {
+                // 忽略，下面走本地占位
             }
-            this.user = this.$store.state.chatList[i].user;
-            this.myId = this.$store.state.chatList[i].chat.anotherId;
+            const placeholder = {
+                user: { uid: this.mid, nickname: '', avatar_url: '', auth: 0 },
+                chat: { unread: 0, userId: this.mid, id: 0 },
+                detail: { more: true, list: [] },
+                preview: '',
+            };
+            this.$store.commit("updateChatList", [placeholder]);
+            return pick();
         },
 
-        // 更新窗口在线状态
-        async updateOnline() {
-            await this.$get("/msg/chat/online", {
-                params: { from: this.user.uid }
-            })
-        },
-        
-        // 更新聊天窗口离开状态
-        async updateOutline() {
-            await this.$get("/msg/chat/outline", {
-                params: { from: this.user.uid, to: this.myId }
-            })
+        // 更新对方用户 以及缓存自己的id
+        async updateUser() {
+            const item = await this.ensureChatItem();
+            this.user = item.user;
+            this.myId = this.$store.state.user && this.$store.state.user.uid;
+            // 占位会话没有昵称/头像时，用用户信息接口补标题
+            if (!this.user.nickname) {
+                try {
+                    const res = await this.$get("/user/info/get-one", { params: { uid: this.mid } });
+                    const u = res && res.data && res.data.data;
+                    if (u) {
+                        item.user.nickname = u.nickname || '';
+                        item.user.avatar_url = u.avatar_url || '';
+                        item.user.auth = u.auth || 0;
+                        this.user = item.user;
+                    }
+                } catch (e) {
+                    // 标题保持空白，不影响发消息
+                }
+            }
         },
 
-        // 发送消息
+        // 打开对话框即标已读（后端 PUT conversations/{id}，本地红点同步清零）
+        async markRead() {
+            const item = this.$store.state.chatList.find(i => i.user.uid === this.mid);
+            if (!item || !item.chat || !item.chat.id || !item.chat.unread) return;
+            item.chat.unread = 0;
+            try {
+                await messageApi.markConversationRead(item.chat.id);
+            } catch (e) {
+                // 本地已清零，后端失败不回滚
+            }
+        },
+
+        // 发送消息（新后端 POST /message/send，receiverId 建会话，无需预创建）
         async sendMsg() {
             if (this.user.uid === this.$store.state.user.uid) {
                 ElMessage.error("不能给自己发消息哦~");
@@ -128,8 +166,8 @@ export default {
             const content = this.input;
             let sent = null;
             try {
-                const res = await this.$post('/message/send', { receiverId: this.user.uid, content: content });
-                sent = res && res.data && res.data.data;
+                const res = await messageApi.sendMessage({ receiverId: this.user.uid, content });
+                if (res && res.code === 200) sent = res.data;
             } catch (e) {
                 sent = null;
             }
@@ -138,7 +176,10 @@ export default {
                 return;
             }
             // 成功后本地推进消息（服务端已落库，无需等实时通道）
-            let chatItem = this.$store.state.chatList.find(item => item.chat.userId === this.user.uid);
+            let chatItem = this.$store.state.chatList.find(item => item.user.uid === this.user.uid);
+            if (!chatItem) {
+                chatItem = await this.ensureChatItem();
+            }
             if (chatItem) {
                 chatItem.detail.list.push({
                     id: sent.id,
@@ -147,7 +188,23 @@ export default {
                     withdraw: 0,
                     time: sent.created_at || String(Date.now()),
                 });
-                chatItem.chat.latestTime = String(sent.created_at || Date.now());
+                chatItem.preview = sent.content;
+                // 首条消息建出了真实会话：用真 item（含 conversation id）替换占位，
+                // 后续历史分页/标已读/删除会话才找得到后端会话
+                if (!chatItem.chat.id) {
+                    try {
+                        const res = await this.$get(`/msg/chat/create/${this.user.uid}`);
+                        const real = res && res.data && res.data.data;
+                        if (real && real.user && real.chat && real.chat.id) {
+                            const i = this.$store.state.chatList.findIndex(item => item.user.uid === this.user.uid);
+                            real.detail.list = chatItem.detail.list;
+                            real.preview = sent.content;
+                            if (i !== -1) this.$store.state.chatList.splice(i, 1, real);
+                        }
+                    } catch (e) {
+                        // 保持本地消息，不影响使用
+                    }
+                }
             }
             // 清空文本
             this.$refs.editor.innerHTML = '';
@@ -393,37 +450,23 @@ export default {
     },
     async mounted() {
         this.mid = Number(this.$route.params.mid);
-        // 确保会话在 chatList 中（父页面异步 createChat 可能晚于本组件挂载）
-        const has = this.$store.state.chatList.find(item => item.user.uid === this.mid);
-        if (!has) {
-            try {
-                const res = await this.$get(`/msg/chat/create/${this.mid}`);
-                const item = res && res.data && res.data.data;
-                if (item) this.$store.commit("updateChatList", [item]);
-            } catch (e) {
-                // 会话不存在时跳过，发送消息会自动创建
-            }
-        }
-        this.updateUser();
-        await this.updateOnline();
+        await this.updateUser();
+        await this.markRead();
         window.addEventListener("click", this.handleOutsideClick);
         document.addEventListener("selectionchange", this.selectionChange);
-        window.addEventListener('beforeunload', this.updateOutline);    // beforeunload 事件监听标签页关闭
     },
     beforeUnmount() {
         window.removeEventListener("click", this.handleOutsideClick);
         document.removeEventListener("selectionchange", this.selectionChange);
-        window.removeEventListener('beforeunload', this.updateOutline);
     },
     watch: {
         // 监听路由变化打开对应聊天
         async "$route.path"() {
-            await this.updateOutline(); // 先从原先的离开
             this.mid = Number(this.$route.params.mid);
             if (!this.$route.params.mid) return;
             this.init();
-            this.updateUser();
-            await this.updateOnline();
+            await this.updateUser();
+            await this.markRead();
         }
     }
 }
