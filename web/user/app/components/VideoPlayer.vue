@@ -91,6 +91,7 @@ const subtitleEnabled = ref(true)
 const subtitleDisplayRef = ref<any>(null)
 const subtitleSettingsPanelRef = ref<HTMLDivElement | null>(null)
 const subtitleSettingsVisible = ref(false)
+const subtitleMenuAnchorX = ref(0)
 let subtitleToggleGuard = false
 
 const onDocClickForSubtitlePanel = (e: Event) => {
@@ -348,6 +349,19 @@ let playerInitialized = false
 let lastAppliedUrl = ''
 let timeUpdateInterval: any = null
 
+const VOL_ICONS = {
+  high: 'M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z',
+  low: 'M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z',
+  muted: 'M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.796 8.796 0 0 0 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.99 8.99 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4 9.91 6.09 12 8.18V4z'
+}
+const updateVolIcon = (el: HTMLElement, art: any) => {
+  const icon = el.querySelector('.art-vol-icon')
+  if (!icon) return
+  const vol = art.muted ? 0 : art.volume
+  const path = vol === 0 ? VOL_ICONS.muted : vol > 0.5 ? VOL_ICONS.high : VOL_ICONS.low
+  icon.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="${path}"/></svg>`
+}
+
 const initPlayer = async () => {
   if (playerInitialized) return
   playerInitialized = true
@@ -406,7 +420,8 @@ const initPlayer = async () => {
     setting: true,
     loop: false,
     flip: true,
-    playbackRate: true,
+    playbackRate: false,
+    volume: 0.7,
     aspectRatio: false,
     fullscreen: true,
     fullscreenWeb: true,
@@ -480,18 +495,95 @@ const initPlayer = async () => {
     ]
   }
 
+  let volEl: HTMLElement | null = null
+  let volSlider: HTMLElement | null = null
+
   playerConfig.controls = [
+    // 倍速（B站右侧顺序：清晰度 → 倍速 → 字幕 → 音量 → 设置 → …）
     {
       position: 'right',
-      html: '<span class="art-icon">字幕</span>',
+      index: 20,
+      html: '倍速',
+      tooltip: '倍速',
+      selector: [2, 1.5, 1.25, 1, 0.75, 0.5].map(v => ({
+        value: v,
+        name: `ctrl-speed-${v}`,
+        html: v === 1 ? '1.0x' : `${v}x`,
+        default: v === 1
+      })),
+      onSelect: function (this: any, item: any) {
+        this.playbackRate = item.value
+        return item.html
+      }
+    },
+    // 字幕（原有功能）
+    {
+      position: 'right',
+      index: 22,
+      html: '字幕',
       tooltip: '字幕设置',
-      click: () => {
+      click: function (this: any, _mgr: any, ev: Event) {
+        const btn = (ev?.currentTarget as HTMLElement) || null
+        if (btn) {
+          const btnRect = btn.getBoundingClientRect()
+          const host = playerRef.value?.getBoundingClientRect()
+          if (host) {
+            subtitleMenuAnchorX.value = btnRect.left + btnRect.width / 2 - host.left
+          }
+        }
         subtitleSettingsVisible.value = !subtitleSettingsVisible.value
         subtitleToggleGuard = true
         setTimeout(() => { subtitleToggleGuard = false }, 0)
+      }
+    },
+    // 音量：图标 + 点击静音切换 + hover 弹竖向音量条
+    {
+      position: 'right',
+      index: 24,
+      html: '<span class="art-icon art-vol-icon"></span>',
+      tooltip: '音量',
+      click: function (this: any) {
+        this.muted = !this.muted
+        if (volEl) updateVolIcon(volEl, this)
       },
-      mounted: function (this: any) {
-        this.innerHTML = `<span class="art-icon">字幕</span>`
+      mounted: function (this: any, el: HTMLElement) {
+        const art = this
+        volEl = el
+        el.style.position = 'relative'
+        updateVolIcon(el, art)
+        art.on('video:volumechange', () => {
+          updateVolIcon(el, art)
+          if (volSlider) {
+            const input = volSlider.querySelector('input')
+            if (input && document.activeElement !== input) {
+              input.value = String(Math.round((art.volume || 0) * 100))
+            }
+          }
+        })
+        art.proxy(el, 'mouseenter', () => {
+          if (!volSlider) {
+            volSlider = document.createElement('div')
+            volSlider.className = 'art-vol-slider'
+            volSlider.style.cssText = 'position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);border-radius:4px;padding:10px 0;width:32px;height:100px;display:flex;justify-content:center;z-index:310;'
+            const input = document.createElement('input')
+            input.type = 'range'
+            input.min = '0'
+            input.max = '100'
+            input.value = String(Math.round((art.volume || 0) * 100))
+            input.style.cssText = 'writing-mode:vertical-lr;direction:rtl;height:76px;width:4px;margin:0;accent-color:#fff;cursor:pointer;'
+            input.addEventListener('input', () => {
+              art.volume = Number(input.value) / 100
+              if (art.muted && art.volume > 0) art.muted = false
+              updateVolIcon(el, art)
+            })
+            volSlider.appendChild(input)
+            el.appendChild(volSlider)
+          }
+          volSlider.style.display = 'flex'
+        })
+        art.proxy(el, 'mouseleave', () => {
+          if (volSlider) volSlider.style.display = 'none'
+        })
       }
     }
   ]
@@ -740,6 +832,7 @@ onUnmounted(() => {
     <div ref="subtitleSettingsPanelRef" class="subtitle-menu-anchor" @click.stop>
       <SubtitleMenu
         v-model:visible="subtitleSettingsVisible"
+        :anchor-x="subtitleMenuAnchorX"
         :subtitles="menuSubtitles"
         :current-language="currentLanguage"
         :enabled="subtitleEnabled"
@@ -797,6 +890,9 @@ onUnmounted(() => {
 /* ArtPlayer 内部控件不要换行（保持单行布局，用 CSS var 缩放解决空间问题） */
 .video-player :deep(.art-controls) {
     flex-wrap: nowrap !important;
+}
+.video-player :deep(.art-control-volume) {
+    display: none !important;
 }
 
 /* artplayer-plugin-danmuku 设置面板：强制覆盖全局 a/inherit 的深色字 */

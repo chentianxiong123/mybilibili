@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
+  anchorX: { type: Number, default: 0 },
   subtitles: { type: Array, default: () => [] },
   currentLanguage: { type: String, default: '' },
   enabled: { type: Boolean, default: true },
@@ -30,6 +31,17 @@ const emit = defineEmits([
 // 'main' = 语言列表页, 'settings' = 字幕设置页（横向滑动切换）
 const panel = ref<'main' | 'settings'>('main')
 const menuRef = ref<HTMLElement | null>(null)
+
+// 菜单水平定位：居中于字幕按钮（anchorX），并夹在播放器内
+const menuLeftStyle = computed(() => {
+  const w = panel.value === 'settings' ? 266 : 168
+  const hostW = menuRef.value?.parentElement?.clientWidth || 0
+  let left = props.anchorX - w / 2
+  if (hostW > 0) {
+    left = Math.max(8, Math.min(left, hostW - w - 8))
+  }
+  return { left: `${Math.max(0, left)}px`, width: `${w}px` }
+})
 
 // ===== 下拉状态 =====
 const openSelect = ref<string | null>(null)
@@ -114,7 +126,7 @@ const closeMenu = () => emit('update:visible', false)
 </script>
 
 <template>
-  <div v-show="visible" ref="menuRef" class="bsub-menu" :class="`panel-${panel}`" @click.stop>
+  <div v-show="visible" ref="menuRef" class="bsub-menu" :class="`panel-${panel}`" :style="menuLeftStyle" @click.stop>
     <div class="bsub-move" :class="{ 'move-settings': panel === 'settings' }">
       <!-- 面板1: 语言列表 -->
       <div class="bsub-panel bsub-panel-main">
@@ -265,7 +277,6 @@ const closeMenu = () => emit('update:visible', false)
 .bsub-menu {
   position: absolute;
   bottom: 52px;
-  right: 12px;
   z-index: 120;
   overflow: hidden;
   border-radius: 8px;
@@ -274,11 +285,7 @@ const closeMenu = () => emit('update:visible', false)
   color: #fff;
   font-size: 12px;
   line-height: 1.4;
-  width: 168px;
   transition: width 0.28s cubic-bezier(0.25, 0.1, 0.25, 1);
-}
-.bsub-menu.panel-settings {
-  width: 266px;
 }
 
 .bsub-move {
