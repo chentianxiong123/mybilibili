@@ -24,7 +24,9 @@ const subtitleSettings = ref({
   textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)',
   borderRadius: 4,
   padding: '8px 16px',
-  lineHeight: 1.5
+  lineHeight: 1.5,
+  position: 'bottom-center',
+  stroke: 0
 })
 
 const BOUNDS_INSET = 12
@@ -55,17 +57,63 @@ const currentSubtitleText = computed(() => {
   return current ? current.text : ''
 })
 
-// 字幕容器样式
-const containerStyle = computed(() => ({
-  transform: `translate(calc(-50% + ${offsetX.value}px), ${offsetY.value}px)`
-}))
+// 描边效果（对齐B站: 0无 1重墨 2描边 3投影）
+const strokeStyle = computed(() => {
+  const mode = subtitleSettings.value.stroke
+  if (mode === 1) {
+    return { textShadow: '2px 2px 3px #000, -2px -2px 3px #000, 2px -2px 3px #000, -2px 2px 3px #000, 0 3px 4px rgba(0,0,0,0.9)', webkitTextStroke: '' }
+  }
+  if (mode === 2) {
+    return { textShadow: subtitleSettings.value.textShadow, webkitTextStroke: '0.8px #000', paintOrder: 'stroke fill' }
+  }
+  if (mode === 3) {
+    return { textShadow: '3px 3px 4px rgba(0, 0, 0, 0.85)', webkitTextStroke: '' }
+  }
+  return { textShadow: subtitleSettings.value.textShadow, webkitTextStroke: '' }
+})
+
+// 字幕容器样式（位置预设 + 拖拽偏移）
+const containerStyle = computed(() => {
+  const pos = subtitleSettings.value.position || 'bottom-center'
+  const x = offsetX.value
+  const y = offsetY.value
+  const base: any = { position: 'absolute' }
+  if (pos === 'bottom-center') {
+    base.left = '50%'
+    base.bottom = '64px'
+    base.transform = `translate(calc(-50% + ${x}px), ${y}px)`
+  } else if (pos === 'bottom-left') {
+    base.left = '24px'
+    base.bottom = '64px'
+    base.transform = `translate(${x}px, ${y}px)`
+  } else if (pos === 'bottom-right') {
+    base.right = '24px'
+    base.bottom = '64px'
+    base.transform = `translate(${x}px, ${y}px)`
+  } else if (pos === 'top-left') {
+    base.left = '24px'
+    base.top = '24px'
+    base.transform = `translate(${x}px, ${y}px)`
+  } else if (pos === 'top-center') {
+    base.left = '50%'
+    base.top = '24px'
+    base.transform = `translate(calc(-50% + ${x}px), ${y}px)`
+  } else if (pos === 'top-right') {
+    base.right = '24px'
+    base.top = '24px'
+    base.transform = `translate(${x}px, ${y}px)`
+  }
+  return base
+})
 
 // 字幕文本样式
 const textStyle = computed(() => ({
   fontSize: `${subtitleSettings.value.fontSize}px`,
   color: subtitleSettings.value.color,
   backgroundColor: subtitleSettings.value.backgroundColor,
-  textShadow: subtitleSettings.value.textShadow,
+  textShadow: strokeStyle.value.textShadow,
+  webkitTextStroke: strokeStyle.value.webkitTextStroke,
+  paintOrder: strokeStyle.value.paintOrder,
   borderRadius: `${subtitleSettings.value.borderRadius}px`,
   padding: subtitleSettings.value.padding,
   lineHeight: subtitleSettings.value.lineHeight
@@ -239,6 +287,13 @@ watch(currentSubtitleText, () => {
   })
 })
 
+// 切换位置预设时重置拖拽偏移
+watch(() => subtitleSettings.value.position, () => {
+  offsetX.value = 0
+  offsetY.value = 0
+  nextTick(clampCurrentPosition)
+})
+
 // 暴露方法给父组件
 defineExpose({
   updateSettings,
@@ -270,9 +325,8 @@ defineExpose({
 
 <style scoped>
 .subtitle-display {
-  position: absolute;
-  left: 50%;
-  bottom: 64px;
+  left: auto;
+  bottom: auto;
   display: block;
   pointer-events: auto;
   text-align: center;

@@ -7,6 +7,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { subtitleApi } from '@/api/subtitle.ts'
 import SubtitleDisplay from '@/components/SubtitleDisplay.vue'
+import SubtitleMenu from '@/components/SubtitleMenu.vue'
 import { interactionApi } from '@/api/client'
 import { ChatDotRound, CircleClose, View } from '@element-plus/icons-vue'
 
@@ -94,10 +95,10 @@ let subtitleToggleGuard = false
 
 const onDocClickForSubtitlePanel = (e: Event) => {
   if (subtitleToggleGuard) return
-  const panel = subtitleSettingsPanelRef.value
-  if (panel && !panel.contains(e.target as Node)) {
-    subtitleSettingsVisible.value = false
-  }
+  // 点击菜单内部不关闭；点控制栏字幕按钮由 guard 处理
+  const target = e.target as HTMLElement | null
+  if (target?.closest?.('.bsub-menu') || target?.closest?.('.art-controls')) return
+  subtitleSettingsVisible.value = false
 }
 
 onMounted(() => {
@@ -107,9 +108,13 @@ const SUBTITLE_SETTINGS_KEY = 'mybilibili_subtitle_settings'
 const FULLSCREEN_FONT_SCALE = 1.5
 const defaultSubtitleSettings = {
   fontSize: 32,
+  fontScale: 1,
   color: '#ffffff',
-  backgroundColor: 'rgba(0, 0, 0, 0.75)',
+  stroke: 0,
+  position: 'bottom-center',
   backgroundOpacity: 0.75,
+  fitScale: true,
+  backgroundColor: 'rgba(0, 0, 0, 0.75)',
   textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)',
   borderRadius: 4,
   padding: '8px 16px',
@@ -123,7 +128,12 @@ if (import.meta.client) {
   const saved = safeStorage.getItem(SUBTITLE_SETTINGS_KEY)
   if (saved) {
     try {
-      subtitleSettings.value = { ...defaultSubtitleSettings, ...JSON.parse(saved) }
+      const parsed = JSON.parse(saved)
+      // 迁移旧格式：fontSize 像素值 → fontScale 倍率
+      if (parsed.fontScale === undefined && typeof parsed.fontSize === 'number') {
+        parsed.fontScale = Math.min(1.6, Math.max(0.6, parsed.fontSize / 32))
+      }
+      subtitleSettings.value = { ...defaultSubtitleSettings, ...parsed }
     } catch {}
   }
 }
@@ -137,10 +147,24 @@ const saveSubtitleSettings = () => {
 
 const pushSettingsToSubtitle = () => {
   if (!subtitleDisplayRef.value) return
-  const scale = isFullscreenMode.value ? FULLSCREEN_FONT_SCALE : 1
+  // 等比缩放：字体随播放器宽度缩放（1280 为基准），全屏再乘系数
+  let widthScale = 1
+  if (subtitleSettings.value.fitScale && playerRef.value) {
+    const w = playerRef.value.clientWidth || 1280
+    widthScale = Math.min(2, Math.max(0.6, w / 1280))
+  }
+  const fullscreenScale = isFullscreenMode.value ? FULLSCREEN_FONT_SCALE : 1
+  const baseFont = (subtitleSettings.value.fontSize || 32) * (subtitleSettings.value.fontScale || 1)
   subtitleDisplayRef.value.updateSettings({
-    ...subtitleSettings.value,
-    fontSize: Math.round(subtitleSettings.value.fontSize * scale)
+    fontSize: Math.round(baseFont * widthScale * fullscreenScale),
+    color: subtitleSettings.value.color,
+    backgroundColor: `rgba(0, 0, 0, ${subtitleSettings.value.backgroundOpacity ?? 0.75})`,
+    textShadow: subtitleSettings.value.textShadow,
+    borderRadius: subtitleSettings.value.borderRadius,
+    padding: subtitleSettings.value.padding,
+    lineHeight: subtitleSettings.value.lineHeight,
+    position: subtitleSettings.value.position,
+    stroke: subtitleSettings.value.stroke
   })
 }
 
@@ -194,6 +218,14 @@ const resetSubtitleSettings = () => {
   ElMessage.success('已恢复默认设置')
 }
 
+// 传给菜单的语言列表：过滤掉空壳占位记录（同语言重复时只留非空）
+const menuSubtitles = computed(() =>
+  subtitleList.value.filter((sub: any) => {
+    const c = sub.content || sub.cues || []
+    return Array.isArray(c) && c.length > 1
+  })
+)
+
 const loadSubtitles = async () => {
   try {
     console.log('[字幕] 开始加载字幕列表, videoId:', videoId.value)
@@ -202,13 +234,16 @@ const loadSubtitles = async () => {
     if (response.code === 200) {
       subtitleList.value = response.data || []
       console.log('[字幕] 字幕列表:', subtitleList.value)
-      const defaultSub = subtitleList.value.find((sub: any) => sub.isDefault)
-      if (defaultSub) {
-        console.log('[字幕] 加载默认字幕:', defaultSub.language)
-        await loadSubtitleContent(defaultSub.language)
-      } else if (subtitleList.value.length > 0) {
-        console.log('[字幕] 加载第一个字幕:', subtitleList.value[0].language)
-        await loadSubtitleContent(subtitleList.value[0].language)
+      // 列表接口已带 content，直接过滤空壳（如 whisper 占位记录），避免选中空字幕
+      const nonEmpty = subtitleList.value.filter((sub: any) => {
+        const content = sub.content || sub.cues || []
+        return Array.isArray(content) && content.length > 1
+      })
+      const defaultSub = nonEmpty.find((sub: any) => sub.isDefault || sub.is_default)
+      const target = defaultSub || nonEmpty[0] || null
+      if (target) {
+        console.log('[字幕] 加载默认字幕:', target.language, '条数:', (target.content || []).length)
+        await loadSubtitleContent(target.language)
       } else {
         console.log('[字幕] 没有可用字幕')
       }
@@ -222,6 +257,20 @@ const loadSubtitles = async () => {
 const loadSubtitleContent = async (language: string) => {
   try {
     console.log('[字幕] 开始加载字幕内容, language:', language)
+    // 优先直接用列表接口携带的 content（同语言可能有空壳占位记录，取非空的）
+    const fromList = subtitleList.value.find((sub: any) => {
+      if (sub.language !== language) return false
+      const c = sub.content || sub.cues || []
+      return Array.isArray(c) && c.length > 1
+    })
+    const listContent = fromList?.content || fromList?.cues || []
+    if (Array.isArray(listContent) && listContent.length > 1) {
+      currentSubtitle.value = fromList
+      currentSubtitleContent.value = listContent
+      currentLanguage.value = language
+      console.log('[字幕] 从列表载入字幕, 条数:', currentSubtitleContent.value.length)
+      return
+    }
     const response = await subtitleApi.getSubtitle(videoId.value, language)
     console.log('[字幕] 字幕内容响应:', response)
     if (response && response.code === 200 && response.data) {
@@ -688,54 +737,18 @@ onUnmounted(() => {
       :current-time="currentVideoTime"
       :enabled="subtitleEnabled"
     />
-    <div ref="subtitleSettingsPanelRef" v-show="subtitleSettingsVisible" class="subtitle-settings-panel" @click.stop>
-      <div class="settings-header">
-        <span>字幕设置</span>
-        <el-button link size="small" @click="subtitleSettingsVisible = false">
-          <el-icon><CircleClose /></el-icon>
-        </el-button>
-      </div>
-      <div class="settings-content">
-        <div class="setting-item">
-          <span class="setting-label">字幕开关</span>
-          <el-switch v-model="subtitleEnabled" />
-        </div>
-        <div class="setting-item" v-if="subtitleList.length > 1">
-          <span class="setting-label">字幕语言</span>
-          <el-select v-model="currentLanguage" placeholder="选择语言" size="small" @change="switchLanguage">
-            <el-option
-              v-for="sub in subtitleList"
-              :key="sub.language"
-              :label="sub.languageName || sub.language_name || sub.language"
-              :value="sub.language"
-            />
-          </el-select>
-        </div>
-        <div class="setting-item">
-          <span class="setting-label">字体大小</span>
-          <el-slider v-model="subtitleSettings.fontSize" :min="12" :max="40" :step="1" @change="updateSubtitleSettings({ fontSize: $event })" />
-          <span class="setting-value">{{ subtitleSettings.fontSize }}px</span>
-        </div>
-        <div class="setting-item">
-          <span class="setting-label">字体颜色</span>
-          <el-color-picker :teleported="false" v-model="subtitleSettings.color" @change="updateSubtitleSettings({ color: $event })" />
-        </div>
-        <div class="setting-item">
-          <span class="setting-label">背景透明度</span>
-          <el-slider v-model="subtitleSettings.backgroundOpacity" :min="0" :max="1" :step="0.1" @change="updateSubtitleSettings({ backgroundColor: `rgba(0, 0, 0, ${$event})` })" />
-        </div>
-        <div class="setting-item">
-          <span class="setting-label">圆角大小</span>
-          <el-slider v-model="subtitleSettings.borderRadius" :min="0" :max="20" :step="1" @change="updateSubtitleSettings({ borderRadius: $event })" />
-        </div>
-        <div class="setting-actions">
-          <el-button size="small" @click="resetSubtitleSettings">恢复默认</el-button>
-          <div style="display:flex;gap:8px;">
-            <el-button size="small" @click="resetSubtitlePosition">重置位置</el-button>
-            <el-button size="small" type="primary" @click="subtitleSettingsVisible = false">完成</el-button>
-          </div>
-        </div>
-      </div>
+    <div ref="subtitleSettingsPanelRef" class="subtitle-menu-anchor" @click.stop>
+      <SubtitleMenu
+        v-model:visible="subtitleSettingsVisible"
+        :subtitles="menuSubtitles"
+        :current-language="currentLanguage"
+        :enabled="subtitleEnabled"
+        :settings="subtitleSettings"
+        @update:enabled="(v: boolean) => { subtitleEnabled = v; safeStorage.setItem(SUBTITLE_ENABLED_KEY, String(v)) }"
+        @select-language="switchLanguage"
+        @update-settings="updateSubtitleSettings"
+        @reset-settings="resetSubtitleSettings"
+      />
     </div>
   </div>
   <div class="video-status-bar-simple">
@@ -810,66 +823,14 @@ onUnmounted(() => {
     background: rgba(255,255,255,0.15) !important;
 }
 
-.subtitle-settings-panel {
+.subtitle-menu-anchor {
   position: absolute;
-  bottom: 50px;
-  right: 10px;
-  width: 280px;
-  max-width: calc(100% - 20px);
-  max-height: calc(100% - 70px);
-  background: rgba(28, 28, 28, 0.95);
-  border-radius: 8px;
-  padding: 16px;
+  inset: 0;
   z-index: 120;
-  color: #fff;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  overflow: auto;
+  pointer-events: none;
+}
+.subtitle-menu-anchor :deep(.bsub-menu) {
   pointer-events: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.subtitle-settings-panel::-webkit-scrollbar {
-  display: none;
-}
-
-.subtitle-settings-panel .settings-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.subtitle-settings-panel .settings-header span {
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.subtitle-settings-panel .setting-item {
-  margin-bottom: 16px;
-}
-
-.subtitle-settings-panel .setting-label {
-  display: block;
-  font-size: 13px;
-  color: #ccc;
-  margin-bottom: 8px;
-}
-
-.subtitle-settings-panel .setting-value {
-  font-size: 12px;
-  color: #999;
-  margin-left: 8px;
-}
-
-.subtitle-settings-panel .setting-actions {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .video-status-bar-simple {
