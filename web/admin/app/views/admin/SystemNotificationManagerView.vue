@@ -5,6 +5,7 @@ import { Bell, Promotion } from '@element-plus/icons-vue'
 import { messageApi } from '@/api/message.ts'
 
 const form = ref({
+  title: '',
   content: ''
 })
 
@@ -28,9 +29,13 @@ const handleBroadcast = async () => {
     )
 
     sending.value = true
-    const res = await messageApi.broadcastSystemNotification({ content: form.value.content.trim() })
+    const res = await messageApi.broadcastSystemNotification({
+      title: form.value.title.trim(),
+      content: form.value.content.trim()
+    })
     if (res.code === 200) {
       ElMessage.success('全站系统通知发送成功')
+      form.value.title = ''
       form.value.content = ''
     } else {
       ElMessage.error(res.message || '发送失败')
@@ -64,6 +69,16 @@ const handleBroadcast = async () => {
       </template>
 
       <div class="broadcast-form">
+        <div class="form-item">
+          <label class="form-label">通知标题</label>
+          <el-input
+            v-model="form.title"
+            placeholder="通知的简短标题（如：《哔哩哔哩隐私政策》修订通知），不填则用正文内容"
+            maxlength="100"
+            show-word-limit
+          />
+        </div>
+
         <div class="form-item">
           <label class="form-label">通知内容</label>
           <el-input

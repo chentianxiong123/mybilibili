@@ -1,22 +1,18 @@
 <template>
     <div class="notify-list">
-        <div class="list-header">
-            <span class="header-title">系统通知</span>
-            <span class="mark-all" v-if="unreadIds.length > 0" @click="markAllRead">全部已读</span>
-        </div>
         <div class="list-loading" v-if="loading"><MessageLoading /></div>
         <div class="list-error" v-else-if="error">加载失败，<span class="btn" @click="load">点击重试</span></div>
         <div class="list-empty" v-else-if="list.length === 0">暂时没有系统通知</div>
-        <div class="notify-item" v-for="item in list" :key="item.id" :class="{ unread: !item.isRead }">
-            <div class="sys-icon">🔔</div>
-            <div class="item-main">
-                <div class="item-top">
-                    <span class="username">系统通知</span>
-                    <span class="time">{{ formatTime(item.createdAt) }}</span>
+        <div class="system-item" v-for="item in list" :key="item.id">
+            <div class="notify-item">
+                <div class="notify-item__top">
+                    <span class="notify-item__title">{{ item.title || '系统通知' }}</span>
+                    <span class="notify-item__time">{{ formatTime(item.createdAt) }}</span>
                 </div>
-                <div class="item-content" v-html="escapeHtml(item.content || item.title)"></div>
+                <div class="notify-item__bottom">
+                    <div class="notify-item__msg">{{ item.content }}</div>
+                </div>
             </div>
-            <span class="unread-dot" v-if="!item.isRead"></span>
         </div>
     </div>
 </template>
@@ -36,15 +32,7 @@ export default {
             error: false,
         };
     },
-    computed: {
-        unreadIds(): number[] {
-            return this.list.filter(i => !i.isRead).map(i => i.id);
-        },
-    },
     methods: {
-        escapeHtml(s: string) {
-            return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        },
         formatTime(t: string) {
             try {
                 return handleDateTime(t);
@@ -69,7 +57,7 @@ export default {
             }
         },
         async markAllRead() {
-            const ids = this.unreadIds;
+            const ids = this.list.filter(i => !i.isRead).map(i => i.id);
             if (ids.length === 0) return;
             try {
                 await messageApi.batchMarkAsRead(ids);
@@ -98,7 +86,7 @@ export default {
     },
     async mounted() {
         await this.load();
-        if (this.unreadIds.length > 0) {
+        if (this.list.some(i => !i.isRead)) {
             this.markAllRead();
         } else {
             this.refreshUnread();
@@ -114,26 +102,6 @@ export default {
     min-height: 400px;
     padding: 0 16px 16px;
 }
-.list-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: 48px;
-    border-bottom: 1px solid #f0f0f0;
-}
-.header-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
-}
-.mark-all {
-    font-size: 12px;
-    color: var(--brand_pink, #fb7299);
-    cursor: pointer;
-}
-.mark-all:hover {
-    opacity: 0.8;
-}
 .list-loading, .list-empty, .list-error {
     text-align: center;
     padding: 60px 0;
@@ -144,61 +112,40 @@ export default {
     color: var(--brand_pink, #fb7299);
     cursor: pointer;
 }
-.notify-item {
-    display: flex;
-    padding: 14px 0;
-    border-bottom: 1px solid #f4f4f4;
-    position: relative;
+.system-item {
+    padding-top: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f0f0f0;
 }
-.notify-item:last-child {
+.system-item:last-child {
     border-bottom: none;
 }
-.sys-icon {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    border-radius: 50%;
-    background: #fff0f4;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
+.notify-item__top {
+    display: block;
+    line-height: 24px;
 }
-.item-main {
-    flex: 1;
-    margin-left: 12px;
-    min-width: 0;
-}
-.item-top {
+.notify-item__title {
+    display: inline;
     font-size: 13px;
-    line-height: 20px;
+    font-weight: 700;
+    color: #18191c;
+    line-height: 24px;
 }
-.username {
-    color: #333;
-    font-weight: 600;
-}
-.time {
-    color: #999;
+.notify-item__time {
+    display: inline;
     font-size: 12px;
-    margin-left: 8px;
+    color: #9499a0;
+    line-height: 24px;
+    margin-left: 10px;
 }
-.item-content {
-    margin-top: 6px;
-    font-size: 13px;
-    color: #333;
-    line-height: 20px;
+.notify-item__bottom {
+    display: block;
+    margin-top: 4px;
+}
+.notify-item__msg {
+    font-size: 14px;
+    color: #18191c;
+    line-height: 24px;
     word-break: break-all;
-    background: #f7f7f7;
-    border-radius: 4px;
-    padding: 8px 10px;
-}
-.unread-dot {
-    position: absolute;
-    right: 2px;
-    top: 20px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--stress_red, #fb7299);
 }
 </style>

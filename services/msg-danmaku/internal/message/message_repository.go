@@ -12,6 +12,7 @@ type Message struct {
 	ReceiverID     int64     `json:"receiver_id"`
 	ConversationID int64     `json:"conversation_id"`
 	Content        string    `json:"content"`
+	Title          string    `json:"title"`
 	MessageType    int32     `json:"message_type"`
 	IsRead         int32     `json:"is_read"`
 	CreatedAt      time.Time `json:"created_at"`
@@ -42,6 +43,24 @@ func (r *MessageRepository) DB() *sql.DB {
 
 func (r *MessageRepository) SendMessage(ctx context.Context, senderID, receiverID int64, content string, msgType int32) (*Message, error) {
 	return r.SendMessageWithTarget(ctx, senderID, receiverID, content, msgType, 0, 0)
+}
+
+// SendSystemMessage 系统通知广播：带独立 title（标题+正文），存 messages.title 列。
+// 仅广播（msgType=5）使用；普通私信/回复/点赞等不带标题，title 存 NULL。
+func (r *MessageRepository) SendSystemMessage(ctx context.Context, senderID, receiverID int64, title, content string) (*Message, error) {
+	msg := &Message{}
+	var convID sql.NullInt64
+	err := r.db.QueryRowContext(ctx,
+		`INSERT INTO messages (sender_id, receiver_id, title, content, message_type)
+		 VALUES ($1, $2, NULLIF($3,''), $4, 5)
+		 RETURNING id, sender_id, receiver_id, conversation_id, content, message_type, is_read, created_at`,
+		senderID, receiverID, title, content,
+	).Scan(&msg.ID, &msg.SenderID, &msg.ReceiverID, &convID, &msg.Content, &msg.MessageType, &msg.IsRead, &msg.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	msg.ConversationID = convID.Int64
+	return msg, nil
 }
 
 // SendMessageWithTarget 发私信(1)走会话双写；通知类(2=回复 3=@ 4=赞稿件 6=赞评论)

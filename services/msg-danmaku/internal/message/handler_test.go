@@ -438,11 +438,11 @@ func TestHandleSystem_200(t *testing.T) {
 	h, mock := newTestMessageHandler(t)
 
 	now := time.Now()
-	mock.ExpectQuery(`SELECT m.id, m.content, m.is_read, COALESCE`).
+	mock.ExpectQuery(`SELECT m.id, m.content, COALESCE\(m.title,''\), m.is_read, COALESCE`).
 		WithArgs(int64(1001)).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "content", "is_read", "created_at",
-		}).AddRow(700, "系统通知内容", 0, now.Format("2006-01-02 15:04:05")))
+			"id", "content", "title", "is_read", "created_at",
+		}).AddRow(700, "系统通知内容", "系统通知标题", 0, now.Format("2006-01-02 15:04:05")))
 
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/system", "")
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -451,12 +451,14 @@ func TestHandleSystem_200(t *testing.T) {
 		Data []struct {
 			ID         int64  `json:"id"`
 			Content    string `json:"content"`
+			Title      string `json:"title"`
 			ActionText string `json:"actionText"`
 		} `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
 	require.Len(t, resp.Data, 1)
 	assert.Equal(t, "系统通知内容", resp.Data[0].Content)
+	assert.Equal(t, "系统通知标题", resp.Data[0].Title)
 	assert.Equal(t, "系统通知", resp.Data[0].ActionText)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -464,10 +466,10 @@ func TestHandleSystem_200(t *testing.T) {
 func TestHandleSystem_Empty(t *testing.T) {
 	h, mock := newTestMessageHandler(t)
 
-	mock.ExpectQuery(`SELECT m.id, m.content, m.is_read, COALESCE`).
+	mock.ExpectQuery(`SELECT m.id, m.content, COALESCE\(m.title,''\), m.is_read, COALESCE`).
 		WithArgs(int64(1001)).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "content", "is_read", "created_at",
+			"id", "content", "title", "is_read", "created_at",
 		}))
 
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/system", "")

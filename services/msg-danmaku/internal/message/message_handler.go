@@ -432,18 +432,22 @@ func (h *MessageHTTPHandler) handleSystem(w http.ResponseWriter, r *http.Request
 		return
 	}
 	rows, _ := h.repo.db.QueryContext(r.Context(),
-		`SELECT m.id, m.content, m.is_read, COALESCE(m.created_at::text,'')
+		`SELECT m.id, m.content, COALESCE(m.title,''), m.is_read, COALESCE(m.created_at::text,'')
 		 FROM messages m
 		 WHERE m.receiver_id = $1 AND m.message_type = 5 ORDER BY m.created_at DESC LIMIT 50`, userID)
 	defer rows.Close()
 	var list []map[string]interface{}
 	for rows.Next() {
 		var id int64
-		var content, t string
+		var content, title, t string
 		var isRead int32
-		rows.Scan(&id, &content, &isRead, &t)
+		rows.Scan(&id, &content, &title, &isRead, &t)
+		// 历史广播没有 title 时，标题回退用正文首行，避免列表标题空
+		if title == "" {
+			title = content
+		}
 		list = append(list, map[string]interface{}{
-			"id": id, "content": content, "title": content,
+			"id": id, "content": content, "title": title,
 			"isRead": isRead == 1, "createdAt": t, "createTime": t,
 			"type": "notification", "actionText": "系统通知",
 		})
@@ -635,6 +639,7 @@ func (h *MessageHTTPHandler) handleAdminBroadcast(w http.ResponseWriter, r *http
 		return
 	}
 	var req struct {
+		Title   string `json:"title"`
 		Content string `json:"content"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
@@ -656,7 +661,7 @@ func (h *MessageHTTPHandler) handleAdminBroadcast(w http.ResponseWriter, r *http
 			continue
 		}
 		// sender_id 有外键指向 users(id)，用系统账号当 sender（不能是 0）
-		msg, err := h.repo.SendMessage(r.Context(), systemSender, uid, req.Content, 5)
+		msg, err := h.repo.SendSystemMessage(r.Context(), systemSender, uid, req.Title, req.Content)
 		if err != nil || msg == nil {
 			failed++
 			continue

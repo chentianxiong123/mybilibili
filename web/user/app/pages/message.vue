@@ -59,11 +59,11 @@ const store = useTeriteriStore()
 
 // teriteri 侧栏菜单：unread 为 store.msgUnread 数组下标，-1 表示无红点
 const menu = [
+  { path: '/message/whisper', name: '我的消息', unread: 4 },
   { path: '/message/reply', name: '回复我的', unread: 0 },
   { path: '/message/at', name: '@ 我的', unread: 1 },
   { path: '/message/love', name: '收到的赞', unread: 2 },
   { path: '/message/system', name: '系统通知', unread: 3 },
-  { path: '/message/whisper', name: '我的消息', unread: 4 },
   { path: '/message/ai', name: 'AI客服', unread: -1 },
 ]
 const SETTING_INDEX = 6
