@@ -9,65 +9,83 @@
     </div>
 
     <div v-show="mainTab === 'video'">
-      <!-- 工具栏：搜索 + 状态筛选 + 排序 -->
+      <!-- 工具栏：对齐B站article页三行排布 -->
       <div class="video-toolbar">
-        <div class="search-box">
-          <el-input
-            v-model="searchKeyword"
-            placeholder="搜索稿件"
-            clearable
-            class="search-input"
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
+        <!-- 第一行：搜索（右上） -->
+        <div class="toolbar-row search-row">
+          <div class="search-box">
+            <el-input
+              v-model="searchKeyword"
+              placeholder="搜索稿件"
+              clearable
+              class="search-input"
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+          </div>
         </div>
 
-        <div class="status-tabs">
-          <span
-            class="status-tab"
-            :class="{ active: statusFilter === 'all' }"
-            @click="setStatus('all')"
-          >
-            全部稿件 {{ totalCount }}
-          </span>
-          <span
-            class="status-tab"
-            :class="{ active: statusFilter === 'processing' }"
-            @click="setStatus('processing')"
-          >
-            进行中 {{ processingCount }}
-          </span>
-          <span
-            class="status-tab"
-            :class="{ active: statusFilter === 'published' }"
-            @click="setStatus('published')"
-          >
-            已通过 {{ approvedCount }}
-          </span>
-          <span
-            class="status-tab"
-            :class="{ active: statusFilter === 'rejected' }"
-            @click="setStatus('rejected')"
-          >
-            未通过 {{ rejectedCount }}
-          </span>
-          <span
-            class="status-tab"
-            :class="{ active: statusFilter === 'unpublished' }"
-            @click="setStatus('unpublished')"
-          >
-            已下架 {{ unpublishedCount }}
-          </span>
+        <!-- 第二行：全部稿件 / 草稿 + 排序（右） -->
+        <div class="toolbar-row main-row">
+          <div class="main-tabs">
+            <span
+              class="status-tab"
+              :class="{ active: statusFilter === 'all' }"
+              @click="setStatus('all')"
+            >
+              全部稿件 {{ totalCount }}
+            </span>
+            <span
+              class="status-tab"
+              @click="goDrafts"
+            >
+              草稿
+            </span>
+          </div>
+
+          <div class="sort-box">
+            <el-select v-model="sortBy" class="sort-select">
+              <el-option label="投稿时间排序" value="latest"></el-option>
+              <el-option label="最早投稿" value="oldest"></el-option>
+              <el-option label="播放量排序" value="views"></el-option>
+            </el-select>
+          </div>
         </div>
 
-        <div class="sort-box">
-          <el-select v-model="sortBy" class="sort-select">
-            <el-option label="投稿时间排序" value="latest"></el-option>
-            <el-option label="最早投稿" value="oldest"></el-option>
-            <el-option label="播放量排序" value="views"></el-option>
-          </el-select>
+        <!-- 第三行：进行中 / 已通过 / 未通过 / 已下架 -->
+        <div class="toolbar-row second-row">
+          <div class="second-tabs">
+            <span
+              class="second-tab"
+              :class="{ active: statusFilter === 'processing' }"
+              @click="setStatus('processing')"
+            >
+              进行中 {{ processingCount }}
+            </span>
+            <span
+              class="second-tab"
+              :class="{ active: statusFilter === 'published' }"
+              @click="setStatus('published')"
+            >
+              已通过 {{ approvedCount }}
+            </span>
+            <span
+              class="second-tab"
+              :class="{ active: statusFilter === 'rejected' }"
+              @click="setStatus('rejected')"
+            >
+              未通过 {{ rejectedCount }}
+            </span>
+            <span
+              class="second-tab"
+              :class="{ active: statusFilter === 'unpublished' }"
+              @click="setStatus('unpublished')"
+            >
+              已下架 {{ unpublishedCount }}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -233,7 +251,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search,
@@ -261,6 +279,7 @@ const props = defineProps({
 const propsActive = computed(() => props.active)
 
 const route = useRoute()
+const router = useRouter()
 
 // 主要选择栏
 const mainTab = ref('video')
@@ -447,6 +466,11 @@ const setStatus = (status) => {
   statusFilter.value = status
   currentPage.value = 1
   fetchArticles()
+}
+
+// 草稿走独立草稿箱页（对齐B站草稿tab）
+const goDrafts = () => {
+  router.push('/platform/drafts')
 }
 
 // 监听筛选条件变化，重新获取数据
@@ -698,13 +722,23 @@ onUnmounted(() => {
   margin-bottom: 15px;
 }
 
-/* 工具栏 */
+/* 工具栏：对齐B站article页三行排布 */
 .video-toolbar {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column;
+  gap: 14px;
   margin-bottom: 20px;
-  flex-wrap: wrap;
+}
+
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.search-row {
+  justify-content: flex-end;
 }
 
 .search-box {
@@ -723,18 +757,18 @@ onUnmounted(() => {
   box-shadow: 0 0 0 1px #ff6699 inset;
 }
 
-.status-tabs {
+/* 第二行：全部稿件 / 草稿（对齐B站.tabs：16px间距，选中不变粗） */
+.main-tabs {
   display: flex;
   align-items: center;
-  gap: 2px;
-  flex: 1;
+  gap: 16px;
   flex-wrap: wrap;
 }
 
 .status-tab {
-  padding: 6px 10px;
+  padding: 6px 0;
   font-size: 14px;
-  color: #61666d;
+  color: #505050;
   cursor: pointer;
   transition: color .2s;
   white-space: nowrap;
@@ -746,7 +780,30 @@ onUnmounted(() => {
 
 .status-tab.active {
   color: #ff6699;
-  font-weight: 600;
+}
+
+/* 第三行：状态细分（对齐B站secondTabs：32px大间距，弱化灰色，选中仅加粗） */
+.second-tabs {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.second-tab {
+  font-size: 14px;
+  color: rgba(80, 80, 80, .7);
+  cursor: pointer;
+  transition: color .2s;
+  white-space: nowrap;
+}
+
+.second-tab:hover {
+  color: #ff6699;
+}
+
+.second-tab.active {
+  font-weight: 500;
 }
 
 .sort-box {
