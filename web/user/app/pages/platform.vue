@@ -36,8 +36,8 @@
                             </div>
                         </template>
                     </VPopover>
-                    <div class="tips">
-                        成为UP主的第1145天
+                    <div class="tips" v-if="this.$store.state.isLogin && upDays > 0">
+                        成为UP主的第{{ upDays }}天
                         <i class="iconfont icon-youjiantou"></i>
                     </div>
                     <div class="line-divid"></div>
@@ -153,6 +153,20 @@ export default {
     computed: {
         user() {
             return this.$store.state.user;
+        },
+        // 成为UP主天数：按注册日期从第1天开始算
+        upDays() {
+            const u = this.user || {};
+            const created = u.created_at || u.createdAt || u.createTime;
+            if (!created) {
+                return 0;
+            }
+            const start = new Date(created);
+            if (isNaN(start.getTime())) {
+                return 0;
+            }
+            const diff = Math.floor((Date.now() - start.getTime()) / 86400000);
+            return Math.max(1, diff + 1);
         },
         // 计算消息未读数
         msgUnread() {

@@ -23,6 +23,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/moderation/admin/prohibited-words/", h.handleWordByID)
 	mux.HandleFunc("/api/v1/report/submit", h.handleSubmitReport)
 	mux.HandleFunc("/api/v1/moderation/admin/report/", h.handleReports)
+	h.registerAppealRoutes(mux)
 }
 
 func (h *Handler) handleBatchImport(w http.ResponseWriter, r *http.Request) {
