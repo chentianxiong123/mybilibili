@@ -110,14 +110,13 @@
                   </el-tag>
                 </div>
                 <div class="card-ops">
-                  <el-button
+                  <span
                     v-if="article.status !== 1"
-                    type="primary"
-                    size="small"
+                    class="edit-link-btn"
                     @click="openEditDialog(article.id)"
                   >
-                    编辑
-                  </el-button>
+                    <el-icon><Edit /></el-icon>编辑
+                  </span>
                   <el-dropdown
                     v-if="hasCardActions(article.status)"
                     trigger="click"
@@ -245,7 +244,8 @@ import {
   Coin,
   Star,
   Share,
-  VideoPlay
+  VideoPlay,
+  Edit
 } from '@element-plus/icons-vue'
 import { manuscriptApi } from '@/api/creator'
 import CollectionManager from './CollectionManager.vue'
@@ -714,11 +714,13 @@ onUnmounted(() => {
 
 .search-input :deep(.el-input__wrapper) {
   border-radius: 4px;
-  background: #f5f5f5;
+  background: #fff;
+  box-shadow: 0 0 0 1px #e3e5e7 inset;
 }
 
 .search-input :deep(.el-input__wrapper.is-focus) {
   background: #fff;
+  box-shadow: 0 0 0 1px #ff6699 inset;
 }
 
 .status-tabs {
@@ -730,23 +732,20 @@ onUnmounted(() => {
 }
 
 .status-tab {
-  padding: 6px 14px;
+  padding: 6px 10px;
   font-size: 14px;
   color: #61666d;
   cursor: pointer;
-  border-radius: 4px;
-  transition: all .2s;
+  transition: color .2s;
   white-space: nowrap;
 }
 
 .status-tab:hover {
   color: #ff6699;
-  background: rgba(255, 102, 153, .06);
 }
 
 .status-tab.active {
   color: #ff6699;
-  background: rgba(255, 102, 153, .12);
   font-weight: 600;
 }
 
@@ -772,7 +771,7 @@ onUnmounted(() => {
 .manuscript-card {
   display: flex;
   gap: 16px;
-  padding: 14px 16px;
+  padding: 20px 0;
   border-bottom: 1px solid #f0f0f0;
   background: #fff;
   transition: background .2s;
@@ -784,8 +783,8 @@ onUnmounted(() => {
 
 .card-cover {
   position: relative;
-  width: 176px;
-  height: 110px;
+  width: 160px;
+  height: 90px;
   flex-shrink: 0;
   border-radius: 4px;
   overflow: hidden;
@@ -863,7 +862,7 @@ onUnmounted(() => {
 }
 
 .card-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: #18191c;
   white-space: nowrap;
@@ -886,22 +885,41 @@ onUnmounted(() => {
 .card-ops {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   flex-shrink: 0;
 }
 
+.edit-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: #505050;
+  cursor: pointer;
+  transition: color .2s;
+  white-space: nowrap;
+}
+
+.edit-link-btn:hover {
+  color: #ff6699;
+}
+
+.edit-link-btn .el-icon {
+  font-size: 14px;
+}
+
 .more-btn {
-  padding: 0 8px;
-  font-size: 16px;
-  letter-spacing: 1px;
-  color: #9499a0;
+  padding: 0 4px;
+  font-size: 14px;
+  line-height: 1;
+  letter-spacing: 2px;
+  color: #00a1d6;
   cursor: pointer;
   border-radius: 4px;
 }
 
 .more-btn:hover {
-  color: #ff6699;
-  background: rgba(255, 102, 153, .08);
+  background: rgba(0, 161, 214, .08);
 }
 
 .info-meta {
