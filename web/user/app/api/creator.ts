@@ -101,5 +101,6 @@ export const statsApi = {
   getFansByManuscript: () => api.get('/creator/stats/fans-by-manuscript'),
   getManuscriptInsights: (days = 7) => api.get(`/creator/stats/manuscript-insights?days=${days}`),
   getIncome: (days = 30) => api.get(`/creator/stats/income?days=${days}`),
+  getAccountDiagnosis: () => api.get('/creator/stats/account-diagnosis'),
   getManuscriptTrend: () => api.get('/creator/stats/manuscript-trend')
 }

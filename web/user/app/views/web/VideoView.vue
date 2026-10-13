@@ -173,6 +173,17 @@ const loadRelatedVideos = async () => {
 }
 
 // 同步记录浏览历史（使用 fetch keepalive，用于页面离开时可靠发送）
+const detectClientType = () => {
+  if (typeof navigator === 'undefined') return 'pc'
+  const ua = navigator.userAgent || ''
+  const isAndroid = /Android|Linux/i.test(ua)
+  const isIOS = /iPhone|iPad|iPod/i.test(ua)
+  const isMobile = isAndroid || isIOS
+  if (isMobile) return 'mobile'
+  if (/MicroMessenger|miniProgram/i.test(ua)) return 'h5'
+  return 'pc'
+}
+
 const recordWatchHistorySync = () => {
   if (!videoId.value) return
 
@@ -194,7 +205,8 @@ const recordWatchHistorySync = () => {
     const params = new URLSearchParams({
       manuscript_id: String(videoId.value),
       progress_seconds: String(progress),
-      videoDuration: String(duration || progress || 0)
+      videoDuration: String(duration || progress || 0),
+      client_type: detectClientType()
     })
     const url = `/api/v1/watch-history?${params.toString()}`
     fetch(url, {

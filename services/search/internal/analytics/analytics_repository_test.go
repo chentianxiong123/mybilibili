@@ -147,6 +147,93 @@ func TestManuscriptInsights_Success(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestAccountDiagnosis_Success(t *testing.T) {
+	repo, mock := newMockRepo(t)
+	ctx := context.Background()
+
+	// 1st query: my metrics (uploads, views, likes, newFollowers)
+	mock.ExpectQuery(`SELECT COUNT\(DISTINCT m\.id\)`).WillReturnRows(
+		sqlmock.NewRows([]string{"uploads", "views", "likes", "newFollowers"}).AddRow(3, 6263, 27, 5))
+
+	// 2nd query: peer metrics (grouped by other users)
+	mock.ExpectQuery(`WHERE m\.user_id <> \$1`).WillReturnRows(
+		sqlmock.NewRows([]string{"uploads", "views", "likes", "newFollowers"}).
+			AddRow(2, 800, 10, 3).
+			AddRow(1, 200, 2, 1))
+
+	// 3rd query: person distribution (guests, fans)
+	mock.ExpectQuery(`FROM watch_history wh`).WillReturnRows(
+		sqlmock.NewRows([]string{"guests", "fans"}).AddRow(99, 1))
+
+	// 4th query: terminal distribution
+	mock.ExpectQuery(`SELECT wh\.client_type, COUNT\(\*\)`).WillReturnRows(
+		sqlmock.NewRows([]string{"client_type", "cnt"}).
+			AddRow("mobile", 60).
+			AddRow("pc", 30))
+
+	// 5th query: last metric date
+	mock.ExpectQuery(`SELECT MAX\(metric_date\)`).WillReturnRows(
+		sqlmock.NewRows([]string{"d"}).AddRow("2026-10-12"))
+
+	// 6th query: sources (recently-viewed manuscript shares)
+	mock.ExpectQuery(`FROM manuscript_daily_metrics dm`).WillReturnRows(
+		sqlmock.NewRows([]string{"manuscript_id", "title", "view_count"}).
+			AddRow(29, "乒乓球训练", 79).
+			AddRow(13, "清理C盘", 9))
+
+	result, err := repo.AccountDiagnosis(ctx, 1)
+	require.NoError(t, err)
+
+	metrics := result["metrics"].(map[string]interface{})
+	assert.Equal(t, int64(3), metrics["uploads"])
+	assert.Equal(t, int64(6263), metrics["views"])
+	assert.Equal(t, int64(27), metrics["likes"])
+	assert.Equal(t, int64(5), metrics["newFollowers"])
+	assert.InDelta(t, 1.5, metrics["peerUploads"], 0.001)
+	assert.InDelta(t, 500.0, metrics["peerViews"], 0.001)
+
+	person := result["personDistribution"].(map[string]interface{})
+	assert.InDelta(t, 0.99, person["guestPercent"], 0.001)
+	assert.InDelta(t, 0.01, person["fanPercent"], 0.001)
+
+	terminals := result["terminals"].([]terminalItem)
+	require.Len(t, terminals, 5)
+	assert.Equal(t, "mobile", terminals[0].Key)
+	assert.InDelta(t, 0.666, terminals[0].Percent, 0.001)
+	assert.Equal(t, "pc", terminals[1].Key)
+	assert.InDelta(t, 0.333, terminals[1].Percent, 0.001)
+
+	sources := result["sources"].([]map[string]interface{})
+	require.Len(t, sources, 2)
+	assert.InDelta(t, 79.0/88.0, sources[0]["percent"], 0.001)
+	assert.Equal(t, "2026-10-12", result["sourceDate"])
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestAccountsDiagnosis_EmptySources(t *testing.T) {
+	repo, mock := newMockRepo(t)
+	ctx := context.Background()
+
+	mock.ExpectQuery(`SELECT COUNT\(DISTINCT m\.id\)`).WillReturnRows(
+		sqlmock.NewRows([]string{"uploads", "views", "likes", "newFollowers"}).AddRow(0, 0, 0, 0))
+	mock.ExpectQuery(`WHERE m\.user_id <> \$1`).WillReturnRows(
+		sqlmock.NewRows([]string{"uploads", "views", "likes", "newFollowers"}))
+	mock.ExpectQuery(`FROM watch_history wh`).WillReturnRows(
+		sqlmock.NewRows([]string{"guests", "fans"}).AddRow(0, 0))
+	mock.ExpectQuery(`SELECT wh\.client_type, COUNT\(\*\)`).WillReturnRows(
+		sqlmock.NewRows([]string{"client_type", "cnt"}))
+	mock.ExpectQuery(`SELECT MAX\(metric_date\)`).WillReturnRows(
+		sqlmock.NewRows([]string{"d"}).AddRow(nil))
+
+	result, err := repo.AccountDiagnosis(ctx, 99)
+	require.NoError(t, err)
+	person := result["personDistribution"].(map[string]interface{})
+	assert.InDelta(t, 1.0, person["guestPercent"], 0.001)
+	sources := result["sources"].([]map[string]interface{})
+	assert.Len(t, sources, 0)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestRanking_SortByViews(t *testing.T) {
 	repo, mock := newMockRepo(t)
 	ctx := context.Background()

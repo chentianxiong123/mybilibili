@@ -5,7 +5,7 @@
         <DataOverviewPanel />
       </el-tab-pane>
       <el-tab-pane label="账号诊断" name="diagnosis">
-        <AccountDiagnosisPanel />
+        <AccountDiagnosisPanel :key="'diag-' + activeTab + '-' + refreshKey" />
       </el-tab-pane>
       <el-tab-pane label="稿件分析" name="manuscript">
         <ManuscriptAnalysisPanel />
@@ -33,7 +33,7 @@ const activeTab = ref('overview')
 const refreshKey = ref(0)
 
 function handleTabChange(tab) {
-  if (tab === 'fans') {
+  if (tab === 'fans' || tab === 'diagnosis') {
     refreshKey.value++
   }
 }
@@ -41,23 +41,31 @@ function handleTabChange(tab) {
 
 <style scoped>
 .data-center-view {
-  padding: 0;
+  padding: 32px 0 0;
 }
 .data-tabs {
   background: transparent;
 }
 .data-tabs :deep(.el-tabs__header) {
-  margin-bottom: 16px;
+  margin-bottom: 40px;
 }
 .data-tabs :deep(.el-tabs__nav-wrap::after) {
   display: none;
 }
 .data-tabs :deep(.el-tabs__item) {
-  font-size: 14px;
-  padding: 0 4px;
-  margin-right: 32px;
-  height: 40px;
-  line-height: 40px;
+  font-size: 18px;
+  font-weight: 500;
+  color: #61666d;
+  padding: 0;
+  margin-right: 40px;
+  height: 28px;
+  line-height: 28px;
+}
+.data-tabs :deep(.el-tabs__item.is-active) {
+  color: #00aeec;
+}
+.data-tabs :deep(.el-tabs__active-bar) {
+  display: none;
 }
 .placeholder-tab {
   display: flex;

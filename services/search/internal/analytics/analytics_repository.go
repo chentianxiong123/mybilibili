@@ -556,6 +556,181 @@ func (r *Repository) ManuscriptInsights(ctx context.Context, userID int64, days 
 	}, nil
 }
 
+type terminalItem struct {
+	Key     string  `json:"key"`
+	Label   string  `json:"label"`
+	Value   int64   `json:"value"`
+	Percent float64 `json:"percent"`
+}
+
+// AccountDiagnosis 账号诊断：表现总结（我的指标 vs 同类UP主均值 雷达数据）
+// + 播放分布（人群分布 游客/粉丝、观看途径 客户端类型、来源稿件占比昨日）。
+// 数据口径：投稿/播放/点赞/新增关注 取近30天；同类UP主=其他UP主同期均值；
+// 人群分布/观看途径 取近30天 watch_history；来源稿件占比 取最近有数据日。
+func (r *Repository) AccountDiagnosis(ctx context.Context, userID int64) (map[string]interface{}, error) {
+	days := 30
+	start := time.Now().AddDate(0, 0, -(days - 1)).Format("2006-01-02")
+
+	// —— 我的指标（近30天）——
+	var myUploads, myViews, myLikes, myFollowers int64
+	r.db.QueryRowContext(ctx, `
+		SELECT COUNT(DISTINCT m.id),
+		       COALESCE(SUM(m.view_count),0),
+		       COALESCE(SUM(m.like_count),0),
+		       (SELECT COUNT(*) FROM follows f WHERE f.following_id = $1 AND DATE(f.created_at) >= $2)
+		  FROM manuscripts m
+		 WHERE m.user_id = $1 AND m.status = 3`,
+		userID, start).Scan(&myUploads, &myViews, &myLikes, &myFollowers)
+
+	// —— 同类UP主均值（其他UP主同期）——
+	var peerUploads, peerViews, peerLikes, peerFollowers float64
+	var peerCount float64
+	peers, err := r.db.QueryContext(ctx, `
+		SELECT COUNT(DISTINCT m.id),
+		       COALESCE(SUM(m.view_count),0),
+		       COALESCE(SUM(m.like_count),0),
+		       (SELECT COUNT(*) FROM follows f WHERE f.following_id = m.user_id AND DATE(f.created_at) >= $2)
+		  FROM manuscripts m
+		 WHERE m.user_id <> $1 AND m.status = 3
+		 GROUP BY m.user_id`, userID, start)
+	if err == nil {
+		defer peers.Close()
+		for peers.Next() {
+			var u, v, l, fo int64
+			if err := peers.Scan(&u, &v, &l, &fo); err == nil {
+				peerUploads += float64(u)
+				peerViews += float64(v)
+				peerLikes += float64(l)
+				peerFollowers += float64(fo)
+				peerCount++
+			}
+		}
+	}
+	if peerCount > 0 {
+		peerUploads /= peerCount
+		peerViews /= peerCount
+		peerLikes /= peerCount
+		peerFollowers /= peerCount
+	}
+
+	// —— 人群分布（近30天，游客=未关注观看者 / 粉丝=已关注观看者）——
+	var guests, fans int64
+	r.db.QueryRowContext(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE f.follower_id IS NULL),
+			COUNT(*) FILTER (WHERE f.follower_id IS NOT NULL)
+		  FROM watch_history wh
+		  JOIN manuscripts m ON m.id = wh.manuscript_id
+		  LEFT JOIN follows f ON f.follower_id = wh.user_id AND f.following_id = m.user_id
+		 WHERE m.user_id = $1 AND m.status = 3 AND DATE(wh.watched_at) >= $2`,
+		userID, start).Scan(&guests, &fans)
+	totalAudience := guests + fans
+	if totalAudience == 0 {
+		guests, fans = 1, 0
+		totalAudience = 1
+	}
+
+	// —— 观看途径（近30天，按客户端类型）——
+	termRows, err := r.db.QueryContext(ctx, `
+		SELECT wh.client_type, COUNT(*)
+		  FROM watch_history wh
+		  JOIN manuscripts m ON m.id = wh.manuscript_id
+		 WHERE m.user_id = $1 AND m.status = 3 AND DATE(wh.watched_at) >= $2
+		 GROUP BY wh.client_type`, userID, start)
+	termMap := map[string]int64{}
+	if err == nil {
+		defer termRows.Close()
+		for termRows.Next() {
+			var ct string
+			var cnt int64
+			if err := termRows.Scan(&ct, &cnt); err == nil {
+				termMap[ct] += cnt
+			}
+		}
+	}
+	terminalOrder := []struct{ key, label string }{
+		{"mobile", "移动端"}, {"pc", "PC"}, {"tv", "云视听小电视"}, {"h5", "h5及小程序"}, {"other", "其他"},
+	}
+	terminals := []terminalItem{}
+	var termTotal int64
+	for _, k := range terminalOrder {
+		termTotal += termMap[k.key]
+	}
+	for _, k := range terminalOrder {
+		v := termMap[k.key]
+		var pct float64
+		if termTotal > 0 {
+			pct = float64(v) / float64(termTotal)
+		}
+		terminals = append(terminals, terminalItem{Key: k.key, Label: k.label, Value: v, Percent: pct})
+	}
+
+	// —— 来源稿件占比（最近有数据日，各稿件当日播放占比）——
+	var lastDate string
+	r.db.QueryRowContext(ctx, `
+		SELECT MAX(metric_date)::text FROM manuscript_daily_metrics WHERE user_id = $1`, userID).Scan(&lastDate)
+	srcRows, err := r.db.QueryContext(ctx, `
+		SELECT dm.manuscript_id, m.title, dm.view_count
+		  FROM manuscript_daily_metrics dm
+		  JOIN manuscripts m ON m.id = dm.manuscript_id
+		 WHERE dm.user_id = $1 AND dm.metric_date = $2 AND dm.metric_date IS NOT NULL
+		 ORDER BY dm.view_count DESC LIMIT 15`, userID, lastDate)
+	sources := []map[string]interface{}{}
+	var srcTotal int64
+	var srcIDs []int64
+	var srcTitles []string
+	var srcPlays []int64
+	if err == nil {
+		defer srcRows.Close()
+		srcIDs = []int64{}
+		srcTitles = []string{}
+		srcPlays = []int64{}
+		for srcRows.Next() {
+			var mid int64
+			var title sql.NullString
+			var v int64
+			if err := srcRows.Scan(&mid, &title, &v); err == nil {
+				srcIDs = append(srcIDs, mid)
+				srcTitles = append(srcTitles, title.String)
+				srcPlays = append(srcPlays, v)
+				srcTotal += v
+			}
+		}
+	}
+	if lastDate == "" {
+		lastDate = time.Now().Format("2006-01-02")
+	}
+	for i := range srcIDs {
+		var pct float64
+		if srcTotal > 0 {
+			pct = float64(srcPlays[i]) / float64(srcTotal)
+		}
+		sources = append(sources, map[string]interface{}{
+			"manuscriptId": srcIDs[i],
+			"title":        srcTitles[i],
+			"plays":        srcPlays[i],
+			"percent":      pct,
+		})
+	}
+
+	return map[string]interface{}{
+		"metrics": map[string]interface{}{
+			"uploads": myUploads, "views": myViews, "likes": myLikes, "newFollowers": myFollowers,
+			"peerUploads": peerUploads, "peerViews": peerViews, "peerLikes": peerLikes, "peerNewFollowers": peerFollowers,
+		},
+		"personDistribution": map[string]interface{}{
+			"guestPercent": float64(guests) / float64(totalAudience),
+			"fanPercent":   float64(fans) / float64(totalAudience),
+		},
+		"terminals":     terminals,
+		"sources":       sources,
+		"sourceDate":    lastDate,
+		"periodDays":    days,
+		"updateTime":    time.Now().Format("2006-01-02"),
+		"lastDateLabel": lastDate,
+	}, nil
+}
+
 // Income 收益数据：期间总收益 + 自定义充电收益（分）。无充值能力时真实为 0。
 func (r *Repository) Income(ctx context.Context, userID int64, days int) (map[string]interface{}, error) {
 	start := time.Now().AddDate(0, 0, -days).Format("2006-01-02")
@@ -661,4 +836,9 @@ func (s *Service) ManuscriptInsights(ctx context.Context, userID int64, days int
 // Income 收益数据：总收益与自定义充电（期间内，分）。
 func (s *Service) Income(ctx context.Context, userID int64, days int) (map[string]interface{}, error) {
 	return s.repo.Income(ctx, userID, days)
+}
+
+// AccountDiagnosis 账号诊断：表现总结 + 播放分布。
+func (s *Service) AccountDiagnosis(ctx context.Context, userID int64) (map[string]interface{}, error) {
+	return s.repo.AccountDiagnosis(ctx, userID)
 }

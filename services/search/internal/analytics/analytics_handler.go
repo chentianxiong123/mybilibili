@@ -25,6 +25,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/creator/stats/manuscript-trend", h.handleManuscriptTrend)
 	mux.HandleFunc("/api/v1/creator/stats/fans-by-manuscript", h.handleFansByManuscript)
 	mux.HandleFunc("/api/v1/creator/stats/manuscript-insights", h.handleManuscriptInsights)
+	mux.HandleFunc("/api/v1/creator/stats/account-diagnosis", h.handleAccountDiagnosis)
 	mux.HandleFunc("/api/v1/creator/stats/income", h.handleIncome)
 }
 
@@ -128,6 +129,17 @@ func (h *Handler) handleManuscriptInsights(w http.ResponseWriter, r *http.Reques
 	}
 	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
 	data, _ := h.svc.ManuscriptInsights(r.Context(), userID, days)
+	httputil.WriteOK(w, data)
+}
+
+// handleAccountDiagnosis 账号诊断：表现总结（我的指标 vs 同类UP主）+ 播放分布。
+func (h *Handler) handleAccountDiagnosis(w http.ResponseWriter, r *http.Request) {
+	userID := httputil.GetUserIDFromHeader(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
+	data, _ := h.svc.AccountDiagnosis(r.Context(), userID)
 	httputil.WriteOK(w, data)
 }
 

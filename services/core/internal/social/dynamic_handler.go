@@ -539,10 +539,14 @@ func (h *SocialHandler) handleWatchHistory(w http.ResponseWriter, r *http.Reques
 	case "POST":
 		manuscriptID, _ := strconv.ParseInt(r.URL.Query().Get("manuscript_id"), 10, 64)
 		progress, _ := strconv.ParseInt(r.URL.Query().Get("progress_seconds"), 10, 32)
+		clientType := r.URL.Query().Get("client_type")
+		if clientType != "mobile" && clientType != "pc" && clientType != "h5" && clientType != "tv" && clientType != "other" {
+			clientType = "pc"
+		}
 		h.shareRepo.db.ExecContext(r.Context(),
-			`INSERT INTO watch_history (user_id, manuscript_id, progress_seconds) VALUES ($1,$2,$3)
-			 ON CONFLICT (user_id, manuscript_id) DO UPDATE SET progress_seconds=$3, watched_at=NOW()`,
-			userID, manuscriptID, progress)
+			`INSERT INTO watch_history (user_id, manuscript_id, progress_seconds, client_type) VALUES ($1,$2,$3,$4)
+			 ON CONFLICT (user_id, manuscript_id) DO UPDATE SET progress_seconds=$3, client_type=$4, watched_at=NOW()`,
+			userID, manuscriptID, progress, clientType)
 		w.Write([]byte(`{"status":"ok"}`))
 
 	case "DELETE":

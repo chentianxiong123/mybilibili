@@ -1,63 +1,142 @@
 <template>
   <div class="account-diagnosis">
-    <div class="diagnosis-summary">
-      <h3 class="section-title">表现总结</h3>
-      <div class="summary-tip">
-        <span>以下基于您近期的表现进行分析，关注提升空间。</span>
+    <!-- 表现总结 -->
+    <div class="performance-summary">
+      <div class="header">
+        <div class="title">
+          <span class="name">表现总结</span>
+          <el-tooltip placement="top" :show-after="100">
+            <template #content>
+              <div>1.为你提供近30天同类UP主的数据表现情况，帮助你更好地自我定位并找到努力方向，继续加油!</div>
+              <div>2. 每日中午12点(北京时间)更新昨日数据。</div>
+            </template>
+            <el-icon class="tip-icon"><QuestionFilled /></el-icon>
+          </el-tooltip>
+        </div>
+        <div class="sub-title">
+          <span class="sub-text">{{ summaryText }}</span>
+        </div>
       </div>
-      <div class="summary-content" v-if="overview.totalManuscripts > 0">
-        <p v-for="(item, i) in summaryList" :key="i">• {{ item }}</p>
-      </div>
-      <div class="summary-content" v-else>
-        <p>• 暂无已发布稿件，发布视频后即可查看诊断数据</p>
-      </div>
-    </div>
 
-    <div class="diagnosis-ranking">
-      <div class="ranking-box">
-        <h4 class="ranking-title">总播放量</h4>
-        <div class="ranking-value">{{ formatNumber(overview.totalViews) }}</div>
-        <div class="ranking-change">近7日 {{ formatIncrease(overview.viewsIncrease) }}</div>
-      </div>
-      <div class="ranking-box">
-        <h4 class="ranking-title">总互动数</h4>
-        <div class="ranking-value">{{ formatNumber(totalInteractions) }}</div>
-        <div class="ranking-change">近7日 {{ formatIncrease(interactionsIncrease) }}</div>
-      </div>
-    </div>
-
-    <div class="diagnosis-metrics">
-      <h3 class="section-title">核心指标</h3>
-      <div class="metrics-grid">
-        <div class="metric-item">
-          <span class="metric-label">内容质量分</span>
-          <span class="metric-value">{{ contentQualityScore }}%</span>
-          <span class="metric-hint">(点赞+投币×2+收藏×2) ÷ 播放量</span>
-        </div>
-        <div class="metric-item">
-          <span class="metric-label">互动率</span>
-          <span class="metric-value">{{ interactionRate }}%</span>
-          <span class="metric-hint">点赞/评论/投币等 ÷ 播放量</span>
-        </div>
-        <div class="metric-item">
-          <span class="metric-label">粉丝转化率</span>
-          <span class="metric-value">{{ fanConversionRate }}%</span>
-          <span class="metric-hint">近7日新增粉丝 ÷ 总播放</span>
-        </div>
-        <div class="metric-item">
-          <span class="metric-label">活跃度</span>
-          <span class="metric-value">{{ activityScore }}</span>
-          <span class="metric-hint">近7日互动增长 ÷ 稿件数</span>
+      <div class="card">
+        <div class="card-container">
+          <div class="radar-card">
+            <div class="left" ref="radarRef"></div>
+            <div class="right">
+              <div class="right-item" v-for="item in metricItems" :key="item.name">
+                <div class="item-title">{{ item.name }}：</div>
+                <div class="item-detail">
+                  <div class="detail-text">
+                    <span>你的{{ item.name }}为</span>
+                    <span class="text-num">{{ formatNum(item.mine) }}</span>
+                    <span>{{ item.compareLabel }}</span>
+                    <span class="view-tip">查看提升建议</span>
+                    <span class="text-tips">{{ item.tip }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="diagnosis-suggestions">
-      <h3 class="section-title">优化建议</h3>
-      <div class="suggestions-list">
-        <div class="suggestion-item" v-for="(item, i) in suggestions" :key="i">
-          <span class="suggestion-icon">{{ item.icon }}</span>
-          <span class="suggestion-text">{{ item.text }}</span>
+    <!-- 播放分布 -->
+    <div class="play-dist">
+      <div class="section-title-container">
+        <h3 class="section-title">播放分布</h3>
+        <el-tooltip placement="top" :show-after="100">
+          <template #content>
+            <div>1. 帮助您了解近期流量来源渠道，为您的视频营销策略调整提供参考</div>
+            <div>2. 分终端占比</div>
+            <div>PC：网页及pc版客户端</div>
+            <div>移动端：iOS、安卓及Pad</div>
+            <div>h5及小程序：站外分享链接及小程序</div>
+            <div>云视听小电视：TV版应用</div>
+            <div>其他：上述未统计到的来源</div>
+          </template>
+          <el-icon class="tip-icon"><QuestionFilled /></el-icon>
+        </el-tooltip>
+      </div>
+      <div class="text2 summary">
+        <span class="b-icon">统计</span>
+        观众中：<span class="highlight-text">{{ formatPercent(person.guestPercent) }}</span> 是游客，主要使用
+        <span class="highlight-text">{{ mainTerminal }}</span> 设备观看。最新数据中，
+        <span class="highlight-text">《{{ topManuscript }}》</span>播放量最高
+      </div>
+
+      <div class="card-contianer-wrap">
+        <div class="card-contianer-wrap-left">
+          <!-- 人群分布 -->
+          <div class="card-container">
+            <div class="text1 title">
+              <span class="card-title">人群分布</span>
+              <span class="title-tip">近30天</span>
+            </div>
+            <div class="person-content">
+              <div class="donut-wrap" ref="personDonutRef"></div>
+              <div class="person-bars">
+                <div class="person-row">
+                  <span class="row-label">游客</span>
+                  <div class="progress-bar">
+                    <div class="progress-bar-item" :style="{ width: pct(person.guestPercent), background: '#ff4682' }"></div>
+                  </div>
+                  <span class="row-value">{{ formatPercent(person.guestPercent) }}</span>
+                </div>
+                <div class="person-row">
+                  <span class="row-label">粉丝</span>
+                  <div class="progress-bar">
+                    <div class="progress-bar-item" :style="{ width: pct(person.fanPercent), background: '#c9ccd0' }"></div>
+                  </div>
+                  <span class="row-value">{{ formatPercent(person.fanPercent) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 观看途径 -->
+          <div class="card-container">
+            <div class="text1 title">
+              <span class="card-title">观看途径</span>
+              <span class="title-tip">近30天</span>
+            </div>
+            <div class="terminal-bars">
+              <div class="progress" v-for="t in terminals" :key="t.label">
+                <div class="bar-title">{{ t.label }} : {{ formatPercent(t.percent) }}</div>
+                <div class="progress-bar">
+                  <div
+                    class="progress-bar-item"
+                    :class="{ highlight: t.percent === maxTerminalPercent }"
+                    :style="{ width: pct(t.percent) }"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 来源稿件占比 -->
+        <div class="card-container card-contianer-wrap-right">
+          <div class="text1 title">
+            <span class="card-title">来源稿件占比</span>
+            <span class="title-tip">昨日</span>
+            <span class="source-select">播放</span>
+          </div>
+          <div class="archive-list">
+            <div class="progress" v-for="(s, i) in sources" :key="s.manuscriptId">
+              <div class="title-row">
+                <span class="archive-title">{{ s.title }}</span>
+              </div>
+              <div class="progress-bar">
+                <div
+                  class="progress-bar-item"
+                  :class="{ highlight: i === 0 }"
+                  :style="{ width: pct(s.percent) }"
+                ></div>
+              </div>
+              <div class="tips-value">{{ formatPercent(s.percent) }}</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -65,241 +144,419 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useCreatorStats } from '@/composables/useCreatorStats'
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { QuestionFilled } from '@element-plus/icons-vue'
+import echarts from '@/utils/echartsCore'
+import { statsApi } from '@/api/creator'
 
-const { overview, loadOverview } = useCreatorStats()
-loadOverview()
+const radarRef = ref(null)
+const personDonutRef = ref(null)
 
-const totalInteractions = computed(() =>
-  overview.value.totalLikes + overview.value.totalComments +
-  overview.value.totalDanmaku + overview.value.totalCoins +
-  overview.value.totalCollections + overview.value.totalShares
-)
-
-const interactionsIncrease = computed(() =>
-  overview.value.likesIncrease + overview.value.commentsIncrease +
-  overview.value.danmakuIncrease + overview.value.coinsIncrease +
-  overview.value.collectionsIncrease + overview.value.sharesIncrease
-)
-
-const interactionRate = computed(() => {
-  if (!overview.value.totalViews) return '0.00'
-  return (totalInteractions.value / overview.value.totalViews * 100).toFixed(2)
+const diag = ref({
+  metrics: {
+    uploads: 0, views: 0, likes: 0, newFollowers: 0,
+    peerUploads: 0, peerViews: 0, peerLikes: 0, peerNewFollowers: 0
+  },
+  personDistribution: { guestPercent: 1, fanPercent: 0 },
+  terminals: [],
+  sources: [],
+  sourceDate: ''
 })
 
-const fanConversionRate = computed(() => {
-  if (!overview.value.totalViews) return '0.00'
-  return (overview.value.followersIncrease / overview.value.totalViews * 100).toFixed(2)
-})
-
-// 内容质量分：(点赞 + 投币×2 + 收藏×2) ÷ 播放量 × 100
-const contentQualityScore = computed(() => {
-  const o = overview.value
-  if (!o.totalViews) return '0.00'
-  const score = (o.totalLikes + o.totalCoins * 2 + o.totalCollections * 2) / o.totalViews * 100
-  return Math.min(score, 100).toFixed(2)
-})
-
-// 活跃度：近7日互动增长数 ÷ 稿件数
-const activityScore = computed(() => {
-  const o = overview.value
-  if (!o.totalManuscripts) return '0'
-  const increase = o.viewsIncrease + o.likesIncrease + o.commentsIncrease +
-    o.danmakuIncrease + o.coinsIncrease + o.collectionsIncrease + o.sharesIncrease + o.followersIncrease
-  return Math.round(increase / o.totalManuscripts)
-})
-
-const summaryList = computed(() => {
-  const list = []
-  const o = overview.value
-
-  if (o.viewsIncrease > 0) {
-    list.push('播放量处于上升趋势，内容曝光良好')
-  } else if (o.totalViews > 0) {
-    list.push('播放量保持稳定，建议优化标题和封面提升曝光')
+const load = async () => {
+  try {
+    const res = await statsApi.getAccountDiagnosis()
+    if (res?.code === 200 && res.data) {
+      diag.value = res.data
+      await nextTick()
+      initRadar()
+      initPersonDonut()
+    }
+  } catch (e) {
+    console.error('账号诊断加载失败:', e)
   }
-
-  if (o.likesIncrease > 0) {
-    list.push('点赞量稳定提升，内容质量获得认可')
-  }
-
-  if (o.collectionsIncrease > 0) {
-    list.push('收藏数增长较快，内容具有长期价值')
-  }
-
-  if (o.totalManuscripts > 0 && o.totalViews / o.totalManuscripts > 100) {
-    list.push('单稿平均播放量可观，保持现有产出节奏')
-  }
-
-  if (list.length === 0) {
-    list.push('数据积累中，持续发布优质内容即可看到诊断分析')
-  }
-  return list
-})
-
-const suggestions = computed(() => {
-  const list = []
-  const o = overview.value
-
-  if (o.totalManuscripts < 5) {
-    list.push({ icon: '💡', text: '建议增加视频发布频率，积累更多内容数据' })
-  }
-
-  const quality = parseFloat(contentQualityScore.value)
-  if (quality > 5) {
-    list.push({ icon: '🌟', text: '内容质量分优秀，用户对你的内容认可度很高' })
-  } else if (quality < 1 && o.totalViews > 0) {
-    list.push({ icon: '📈', text: '内容质量分偏低，建议优化内容质量引导投币和收藏' })
-  }
-
-  const rate = totalInteractions.value / (o.totalViews || 1)
-  if (rate < 0.03) {
-    list.push({ icon: '📈', text: '互动率偏低，可在视频中增加引导点赞/投币的话术' })
-  }
-
-  if (o.followersIncrease <= 0 && o.totalViews > 0) {
-    list.push({ icon: '🎯', text: '近期粉丝增长放缓，尝试在热门时段发布视频' })
-  }
-
-  if (o.totalComments < o.totalLikes * 0.1 && o.totalLikes > 0) {
-    list.push({ icon: '💬', text: '评论相对较少，可在视频结尾设置互动话题引导评论' })
-  }
-
-  if (list.length === 0) {
-    list.push({ icon: '✨', text: '数据表现不错，继续保持当前的创作节奏' })
-  }
-  return list
-})
-
-function formatNumber(n) {
-  if (n >= 10000) return (n / 10000).toFixed(1) + '万'
-  return String(n ?? 0)
 }
 
-function formatIncrease(n) {
-  if (!n) return '无变化'
-  return n > 0 ? `+${n}` : String(n)
+// —— 表现总结 ——
+const person = computed(() => diag.value.personDistribution || { guestPercent: 1, fanPercent: 0 })
+const terminals = computed(() => diag.value.terminals || [])
+const sources = computed(() => diag.value.sources || [])
+
+const metricItems = computed(() => {
+  const m = diag.value.metrics || {}
+  const rows = [
+    { name: '投稿', mine: m.uploads, peer: m.peerUploads, tip: '持续发布作品，才会吸引更多粉丝哟~' },
+    { name: '播放', mine: m.views, peer: m.peerViews, tip: '作品内容和选题是提升播放量的制胜法宝，封面和标题是视频的"门面"，继续加油~' },
+    { name: '点赞', mine: m.likes, peer: m.peerLikes, tip: '把握视频节奏，及时展示精彩瞬间，添加互动弹幕，都可能让更多小伙伴为你点赞！' },
+    { name: '新增关注', mine: m.newFollowers, peer: m.peerNewFollowers, tip: '提升作品的播放量吸引更多人观看、积极和粉丝互动， 都可以增加粉丝哦~' }
+  ]
+  return rows.map((r) => {
+    const above = r.mine >= r.peer
+    return {
+      ...r,
+      compareLabel: above ? '高于同类UP主' : '低于同类UP主',
+      above
+    }
+  })
+})
+
+const summaryText = computed(() => {
+  const low = metricItems.value.find((x) => !x.above)
+  if (low) {
+    return `你的${low.name}活跃低于同类UP主，坚持创作，能帮助你快速进步与成长哦~`
+  }
+  return '你的各项表现高于同类UP主，保持节奏，继续创作更优质的内容吧！'
+})
+
+// —— 播放分布 ——
+const mainTerminal = computed(() => {
+  const t = terminals.value.slice()
+  t.sort((a, b) => b.percent - a.percent)
+  return t.length ? t[0].label : 'PC'
+})
+const maxTerminalPercent = computed(() => {
+  const t = terminals.value.slice()
+  t.sort((a, b) => b.percent - a.percent)
+  return t.length ? t[0].percent : 0
+})
+const topManuscript = computed(() => {
+  const s = sources.value.slice()
+  s.sort((a, b) => b.percent - a.percent)
+  return s.length ? s[0].title : '暂无'
+})
+
+// —— 图表 ——
+// —— 图表 ——
+const initRadar = () => {
+  if (!radarRef.value) return
+  const m = diag.value.metrics || {}
+  const rows = metricItems.value
+  const mineArr = rows.map((r) => Number(r.mine) || 0)
+  const peerArr = rows.map((r) => Number(r.peer) || 0)
+  const maxArr = rows.map((_, i) => Math.max(mineArr[i], peerArr[i], 1))
+  const mineData = mineArr.map((v, i) => (v / maxArr[i]) * 100)
+  const peerData = peerArr.map((v, i) => (v / maxArr[i]) * 100)
+  const chart = echarts.init(radarRef.value)
+  chart.setOption({
+    radar: {
+      indicator: rows.map((r) => ({ name: r.name, max: 100 })),
+      center: ['50%', '48%'],
+      radius: '62%',
+      splitNumber: 4,
+      axisName: { color: '#61666d', fontSize: 12 },
+      splitLine: { lineStyle: { color: '#e8e8e8' } },
+      splitArea: { areaStyle: { color: ['#fff', '#fafafa'] } },
+      axisLine: { lineStyle: { color: '#e8e8e8' } }
+    },
+    series: [{
+      type: 'radar',
+      data: [
+        { name: '我的指标', value: mineData, lineStyle: { color: '#ff4682', width: 2 }, itemStyle: { color: '#ff4682' }, areaStyle: { color: 'rgba(255,70,132,0.15)' } },
+        { name: '同类UP主', value: peerData, lineStyle: { color: 'rgba(4,4,21,0.4)', width: 2 }, itemStyle: { color: 'rgba(4,4,21,0.4)' }, areaStyle: { color: 'rgba(4,4,21,0.05)' } }
+      ]
+    }],
+    legend: {
+      bottom: 0,
+      itemWidth: 8,
+      itemHeight: 8,
+      icon: 'circle',
+      textStyle: { color: '#61666d', fontSize: 12 },
+      data: ['我的指标', '同类UP主']
+    }
+  })
+  return chart
 }
+
+const initPersonDonut = () => {
+  if (!personDonutRef.value) return
+  const p = person.value
+  const chart = echarts.init(personDonutRef.value)
+  chart.setOption({
+    series: [{
+      type: 'pie',
+      radius: ['60%', '80%'],
+      center: ['50%', '50%'],
+      label: { show: false },
+      data: [
+        { value: p.guestPercent, name: '游客', itemStyle: { color: '#ff4682' } },
+        { value: p.fanPercent, name: '粉丝', itemStyle: { color: '#c9ccd0' } }
+      ]
+    }],
+    legend: { show: false }
+  })
+  return chart
+}
+
+// —— 格式化 ——
+const pct = (v) => `${Math.max(0, Math.min(1, Number(v) || 0)) * 100}%`
+const formatPercent = (v) => {
+  const n = (Number(v) || 0) * 100
+  if (n === 0) return '0.0%'
+  if (n >= 99.95) return '100%'
+  return n.toFixed(1) + '%'
+}
+const formatNum = (n) => {
+  const v = Number(n) || 0
+  if (v >= 10000) return (v / 10000).toFixed(1) + '万'
+  if (v >= 1000) return v.toLocaleString('en-US')
+  return String(v)
+}
+
+onMounted(load)
 </script>
 
 <style scoped>
 .account-diagnosis {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-}
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-  margin: 0 0 12px 0;
-}
-.diagnosis-summary {
-  background: #fff;
-  border-radius: 10px;
-  border: 1px solid #f0f0f0;
-  padding: 20px;
-}
-.summary-tip {
-  background: #fff7e6;
-  border-radius: 6px;
-  padding: 10px 14px;
-  margin-bottom: 14px;
-  color: #d48806;
-  font-size: 13px;
-}
-.summary-content {
-  color: #666;
-  font-size: 14px;
-  line-height: 1.8;
-}
-.diagnosis-ranking {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
 }
-.ranking-box {
-  background: #fff;
-  border-radius: 10px;
-  border: 1px solid #f0f0f0;
-  padding: 20px;
-  text-align: center;
+
+/* —— 表现总结 —— */
+.performance-summary {
+  width: 100%;
 }
-.ranking-title {
-  font-size: 14px;
-  color: #999;
-  margin: 0 0 10px 0;
+.header {
+  margin-bottom: 12px;
 }
-.ranking-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: #00aeec;
-}
-.ranking-change {
-  font-size: 12px;
-  color: #999;
-  margin-top: 6px;
-}
-.diagnosis-metrics {
-  background: #fff;
-  border-radius: 10px;
-  border: 1px solid #f0f0f0;
-  padding: 20px;
-}
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-.metric-item {
-  text-align: center;
-  padding: 16px;
-  background: #f9f9f9;
-  border-radius: 8px;
-}
-.metric-label {
-  display: block;
-  font-size: 13px;
-  color: #999;
-  margin-bottom: 8px;
-}
-.metric-value {
-  display: block;
-  font-size: 20px;
-  font-weight: 600;
-  color: #333;
-}
-.metric-hint {
-  display: block;
-  font-size: 11px;
-  color: #bbb;
-  margin-top: 4px;
-}
-.diagnosis-suggestions {
-  background: #fff;
-  border-radius: 10px;
-  border: 1px solid #f0f0f0;
-  padding: 20px;
-}
-.suggestions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.suggestion-item {
+.title {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: #f9f9f9;
-  border-radius: 8px;
+  gap: 6px;
 }
-.suggestion-icon {
-  font-size: 18px;
+.title .name {
+  font-size: 16px;
+  font-weight: 400;
+  color: #000;
 }
-.suggestion-text {
+.tip-icon {
   font-size: 14px;
-  color: #666;
+  color: #c9ccd0;
+  cursor: pointer;
+}
+.sub-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.sub-text {
+  font-size: 14px;
+  color: #61666d;
+}
+.card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 38px 55px 40px;
+  margin-top: 14px;
+}
+.radar-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.left {
+  width: 460px;
+  height: 340px;
+  flex-shrink: 0;
+}
+.right {
+  flex: 1;
+  padding-left: 25px;
+}
+.right-item {
+  margin-bottom: 22px;
+}
+.item-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #18191c;
+  margin-bottom: 6px;
+}
+.item-detail {
+  font-size: 14px;
+  color: #61666d;
+  line-height: 1.6;
+}
+.detail-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0;
+}
+.text-num {
+  font-size: 16px;
+  font-weight: 700;
+  color: #18191c;
+  margin: 0 4px;
+}
+.text-tips {
+  color: #c9ccd0;
+  font-size: 12px;
+  margin-left: 6px;
+}
+.view-tip {
+  color: #00a1d6;
+  font-size: 13px;
+  cursor: pointer;
+  margin-left: 6px;
+}
+
+/* —— 播放分布 —— */
+.play-dist .section-title-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-title {
+  font-size: 18px;
+  font-weight: 500;
+  color: #18191c;
+  margin: 0;
+}
+.text2.summary {
+  font-size: 14px;
+  color: #61666d;
+  margin: 12px 0 16px;
+  line-height: 1.6;
+}
+.highlight-text {
+  color: #ff4682;
+  font-weight: 500;
+}
+.b-icon {
+  margin-right: 4px;
+}
+.card-contianer-wrap {
+  display: flex;
+  gap: 17px;
+}
+.card-contianer-wrap-left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+.card-contianer-wrap .card-container {
+  background: #fff;
+  border-radius: 20px;
+  padding: 24px 32px;
+}
+.card-contianer-wrap-right {
+  width: 32%;
+  flex-shrink: 0;
+}
+.text1.title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #18191c;
+}
+.title-tip {
+  font-size: 13px;
+  color: #949aa0;
+}
+.source-select {
+  margin-left: auto;
+  font-size: 13px;
+  color: #61666d;
+  cursor: pointer;
+}
+
+/* 人群分布 */
+.person-content {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+.donut-wrap {
+  width: 130px;
+  height: 130px;
+  flex-shrink: 0;
+}
+.person-bars {
+  flex: 1;
+  min-width: 0;
+}
+.person-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.row-label {
+  width: 40px;
+  font-size: 14px;
+  color: #18191c;
+}
+.row-value {
+  width: 55px;
+  text-align: right;
+  font-size: 14px;
+  color: #18191c;
+}
+
+/* 进度条 */
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: #f0f1f4;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.progress-bar-item {
+  height: 100%;
+  border-radius: 4px;
+  background: #c9ccd0;
+  transition: width .3s;
+}
+
+/* 观看途径 */
+.terminal-bars .progress {
+  margin-bottom: 14px;
+}
+.bar-title {
+  font-size: 14px;
+  color: #61666d;
+  margin-bottom: 8px;
+}
+
+/* 来源稿件 */
+.archive-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 460px;
+  overflow-y: auto;
+}
+.archive-list .progress {
+  position: relative;
+}
+.title-row {
+  margin-bottom: 8px;
+}
+.archive-title {
+  display: block;
+  font-size: 14px;
+  color: #18191c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tips-value {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #949aa0;
+  text-align: right;
+}
+.progress-bar-item.highlight {
+  background: #ff4682;
 }
 </style>
