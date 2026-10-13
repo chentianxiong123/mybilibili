@@ -97,7 +97,7 @@ func (h *Handler) handleAppealList(w http.ResponseWriter, r *http.Request) {
 
 	offset := (page - 1) * size
 	rows, err := h.svc.repo.db.QueryContext(r.Context(),
-		`SELECT a.id, a.manuscript_id, COALESCE(m.title,''), COALESCE(m.status,0),
+		`SELECT a.id, a.manuscript_id, COALESCE(m.title,''), COALESCE(m.status,0), COALESCE(m.cover_url,''),
 		        a.reason, COALESCE(a.description,''), a.status,
 		        COALESCE(a.admin_remark,''), a.created_at
 		   FROM appeals a LEFT JOIN manuscripts m ON m.id = a.manuscript_id
@@ -112,16 +112,17 @@ func (h *Handler) handleAppealList(w http.ResponseWriter, r *http.Request) {
 	list := make([]map[string]interface{}, 0)
 	for rows.Next() {
 		var id, manuscriptID int64
-		var title, reason, description, status, adminRemark string
+		var title, coverUrl, reason, description, status, adminRemark string
 		var manuscriptStatus int64
 		var createdAt time.Time
-		if err := rows.Scan(&id, &manuscriptID, &title, &manuscriptStatus, &reason, &description, &status, &adminRemark, &createdAt); err != nil {
+		if err := rows.Scan(&id, &manuscriptID, &title, &manuscriptStatus, &coverUrl, &reason, &description, &status, &adminRemark, &createdAt); err != nil {
 			continue
 		}
 		list = append(list, map[string]interface{}{
 			"id":                    id,
 			"manuscriptId":          manuscriptID,
 			"title":                 title,
+			"coverUrl":              coverUrl,
 			"manuscriptStatus":      manuscriptStatus,
 			"manuscriptStatusText":  manuscriptAppealStatusText(manuscriptStatus),
 			"reason":                reason,
@@ -178,16 +179,16 @@ func (h *Handler) handleAppealByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var manuscriptID int64
-	var title, reason, description, status, adminRemark string
+	var title, coverUrl, reason, description, status, adminRemark string
 	var manuscriptStatus int64
 	var createdAt, processedAt sql.NullTime
 	err := h.svc.repo.db.QueryRowContext(r.Context(),
-		`SELECT a.manuscript_id, COALESCE(m.title,''), COALESCE(m.status,0),
+		`SELECT a.manuscript_id, COALESCE(m.title,''), COALESCE(m.status,0), COALESCE(m.cover_url,''),
 		        a.reason, COALESCE(a.description,''), a.status,
 		        COALESCE(a.admin_remark,''), a.created_at, a.processed_at
 		   FROM appeals a LEFT JOIN manuscripts m ON m.id = a.manuscript_id
 		  WHERE a.id = $1 AND a.user_id = $2`, id, uid).
-		Scan(&manuscriptID, &title, &manuscriptStatus, &reason, &description, &status, &adminRemark, &createdAt, &processedAt)
+		Scan(&manuscriptID, &title, &manuscriptStatus, &coverUrl, &reason, &description, &status, &adminRemark, &createdAt, &processedAt)
 	if err != nil {
 		httputil.WriteJSON(w, http.StatusNotFound, map[string]interface{}{"code": 404, "message": "appeal not found", "data": nil})
 		return
@@ -196,6 +197,7 @@ func (h *Handler) handleAppealByID(w http.ResponseWriter, r *http.Request) {
 		"id":                   id,
 		"manuscriptId":         manuscriptID,
 		"title":                title,
+		"coverUrl":             coverUrl,
 		"manuscriptStatus":     manuscriptStatus,
 		"manuscriptStatusText": manuscriptAppealStatusText(manuscriptStatus),
 		"reason":               reason,

@@ -34,17 +34,27 @@
           class="appeal-card"
           @click="openDetail(item.id)"
         >
-          <div class="card-main">
-            <p class="card-title">{{ item.title || '（已删除稿件）' }}</p>
-            <p class="card-meta">稿件状态： {{ item.manuscriptStatusText }}</p>
+          <div class="card-top">
+            <div class="card-title-block">
+              <p class="card-title">{{ item.title || '（已删除稿件）' }}</p>
+              <p class="card-meta">稿件状态： {{ item.manuscriptStatusText }}</p>
+            </div>
+            <div class="card-cover">
+              <img
+                v-if="item.coverUrl"
+                :src="item.coverUrl"
+                :alt="item.title"
+              />
+              <span v-else class="cover-fallback">暂无封面</span>
+            </div>
           </div>
-          <div class="card-sub">
-            <div class="sub-info">
+          <div class="card-bottom">
+            <div class="bottom-info">
               <p class="card-meta">申诉时间：{{ item.appealTime }}</p>
               <p class="card-meta">申诉编号：{{ item.appealNo }}</p>
               <p class="card-meta">受理状态：{{ item.statusText }}</p>
             </div>
-            <span class="detail-link">申诉详情</span>
+            <span class="detail-btn">申诉详情</span>
           </div>
         </div>
       </div>
@@ -240,40 +250,54 @@ onMounted(() => {
   font-weight: 500;
 }
 
-/* 申诉卡片：对齐B站 padding 20px 0 通栏 */
+/* 申诉卡片：对齐B站 双列浮动卡片（460px + 右间距20px，阴影细边框圆角4px） */
 .appeal-list {
   margin-bottom: 20px;
 }
 
 .appeal-cards {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 0 20px;
 }
 
 .appeal-card {
-  padding: 20px 0;
-  border-bottom: 1px solid #f0f0f0;
+  width: 460px;
+  max-width: 100%;
   background: #fff;
+  border-radius: 4px;
+  box-shadow: #dfe5ed 0 0 1px 1px;
+  padding: 20px 0;
+  margin-bottom: 20px;
   cursor: pointer;
-  transition: background .2s;
+  transition: box-shadow .2s;
 }
 
 .appeal-card:hover {
-  background: #fafafa;
+  box-shadow: rgba(255, 102, 153, .4) 0 0 1px 1px;
 }
 
 .appeal-card p {
   margin: 0;
 }
 
-.card-main {
-  margin-bottom: 12px;
+/* 上段：标题 + 封面 */
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 0 20px;
+}
+
+.card-title-block {
+  flex: 1;
+  min-width: 0;
 }
 
 .card-title {
   font-size: 14px;
-  color: #4fbdea;
-  margin-bottom: 8px !important;
+  color: #00a1d6;
+  margin-bottom: 10px !important;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -285,22 +309,59 @@ onMounted(() => {
   line-height: 1.8;
 }
 
-.card-sub {
+.card-cover {
+  width: 80px;
+  height: 50px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #e5e9ef;
+}
+
+.card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cover-fallback {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 10px;
+  color: #99a2aa;
+}
+
+/* 下段：时间/编号/状态 + 描边按钮 */
+.card-bottom {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
+  border-top: 1px solid #e5e9ef;
+  margin-top: 18px;
+  padding: 18px 20px 0;
 }
 
-.detail-link {
+.detail-btn {
+  flex-shrink: 0;
+  height: 28px;
+  line-height: 28px;
+  padding: 0 10px;
   font-size: 12px;
   color: #18191c;
+  background: #fff;
+  border: 1px solid #ccd0d7;
+  border-radius: 4px;
   white-space: nowrap;
-  flex-shrink: 0;
+  transition: all .2s;
 }
 
-.appeal-card:hover .detail-link {
+.appeal-card:hover .detail-btn {
   color: #ff6699;
+  border-color: #ff6699;
 }
 
 /* 详情弹窗 */
