@@ -31,7 +31,8 @@ func (h *Handler) handleOverview(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
 		return
 	}
-	data, _ := h.svc.Overview(r.Context(), userID)
+	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
+	data, _ := h.svc.Overview(r.Context(), userID, days)
 	httputil.WriteOK(w, data)
 }
 

@@ -26,11 +26,11 @@ export function useCreatorStats() {
     currentFollowers: 0, newFollowersToday: 0, unfollowsToday: 0, growthRate: 0
   })
 
-  async function loadOverview(force = true) {
+  async function loadOverview(days = 7, force = true) {
     if (loading.overview) return
     loading.overview = true
     try {
-      const res = await statsApi.getOverview()
+      const res = await statsApi.getOverview(days)
       if (res?.code === 200 && res.data) {
         overview.value = { ...overview.value, ...res.data }
       }

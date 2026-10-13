@@ -239,7 +239,7 @@ describe('creator api - statsApi', () => {
   it('getOverview', async () => {
     mocks.apiGet.mockResolvedValueOnce({ code: 200, data: {} })
     await statsApi.getOverview()
-    expect(mocks.apiGet).toHaveBeenCalledWith('/creator/stats/overview')
+    expect(mocks.apiGet).toHaveBeenCalledWith('/creator/stats/overview?days=7')
   })
 
   it('getTrend 默认 days=7', async () => {

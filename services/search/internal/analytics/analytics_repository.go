@@ -16,7 +16,10 @@ func NewRepository(db *sql.DB) *Repository {
 }
 
 // Overview 创作者数据概览，对齐老版 CreatorOverviewVO 字段（camelCase）
-func (r *Repository) Overview(ctx context.Context, userID int64) (map[string]interface{}, error) {
+func (r *Repository) Overview(ctx context.Context, userID int64, days int) (map[string]interface{}, error) {
+	if days != 7 && days != 30 {
+		days = 7
+	}
 	var totalViews, totalLikes, totalCoins, totalCollections, totalShares, totalComments, totalManuscripts int64
 	r.db.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(view_count),0), COALESCE(SUM(like_count),0),
@@ -31,9 +34,9 @@ func (r *Repository) Overview(ctx context.Context, userID int64) (map[string]int
 	var totalFollowers int64
 	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM follows WHERE following_id = $1`, userID).Scan(&totalFollowers)
 
-	start7 := time.Now().AddDate(0, 0, -7).Format("2006-01-02")
+	start := time.Now().AddDate(0, 0, -days).Format("2006-01-02")
 	var viewsIncrease int64
-	r.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(view_count),0) FROM manuscript_daily_metrics WHERE user_id = $1 AND metric_date >= $2`, userID, start7).Scan(&viewsIncrease)
+	r.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(view_count),0) FROM manuscript_daily_metrics WHERE user_id = $1 AND metric_date >= $2`, userID, start).Scan(&viewsIncrease)
 
 	var likesIncrease, coinsIncrease, collectionsIncrease, sharesIncrease int64
 	r.db.QueryRowContext(ctx, `
@@ -43,16 +46,16 @@ func (r *Repository) Overview(ctx context.Context, userID int64) (map[string]int
 		       COALESCE(SUM(CASE WHEN i.interaction_type='SHARE' THEN 1 ELSE 0 END),0)
 		FROM user_interactions i JOIN manuscripts m ON i.target_id = m.id
 		WHERE m.user_id = $1 AND m.status = 3 AND i.target_type = 'MANUSCRIPT' AND DATE(i.created_at) >= $2`,
-		userID, start7).Scan(&likesIncrease, &coinsIncrease, &collectionsIncrease, &sharesIncrease)
+		userID, start).Scan(&likesIncrease, &coinsIncrease, &collectionsIncrease, &sharesIncrease)
 
 	var commentsIncrease int64
 	r.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM comments c JOIN manuscripts m ON c.manuscript_id = m.id
 		WHERE m.user_id = $1 AND m.status = 3 AND DATE(c.created_at) >= $2`,
-		userID, start7).Scan(&commentsIncrease)
+		userID, start).Scan(&commentsIncrease)
 
 	var followersIncrease int64
-	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM follows WHERE following_id = $1 AND created_at >= $2`, userID, start7).Scan(&followersIncrease)
+	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM follows WHERE following_id = $1 AND created_at >= $2`, userID, start).Scan(&followersIncrease)
 
 	return map[string]interface{}{
 		"totalViews":           totalViews,
@@ -73,6 +76,7 @@ func (r *Repository) Overview(ctx context.Context, userID int64) (map[string]int
 		"followersIncrease":    followersIncrease,
 		"danmakuIncrease":      int64(0),
 		"updateTime":           time.Now().Format("2006-01-02"),
+		"periodDays":           days,
 	}, nil
 }
 
@@ -430,8 +434,11 @@ func NewService(repo *Repository) *Service {
 	return &Service{repo: repo}
 }
 
-func (s *Service) Overview(ctx context.Context, userID int64) (map[string]interface{}, error) {
-	return s.repo.Overview(ctx, userID)
+func (s *Service) Overview(ctx context.Context, userID int64, days int) (map[string]interface{}, error) {
+	if days != 7 && days != 30 {
+		days = 7
+	}
+	return s.repo.Overview(ctx, userID, days)
 }
 
 func (s *Service) Trend(ctx context.Context, userID int64, days int) (map[string]interface{}, error) {

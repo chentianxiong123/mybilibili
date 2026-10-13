@@ -13,6 +13,11 @@
       <el-tab-pane label="粉丝分析" name="fans">
         <FanAnalysisPanel :key="'fans-' + activeTab + '-' + refreshKey" />
       </el-tab-pane>
+      <el-tab-pane label="专栏数据" name="opus">
+        <div class="placeholder-tab">
+          <el-empty description="暂无专栏数据" />
+        </div>
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -42,21 +47,17 @@ function handleTabChange(tab) {
   background: transparent;
 }
 .data-tabs :deep(.el-tabs__header) {
-  margin-bottom: 20px;
-  background: #fff;
-  border-radius: 10px;
-  padding: 0 16px;
-  border: 1px solid #f0f0f0;
+  margin-bottom: 16px;
 }
 .data-tabs :deep(.el-tabs__nav-wrap::after) {
   display: none;
 }
 .data-tabs :deep(.el-tabs__item) {
   font-size: 14px;
-  font-weight: 500;
-  padding: 0 20px;
-  height: 44px;
-  line-height: 44px;
+  padding: 0 4px;
+  margin-right: 32px;
+  height: 40px;
+  line-height: 40px;
 }
 .placeholder-tab {
   display: flex;

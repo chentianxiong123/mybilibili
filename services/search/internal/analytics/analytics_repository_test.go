@@ -52,7 +52,7 @@ func TestOverview_Success(t *testing.T) {
 	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM follows WHERE following_id.*created_at`).WillReturnRows(
 		sqlmock.NewRows([]string{"count"}).AddRow(15))
 
-	result, err := repo.Overview(ctx, 1)
+	result, err := repo.Overview(ctx, 1, 7)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1000), result["totalViews"])
 	assert.Equal(t, int64(200), result["totalLikes"])
