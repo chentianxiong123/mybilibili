@@ -213,7 +213,7 @@ onMounted(() => {
 
 <style scoped>
 .comment-manager {
-  padding: 12px 0;
+  padding: 12px 40px;
 }
 
 .content-tabs {
@@ -234,24 +234,25 @@ onMounted(() => {
   width: 280px;
 }
 
-/* 评论卡片列表：独立白卡 radius4px 灰底隔开（对齐B站互动管理） */
+/* 评论列表：白底紧贴堆叠，无外边框，底部一条缝线分隔（对齐真页） */
 .comment-cards {
   display: flex;
   flex-direction: column;
-  gap: 16px;
 }
 
 .comment-card {
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
-  padding: 16px 20px;
-  transition: box-shadow .2s, border-color .2s;
+  padding: 16px 0;
+  border-bottom: 1px solid #e7e7e7;
+  transition: background .2s;
+}
+
+.comment-card:last-child {
+  border-bottom: none;
 }
 
 .comment-card:hover {
-  border-color: #d0d3d8;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, .04);
+  background: #fafbfc;
 }
 
 .cc-head {

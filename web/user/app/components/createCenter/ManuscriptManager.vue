@@ -706,6 +706,7 @@ onUnmounted(() => {
 <style scoped>
 .manuscript-manager {
   width: 100%;
+  padding: 0 40px;
 }
 
 /* 主要选择栏 */
@@ -814,23 +815,24 @@ onUnmounted(() => {
 .manuscript-cards {
   display: flex;
   flex-direction: column;
-  gap: 16px;
 }
 
-/* 独立白卡：对齐真页 article-card.v2（白底/radius4/内边距，卡与卡之间灰底隔开） */
+/* 真页 article-card.v2：白底紧贴堆叠，无外边框，靠底部一条缝线分隔 */
 .manuscript-card {
   display: flex;
   gap: 24px;
-  padding: 24px;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
+  padding: 24px 0;
+  border-bottom: 1px solid #e7e7e7;
   background: #fff;
-  transition: box-shadow .2s, border-color .2s;
+  transition: background .2s;
+}
+
+.manuscript-card:last-child {
+  border-bottom: none;
 }
 
 .manuscript-card:hover {
-  border-color: #d0d3d8;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, .04);
+  background: #fafbfc;
 }
 
 .card-cover {
