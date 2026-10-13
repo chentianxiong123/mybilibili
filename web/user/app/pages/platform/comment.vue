@@ -66,17 +66,12 @@
     </div>
 
     <!-- 分页导航栏 -->
-    <div class="pagination">
-      <el-pagination
-        v-model:current-page="page"
-        v-model:page-size="pageSize"
-        :page-sizes="[10, 20, 50]"
-        layout="total, sizes, prev, pager, next, jumper"
-        :total="total"
-        @size-change="handlePageChange"
-        @current-change="handlePageChange"
-      />
-    </div>
+    <BccPagination
+      v-model:current-page="page"
+      :page-size="pageSize"
+      :total="total"
+      @current-change="handlePageChange"
+    />
   </div>
 </template>
 
@@ -85,6 +80,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { CaretRight } from '@element-plus/icons-vue'
 import { creatorApi } from '@/api/creator'
+import BccPagination from '@/components/createCenter/BccPagination.vue'
 
 const defaultAvatar = 'https://i0.hdslb.com/bfs/face/3378829f555891d2d5a4537e10264593a1d076b1.jpg@50w_50h_1c_1s_!web-avatar-nav.avif'
 
@@ -363,9 +359,5 @@ onMounted(() => {
   border-color: #f56c6c;
 }
 
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  padding: 16px 0;
-}
+
 </style>

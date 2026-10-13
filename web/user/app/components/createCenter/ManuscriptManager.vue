@@ -207,15 +207,12 @@
       </div>
 
       <!-- 分页导航栏 -->
-      <div class="pagination">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          layout="prev, pager, next, jumper, total"
-          :total="totalArticles"
-          @current-change="handleCurrentChange"
-        ></el-pagination>
-      </div>
+      <BccPagination
+        v-model:current-page="currentPage"
+        :page-size="10"
+        :total="totalArticles"
+        @current-change="handleCurrentChange"
+      />
     </div>
 
     <!-- 合集管理内容 -->
@@ -246,6 +243,7 @@ import {
 import { manuscriptApi } from '@/api/creator'
 import CollectionManager from './CollectionManager.vue'
 import ManuscriptEditDialog from './ManuscriptEditDialog.vue'
+import BccPagination from './BccPagination.vue'
 
 const props = defineProps({
   active: {
@@ -1110,13 +1108,4 @@ onUnmounted(() => {
   border-color: #ff6699;
 }
 
-/* 分页导航栏 */
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  margin-top: 20px;
-  padding: 15px 0;
-  border-top: 1px solid #e0e0e0;
-}
 </style>

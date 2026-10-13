@@ -65,15 +65,12 @@
     </div>
 
     <!-- 分页 -->
-    <div class="pagination">
-      <el-pagination
-        v-model:current-page="currentPage"
-        v-model:page-size="pageSize"
-        layout="prev, pager, next, jumper, total"
-        :total="totalAppeals"
-        @current-change="handleCurrentChange"
-      ></el-pagination>
-    </div>
+    <BccPagination
+      v-model:current-page="currentPage"
+      :page-size="pageSize"
+      :total="totalAppeals"
+      @current-change="handleCurrentChange"
+    />
 
     <!-- 申诉详情弹窗 -->
     <el-dialog
@@ -131,6 +128,7 @@
 import { ref, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { manuscriptApi } from '@/api/creator'
+import BccPagination from '@/components/createCenter/BccPagination.vue'
 
 const statusFilter = ref('all')
 
@@ -390,13 +388,4 @@ onMounted(() => {
   word-break: break-all;
 }
 
-/* 分页 */
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  margin-top: 20px;
-  padding: 15px 0;
-  border-top: 1px solid #e0e0e0;
-}
 </style>
