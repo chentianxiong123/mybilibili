@@ -1,5 +1,5 @@
 <template>
-    <ManuscriptManager />
+    <ManuscriptManager :active="true" />
 </template>
 
 <script setup lang="ts">

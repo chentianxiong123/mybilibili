@@ -9,101 +9,200 @@
     </div>
 
     <div v-show="mainTab === 'video'">
-      <!-- 视频管理次级选择栏 -->
-      <div class="video-filters">
-        <!-- 第一行：全部稿件 -->
-        <div class="filter-row">
-          <el-radio-group v-model="statusFilter" size="small">
-            <el-radio-button value="published">已通过 ({{ approvedCount }})</el-radio-button>
-            <el-radio-button value="processing">等待审核 / 处理中</el-radio-button>
-            <el-radio-button value="rejected">未通过 ({{ rejectedCount }})</el-radio-button>
-            <el-radio-button value="unpublished">已下架 ({{ unpublishedCount }})</el-radio-button>
-          </el-radio-group>
+      <!-- 工具栏：搜索 + 状态筛选 + 排序 -->
+      <div class="video-toolbar">
+        <div class="search-box">
+          <el-input
+            v-model="searchKeyword"
+            placeholder="搜索稿件"
+            clearable
+            class="search-input"
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+        </div>
+
+        <div class="status-tabs">
+          <span
+            class="status-tab"
+            :class="{ active: statusFilter === 'all' }"
+            @click="setStatus('all')"
+          >
+            全部稿件 {{ totalCount }}
+          </span>
+          <span
+            class="status-tab"
+            :class="{ active: statusFilter === 'processing' }"
+            @click="setStatus('processing')"
+          >
+            进行中 {{ processingCount }}
+          </span>
+          <span
+            class="status-tab"
+            :class="{ active: statusFilter === 'published' }"
+            @click="setStatus('published')"
+          >
+            已通过 {{ approvedCount }}
+          </span>
+          <span
+            class="status-tab"
+            :class="{ active: statusFilter === 'rejected' }"
+            @click="setStatus('rejected')"
+          >
+            未通过 {{ rejectedCount }}
+          </span>
+          <span
+            class="status-tab"
+            :class="{ active: statusFilter === 'unpublished' }"
+            @click="setStatus('unpublished')"
+          >
+            已下架 {{ unpublishedCount }}
+          </span>
+        </div>
+
+        <div class="sort-box">
+          <el-select v-model="sortBy" class="sort-select">
+            <el-option label="投稿时间排序" value="latest"></el-option>
+            <el-option label="最早投稿" value="oldest"></el-option>
+            <el-option label="播放量排序" value="views"></el-option>
+          </el-select>
         </div>
       </div>
 
       <!-- 视频稿件列表 -->
       <div class="article-list" v-loading="articlesLoading">
-        <el-table :data="articles" stripe style="width: 100%">
-          <el-table-column prop="id" label="稿件ID" width="120"></el-table-column>
-          <el-table-column prop="title" label="标题" min-width="300"></el-table-column>
-          <el-table-column prop="status" label="状态" width="180">
-            <template #default="scope">
-              <el-tag
-                :type="getArticleStatusType(scope.row.status)"
-                size="small"
-              >
-                {{ getArticleStatusText(scope.row.status) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="处理进度" min-width="280">
-            <template #default="scope">
-              <div class="manuscript-process">
-                <div
-                  v-for="video in getArticleVideos(scope.row)"
-                  :key="video.id || video.videoOrder"
-                  class="process-video-row"
-                >
-                  <div class="process-video-header">
-                    <span class="process-video-title">{{ getVideoPartTitle(video) }}</span>
-                    <el-tag :type="getVideoProcessTagType(video)" size="small">
-                      {{ getVideoProcessText(video, scope.row.status) }}
-                    </el-tag>
-                  </div>
-                  <el-progress
-                    v-if="shouldShowVideoProgress(video, scope.row.status)"
-                    :percentage="getVideoProcessProgress(video)"
-                    :status="getVideoProgressStatus(video)"
-                    :stroke-width="6"
-                    :show-text="false"
-                  />
-                  <div v-if="video.processError" class="process-error">
-                    {{ video.processError }}
-                  </div>
+        <div v-if="filteredArticles.length" class="manuscript-cards">
+          <div
+            v-for="article in filteredArticles"
+            :key="article.id"
+            class="manuscript-card"
+          >
+            <!-- 封面 -->
+            <div class="card-cover" @click="goWatch(article)">
+              <img
+                v-if="article.coverUrl"
+                :src="article.coverUrl"
+                :alt="article.title"
+                class="cover-img"
+              />
+              <div v-else class="cover-fallback">{{ getDefaultCoverText() }}</div>
+              <span v-if="article.duration || article.durationSeconds" class="cover-duration">
+                {{ formatDuration(article.duration, article.durationSeconds) }}
+              </span>
+              <div class="cover-play">
+                <el-icon><VideoPlay /></el-icon>
+              </div>
+            </div>
+
+            <!-- 信息 -->
+            <div class="card-info">
+              <div class="info-top">
+                <div class="title-area">
+                  <span class="card-title" @click="goWatch(article)">{{ article.title }}</span>
+                  <el-tag
+                    :type="getArticleStatusType(article.status)"
+                    size="small"
+                    class="status-tag"
+                  >
+                    {{ getArticleStatusText(article.status) }}
+                  </el-tag>
                 </div>
-                <span v-if="getArticleVideos(scope.row).length === 0" class="process-empty">
-                  暂无视频处理信息
+                <div class="card-ops">
+                  <el-button
+                    v-if="article.status !== 1"
+                    type="primary"
+                    size="small"
+                    @click="openEditDialog(article.id)"
+                  >
+                    编辑
+                  </el-button>
+                  <el-dropdown
+                    v-if="hasCardActions(article.status)"
+                    trigger="click"
+                    @command="(cmd) => handleCardCommand(cmd, article)"
+                  >
+                    <span class="more-btn">•••</span>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item v-if="article.status === 3" command="unpublish">
+                          下架
+                        </el-dropdown-item>
+                        <el-dropdown-item v-if="article.status === -1" command="publish">
+                          上架
+                        </el-dropdown-item>
+                        <el-dropdown-item v-if="article.status === 0 || article.status === 1" disabled>
+                          {{ article.status === 0 ? '审核中...' : '处理中...' }}
+                        </el-dropdown-item>
+                        <el-dropdown-item command="delete" divided>
+                          删除
+                        </el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
+              </div>
+
+              <div class="info-meta">
+                <span class="meta-date">{{ formatDate(article.uploadTime || article.createdAt) }}</span>
+                <span v-if="hasProcessingInfo(article)" class="meta-process">
+                  <template v-for="(video, vi) in getArticleVideos(article)" :key="video.id || video.videoOrder">
+                    <span class="process-chip" :class="processChipClass(video, article.status)">
+                      {{ getVideoPartTitle(video) }}
+                      <span v-if="article.status === 1" class="process-percent">
+                        {{ getVideoProcessProgress(video) }}%
+                      </span>
+                    </span>
+                  </template>
                 </span>
               </div>
-            </template>
-          </el-table-column>
-          <el-table-column prop="viewCount" label="播放量" width="100"></el-table-column>
-          <el-table-column prop="commentCount" label="评论数" width="100"></el-table-column>
-          <el-table-column prop="createdAt" label="创建时间" width="180">
-            <template #default="scope">
-              {{ formatDate(scope.row.uploadTime) }}
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="260" fixed="right">
-            <template #default="scope">
-              <el-button
-                v-if="scope.row.status !== 1"
-                type="primary"
-                size="small"
-                @click="openEditDialog(scope.row.id)"
-              >
-                编辑
-              </el-button>
-              <!-- 待审核/处理中状态 -->
-              <template v-if="scope.row.status === 0 || scope.row.status === 1">
-                <el-button
-                  type="info"
-                  size="small"
-                  disabled
-                >
-                  {{ scope.row.status === 0 ? '审核中...' : '处理中...' }}
-                </el-button>
-              </template>
-              <!-- 已发布状态 -->
-              <el-button v-if="scope.row.status === 3" type="warning" size="small" @click="unpublishArticle(scope.row.id)">下架</el-button>
-              <!-- 已下架状态 -->
-              <el-button v-if="scope.row.status === -1" type="success" size="small" @click="publishArticle(scope.row.id)">上架</el-button>
-              <!-- 删除按钮 -->
-              <el-button type="danger" size="small" @click="deleteArticle(scope.row.id)">删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+
+              <div class="info-stats">
+                <div class="stat-item">
+                  <el-icon><CaretRight /></el-icon>
+                  <span>{{ formatCount(article.viewCount) }}</span>
+                  <em>播放</em>
+                </div>
+                <div class="stat-item">
+                  <el-icon><Goods /></el-icon>
+                  <span>{{ formatCount(article.likeCount) }}</span>
+                  <em>点赞</em>
+                </div>
+                <div class="stat-item">
+                  <el-icon><ChatDotRound /></el-icon>
+                  <span>{{ formatCount(article.danmakuCount) }}</span>
+                  <em>弹幕</em>
+                </div>
+                <div class="stat-item">
+                  <el-icon><ChatLineSquare /></el-icon>
+                  <span>{{ formatCount(article.commentCount) }}</span>
+                  <em>评论</em>
+                </div>
+                <div class="stat-item">
+                  <el-icon><Coin /></el-icon>
+                  <span>{{ formatCount(article.coinCount) }}</span>
+                  <em>硬币</em>
+                </div>
+                <div class="stat-item">
+                  <el-icon><Star /></el-icon>
+                  <span>{{ formatCount(article.collectCount) }}</span>
+                  <em>收藏</em>
+                </div>
+                <div class="stat-item">
+                  <el-icon><Share /></el-icon>
+                  <span>{{ formatCount(article.shareCount) }}</span>
+                  <em>分享</em>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <el-empty
+          v-else-if="!articlesLoading"
+          description="暂无稿件"
+        />
       </div>
 
       <!-- 分页导航栏 -->
@@ -111,10 +210,8 @@
         <el-pagination
           v-model:current-page="currentPage"
           v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
+          layout="prev, pager, next, jumper, total"
           :total="totalArticles"
-          @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
         ></el-pagination>
       </div>
@@ -139,6 +236,17 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  Search,
+  CaretRight,
+  Goods,
+  ChatDotRound,
+  ChatLineSquare,
+  Coin,
+  Star,
+  Share,
+  VideoPlay
+} from '@element-plus/icons-vue'
 import { manuscriptApi } from '@/api/creator'
 import CollectionManager from './CollectionManager.vue'
 import ManuscriptEditDialog from './ManuscriptEditDialog.vue'
@@ -158,8 +266,12 @@ const route = useRoute()
 const mainTab = ref('video')
 
 // 状态筛选
-const statusFilter = ref('published') // published: 已通过, processing: 进行中, rejected: 未通过
-const validArticleStatusFilters = new Set(['published', 'processing', 'rejected', 'unpublished'])
+const statusFilter = ref('all')
+const validArticleStatusFilters = new Set(['all', 'published', 'processing', 'rejected', 'unpublished'])
+
+// 搜索与排序
+const searchKeyword = ref('')
+const sortBy = ref('latest')
 
 watch(
   () => [route.path, route.query.status],
@@ -187,6 +299,10 @@ const rejectedCount = ref(0)
 const processingCount = ref(0)
 const unpublishedCount = ref(0)
 
+const totalCount = computed(() =>
+  approvedCount.value + processingCount.value + rejectedCount.value + unpublishedCount.value
+)
+
 // 分页相关状态
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -198,6 +314,41 @@ const editManuscriptId = ref(null)
 const openEditDialog = (id) => {
   editManuscriptId.value = id
   editDialogVisible.value = true
+}
+
+// 跳转到播放页（已通过稿件才可看）
+const goWatch = (article) => {
+  if (article.status !== 3) {
+    return
+  }
+  const id = article.firstVideoId || article.id
+  if (id) {
+    window.location.href = `/video/${id}`
+  }
+}
+
+// 当前页数据（前端搜索过滤 + 排序）
+const filteredArticles = computed(() => {
+  let list = articles.value
+  const kw = searchKeyword.value.trim()
+  if (kw) {
+    list = list.filter((a) => (a.title || '').toLowerCase().includes(kw.toLowerCase()))
+  }
+  const sorted = [...list]
+  if (sortBy.value === 'latest') {
+    sorted.sort((a, b) => timestampOf(b) - timestampOf(a))
+  } else if (sortBy.value === 'oldest') {
+    sorted.sort((a, b) => timestampOf(a) - timestampOf(b))
+  } else if (sortBy.value === 'views') {
+    sorted.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
+  }
+  return sorted
+})
+
+const timestampOf = (a) => {
+  const t = a.uploadTime || a.createdAt
+  const n = new Date(t).getTime()
+  return Number.isFinite(n) ? n : 0
 }
 
 // 获取稿件列表
@@ -219,18 +370,15 @@ const loadArticles = async (silent = false) => {
       page: currentPage.value,
       size: pageSize.value
     }
-    if (statusFilter.value) {
+    if (statusFilter.value && statusFilter.value !== 'all') {
       params.status = statusFilter.value
     }
 
-    console.log('获取稿件参数:', params)
     const response = await manuscriptApi.getMyManuscripts(params)
-    console.log('获取稿件响应:', response)
 
     if (response.code === 200) {
       articles.value = response.data.list || []
       totalArticles.value = response.data.total || 0
-      console.log('稿件列表:', articles.value)
       syncArticleProcessPolling()
     }
   } catch (error) {
@@ -292,6 +440,15 @@ const fetchManuscriptStats = async () => {
   }
 }
 
+const setStatus = (status) => {
+  if (statusFilter.value === status) {
+    return
+  }
+  statusFilter.value = status
+  currentPage.value = 1
+  fetchArticles()
+}
+
 // 监听筛选条件变化，重新获取数据
 watch(statusFilter, () => {
   currentPage.value = 1
@@ -299,7 +456,7 @@ watch(statusFilter, () => {
 })
 
 // 监听分页变化
-watch([currentPage, pageSize], () => {
+watch(currentPage, () => {
   fetchArticles()
 })
 
@@ -373,46 +530,31 @@ const isVideoProcessFailed = (video) => {
   return [10, 20, 30, 40].includes(video?.processStatus) || !!video?.processError
 }
 
-const getVideoProcessTagType = (video) => {
-  if (isVideoProcessFailed(video)) return 'danger'
-  if (isVideoProcessDone(video)) return 'success'
-  if ([1, 2, 3, 4, 11, 21, 31, 41].includes(video?.processStatus)) return 'warning'
-  return 'info'
+const hasProcessingInfo = (article) => {
+  return article.status === 0 || article.status === 1 || getArticleVideos(article).some(
+    (v) => v.processStatus != null || v.processError
+  )
 }
 
-const getVideoProcessText = (video, articleStatus) => {
-  const statusMap = {
-    0: '待处理',
-    1: '转码中',
-    2: '抽取音频中',
-    3: '字幕生成中',
-    4: '摘要生成中',
-    5: '处理完成',
-    10: '转码失败',
-    11: '转码完成',
-    20: '音频抽取失败',
-    21: '音频抽取完成',
-    30: '字幕生成失败',
-    31: '字幕生成完成',
-    40: '摘要生成失败',
-    41: '摘要生成完成'
+const processChipClass = (video, articleStatus) => {
+  if (isVideoProcessFailed(video)) return 'chip-danger'
+  if (isVideoProcessDone(video)) return 'chip-done'
+  if (articleStatus === 1 || [1, 2, 3, 4, 11, 21, 31, 41].includes(video?.processStatus)) return 'chip-working'
+  return 'chip-idle'
+}
+
+const hasCardActions = (status) => {
+  return [3, -1, 0, 1].includes(status)
+}
+
+const handleCardCommand = async (command, article) => {
+  if (command === 'delete') {
+    await deleteArticle(article.id)
+  } else if (command === 'unpublish') {
+    await unpublishArticle(article.id)
+  } else if (command === 'publish') {
+    await publishArticle(article.id)
   }
-  if (video?.processStatus != null) {
-    return statusMap[video.processStatus] || `处理状态 ${video.processStatus}`
-  }
-  if (articleStatus === 0) return '等待审核'
-  if (articleStatus === 1) return '等待处理'
-  return '无处理任务'
-}
-
-const getVideoProgressStatus = (video) => {
-  if (isVideoProcessFailed(video)) return 'exception'
-  if (isVideoProcessDone(video)) return 'success'
-  return undefined
-}
-
-const shouldShowVideoProgress = (video, articleStatus) => {
-  return articleStatus === 1 || video?.processProgress != null || isVideoProcessDone(video) || isVideoProcessFailed(video)
 }
 
 // 删除稿件
@@ -423,9 +565,9 @@ const deleteArticle = async (id) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    
+
     const response = await manuscriptApi.deleteManuscript(id)
-    
+
     if (response.code === 200) {
       ElMessage.success('删除成功')
       fetchArticles()
@@ -447,11 +589,9 @@ const unpublishArticle = async (id) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    
-    console.log('下架稿件ID:', id)
+
     const response = await manuscriptApi.unpublishManuscript(id)
-    console.log('下架响应:', response)
-    
+
     if (response.code === 200) {
       ElMessage.success('下架成功')
       statusFilter.value = 'unpublished'
@@ -495,12 +635,6 @@ const publishArticle = async (id) => {
   }
 }
 
-// 分页大小变化
-const handleSizeChange = (size) => {
-  pageSize.value = size
-  currentPage.value = 1
-}
-
 // 当前页变化
 const handleCurrentChange = (current) => {
   currentPage.value = current
@@ -522,6 +656,33 @@ const formatDate = (dateStr) => {
   return `${year}-${month}-${day}`
 }
 
+const formatDuration = (duration, seconds) => {
+  let total = 0
+  if (typeof duration === 'string' && /^\d+:\d+:\d+$/.test(duration)) {
+    const [h, m, s] = duration.split(':').map(Number)
+    total = h * 3600 + m * 60 + s
+  } else {
+    total = Number(seconds) || Number(duration) || 0
+  }
+  if (total <= 0) return ''
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  if (h > 0) {
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  }
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+const formatCount = (n) => {
+  const num = Number(n) || 0
+  if (num >= 100000000) return (num / 100000000).toFixed(1) + '亿'
+  if (num >= 10000) return (num / 10000).toFixed(1) + '万'
+  return String(num)
+}
+
+const getDefaultCoverText = () => '暂无封面'
+
 onUnmounted(() => {
   stopArticleProcessPolling()
 })
@@ -537,83 +698,295 @@ onUnmounted(() => {
   margin-bottom: 15px;
 }
 
-/* 视频管理选择栏 */
-.video-filters {
-  margin-bottom: 20px;
-}
-
-/* 过滤行样式 */
-.filter-row {
-  margin-bottom: 10px;
-}
-
-/* 过滤行之间的间距 */
-.filter-row:not(:last-child) {
-  margin-bottom: 15px;
-}
-
-/* 单个过滤组样式 */
-.filter-row .el-radio-group {
+/* 工具栏 */
+.video-toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
-/* 隐藏次级选择栏和状态选择栏 */
-.sub-tabs,
+.search-box {
+  width: 240px;
+  flex-shrink: 0;
+}
+
+.search-input :deep(.el-input__wrapper) {
+  border-radius: 4px;
+  background: #f5f5f5;
+}
+
+.search-input :deep(.el-input__wrapper.is-focus) {
+  background: #fff;
+}
+
 .status-tabs {
-  display: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  flex-wrap: wrap;
 }
 
-/* 视频稿件列表 */
+.status-tab {
+  padding: 6px 14px;
+  font-size: 14px;
+  color: #61666d;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all .2s;
+  white-space: nowrap;
+}
+
+.status-tab:hover {
+  color: #ff6699;
+  background: rgba(255, 102, 153, .06);
+}
+
+.status-tab.active {
+  color: #ff6699;
+  background: rgba(255, 102, 153, .12);
+  font-weight: 600;
+}
+
+.sort-box {
+  flex-shrink: 0;
+  width: 150px;
+}
+
+.sort-select {
+  width: 100%;
+}
+
+/* 卡片列表 */
 .article-list {
   margin-bottom: 20px;
 }
 
-/* 表格样式调整 */
-.article-list .el-table {
-  border-radius: 6px;
+.manuscript-cards {
+  display: flex;
+  flex-direction: column;
+}
+
+.manuscript-card {
+  display: flex;
+  gap: 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fff;
+  transition: background .2s;
+}
+
+.manuscript-card:hover {
+  background: #fafafa;
+}
+
+.card-cover {
+  position: relative;
+  width: 176px;
+  height: 110px;
+  flex-shrink: 0;
+  border-radius: 4px;
   overflow: hidden;
+  background: #e5e9ef;
+  cursor: pointer;
 }
 
-.manuscript-process {
+.cover-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, .25);
+  opacity: 0;
+  transition: opacity .2s;
+}
+
+.card-cover:hover .cover-play {
+  opacity: 1;
+}
+
+.cover-play .el-icon {
+  font-size: 40px;
+  color: rgba(255, 255, 255, .95);
+}
+
+.cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cover-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #99a2aa;
+  font-size: 13px;
+  background: linear-gradient(135deg, #f4f6f8, #e9edf2);
+}
+
+.cover-duration {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(0, 0, 0, .6);
+  border-radius: 3px;
+}
+
+.card-info {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 4px 0;
 }
 
-.process-video-row {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.process-video-header {
+.info-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
 }
 
-.process-video-title {
+.title-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #18191c;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #606266;
-  font-size: 13px;
 }
 
-.process-error {
-  color: #f56c6c;
+.card-title:hover {
+  color: #ff6699;
+}
+
+.card-title {
+  cursor: pointer;
+}
+
+.status-tag {
+  flex-shrink: 0;
+}
+
+.card-ops {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.more-btn {
+  padding: 0 8px;
+  font-size: 16px;
+  letter-spacing: 1px;
+  color: #9499a0;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.more-btn:hover {
+  color: #ff6699;
+  background: rgba(255, 102, 153, .08);
+}
+
+.info-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.meta-date {
   font-size: 12px;
-  line-height: 1.4;
+  color: #99a2aa;
 }
 
-.process-empty {
+.meta-process {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.process-chip {
+  padding: 1px 8px;
+  font-size: 12px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.process-chip.chip-working {
+  color: #e6a23c;
+  background: rgba(230, 162, 60, .12);
+}
+
+.process-chip.chip-done {
+  color: #67c23a;
+  background: rgba(103, 194, 58, .12);
+}
+
+.process-chip.chip-danger {
+  color: #f56c6c;
+  background: rgba(245, 108, 108, .12);
+}
+
+.process-chip.chip-idle {
   color: #909399;
+  background: rgba(144, 147, 153, .12);
+}
+
+.process-percent {
+  margin-left: 2px;
+}
+
+.info-stats {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 12px;
+  border-top: 1px dashed #eee;
+  padding-top: 10px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 13px;
+  color: #9499a0;
+}
+
+.stat-item .el-icon {
+  color: #99a2aa;
+  font-size: 15px;
+}
+
+.stat-item span {
+  color: #18191c;
+  font-weight: 500;
+  min-width: 20px;
+}
+
+.stat-item em {
+  font-style: normal;
+  font-size: 12px;
+  color: #99a2aa;
 }
 
 /* 分页导航栏 */
