@@ -85,6 +85,8 @@ func (h *ManuscriptHTTPHandler) handleManuscriptRoute(w http.ResponseWriter, r *
 		h.handleManuscriptList(w, r)
 	case "meStats":
 		h.handleMyManuscriptStats(w, r)
+	case "meSubtitles":
+		h.handleMySubtitles(w, r)
 	case "category":
 		r.SetPathValue("id", parts[1])
 		h.handleCategory(w, r)
@@ -229,6 +231,9 @@ func manuscriptRouteName(parts []string) string {
 		}
 		if len(parts) == 2 && parts[1] == "stats" {
 			return "meStats"
+		}
+		if len(parts) == 2 && parts[1] == "subtitles" {
+			return "meSubtitles"
 		}
 		return ""
 	case "category":
@@ -971,6 +976,65 @@ func (h *ManuscriptHTTPHandler) handleMyManuscriptStats(w http.ResponseWriter, r
 		return
 	}
 	httputil.WriteOK(w, h.manuscriptStatsByUser(r.Context(), uid))
+}
+
+// handleMySubtitles 创作者字幕管理：列出当前用户全部视频及其字幕状态（has_subtitle）。
+// 对齐 B 站 audience-zimu 页（我的视频/投稿的字幕）。
+func (h *ManuscriptHTTPHandler) handleMySubtitles(w http.ResponseWriter, r *http.Request) {
+	uid, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	query := `SELECT m.id, m.title, COALESCE(m.cover_url,''), v.id, v.video_order,
+	                 COALESCE(v.title,''), v.duration_seconds, v.has_subtitle, v.process_stage, v.process_status
+	          FROM manuscripts m
+	          JOIN videos v ON v.manuscript_id = m.id
+	          WHERE m.user_id = $1
+	          ORDER BY m.updated_at DESC, v.video_order ASC`
+	rows, err := h.db.QueryContext(ctx, query, uid)
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "查询失败", "data": nil})
+		return
+	}
+	defer rows.Close()
+	list := make([]map[string]any, 0, 16)
+	index := map[int64]int{}
+	for rows.Next() {
+		var mid int64
+		var mtitle, mcover string
+		var vid int64
+		var vorder, dur, hasSub int64
+		var vtitle string
+		var stage string
+		var pstatus int64
+		if err := rows.Scan(&mid, &mtitle, &mcover, &vid, &vorder, &vtitle, &dur, &hasSub, &stage, &pstatus); err != nil {
+			continue
+		}
+		di, ok := index[mid]
+		if !ok {
+			di = len(list)
+			index[mid] = di
+			list = append(list, map[string]any{
+				"manuscriptId": mid,
+				"title":        mtitle,
+				"cover":        mcover,
+				"videos":       []map[string]any{},
+			})
+		}
+		videos := list[di]["videos"].([]map[string]any)
+		videos = append(videos, map[string]any{
+			"id":             vid,
+			"videoOrder":     vorder,
+			"title":          vtitle,
+			"durationSeconds": dur,
+			"hasSubtitle":    hasSub,
+			"processStage":   stage,
+			"processStatus":  pstatus,
+		})
+		list[di]["videos"] = videos
+	}
+	httputil.WriteOK(w, map[string]any{"list": list, "total": len(list)})
 }
 
 func (h *ManuscriptHTTPHandler) manuscriptStatsByUser(ctx context.Context, userID int64) map[string]int64 {

@@ -181,14 +181,16 @@ func TestListByCreator(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 
 	mock.ExpectQuery(`SELECT danmaku.id, danmaku.video_id`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "video_id", "manuscript_id", "user_id", "content", "time", "color", "mode", "created_at"}).
-			AddRow(1, 10, 20, 30, "a", 1.0, "#fff", int32(0), now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "video_id", "manuscript_id", "user_id", "content", "time", "color", "mode", "created_at", "uname", "mtitle", "mcover"}).
+			AddRow(1, 10, 20, 30, "a", 1.0, "#fff", int32(0), now, "user1", "标题1", ""))
 
 	list, total, err := repo.ListByCreator(context.Background(), 30, 10, 1, 20)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), total)
 	require.Len(t, list, 1)
 	assert.Equal(t, int64(1), list[0].ID)
+	assert.Equal(t, "user1", list[0].UserName)
+	assert.Equal(t, "标题1", list[0].ManuscriptTitle)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

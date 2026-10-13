@@ -98,7 +98,10 @@ func (s *DanmakuService) CreatorList(ctx context.Context, userID, videoID int64,
 		events = append(events, &DanmakuEvent{
 			ID: d.ID, VideoID: d.VideoID, UserID: d.UserID,
 			Content: d.Content, Time: d.Time, Color: d.Color, Mode: d.Mode,
-			CreatedAt: d.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			CreatedAt:       d.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UserName:        d.UserName,
+			ManuscriptTitle: d.ManuscriptTitle,
+			ManuscriptCover: d.ManuscriptCover,
 		})
 	}
 	return events, total, nil

@@ -17,6 +17,7 @@ export const creatorApi = {
 export const manuscriptApi = {
   getMyManuscripts: (params: any) => api.get(`/manuscript/me/list`, { params }),
   getMyStats: () => api.get(`/manuscript/me/stats`),
+  getMySubtitles: (params: any) => api.get(`/manuscript/me/subtitles`, { params }),
   getMyAppeals: (params: any) => api.get(`/appeal/me/list`, { params }),
   getMyAppealStats: () => api.get(`/appeal/me/stats`),
   getAppealById: (id: number) => api.get(`/appeal/${id}`),

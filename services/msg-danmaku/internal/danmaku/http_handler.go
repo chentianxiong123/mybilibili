@@ -3,6 +3,7 @@ package danmaku
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -160,7 +161,10 @@ func (h *HTTPHandler) handleCreatorList(w http.ResponseWriter, r *http.Request) 
 	if videoIDStr != "" {
 		videoID, _ = strconv.ParseInt(videoIDStr, 10, 64)
 	}
-	list, total, _ := h.svc.CreatorList(r.Context(), userID, videoID, page, size)
+	list, total, err := h.svc.CreatorList(r.Context(), userID, videoID, page, size)
+	if err != nil {
+		log.Printf("[dpfx] CreatorList error: %v", err)
+	}
 	httputil.WriteOK(w, map[string]any{"list": list, "total": total})
 }
 

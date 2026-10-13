@@ -213,8 +213,8 @@ func TestHandleDanmakuCreatorList_200(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 	mock.ExpectQuery(`SELECT danmaku\.id, danmaku\.video_id`).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "video_id", "manuscript_id", "user_id", "content", "time", "color", "mode", "created_at",
-		}).AddRow(1, 10, 10, 1001, "弹幕", 1.0, "#fff", 1, now))
+			"id", "video_id", "manuscript_id", "user_id", "content", "time", "color", "mode", "created_at", "uname", "mtitle", "mcover",
+		}).AddRow(1, 10, 10, 1001, "弹幕", 1.0, "#fff", 1, now, "user1", "标题1", ""))
 
 	rr := doDanmaku(t, h, http.MethodGet, "/api/v1/creator/danmaku/list?page=1&page_size=20", "")
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -238,8 +238,8 @@ func TestHandleDanmakuCreatorList_WithVideoID(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 	mock.ExpectQuery(`SELECT danmaku\.id, danmaku\.video_id`).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "video_id", "manuscript_id", "user_id", "content", "time", "color", "mode", "created_at",
-		}).AddRow(1, 50, 10, 1001, "弹幕", 1.0, "#fff", 1, now))
+			"id", "video_id", "manuscript_id", "user_id", "content", "time", "color", "mode", "created_at", "uname", "mtitle", "mcover",
+		}).AddRow(1, 50, 10, 1001, "弹幕", 1.0, "#fff", 1, now, "user1", "标题1", ""))
 
 	rr := doDanmaku(t, h, http.MethodGet, "/api/v1/creator/danmaku/list?video_id=50&page=1&page_size=20", "")
 	assert.Equal(t, http.StatusOK, rr.Code)

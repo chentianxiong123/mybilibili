@@ -19,6 +19,10 @@ type Danmaku struct {
 	Color        string
 	Mode         int32
 	CreatedAt    time.Time
+	// 创作者列表补充信息（查询时填充）
+	UserName         string
+	ManuscriptTitle  string
+	ManuscriptCover  string
 }
 
 type DanmakuRepository struct {
@@ -154,21 +158,23 @@ func (r *DanmakuRepository) TrendByDate(ctx context.Context, manuscriptIDs []int
 }
 
 func (r *DanmakuRepository) ListByCreator(ctx context.Context, userID, videoID int64, page, size int32) ([]*Danmaku, int64, error) {
-	where := `JOIN videos v ON v.id = danmaku.video_id
+	joins := `JOIN videos v ON v.id = danmaku.video_id
 	          JOIN manuscripts m ON m.id = v.manuscript_id
-	          WHERE m.user_id = $1`
+	          JOIN users u ON u.id = danmaku.user_id`
+	where := `WHERE m.user_id = $1`
 	args := []any{userID}
 	if videoID > 0 {
 		where += ` AND danmaku.video_id = $2`
 		args = append(args, videoID)
 	}
 	var total int64
-	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM danmaku `+where, args...).Scan(&total); err != nil {
+	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM danmaku `+joins+` `+where, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 	offset := int64(page-1) * int64(size)
-	query := `SELECT danmaku.id, danmaku.video_id, danmaku.manuscript_id, danmaku.user_id, danmaku.content, danmaku.time, danmaku.color, danmaku.mode, danmaku.created_at
-	          FROM danmaku ` + where + ` ORDER BY danmaku.created_at DESC LIMIT $` + strconv.Itoa(len(args)+1) + ` OFFSET $` + strconv.Itoa(len(args)+2)
+	query := `SELECT danmaku.id, danmaku.video_id, danmaku.manuscript_id, danmaku.user_id, danmaku.content, danmaku.time, danmaku.color, danmaku.mode, danmaku.created_at,
+	                 COALESCE(u.nickname, '') AS uname, COALESCE(m.title, '') AS mtitle, COALESCE(m.cover_url, '') AS mcover
+	          FROM danmaku ` + joins + ` ` + where + ` ORDER BY danmaku.created_at DESC LIMIT $` + strconv.Itoa(len(args)+1) + ` OFFSET $` + strconv.Itoa(len(args)+2)
 	args = append(args, size, offset)
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -178,7 +184,7 @@ func (r *DanmakuRepository) ListByCreator(ctx context.Context, userID, videoID i
 	var list []*Danmaku
 	for rows.Next() {
 		d := &Danmaku{}
-		if err := rows.Scan(&d.ID, &d.VideoID, &d.ManuscriptID, &d.UserID, &d.Content, &d.Time, &d.Color, &d.Mode, &d.CreatedAt); err != nil {
+		if err := rows.Scan(&d.ID, &d.VideoID, &d.ManuscriptID, &d.UserID, &d.Content, &d.Time, &d.Color, &d.Mode, &d.CreatedAt, &d.UserName, &d.ManuscriptTitle, &d.ManuscriptCover); err != nil {
 			return nil, 0, err
 		}
 		list = append(list, d)
@@ -210,6 +216,10 @@ type DanmakuEvent struct {
 	Color     string  `json:"color"`
 	Mode      int32   `json:"mode"`
 	CreatedAt string  `json:"created_at"`
+	// 创作者列表补充信息
+	UserName        string `json:"user_name"`
+	ManuscriptTitle string `json:"manuscript_title"`
+	ManuscriptCover string `json:"manuscript_cover"`
 }
 
 func NewDanmakuBroadcaster() *DanmakuBroadcaster {

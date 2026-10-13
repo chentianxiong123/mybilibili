@@ -169,14 +169,16 @@ func TestSvcCreatorList(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
 
 	mock.ExpectQuery(`SELECT danmaku.id, danmaku.video_id`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "video_id", "manuscript_id", "user_id", "content", "time", "color", "mode", "created_at"}).
-			AddRow(1, 10, 20, 30, "a", 1.0, "#fff", int32(0), now).
-			AddRow(2, 11, 20, 30, "b", 2.0, "#000", int32(1), now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "video_id", "manuscript_id", "user_id", "content", "time", "color", "mode", "created_at", "uname", "mtitle", "mcover"}).
+			AddRow(1, 10, 20, 30, "a", 1.0, "#fff", int32(0), now, "u1", "t1", "").
+			AddRow(2, 11, 20, 30, "b", 2.0, "#000", int32(1), now, "u2", "t2", ""))
 
 	events, total, err := svc.CreatorList(context.Background(), 30, 0, 1, 20)
 	require.NoError(t, err)
 	assert.Equal(t, int64(2), total)
 	require.Len(t, events, 2)
+	assert.Equal(t, "u1", events[0].UserName)
+	assert.Equal(t, "t1", events[0].ManuscriptTitle)
 }
 
 func TestSvcCreatorList_Empty(t *testing.T) {
@@ -186,7 +188,7 @@ func TestSvcCreatorList_Empty(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
 	mock.ExpectQuery(`SELECT danmaku.id, danmaku.video_id`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "video_id", "manuscript_id", "user_id", "content", "time", "color", "mode", "created_at"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "video_id", "manuscript_id", "user_id", "content", "time", "color", "mode", "created_at", "uname", "mtitle", "mcover"}))
 
 	events, total, err := svc.CreatorList(context.Background(), 30, 0, 1, 20)
 	require.NoError(t, err)

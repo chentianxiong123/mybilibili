@@ -3,6 +3,7 @@ package manuscript
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -579,6 +580,46 @@ func TestHTTPHandler_MeStats(t *testing.T) {
 	w := httptest.NewRecorder()
 	h.handleRouter(w, req)
 	assert.Equal(t, 200, w.Code)
+}
+
+func TestHTTPHandler_MeSubtitles_Empty(t *testing.T) {
+	h, mock := newHTTPHandler(t)
+
+	mock.ExpectQuery(`SELECT m.id, m.title`).
+		WillReturnRows(sqlmock.NewRows([]string{"mid", "mtitle", "mcover", "vid", "vorder", "vtitle", "dur", "hasSub", "stage", "pstatus"}))
+
+	req := newReq("GET", "/api/v1/manuscript/me/subtitles")
+	w := httptest.NewRecorder()
+	h.handleRouter(w, req)
+	assert.Equal(t, 200, w.Code)
+}
+
+func TestHTTPHandler_MeSubtitles_WithData(t *testing.T) {
+	h, mock := newHTTPHandler(t)
+
+	mock.ExpectQuery(`SELECT m.id, m.title`).
+		WillReturnRows(sqlmock.NewRows([]string{"mid", "mtitle", "mcover", "vid", "vorder", "vtitle", "dur", "hasSub", "stage", "pstatus"}).
+			AddRow(int64(1), "视频1", "/covers/1.jpg", int64(10), int64(0), "P1", int64(120), int64(1), "AI_SUCCESS", int64(5)).
+			AddRow(int64(1), "视频1", "/covers/1.jpg", int64(11), int64(1), "P2", int64(90), int64(0), "", int64(0)))
+
+	req := newReq("GET", "/api/v1/manuscript/me/subtitles")
+	w := httptest.NewRecorder()
+	h.handleRouter(w, req)
+	assert.Equal(t, 200, w.Code)
+
+	var resp struct {
+		Code int `json:"code"`
+		Data struct {
+			List  []map[string]any `json:"list"`
+			Total int              `json:"total"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, 1, resp.Data.Total)
+	assert.Len(t, resp.Data.List, 1)
+	videos := resp.Data.List[0]["videos"].([]any)
+	assert.Len(t, videos, 2)
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestHTTPHandler_FavoriteFolders_Get(t *testing.T) {
