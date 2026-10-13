@@ -1,5 +1,7 @@
 <template>
     <div class="videoUpload">
+        <!-- 投稿类型 tab（视频/图文） -->
+        <UploadTypeTabs active="video" @change="switchUploadType" />
         <!-- 选择文件界面 -->
         <div class="upload-body-content" :style="selectedVideo ? 'display: none;' : ''">
             <div class="upload-wrp">
@@ -15,11 +17,12 @@
                     >
                         <!-- <i class="iconfont icon-shangchuan"></i> -->
                         <el-icon size="40"><UploadFilled /></el-icon>
-                        <div class="upload-tips-text">拖拽到此处也可上传</div>
+                        <div class="upload-tips-text">点击上传，或将视频拖拽到此处</div>
                         <div class="upload-btn">上传视频</div>
                         <input
                             type="file"
                             accept=".mp4"
+                            multiple
                             ref="videoInput"
                             @change="handleVideoChange"
                             style="display: none;"
@@ -27,41 +30,37 @@
                     </div>
                 </div>
             </div>
-            <div class="footer-item">
-                <span class="i-list i-1">
-                    <a target="_blank" class="title">禁止发布的视频内容</a>
-                </span>
-                <span class="i-list i-1">
+            <div class="footer-item info-grid">
+                <span class="i-list i-1" @click="showUploadInfo('size')">
                     <span class="title">视频大小</span>
-                    <span class="title-block">
-                        <span>网页端上传的文件大小上限为300M</span><br>
-                        <span>视频内容时长最大10小时</span><br>
+                    <span class="info-icon">&#63;</span>
+                    <span class="info-pop-wrap" :class="activeInfo === 'size' ? 'info-pop-show' : ''">
+                        <span class="info-pop-title">视频大小</span>
+                        <span class="info-pop-text">网页端上传的文件大小上限为300M</span>
+                        <span class="info-pop-text">视频内容时长最大10小时</span>
                     </span>
                 </span>
-                <span class="i-list i-1">
+                <span class="i-list i-1" @click="showUploadInfo('format')">
                     <span class="title">视频格式</span>
-                    <span class="title-block">
-                        <span>网页端、桌面客户端推荐上传的格式为：mp4</span><br>
-                        <span>暂不允许上传其他格式</span><br>
+                    <span class="info-icon">&#63;</span>
+                    <span class="info-pop-wrap" :class="activeInfo === 'format' ? 'info-pop-show' : ''">
+                        <span class="info-pop-title">视频格式</span>
+                        <span class="info-pop-text">网页端、桌面客户端推荐上传的格式为：mp4</span>
+                        <span class="info-pop-text">暂不允许上传其他格式</span>
                     </span>
                 </span>
-                <span class="i-list i-1">
-                    <span class="title">视频码率</span>
-                    <span class="title-block">
-                        <span>推荐视频分辨率：1280*720 或者 1920*1080</span><br>
-                        <span>网站不提供转码、压制服务</span><br>
+                <span class="i-list i-1" @click="showUploadInfo('resolution')">
+                    <span class="title">视频分辨率</span>
+                    <span class="info-icon">&#63;</span>
+                    <span class="info-pop-wrap" :class="activeInfo === 'resolution' ? 'info-pop-show' : ''">
+                        <span class="info-pop-title">视频分辨率</span>
+                        <span class="info-pop-text">推荐视频分辨率：1280*720 或者 1920*1080</span>
+                        <span class="info-pop-text">网站不提供转码、压制服务</span>
                     </span>
                 </span>
             </div>
             <div class="footer-item">
-                <span>上传视频，即表示您已同意 <a target="_blank">特丽特丽使用协议</a> 与 <a target="_blank">特丽特丽社区公约</a> ，请勿上传色情，反动等违法视频。</span>
-            </div>
-            <div class="footer-item">
-                <span class="i-list">第三方工具</span>
-                <span class="i-list i-2">
-                    <svg style="transform: translateY(3px); margin-right: 3px;" t="1710534411941" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4206" width="16" height="16"><path d="M777.4816 903.6H246.51733333c-59.3312 0-107.61066667-48.272-107.61066666-107.61066667V368.9056c0-59.3312 44.86613333-107.61066667 100.0256-107.61066667h68.26666666v63.50933334h-68.26666666c-19.78986667 0-36.50773333 20.192-36.50773334 44.09386666V795.98933333c0 24.3104 19.7824 44.0928 44.0928 44.0928H777.48266667c24.3104 0 44.0928-19.7824 44.0928-44.0928V368.9056c0-23.9008-16.71786667-44.0928-36.50773334-44.0928h-68.26666666v-63.5104h68.26666666c55.152 0 100.0256 48.272 100.0256 107.61066667v427.0912c0 59.32373333-48.27946667 107.59573333-107.61066666 107.59573333z" fill="#99a2aa" p-id="4207"></path><path d="M692.23893333 454.95146667c-11.3248-12.3488-30.52266667-13.17546667-42.864-1.8432l-107.03466666 98.19733333V112.33813333c0-16.75626667-13.58506667-30.34133333-30.34026667-30.34133333s-30.34026667 13.58506667-30.34026667 30.34133333v437.4368l-101.64906666-96.33066666c-12.16-11.53066667-31.3728-11.00693333-42.88746667 1.152-11.5296 12.1664-11.00586667 31.36533333 1.15306667 42.8864L491.1328 642.336c0.144 0.13653333 0.31146667 0.21973333 0.45546667 0.35626667 1.25866667 1.15306667 2.60266667 2.2304 4.0576 3.16373333 0.06826667 0.0448 0.12906667 0.10666667 0.19733333 0.144 1.25226667 0.78933333 2.57173333 1.48693333 3.94453333 2.09386667 0.17493333 0.07466667 0.35626667 0.09813333 0.52266667 0.1664 1.32053333 0.55466667 2.67093333 0.9408 4.04373333 1.29706666 0.58453333 0.15146667 1.1456 0.37973333 1.72906667 0.4928a30.31466667 30.31466667 0 0 0 5.90186667 0.608c1.93386667 0 3.86133333-0.20586667 5.76426666-0.5696 0.6752-0.12906667 1.328-0.3872 1.99466667-0.56106666 1.2064-0.32 2.40533333-0.62933333 3.56586667-1.09226667 0.76586667-0.304 1.4784-0.72853333 2.2144-1.1008 1.024-0.5152 2.04053333-1.01546667 3.0112-1.64586667 0.70613333-0.46186667 1.35786667-1.01653333 2.03306666-1.5392 0.6368-0.50133333 1.33546667-0.91093333 1.94133334-1.46453333l157.8784-144.85333333c12.3488-11.33333333 13.184-30.5312 1.85066666-42.88z" p-id="4208"></path></svg>
-                    <a class="zip" href="//dl.hdslb.com/video-press/xiaowantoolsrev194.zip">小丸压制工具</a>
-                </span>
+                <span>上传视频，即表示您已同意 <a target="_blank" class="agree-link">特丽特丽使用协议</a> 与 <a target="_blank" class="agree-link">特丽特丽社区公约</a> ，请勿上传色情，反动等违法视频。</span>
             </div>
         </div>
         <!-- 填写投稿信息界面 -->
@@ -72,51 +71,120 @@
             </div>
             <div class="info-body">
                 <!-- 上传文件的进度显示 -->
-                <div class="video-name">{{ videoName }}</div>
-                <div class="video-file">
-                    <div class="video-icon-wrp"><i class="iconfont icon-video"></i></div>
-                    <div class="file-detail">
-                        <div class="file-status">
-                            <div class="file-status-text" v-if="progress >= 100">
-                                <i class="iconfont icon-wancheng success"></i>
-                                <span class="success">分片上传完成</span>
+                <div class="video-parts">
+                    <!-- 上传总进度统计条 -->
+                    <div class="upload-summary" v-if="videoParts.length > 0">
+                        <div class="summary-left">
+                            <i class="iconfont icon-shangchuanzhong"></i>
+                            <span class="summary-stage">{{ uploadStage || '待上传' }}</span>
+                            <span class="summary-percent">{{ summaryPercent }}%</span>
+                        </div>
+                        <div class="summary-right">
+                            <span v-if="uploadSpeed > 0" class="summary-speed">{{ formatSpeed(uploadSpeed) }}/s</span>
+                            <span v-if="uploadEta >= 0" class="summary-eta">剩余 {{ formatEta(uploadEta) }}</span>
+                            <span class="summary-bytes">{{ formatBytes(uploadDoneBytes) }} / {{ formatBytes(uploadTotalBytes) }}</span>
+                        </div>
+                        <div class="summary-bar">
+                            <div class="summary-bar-inner" :style="`width: ${summaryPercent}%;`"></div>
+                        </div>
+                    </div>
+                    <div
+                        v-for="(part, index) in videoParts"
+                        :key="part.key"
+                        class="video-part-row"
+                        :class="part.isFailed ? 'part-failed' : ''"
+                    >
+                        <div class="video-icon-wrp"><i class="iconfont icon-video"></i></div>
+                        <div class="file-detail">
+                            <div class="part-title-row">
+                                <span class="part-index">P{{ index + 1 }}</span>
+                                <span class="part-name">{{ part.name }}</span>
+                                <div class="part-title-actions">
+                                    <span
+                                        class="file-status-manage"
+                                        :class="{ 'sort-disabled': index === 0 }"
+                                        @click="movePart(index, -1)"
+                                        title="上移"
+                                    >
+                                        <i class="iconfont icon-shangyishou"></i>
+                                        <span>上移</span>
+                                    </span>
+                                    <span
+                                        class="file-status-manage"
+                                        :class="{ 'sort-disabled': index === videoParts.length - 1 }"
+                                        @click="movePart(index, 1)"
+                                        title="下移"
+                                    >
+                                        <i class="iconfont icon-xiayishou"></i>
+                                        <span>下移</span>
+                                    </span>
+                                    <span
+                                        class="file-status-manage"
+                                        v-if="!part.isPause && part.progress < 100"
+                                        @click="changeState(index)"
+                                    >
+                                        <i class="iconfont icon-zantingshangchuan"></i>
+                                        <span>暂停</span>
+                                    </span>
+                                    <span
+                                        class="file-status-manage"
+                                        v-if="part.isPause"
+                                        @click="changeState(index)"
+                                    >
+                                        <i class="iconfont icon-jixu"></i>
+                                        <span>继续</span>
+                                    </span>
+                                    <span
+                                        class="file-status-manage"
+                                        v-if="part.progress >= 100 || part.isPause"
+                                        @click="selectVideo(index)"
+                                    >
+                                        <i class="iconfont icon-genghuan"></i>
+                                        <span>更换</span>
+                                    </span>
+                                    <span class="file-status-manage" @click="removePart(index)">
+                                        <i class="iconfont icon-close"></i>
+                                        <span>删除</span>
+                                    </span>
+                                </div>
                             </div>
-                            <div class="file-status-text" v-else-if="isFailed">
-                                <i class="iconfont icon-shibai failed"></i>
-                                <span class="failed">分片上传失败</span>
+                            <div class="file-status">
+                                <div class="file-status-text" v-if="part.progress >= 100">
+                                    <i class="iconfont icon-wancheng success"></i>
+                                    <span class="success">分片上传完成</span>
+                                </div>
+                                <div class="file-status-text" v-else-if="part.isFailed">
+                                    <i class="iconfont icon-shibai failed"></i>
+                                    <span class="failed">分片上传失败</span>
+                                </div>
+                                <div class="file-status-text" v-else-if="!part.isPause">
+                                    <i class="iconfont icon-shangchuanzhong"></i>
+                                    <span style="margin-right: 8px;">上传中</span>
+                                    <span>{{ part.progress }}%</span>
+                                </div>
+                                <div class="file-status-text" v-else>
+                                    <i class="iconfont icon-zantingshangchuan"></i>
+                                    <span style="margin-right: 8px;">暂停中</span>
+                                    <span>{{ part.progress }}%</span>
+                                </div>
                             </div>
-                            <div class="file-status-text" v-else-if="!isPause">
-                                <i class="iconfont icon-shangchuanzhong"></i>
-                                <span style="margin-right: 8px;">上传中</span>
-                                <span>{{ progress }}%</span>
-                            </div>
-                            <div class="file-status-text" v-else>
-                                <i class="iconfont icon-zantingshangchuan"></i>
-                                <span style="margin-right: 8px;">暂停中</span>
-                                <span>{{ progress }}%</span>
-                            </div>
-                            <div class="file-status-manage refresh" v-if="progress >= 100 || isPause" @click="selectVideo">
-                                <i class="iconfont icon-genghuan"></i>
-                                <span>更换视频</span>
-                            </div>
-                            <div class="file-status-manage pause" v-if="progress < 100 && !isPause" @click="changeState">
-                                <i class="iconfont icon-zantingshangchuan"></i>
-                                <span>暂停上传</span>
-                            </div>
-                            <div class="file-status-manage continue" v-if="progress < 100 && isPause" @click="changeState">
-                                <i class="iconfont icon-jixu"></i>
-                                <span>继续上传</span>
+                            <div class="file-progress">
+                                <div class="file-progress-outer">
+                                    <div
+                                        class="file-progress-inner"
+                                        :class="part.progress >= 100 ? 'success-bg' : part.isFailed ? 'failed-bg' : 'doing-bg'"
+                                        :style="`width: ${part.progress}%;`"
+                                    ></div>
+                                </div>
                             </div>
                         </div>
-                        <div class="file-progress">
-                            <div class="file-progress-outer">
-                                <div
-                                    class="file-progress-inner"
-                                    :class="progress >= 100 ? 'success-bg' : isFailed ? 'failed-bg' : 'doing-bg'"
-                                    :style="`width: ${progress}%;`"
-                                ></div>
-                            </div>
+                    </div>
+                    <div class="add-part-row" v-if="selectablePartCount < 10">
+                        <div class="add-part-btn" @click="addMoreVideos">
+                            <i class="iconfont icon-jia"></i>
+                            <span>添加分P（当前 {{ videoParts.length }}/10）</span>
                         </div>
+                        <div class="add-part-tip">支持一次选择多个视频添加分P，投稿前可调整顺序</div>
                     </div>
                 </div>
                 <!-- 投稿信息 -->
@@ -230,6 +298,7 @@
                     <div class="form-item submit">
                         <div class="submit-container">
                             <span class="submit-draft" @click="draft">存草稿</span>
+                            <span class="submit-drafts-box" @click="goDraftsBox">{{ draftsBoxLabel }}</span>
                             <span class="submit-add" @click="submit">立即投稿</span>
                         </div>
                     </div>
@@ -332,6 +401,8 @@ import CropperComp from '@/components/teriteri/cropper/CropperComp.vue';
 import CategorySelect from '@/components/teriteri/categorySelect/CategorySelect.vue';
 import TagInput from '@/components/teriteri/tagInput/TagInput.vue';
 import PlayerProgress from '@/components/teriteri/player/PlayerProgress.vue';
+import UploadTypeTabs from '@/components/teriteri/uploadTypeTabs/UploadTypeTabs.vue';
+import { saveDraft, getDraft, listDrafts } from '@/utils/drafts';
 
 export default {
     name: "VideoUpload",
@@ -340,6 +411,7 @@ export default {
         CategorySelect,
         TagInput,
         PlayerProgress,
+        UploadTypeTabs,
     },
     // 提前声明要使用的自定义事件，防止提示一堆警告
     emits: ['changeNavBarShow'],
@@ -347,18 +419,26 @@ export default {
         return {
             dialogVisible: false,   // 封面裁剪框的显隐
             coverType: 1,   // 当前显示封面裁剪类型，1 视频帧截取 2 上传裁剪
+            activeInfo: "", // 当前展开的信息说明（size/format/resolution）
             selectedVideo: null,    // 选择视频文件
-            hash: null, // 当前视频文件的hash值
-            uploadId: null, // 后端 upload-session id（用 hash 作稳定 id）
-            totalChunks: 0, // 文件总分片数
             videoURL: null, // 上传的视频的内存地址
             videoName: "",  // 视频原文件名
             chunkSize: 10*1024*1024,  // 分片大小小于等于后端，分片越小越多断点续传效果越好，但上传速度相对也会慢
-            current: 0,   // 当前即将上传的分片序号 从0开始
-            isFailed: false,    // 是否分片上传失败
-            isPause: false,     // 是否上传暂停中
+            // 多 P 上传：每个分P 独立的状态
+            videoParts: [], // 分P列表 [{file,name,key,partIndex,hash,current,totalChunks,progress,isPause,isFailed,isCancel}]
+            sessionHash: null,  // 整个投稿会话的稳定 id（用第一个分P 文件的 hash）
+            uploadId: null, // 后端 upload-session id（用 sessionHash 作稳定 id）
+            replacePartIndex: null, // selectVideo 时带的替换目标分P下标，null 表示新增
+            uploadingIndex: -1, // 当前正在上传的分P下标，-1 表示无
             isCancel: false,    // 是否取消上传
-            progress: 0,    // 上传进度 0~100
+            uploadTotalBytes: 0,   // 全部待上传字节
+            uploadDoneBytes: 0,    // 已上传字节
+            uploadSpeed: 0,        // 上传速度 B/s
+            uploadEta: -1,         // 剩余秒数，-1 不可估算
+            uploadStage: "",       // 当前上传阶段文案
+            uploadSpeedTimer: null,
+            uploadSpeedSnapshot: 0,    // 速度计算上一采样
+            uploadSpeedSnapshotTime: 0,
             duration: 0,    // 视频总时长
             coverImageURL: null,   // 封面原图url
             currentPer: 0.00001,   // 当前封面的视频时间占总时长的百分比 进度条百分比 小数0~1
@@ -368,6 +448,7 @@ export default {
             cutOrder1: false,   // 用于传递裁剪信息的参数，true就触发裁剪 v-model双向绑定，裁剪完自动变回false;
             cutOrder2: false,
             sendTag: "",    // 点击推荐标签时发送的想要添加的标签
+            draftCount: 0,   // 本地草稿数量
             form: {
                 title: "",  // 投稿标题
                 type: 1,    // 投稿类型 1自制 2转载
@@ -378,10 +459,58 @@ export default {
             },
         }
     },
+    created() {
+        // 本地草稿数量
+        this.draftCount = listDrafts().length;
+        // 从草稿箱跳转：?draftId= 恢复已填写的表单信息（视频文件需重新选择）
+        const draftId = this.$route.query.draftId;
+        if (draftId) {
+            const draft = getDraft(draftId);
+            if (draft) {
+                const channels = this.$store.state.channels || [];
+                const cat = { id: null, name: "" };
+                if (draft.categoryId) {
+                    for (let i = 0; i < channels.length; i++) {
+                        for (let j = 0; j < (channels[i].scList || []).length; j++) {
+                            if (String(channels[i].scList[j].scId) === String(draft.categoryId)) {
+                                cat.id = channels[i].scList[j].scId;
+                                cat.name = channels[i].scList[j].scName;
+                                break;
+                            }
+                        }
+                    }
+                }
+                this.form.title = draft.title || "";
+                this.form.type = draft.type === 'repost' ? 2 : 1;
+                this.form.tags = Array.isArray(draft.tags) ? draft.tags.slice() : [];
+                this.form.descr = draft.description || "";
+                if (typeof this.form.category[1] === 'object') {
+                    this.form.category[1] = { id: cat.id || "anime", name: cat.name || "番剧" };
+                }
+                this.$nextTick(() => {
+                    ElMessage.success("草稿已载入，请重新选择视频文件后继续编辑");
+                });
+            }
+        }
+    },
     computed: {
         // 分区列表
         categoryList() {
             return this.$store.state.channels;
+        },
+        // 还有多少分P可添加（上限10）
+        selectablePartCount() {
+            return 10 - this.videoParts.length;
+        },
+        // 上传总进度百分比
+        summaryPercent() {
+            if (this.uploadTotalBytes <= 0) return 0;
+            return Math.min(100, Math.round((this.uploadDoneBytes / this.uploadTotalBytes) * 100));
+        },
+        // 草稿箱按钮文案
+        draftsBoxLabel() {
+            const count = this.draftCount || 0;
+            return count > 0 ? `草稿箱 (${count})` : '草稿箱';
         },
         // 当前选择分区的推荐可选标签
         rcmTags() {
@@ -401,10 +530,21 @@ export default {
         // 初始化内容
         init() {
             this.selectedVideo = null;
-            this.hash = null;
+            this.sessionHash = null;
             this.videoURL = null;
             this.videoName = "";
-            this.progress = 0;
+            this.videoParts = [];
+            this.uploadId = null;
+            this.isCancel = false;
+            this.activeInfo = "";
+            this.uploadTotalBytes = 0;
+            this.uploadDoneBytes = 0;
+            this.uploadSpeed = 0;
+            this.uploadEta = -1;
+            this.uploadStage = "";
+            this.uploadSpeedSnapshot = 0;
+            this.uploadSpeedSnapshotTime = 0;
+            this.stopUploadSpeedTimer();
             this.coverImageURL = null;
             this.coverURL = null;
             this.duration = 0;
@@ -421,6 +561,17 @@ export default {
             }
         },
 
+        // 切换投稿类型
+        switchUploadType(type) {
+            if (this.videoParts.length > 0) {
+                ElMessage.warning('请先取消当前投稿再切换类型');
+                return;
+            }
+            if (type === 'text') {
+                this.$router.push('/platform/upload/text');
+            }
+        },
+
         // 打开封面裁剪对话框
         openDialog() {
             this.dialogVisible = true;
@@ -429,10 +580,23 @@ export default {
             }, 100);
         },
 
-        // 触发文件选择对话框
-        selectVideo() {
+        // 触发文件选择对话框（index 传则更换指定分P，不传则添加分P/首次选择）
+        selectVideo(index = null) {
             this.videoURL = null; // 清除先前的视频URL，防止新视频还没加载出来就画黑屏
+            this.replacePartIndex = index;
             this.$refs.videoInput.click();
+        },
+
+        // 选择界面上"添加分P"按钮
+        addMoreVideos() {
+            this.videoURL = null;
+            this.replacePartIndex = null;
+            this.$refs.videoInput.click();
+        },
+
+        // 切换信息说明弹层
+        showUploadInfo(key) {
+            this.activeInfo = this.activeInfo === key ? "" : key;
         },
 
         // 触发图片选择对话框
@@ -448,31 +612,112 @@ export default {
                 this.$router.push("/");
                 return;
             }
-            const file = event.target.files[0];
-            const maxSizeInBytes = 300 * 1024 * 1024; // 300MB
-            if (!file) {
+            const files = Array.from(event.target.files || []);
+            event.target.value = "";
+            this.addParts(files);
+        },
+
+        // 添加或替换分P（files 为选中的一批文件）
+        async addParts(files) {
+            if (files.length === 0) return;
+            if (!this.$store.state.isLogin) return;
+
+            // 替换模式：replacePartIndex 非 null，仅取第一个文件替换指定分P
+            if (this.replacePartIndex !== null) {
+                const idx = this.replacePartIndex;
+                const part = this.videoParts[idx];
+                this.replacePartIndex = null;
+                if (!part) return;
+                const file = files[0];
+                const check = this.checkVideoFile(file);
+                if (!check.ok) return;
+                const replacement = {
+                    file: file,
+                    name: file.name,
+                    partIndex: idx,
+                    hash: null,
+                    current: 0,
+                    totalChunks: 0,
+                    progress: 0,
+                    isPause: false,
+                    isFailed: false,
+                    isCancel: false,
+                };
+                const uploadedBefore = part.progress >= 100;
+                this.videoParts.splice(idx, 1, replacement);
+                // 替换第一个分P后重生成封面（B站：封面默认取第一个分P）
+                if (idx === 0) {
+                    this.initCover(replacement.file);
+                }
+                // 原分P若已传完，替换后需要重新上传
+                if (uploadedBefore) {
+                    this.uploadPart(replacement);
+                }
                 return;
             }
-            if (file.size <= maxSizeInBytes) {
-                // 文件大小符合要求，可以继续处理上传逻辑
-                this.isPause = false;   // 先暂停当前
-                // 初始化内容
-                this.selectedVideo = file;
-                this.currentPer = 0.00001;
-                this.sliderImages = [];
-                this.picURL = null;
-                this.videoName = file.name.split(".mp4")[0];
-                this.form.title = this.videoName.slice();
-                this.$emit("changeNavBarShow", false);
-                this.initCover(file);
-                // console.log(this.selectedVideo);
-                this.hash = await this.fhash(this.selectedVideo);
-                // console.log("hash值: ", this.hash);
-                this.upload();  //开始上传
-            } else {
-                // 文件大小超出限制
-                ElMessage.error("视频文件过大，请压缩后重试")
+
+            // 新增模式：逐个文件加入分P列表
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const check = this.checkVideoFile(file);
+                if (!check.ok) {
+                    continue;
+                }
+                const isFirst = this.videoParts.length === 0;
+                const part = {
+                    file: file,
+                    name: file.name,
+                    partIndex: 0,
+                    hash: null,
+                    current: 0,
+                    totalChunks: 0,
+                    progress: 0,
+                    isPause: false,
+                    isFailed: false,
+                    isCancel: false,
+                };
+                this.videoParts.push(part);
+                if (isFirst && !this.sessionHash) {
+                    this.sessionHash = await this.fhash(file);
+                }
             }
+            // 重排 partIndex
+            this.videoParts.forEach((p, i) => { p.partIndex = i; });
+
+            if (this.videoParts.length > 0) {
+                this.selectedVideo = true;
+                // 第一个分P初始化封面并设置默认标题
+                if (!this.videoName && !this.form.title) {
+                    this.videoName = this.videoParts[0].name.split(".mp4")[0];
+                    this.form.title = this.videoName.slice();
+                    this.initCover(this.videoParts[0].file);
+                }
+                this.$emit("changeNavBarShow", false);
+                // 新加入的分P逐个上传
+                for (let i = 0; i < this.videoParts.length; i++) {
+                    const p = this.videoParts[i];
+                    if (p.progress < 100 && !p.isPause && !p.isFailed) {
+                        await this.uploadPart(p);
+                    }
+                }
+            }
+        },
+
+        // 校验视频文件（大小/格式）
+        checkVideoFile(file) {
+            const maxSizeInBytes = 300 * 1024 * 1024; // 300MB
+            if (!file) {
+                return { ok: false };
+            }
+            if (file.type && file.type != "video/mp4" && file.name && !file.name.toLowerCase().endsWith(".mp4")) {
+                ElMessage.error("视频只接收mp4格式哦");
+                return { ok: false };
+            }
+            if (file.size > maxSizeInBytes) {
+                ElMessage.error("视频文件过大，请压缩后重试");
+                return { ok: false };
+            }
+            return { ok: true };
         },
 
         // 处理图片选择事件
@@ -504,35 +749,8 @@ export default {
                 this.$router.push("/");
                 return;
             }
-            const file = event.dataTransfer.files[0];
-            const maxSizeInBytes = 300 * 1024 * 1024; // 300MB
-            if (!file) {
-                return;
-            }
-            if (file.type != "video/mp4") {
-                ElMessage.error("视频只接收mp4格式哦");
-                return;
-            }
-            if (file.size <= maxSizeInBytes) {
-                // 文件大小符合要求，可以继续处理上传逻辑
-                this.isPause = false;   // 先暂停当前
-                // 初始化内容
-                this.selectedVideo = file;
-                this.currentPer = 0.00001;
-                this.sliderImages = [];
-                this.picURL = null;
-                this.videoName = file.name.split(".mp4")[0];
-                this.form.title = this.videoName.slice();
-                this.$emit("changeNavBarShow", false);
-                this.initCover(file);
-                // console.log(this.selectedVideo);
-                this.hash = await this.fhash(this.selectedVideo);
-                // console.log("hash值: ", this.hash);
-                this.upload();  //开始上传
-            } else {
-                // 文件大小超出限制
-                ElMessage.error("视频文件过大，请压缩后重试");
-            }
+            const files = Array.from(event.dataTransfer.files || []);
+            this.addParts(files);
         },
 
         handlePicDrop(event) {
@@ -560,11 +778,81 @@ export default {
         },
 
         // 触发暂停/继续事件
-        changeState() {
-            this.isPause = !this.isPause;
-            if (!this.isPause)  {
-                this.upload();
+        changeState(index) {
+            const part = this.videoParts[index];
+            if (!part) return;
+            part.isPause = !part.isPause;
+            if (!part.isPause && part.progress < 100) {
+                this.uploadPart(part);
             }
+        },
+
+        // 格式化字节数
+        formatBytes(bytes) {
+            if (!bytes || bytes <= 0) return "0 B";
+            const units = ["B", "KB", "MB", "GB"];
+            let idx = 0;
+            let v = bytes;
+            while (v >= 1024 && idx < units.length - 1) {
+                v /= 1024;
+                idx++;
+            }
+            return `${v >= 10 || idx === 0 ? Math.round(v) : v.toFixed(1)} ${units[idx]}`;
+        },
+
+        // 格式化速度
+        formatSpeed(speed) {
+            return this.formatBytes(speed);
+        },
+
+        // 格式化剩余时间
+        formatEta(eta) {
+            if (eta <= 0) return "0秒";
+            if (eta < 60) return `${eta}秒`;
+            const m = Math.floor(eta / 60);
+            const s = eta % 60;
+            return `${m}分${s}秒`;
+        },
+
+        // 删除指定分P
+        removePart(index) {
+            const part = this.videoParts[index];
+            if (!part) return;
+            if (this.uploadingIndex === index) {
+                ElMessage.error('当前分P正在上传，请先暂停再删除');
+                return;
+            }
+            const videoURL = this.videoURL;
+            this.videoParts.splice(index, 1);
+            // 重新编号 partIndex
+            this.videoParts.forEach((p, i) => { p.partIndex = i; });
+            if (this.videoParts.length === 0) {
+                this.init();
+                this.$emit("changeNavBarShow", true);
+            } else {
+                // 删除第一个分P后重新生成封面
+                if (index === 0 && this.videoParts.length > 0) {
+                    this.initCover(this.videoParts[0].file);
+                }
+            }
+        },
+
+        // 上下移动分P（dir: -1 上移 / 1 下移），移动后重编 partIndex
+        movePart(index, dir) {
+            const target = index + dir;
+            if (target < 0 || target >= this.videoParts.length) return;
+            const current = this.videoParts[index];
+            if (this.uploadingIndex === index || this.uploadingIndex === target) {
+                ElMessage.error('正在上传的分P暂不能排序，请先暂停');
+                return;
+            }
+            const uploadedAny = current.progress >= 100 || this.videoParts[target].progress >= 100;
+            if (uploadedAny) {
+                ElMessage.error('已上传完成的分P暂不能排序（需重新上传该分P）');
+                return;
+            }
+            this.videoParts.splice(index, 1, this.videoParts.splice(target, 1, current)[0]);
+            this.videoParts.forEach((p, i) => { p.partIndex = i; });
         },
 
         // 根据整个文件的文件名和大小组合的字符串生成hash值，大概率确定文件的唯一性
@@ -586,68 +874,133 @@ export default {
             return result;
         },
 
-        // 触发上传事件
-        async upload() {
-            if (!this.selectedVideo) {
+        // 触发上传事件（单个分P上传，partIndex 隔离目录支持多P）
+        async uploadPart(part) {
+            if (!part) {
                 ElMessage.error('未选择文件');
                 return;
             }
-            const chunks = this.createChunks(this.selectedVideo);
-            // console.log("切片：", chunks);
-            this.totalChunks = chunks.length;
-            this.isPause = false;
-            this.isFailed = false;
-            // 创建上传会话（占位 title=hash, category_id=0, total_chunks），id 由前端用 hash 固定
+            const chunks = this.createChunks(part.file);
+            part.totalChunks = chunks.length;
+            part.isPause = false;
+            part.isFailed = false;
+            this.uploadingIndex = part.partIndex;
+            // 上传统计初始化
+            if (this.uploadTotalBytes === 0) {
+                this.uploadTotalBytes = this.videoParts.reduce((s, p) => s + p.file.size, 0);
+                this.uploadDoneBytes = this.videoParts
+                    .filter((p) => p.progress >= 100)
+                    .reduce((s, p) => s + p.file.size, 0);
+            }
+            // 创建/复用上传会话：id 用 sessionHash（第一个分P的 hash），多P时 videos 数组汇总各P分片数
+            const partsMeta = this.videoParts.map((p) => ({
+                title: p.name,
+                total_chunks: this.createChunks(p.file).length,
+            }));
+            const totalChunks = partsMeta.reduce((s, v) => s + (v.total_chunks || 0), 0);
             const initRes = await this.createSession({
-                client_id: this.hash,
-                title: this.hash,
+                client_id: this.sessionHash,
+                title: this.form.title || this.sessionHash,
                 category_id: 0,
-                total_chunks: chunks.length,
+                total_chunks: totalChunks,
+                videos: partsMeta,
             });
-            if (!initRes || !initRes.data || !initRes.data.data || !initRes.data.data.upload_id) {
-                this.isFailed = true;
-                this.isPause = true;
+            const initBody = initRes && (initRes.data || initRes);
+            if (!initBody || !initBody.upload_id) {
+                part.isFailed = true;
+                part.isPause = true;
                 ElMessage.error('创建上传会话失败');
+                this.uploadingIndex = -1;
                 return;
             }
-            this.uploadId = initRes.data.data.upload_id;
-            // 向服务器查询还没上传的下一个分片序号（后端返回 uploaded_chunks 即已上传数 = 下一个待传序号）
-            const result = await this.askCurrentChunk(this.uploadId);
-            this.current = (result && result.data && result.data.data && result.data.data.uploaded_chunks) || 0;
-            // 逐个上传分片
-            for (this.current; this.current < chunks.length; this.current++) {
-                const chunk = chunks[this.current];
-                const formData = new FormData();
-                formData.append('file', chunk); // 后端 multipart 字段名
-                formData.append('uploadId', this.uploadId);
-                formData.append('chunkIndex', this.current); // 传递分片索引
+            this.uploadId = initBody.upload_id;
+            const targetIndex = part.partIndex;
+            this.startUploadSpeedTimer();
+            // 逐个上传分片（失败自动重试3次）
+            let uploadError = false;
+            for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i];
+                let chunkOk = false;
+                for (let attempt = 0; attempt <= 3; attempt++) {
+                    if (part.isPause) break;
+                    const formData = new FormData();
+                    formData.append('file', chunk); // 后端 multipart 字段名
+                    formData.append('uploadId', this.uploadId);
+                    formData.append('partIndex', targetIndex); // 传递分P序号（后端按 partIndex 分目录）
+                    formData.append('chunkIndex', i); // 传递分片索引
 
-                // 发送分片到服务器
-                try {
-                    const res = await this.uploadChunk(formData);
-                    if (!res || res.code !== 200) {
-                        // ElMessage.error("分片上传失败");
-                        this.isFailed = true;
-                        this.isPause = true;
+                    try {
+                        const res = await this.uploadChunk(formData);
+                        const resBody = res && (res.data || res);
+                        if (resBody && resBody.code === 200) {
+                            chunkOk = true;
+                            break;
+                        }
+                    } catch {
+                        // 重试
                     }
-                } catch {
-                    // ElMessage.error("分片上传失败");
-                    this.isFailed = true;
-                    this.isPause = true;
-                    return;
+                    if (attempt < 3) {
+                        await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)));
+                    }
                 }
+                if (!chunkOk) {
+                    uploadError = true;
+                    break;
+                }
+                // 字节与进度统计
+                this.uploadDoneBytes += chunk.size;
+                part.progress = Math.round(((i + 1) / chunks.length) * 100); // 实时改进度条
                 // 暂停上传
-                if (this.isPause) {
-                    // 取消上传彻底删除已上传分片
-                    if (this.isCancel) {
-                        await this.cancelUpload(this.uploadId);
-                        this.isCancel = false;
-                    }
-                    return;
+                if (part.isPause) {
+                    break;
                 }
-                this.progress = Math.round(((this.current + 1) / chunks.length) * 100); // 实时改进度条
             }
-            this.progress = 100;    // 上传完成再次确认为100%
+            part.progress = 100;    // 上传完成再次确认为100%
+            if (uploadError) {
+                part.isFailed = true;
+                part.isPause = true;
+            }
+            this.uploadingIndex = -1;
+            // 全部传完时停止统计
+            if (this.videoParts.every((p) => p.progress >= 100)) {
+                this.uploadStage = "分片上传完成";
+                this.uploadSpeed = 0;
+                this.stopUploadSpeedTimer();
+            }
+        },
+
+        // 启动速度统计定时器
+        startUploadSpeedTimer() {
+            if (this.uploadSpeedTimer) return;
+            this.uploadSpeedTimer = setInterval(() => {
+                this.computeUploadSpeed();
+            }, 1000);
+        },
+
+        // 停止速度统计定时器
+        stopUploadSpeedTimer() {
+            if (this.uploadSpeedTimer) {
+                clearInterval(this.uploadSpeedTimer);
+                this.uploadSpeedTimer = null;
+            }
+            this.uploadSpeed = 0;
+        },
+
+        // 每秒计算速度与剩余时间
+        computeUploadSpeed() {
+            if (!this.uploadSpeedSnapshot || Date.now() - this.uploadSpeedSnapshotTime < 500) {
+                this.uploadSpeedSnapshot = this.uploadDoneBytes;
+                this.uploadSpeedSnapshotTime = Date.now();
+                return;
+            }
+            const bytesDelta = this.uploadDoneBytes - (this.uploadSpeedSnapshot || 0);
+            const timeDelta = (Date.now() - this.uploadSpeedSnapshotTime) / 1000;
+            this.uploadSpeedSnapshot = this.uploadDoneBytes;
+            this.uploadSpeedSnapshotTime = Date.now();
+            this.uploadSpeed = Math.max(0, Math.round(bytesDelta / Math.max(timeDelta, 0.1)));
+            const remaining = this.uploadTotalBytes - this.uploadDoneBytes;
+            this.uploadEta = this.uploadSpeed > 0 ? Math.round(remaining / this.uploadSpeed) : -1;
+            this.uploadStage = this.uploadDoneBytes >= this.uploadTotalBytes ? "分片上传完成" : "正在上传视频分片";
         },
 
         // 取消上传前的最后通牒
@@ -668,15 +1021,15 @@ export default {
 
         // 确认取消上传
         async cancel() {
-            this.isPause = true;    // 先暂停正在上传的请求
-            // 这里是应对没有手动点暂停按钮直接点取消上传按钮，导致下面的同步代码先执行删除后，上传函数仍在执行当前分片的上传
-            // 所以要发送取消上传信号，通知上传函数彻底删除上传好的分片
+            this.videoParts.forEach((part) => {
+                part.isPause = true;
+            });
             this.isCancel = true;
             await this.cancelUpload(this.uploadId);
             this.init();
             setTimeout(() => {
                 this.isCancel = false;
-            }, 3000);   // 延迟恢复取消状态，让上传函数彻底删除分片，时间要比上传一个分片的用时大一点点，也不是越大越好
+            }, 3000);   // 延迟恢复取消状态
             this.$emit("changeNavBarShow", true);
         },
 
@@ -877,15 +1230,47 @@ export default {
             }
         },
 
-        // 存草稿
+        // 存草稿（保存到本地 localStorage，可稍后继续编辑）
         draft() {
-            ElMessage.warning("该功能暂未开放呜~");
+            if (this.videoParts.length === 0) {
+                ElMessage.error('先选择视频再存草稿吧');
+                return;
+            }
+            const draft = saveDraft({
+                title: this.form.title || (this.videoParts[0] ? this.videoParts[0].name.split(".mp4")[0] : ""),
+                categoryId: this.form.category && this.form.category[1] ? this.form.category[1].id : null,
+                tags: this.form.tags.slice(),
+                description: this.form.descr,
+                type: this.form.type === 1 ? 'original' : 'repost',
+                coverPreview: this.coverURL || "",
+                videoParts: this.videoParts.map((part) => ({
+                    title: part.name.split(".mp4")[0],
+                    sortOrder: part.partIndex,
+                })),
+                hasLocalVideoFiles: this.videoParts.some((p) => p.progress >= 100),
+            });
+            if (draft) {
+                this.draftCount = listDrafts().length;
+                ElMessage.success('草稿已保存到本地，可稍后在"草稿箱"中继续编辑');
+            } else {
+                ElMessage.error('保存草稿失败');
+            }
+        },
+
+        // 打开草稿箱
+        goDraftsBox() {
+            this.$router.push('/platform/drafts');
         },
 
         async submit() {
             // 判断分片上传情况、表单填写情况
-            if (this.progress < 100) {
+            const notDone = this.videoParts.find((p) => p.progress < 100);
+            if (notDone) {
                 ElMessage.error('先等视频上传完啦');
+                return;
+            }
+            if (this.videoParts.length === 0) {
+                ElMessage.error('还没有选择视频哦');
                 return;
             }
             if (this.form.title.trim().length === 0) {
@@ -897,48 +1282,62 @@ export default {
                 return;
             }
             this.$store.state.isLoading = true;
-            fetch(this.coverURL)
-            .then(response => response.blob())
-            .then(async (blob) => {
-                const cover = new File([blob], this.hash + Date.now() + '.jpg', { type: 'image/jpeg' });
+            const submitComplete = async (coverBlobOrNull) => {
                 // 1) 用真实元数据更新 upload-session（同一 client_id 命中 ON CONFLICT UPDATE）
+                const videosMeta = this.videoParts.map((p) => ({
+                    title: p.name.split(".mp4")[0],
+                    total_chunks: this.createChunks(p.file).length,
+                }));
+                const totalChunks = videosMeta.reduce((s, v) => s + (v.total_chunks || 0), 0);
                 const updateRes = await this.createSession({
-                    client_id: this.hash,
+                    client_id: this.sessionHash,
                     title: this.form.title,
                     description: this.form.descr,
                     category_id: this.form.category[1].id,
                     tags: this.form.tags.slice(),
-                    videos: [{ title: this.form.title, total_chunks: this.totalChunks || 0 }],
-                    total_chunks: this.totalChunks || 0,
+                    videos: videosMeta,
+                    total_chunks: totalChunks,
                 });
-                if (!updateRes || updateRes.code !== 200) {
+                const updateBody = updateRes && (updateRes.data || updateRes);
+                if (!updateBody || !updateBody.upload_id) {
                     ElMessage.error('更新稿件信息失败，请稍后再试');
                     this.$store.state.isLoading = false;
                     return;
                 }
-                // 2) 上传封面 + 合并分片创建稿件
+                // 2) 上传封面（如有）+ 合并分片创建稿件（后端按 partIndex 目录合并生成多个 video）
                 const formData = new FormData();
-                formData.append('cover', cover);
+                if (coverBlobOrNull) {
+                    const cover = new File([coverBlobOrNull], this.sessionHash + Date.now() + '.jpg', { type: 'image/jpeg' });
+                    formData.append('cover', cover);
+                }
                 formData.append('uploadId', this.uploadId);
                 const res = await this.$post("/manuscript/upload-complete", formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data',
                     }
                 });
-                if (res && res.code === 200) {
+                const resBody = res && (res.data || res);
+                if (resBody && resBody.code === 200) {
                     ElMessage.success('投稿成功，视频马上就能和大家见面啦');
                     this.init();
                     this.$emit("changeNavBarShow", true);
                     this.$store.state.isLoading = false;
+                    setTimeout(() => {
+                        this.$router.push('/platform/upload-manager/manuscript?status=processing');
+                    }, 600);
                 } else {
                     ElMessage.error('投稿失败，请稍后再试');
                     this.$store.state.isLoading = false;
                 }
-            })
-            .catch(() => {
-                ElMessage.error('操作失败，请稍后重试');
-                this.$store.state.isLoading = false;
-            })
+            };
+            if (this.coverURL) {
+                fetch(this.coverURL)
+                .then(response => response.blob())
+                .then(blob => submitComplete(blob))
+                .catch(() => submitComplete(null))
+            } else {
+                submitComplete(null);
+            }
         },
 
 
@@ -1100,13 +1499,20 @@ export default {
     line-height: 20px;
 }
 
-.footer-item a:not(.title):not(.zip) {
+.agree-link {
     color: var(--brand_pink);
     cursor: pointer;
 }
 
-.footer-item a:not(.title):not(.zip):hover {
+.agree-link:hover {
     color: var(--Pi4);
+}
+
+.info-grid {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
 .footer-item .i-list {
@@ -1116,9 +1522,11 @@ export default {
 .footer-item .i-1 {
     cursor: pointer;
     position: relative;
+    display: inline-flex;
+    align-items: center;
 }
 
-.footer-item .i-1 a {
+.footer-item .i-1 .title {
     color: #99a2aa;
 }
 
@@ -1126,49 +1534,75 @@ export default {
     color: var(--brand_pink);
 }
 
-.footer-item .i-2 .zip {
+.info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid #99a2aa;
     color: #99a2aa;
+    font-size: 10px;
+    line-height: 1;
+    margin-left: 4px;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
-.footer-item .i-2 .zip:hover {
+.info-icon:hover {
+    border-color: var(--brand_pink);
     color: var(--brand_pink);
-    text-decoration: underline;
 }
 
-.footer-item .i-1 .title-block {
+.footer-item .i-1 .info-pop-wrap {
     position: absolute;
     font-size: 12px;
-    border: 1px solid #f9d199;
-    color: #666;
+    border: 1px solid #e7e7e7;
+    color: #61666d;
     text-align: left;
-    padding: 20px;
-    background-color: #fcfae0;
+    padding: 14px 16px;
+    background-color: #fff;
     white-space: nowrap;
-    z-index: 10;
-    bottom: 28px;
-    right: -5px;
+    z-index: 100;
+    bottom: 26px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.12);
     display: none;
 }
 
-.footer-item .i-1:hover .title-block {
-    display: block;
+.footer-item .i-1 .info-pop-show {
+    display: inline-block;
 }
 
-.footer-item .i-1 .title-block:after {
+.info-pop-wrap .info-pop-title {
+    display: block;
+    font-weight: 500;
+    color: #18191c;
+    margin-bottom: 6px;
+}
+
+.info-pop-wrap .info-pop-text {
+    display: block;
+    line-height: 20px;
+    color: #61666d;
+}
+
+.footer-item .i-1 .info-pop-wrap:after {
     content: "";
     position: absolute;
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
     transform: rotate(45deg);
+    box-shadow: 2px 2px 3px rgba(0,0,0,.08);
     border: 1px solid;
-    border-color: transparent #f9d199 #f9d199 transparent;
-    background-color: #fcfae0;
-    right: 10px;
-    bottom: -8px;
-}
-
-.icon-xiazai {
-    margin-right: 2px;
+    border-color: transparent #e7e7e7 #e7e7e7 transparent;
+    background-color: #fff;
+    left: 50%;
+    margin-left: -6px;
+    bottom: -7px;
 }
 
 .info-content {
@@ -1211,6 +1645,166 @@ export default {
     padding-top: 25px;
     font-size: 14px;
     color: #212121;
+}
+
+.video-parts {
+    padding-top: 15px;
+}
+
+.upload-summary {
+    position: relative;
+    padding: 12px 16px;
+    border: 1px solid #e7e7e7;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    background: #fafafa;
+    font-size: 13px;
+    color: #61666d;
+}
+
+.summary-left {
+    display: flex;
+    align-items: center;
+}
+
+.summary-left .iconfont {
+    color: var(--brand_pink);
+    margin-right: 8px;
+    font-size: 16px;
+}
+
+.summary-stage {
+    color: #212121;
+}
+
+.summary-percent {
+    margin-left: 8px;
+    font-weight: 600;
+    color: var(--brand_pink);
+}
+
+.summary-right {
+    position: absolute;
+    right: 16px;
+    top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 12px;
+    color: #99a2aa;
+}
+
+.summary-bar {
+    margin-top: 10px;
+    height: 4px;
+    border-radius: 4px;
+    background: #e7e7e7;
+    overflow: hidden;
+}
+
+.summary-bar-inner {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--brand_pink);
+    transition: width 0.5s ease;
+}
+
+.video-part-row {
+    display: flex;
+    align-items: flex-start;
+    padding: 14px 16px;
+    border: 1px solid #e7e7e7;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    background: #fafafa;
+}
+
+.video-part-row.part-failed {
+    border-color: var(--stress_red);
+}
+
+.part-title-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.part-index {
+    flex-shrink: 0;
+    width: 34px;
+    height: 22px;
+    line-height: 22px;
+    text-align: center;
+    border-radius: 4px;
+    background: var(--Pi0);
+    color: var(--brand_pink);
+    font-size: 13px;
+    font-weight: 500;
+    margin-right: 10px;
+}
+
+.part-name {
+    font-size: 14px;
+    color: #212121;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.part-title-actions {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    padding-left: 16px;
+    flex-shrink: 0;
+}
+
+.part-title-actions .file-status-manage {
+    margin-left: 14px;
+    font-size: 13px;
+}
+
+.part-title-actions .file-status-manage.sort-disabled {
+    color: #ccc;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.add-part-row {
+    display: flex;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.add-part-btn {
+    display: inline-flex;
+    align-items: center;
+    height: 36px;
+    padding: 0 18px;
+    border: 1px dashed var(--brand_pink);
+    border-radius: 4px;
+    color: var(--brand_pink);
+    font-size: 13px;
+    cursor: pointer;
+    background: #fff;
+    user-select: none;
+    transition: all .2s;
+}
+
+.add-part-btn .iconfont {
+    margin-right: 6px;
+    font-size: 14px;
+}
+
+.add-part-btn:hover {
+    background: var(--Pi0);
+}
+
+.add-part-tip {
+    margin-left: 14px;
+    font-size: 12px;
+    color: #99a2aa;
 }
 
 .video-file {
@@ -1581,7 +2175,7 @@ export default {
     background-color: var(--Pi4);
 }
 
-.submit-draft, .submit-add {
+.submit-draft, .submit-add, .submit-drafts-box {
     display: inline-block;
     height: 40px;
     font-size: 14px;
@@ -1595,6 +2189,18 @@ export default {
     -ms-user-select: none;
     user-select: none;
     transition: all .3s ease-in-out;
+}
+
+.submit-drafts-box {
+    margin-left: 16px;
+    line-height: 40px;
+    border: 1px solid var(--brand_pink);
+    color: var(--brand_pink);
+    background: #fff;
+}
+
+.submit-drafts-box:hover {
+    background: var(--Pi0);
 }
 
 .pick-version {

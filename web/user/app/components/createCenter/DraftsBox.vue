@@ -106,7 +106,7 @@ const goUpload = () => {
 }
 
 const continueEdit = (row) => {
-  router.push(`/platform/upload?draftId=${row.id}`)
+  router.push(`/platform/upload/video?draftId=${row.id}`)
 }
 
 const removeDraft = (row) => {

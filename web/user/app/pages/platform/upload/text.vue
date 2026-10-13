@@ -1,8 +1,9 @@
 <template>
   <div class="upload-container">
+    <UploadTypeTabs active="text" @change="switchUploadType" />
     <!-- 页面标题 -->
     <div class="page-header">
-      <h1 class="page-title">文字投稿</h1>
+      <h1 class="page-title">图文投稿</h1>
       <p class="page-subtitle">发布图文动态，内容将展示在你的主页动态中</p>
     </div>
 
@@ -40,12 +41,21 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Document, Picture, Link } from '@element-plus/icons-vue'
 import DynamicPublishPanel from '@/components/DynamicPublishPanel.vue'
+import UploadTypeTabs from '@/components/teriteri/uploadTypeTabs/UploadTypeTabs.vue'
 import { dynamicApi } from '@/api/dynamic'
 
+const router = useRouter()
 const publishPanelRef = ref<InstanceType<typeof DynamicPublishPanel> | null>(null)
+
+const switchUploadType = (type?: string) => {
+  if (type === 'video') {
+    router.push('/platform/upload/video')
+  }
+}
 
 const handlePublish = async (payload: any) => {
   try {

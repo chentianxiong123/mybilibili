@@ -105,6 +105,7 @@
                         <span>内容管理</span>
                     </template>
                     <el-menu-item index="/platform/upload-manager/manuscript">稿件管理</el-menu-item>
+                    <el-menu-item index="/platform/drafts">草稿箱</el-menu-item>
                     <el-menu-item index="/platform/upload-manager/appeal">申诉管理</el-menu-item>
                 </el-sub-menu>
                 <el-menu-item index="/platform/data-up">
@@ -142,7 +143,7 @@ export default {
     data() {
         return {
             active: "",
-            path: ["/platform/home", "/platform/upload-manager/manuscript", "/platform/upload-manager/appeal", "/platform/data-up", "/platform/comment", "/platform/danmu"],
+            path: ["/platform/home", "/platform/upload-manager/manuscript", "/platform/upload-manager/appeal", "/platform/drafts", "/platform/data-up", "/platform/comment", "/platform/danmu"],
         }
     },
     computed: {
