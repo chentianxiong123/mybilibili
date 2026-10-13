@@ -128,7 +128,7 @@
         </div>
         <!-- 主体 -->
         <div class="platform-main" v-if="this.$store.state.isLogin">
-            <div class="content-body">
+            <div class="content-body" :class="{ 'content-body--gray': isDataUpPage }">
                 <NuxtPage />
             </div>            
         </div>
@@ -151,6 +151,9 @@ export default {
         }
     },
     computed: {
+        isDataUpPage() {
+            return this.$route.path.startsWith('/platform/data-up');
+        },
         user() {
             return this.$store.state.user;
         },
@@ -515,6 +518,11 @@ export default {
     margin: 16px 72px 0;
     padding-bottom: 20px;
     display: flow-root;
+}
+
+/* 数据中心：与B站一致，整页灰底(#f6f7f8)，各模块为独立白色圆角卡片浮在灰底上 */
+.content-body--gray {
+    background: #f6f7f8;
 }
 
 /* element 导航元素 */
