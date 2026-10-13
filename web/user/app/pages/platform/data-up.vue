@@ -1,7 +1,9 @@
 <template>
-    <CenterDashboard />
+    <div class="data-up">
+        <DataCenterView />
+    </div>
 </template>
 
 <script setup lang="ts">
-import CenterDashboard from '@/components/createCenter/CenterDashboard.vue'
+import DataCenterView from '@/views/web/DataCenterView.vue'
 </script>

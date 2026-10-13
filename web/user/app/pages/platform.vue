@@ -112,6 +112,10 @@
                     <i class="iconfont icon-shuju"></i>
                     <span>数据中心</span>
                 </el-menu-item>
+                <el-menu-item index="/platform/fans">
+                    <i class="iconfont icon-huiyuan"></i>
+                    <span>粉丝管理</span>
+                </el-menu-item>
                 <el-sub-menu index="/platform/interaction">
                     <template #title>
                         <i class="iconfont icon-hudong"></i>
@@ -143,7 +147,7 @@ export default {
     data() {
         return {
             active: "",
-            path: ["/platform/home", "/platform/upload-manager/manuscript", "/platform/upload-manager/appeal", "/platform/drafts", "/platform/data-up", "/platform/comment", "/platform/danmu"],
+            path: ["/platform/home", "/platform/upload-manager/manuscript", "/platform/upload-manager/appeal", "/platform/drafts", "/platform/data-up", "/platform/fans", "/platform/comment", "/platform/danmu"],
         }
     },
     computed: {
