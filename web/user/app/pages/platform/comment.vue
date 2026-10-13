@@ -25,56 +25,44 @@
       </div>
     </div>
 
-    <!-- 评论列表 -->
+    <!-- 评论列表：卡片式列表（对齐B站互动管理列表层级） -->
     <div class="comment-list" v-loading="loading">
-      <el-table :data="list" stripe style="width: 100%">
-        <el-table-column prop="id" label="ID" width="80"></el-table-column>
-        <el-table-column label="用户" width="180">
-          <template #default="scope">
-            <div class="user-cell">
-              <el-avatar :size="28" :src="scope.row.userAvatar || defaultAvatar"></el-avatar>
-              <span class="username">{{ scope.row.userName }}</span>
+      <div v-if="list.length" class="comment-cards">
+        <div v-for="item in list" :key="item.id" class="comment-card">
+          <div class="cc-head">
+            <el-avatar :size="32" :src="item.userAvatar || defaultAvatar"></el-avatar>
+            <div class="cc-user">
+              <span class="username">{{ item.userName }}</span>
+              <span class="cc-type-pill" :class="item.commentType === 'reply' ? 'pill-reply' : 'pill-comment'">
+                {{ item.commentType === 'reply' ? '回复' : '评论' }}
+              </span>
             </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="内容" min-width="300">
-          <template #default="scope">
-            <span v-if="scope.row.commentType === 'reply' && scope.row.replyToUserName" class="reply-to">
-              回复 @{{ scope.row.replyToUserName }}：
+            <span class="cc-date">{{ formatTime(item.createTime) }}</span>
+          </div>
+          <div class="cc-body">
+            <span v-if="item.commentType === 'reply' && item.replyToUserName" class="reply-to">
+              回复 @{{ item.replyToUserName }}：
             </span>
-            <span>{{ scope.row.content }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="类型" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.commentType === 'reply' ? 'info' : 'primary'" size="small">
-              {{ scope.row.commentType === 'reply' ? '回复' : '评论' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="稿件" min-width="180">
-          <template #default="scope">
-            <span class="manuscript-title" @click="goManuscript(scope.row.manuscriptId)">
-              {{ scope.row.manuscriptTitle || ('稿件#' + scope.row.manuscriptId) }}
+            <span class="cc-content">{{ item.content }}</span>
+          </div>
+          <div class="cc-foot">
+            <span class="cc-like">
+              <el-icon><CaretRight /></el-icon>
+              <span>{{ item.likeCount }}</span>
+              <em>获赞</em>
             </span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="likeCount" label="获赞" width="80"></el-table-column>
-        <el-table-column label="创建时间" width="170">
-          <template #default="scope">{{ formatTime(scope.row.createTime) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
-          <template #default="scope">
-            <el-button
-              :type="scope.row.commentType === 'reply' ? 'danger' : 'danger'"
-              size="small"
-              @click="scope.row.commentType === 'reply' ? handleDeleteReply(scope.row) : handleDeleteComment(scope.row)"
-            >
-              {{ scope.row.commentType === 'reply' ? '删除回复' : '删除' }}
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+            <span class="cc-manuscript" @click="goManuscript(item.manuscriptId)">
+              {{ item.manuscriptTitle || ('稿件#' + item.manuscriptId) }}
+            </span>
+            <span class="cc-actions">
+              <button class="delete-btn" @click="item.commentType === 'reply' ? handleDeleteReply(item) : handleDeleteComment(item)">
+                {{ item.commentType === 'reply' ? '删除回复' : '删除' }}
+              </button>
+            </span>
+          </div>
+        </div>
+      </div>
+      <el-empty v-else-if="!loading" description="暂无评论" />
     </div>
 
     <!-- 分页导航栏 -->
@@ -95,6 +83,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { CaretRight } from '@element-plus/icons-vue'
 import { creatorApi } from '@/api/creator'
 
 const defaultAvatar = 'https://i0.hdslb.com/bfs/face/3378829f555891d2d5a4537e10264593a1d076b1.jpg@50w_50h_1c_1s_!web-avatar-nav.avif'
@@ -232,7 +221,7 @@ onMounted(() => {
 }
 
 .comment-filters {
-  padding: 8px 0;
+  padding: 8px 0 16px;
 }
 
 .filter-row {
@@ -245,28 +234,132 @@ onMounted(() => {
   width: 280px;
 }
 
-.user-cell {
+/* 评论卡片列表：独立白卡 radius4px 灰底隔开（对齐B站互动管理） */
+.comment-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comment-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 16px 20px;
+  transition: box-shadow .2s, border-color .2s;
+}
+
+.comment-card:hover {
+  border-color: #d0d3d8;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .04);
+}
+
+.cc-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cc-user {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .username {
-  font-size: 13px;
-  color: var(--text1);
+  font-size: 14px;
+  color: #212121;
+  font-weight: 500;
+}
+
+.cc-type-pill {
+  padding: 0 8px;
+  font-size: 12px;
+  line-height: 18px;
+  border-radius: 10px;
+}
+
+.pill-comment {
+  color: #00a1d6;
+  background: rgba(0, 161, 214, .1);
+}
+
+.pill-reply {
+  color: #61666d;
+  background: rgba(97, 102, 109, .1);
+}
+
+.cc-date {
+  margin-left: auto;
+  font-size: 12px;
+  color: #99a2aa;
+}
+
+.cc-body {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #18191c;
+  line-height: 1.6;
 }
 
 .reply-to {
-  color: var(--brand_pink);
+  color: #ff6699;
 }
 
-.manuscript-title {
-  color: var(--text2);
+.cc-foot {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f1f4;
+}
+
+.cc-like {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #99a2aa;
+}
+
+.cc-like .el-icon {
+  font-size: 12px;
+}
+
+.cc-manuscript {
+  font-size: 12px;
+  color: #99a2aa;
   cursor: pointer;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.manuscript-title:hover {
-  color: var(--brand_pink);
+.cc-manuscript:hover {
+  color: #ff6699;
+}
+
+.cc-actions {
+  margin-left: auto;
+}
+
+.delete-btn {
+  height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+  color: #505050;
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
+}
+
+.delete-btn:hover {
+  color: #f56c6c;
+  border-color: #f56c6c;
 }
 
 .pagination {

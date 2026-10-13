@@ -539,4 +539,61 @@ export default {
 
     background-color: var(--graph_bg_thin) !important;
 }
+
+/* —— 左侧导航对齐B站 bcc-nav：一级46px / 二级38px、二级缩进72px、文字层级 —— */
+.nav-menu {
+    padding: 0;
+}
+.nav-menu /deep/ .el-sub-menu .el-menu {
+    padding: 0;
+}
+/* 一级菜单：46px 高，14px，普通态 #505050 → hover 加粗 */
+.nav-menu /deep/ .el-menu-item,
+.nav-menu /deep/ .el-sub-menu__title {
+    display: flex;
+    align-items: center;
+    height: 46px !important;
+    line-height: 46px;
+    padding-right: 24px !important;
+    padding-left: 32px !important;
+    font-size: 14px;
+    color: #505050;
+    background: transparent !important;
+}
+.nav-menu /deep/ .el-sub-menu__title .iconfont {
+    font-size: 18px;
+    margin-right: 18px;
+}
+/* 展开箭头弱化 */
+.nav-menu /deep/ .el-sub-menu__title .el-sub-menu__icon-arrow {
+    font-size: 12px;
+}
+/* 一级激活：粉色 + 加粗 */
+.nav-menu /deep/ .el-menu-item.is-active {
+    color: var(--brand_pink);
+    font-weight: 600;
+    background: rgba(255, 102, 153, .06) !important;
+}
+/* 展开的父级标题保持高亮粗体（对齐B站含展开时菜单变色） */
+.nav-menu /deep/ .el-sub-menu.is-active .el-sub-menu__title {
+    color: var(--brand_pink);
+    font-weight: 600;
+}
+/* 二级菜单：38px 高，缩进72px，普通态 #757575 */
+.nav-menu /deep/ .el-sub-menu .el-menu-item {
+    height: 38px !important;
+    line-height: 38px;
+    padding-left: 72px !important;
+    font-size: 14px;
+    color: #757575;
+}
+.nav-menu /deep/ .el-sub-menu .el-menu-item:hover {
+    color: var(--brand_pink);
+    background: transparent !important;
+}
+.nav-menu /deep/ .el-sub-menu .el-menu-item.is-active {
+    color: var(--brand_pink);
+    font-weight: 500;
+    background: transparent !important;
+}
 </style>

@@ -21,31 +21,26 @@
       </div>
     </div>
 
-    <!-- 弹幕列表 -->
+    <!-- 弹幕列表：卡片式列表 -->
     <div class="danmu-list" v-loading="loading">
-      <el-table :data="list" stripe style="width: 100%">
-        <el-table-column prop="ID" label="弹幕ID" width="100"></el-table-column>
-        <el-table-column label="弹幕内容" min-width="280">
-          <template #default="scope">
-            <span class="danmu-content">{{ scope.row.Content }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="所属稿件" width="140">
-          <template #default="scope">
-            <el-button link type="primary" size="small" @click="goVideo(scope.row.VideoID)">
-              稿件 #{{ scope.row.VideoID }}
-            </el-button>
-          </template>
-        </el-table-column>
-        <el-table-column label="发送时间" width="180">
-          <template #default="scope">{{ formatTime(scope.row.CreatedAt) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
-          <template #default="scope">
-            <el-button type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div v-if="list.length" class="danmu-cards">
+        <div v-for="item in list" :key="item.ID" class="danmu-card">
+          <div class="dm-head">
+            <span class="dm-id">弹幕 #{{ item.ID }}</span>
+            <span class="dm-date">{{ formatTime(item.CreatedAt) }}</span>
+          </div>
+          <div class="dm-body">
+            <span class="dm-content">{{ item.Content }}</span>
+          </div>
+          <div class="dm-foot">
+            <span class="dm-manuscript" @click="goVideo(item.VideoID)">稿件 #{{ item.VideoID }}</span>
+            <span class="dm-actions">
+              <button class="delete-btn" @click="handleDelete(item)">删除</button>
+            </span>
+          </div>
+        </div>
+      </div>
+      <el-empty v-else-if="!loading" description="暂无弹幕" />
     </div>
 
     <!-- 分页导航栏 -->
@@ -165,7 +160,7 @@ onMounted(() => {
 }
 
 .danmu-filters {
-  padding: 8px 0;
+  padding: 8px 0 16px;
 }
 
 .filter-row {
@@ -178,8 +173,88 @@ onMounted(() => {
   width: 220px;
 }
 
-.danmu-content {
-  color: var(--text1);
+/* 弹幕卡片列表：独立白卡 radius4px（对齐B站互动管理） */
+.danmu-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.danmu-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 16px 20px;
+  transition: box-shadow .2s, border-color .2s;
+}
+
+.danmu-card:hover {
+  border-color: #d0d3d8;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .04);
+}
+
+.dm-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dm-id {
+  font-size: 12px;
+  color: #99a2aa;
+}
+
+.dm-date {
+  margin-left: auto;
+  font-size: 12px;
+  color: #99a2aa;
+}
+
+.dm-body {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #18191c;
+  line-height: 1.6;
+}
+
+.dm-foot {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f1f4;
+}
+
+.dm-manuscript {
+  font-size: 12px;
+  color: #99a2aa;
+  cursor: pointer;
+}
+
+.dm-manuscript:hover {
+  color: #ff6699;
+}
+
+.dm-actions {
+  margin-left: auto;
+}
+
+.delete-btn {
+  height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+  color: #505050;
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
+}
+
+.delete-btn:hover {
+  color: #f56c6c;
+  border-color: #f56c6c;
 }
 
 .pagination {

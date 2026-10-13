@@ -9,26 +9,10 @@
     </div>
 
     <div v-show="mainTab === 'video'">
-      <!-- 工具栏：对齐B站article页三行排布 -->
+      <!-- 工具栏：对齐B站 article-header（一层32px） -->
       <div class="video-toolbar">
-        <!-- 第一行：搜索（右上） -->
-        <div class="toolbar-row search-row">
-          <div class="search-box">
-            <el-input
-              v-model="searchKeyword"
-              placeholder="搜索稿件"
-              clearable
-              class="search-input"
-            >
-              <template #prefix>
-                <el-icon><Search /></el-icon>
-              </template>
-            </el-input>
-          </div>
-        </div>
-
-        <!-- 第二行：全部稿件 / 草稿 + 排序（右） -->
-        <div class="toolbar-row main-row">
+        <!-- 左：全部稿件 / 草稿 + 进行中/已通过/未通过/已下架 -->
+        <div class="toolbar-left">
           <div class="main-tabs">
             <span
               class="status-tab"
@@ -44,18 +28,6 @@
               草稿
             </span>
           </div>
-
-          <div class="sort-box">
-            <el-select v-model="sortBy" class="sort-select">
-              <el-option label="投稿时间排序" value="latest"></el-option>
-              <el-option label="最早投稿" value="oldest"></el-option>
-              <el-option label="播放量排序" value="views"></el-option>
-            </el-select>
-          </div>
-        </div>
-
-        <!-- 第三行：进行中 / 已通过 / 未通过 / 已下架 -->
-        <div class="toolbar-row second-row">
           <div class="second-tabs">
             <span
               class="second-tab"
@@ -87,6 +59,27 @@
             </span>
           </div>
         </div>
+
+        <!-- 右：搜索 + 排序 -->
+        <div class="toolbar-right">
+          <div class="search-box">
+            <el-input
+              v-model="searchKeyword"
+              placeholder="搜索稿件"
+              clearable
+              class="search-input"
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+          </div>
+          <el-select v-model="sortBy" class="sort-select">
+            <el-option label="投稿时间排序" value="latest"></el-option>
+            <el-option label="最早投稿" value="oldest"></el-option>
+            <el-option label="播放量排序" value="views"></el-option>
+          </el-select>
+        </div>
       </div>
 
       <!-- 视频稿件列表 -->
@@ -98,7 +91,7 @@
             class="manuscript-card"
           >
             <!-- 封面 -->
-            <div class="card-cover" @click="goWatch(article)">
+            <a class="card-cover" @click="goWatch(article)">
               <img
                 v-if="article.coverUrl"
                 :src="article.coverUrl"
@@ -106,58 +99,23 @@
                 class="cover-img"
               />
               <div v-else class="cover-fallback">{{ getDefaultCoverText() }}</div>
+              <span v-if="article.status === 1" class="cover-tag">仅审核中</span>
               <span v-if="article.duration || article.durationSeconds" class="cover-duration">
                 {{ formatDuration(article.duration, article.durationSeconds) }}
               </span>
               <div class="cover-play">
                 <el-icon><VideoPlay /></el-icon>
               </div>
-            </div>
+            </a>
 
             <!-- 信息 -->
             <div class="card-info">
               <div class="info-top">
-                <div class="title-area">
-                  <span class="card-title" @click="goWatch(article)">{{ article.title }}</span>
-                  <el-tag
-                    :type="getArticleStatusType(article.status)"
-                    size="small"
-                    class="status-tag"
-                  >
-                    {{ getArticleStatusText(article.status) }}
-                  </el-tag>
-                </div>
+                <span class="card-title" @click="goWatch(article)">{{ article.title }}</span>
                 <div class="card-ops">
-                  <span
-                    v-if="article.status !== 1"
-                    class="edit-link-btn"
-                    @click="openEditDialog(article.id)"
-                  >
-                    <el-icon><Edit /></el-icon>编辑
+                  <span class="status-pill" :class="statusPillClass(article.status)">
+                    {{ getArticleStatusText(article.status) }}
                   </span>
-                  <el-dropdown
-                    v-if="hasCardActions(article.status)"
-                    trigger="click"
-                    @command="(cmd) => handleCardCommand(cmd, article)"
-                  >
-                    <span class="more-btn">•••</span>
-                    <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item v-if="article.status === 3" command="unpublish">
-                          下架
-                        </el-dropdown-item>
-                        <el-dropdown-item v-if="article.status === -1" command="publish">
-                          上架
-                        </el-dropdown-item>
-                        <el-dropdown-item v-if="article.status === 0 || article.status === 1" disabled>
-                          {{ article.status === 0 ? '审核中...' : '处理中...' }}
-                        </el-dropdown-item>
-                        <el-dropdown-item command="delete" divided>
-                          删除
-                        </el-dropdown-item>
-                      </el-dropdown-menu>
-                    </template>
-                  </el-dropdown>
                 </div>
               </div>
 
@@ -173,43 +131,69 @@
                     </span>
                   </template>
                 </span>
+                <span class="meta-spacer"></span>
+                <div class="card-actions">
+                  <button v-if="article.status !== 1" class="bili-btn" @click="openEditDialog(article.id)">
+                    <el-icon><Edit /></el-icon>编辑
+                  </button>
+                  <el-dropdown
+                    v-if="hasCardActions(article.status)"
+                    trigger="click"
+                    @command="(cmd) => handleCardCommand(cmd, article)"
+                  >
+                    <button class="bili-more-btn">
+                      <el-icon><MoreFilled /></el-icon>
+                    </button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item v-if="article.status === 3" command="unpublish">
+                          下架
+                        </el-dropdown-item>
+                        <el-dropdown-item v-if="article.status === -1" command="publish">
+                          上架
+                        </el-dropdown-item>
+                        <el-dropdown-item v-if="article.status === 0 || article.status === 1" disabled>
+                          {{ article.status === 0 ? '审核中...' : '处理中...' }}
+                        </el-dropdown-item>
+                      <el-dropdown-item command="delete" divided>
+                        删除
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
               </div>
 
-              <div class="info-stats">
-                <div class="stat-item">
-                  <el-icon><CaretRight /></el-icon>
-                  <span>{{ formatCount(article.viewCount) }}</span>
-                  <em>播放</em>
-                </div>
-                <div class="stat-item">
-                  <el-icon><Goods /></el-icon>
-                  <span>{{ formatCount(article.likeCount) }}</span>
-                  <em>点赞</em>
-                </div>
-                <div class="stat-item">
-                  <el-icon><ChatDotRound /></el-icon>
-                  <span>{{ formatCount(article.danmakuCount) }}</span>
-                  <em>弹幕</em>
-                </div>
-                <div class="stat-item">
-                  <el-icon><ChatLineSquare /></el-icon>
-                  <span>{{ formatCount(article.commentCount) }}</span>
-                  <em>评论</em>
-                </div>
-                <div class="stat-item">
-                  <el-icon><Coin /></el-icon>
-                  <span>{{ formatCount(article.coinCount) }}</span>
-                  <em>硬币</em>
-                </div>
-                <div class="stat-item">
-                  <el-icon><Star /></el-icon>
-                  <span>{{ formatCount(article.collectCount) }}</span>
-                  <em>收藏</em>
-                </div>
-                <div class="stat-item">
-                  <el-icon><Share /></el-icon>
-                  <span>{{ formatCount(article.shareCount) }}</span>
-                  <em>分享</em>
+              <div class="meta-foot">
+                <div class="info-stats">
+                  <div class="stat-item">
+                    <span class="stat-num">{{ formatCount(article.viewCount) }}</span>
+                    <em>播放</em>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-num">{{ formatCount(article.danmakuCount) }}</span>
+                    <em>弹幕</em>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-num">{{ formatCount(article.commentCount) }}</span>
+                    <em>评论</em>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-num">{{ formatCount(article.coinCount) }}</span>
+                    <em>投币</em>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-num">{{ formatCount(article.collectCount) }}</span>
+                    <em>收藏</em>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-num">{{ formatCount(article.likeCount) }}</span>
+                    <em>点赞</em>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-num">{{ formatCount(article.shareCount) }}</span>
+                    <em>分享</em>
+                  </div>
                 </div>
               </div>
             </div>
@@ -255,15 +239,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search,
-  CaretRight,
-  Goods,
-  ChatDotRound,
-  ChatLineSquare,
-  Coin,
-  Star,
-  Share,
   VideoPlay,
-  Edit
+  Edit,
+  MoreFilled
 } from '@element-plus/icons-vue'
 import { manuscriptApi } from '@/api/creator'
 import CollectionManager from './CollectionManager.vue'
@@ -527,6 +505,19 @@ const getArticleStatusText = (status) => {
   return statusTextMap[status] || '未知'
 }
 
+// 状态 pill 徽章：近真页 article auto-check tag（成功绿色 / 进行中蓝 / 待审核灰 / 异常橘红）
+const statusPillClass = (status) => {
+  const pillMap = {
+    0: 'pill-info',     // 待审核
+    1: 'pill-loading',  // 处理中
+    2: 'pill-info',     // 待发布
+    3: 'pill-success',  // 已通过
+    4: 'pill-danger',   // 未通过
+    '-1': 'pill-warn'   // 已下架
+  }
+  return pillMap[status] || 'pill-info'
+}
+
 const getArticleVideos = (article) => {
   return Array.isArray(article?.videos)
     ? [...article.videos].sort((a, b) => (a.videoOrder ?? 0) - (b.videoOrder ?? 0))
@@ -722,27 +713,31 @@ onUnmounted(() => {
   margin-bottom: 15px;
 }
 
-/* 工具栏：对齐B站article页三行排布 */
+/* 工具栏：对齐B站article-header（左右两段，8px 下留白 -> 列表） */
 .video-toolbar {
   display: flex;
-  flex-direction: column;
-  gap: 14px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 20px;
 }
 
-.toolbar-row {
+.toolbar-left {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 0;
 }
 
-.search-row {
-  justify-content: flex-end;
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .search-box {
-  width: 240px;
+  width: 230px;
   flex-shrink: 0;
 }
 
@@ -757,7 +752,7 @@ onUnmounted(() => {
   box-shadow: 0 0 0 1px #ff6699 inset;
 }
 
-/* 第二行：全部稿件 / 草稿（对齐B站.tabs：16px间距，选中不变粗） */
+/* 全部稿件 / 草稿（对齐B站.tabs：16px间距，选中不变粗） */
 .main-tabs {
   display: flex;
   align-items: center;
@@ -782,7 +777,7 @@ onUnmounted(() => {
   color: #ff6699;
 }
 
-/* 第三行：状态细分（对齐B站secondTabs：32px大间距，弱化灰色，选中仅加粗） */
+/* 状态细分（对齐B站secondTabs：32px大间距，弱化灰色，选中仅加粗） */
 .second-tabs {
   display: flex;
   align-items: center;
@@ -806,13 +801,9 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
-.sort-box {
-  flex-shrink: 0;
-  width: 150px;
-}
-
 .sort-select {
-  width: 100%;
+  width: 150px;
+  flex-shrink: 0;
 }
 
 /* 卡片列表 */
@@ -823,30 +814,47 @@ onUnmounted(() => {
 .manuscript-cards {
   display: flex;
   flex-direction: column;
+  gap: 16px;
 }
 
+/* 独立白卡：对齐真页 article-card.v2（白底/radius4/内边距，卡与卡之间灰底隔开） */
 .manuscript-card {
   display: flex;
-  gap: 16px;
-  padding: 20px 0;
-  border-bottom: 1px solid #f0f0f0;
+  gap: 24px;
+  padding: 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
   background: #fff;
-  transition: background .2s;
+  transition: box-shadow .2s, border-color .2s;
 }
 
 .manuscript-card:hover {
-  background: #fafafa;
+  border-color: #d0d3d8;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .04);
 }
 
 .card-cover {
   position: relative;
-  width: 160px;
-  height: 90px;
+  width: 154px;
+  height: 87px;
   flex-shrink: 0;
   border-radius: 4px;
   overflow: hidden;
-  background: #e5e9ef;
+  background: #f1f3f7;
   cursor: pointer;
+  display: block;
+}
+
+/* 封面角标：真页 仅自己可见/时长 黑药丸，radius 0 4px 0 0 */
+.cover-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(0, 0, 0, .5);
+  border-radius: 0 4px 0 0;
 }
 
 .cover-play {
@@ -873,6 +881,7 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 .cover-fallback {
@@ -888,13 +897,13 @@ onUnmounted(() => {
 
 .cover-duration {
   position: absolute;
-  right: 4px;
-  bottom: 4px;
-  padding: 1px 5px;
+  right: 0;
+  bottom: 0;
+  padding: 2px 8px;
   font-size: 12px;
   color: #fff;
-  background: rgba(0, 0, 0, .6);
-  border-radius: 3px;
+  background: rgba(0, 0, 0, .5);
+  border-radius: 4px 0 0 0;
 }
 
 .card-info {
@@ -911,17 +920,11 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-.title-area {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
 .card-title {
   font-size: 16px;
   font-weight: 600;
-  color: #18191c;
+  color: #212121;
+  cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -931,14 +934,6 @@ onUnmounted(() => {
   color: #ff6699;
 }
 
-.card-title {
-  cursor: pointer;
-}
-
-.status-tag {
-  flex-shrink: 0;
-}
-
 .card-ops {
   display: flex;
   align-items: center;
@@ -946,37 +941,39 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.edit-link-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 14px;
-  color: #505050;
-  cursor: pointer;
-  transition: color .2s;
+/* 状态 pill 徽章（真页 auto-check tag：radius 12px 语义描边） */
+.status-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 12px;
+  line-height: 18px;
+  border-radius: 12px;
   white-space: nowrap;
 }
 
-.edit-link-btn:hover {
-  color: #ff6699;
+.status-pill.pill-success {
+  color: #00b96b;
+  background: rgba(0, 185, 107, .1);
 }
 
-.edit-link-btn .el-icon {
-  font-size: 14px;
-}
-
-.more-btn {
-  padding: 0 4px;
-  font-size: 14px;
-  line-height: 1;
-  letter-spacing: 2px;
+.status-pill.pill-loading {
   color: #00a1d6;
-  cursor: pointer;
-  border-radius: 4px;
+  background: rgba(0, 161, 214, .1);
 }
 
-.more-btn:hover {
-  background: rgba(0, 161, 214, .08);
+.status-pill.pill-danger {
+  color: #f56c6c;
+  background: rgba(245, 108, 108, .1);
+}
+
+.status-pill.pill-warn {
+  color: #f78a24;
+  background: rgba(247, 138, 36, .1);
+}
+
+.status-pill.pill-info {
+  color: #61666d;
+  background: rgba(97, 102, 109, .1);
 }
 
 .info-meta {
@@ -987,9 +984,13 @@ onUnmounted(() => {
   flex-wrap: wrap;
 }
 
+.meta-spacer {
+  flex: 1;
+}
+
 .meta-date {
-  font-size: 12px;
-  color: #99a2aa;
+  font-size: 14px;
+  color: #505050;
 }
 
 .meta-process {
@@ -1030,38 +1031,81 @@ onUnmounted(() => {
   margin-left: 2px;
 }
 
+.meta-foot {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid #f0f1f4;
+}
+
 .info-stats {
   display: flex;
   align-items: center;
-  gap: 20px;
-  margin-top: 12px;
-  border-top: 1px dashed #eee;
-  padding-top: 10px;
+  gap: 24px;
 }
 
 .stat-item {
   display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.stat-item .stat-num {
+  font-size: 14px;
   color: #9499a0;
-}
-
-.stat-item .el-icon {
-  color: #99a2aa;
-  font-size: 15px;
-}
-
-.stat-item span {
-  color: #18191c;
-  font-weight: 500;
-  min-width: 20px;
 }
 
 .stat-item em {
   font-style: normal;
   font-size: 12px;
-  color: #99a2aa;
+  color: #999aa0;
+}
+
+/* 操作按钮：编辑 84x32 描边、more 32x32 描边（真页 bili-btn radius2） */
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bili-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  font-size: 14px;
+  color: #505050;
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
+}
+
+.bili-btn:hover {
+  color: #ff6699;
+  border-color: #ff6699;
+}
+
+.bili-more-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+  color: #505050;
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
+}
+
+.bili-more-btn:hover {
+  color: #ff6699;
+  border-color: #ff6699;
 }
 
 /* 分页导航栏 */
