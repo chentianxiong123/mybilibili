@@ -86,7 +86,7 @@ export const collectionApi = {
 }
 
 export const followApi = {
-  follow: (userId: number) => api.post(`/follow/${userId}`),
+  follow: (userId: number, sourceManuscriptId?: number) => sourceManuscriptId ? api.post(`/follow/${userId}`, { source_manuscript_id: sourceManuscriptId }) : api.post(`/follow/${userId}`),
   unfollow: (userId: number) => api.delete(`/follow/${userId}`),
   checkFollow: (userId: number) => api.get(`/follow/check/${userId}`)
 }
@@ -98,5 +98,8 @@ export const statsApi = {
   getLatestComments: (limit = 5) => api.get(`/creator/stats/latest-comments?limit=${limit}`),
   getFansRanking: (type = 'view', limit = 10) => api.get(`/creator/stats/fans-ranking?type=${type}&limit=${limit}`),
   getFansTrend: (days = 30) => api.get(`/creator/stats/fans-trend?days=${days}`),
+  getFansByManuscript: () => api.get('/creator/stats/fans-by-manuscript'),
+  getManuscriptInsights: (days = 7) => api.get(`/creator/stats/manuscript-insights?days=${days}`),
+  getIncome: (days = 30) => api.get(`/creator/stats/income?days=${days}`),
   getManuscriptTrend: () => api.get('/creator/stats/manuscript-trend')
 }

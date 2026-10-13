@@ -229,6 +229,12 @@ describe('creator api - followApi', () => {
     expect(mocks.apiDelete).toHaveBeenCalledWith('/follow/1')
     expect(mocks.apiGet).toHaveBeenCalledWith('/follow/check/1')
   })
+
+  it('follow with source manuscript', async () => {
+    mocks.apiPost.mockResolvedValueOnce({ code: 200 })
+    await followApi.follow(1, 99)
+    expect(mocks.apiPost).toHaveBeenCalledWith('/follow/1', { source_manuscript_id: 99 })
+  })
 })
 
 describe('creator api - statsApi', () => {
@@ -264,5 +270,17 @@ describe('creator api - statsApi', () => {
     expect(mocks.apiGet).toHaveBeenCalledWith('/creator/stats/fans-ranking?type=like&limit=5')
     expect(mocks.apiGet).toHaveBeenCalledWith('/creator/stats/fans-trend?days=14')
     expect(mocks.apiGet).toHaveBeenCalledWith('/creator/stats/manuscript-trend')
+  })
+
+  it('getFansByManuscript', async () => {
+    mocks.apiGet.mockResolvedValueOnce({ code: 200, data: { list: [] } })
+    await statsApi.getFansByManuscript()
+    expect(mocks.apiGet).toHaveBeenCalledWith('/creator/stats/fans-by-manuscript')
+  })
+
+  it('getManuscriptInsights 默认 days=7', async () => {
+    mocks.apiGet.mockResolvedValueOnce({ code: 200, data: { list: [] } })
+    await statsApi.getManuscriptInsights()
+    expect(mocks.apiGet).toHaveBeenCalledWith('/creator/stats/manuscript-insights?days=7')
   })
 })

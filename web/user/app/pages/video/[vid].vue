@@ -188,14 +188,14 @@
                                     <div class="up-description" :title="user.description">{{ user.description }}</div>
                                 </div>
                                 <div class="up-info__btn-panel">
-                                    <div class="default-btn follow-btn not-follow" v-if="true" @click="noPage">
+                                    <div class="default-btn follow-btn not-follow" v-if="!isFollowing" @click="doFollow">
                                         <i class="iconfont icon-jia"></i>
                                         关注 {{ handleNum(user.fansCount) }}
                                     </div>
                                     <VPopover popStyle="padding-top: 10px;">
 
                                         <template #reference>
-                                            <div class="default-btn follow-btn following" v-if="false">
+                                            <div class="default-btn follow-btn following" v-if="isFollowing">
                                                 <i class="iconfont icon-caidan"></i>
                                                 已关注 {{ handleNum(user.fansCount) }}
                                             </div>
@@ -206,27 +206,7 @@
                                                 <div class="dropdown-item">
                                                     <span>设置分组</span>
                                                 </div>
-                                                <div class="dropdown-item">
-                                                    <span>取消关注</span>
-                                                </div>
-                                            </div>
-                                        </template>
-                                    </VPopover>
-                                    <VPopover popStyle="padding-top: 10px;">
-
-                                        <template #reference>
-                                            <div class="default-btn follow-btn following" v-if="false">
-                                                <i class="iconfont icon-caidan"></i>
-                                                已互粉 {{ handleNum(user.fansCount) }}
-                                            </div>
-                                        </template>
-
-                                        <template #content>
-                                            <div class="following-dropdown">
-                                                <div class="dropdown-item">
-                                                    <span>设置分组</span>
-                                                </div>
-                                                <div class="dropdown-item">
+                                                <div class="dropdown-item" @click="doUnfollow">
                                                     <span>取消关注</span>
                                                 </div>
                                             </div>
@@ -398,6 +378,7 @@ import { useTeriteriStore } from '@/stores/teriteri'
 import { handleTime, handleNum as _handleNum, handleDate, linkify } from '@/teriteri-src/utils/utils'
 import { ElMessage } from 'element-plus'
 
+import { followApi } from '@/api/creator'
 import CommentVue from '@/components/teriteri/comment/CommentVue.vue'
 import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue'
 import VideoPlayer from '@/components/VideoPlayer.vue'
@@ -437,6 +418,8 @@ const gifDisplay = ref(false)
 const collectVisible = ref(false)
 const collectedFids = ref<Set<number>>(new Set())
 const isMounted = ref(false)
+const isFollowing = ref(false)
+const followLoading = ref(false)
 const loveLoading = ref(false)
 // dislike 不持久化到后端，只存 localStorage 用作折叠评论区（用户隐私）
 const DISLIKED_VIDS_KEY = 'mybilibili_disliked_vids'
@@ -540,6 +523,7 @@ async function getVideoDetail() {
     isDescTooLong()
     if (hasAuthSession()) {
         getCollectedFids()
+        checkFollowStatus()
     }
     return true
 }
@@ -890,6 +874,58 @@ function updateCollect(info: { fids: Set<number>; num: number }) {
 
 function noPage() {
     ElMessage.warning('该功能暂未开放')
+}
+
+// 关注UP主（带稿件来源，用于涨粉归因）
+async function checkFollowStatus() {
+    const uid = Number(user.value?.uid) || 0
+    if (!uid || !store.isLogin) {
+        isFollowing.value = false
+        return
+    }
+    try {
+        const res = await followApi.checkFollow(uid)
+        isFollowing.value = !!(res && (res.data?.following ?? res.following))
+    } catch (e) {
+        isFollowing.value = false
+    }
+}
+
+async function doFollow() {
+    if (!store.isLogin) {
+        ElMessage.warning('请先登录')
+        return
+    }
+    const uid = Number(user.value?.uid) || 0
+    if (!uid || followLoading.value) return
+    followLoading.value = true
+    try {
+        const mid = Number(manuscriptId.value) || 0
+        const res = await followApi.follow(uid, mid || undefined)
+        if (res && res.code === 200) {
+            isFollowing.value = true
+            user.value = { ...user.value, fansCount: (Number(user.value.fansCount) || 0) + 1 }
+            ElMessage.success('关注成功')
+        }
+    } finally {
+        followLoading.value = false
+    }
+}
+
+async function doUnfollow() {
+    const uid = Number(user.value?.uid) || 0
+    if (!uid || followLoading.value) return
+    followLoading.value = true
+    try {
+        const res = await followApi.unfollow(uid)
+        if (res && res.code === 200) {
+            isFollowing.value = false
+            user.value = { ...user.value, fansCount: Math.max(0, (Number(user.value.fansCount) || 0) - 1) }
+            ElMessage.success('已取消关注')
+        }
+    } finally {
+        followLoading.value = false
+    }
 }
 
 // ===== created() — top-level await =====

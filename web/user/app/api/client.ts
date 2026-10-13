@@ -241,7 +241,7 @@ export const userApi = {
   uploadAvatar: (id: number, formData: FormData) => api.post(`/user/${id}/avatar`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
-  follow: (userId: number, follow: boolean) => follow ? api.post(`/follow/${userId}`) : api.delete(`/follow/${userId}`),
+  follow: (userId: number, follow: boolean, sourceManuscriptId?: number) => follow ? api.post(`/follow/${userId}`, sourceManuscriptId ? { source_manuscript_id: sourceManuscriptId } : {}) : api.delete(`/follow/${userId}`),
   checkFollow: (userId: number) => api.get(`/follow/check/${userId}`),
   getFollowingList: (userId: number) => api.get(`/follow/user/${userId}/following`),
   getFollowerList: (userId: number) => api.get(`/follow/user/${userId}/followers`),

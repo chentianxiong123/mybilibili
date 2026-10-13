@@ -40,6 +40,32 @@ func TestFollowRepository_Follow_Duplicate(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestFollowRepository_FollowWithSource_Success(t *testing.T) {
+	repo, mock := newMockFollowRepo(t)
+	mock.ExpectBegin()
+	mock.ExpectExec(`INSERT INTO follows \(follower_id, following_id, source_manuscript_id\)`).
+		WithArgs(1, 2, 99).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE users SET following_count`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE users SET follower_count`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	require.NoError(t, repo.FollowWithSource(context.Background(), 1, 2, 99))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestFollowRepository_FollowWithSource_NoSource(t *testing.T) {
+	repo, mock := newMockFollowRepo(t)
+	mock.ExpectBegin()
+	mock.ExpectExec(`INSERT INTO follows \(follower_id, following_id\) VALUES`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE users SET following_count`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE users SET follower_count`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	require.NoError(t, repo.FollowWithSource(context.Background(), 1, 2, 0))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestFollowRepository_Follow_ExecError(t *testing.T) {
 	repo, mock := newMockFollowRepo(t)
 	mock.ExpectBegin()

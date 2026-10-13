@@ -27,12 +27,12 @@
           v-for="m in metricCards"
           :key="m.key"
           class="metric-card"
-          :class="{ selected: selectedMetric === m.trendKey }"
+          :class="{ selected: selectedMetric === m.trendKey, static: !m.trendKey }"
           @click="selectMetric(m.trendKey)"
         >
           <div class="metric-top">
             <span class="metric-label">{{ m.label }}</span>
-            <span v-if="m.increase !== null && m.increase !== undefined" class="metric-delta">▼{{ m.increase }}</span>
+            <span v-if="m.increase !== null && m.increase !== undefined" class="metric-delta">{{ formatDelta(m.increase) }}</span>
           </div>
           <div class="metric-value">{{ formatCount(m.value) }}</div>
         </div>
@@ -84,13 +84,50 @@
           </template>
         </el-table-column>
         <el-table-column prop="viewCount" label="播放量" width="90" sortable></el-table-column>
+        <el-table-column prop="guestRate" label="游客播放占比" width="110" sortable :formatter="formatPercent"></el-table-column>
+        <el-table-column prop="fanRate" label="粉丝观看率" width="100" sortable :formatter="formatPercent"></el-table-column>
+        <el-table-column prop="fansGained" label="涨粉量" width="90" sortable></el-table-column>
         <el-table-column prop="likeCount" label="点赞量" width="90" sortable></el-table-column>
         <el-table-column prop="commentCount" label="评论量" width="90" sortable></el-table-column>
         <el-table-column prop="danmakuCount" label="弹幕量" width="90" sortable></el-table-column>
         <el-table-column prop="collectCount" label="收藏量" width="90" sortable></el-table-column>
         <el-table-column prop="coinCount" label="投币量" width="90" sortable></el-table-column>
         <el-table-column prop="shareCount" label="转发量" width="90" sortable></el-table-column>
+        <el-table-column prop="avgProgress" label="平均播放进度" width="110" sortable :formatter="formatPercent"></el-table-column>
       </el-table>
+    </div>
+
+    <!-- 收益数据：总收益 / 自定义充电（平台尚未接入充值，真实 0） -->
+    <div class="overview-section income-section">
+      <div class="section-header">
+        <div class="header-left">
+          <h4>收益数据</h4>
+          <el-tooltip content="创作者收益汇总，接入自定义充电后实时更新" placement="top">
+            <el-icon class="help-icon"><QuestionFilled /></el-icon>
+          </el-tooltip>
+        </div>
+        <div class="header-right">
+          <span class="range-label">时间选择</span>
+          <el-select v-model="incomeDays" class="range-select" @change="loadIncome(incomeDays)">
+            <el-option label="近30天" :value="30"></el-option>
+            <el-option label="近7天" :value="7"></el-option>
+          </el-select>
+        </div>
+      </div>
+      <div class="income-grid">
+        <div class="income-card">
+          <div class="income-label">总收益（元）</div>
+          <div class="income-value">{{ income.totalAmount.toFixed(2) }}</div>
+        </div>
+        <div class="income-card">
+          <div class="income-label">自定义充电（元）</div>
+          <div class="income-value">{{ income.chargeAmount.toFixed(2) }}</div>
+        </div>
+      </div>
+      <div class="income-footer">
+        近{{ incomeDays }}天总收益（元）
+        <span class="income-link" @click="$message?.({ type: 'info', message: '充电功能即将上线' })">查看收益明细</span>
+      </div>
     </div>
   </div>
 </template>
@@ -103,28 +140,32 @@ import TrendChart from './TrendChart.vue'
 import { useCreatorStats } from '@/composables/useCreatorStats'
 import { manuscriptApi } from '@/api/creator'
 
-const { loading, overview, trendData, loadOverview, loadTrend } = useCreatorStats()
+const { loading, overview, trendData, fansByManuscript, insights, income, loadOverview, loadTrend, loadFansByManuscript, loadInsights, loadIncome } = useCreatorStats()
 
 // 时间范围（B站：近7天 / 近30天）
 const rangeDays = ref(7)
+// 收益时间范围
+const incomeDays = ref(30)
 // 当前选中的趋势指标（点击指标卡切换，B站同款首卡高亮）
 const selectedMetric = ref('views')
 
+const num = (v) => Number(v) || 0
+
 const metricCards = computed(() => [
-  { key: 'views', trendKey: 'views', label: '播放量', value: overview.value.totalViews, increase: overview.value.viewsIncrease },
-  { key: 'followers', trendKey: 'followers', label: '粉丝总数', value: overview.value.totalFollowers, increase: overview.value.followersIncrease },
-  { key: 'followersNew', trendKey: 'followers', label: '净增粉丝', value: overview.value.followersIncrease, increase: null },
-  { key: 'likes', trendKey: 'likes', label: '点赞', value: overview.value.totalLikes, increase: overview.value.likesIncrease },
-  { key: 'collects', trendKey: 'collects', label: '收藏', value: overview.value.totalCollections, increase: overview.value.collectionsIncrease },
-  { key: 'coins', trendKey: 'coins', label: '硬币', value: overview.value.totalCoins, increase: overview.value.coinsIncrease },
-  { key: 'comments', trendKey: 'comments', label: '评论', value: overview.value.totalComments, increase: overview.value.commentsIncrease },
-  { key: 'danmaku', trendKey: 'danmaku', label: '弹幕', value: overview.value.totalDanmaku, increase: overview.value.danmakuIncrease },
-  { key: 'shares', trendKey: 'shares', label: '分享', value: overview.value.totalShares, increase: overview.value.sharesIncrease }
+  { key: 'views', trendKey: 'views', label: '播放量', value: num(overview.value.viewsIncrease), increase: num(overview.value.viewsIncrease) - num(overview.value.prevViews) },
+  { key: 'visitors', trendKey: null, label: '空间访客', value: num(overview.value.spaceVisits), increase: num(overview.value.spaceVisits) - num(overview.value.prevSpaceVisits) },
+  { key: 'followersNew', trendKey: 'followers', label: '净增粉丝', value: num(overview.value.followersIncrease), increase: null },
+  { key: 'likes', trendKey: 'likes', label: '点赞', value: num(overview.value.likesIncrease), increase: num(overview.value.likesIncrease) - num(overview.value.prevLikes) },
+  { key: 'collects', trendKey: 'collects', label: '收藏', value: num(overview.value.collectionsIncrease), increase: num(overview.value.collectionsIncrease) - num(overview.value.prevCollections) },
+  { key: 'coins', trendKey: 'coins', label: '硬币', value: num(overview.value.coinsIncrease), increase: num(overview.value.coinsIncrease) - num(overview.value.prevCoins) },
+  { key: 'comments', trendKey: 'comments', label: '评论', value: num(overview.value.commentsIncrease), increase: num(overview.value.commentsIncrease) - num(overview.value.prevComments) },
+  { key: 'danmaku', trendKey: 'danmaku', label: '弹幕', value: num(overview.value.danmakuIncrease), increase: num(overview.value.danmakuIncrease) - num(overview.value.prevDanmaku) },
+  { key: 'shares', trendKey: 'shares', label: '分享', value: num(overview.value.sharesIncrease), increase: num(overview.value.sharesIncrease) - num(overview.value.prevShares) }
 ])
 
 const metricLabelMap = {
   views: '播放量',
-  followers: '播放量',
+  followers: '粉丝量',
   likes: '点赞量',
   collects: '收藏量',
   coins: '投币量',
@@ -152,21 +193,47 @@ const trendXData = computed(() => {
   })
 })
 
-const trendSeries = computed(() => [{
-  name: `总${selectedLabel.value}`,
-  type: 'line',
-  color: '#ff6699',
-  data: trendData.value[selectedMetric.value] || []
-}])
+const trendSeries = computed(() => {
+  const main = {
+    name: `总${selectedLabel.value}`,
+    type: 'line',
+    color: '#ff6699',
+    data: trendData.value[selectedMetric.value] || []
+  }
+  if (selectedMetric.value === 'views') {
+    return [main, {
+      name: '粉丝播放量',
+      type: 'line',
+      color: '#00a1d6',
+      data: fanSeries.value
+    }]
+  }
+  return [main]
+})
+
+const fanSeries = computed(() => {
+  const ft = insights.value.fanTrend || { dates: [], fans: [] }
+  const map = {}
+  const dates = ft.dates || []
+  const fans = ft.fans || []
+  dates.forEach((d, i) => {
+    map[d] = fans[i] || 0
+  })
+  return (trendData.value.dates || []).map((d) => map[d] || 0)
+})
 
 const selectMetric = (key) => {
+  if (!key) {
+    return
+  }
   selectedMetric.value = key
 }
 
 const switchRange = async () => {
   await Promise.all([
     loadOverview(rangeDays.value),
-    loadTrend(rangeDays.value)
+    loadTrend(rangeDays.value),
+    loadInsights(rangeDays.value)
   ])
 }
 
@@ -177,10 +244,30 @@ const compareLoading = ref(false)
 const loadCompare = async () => {
   compareLoading.value = true
   try {
-    const response = await manuscriptApi.getMyManuscripts({ page: 1, size: 50, status: 'published' })
-    if (response.code === 200) {
-      const list = response.data.list || []
+    const [manuscriptsRes] = await Promise.all([
+      manuscriptApi.getMyManuscripts({ page: 1, size: 50, status: 'published' }),
+      loadFansByManuscript(),
+      loadInsights(rangeDays.value)
+    ])
+    if (manuscriptsRes.code === 200) {
+      const list = manuscriptsRes.data.list || []
+      const fansMap = fansByManuscript.value || {}
+      const insightMap = {}
+      const insightList = insights.value.list || []
+      insightList.forEach((item) => {
+        insightMap[item.manuscriptId] = item
+      })
       compareRows.value = [...list]
+        .map((item) => {
+          const insight = insightMap[item.id] || {}
+          return {
+            ...item,
+            fansGained: fansMap[item.id] || 0,
+            fanRate: insight.fanRate ?? null,
+            guestRate: insight.guestRate ?? null,
+            avgProgress: insight.avgProgress ?? null
+          }
+        })
         .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
         .slice(0, 10)
     }
@@ -191,9 +278,16 @@ const loadCompare = async () => {
   }
 }
 
+const formatPercent = (row, column, value) => {
+  if (value === null || value === undefined) {
+    return '-'
+  }
+  return (Number(value) * 100).toFixed(1) + '%'
+}
+
 const exportCsv = () => {
   try {
-    const rows = [['指标', '累计值', `近${rangeDays.value}天增量`]]
+    const rows = [['指标', `近${rangeDays.value}天值`, '环比上周期']]
     metricCards.value.forEach((m) => {
       rows.push([m.label, String(m.value ?? 0), m.increase === null || m.increase === undefined ? '' : String(m.increase)])
     })
@@ -211,6 +305,8 @@ const exportCsv = () => {
     ElMessage.error('导出数据失败')
   }
 }
+
+const formatDelta = (n) => '▼' + Math.abs(Number(n) || 0)
 
 const formatCount = (n) => {
   const num = Number(n) || 0
@@ -254,7 +350,8 @@ onMounted(async () => {
   await Promise.all([
     loadOverview(rangeDays.value),
     loadTrend(rangeDays.value),
-    loadCompare()
+    loadCompare(),
+    loadIncome(incomeDays.value)
   ])
 })
 </script>
@@ -344,6 +441,10 @@ onMounted(async () => {
 
 .metric-card:hover {
   background: #f0f1f4;
+}
+
+.metric-card.static {
+  cursor: default;
 }
 
 .metric-card.selected {
@@ -466,5 +567,52 @@ onMounted(async () => {
 .compare-date {
   font-size: 12px;
   color: #99a2aa;
+}
+
+/* 收益数据 */
+.income-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.income-grid {
+  display: flex;
+  gap: 12px;
+}
+
+.income-card {
+  flex: 1;
+  background: #f7f8fa;
+  border-radius: 6px;
+  padding: 16px 20px;
+}
+
+.income-label {
+  font-size: 14px;
+  color: #61666d;
+  margin-bottom: 12px;
+}
+
+.income-value {
+  font-size: 28px;
+  font-weight: 600;
+  color: #18191c;
+}
+
+.income-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #61666d;
+  border-top: 1px solid #f0f0f0;
+  padding-top: 14px;
+}
+
+.income-link {
+  font-size: 13px;
+  color: #ff6699;
+  cursor: pointer;
 }
 </style>

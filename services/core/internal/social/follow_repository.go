@@ -23,10 +23,23 @@ func NewFollowRepository(db *sql.DB) *FollowRepository {
 }
 
 func (r *FollowRepository) Follow(ctx context.Context, followerID, followingID int64) error {
+	return r.FollowWithSource(ctx, followerID, followingID, 0)
+}
+
+// FollowWithSource 带稿件来源的关注（数据中心涨粉归因），sourceManuscriptID<=0 表示未知来源。
+func (r *FollowRepository) FollowWithSource(ctx context.Context, followerID, followingID, sourceManuscriptID int64) error {
 	return r.withTx(ctx, func(tx *sql.Tx) error {
-		res, err := tx.ExecContext(ctx,
-			`INSERT INTO follows (follower_id, following_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-			followerID, followingID)
+		var res sql.Result
+		var err error
+		if sourceManuscriptID > 0 {
+			res, err = tx.ExecContext(ctx,
+				`INSERT INTO follows (follower_id, following_id, source_manuscript_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+				followerID, followingID, sourceManuscriptID)
+		} else {
+			res, err = tx.ExecContext(ctx,
+				`INSERT INTO follows (follower_id, following_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+				followerID, followingID)
+		}
 		if err != nil {
 			return err
 		}

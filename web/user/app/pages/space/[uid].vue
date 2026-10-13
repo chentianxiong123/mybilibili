@@ -270,6 +270,15 @@ export default {
             this.worksCount = res.data.data;
         },
 
+        // 上报空间访问（数据中心空间访客指标，失败静默）
+        async recordSpaceVisit(uid) {
+            try {
+                await this.$post("/space/visit", { host_user_id: Number(uid) });
+            } catch (e) {
+                // 上报失败不打扰用户
+            }
+        },
+
         // 获取用户主页背景图列表
         async getUserProfileBg() {
             try {
@@ -374,6 +383,7 @@ export default {
                     await this.getUserInfo(uid);
                     await this.getUserWorksCount(uid);
                     await this.getUserProfileBg();
+                    this.recordSpaceVisit(uid);
                 } else {
                     this.$router.push('/404');
                 }
@@ -391,6 +401,7 @@ export default {
                 await this.getUserFavList(uid);
                 await this.getUserInfo(uid);
                 await this.getUserWorksCount(uid);
+                this.recordSpaceVisit(uid);
             } else {
                 this.$router.push('/404');
             }

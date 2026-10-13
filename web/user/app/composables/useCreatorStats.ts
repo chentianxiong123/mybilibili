@@ -25,6 +25,9 @@ export function useCreatorStats() {
     dates: [], newFollowers: [], unfollows: [], totalFollowers: [],
     currentFollowers: 0, newFollowersToday: 0, unfollowsToday: 0, growthRate: 0
   })
+  const fansByManuscript = ref({})
+  const insights = ref({ list: [], fanTrend: { dates: [], fans: [] } })
+  const income = ref({ totalAmount: 0, chargeAmount: 0, periodDays: 30, updateTime: '' })
 
   async function loadOverview(days = 7, force = true) {
     if (loading.overview) return
@@ -101,6 +104,44 @@ export function useCreatorStats() {
     }
   }
 
+  async function loadFansByManuscript(force = true) {
+    try {
+      const res = await statsApi.getFansByManuscript()
+      if (res?.code === 200 && res.data) {
+        const map = {}
+        const list = res.data.list || []
+        list.forEach((item) => {
+          map[item.manuscriptId] = item.fansGained || 0
+        })
+        fansByManuscript.value = map
+      }
+    } catch (e) {
+      console.error('loadFansByManuscript failed:', e)
+    }
+  }
+
+  async function loadInsights(days = 7) {
+    try {
+      const res = await statsApi.getManuscriptInsights(days)
+      if (res?.code === 200 && res.data) {
+        insights.value = res.data
+      }
+    } catch (e) {
+      console.error('loadInsights failed:', e)
+    }
+  }
+
+  async function loadIncome(days = 30) {
+    try {
+      const res = await statsApi.getIncome(days)
+      if (res?.code === 200 && res.data) {
+        income.value = res.data
+      }
+    } catch (e) {
+      console.error('loadIncome failed:', e)
+    }
+  }
+
   return {
     loading,
     overview,
@@ -108,10 +149,16 @@ export function useCreatorStats() {
     rankingList,
     manuscriptTrend,
     fansTrend,
+    fansByManuscript,
+    insights,
+    income,
     loadOverview,
     loadTrend,
     loadRanking,
     loadFansTrend,
     loadManuscriptTrend,
+    loadFansByManuscript,
+    loadInsights,
+    loadIncome,
   }
 }

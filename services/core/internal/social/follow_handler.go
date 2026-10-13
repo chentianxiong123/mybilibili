@@ -3,6 +3,7 @@ package social
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -43,6 +44,7 @@ func (h *FollowHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/follow/me/followers", h.handleMyFollowers)
 	mux.HandleFunc("/api/v1/follow/me/following", h.handleMyFollowing)
 	mux.HandleFunc("/api/v1/follow/user/", h.handleUserFollows)
+	mux.HandleFunc("/api/v1/space/visit", h.handleSpaceVisit)
 }
 
 func (h *FollowHandler) handleFollow(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +80,21 @@ func (h *FollowHandler) handleFollow(w http.ResponseWriter, r *http.Request) {
 			httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "用户不存在", "data": nil})
 			return
 		}
-		if err := h.svc.Follow(r.Context(), userID, targetID); err != nil {
+		// 可选关注来源稿件（播放页关注按钮透传，用于涨粉归因；body 为空时忽略）
+		var sourceManuscriptID int64
+		var body struct {
+			SourceManuscriptID int64 `json:"source_manuscript_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err == nil && body.SourceManuscriptID > 0 {
+			var exists bool
+			_ = h.db.QueryRowContext(r.Context(),
+				`SELECT EXISTS(SELECT 1 FROM manuscripts WHERE id = $1 AND user_id = $2)`,
+				body.SourceManuscriptID, targetID).Scan(&exists)
+			if exists {
+				sourceManuscriptID = body.SourceManuscriptID
+			}
+		}
+		if err := h.svc.FollowWithSource(r.Context(), userID, targetID, sourceManuscriptID); err != nil {
 			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "关注失败", "data": nil})
 			return
 		}

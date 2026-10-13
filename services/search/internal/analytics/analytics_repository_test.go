@@ -35,22 +35,55 @@ func TestOverview_Success(t *testing.T) {
 	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM follows WHERE following_id`).WillReturnRows(
 		sqlmock.NewRows([]string{"count"}).AddRow(500))
 
-	// 4th query: 7-day views increase
+	// 4th query: views increase (current period)
 	mock.ExpectQuery(`SELECT COALESCE\(SUM\(view_count\),0\) FROM manuscript_daily_metrics`).WillReturnRows(
 		sqlmock.NewRows([]string{"views_increase"}).AddRow(150))
 
-	// 5th query: interaction increases
-	mock.ExpectQuery(`SELECT COALESCE\(SUM\(CASE WHEN i\.interaction_type`).WillReturnRows(
+	// 5th query: views previous period
+	mock.ExpectQuery(`SELECT COALESCE\(SUM\(view_count\),0\) FROM manuscript_daily_metrics`).WillReturnRows(
+		sqlmock.NewRows([]string{"prev_views"}).AddRow(100))
+
+	// 6th query: interaction increases (current period)
+	mock.ExpectQuery(`SELECT COALESCE\(SUM\(CASE WHEN UPPER\(i\.interaction_type`).WillReturnRows(
 		sqlmock.NewRows([]string{"likes", "coins", "collections", "shares"}).
 			AddRow(30, 10, 5, 2))
 
-	// 6th query: comments increase
+	// 7th query: interaction previous period
+	mock.ExpectQuery(`SELECT COALESCE\(SUM\(CASE WHEN UPPER\(i\.interaction_type`).WillReturnRows(
+		sqlmock.NewRows([]string{"likes", "coins", "collections", "shares"}).
+			AddRow(20, 8, 4, 1))
+
+	// 8th query: comments increase (current period)
 	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM comments c JOIN manuscripts m`).WillReturnRows(
 		sqlmock.NewRows([]string{"count"}).AddRow(20))
 
-	// 7th query: followers increase
+	// 9th query: comments previous period
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM comments c JOIN manuscripts m`).WillReturnRows(
+		sqlmock.NewRows([]string{"count"}).AddRow(12))
+
+	// 10th query: danmaku increase (current period)
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM danmaku d JOIN manuscripts m`).WillReturnRows(
+		sqlmock.NewRows([]string{"count"}).AddRow(7))
+
+	// 11th query: danmaku previous period
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM danmaku d JOIN manuscripts m`).WillReturnRows(
+		sqlmock.NewRows([]string{"count"}).AddRow(3))
+
+	// 12th query: followers increase (current period)
 	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM follows WHERE following_id.*created_at`).WillReturnRows(
 		sqlmock.NewRows([]string{"count"}).AddRow(15))
+
+	// 13th query: followers previous period
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM follows WHERE following_id.*created_at`).WillReturnRows(
+		sqlmock.NewRows([]string{"count"}).AddRow(9))
+
+	// 14th query: space visits (current period)
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM space_visits`).WillReturnRows(
+		sqlmock.NewRows([]string{"count"}).AddRow(25))
+
+	// 15th query: space visits previous period
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM space_visits`).WillReturnRows(
+		sqlmock.NewRows([]string{"count"}).AddRow(18))
 
 	result, err := repo.Overview(ctx, 1, 7)
 	require.NoError(t, err)
@@ -70,6 +103,47 @@ func TestOverview_Success(t *testing.T) {
 	assert.Equal(t, int64(2), result["sharesIncrease"])
 	assert.Equal(t, int64(20), result["commentsIncrease"])
 	assert.Equal(t, int64(15), result["followersIncrease"])
+	assert.Equal(t, int64(7), result["danmakuIncrease"])
+	assert.Equal(t, int64(100), result["prevViews"])
+	assert.Equal(t, int64(20), result["prevLikes"])
+	assert.Equal(t, int64(8), result["prevCoins"])
+	assert.Equal(t, int64(4), result["prevCollections"])
+	assert.Equal(t, int64(1), result["prevShares"])
+	assert.Equal(t, int64(12), result["prevComments"])
+	assert.Equal(t, int64(3), result["prevDanmaku"])
+	assert.Equal(t, int64(9), result["prevFollowers"])
+	assert.Equal(t, int64(25), result["spaceVisits"])
+	assert.Equal(t, int64(18), result["prevSpaceVisits"])
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestManuscriptInsights_Success(t *testing.T) {
+	repo, mock := newMockRepo(t)
+	ctx := context.Background()
+
+	cols := []string{"manuscript_id", "logged_viewers", "fan_viewers", "view_count", "avg_progress"}
+	rows := sqlmock.NewRows(cols).
+		AddRow(1, 10, 4, 100, 0.85).
+		AddRow(2, 0, 0, 0, nil)
+	mock.ExpectQuery(`FROM watch_history w`).WillReturnRows(rows)
+
+	fcols := []string{"date", "fans"}
+	frows := sqlmock.NewRows(fcols).AddRow("2025-01-14", 2)
+	mock.ExpectQuery(`COUNT\(DISTINCT w\.user_id\)`).WillReturnRows(frows)
+
+	result, err := repo.ManuscriptInsights(ctx, 1, 7)
+	require.NoError(t, err)
+	list := result["list"].([]map[string]interface{})
+	require.Len(t, list, 2)
+	assert.Equal(t, int64(1), list[0]["manuscriptId"])
+	assert.InDelta(t, 0.4, list[0]["fanRate"], 0.001)
+	assert.InDelta(t, 0.9, list[0]["guestRate"], 0.001)
+	assert.InDelta(t, 0.85, list[0]["avgProgress"], 0.001)
+	_, hasProgress := list[1]["avgProgress"]
+	assert.False(t, hasProgress)
+	ft := result["fanTrend"].(map[string]interface{})
+	assert.Len(t, ft["dates"], 7)
+	assert.Len(t, ft["fans"], 7)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 

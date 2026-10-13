@@ -14,10 +14,14 @@ func NewFollowService(repo *FollowRepository) *FollowService {
 }
 
 func (s *FollowService) Follow(ctx context.Context, followerID, followingID int64) error {
+	return s.FollowWithSource(ctx, followerID, followingID, 0)
+}
+
+func (s *FollowService) FollowWithSource(ctx context.Context, followerID, followingID, sourceManuscriptID int64) error {
 	if followerID == followingID {
 		return errors.New("cannot follow yourself")
 	}
-	return s.repo.Follow(ctx, followerID, followingID)
+	return s.repo.FollowWithSource(ctx, followerID, followingID, sourceManuscriptID)
 }
 
 func (s *FollowService) Unfollow(ctx context.Context, followerID, followingID int64) error {

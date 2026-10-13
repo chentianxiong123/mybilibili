@@ -35,48 +35,89 @@ func (r *Repository) Overview(ctx context.Context, userID int64, days int) (map[
 	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM follows WHERE following_id = $1`, userID).Scan(&totalFollowers)
 
 	start := time.Now().AddDate(0, 0, -days).Format("2006-01-02")
-	var viewsIncrease int64
+	prevStart := time.Now().AddDate(0, 0, -days*2).Format("2006-01-02")
+	var viewsIncrease, prevViews int64
 	r.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(view_count),0) FROM manuscript_daily_metrics WHERE user_id = $1 AND metric_date >= $2`, userID, start).Scan(&viewsIncrease)
+	r.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(view_count),0) FROM manuscript_daily_metrics WHERE user_id = $1 AND metric_date >= $2 AND metric_date < $3`, userID, prevStart, start).Scan(&prevViews)
 
 	var likesIncrease, coinsIncrease, collectionsIncrease, sharesIncrease int64
 	r.db.QueryRowContext(ctx, `
-		SELECT COALESCE(SUM(CASE WHEN i.interaction_type='LIKE' THEN 1 ELSE 0 END),0),
-		       COALESCE(SUM(CASE WHEN i.interaction_type='COIN' THEN 1 ELSE 0 END),0),
-		       COALESCE(SUM(CASE WHEN i.interaction_type='COLLECT' THEN 1 ELSE 0 END),0),
-		       COALESCE(SUM(CASE WHEN i.interaction_type='SHARE' THEN 1 ELSE 0 END),0)
+		SELECT COALESCE(SUM(CASE WHEN UPPER(i.interaction_type)='LIKE' THEN 1 ELSE 0 END),0),
+		       COALESCE(SUM(CASE WHEN UPPER(i.interaction_type)='COIN' THEN 1 ELSE 0 END),0),
+		       COALESCE(SUM(CASE WHEN UPPER(i.interaction_type)='COLLECT' THEN 1 ELSE 0 END),0),
+		       COALESCE(SUM(CASE WHEN UPPER(i.interaction_type)='SHARE' THEN 1 ELSE 0 END),0)
 		FROM user_interactions i JOIN manuscripts m ON i.target_id = m.id
 		WHERE m.user_id = $1 AND m.status = 3 AND i.target_type = 'MANUSCRIPT' AND DATE(i.created_at) >= $2`,
 		userID, start).Scan(&likesIncrease, &coinsIncrease, &collectionsIncrease, &sharesIncrease)
 
-	var commentsIncrease int64
+	var prevLikes, prevCoins, prevCollects, prevShares int64
+	r.db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(CASE WHEN UPPER(i.interaction_type)='LIKE' THEN 1 ELSE 0 END),0),
+		       COALESCE(SUM(CASE WHEN UPPER(i.interaction_type)='COIN' THEN 1 ELSE 0 END),0),
+		       COALESCE(SUM(CASE WHEN UPPER(i.interaction_type)='COLLECT' THEN 1 ELSE 0 END),0),
+		       COALESCE(SUM(CASE WHEN UPPER(i.interaction_type)='SHARE' THEN 1 ELSE 0 END),0)
+		FROM user_interactions i JOIN manuscripts m ON i.target_id = m.id
+		WHERE m.user_id = $1 AND m.status = 3 AND i.target_type = 'MANUSCRIPT' AND DATE(i.created_at) >= $2 AND DATE(i.created_at) < $3`,
+		userID, prevStart, start).Scan(&prevLikes, &prevCoins, &prevCollects, &prevShares)
+
+	var commentsIncrease, prevComments int64
 	r.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM comments c JOIN manuscripts m ON c.manuscript_id = m.id
 		WHERE m.user_id = $1 AND m.status = 3 AND DATE(c.created_at) >= $2`,
 		userID, start).Scan(&commentsIncrease)
+	r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM comments c JOIN manuscripts m ON c.manuscript_id = m.id
+		WHERE m.user_id = $1 AND m.status = 3 AND DATE(c.created_at) >= $2 AND DATE(c.created_at) < $3`,
+		userID, prevStart, start).Scan(&prevComments)
 
-	var followersIncrease int64
+	var danmakuIncrease, prevDanmaku int64
+	r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM danmaku d JOIN manuscripts m ON d.manuscript_id = m.id
+		WHERE m.user_id = $1 AND m.status = 3 AND DATE(d.created_at) >= $2`,
+		userID, start).Scan(&danmakuIncrease)
+	r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM danmaku d JOIN manuscripts m ON d.manuscript_id = m.id
+		WHERE m.user_id = $1 AND m.status = 3 AND DATE(d.created_at) >= $2 AND DATE(d.created_at) < $3`,
+		userID, prevStart, start).Scan(&prevDanmaku)
+
+	var followersIncrease, prevFollowers int64
 	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM follows WHERE following_id = $1 AND created_at >= $2`, userID, start).Scan(&followersIncrease)
+	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM follows WHERE following_id = $1 AND created_at >= $2 AND created_at < $3`, userID, prevStart, start).Scan(&prevFollowers)
+
+	var spaceVisits, prevSpaceVisits int64
+	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM space_visits WHERE host_user_id = $1 AND visit_date >= $2`, userID, start).Scan(&spaceVisits)
+	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM space_visits WHERE host_user_id = $1 AND visit_date >= $2 AND visit_date < $3`, userID, prevStart, start).Scan(&prevSpaceVisits)
 
 	return map[string]interface{}{
-		"totalViews":           totalViews,
-		"totalLikes":           totalLikes,
-		"totalCoins":           totalCoins,
-		"totalCollections":     totalCollections,
-		"totalShares":          totalShares,
-		"totalComments":        totalComments,
-		"totalManuscripts":     totalManuscripts,
-		"totalDanmaku":         totalDanmaku,
-		"totalFollowers":       totalFollowers,
-		"viewsIncrease":        viewsIncrease,
-		"likesIncrease":        likesIncrease,
-		"coinsIncrease":        coinsIncrease,
-		"collectionsIncrease":  collectionsIncrease,
-		"sharesIncrease":       sharesIncrease,
-		"commentsIncrease":     commentsIncrease,
-		"followersIncrease":    followersIncrease,
-		"danmakuIncrease":      int64(0),
-		"updateTime":           time.Now().Format("2006-01-02"),
-		"periodDays":           days,
+		"totalViews":          totalViews,
+		"totalLikes":          totalLikes,
+		"totalCoins":          totalCoins,
+		"totalCollections":    totalCollections,
+		"totalShares":         totalShares,
+		"totalComments":       totalComments,
+		"totalManuscripts":    totalManuscripts,
+		"totalDanmaku":        totalDanmaku,
+		"totalFollowers":      totalFollowers,
+		"viewsIncrease":       viewsIncrease,
+		"likesIncrease":       likesIncrease,
+		"coinsIncrease":       coinsIncrease,
+		"collectionsIncrease": collectionsIncrease,
+		"sharesIncrease":      sharesIncrease,
+		"commentsIncrease":    commentsIncrease,
+		"followersIncrease":   followersIncrease,
+		"danmakuIncrease":     danmakuIncrease,
+		"prevViews":           prevViews,
+		"prevLikes":           prevLikes,
+		"prevCoins":           prevCoins,
+		"prevCollections":     prevCollects,
+		"prevShares":          prevShares,
+		"prevComments":        prevComments,
+		"prevDanmaku":         prevDanmaku,
+		"prevFollowers":       prevFollowers,
+		"spaceVisits":         spaceVisits,
+		"prevSpaceVisits":     prevSpaceVisits,
+		"updateTime":          time.Now().Format("2006-01-02"),
+		"periodDays":          days,
 	}, nil
 }
 
@@ -102,10 +143,10 @@ func (r *Repository) Trend(ctx context.Context, userID int64, days int) (map[str
 	interactionMap := map[string]map[string]int64{}
 	rows, _ = r.db.QueryContext(ctx, `
 		SELECT DATE(i.created_at)::text,
-		       SUM(CASE WHEN i.interaction_type='LIKE' THEN 1 ELSE 0 END),
-		       SUM(CASE WHEN i.interaction_type='COIN' THEN 1 ELSE 0 END),
-		       SUM(CASE WHEN i.interaction_type='COLLECT' THEN 1 ELSE 0 END),
-		       SUM(CASE WHEN i.interaction_type='SHARE' THEN 1 ELSE 0 END)
+		       SUM(CASE WHEN UPPER(i.interaction_type)='LIKE' THEN 1 ELSE 0 END),
+		       SUM(CASE WHEN UPPER(i.interaction_type)='COIN' THEN 1 ELSE 0 END),
+		       SUM(CASE WHEN UPPER(i.interaction_type)='COLLECT' THEN 1 ELSE 0 END),
+		       SUM(CASE WHEN UPPER(i.interaction_type)='SHARE' THEN 1 ELSE 0 END)
 		FROM user_interactions i JOIN manuscripts m ON i.target_id = m.id
 		WHERE m.user_id = $1 AND m.status = 3 AND i.target_type = 'MANUSCRIPT' AND DATE(i.created_at) >= $2
 		GROUP BY DATE(i.created_at)`, userID, start)
@@ -146,8 +187,8 @@ func (r *Repository) Trend(ctx context.Context, userID int64, days int) (map[str
 	}
 
 	dates, views, likes, comments, followers, coins, collects, shares := []string{}, []int64{}, []int64{}, []int64{}, []int64{}, []int64{}, []int64{}, []int64{}
-	end := time.Now()
 	st := time.Now().AddDate(0, 0, -(days - 1))
+	end := st.AddDate(0, 0, days-1)
 	for d := st; !d.After(end); d = d.AddDate(0, 0, 1) {
 		ds := d.Format("2006-01-02")
 		dates = append(dates, ds)
@@ -209,7 +250,7 @@ func (r *Repository) Ranking(ctx context.Context, userID int64, sortBy string, l
 			"id": id, "title": title.String, "coverUrl": cover.String,
 			"viewCount": vc, "likeCount": lc, "commentCount": cc, "danmakuCount": dc,
 			"coinCount": coC, "collectCount": clC, "shareCount": shC,
-			"uploadTime": uploadTime.Time.Format("2006-01-02 15:04:05"),
+			"uploadTime":      uploadTime.Time.Format("2006-01-02 15:04:05"),
 			"interactionRate": rate,
 		})
 	}
@@ -238,7 +279,7 @@ func (r *Repository) LatestComments(ctx context.Context, userID int64, limit int
 		list = append(list, map[string]interface{}{
 			"id": id, "content": content, "manuscriptId": msID,
 			"manuscriptTitle": title, "username": username, "avatar": avatar.String,
-			"time": formatTimeAgo(ct),
+			"time":       formatTimeAgo(ct),
 			"createTime": ct.Format("2006-01-02 15:04:05"),
 		})
 	}
@@ -290,8 +331,8 @@ func (r *Repository) FansTrend(ctx context.Context, userID int64, days int) (map
 	running := currentFollowers - totalNet
 
 	dates, newF, unfollows, totalF := []string{}, []int64{}, []int64{}, []int64{}
-	end := time.Now()
 	st := time.Now().AddDate(0, 0, -(days - 1))
+	end := st.AddDate(0, 0, days-1)
 	for d := st; !d.After(end); d = d.AddDate(0, 0, 1) {
 		ds := d.Format("2006-01-02")
 		dates = append(dates, ds)
@@ -409,6 +450,130 @@ func (r *Repository) ManuscriptTrend(ctx context.Context, userID int64) (map[str
 	}, nil
 }
 
+// FansByManuscript 各稿件带来的涨粉数（来源归因，历史累积）。
+func (r *Repository) FansByManuscript(ctx context.Context, userID int64) (map[string]interface{}, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT f.source_manuscript_id, COUNT(*)
+		  FROM follows f
+		 WHERE f.following_id = $1 AND f.source_manuscript_id IS NOT NULL
+		 GROUP BY f.source_manuscript_id`, userID)
+	if err != nil {
+		return map[string]interface{}{"list": []map[string]interface{}{}}, nil
+	}
+	defer rows.Close()
+	list := []map[string]interface{}{}
+	for rows.Next() {
+		var mid, cnt int64
+		if err := rows.Scan(&mid, &cnt); err != nil {
+			continue
+		}
+		list = append(list, map[string]interface{}{"manuscriptId": mid, "fansGained": cnt})
+	}
+	return map[string]interface{}{"list": list}, nil
+}
+
+// ManuscriptInsights 各稿件洞察（粉丝观看率/游客播放占比/平均播放进度）+ 粉丝播放趋势。
+// 口径：watch_history 按（用户，稿件）去重记最新进度；fan=观看者已关注作者；
+// 游客播放≈总播放-登录观众数（钳制≥0）；平均进度=LEAST(进度，时长)/时长 的均值。
+func (r *Repository) ManuscriptInsights(ctx context.Context, userID int64, days int) (map[string]interface{}, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT w.manuscript_id,
+		       COUNT(*) AS logged_viewers,
+		       COUNT(*) FILTER (WHERE f.follower_id IS NOT NULL) AS fan_viewers,
+		       COALESCE(m.view_count,0) AS view_count,
+		       AVG(CASE WHEN COALESCE(m.duration_seconds,0) > 0
+		                THEN LEAST(w.progress_seconds, m.duration_seconds)::float / m.duration_seconds END) AS avg_progress
+		  FROM watch_history w
+		  JOIN manuscripts m ON m.id = w.manuscript_id
+		  LEFT JOIN follows f ON f.follower_id = w.user_id AND f.following_id = m.user_id
+		 WHERE m.user_id = $1 AND m.status = 3
+		 GROUP BY w.manuscript_id, m.view_count`, userID)
+	list := []map[string]interface{}{}
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var mid, logged, fans, views int64
+			var avgProgress sql.NullFloat64
+			if err := rows.Scan(&mid, &logged, &fans, &views, &avgProgress); err != nil {
+				continue
+			}
+			var fanRate, guestRate float64
+			if logged > 0 {
+				fanRate = float64(fans) / float64(logged)
+			}
+			denom := views
+			if denom < logged {
+				denom = logged
+			}
+			if denom > 0 {
+				guestViews := denom - logged
+				if guestViews < 0 {
+					guestViews = 0
+				}
+				guestRate = float64(guestViews) / float64(denom)
+			}
+			item := map[string]interface{}{
+				"manuscriptId": mid, "fanRate": fanRate, "guestRate": guestRate,
+			}
+			if avgProgress.Valid {
+				item["avgProgress"] = avgProgress.Float64
+			}
+			list = append(list, item)
+		}
+	}
+
+	// 粉丝播放趋势：每日去重粉丝观众数
+	start := time.Now().AddDate(0, 0, -(days - 1)).Format("2006-01-02")
+	fanMap := map[string]int64{}
+	frows, ferr := r.db.QueryContext(ctx, `
+		SELECT DATE(w.watched_at)::text, COUNT(DISTINCT w.user_id)
+		  FROM watch_history w
+		  JOIN manuscripts m ON m.id = w.manuscript_id
+		  JOIN follows f ON f.follower_id = w.user_id AND f.following_id = m.user_id
+		 WHERE m.user_id = $1 AND m.status = 3 AND DATE(w.watched_at) >= $2
+		 GROUP BY DATE(w.watched_at)`, userID, start)
+	if ferr == nil && frows != nil {
+		for frows.Next() {
+			var d string
+			var v int64
+			if err := frows.Scan(&d, &v); err == nil {
+				fanMap[d] = v
+			}
+		}
+		frows.Close()
+	}
+	dates, fans := []string{}, []int64{}
+	st := time.Now().AddDate(0, 0, -(days - 1))
+	end := st.AddDate(0, 0, days-1)
+	for d := st; !d.After(end); d = d.AddDate(0, 0, 1) {
+		ds := d.Format("2006-01-02")
+		dates = append(dates, ds)
+		fans = append(fans, fanMap[ds])
+	}
+	return map[string]interface{}{
+		"list":     list,
+		"fanTrend": map[string]interface{}{"dates": dates, "fans": fans},
+	}, nil
+}
+
+// Income 收益数据：期间总收益 + 自定义充电收益（分）。无充值能力时真实为 0。
+func (r *Repository) Income(ctx context.Context, userID int64, days int) (map[string]interface{}, error) {
+	start := time.Now().AddDate(0, 0, -days).Format("2006-01-02")
+	var totalCents, chargeCents int64
+	r.db.QueryRowContext(ctx,
+		`SELECT COALESCE(SUM(amount_cents),0) FROM income_records WHERE user_id = $1 AND DATE(created_at) >= $2`,
+		userID, start).Scan(&totalCents)
+	r.db.QueryRowContext(ctx,
+		`SELECT COALESCE(SUM(amount_cents),0) FROM income_records WHERE user_id = $1 AND type = $2 AND DATE(created_at) >= $3`,
+		userID, "custom_charge", start).Scan(&chargeCents)
+	return map[string]interface{}{
+		"totalAmount":  float64(totalCents) / 100,
+		"chargeAmount": float64(chargeCents) / 100,
+		"periodDays":   days,
+		"updateTime":   time.Now().Format("2006-01-02 15:04:05"),
+	}, nil
+}
+
 func formatTimeAgo(t time.Time) string {
 	d := time.Since(t)
 	if d.Minutes() < 1 {
@@ -478,4 +643,22 @@ func (s *Service) FansRanking(ctx context.Context, userID int64, typ string, lim
 
 func (s *Service) ManuscriptTrend(ctx context.Context, userID int64, days int) (map[string]interface{}, error) {
 	return s.repo.ManuscriptTrend(ctx, userID)
+}
+
+// FansByManuscript 各稿件带来的涨粉数（来源归因，历史累积），返回 manuscript_id -> 涨粉数。
+func (s *Service) FansByManuscript(ctx context.Context, userID int64) (map[string]interface{}, error) {
+	return s.repo.FansByManuscript(ctx, userID)
+}
+
+// ManuscriptInsights 各稿件洞察 + 粉丝播放趋势。
+func (s *Service) ManuscriptInsights(ctx context.Context, userID int64, days int) (map[string]interface{}, error) {
+	if days != 7 && days != 30 {
+		days = 7
+	}
+	return s.repo.ManuscriptInsights(ctx, userID, days)
+}
+
+// Income 收益数据：总收益与自定义充电（期间内，分）。
+func (s *Service) Income(ctx context.Context, userID int64, days int) (map[string]interface{}, error) {
+	return s.repo.Income(ctx, userID, days)
 }
