@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { MoreFilled } from '@element-plus/icons-vue'
+import { ref } from 'vue'
+import VPopover from '@/components/teriteri/popover/VPopover.vue'
 
 const props = defineProps({
   collections: {
@@ -13,6 +15,10 @@ const props = defineProps({
   activeCategory: {
     type: String,
     required: true
+  },
+  activeFolderId: {
+    type: [String, Number],
+    default: null
   },
   myCollectionsExpanded: {
     type: Boolean,
@@ -31,246 +37,267 @@ const emit = defineEmits([
   'open-edit',
   'delete-folder'
 ])
+
+const isFavnavOpen = ref(true)
+
+const placeholderCover = '/assets/teriteri/img/bilibili/video-placeholder.png'
 </script>
 
 <template>
-  <div class="favorites-sidebar">
-    <div class="sidebar-section">
-      <div class="section-header">
-        <div class="section-title">我的创建</div>
-        <div class="section-action" @click="emit('toggle-expand')">{{ myCollectionsExpanded ? '▼' : '▲' }}</div>
+  <div class="fav-sidenav">
+    <div class="nav-container">
+      <!-- 我的创建分组标题 -->
+      <div class="favlist-title" @click="emit('toggle-expand')">
+        <p>{{ isOwnSpace ? '我的创建' : 'TA的创建' }}</p>
+        <i class="iconfont icon-xiajiantou" :style="myCollectionsExpanded ? 'transform: rotate(180deg);' : ''"></i>
       </div>
 
-      <div v-if="isOwnSpace && myCollectionsExpanded" class="new-collection-btn" @click="emit('open-create')">
-        <div class="new-collection-icon">+</div>
-        <div class="new-collection-text">新建收藏夹</div>
+      <div class="fav-list-container" v-show="myCollectionsExpanded">
+        <!-- 新建收藏夹（仅本人） -->
+        <div class="nav-title nav-add" v-if="isOwnSpace" @click="emit('open-create')">
+          <svg t="1711976556258" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4395" width="18" height="18"><path d="M512 62c247.5 0 450 202.5 450 450s-202.5 450-450 450-450-202.5-450-450 202.5-450 450-450z m28.125 421.875V287c0-16.875-11.25-28.125-28.125-28.125s-28.125 11.25-28.125 28.125v196.875H287c-16.875 0-28.125 11.25-28.125 28.125s11.25 28.125 28.125 28.125h196.875V737c0 16.875 11.25 28.125 28.125 28.125s28.125-11.25 28.125-28.125V540.125H737c16.875 0 28.125-11.25 28.125-28.125s-11.25-28.125-28.125-28.125H540.125z" p-id="4396"></path></svg>
+          <div class="text">新建收藏夹</div>
+        </div>
+
+        <ul class="fav-list">
+          <li
+            class="fav-item"
+            :class="{'cur': activeFolderId !== null && Number(activeFolderId) === Number(item.id), 'owner': isOwnSpace}"
+            v-for="(item, index) in collections"
+            :key="index"
+            @click="emit('select-folder', item)"
+          >
+            <img v-if="item.cover" loading="lazy" decoding="async" :src="item.cover" alt="" class="folder-cover">
+            <span v-else class="folder-cover placeholder"><i class="iconfont icon-wenjianjia"></i></span>
+            <a class="text" :title="item.name">{{ item.name }}</a>
+            <span class="num">{{ item.count }}</span>
+            <VPopover class="more" popStyle="z-index: 1000;">
+              <template #reference>
+                <div class="tool-more">
+                  <i class="iconfont icon-gengduo"></i>
+                </div>
+              </template>
+              <template #content>
+                <ul class="be-dropdown-menu">
+                  <li class="be-dropdown-item" @click="emit('open-edit', item)">编辑信息</li>
+                  <li class="be-dropdown-item be-dropdown-item-delimiter" @click="emit('delete-folder', item)">删除</li>
+                </ul>
+              </template>
+            </VPopover>
+          </li>
+        </ul>
       </div>
+    </div>
 
-      <div v-if="myCollectionsExpanded" class="collection-list">
-        <div
-          v-for="collection in collections"
-          :key="collection.name"
-          :class="['collection-item', { active: activeCategory === collection.name }]"
-          @click="emit('select-folder', collection)"
-        >
-          <div class="collection-content">
-            <span class="collection-icon">{{ collection.icon }}</span>
-            <span class="collection-name">{{ collection.name }}</span>
-          </div>
-          <div class="collection-actions" @click.stop>
-            <el-dropdown trigger="hover" placement="bottom-end">
-              <el-button link class="more-btn">
-                <el-icon><MoreFilled /></el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="emit('open-edit', collection)">
-                    编辑信息
-                  </el-dropdown-item>
-                  <el-dropdown-item divided @click="emit('delete-folder', collection)">
-                    删除
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </div>
-          <span class="collection-count">{{ collection.count }}</span>
-        </div>
-
-        <div
-          v-for="favorite in myFavorites"
-          :key="favorite.name"
-          :class="['favorite-item', { active: activeCategory === favorite.name }]"
-          @click="emit('select-folder', favorite)"
-        >
-          <div class="favorite-content">
-            <span class="favorite-icon">{{ favorite.icon }}</span>
-            <span class="favorite-name">{{ favorite.name }}</span>
-          </div>
-          <div class="favorite-actions" @click.stop>
-            <el-dropdown trigger="hover" placement="bottom-end">
-              <el-button link class="more-btn">
-                <el-icon><MoreFilled /></el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="emit('open-edit', favorite)">
-                    编辑信息
-                  </el-dropdown-item>
-                  <el-dropdown-item divided @click="emit('delete-folder', favorite)">
-                    删除
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </div>
-          <span class="favorite-count">{{ favorite.count }}</span>
-        </div>
+    <!-- TA的收藏分组 -->
+    <div class="nav-container" v-if="myFavorites.length">
+      <div class="favlist-title" @click="isFavnavOpen = !isFavnavOpen">
+        <p>TA的收藏</p>
+        <i class="iconfont icon-xiajiantou" :style="isFavnavOpen ? 'transform: rotate(180deg);' : ''"></i>
+      </div>
+      <div class="fav-list-container" v-show="isFavnavOpen">
+        <ul class="fav-list">
+          <li
+            class="fav-item"
+            :class="{'cur': activeFolderId !== null && Number(activeFolderId) === Number(item.id)}"
+            v-for="(item, index) in myFavorites"
+            :key="index"
+            @click="emit('select-folder', item)"
+          >
+            <span class="folder-cover placeholder"><i class="iconfont icon-wenjianjia"></i></span>
+            <a class="text" :title="item.name">{{ item.name }}</a>
+            <span class="num">{{ item.count }}</span>
+          </li>
+        </ul>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.favorites-sidebar {
+.fav-sidenav {
   width: 220px;
-  background-color: #fafafa;
-  border-radius: 8px;
-  padding: 16px;
+  flex-shrink: 0;
+  border-right: 1px solid #e5e9ef;
+  font-size: 14px;
+  color: #222;
 }
 
-.sidebar-section {
-  margin-bottom: 20px;
+.nav-container {
+  border-bottom: 1px solid #e5e9ef;
 }
 
-.section-header {
+.favlist-title {
+  padding-right: 11px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-}
-
-.section-action {
   cursor: pointer;
-  color: #9499a0;
-  font-size: 12px;
-}
-
-.new-collection-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  margin-top: 10px;
-  margin-bottom: 12px;
-  cursor: pointer;
+  height: 54px;
+  padding-left: 19px;
+  line-height: 54px;
   font-size: 14px;
-  color: #666;
-  border: 1px dashed #e0e0e0;
-  border-radius: 4px;
-  transition: all 0.3s ease;
+  color: #99a2aa;
 }
 
-.new-collection-btn:hover {
-  color: #00aeec;
-  border-color: #00aeec;
-  background-color: rgba(0, 174, 236, 0.05);
-}
-
-.new-collection-icon {
-  font-size: 16px;
-  color: #9499a0;
-}
-
-.new-collection-text {
-  font-size: 14px;
-}
-
-.collection-list {
-  margin-bottom: 20px;
-}
-
-.collection-item, .favorite-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  margin-bottom: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  color: #666;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  flex-direction: row;
-}
-
-.collection-content, .favorite-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0;
+.favlist-title p {
   margin: 0;
-  flex: 1;
-  overflow: hidden;
-  justify-content: flex-start;
-  flex-direction: row;
 }
 
-.collection-count, .favorite-count {
-  font-size: 12px;
-  color: #9499a0;
+.fav-list-container {
+  position: relative;
+  max-height: 420px;
+  margin-bottom: 10px;
+  overflow: visible;
+}
+
+.nav-title {
+  position: relative;
+  height: 44px;
+  padding-left: 20px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.nav-add .icon {
+  fill: #cbd0d8;
+  margin-right: 10px;
+}
+
+.nav-add .icon:hover {
+  fill: #97a2ab;
+}
+
+.nav-title .text {
+  display: block;
+  line-height: 24px;
+  color: #222;
+}
+
+.fav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fav-item {
+  position: relative;
+  padding-left: 20px;
+  padding-right: 8px;
+  transition: background-color .3s ease;
   white-space: nowrap;
+  font-size: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  height: 44px;
+  cursor: pointer;
+}
+
+.fav-item:hover {
+  background-color: #f4f5f7;
+}
+
+.fav-item.cur {
+  background-color: #FF7DA1;
+}
+
+.fav-item.cur .icon-gengduo, .fav-item.cur svg, .fav-item.cur .num, .fav-item.cur .text {
+  color: #fff;
+  fill: #fff;
+}
+
+.folder-cover {
+  width: 32px;
+  height: 32px;
+  border-radius: 3px;
+  object-fit: cover;
+  margin-right: 10px;
   flex-shrink: 0;
 }
 
-.collection-name, .favorite-name {
+.folder-cover.placeholder {
+  background: #e5e9ef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #99a2aa;
+  font-size: 16px;
+}
+
+.fav-item .text {
+  display: inline-block;
+  line-height: 44px;
+  flex: 1;
+  margin-right: 5px;
   font-size: 14px;
-  white-space: nowrap;
+  vertical-align: middle;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1;
-  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  min-width: 0;
 }
 
-.collection-item:hover, .favorite-item:hover {
-  background-color: rgba(0, 174, 236, 0.1);
-  color: #00aeec;
-}
-
-.collection-item.active, .favorite-item.active {
-  background-color: #00aeec;
-  color: #fff;
-}
-
-.collection-icon, .favorite-icon {
-  font-size: 16px;
-  min-width: 16px;
+.fav-item .num {
+  display: inline-block;
+  width: 32px;
+  font-size: 12px;
+  color: #99a2aa;
+  vertical-align: middle;
   text-align: center;
-}
-
-.collection-item.active .collection-count, .favorite-item.active .favorite-count {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.favorite-actions,
-.collection-actions {
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  margin-right: 4px;
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
 }
 
-.favorite-item:hover .favorite-actions,
-.collection-item:hover .collection-actions {
-  opacity: 1;
+.owner:hover .num {
+  display: none;
 }
 
-.favorite-actions .more-btn,
-.collection-actions .more-btn {
-  padding: 2px 4px;
-  color: #666;
-  font-size: 16px;
+.fav-item .more {
+  display: none !important;
 }
 
-.favorite-actions .more-btn:hover,
-.collection-actions .more-btn:hover {
-  background-color: rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+.owner:hover .more {
+  display: inline-block !important;
+  margin-left: 8px;
 }
 
-.favorite-item.active .favorite-actions .more-btn,
-.collection-item.active .collection-actions .more-btn {
-  color: #fff;
+.tool-more {
+  cursor: pointer;
 }
 
-.favorite-item.active .favorite-actions .more-btn:hover,
-.collection-item.active .collection-actions .more-btn:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+.icon-gengduo {
+  color: #999;
+}
+
+.be-dropdown-menu {
+  padding: 6px 0;
+  list-style: none;
+  margin: 0;
+}
+
+.be-dropdown-item {
+  height: 40px;
+  padding: 0 20px;
+  line-height: 40px;
+  text-align: center;
+  font-size: 14px;
+  color: #222;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background-color .2s ease;
+  cursor: pointer;
+}
+
+.be-dropdown-item:hover {
+  color: #fb7299;
+  background-color: #f0f0f0;
+}
+
+.be-dropdown-item.be-dropdown-item-delimiter {
+  border-bottom: 1px solid #e5e9ef;
 }
 </style>

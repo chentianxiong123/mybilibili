@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"mybilibili/core/internal/comment"
 	"mybilibili/core/internal/user"
@@ -1423,26 +1424,46 @@ func (h *ManuscriptHTTPHandler) handleFavoriteFolderVideos(w http.ResponseWriter
 		httputil.WriteJSON(w, http.StatusForbidden, map[string]interface{}{"code": 403, "message": "forbidden", "data": nil})
 		return
 	}
-	sortOrder := r.URL.Query().Get("sortOrder")
-	order := "DESC"
-	if strings.EqualFold(sortOrder, "asc") {
-		order = "ASC"
+	// 排序：latest 最新收藏(默认) / earliest 最早收藏 / play 最多播放 / publish 最新发布
+	sortOrder := strings.ToLower(r.URL.Query().Get("sortOrder"))
+	orderClause := "ffv.created_at DESC"
+	switch sortOrder {
+	case "earliest":
+		orderClause = "ffv.created_at ASC"
+	case "play":
+		orderClause = "m.view_count DESC, ffv.created_at DESC"
+	case "publish":
+		orderClause = "m.created_at DESC, ffv.created_at DESC"
 	}
 	rows, err := h.db.QueryContext(r.Context(),
-		`SELECT manuscript_id, created_at FROM favorite_folder_videos WHERE folder_id = $1 ORDER BY created_at `+order, id)
+		`SELECT ffv.manuscript_id, ffv.created_at AS collect_time
+		 FROM favorite_folder_videos ffv
+		 JOIN manuscripts m ON m.id = ffv.manuscript_id
+		 WHERE ffv.folder_id = $1 ORDER BY `+orderClause, id)
 	if err != nil {
 		errors.WriteHTTPError(w, errors.ErrInternal("database error"))
 		return
 	}
 	defer rows.Close()
 	ids := []int64{}
+	collectTimes := map[int64]string{}
 	for rows.Next() {
 		var mid int64
-		var createdAt any
-		_ = rows.Scan(&mid, &createdAt)
+		var collectTime any
+		_ = rows.Scan(&mid, &collectTime)
 		ids = append(ids, mid)
+		if ct, ok := collectTime.(time.Time); ok {
+			collectTimes[mid] = ct.Format(time.RFC3339)
+		}
 	}
 	list := h.manuscriptsByIDs(r.Context(), ids)
+	for _, ms := range list {
+		if idVal, ok := ms["id"].(int64); ok {
+			if ct, ok := collectTimes[idVal]; ok {
+				ms["collect_time"] = ct
+			}
+		}
+	}
 	httputil.WriteOK(w, list)
 }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { hasAuthSession } from "@/utils/auth.ts"
+import { getCurrentUserId, hasAuthSession } from "@/utils/auth.ts"
 import { useAuth } from '@/composables/useAuth'
 import { safeStorage } from '@/utils/safeStorage'
 import { ref, computed, onMounted, watch } from 'vue'
@@ -49,8 +49,11 @@ const { user: currentUser } = useAuth()
 // 当前用户ID，从路由参数或本地存储获取
 const userId = ref(route.params.id || currentUser.value?.id)
 
-// 当前登录用户ID
-const currentUserId = computed(() => currentUser.value?.id)
+// 当前登录用户ID：优先 cookie(user_info)，兼容 localStorage
+const currentUserId = computed(() => {
+  if (currentUser.value?.id) return currentUser.value.id
+  return getCurrentUserId()
+})
 
 // 判断是否是自己的空间
 const isOwnSpace = computed(() => {
@@ -511,7 +514,8 @@ const handleVideoSearch = async () => {
 // 监听路由参数变化
 watch(() => route.params.id, (newId) => {
   console.log('路由参数变化，新的用户ID:', newId)
-  userId.value = newId || JSON.parse(safeStorage.getItem('user'))?.id
+  const storedId = getCurrentUserId() || JSON.parse(safeStorage.getItem('user') || 'null')?.id
+  userId.value = newId || storedId
   if (userId.value) {
     loadUserInfo()
     loadUserVideos()
@@ -522,8 +526,13 @@ watch(() => route.params.id, (newId) => {
 
 // 在组件挂载时加载数据
 onMounted(() => {
-  // 如果watch已经触发，这里不再重复加载
+  // SSR 阶段 currentUser/userId 可能为空，客户端再兜底一次
+  const watchLoaded = Boolean(userId.value)
   if (!userId.value) {
+    userId.value = route.params.id || getCurrentUserId()
+  }
+  // 如果watch已经触发（已加载数据），这里不再重复加载
+  if (!watchLoaded && userId.value) {
     loadUserInfo()
     loadUserVideos()
     loadFollowingList()

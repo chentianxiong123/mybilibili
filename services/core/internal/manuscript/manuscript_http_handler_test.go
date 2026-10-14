@@ -793,7 +793,7 @@ func TestHTTPHandler_FavoriteFolderVideos(t *testing.T) {
 	h, mock := newHTTPHandler(t)
 
 	mock.ExpectQuery(`SELECT user_id FROM favorite_folders WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(int64(10)))
-	mock.ExpectQuery(`SELECT manuscript_id, created_at FROM favorite_folder_videos`).WillReturnRows(sqlmock.NewRows([]string{"manuscript_id", "created_at"}).
+	mock.ExpectQuery(`SELECT ffv.manuscript_id, ffv.created_at AS collect_time`).WillReturnRows(sqlmock.NewRows([]string{"manuscript_id", "collect_time"}).
 		AddRow(int64(1), time.Now()))
 
 	req := newReq("GET", "/api/v1/manuscript/favorite/folders/1/videos")
@@ -1097,7 +1097,7 @@ func TestHTTPHandler_FavoriteFolderVideos_QueryError(t *testing.T) {
 	h, mock := newHTTPHandler(t)
 
 	mock.ExpectQuery(`SELECT user_id FROM favorite_folders WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(int64(10)))
-	mock.ExpectQuery(`SELECT manuscript_id, created_at FROM favorite_folder_videos`).WillReturnError(sql.ErrConnDone)
+	mock.ExpectQuery(`SELECT ffv.manuscript_id, ffv.created_at AS collect_time`).WillReturnError(sql.ErrConnDone)
 
 	req := newReq("GET", "/api/v1/manuscript/favorite/folders/1/videos")
 	req.Header.Set("X-User-Id", "10")

@@ -31,18 +31,19 @@ const router = useRouter()
 // 收藏数据
 const favorites = ref({
   activeCategory: '默认收藏夹',
+  activeFolderId: null,
   myCollectionsExpanded: true,
   myCollections: [],
   myFavorites: [],
   videos: [],
-  sortOptions: ['最新收藏', '最早收藏'],
+  sortOptions: ['最新收藏', '最多播放', '最新发布'],
   activeSort: '最新收藏',
   searchKeyword: ''
 })
 
 // 监听收藏排序变化
 watch(() => favorites.value.activeSort, () => {
-  const activeFolder = favorites.value.myCollections.find(f => f.name === favorites.value.activeCategory)
+  const activeFolder = favorites.value.myCollections.find(f => f.id === favorites.value.activeFolderId)
   if (activeFolder) {
     loadFavoriteFolderVideos(activeFolder.id)
   }
@@ -150,14 +151,21 @@ const formatDate = (dateString) => {
 const loadFavoriteFolderVideos = async (folderId) => {
   props.loading.favorites = true
   try {
-    const sortOrder = favorites.value.activeSort === '最早收藏' ? 'asc' : 'desc'
+    const sortMap = {
+      '最新收藏': 'latest',
+      '最早收藏': 'earliest',
+      '最多播放': 'play',
+      '最新发布': 'publish'
+    }
+    const sortOrder = sortMap[favorites.value.activeSort] || 'latest'
     const response = await interactionApi.getFavoriteFolderVideos(folderId, 1, 1000, sortOrder)
     if (response.code === 200) {
       // 处理视频数据，添加date字段
-      const videos = response.data.map(video => {
+      const videos = (response.data || []).map(video => {
         return {
           ...video,
-          date: formatDate(video.createdAt || video.collectTime)
+          collectTime: video.collectTime || video.collect_time,
+          date: formatDate(video.collectTime || video.collect_time || video.createdAt)
         }
       })
       favorites.value.videos = videos
@@ -179,6 +187,7 @@ const loadFavoriteFolders = async () => {
         id: folder.id,
         name: folder.name,
         count: folder.video_count || 0,
+        cover: folder.cover || '',
         icon: '📁'
       }))
 
@@ -209,6 +218,7 @@ const loadFavoriteFolders = async () => {
       // 根据当前选中的收藏夹加载视频列表
       const activeFolder = userFolders.find(folder => folder.name === favorites.value.activeCategory)
       if (activeFolder) {
+        favorites.value.activeFolderId = activeFolder.id
         await loadFavoriteFolderVideos(activeFolder.id)
       }
     }
@@ -337,6 +347,7 @@ const selectFavoriteFolder = (collection) => {
     toggleBatchMode()
   }
   favorites.value.activeCategory = collection.name
+  favorites.value.activeFolderId = collection.id
   loadFavoriteFolderVideos(collection.id)
 }
 
@@ -372,6 +383,7 @@ watch(() => props.userId, () => {
         :collections="favorites.myCollections"
         :my-favorites="favorites.myFavorites"
         :active-category="favorites.activeCategory"
+        :active-folder-id="favorites.activeFolderId"
         :my-collections-expanded="favorites.myCollectionsExpanded"
         :is-own-space="isOwnSpace"
         @toggle-expand="favorites.myCollectionsExpanded = !favorites.myCollectionsExpanded"
@@ -388,12 +400,14 @@ watch(() => props.userId, () => {
         :batch-mode="batchMode"
         :selected-favorites="selectedFavorites"
         :active-category="favorites.activeCategory"
+        :active-folder-id="favorites.activeFolderId"
         :active-sort="favorites.activeSort"
         :sort-options="favorites.sortOptions"
         :search-keyword="favorites.searchKeyword"
         :user-info="userInfo"
         :collections="favorites.myCollections"
         :my-favorites="favorites.myFavorites"
+        :is-own-space="isOwnSpace"
         @toggle-batch="toggleBatchMode"
         @toggle-select="toggleSelectFavorite"
         @select-all="selectAllFavorites"
