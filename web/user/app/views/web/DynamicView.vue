@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { hasAuthSession } from '@/utils/auth.ts'
+import { getSessionUser, hasAuthSession } from '@/utils/auth.ts'
 import { safeStorage } from '@/utils/safeStorage'
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -264,20 +264,28 @@ const goToSearch = (keyword) => {
 }
 
 const initUserInfo = () => {
-  const userData = safeStorage.getItem('user')
+  if (!hasAuthSession()) return
 
-  if (hasAuthSession() && userData) {
+  let user = null
+  const userData = safeStorage.getItem('user')
+  if (userData) {
     try {
-      const user = JSON.parse(userData)
-      if (!user.id && user.user_id) {
-        user.id = user.user_id
-      }
-      userStore.setUserInfo(user)
-      userStore.setLoginStatus(true)
+      user = JSON.parse(userData)
     } catch (error) {
       console.error('解析用户信息失败:', error)
     }
   }
+  // Cookie 登录态(query 里是 user_info cookie)优先级更高，localStorage 兜底
+  const sessionUser = getSessionUser()
+  if (sessionUser?.id) {
+    user = { ...user, ...sessionUser }
+  }
+  if (!user) return
+  if (!user.id && user.user_id) {
+    user.id = user.user_id
+  }
+  userStore.setUserInfo(user)
+  userStore.setLoginStatus(true)
 }
 
 onMounted(() => {
