@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Top, MoreFilled, Delete, VideoPlay, Share, ChatDotRound, Star } from '@element-plus/icons-vue'
+import { Top, MoreFilled, Delete, Share, ChatDotRound } from '@element-plus/icons-vue'
 import { dynamicApi } from '@/api/dynamic.ts'
 import CommentSystem from '@/components/CommentSystem.vue'
 
@@ -25,6 +25,20 @@ const router = useRouter()
 
 // 动态数据
 const dynamics = ref([])
+
+// 左侧筛选：全部 / 视频
+const activeFilter = ref('all')
+const filterOptions = [
+  { key: 'all', label: '全部' },
+  { key: 'video', label: '视频' }
+]
+
+const filteredDynamics = computed(() => {
+  if (activeFilter.value === 'video') {
+    return dynamics.value.filter(d => d.video)
+  }
+  return dynamics.value
+})
 
 // 评论展开状态管理
 const expandedComments = ref(new Set())
@@ -69,8 +83,13 @@ const handleDeleteDynamic = async (dynamicId) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    dynamics.value = dynamics.value.filter(d => d.id !== dynamicId)
-    ElMessage.success('删除成功')
+    const res = await dynamicApi.deleteDynamic(dynamicId)
+    if (res.code === 200) {
+      dynamics.value = dynamics.value.filter(d => d.id !== dynamicId)
+      ElMessage.success('删除成功')
+    } else {
+      ElMessage.error(res.message || '删除失败')
+    }
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
@@ -119,12 +138,43 @@ const toggleComments = (dynamic) => {
   }
 }
 
-// 格式化时间
+// 格式化时间：MM月DD日
 const formatDynamicTime = (timeStr) => {
   const date = new Date(timeStr)
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${month}月${day}日`
+}
+
+// 时间行：纯动态只有时间，带视频的加动作描述（与真站一致）
+const formatHeaderLine = (dynamic) => {
+  const time = formatDynamicTime(dynamic.createTime)
+  if (dynamic.video) {
+    return `${time} · 投稿了视频`
+  }
+  if (dynamic.images && dynamic.images.length) {
+    return `${time} · 投稿了图文`
+  }
+  return time
+}
+
+// 格式化播放数（万）
+const formatNumber = (num) => {
+  if (!num) return 0
+  if (num >= 10000) {
+    return (num / 10000).toFixed(1).replace(/\.0$/, '') + '万'
+  }
+  return num
+}
+
+// 打开视频
+const openVideo = (videoId) => {
+  if (videoId) router.push(`/manuscript/${videoId}`)
+}
+
+// 打开图片预览（点击放大）
+const previewImage = (url) => {
+  window.open(url, '_blank')
 }
 
 // 加载用户动态
@@ -138,7 +188,7 @@ const loadUserDynamics = async () => {
       // 后端返回的是 DynamicVO，直接映射到前端格式
       dynamics.value = (res.data || []).map(item => ({
         id: item.id,
-        type: item.dynamicType === 2 ? 'video' : (item.dynamicType === 1 ? 'original' : 'original'),
+        dynamicType: item.dynamicType,
         user: item.user ? {
           id: item.user.id,
           name: item.user.nickname || item.user.username,
@@ -152,12 +202,13 @@ const loadUserDynamics = async () => {
         content: item.content,
         isTop: false,
         images: item.imageUrls || [],
-        video: item.refVideoId ? {
-          id: item.refVideoId,
-          title: '引用视频',
-          cover: '',
-          duration: '',
-          views: 0
+        // 引用稿件：可能为空，不一定每条动态都带视频
+        video: item.refManuscriptId ? {
+          id: item.refManuscriptId,
+          title: item.refVideo?.title || '',
+          cover: item.refVideo?.cover || '',
+          duration: item.refVideo?.duration || '',
+          views: item.refVideo?.viewCount || 0
         } : null,
         stats: {
           shareCount: item.shareCount || 0,
@@ -188,124 +239,132 @@ watch(() => props.userId, () => {
 </script>
 
 <template>
-  <div class="dynamic-section">
-    <div v-if="loading.dynamics" class="loading-state">
-      <p>加载中...</p>
-    </div>
-    <div v-else-if="dynamics.length === 0" class="empty-state">
-      <p>暂无动态</p>
-    </div>
-    <div v-else class="dynamic-list">
-      <!-- 动态列表 -->
-      <div v-for="dynamic in dynamics" :key="dynamic.id" :class="['dynamic-card', { 'is-top': dynamic.isTop }]">
-        <!-- 置顶标记 -->
-        <div v-if="dynamic.isTop" class="top-badge">
-          <el-icon><Top /></el-icon>
-          <span>置顶</span>
+  <div class="dynamic-layout">
+    <!-- 左侧筛选栏：全部 / 视频 -->
+    <aside class="filter-sidebar">
+      <div class="filter-card">
+        <div
+          v-for="opt in filterOptions"
+          :key="opt.key"
+          :class="['filter-item', { active: activeFilter === opt.key }]"
+          @click="activeFilter = opt.key"
+        >
+          {{ opt.label }}
         </div>
+      </div>
+    </aside>
 
-        <!-- 头部 -->
-        <div class="dynamic-header-new">
-          <img loading="lazy" decoding="async" :src="dynamic.user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" :alt="dynamic.user?.name" class="user-avatar">
-          <div class="user-info">
-            <div class="user-name">{{ dynamic.user?.name || '未知用户' }}</div>
-            <div class="dynamic-time">{{ formatDynamicTime(dynamic.createTime) }}</div>
+    <!-- 动态流 -->
+    <div class="dynamic-feed">
+      <div v-if="loading.dynamics" class="loading-state">
+        <p>加载中...</p>
+      </div>
+      <div v-else-if="filteredDynamics.length === 0" class="empty-state">
+        <p>暂无动态</p>
+      </div>
+      <div v-else class="dynamic-list">
+        <!-- 动态列表 -->
+        <div v-for="dynamic in filteredDynamics" :key="dynamic.id" class="dynamic-card">
+          <!-- 置顶标记 -->
+          <div v-if="dynamic.isTop" class="top-badge">
+            <el-icon><Top /></el-icon>
+            <span>置顶</span>
           </div>
-          <!-- 更多菜单 -->
-          <el-dropdown trigger="click" @command="(cmd) => cmd === 'stick' ? handleStickDynamic(dynamic.id) : handleDeleteDynamic(dynamic.id)">
-            <button class="more-btn" @click.stop>
-              <el-icon><MoreFilled /></el-icon>
-            </button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item :command="'stick'">
-                  <el-icon><Top /></el-icon>
-                  <span>{{ dynamic.isTop ? '取消置顶' : '置顶' }}</span>
-                </el-dropdown-item>
-                <el-dropdown-item :command="'delete'" divided>
-                  <el-icon><Delete /></el-icon>
-                  <span>删除</span>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
 
-        <!-- 动态类型标签 -->
-        <div v-if="dynamic.type === 'share'" class="dynamic-type-label">
-          转发动态
-        </div>
-
-        <!-- 动态内容 -->
-        <div class="dynamic-content-new">
-          <!-- 转发动态 -->
-          <div v-if="dynamic.type === 'share' && dynamic.shareSource" class="share-card">
-            <div class="share-source">
-              <img loading="lazy" decoding="async" :src="dynamic.shareSource?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" class="source-avatar">
-              <span class="source-name">{{ dynamic.shareSource?.name || '未知来源' }}</span>
+          <!-- 头部 -->
+          <div class="dynamic-header-new">
+            <img loading="lazy" decoding="async" :src="dynamic.user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" :alt="dynamic.user?.name" class="user-avatar" @click="router.push(`/profile/${dynamic.user?.id}/home`)">
+            <div class="user-info">
+              <div class="user-name">{{ dynamic.user?.name || '未知用户' }}</div>
+              <div class="dynamic-time">{{ formatHeaderLine(dynamic) }}</div>
             </div>
-            <div class="share-content-wrapper">
-              <div class="share-text" :class="{ 'is-collapsed': !expandedDynamics.has(dynamic.id) && dynamic.shareSource?.hasMore }">
-                {{ dynamic.shareSource?.content || '' }}
-              </div>
-              <button v-if="dynamic.shareSource?.hasMore" class="expand-btn" @click="toggleExpand(dynamic.id)">
-                {{ expandedDynamics.has(dynamic.id) ? '收起' : '展开' }}
+            <!-- 更多菜单 -->
+            <el-dropdown trigger="click" @command="(cmd) => cmd === 'stick' ? handleStickDynamic(dynamic.id) : handleDeleteDynamic(dynamic.id)">
+              <button class="more-btn" @click.stop>
+                <el-icon><MoreFilled /></el-icon>
               </button>
-            </div>
-            <div v-if="dynamic.shareSource?.images && dynamic.shareSource.images.length" class="share-images">
-              <img loading="lazy" decoding="async" v-for="(img, idx) in dynamic.shareSource.images" :key="idx" :src="img" class="share-image">
-            </div>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item :command="'stick'">
+                    <el-icon><Top /></el-icon>
+                    <span>{{ dynamic.isTop ? '取消置顶' : '置顶' }}</span>
+                  </el-dropdown-item>
+                  <el-dropdown-item :command="'delete'" divided>
+                    <el-icon><Delete /></el-icon>
+                    <span>删除</span>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </div>
 
-          <!-- 视频动态 -->
-          <div v-else-if="dynamic.type === 'video' && dynamic.video" class="video-dynamic-new" @click="router.push(`/manuscript/${dynamic.video.id}`)">
-            <div class="video-card">
+          <!-- 正文 -->
+          <div class="dynamic-content-new">
+            <!-- 正文文字 -->
+            <div v-if="dynamic.content" class="original-content">
+              <div class="original-text">{{ dynamic.content }}</div>
+            </div>
+
+            <!-- 图文：图片网格 -->
+            <div v-if="dynamic.images && dynamic.images.length" class="original-images">
+              <img
+                loading="lazy"
+                decoding="async"
+                v-for="(img, idx) in dynamic.images"
+                :key="idx"
+                :src="img"
+                class="original-image"
+                @click="previewImage(img)"
+              >
+            </div>
+
+            <!-- 带视频：不一定每条动态都有，仅有引用稿件时渲染 -->
+            <div v-if="dynamic.video" class="video-card" @click="openVideo(dynamic.video.id)">
               <div class="video-cover-wrapper">
-                <img loading="lazy" decoding="async" :src="dynamic.video?.cover" class="video-cover">
-                <div class="video-duration">{{ dynamic.video?.duration }}</div>
-                <div class="video-play-icon">
-                  <el-icon><VideoPlay /></el-icon>
-                </div>
+                <img loading="lazy" decoding="async" v-if="dynamic.video.cover" :src="dynamic.video.cover" class="video-cover">
+                <div v-else class="video-cover-placeholder"></div>
+                <div v-if="dynamic.video.duration" class="video-duration">{{ dynamic.video.duration }}</div>
               </div>
               <div class="video-info-new">
-                <div class="video-title-new">{{ dynamic.video?.title }}</div>
-                <div class="video-views-new">{{ dynamic.video?.views }} 播放</div>
+                <div class="video-title-new">{{ dynamic.video.title }}</div>
+                <div class="video-stats">
+                  <span class="video-stat-item">
+                    <svg class="stat-icon" viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M4 6h13v12H4zM19 8l3-2v12l-3-2z"/></svg>
+                    {{ formatNumber(dynamic.video.views) }}
+                  </span>
+                  <span class="video-stat-item">
+                    <el-icon><ChatDotRound /></el-icon>
+                    {{ dynamic.stats?.commentCount || 0 }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- 原创内容 -->
-          <div v-else class="original-content">
-            <div class="original-text">{{ dynamic.content }}</div>
-            <div v-if="dynamic.images && dynamic.images.length" class="original-images">
-              <img loading="lazy" decoding="async" v-for="(img, idx) in dynamic.images" :key="idx" :src="img" class="original-image">
-            </div>
+          <!-- 操作栏 -->
+          <div class="dynamic-actions-new">
+            <button class="action-btn-new" @click="ElMessage.info('转发功能开发中')">
+              <el-icon><Share /></el-icon>
+              <span>{{ dynamic.stats?.shareCount > 0 ? dynamic.stats.shareCount : '转发' }}</span>
+            </button>
+            <button class="action-btn-new" :class="{ 'is-active': expandedComments.has(dynamic.id) }" @click="toggleComments(dynamic)">
+              <el-icon><ChatDotRound /></el-icon>
+              <span>{{ dynamic.stats?.commentCount > 0 ? `${dynamic.stats.commentCount} 条评论` : '评论' }}</span>
+            </button>
+            <button class="action-btn-new" :class="{ 'is-liked': dynamic.stats?.isLiked }" @click="handleLikeDynamic(dynamic)">
+              <svg class="thumb-icon" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M2 20h2V9H2v11zm20-10c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13.17 2 7.59 7.59C7.22 7.95 7 8.45 7 9v9c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1z"/></svg>
+              <span>{{ dynamic.stats?.likeCount > 0 ? dynamic.stats.likeCount : '点赞' }}</span>
+            </button>
           </div>
-        </div>
 
-        <!-- 操作栏 -->
-        <div class="dynamic-actions-new">
-          <button class="action-btn-new" @click="ElMessage.info('转发功能开发中')">
-            <el-icon><Share /></el-icon>
-            <span>{{ dynamic.stats?.shareCount > 0 ? dynamic.stats.shareCount : '转发' }}</span>
-          </button>
-          <button class="action-btn-new" :class="{ 'is-active': expandedComments.has(dynamic.id) }" @click="toggleComments(dynamic)">
-            <el-icon><ChatDotRound /></el-icon>
-            <span>{{ dynamic.stats?.commentCount > 0 ? `${dynamic.stats.commentCount} 条评论` : '评论' }}</span>
-          </button>
-          <button class="action-btn-new" :class="{ 'is-liked': dynamic.stats?.isLiked }" @click="handleLikeDynamic(dynamic)">
-            <el-icon><Star /></el-icon>
-            <span>{{ dynamic.stats?.likeCount > 0 ? dynamic.stats.likeCount : '点赞' }}</span>
-          </button>
-        </div>
-
-        <!-- 评论展开区域 -->
-        <div v-if="expandedComments.has(dynamic.id)" class="comment-section">
-          <CommentSystem
-            :target-type="'DYNAMIC'"
-            :target-id="dynamic.id"
-            placeholder="发一条友善的评论吧~"
-          />
+          <!-- 评论展开区域 -->
+          <div v-if="expandedComments.has(dynamic.id)" class="comment-section">
+            <CommentSystem
+              :target-type="'DYNAMIC'"
+              :target-id="dynamic.id"
+              placeholder="发一条友善的评论吧~"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -313,9 +372,57 @@ watch(() => props.userId, () => {
 </template>
 
 <style scoped>
-/* ==================== 动态页面新样式 ==================== */
+/* 整体布局：左筛选 + 动态流 */
+.dynamic-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
 
-/* 动态列表容器 */
+/* 左侧筛选栏 */
+.filter-sidebar {
+  width: 148px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 84px;
+}
+
+.filter-card {
+  background: #fff;
+  border-radius: 6px;
+  padding: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.filter-item {
+  padding: 12px 0;
+  text-align: center;
+  font-size: 15px;
+  color: #61666d;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-item:hover {
+  color: #00a1d6;
+}
+
+.filter-item.active {
+  background: #00a1d6;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* 动态流 */
+.dynamic-feed {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .dynamic-list {
   display: flex;
   flex-direction: column;
@@ -325,40 +432,29 @@ watch(() => props.userId, () => {
 /* 动态卡片 */
 .dynamic-card {
   background: #fff;
-  border-radius: 8px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  padding: 20px;
   position: relative;
-}
-
-.dynamic-card.is-top {
-  border: 1px solid #00aeec;
 }
 
 /* 置顶标记 */
 .top-badge {
-  position: absolute;
-  top: 12px;
-  right: 48px;
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
-  color: #00aeec;
-  background: rgba(0, 174, 236, 0.1);
-  padding: 2px 8px;
-  border-radius: 12px;
+  font-size: 13px;
+  color: #00a1d6;
+  margin-bottom: 12px;
 }
 
 .top-badge .el-icon {
-  font-size: 12px;
+  font-size: 14px;
 }
 
 /* 动态头部 */
 .dynamic-header-new {
   display: flex;
   align-items: center;
-  margin-bottom: 12px;
 }
 
 .dynamic-header-new .user-avatar {
@@ -367,6 +463,7 @@ watch(() => props.userId, () => {
   border-radius: 50%;
   margin-right: 12px;
   object-fit: cover;
+  cursor: pointer;
 }
 
 .dynamic-header-new .user-info {
@@ -376,12 +473,12 @@ watch(() => props.userId, () => {
 .dynamic-header-new .user-name {
   font-size: 15px;
   font-weight: 500;
-  color: #333;
+  color: #212121;
 }
 
 .dynamic-header-new .dynamic-time {
   font-size: 13px;
-  color: #999;
+  color: #9499a0;
   margin-top: 4px;
 }
 
@@ -391,7 +488,7 @@ watch(() => props.userId, () => {
   border: none;
   background: transparent;
   cursor: pointer;
-  color: #999;
+  color: #9499a0;
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -399,115 +496,70 @@ watch(() => props.userId, () => {
 }
 
 .dynamic-header-new .more-btn:hover {
-  background: #f5f5f5;
-  color: #666;
+  background: #f1f2f3;
+  color: #61666d;
 }
 
-/* 动态类型标签 */
-.dynamic-type-label {
-  font-size: 13px;
-  color: #999;
-  margin-bottom: 8px;
-  margin-left: 60px;
-}
-
-/* 动态内容区域 */
+/* 内容区域 */
 .dynamic-content-new {
   margin-left: 60px;
+  margin-top: 12px;
 }
 
-/* 转发卡片 */
-.share-card {
-  background: #f5f7fa;
-  border-radius: 8px;
-  padding: 12px;
-  margin-top: 8px;
+/* 正文 */
+.original-content {
+  margin-top: 0;
 }
 
-.share-source {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.source-avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  margin-right: 8px;
-  object-fit: cover;
-}
-
-.source-name {
-  font-size: 14px;
-  color: #00aeec;
-  font-weight: 500;
-}
-
-.share-content-wrapper {
-  font-size: 14px;
-  color: #333;
+.original-text {
+  font-size: 15px;
+  color: #212121;
   line-height: 1.6;
-}
-
-.share-text {
   white-space: pre-line;
+  word-break: break-word;
 }
 
-.share-text.is-collapsed {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.expand-btn {
-  color: #00aeec;
-  font-size: 13px;
-  cursor: pointer;
-  background: none;
-  border: none;
-  padding: 0;
-  margin-top: 8px;
-}
-
-.expand-btn:hover {
-  color: #0095d9;
-}
-
-/* 转发图片 */
-.share-images {
-  display: flex;
+/* 图片网格 */
+.original-images {
+  display: grid;
+  grid-template-columns: repeat(3, 150px);
   gap: 8px;
   margin-top: 12px;
-  flex-wrap: wrap;
 }
 
-.share-image {
-  width: 120px;
-  height: 120px;
+.original-image {
+  width: 150px;
+  height: 150px;
   object-fit: cover;
   border-radius: 4px;
   cursor: pointer;
+  background: #f1f2f3;
 }
 
-/* 视频动态新样式 */
-.video-dynamic-new {
-  margin-top: 8px;
+.original-image:hover {
+  opacity: 0.9;
 }
 
+/* 视频卡：白底边框横排（不一定每条动态都有） */
 .video-card {
   display: flex;
-  background: #f5f7fa;
-  border-radius: 8px;
+  margin-top: 12px;
+  background: #fff;
+  border: 1px solid #e3e5e7;
+  border-radius: 6px;
   overflow: hidden;
   cursor: pointer;
+  transition: background 0.2s;
+}
+
+.video-card:hover {
+  background: #f7f8fa;
 }
 
 .video-cover-wrapper {
   position: relative;
-  width: 160px;
-  height: 90px;
+  width: 240px;
+  height: 135px;
   flex-shrink: 0;
 }
 
@@ -515,132 +567,106 @@ watch(() => props.userId, () => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
+}
+
+.video-cover-placeholder {
+  width: 100%;
+  height: 100%;
+  background: #e3e5e7;
 }
 
 .video-duration {
   position: absolute;
-  bottom: 4px;
-  right: 4px;
+  bottom: 6px;
+  right: 6px;
   background: rgba(0, 0, 0, 0.8);
   color: #fff;
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 2px;
-}
-
-.video-play-icon {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 40px;
-  height: 40px;
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 20px;
+  font-size: 13px;
+  padding: 1px 6px;
+  border-radius: 4px;
 }
 
 .video-info-new {
   flex: 1;
-  padding: 12px;
+  min-width: 0;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  gap: 8px;
 }
 
 .video-title-new {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
-  color: #333;
-  margin-bottom: 8px;
+  color: #212121;
   line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.video-views-new {
-  font-size: 13px;
-  color: #999;
-}
-
-/* 原创内容 */
-.original-content {
-  margin-top: 8px;
-}
-
-.original-text {
-  font-size: 14px;
-  color: #333;
-  line-height: 1.6;
-  white-space: pre-line;
-}
-
-.original-images {
+.video-stats {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  flex-wrap: wrap;
+  gap: 24px;
+  font-size: 13px;
+  color: #9499a0;
 }
 
-.original-image {
-  width: 120px;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 4px;
-  cursor: pointer;
+.video-stat-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-/* 操作栏新样式 */
+.stat-icon {
+  display: inline-block;
+}
+
+/* 操作栏：三等分 */
 .dynamic-actions-new {
   display: flex;
-  justify-content: space-around;
-  padding-top: 16px;
-  margin-top: 16px;
   margin-left: 60px;
-  border-top: 1px solid #f0f0f0;
+  margin-top: 16px;
+  border-top: 1px solid #e3e5e7;
 }
 
 .action-btn-new {
+  flex: 1;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 8px 24px;
+  padding: 12px 0;
   border: none;
   background: transparent;
-  color: #666;
-  font-size: 13px;
+  color: #61666d;
+  font-size: 14px;
   cursor: pointer;
   border-radius: 4px;
-  transition: all 0.3s;
+  transition: color 0.2s;
 }
 
 .action-btn-new:hover {
-  background: #f5f5f5;
-  color: #00aeec;
+  color: #00a1d6;
 }
 
 .action-btn-new.is-liked {
-  color: #00aeec;
+  color: #00a1d6;
 }
 
 .action-btn-new.is-active {
-  color: #409eff;
+  color: #00a1d6;
 }
 
 .action-btn-new .el-icon {
-  font-size: 16px;
+  font-size: 18px;
 }
 
-/* 动态页面响应式设计 */
-
-
-/* 动态页面样式 */
-.dynamic-section {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.thumb-icon {
+  display: inline-block;
 }
 
 /* 加载状态和空状态 */
@@ -649,16 +675,39 @@ watch(() => props.userId, () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 40px 0;
+  padding: 60px 0;
   color: #9499a0;
   font-size: 14px;
+  background: #fff;
+  border-radius: 6px;
 }
 
 /* 评论展开区域样式 */
 .comment-section {
   margin-top: 16px;
   padding: 16px;
-  background-color: #f5f7fa;
-  border-radius: 8px;
+  background-color: #f6f7f8;
+  border-radius: 6px;
+}
+
+/* 窄屏：筛选栏收起为顶部横条 */
+@media (max-width: 900px) {
+  .dynamic-layout {
+    flex-direction: column;
+  }
+
+  .filter-sidebar {
+    width: 100%;
+    position: static;
+  }
+
+  .filter-card {
+    display: flex;
+    gap: 8px;
+  }
+
+  .filter-item {
+    padding: 8px 24px;
+  }
 }
 </style>
