@@ -7,6 +7,7 @@ const PATH_MAP: Record<string, string> = {
   '/video/getone': '/manuscript/',
   '/video/user-works': '/manuscript/user',
   '/video/user-love': '/manuscript/user/likes',
+  '/video/user-coins': '/manuscript/user/coins',
   '/video/user-collect': '/manuscript/user/collections',
   '/category/getall': '/category',
   '/search/hot/get': '/search/hot',

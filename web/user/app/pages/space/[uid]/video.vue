@@ -17,6 +17,18 @@
                 <div class="be-tab-cursor" :style="`transform: translateX(${63 * (rule - 1)}px); width: 48px;`"></div>
             </div>
             <div class="page-head__right">
+                <div class="search-box">
+                    <input
+                        type="text"
+                        class="search-input"
+                        v-model="keyword"
+                        placeholder="搜索TA的视频"
+                        @keyup.enter="doSearch"
+                    >
+                    <i class="iconfont icon-sousuo" @click="doSearch"></i>
+                    <i class="iconfont icon-guanbi" v-if="keyword" @click="clearSearch"></i>
+                </div>
+                <span class="play-all-btn" @click="playAll">播放全部</span>
                 <div class="item">
                     <svg t="1711895089920" class="icon" :class="{'active': type === 1}" @click="type = 1" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4335" width="18" height="18"><path d="M625.77777742 624.26074075H398.22222222V396.70518555h227.5555552z m0 318.57777813v-273.06666667H398.22222222v273.06666667z m45.51111147-273.06666667v273.06666667h216.17777813a56.95288853 56.95288853 0 0 0 56.88888853-56.8888896v-216.17777707zM398.22222222 78.12740741v273.06666667h227.5555552V78.12740741z m-45.51111147 318.57777814H79.64444409v227.5555552h273.06666666z m591.6444448 0H671.28888889v227.5555552h273.06666666z m-591.6444448-45.51111147V78.12740741H136.53333369a56.95288853 56.95288853 0 0 0-56.8888896 56.88888854v216.17777813z m0 318.57777813H79.64444409v216.17777707a56.95288853 56.95288853 0 0 0 56.8888896 56.8888896h216.17777706z m318.57777814-318.57777813h273.06666666V135.01629595a56.95288853 56.95288853 0 0 0-56.88888853-56.88888854H671.28888889z" p-id="4336"></path></svg>
                     <svg t="1711895113397" class="icon" :class="{'active': type === 2}" @click="type = 2" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4542" width="18" height="18"><path d="M206.92357428 322.6003941H39.07034557a35.44726567 35.44726567 0 0 1-35.44726569-35.44726569V119.29989969a35.44726567 35.44726567 0 0 1 35.44726569-35.44726571h167.85322871a35.44726567 35.44726567 0 0 1 35.44726571 35.44726571v167.85322872a35.44726567 35.44726567 0 0 1-35.44726571 35.44726569zM985.02580846 322.6003941H348.08709707a35.51677012 35.51677012 0 0 1-35.51677013-35.44726569V119.29989969a35.44726567 35.44726567 0 0 1 35.51677013-35.44726571h636.93871139a35.44726567 35.44726567 0 0 1 35.44726568 35.44726571v167.85322872a35.44726567 35.44726567 0 0 1-35.44726568 35.44726569zM985.02580846 631.40863228H348.08709707a35.51677012 35.51677012 0 0 1-35.51677013-35.51677014V428.10813786a35.51677012 35.51677012 0 0 1 35.51677013-35.51677014h636.93871139a35.44726567 35.44726567 0 0 1 35.44726568 35.51677014v167.78372428a35.44726567 35.44726567 0 0 1-35.44726568 35.51677014zM985.02580846 940.42538378H348.08709707a35.51677012 35.51677012 0 0 1-35.51677013-35.51677014v-167.78372426a35.44726567 35.44726567 0 0 1 35.51677013-35.44726571h636.93871139a35.44726567 35.44726567 0 0 1 35.44726568 35.44726571v167.78372426a35.44726567 35.44726567 0 0 1-35.44726568 35.51677014zM206.92357428 631.40863228H39.07034557a35.44726567 35.44726567 0 0 1-35.44726569-35.51677014V428.10813786a35.44726567 35.44726567 0 0 1 35.44726569-35.51677014h167.85322871a35.44726567 35.44726567 0 0 1 35.44726571 35.51677014v167.78372428a35.44726567 35.44726567 0 0 1-35.44726571 35.51677014zM206.92357428 940.14736602H39.07034557a35.44726567 35.44726567 0 0 1-35.44726569-35.44726571v-167.85322872a35.44726567 35.44726567 0 0 1 35.44726569-35.44726569h167.85322871a35.44726567 35.44726567 0 0 1 35.44726571 35.44726569v167.85322872a35.44726567 35.44726567 0 0 1-35.44726571 35.44726571z" p-id="4543"></path></svg>
@@ -26,7 +38,7 @@
         <div class="section">
             <div class="content">
                 <ul class="cube-list clearfix" :style="type === 1 ? '' : 'display: none;'">
-                    <li class="small-item" v-for="(item, index) in videoList" :key="index">
+                    <li class="small-item" v-for="(item, index) in displayList" :key="index">
                         <a :href="`/video/${item.video.vid}`" target="_blank" class="cover">
                             <img v-if="item.video.coverUrl" :src="item.video.coverUrl" alt="">
                             <span v-if="item.video.duration" class="length">{{ handleDuration(item.video.duration) }}</span>
@@ -42,7 +54,7 @@
                     </li>
                 </ul>
                 <ul class="list-list" :style="type === 2 ? '' : 'display: none;'">
-                    <li class="list-item clearfix" v-for="(item, index) in videoList" :key="index">
+                    <li class="list-item clearfix" v-for="(item, index) in displayList" :key="index">
                         <a :href="`/video/${item.video.vid}`" target="_blank" class="cover">
                             <img v-if="item.video.coverUrl" :src="item.video.coverUrl" alt="">
                             <span v-if="item.video.duration" class="length">{{ handleDuration(item.video.duration) }}</span>
@@ -94,12 +106,23 @@ export default {
             videoCount: 0,  // 用户视频投稿数量
             page: 1,    // 当前页码
             type: 1,    // 展示方式
+            keyword: '',    // 搜索关键词
         }
     },
     computed: {
         // 空间主人的uid
         uid() {
             return Number(this.$route.params.uid);
+        },
+        // 当前展示列表（搜索过滤后的）
+        displayList() {
+            const kw = this.keyword.trim().toLowerCase();
+            if (!kw) return this.videoList;
+            return this.videoList.filter(item => {
+                const title = (item.video && item.video.title) || '';
+                const descr = (item.video && item.video.descr) || '';
+                return title.toLowerCase().includes(kw) || descr.toLowerCase().includes(kw);
+            });
         }
     },
     methods: {
@@ -125,6 +148,26 @@ export default {
             // 清空数据
             this.videoList = [];
             this.getVideoList();
+        },
+
+        // 搜索
+        doSearch() {
+            // displayList computed 自动过滤，这里保留空实现保证语义完整
+        },
+
+        // 清空搜索
+        clearSearch() {
+            this.keyword = '';
+        },
+
+        // 播放全部（搜索范围内第一个视频）
+        playAll() {
+            const list = this.displayList;
+            if (list.length > 0) {
+                window.open(`/video/${list[0].video.vid}`, '_blank');
+            } else {
+                this.$message.info('暂无视频');
+            }
         },
         
         // 处理播放时长
@@ -250,6 +293,70 @@ ol, ul {
 
 .page-head__right .item {
     display: flex;
+}
+
+/* 搜索框 */
+.search-box {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    margin-right: 12px;
+}
+.search-input {
+    width: 160px;
+    height: 28px;
+    border: 1px solid #b8c0cc;
+    border-radius: 4px;
+    padding: 0 28px 0 28px;
+    font-size: 12px;
+    color: #222;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color .2s;
+}
+.search-input:focus {
+    border-color: var(--brand_pink);
+}
+.search-box .icon-sousuo {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #99a2aa;
+    font-size: 15px;
+    cursor: pointer;
+}
+.search-box .icon-guanbi {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #99a2aa;
+    font-size: 14px;
+    cursor: pointer;
+}
+.search-box .icon-sousuo:hover,
+.search-box .icon-guanbi:hover {
+    color: var(--brand_pink);
+}
+
+/* 播放全部 */
+.play-all-btn {
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 14px;
+    margin-right: 10px;
+    background: var(--brand_pink);
+    color: #fff;
+    font-size: 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    line-height: 28px;
+    transition: background .2s;
+}
+.play-all-btn:hover {
+    opacity: .9;
 }
 
 .page-head__right .icon {

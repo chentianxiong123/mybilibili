@@ -218,8 +218,8 @@ function adaptResponse(originalUrl: string, data: any) {
     const cards = list.map((m: any) => adaptCard(snakeToCamel(m)))
     return { code: 200, data: { list: cards, count: (data && data.total) || cards.length }, message: 'ok' }
   }
-  // 最近点赞/投币(/video/user-love, /video/user-collect) → card 数组
-  if (String(originalUrl || '').includes('/video/user-love') || String(originalUrl || '').includes('/video/user-collect')) {
+  // 最近点赞/投币(/video/user-love, /video/user-coins, /video/user-collect) → card 数组
+  if (String(originalUrl || '').includes('/video/user-love') || String(originalUrl || '').includes('/video/user-coins') || String(originalUrl || '').includes('/video/user-collect')) {
     const list = Array.isArray(data) ? data : (data && data.list ? data.list : [])
     // /favorites/{id}/videos 返回的已经是 teriteri 格式 {info, video, stats, user}，直接透传
     if (list.length > 0 && list[0].info && list[0].video) {
@@ -474,6 +474,33 @@ export function del<T = any>(url: string, config?: RequestConfig): Promise<Axios
 
   if (config && config.params) return instance.delete(url, { params: config.params })
   return instance.delete(url)
+}
+
+export function put<T = any>(url: string, data?: any, headers?: any): Promise<AxiosResponse<T>> {
+  const instance = axios.create({
+    baseURL: '/api',
+    timeout: 30000,
+    withCredentials: true
+  })
+
+  instance.interceptors.response.use(
+    (origResponse) => {
+      if (origResponse.data && origResponse.data.code !== undefined && origResponse.data.code !== 200) {
+        ElMessage.error(origResponse.data.message || '未知错误, 请打开控制台查看')
+      }
+      return origResponse
+    },
+    (err) => {
+      console.log(err)
+      handleAuthFailure(err)
+      return Promise.reject(err)
+    }
+  )
+
+  instance.defaults.withCredentials = true
+
+  if (headers) return instance.put(url, data, headers)
+  return instance.put(url, data)
 }
 
 // 通用请求（支持任意 method，如 DELETE /manuscript/{id}/like）

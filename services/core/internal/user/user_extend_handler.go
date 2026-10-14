@@ -835,7 +835,7 @@ func (h *UserExtendHandler) handleUserByID(w http.ResponseWriter, r *http.Reques
 	_ = h.svc.repo.db.QueryRowContext(r.Context(),
 		`SELECT COALESCE(SUM(like_count),0) FROM manuscripts WHERE user_id = $1`, id).Scan(&totalLikeCount)
 	_ = h.svc.repo.db.QueryRowContext(r.Context(),
-		`SELECT COALESCE(SUM(views),0) FROM manuscripts WHERE user_id = $1`, id).Scan(&totalViewCount)
+		`SELECT COALESCE(SUM(view_count),0) FROM manuscripts WHERE user_id = $1`, id).Scan(&totalViewCount)
 	_ = h.svc.repo.db.QueryRowContext(r.Context(),
 		`SELECT COUNT(*) FROM user_dynamics WHERE user_id = $1 AND status = 0`, id).Scan(&dynamicCount)
 	var signature, announcement, bio string

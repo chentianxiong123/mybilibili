@@ -101,6 +101,8 @@ func (h *ManuscriptHTTPHandler) handleManuscriptRoute(w http.ResponseWriter, r *
 		h.handleUserManuscripts(w, r)
 	case "userCollections":
 		h.handleMyCollections(w, r)
+	case "userCoins":
+		h.handleMyCoins(w, r)
 	case "userLikes":
 		h.handleMyLikes(w, r)
 	case "favoriteFolders":
@@ -253,6 +255,9 @@ func manuscriptRouteName(parts []string) string {
 		}
 		if len(parts) == 2 && parts[1] == "likes" {
 			return "userLikes"
+		}
+		if len(parts) == 2 && parts[1] == "coins" {
+			return "userCoins"
 		}
 		if len(parts) == 2 {
 			return "userManuscripts"
@@ -1141,6 +1146,28 @@ func (h *ManuscriptHTTPHandler) handleMyLikes(w http.ResponseWriter, r *http.Req
 	}
 	page, size := httputil.ParsePageParams(r)
 	ids, _ := h.interactionSvc.Repo().GetInteractionIDs(r.Context(), uid, "MANUSCRIPT", "LIKE")
+	sort.Slice(ids, func(i, j int) bool { return ids[i] > ids[j] })
+	start := int((page - 1) * size)
+	end := start + int(size)
+	if start > len(ids) {
+		start = len(ids)
+	}
+	if end > len(ids) {
+		end = len(ids)
+	}
+	httputil.WriteOK(w, map[string]interface{}{
+		"list": h.manuscriptsByIDs(r.Context(), ids[start:end]), "total": len(ids), "page": page, "size": size,
+	})
+}
+
+// handleMyCoins GET /api/v1/manuscript/user/coins — 我投币的稿件。
+func (h *ManuscriptHTTPHandler) handleMyCoins(w http.ResponseWriter, r *http.Request) {
+	uid, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	page, size := httputil.ParsePageParams(r)
+	ids, _ := h.interactionSvc.Repo().GetInteractionIDs(r.Context(), uid, "MANUSCRIPT", "COIN")
 	sort.Slice(ids, func(i, j int) bool { return ids[i] > ids[j] })
 	start := int((page - 1) * size)
 	end := start + int(size)

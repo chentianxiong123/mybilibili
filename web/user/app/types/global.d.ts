@@ -18,6 +18,8 @@ declare module 'vue' {
     $axios: AxiosInstance
     $get: <T = any>(url: string, config?: AxiosRequestConfig) => Promise<AxiosResponse<ApiResponse<T> & any>>
     $post: <T = any>(url: string, data?: any, headers?: any) => Promise<AxiosResponse<ApiResponse<T> & any>>
+    $put: <T = any>(url: string, data?: any, headers?: any) => Promise<AxiosResponse<ApiResponse<T> & any>>
+    $delete: <T = any>(url: string, config?: AxiosRequestConfig) => Promise<AxiosResponse<ApiResponse<T> & any>>
     // Vuex → Pinia 兼容层（Proxy）
     $store: VuexShim
   }

@@ -7,13 +7,16 @@
         <div class="dynamic-list-wrap" v-loading="loading">
             <template v-if="!loading">
                 <div class="dynamic-list" v-if="list.length > 0">
-                    <div class="dynamic-item" v-for="item in list" :key="item.id"
-                        @click="$router.push(`/dynamic/${item.id}`)">
+<div class="dynamic-item" v-for="item in list" :key="item.id"
+                    @click="$router.push(`/dynamic/${item.id}`)">
                         <div class="dynamic-header">
                             <img class="avatar" :src="item.user?.avatar || defaultAvatar" alt="">
                             <div class="info">
                                 <div class="name">{{ item.user?.username || '用户' }}</div>
                                 <div class="time">{{ formatTime(item.createdAt) }}</div>
+                            </div>
+                            <div class="dynamic-header-actions" v-if="isOwner" @click.stop>
+                                <span class="delete-action" @click="handleDelete(item)"><i class="iconfont icon-shanchu"></i>删除</span>
                             </div>
                         </div>
                         <div class="dynamic-content">
@@ -27,9 +30,14 @@
                             </div>
                         </div>
                         <div class="dynamic-footer">
-                            <span><i class="iconfont icon-dianzan"></i> {{ item.likeCount || 0 }}</span>
-                            <span><i class="iconfont icon-pinglun"></i> {{ item.commentCount || 0 }}</span>
-                            <span><i class="iconfont icon-zhuanfa"></i> {{ item.shareCount || 0 }}</span>
+                            <span :class="['footer-action', 'like', { active: item.liked }]" @click.stop="toggleLike(item)">
+                                <i class="iconfont" :class="item.liked ? 'icon-dianzan' : 'icon-dianzan'"></i>
+                                {{ item.likeCount || 0 }}
+                            </span>
+                            <span class="footer-action" @click.stop="$router.push(`/dynamic/${item.id}`)">
+                                <i class="iconfont icon-pinglun"></i> {{ item.commentCount || 0 }}
+                            </span>
+                            <span class="footer-action"><i class="iconfont icon-zhuanfa"></i> {{ item.shareCount || 0 }}</span>
                         </div>
                     </div>
                 </div>
@@ -44,6 +52,7 @@
 
 <script lang="ts">
 import { dynamicApi } from '@/api/dynamic';
+import { ElMessage, ElMessageBox } from 'element-plus';
 
 export default {
     name: "SpaceDynamic",
@@ -58,6 +67,9 @@ export default {
     computed: {
         uid() {
             return Number(this.$route.params.uid);
+        },
+        isOwner() {
+            return String(this.$store.state.user.uid) === String(this.uid);
         }
     },
     methods: {
@@ -81,6 +93,33 @@ export default {
                 this.loading = false;
             }
         },
+        // 删除动态
+        async handleDelete(item) {
+            if (!this.isOwner) return;
+            try {
+                await ElMessageBox.confirm('确定删除这条动态吗？', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                });
+            } catch (e) {
+                return;
+            }
+            try {
+                const res = await dynamicApi.deleteDynamic(item.id);
+                if (res.code === 200) {
+                    ElMessage.success('删除成功');
+                    this.list = this.list.filter(d => d.id !== item.id);
+                    this.dynamicCount = this.list.length;
+                } else {
+                    ElMessage.error(res.message || '删除失败');
+                }
+            } catch (e) {
+                console.error('删除动态失败:', e);
+                ElMessage.error('删除失败');
+            }
+        },
+
         formatTime(time) {
             if (!time) return '';
             const d = new Date(time);
@@ -91,6 +130,32 @@ export default {
             if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
             if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
             return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        },
+
+        // 切换点赞
+        async toggleLike(item) {
+            if (!this.$store.state.user.uid) {
+                this.$message.warning('请先登录');
+                return;
+            }
+            try {
+                const res = item.liked
+                    ? await dynamicApi.unlikeDynamic(item.id)
+                    : await dynamicApi.likeDynamic(item.id);
+                if (res.code === 200) {
+                    item.liked = !item.liked;
+                    if (res.data && res.data.likeCount !== undefined) {
+                        item.likeCount = res.data.likeCount;
+                    } else {
+                        item.likeCount = Math.max(0, item.likeCount + (item.liked ? 1 : -1));
+                    }
+                } else {
+                    this.$message.error(res.message || '操作失败');
+                }
+            } catch (e) {
+                console.error('点赞动态失败:', e);
+                this.$message.error('操作失败，请稍后重试');
+            }
         },
     },
     watch: {
@@ -160,6 +225,27 @@ export default {
     margin-bottom: 8px;
 }
 
+.dynamic-header-actions {
+    margin-left: auto;
+}
+
+.delete-action {
+    font-size: 12px;
+    color: #9499a0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.delete-action:hover {
+    color: var(--brand_pink);
+}
+
+.delete-action .icon-shanchu {
+    font-size: 14px;
+}
+
 .dynamic-header .avatar {
     width: 36px;
     height: 36px;
@@ -223,10 +309,24 @@ export default {
     font-size: 13px;
 }
 
-.dynamic-footer span {
+.dynamic-footer .footer-action {
     display: flex;
     align-items: center;
     gap: 4px;
+    cursor: pointer;
+    transition: color .2s;
+}
+
+.dynamic-footer .footer-action:hover {
+    color: var(--brand_pink);
+}
+
+.dynamic-footer .footer-action.like.active {
+    color: var(--brand_pink);
+}
+
+.dynamic-footer .footer-action.like.active .iconfont {
+    color: var(--brand_pink);
 }
 
 .empty-tip {

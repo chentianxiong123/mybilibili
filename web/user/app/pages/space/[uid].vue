@@ -95,6 +95,10 @@
                                 <span class="n-text">投稿</span>
                                 <span class="n-num">{{ worksCount }}</span>
                             </div>
+                            <div class="n-btn n-collection" :class="{'active': navIdx === 8}" @click="clickNavItem('/collections')" @mouseenter="hoverIdx = 3">
+                                <svg t="1711032896288" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4273" width="20" height="20"><path d="M512 64a448 448 0 1 0 0 896 448 448 0 0 0 0-896z m-106.7 106.7a384 384 0 1 1 0 682.6 384 384 0 0 1 0-682.6zM512 298.7c-117.8 0-213.3 95.5-213.3 213.3S394.2 725.3 512 725.3 725.3 629.8 725.3 512 629.8 298.7 512 298.7z" fill="#00aeec" p-id="4274"></path></svg>
+                                <span class="n-text">合集和列表</span>
+                            </div>
                             <div class="n-btn n-favlist" :class="{'active': navIdx === 4}" @click="clickNavItem('/favlist')" @mouseenter="hoverIdx = 4">
                                 <svg t="1711032962919" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4526" width="20" height="20"><path d="M958.0302582 397.55763037c-7.9058083-22.83900117-28.10954004-40.40746348-51.82696406-43.92115576l-234.53897256-36.01534746L570.64566377 99.77219404C560.10458604 76.93319287 537.26558487 62 511.79131513 62c-25.4742706 0-48.31327177 14.93319287-58.85434862 37.77219404L351.03988408 317.62112715 117.37933526 353.63647461c-23.71742402 3.51369229-43.92115576 20.20373174-51.82696407 43.92115576-7.9058083 22.83900117-1.75684658 49.19169463 14.93319287 65.88173408l171.29250792 176.56304678-39.52904063 245.08004942c-4.39211602 24.59584687 6.14896172 49.19169463 26.35269345 64.1248875 11.41950058 7.9058083 24.59584687 12.29792344 37.77219405 12.29792343 10.54107773 0 21.96057832-2.63526943 31.62323232-7.9058083L511.79131513 843.79657432l203.7941631 109.80288984c9.66265401 5.27053887 21.08215459 7.9058083 31.62323232 7.9058083 13.17634717 0 26.35269346-4.39211602 37.77219404-12.29792344 20.20373174-14.93319287 30.74480948-39.52904063 26.35269346-64.1248875l-39.52904063-245.08004941 172.17093076-176.56304678C959.78710479 445.87090214 965.93606651 420.39663154 958.0302582 397.55763037z" fill="#f3a034" p-id="4527"></path></svg>
                                 <span class="n-text">收藏</span>
@@ -187,27 +191,33 @@ export default {
     },
     computed: {
         barWidth() {
-            const list = ['.n-index', '.n-dynamic', '.n-video', '.n-video', '.n-favlist', '.n-setting'];
+            const list = ['.n-index', '.n-dynamic', '.n-video', '.n-collection', '.n-favlist', '.n-setting'];
             let target = '.n-index';
             if (this.hoverIdx >= 0) {
                 target = list[this.hoverIdx];
-            } else if (this.navIdx < 6) {
-                target = list[this.navIdx];
+            } else if (this.navIdx < 9) {
+                target = list[this.tabCursor];
             }
             if (!this.mounted) return 0;
             return document.querySelector(target).clientWidth;
         },
 
         barLeft() {
-            const list = ['.n-index', '.n-dynamic', '.n-video', '.n-video', '.n-favlist', '.n-setting'];
+            const list = ['.n-index', '.n-dynamic', '.n-video', '.n-collection', '.n-favlist', '.n-setting'];
             let target = '.n-index';
             if (this.hoverIdx >= 0) {
                 target = list[this.hoverIdx];
-            } else if (this.navIdx < 6) {
-                target = list[this.navIdx];
+            } else if (this.navIdx < 9) {
+                target = list[this.tabCursor];
             }
             if (!this.mounted) return 0;
             return document.querySelector(target).getBoundingClientRect().left - document.querySelector(".n-wrapper").getBoundingClientRect().left;
+        },
+
+        // navIdx(含 article/fans 等子页) → 顶部 tab 的下标(0:index 1:dynamic 2:video 3:collection 4:favlist 5:setting)
+        tabCursor() {
+            const map = [0, 1, 2, 2, 4, 5, 0, 0, 3];
+            return this.navIdx < map.length ? map[this.navIdx] : 0;
         },
 
         // 当前导航栏
@@ -218,6 +228,7 @@ export default {
                     part[3] === 'dynamic' ? 1 :
                     part[3] === 'video' ? 2 :
                     part[3] === 'article' ? 3 :
+                    part[3] === 'collections' ? 8 :
                     part[3] === 'favlist' ? 4 :
                     part[3] === 'setting' ? 5 :
                     part[3] === 'fans' ? part[4] === 'follow' ? 6 : 7 : 0

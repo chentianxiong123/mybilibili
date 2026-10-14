@@ -2,7 +2,7 @@ import { ElMessage } from 'element-plus'
 import axios from 'axios'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import { useTeriteriStore } from '@/stores/teriteri'
-import { get, post, del } from '@/teriteri-src/network/request'
+import { get, post, put, del } from '@/teriteri-src/network/request'
 
 export default defineNuxtPlugin((nuxtApp) => {
   const router = nuxtApp.$router
@@ -13,6 +13,7 @@ export default defineNuxtPlugin((nuxtApp) => {
   nuxtApp.vueApp.config.globalProperties.$get = get
   nuxtApp.vueApp.config.globalProperties.$post = post
   nuxtApp.vueApp.config.globalProperties.$delete = del
+  nuxtApp.vueApp.config.globalProperties.$put = put
 
   // 注册全部 element-plus 图标（teriteri main.js 原样）
   for (const [key, component] of Object.entries(ElementPlusIconsVue)) {

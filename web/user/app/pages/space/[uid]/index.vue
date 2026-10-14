@@ -1,6 +1,29 @@
 <template>
     <div class="space-home">
         <div class="col-1">
+            <!-- 置顶视频 -->
+            <div class="section text" v-if="pinnedVideo || isOwner">
+                <h3 class="section-title">
+                    <span class="t">置顶</span>
+                    <span class="more" v-if="isOwner && !pinnedVideo" @click="openPinnedDialog">设置置顶</span>
+                    <span class="more" v-if="isOwner && pinnedVideo" @click="openPinnedDialog">修改置顶</span>
+                    <span class="more danger" v-if="isOwner && pinnedVideo" @click="removePinned">取消置顶</span>
+                </h3>
+                <div class="pinned-content" v-if="pinnedVideo">
+                    <a :href="`/video/${pinnedVideo.id}`" target="_blank" class="pinned-cover">
+                        <img v-if="pinnedVideo.coverUrl" :src="pinnedVideo.coverUrl" alt="">
+                        <span class="pinned-badge">置顶</span>
+                    </a>
+                    <div class="pinned-info">
+                        <a :href="`/video/${pinnedVideo.id}`" target="_blank" class="pinned-title">{{ pinnedVideo.title }}</a>
+                        <div class="pinned-meta">
+                            <span><i class="iconfont icon-bofangliang"></i>{{ handleNum(pinnedVideo.viewCount) }}</span>
+                            <span><i class="iconfont icon-pinglun"></i>{{ handleNum(pinnedVideo.commentCount || 0) }}</span>
+                            <span>{{ pinnedVideo.date }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <!-- 视频 -->
             <div class="section video">
                 <h3 class="section-title">
@@ -107,7 +130,27 @@
                     <span class="t">最近投币的视频</span>
                 </h3>
                 <div class="coin-content">
-                    
+                    <div class="small-item" v-for="(item, index) in coinVideos" :key="index">
+                        <a :href="`/video/${item.video.vid}`" target="_blank" class="cover" v-if="item.video.status === 1">
+                            <img :src="item.video.coverUrl" alt="">
+                            <span class="length">{{ handleDuration(item.video.duration) }}</span>
+                        </a>
+                        <div class="disable-cover" v-else>
+                            <p>视频已失效</p>
+                        </div>
+                        <a :href="`/video/${item.video.vid}`" target="_blank" class="title" :title="item.video.title" v-if="item.video.status === 1">{{ item.video.title }}</a>
+                        <p class="title" v-else>已失效视频</p>
+                        <div class="meta">
+                            <span class="play" v-if="item.video.status === 1">
+                                <svg t="1711216187515" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4408" id="mx_n_1711216187515" width="14" height="14"><path d="M800 128H224C134.4 128 64 198.4 64 288v448c0 89.6 70.4 160 160 160h576c89.6 0 160-70.4 160-160V288c0-89.6-70.4-160-160-160z m96 608c0 54.4-41.6 96-96 96H224c-54.4 0-96-41.6-96-96V288c0-54.4 41.6-96 96-96h576c54.4 0 96 41.6 96 96v448z" p-id="4409"></path><path d="M684.8 483.2l-256-112c-22.4-9.6-44.8 6.4-44.8 28.8v224c0 22.4 22.4 38.4 44.8 28.8l256-112c25.6-9.6 25.6-48 0-57.6z" p-id="4410"></path></svg>
+                                <span class="num">{{ handleNum(item.stats.play) }}</span>
+                            </span>
+                            <span class="danmu" v-if="item.video.status === 1">
+                                <svg t="1711224902593" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4273" width="14" height="14"><path d="M800 128H224C134.4 128 64 198.4 64 288v448c0 89.6 70.4 160 160 160h576c89.6 0 160-70.4 160-160V288c0-89.6-70.4-160-160-160z m96 608c0 54.4-41.6 96-96 96H224c-54.4 0-96-41.6-96-96V288c0-54.4 41.6-96 96-96h576c54.4 0 96 41.6 96 96v448z" p-id="4274"></path><path d="M240 384h64v64h-64zM368 384h384v64h-384zM432 576h352v64h-352zM304 576h64v64h-64z" p-id="4275"></path></svg>
+                                <span class="num">{{ handleNum(item.stats.danmu) }}</span>
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -125,10 +168,57 @@
                             <span class="info-command">UID</span>
                             <span class="info-value">{{ uid }}</span>
                         </div>
+                        <div class="info-wrap" v-if="userProfile">
+                            <span class="info-command">签名</span>
+                            <span class="info-value">{{ userProfile.description || '这个人很懒，什么都没写' }}</span>
+                        </div>
+                        <div class="info-wrap" v-if="userProfile && (userProfile.gender === 0 || userProfile.gender === 1)">
+                            <span class="info-command">性别</span>
+                            <span class="info-value">{{ userProfile.gender === 1 ? '男' : (userProfile.gender === 0 ? '保密' : '女') }}</span>
+                        </div>
+                        <div class="info-wrap" v-if="userProfile && userProfile.exp">
+                            <span class="info-command">等级</span>
+                            <span class="info-value">Lv{{ handleLevel(userProfile.exp) }}</span>
+                        </div>
+                        <div class="info-wrap" v-if="userProfile && userProfile.birthdate">
+                            <span class="info-command">生日</span>
+                            <span class="info-value">{{ formatDate(userProfile.birthdate) }}</span>
+                        </div>
+                        <div class="info-wrap tags-wrap" v-if="userProfile && userProfile.tags && userProfile.tags.length > 0">
+                            <span class="info-command">标签</span>
+                            <span class="info-tags">
+                                <span class="tag" v-for="(tag, tIdx) in userProfile.tags" :key="tIdx">{{ tag }}</span>
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- 设置置顶视频对话框 -->
+        <el-dialog v-model="showPinnedDialog" title="设置置顶视频" width="520px" :close-on-click-modal="false">
+            <div class="pinned-select-wrap">
+                <div class="pinned-select-list" v-loading="pinnedLoading">
+                    <div
+                        v-for="item in videoList"
+                        :key="item.video.vid"
+                        class="pinned-select-item"
+                        :class="{'active': pinnedVideo && String(pinnedVideo.id) === String(item.video.vid)}"
+                        @click="pinnedVideo = { id: Number(item.video.vid), title: item.video.title, coverUrl: item.video.coverUrl, viewCount: item.stats ? item.stats.play : 0, commentCount: 0, date: item.video.uploadDate }"
+                    >
+                        <img v-if="item.video.coverUrl" :src="item.video.coverUrl" alt="">
+                        <div class="pinned-select-info">
+                            <p class="pinned-select-title">{{ item.video.title }}</p>
+                            <p class="pinned-select-meta">{{ handleNum(item.stats ? item.stats.play : 0) }}播放</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <template #footer>
+                <el-button @click="showPinnedDialog = false">取消</el-button>
+                <el-button type="primary" :loading="pinnedSaving" @click="savePinned">确定</el-button>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
@@ -145,12 +235,22 @@ export default {
             videoCount: 0,  // 用户视频投稿数量
             favList: [],    // 用户收藏夹列表
             loveVideos: [], // 用户最近点赞视频列表
+            coinVideos: [], // 用户最近投币视频列表
+            pinnedVideo: null,  // 置顶视频
+            showPinnedDialog: false,  // 设置置顶对话框
+            pinnedLoading: false,  // 选择列表加载
+            pinnedSaving: false,  // 保存中
+            userProfile: null,  // 用户完整资料（签名/性别/标签等）
         }
     },
     computed: {
         // 空间主人的uid
         uid() {
             return Number(this.$route.params.uid);
+        },
+        // 是否是本人空间（本人可设置置顶）
+        isOwner() {
+            return this.$store.state.user.uid === this.uid;
         }
     },
     methods: {
@@ -207,15 +307,112 @@ export default {
             // console.log(this.loveVideos)
         },
 
+        // 获取用户最近投币的视频（仅登录后请求）
+        async getCoinVideos() {
+            if (!hasAuthSession()) return;
+            const config: any = {
+                params: {
+                    uid: this.uid,
+                    quantity: 20
+                }
+            };
+            const res = await this.$get("/video/user-coins", config);
+            if (!res.data) return;
+            this.coinVideos = Array.isArray(res.data.data) ? res.data.data : [];
+            // console.log(this.coinVideos)
+        },
+
+        // 获取置顶视频（访客也可看）
+        async getPinnedVideo() {
+            const res = await this.$get("/user/pinned-video");
+            if (res.data && res.data.code === 200) {
+                this.pinnedVideo = res.data.data;
+            }
+        },
+
+        // 打开设置置顶对话框
+        openPinnedDialog() {
+            if (this.videoList.length === 0) {
+                this.$message.warning('暂无可选的视频');
+                return;
+            }
+            this.showPinnedDialog = true;
+        },
+
+        // 选择新置顶视频
+        selectPinned(video) {
+            this.pinnedVideo = video;
+        },
+
+        // 保存置顶
+        async savePinned() {
+            if (!this.pinnedVideo || !this.pinnedVideo.id) return;
+            this.$post('/user/pinned-video', { videoId: this.pinnedVideo.id }).then((res: any) => {
+                if (res.data && res.data.code === 200) {
+                    this.$message.success('置顶成功');
+                    this.showPinnedDialog = false;
+                    this.getPinnedVideo();
+                } else {
+                    this.$message.error('置顶失败');
+                }
+            });
+        },
+
+        // 取消置顶
+        async removePinned() {
+            const res = await this.$delete('/user/pinned-video');
+            if (res.data && res.data.code === 200) {
+                this.pinnedVideo = null;
+                this.$message.success('已取消置顶');
+            } else {
+                this.$message.error('取消置顶失败');
+            }
+        },
+
 
         // 处理播放时长
         handleDuration(time) {
             return handleTime(time);
         },
 
+        // 获取用户完整资料（签名/性别/生日/标签等）
+        async getUserProfile() {
+            const res = await this.$get("/user/info/get-one", {
+                params: { uid: this.uid }
+            });
+            if (res.data && res.data.data) {
+                this.userProfile = res.data.data;
+            }
+        },
+
         // 处理大于一万的数字
         handleNum(number) {
             return handleNum(number);
+        },
+
+        // 计算用户等级
+        handleLevel(exp) {
+            if (!exp) return 1;
+            if (exp < 50) return 0;
+            if (exp < 200) return 1;
+            if (exp < 1500) return 2;
+            if (exp < 4500) return 3;
+            if (exp < 10800) return 4;
+            if (exp < 28800) return 5;
+            return 6;
+        },
+
+        // 格式化日期 YYYY-MM-DD
+        formatDate(date) {
+            if (!date) return '';
+            const m = String(date).match(/^(\d{4}-\d{2}-\d{2})/);
+            if (m) return m[1];
+            const d = new Date(date);
+            if (isNaN(d.getTime())) return date;
+            const y = d.getFullYear();
+            const mo = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${mo}-${day}`;
         },
 
         // 处理投稿时间
@@ -227,6 +424,9 @@ export default {
         this.getVideoList();
         this.getFavList();
         this.getLoveVideos();
+        this.getCoinVideos();
+        this.getPinnedVideo();
+        this.getUserProfile();
     },
     watch: {
         "rule"() {
@@ -580,6 +780,128 @@ ol, ul {
     cursor: pointer;
 }
 
+/* 置顶视频样式 */
+.section-title .more {
+    position: absolute;
+    right: 0;
+    top: 8px;
+}
+.section-title .more.danger {
+    right: 58px;
+}
+.section-title .more:hover {
+    color: var(--brand_pink);
+    border-color: var(--brand_pink);
+}
+.pinned-content {
+    display: flex;
+    gap: 12px;
+    padding-bottom: 17px;
+}
+.pinned-cover {
+    position: relative;
+    width: 160px;
+    height: 90px;
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: url('@/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
+    background-size: cover;
+}
+.pinned-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.pinned-badge {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    background: var(--brand_pink);
+    color: #fff;
+    font-size: 12px;
+    line-height: 18px;
+    padding: 0 6px;
+    border-radius: 2px;
+}
+.pinned-info {
+    flex: 1;
+    overflow: hidden;
+}
+.pinned-title {
+    font-size: 16px;
+    color: var(--text1);
+    line-height: 24px;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.pinned-title:hover {
+    color: var(--brand_pink);
+}
+.pinned-meta {
+    color: #99a2aa;
+    font-size: 12px;
+    line-height: 18px;
+    margin-top: 14px;
+    display: flex;
+    gap: 16px;
+}
+.pinned-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+.pinned-meta .iconfont {
+    font-size: 13px;
+}
+/* 设置置顶对话框 */
+.pinned-select-wrap {
+    max-height: 360px;
+    overflow-y: auto;
+}
+.pinned-select-item {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.pinned-select-item:hover {
+    background: #f4f5f7;
+}
+.pinned-select-item.active {
+    background: #eaf6fc;
+}
+.pinned-select-item img {
+    width: 80px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 2px;
+    flex-shrink: 0;
+    background: url('@/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
+    background-size: cover;
+}
+.pinned-select-info {
+    margin-left: 10px;
+    overflow: hidden;
+}
+.pinned-select-title {
+    font-size: 13px;
+    color: var(--text1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pinned-select-meta {
+    font-size: 12px;
+    color: #99a2aa;
+    margin-top: 2px;
+}
+
+.at-pinned-placeholder { color: transparent; }
+
 .col-2 {
     float: right;
     width: 350px;
@@ -658,6 +980,33 @@ ol, ul {
     font-size: 12px;
     line-height: 16px;
     padding-right: 6px;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: top;
+}
+
+.info-wrap.tags-wrap {
+    width: 100%;
+}
+
+.info-tags {
+    display: inline-block;
+    vertical-align: top;
+}
+
+.info-tags .tag {
+    display: inline-block;
+    margin: 0 6px 6px 0;
+    padding: 1px 8px;
+    border-radius: 2px;
+    background: #f4f5f7;
+    border: 1px solid #e5e9ef;
+    color: #61666d;
+    font-size: 12px;
+    line-height: 18px;
+    font-family: Microsoft YaHei;
 }
 
 @media (min-width: 1420px) {

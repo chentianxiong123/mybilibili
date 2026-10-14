@@ -333,7 +333,7 @@ func TestHandleGetUser_200(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(3))
 	mock.ExpectQuery(`SELECT COALESCE\(SUM\(like_count\)`).
 		WillReturnRows(sqlmock.NewRows([]string{"sum"}).AddRow(10))
-	mock.ExpectQuery(`SELECT COALESCE\(SUM\(views\)`).
+	mock.ExpectQuery(`SELECT COALESCE\(SUM\(view_count\)`).
 		WillReturnRows(sqlmock.NewRows([]string{"sum"}).AddRow(100))
 	mock.ExpectQuery(`SELECT COUNT.*FROM user_dynamics`).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
