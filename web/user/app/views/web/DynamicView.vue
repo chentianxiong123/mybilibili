@@ -390,6 +390,7 @@ onMounted(() => {
 .dynamic-page {
   min-height: 100vh;
   background-color: #f5f7fa;
+  padding-top: 64px;
 }
 
 .dynamic-container {

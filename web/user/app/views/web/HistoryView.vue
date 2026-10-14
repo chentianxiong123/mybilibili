@@ -516,6 +516,7 @@ onMounted(() => {
   max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
+  padding-top: 84px;
   min-height: calc(100vh - 80px);
 }
 

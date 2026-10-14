@@ -300,7 +300,7 @@
             <div class="v-popover-wrap">
                 <VPopover pop-style="padding-top: 17px;">
                     <template #reference>
-                        <div class="right-entry--outside" @click="this.$store.state.isLogin ? noPage() : openLoginDialog();">
+                        <div class="right-entry--outside" @click="this.$store.state.isLogin ? openNewPage('/dynamic') : openLoginDialog();">
                             <i class="iconfont icon-fengche"></i>
                             <span>动态</span>
                         </div>
@@ -319,7 +319,7 @@
             <div class="v-popover-wrap">
                 <VPopover :pop-style="this.$store.state.isLogin ? 'padding-top: 17px; margin-left: -100px;' : 'padding-top: 17px;'">
                     <template #reference>
-                        <div class="right-entry--outside" @click="this.$store.state.isLogin ? noPage() : openLoginDialog();">
+                        <div class="right-entry--outside" @click="this.$store.state.isLogin ? openNewPage('/profile/favorites') : openLoginDialog();">
                             <i class="iconfont icon-shoucang"></i>
                             <span>收藏</span>
                         </div>
@@ -338,7 +338,7 @@
             <div class="v-popover-wrap">
                 <VPopover :pop-style="this.$store.state.isLogin ? 'padding-top: 17px; margin-left: -50px;' : 'padding-top: 17px;'">
                     <template #reference>
-                        <div class="right-entry--outside" @click="this.$store.state.isLogin ? noPage() : openLoginDialog();">
+                        <div class="right-entry--outside" @click="this.$store.state.isLogin ? openNewPage('/history') : openLoginDialog();">
                             <i class="iconfont icon-lishijilu"></i>
                             <span>历史</span>
                         </div>
