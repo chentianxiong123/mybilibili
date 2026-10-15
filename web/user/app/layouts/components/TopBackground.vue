@@ -9,9 +9,9 @@ const backgroundImage = ref(null)
 const fetchBackgroundImage = async () => {
   try {
     const res = await getBackgroundImage()
-    if (res.code === 200 && res.data) {
-      backgroundImage.value = res.data
-    }
+    const list = Array.isArray(res?.data) ? res.data : []
+    const active = list.find(b => b?.imageUrl) || null
+    if (active) backgroundImage.value = active.imageUrl
   } catch (error) {
     console.error('获取背景图失败:', error)
   }
@@ -26,7 +26,7 @@ onMounted(() => {
   <div
     class="top-background"
     :style="backgroundImage ? {
-      backgroundImage: `url(${backgroundImage.imageUrl})`,
+      backgroundImage: `url(${backgroundImage})`,
       backgroundSize: 'cover',
       backgroundPosition: 'center'
     } : {}"

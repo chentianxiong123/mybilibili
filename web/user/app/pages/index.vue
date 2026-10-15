@@ -2,31 +2,7 @@
     <div class="index">
         <div class="large-header">
             <HeaderBar :isFixHeaderBar="isFixHeaderBar"></HeaderBar>
-            <!-- <div class="header__banner">
-                <picture class="v-img banner-img">
-                    <img src="@/assets/teriteri/img/bilibili/banner.png" alt="">
-                </picture>
-                <div class="header-banner__inner">
-                    <div class="logo-box">
-                        <img src="@/assets/teriteri/img/teriteri-white.png" alt="">
-                    </div>
-                </div>
-            </div> -->
-            <header>
-                <!-- 动画效果头图，文件资源版权归bilibili官方所有，本项目仅用作学习，无商业用途！ -->
-                <div class="view">
-                    <img src="@/assets/teriteri/img/bilibili/bilibili-winter-view-1.jpg" class="morning" alt="">
-                    <img src="@/assets/teriteri/img/bilibili/bilibili-winter-view-2.jpg" class="afternoon" alt="">
-                    <video autoplay loop muted class="evening">
-                        <source src="@/assets/teriteri/img/bilibili/bilibili-winter-view-3.webm" type="video/webm" />
-                    </video>
-                    <img src="@/assets/teriteri/img/bilibili/bilibili-winter-view-3-snow.png" class="window-cover" alt="">
-                </div>
-                <div class="tree">
-                    <img src="@/assets/teriteri/img/bilibili/bilibili-winter-tree-1.png" class="morning" alt="">
-                    <img src="@/assets/teriteri/img/bilibili/bilibili-winter-tree-2.png" class="afternoon" alt="">
-                    <img src="@/assets/teriteri/img/bilibili/bilibili-winter-tree-3.png" class="evening" alt="">
-                </div>
+            <header :style="topBg ? { backgroundImage: `url('${topBg}')` } : {}">
                 <div class="header-banner__inner">
                     <div class="logo-box">
                         <img src="@/assets/teriteri/img/teriteri-white.png" alt="">
@@ -306,6 +282,7 @@ import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue';
 import HeaderChannel from '@/components/teriteri/headerChannel/HeaderChannel.vue';
 import CarouselIndex from '@/components/teriteri/carousel/CarouselIndex.vue';
 import { handleTime, handleNum, handleDate } from '@/teriteri-src/utils/utils';
+import { getBackgroundImage } from '@/api/banner';
 
 let headerHight, bottomDistance;
 
@@ -341,6 +318,7 @@ export default {
             loadingRandom: true,
             // 是否还有更多累加视频
             hasMore: true,
+            topBg: null,
             // 是否正在加载更多视频中
             loadingMore: false,
             // 刷新次数
@@ -354,6 +332,17 @@ export default {
         }
     },
     methods: {
+        // 顶部背景图（后台可配置，MinIO 存图）
+        async fetchTopBg() {
+            try {
+                const res = await getBackgroundImage();
+                const list = Array.isArray(res?.data) ? res.data : [];
+                const active = list.find(b => b?.imageUrl) || null;
+                if (active) this.topBg = active.imageUrl;
+            } catch (e) {
+                // 拉取失败保留灰底
+            }
+        },
         // 请求
         // 随机打乱数组（Fisher-Yates）
         shuffle(arr) {
@@ -571,6 +560,7 @@ export default {
     },
     created() {
         this.getRandomVideos();
+        this.fetchTopBg();
     },
     async mounted() {
         // 初始化头图的监听器

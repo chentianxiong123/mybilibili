@@ -2,7 +2,7 @@
     <div class="account">
         <HeaderBar :isFixHeaderBar="true"></HeaderBar>
         <div class="account-layout">
-            <div class="top-header">
+            <div class="top-header" :style="topBg ? { backgroundImage: `url('${topBg}')` } : {}">
                 <div class="top-img">
                     <img src="@/assets/teriteri/img/teriteri-white.png" alt="">
                 </div>
@@ -53,6 +53,7 @@
 
 <script lang="ts">
 import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue';
+import { getUserProfileBackground } from '@/api/banner';
 
 export default {
     name: "AccountView",
@@ -69,15 +70,27 @@ export default {
                 { name: "账号安全", path: '/account/security' },
             ],
             activeIdx: 0,
+            topBg: null,
         }
     },
     methods: {
         clickBarItem(path, index) {
             this.activeIdx = index;
             this.$router.push(path);
+        },
+        async fetchTopBg() {
+            try {
+                const res = await getUserProfileBackground();
+                const list = Array.isArray(res?.data) ? res.data : [];
+                const active = list.find(b => b?.imageUrl) || null;
+                if (active) this.topBg = active.imageUrl;
+            } catch (e) {
+                // 拉取失败保留灰底
+            }
         }
     },
     created() {
+        this.fetchTopBg();
         // 根据地址判断 activeIdx
         this.navList.forEach((item, index) => {
             if (this.$route.path.startsWith(item.path)) {
@@ -116,14 +129,16 @@ export default {
 .top-header {
     width: 100%;
     height: 106px;
-    background: url('@/assets/teriteri/img/account_top_bg.png') repeat-x;
+    background-color: #4b93c8;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
 }
 
 .top-img {
     width: 980px;
     height: 106px;
     margin: 0 auto;
-    background: url('@/assets/teriteri/img/account_top.png') no-repeat;
 }
 
 .top-img img {
@@ -185,7 +200,7 @@ export default {
 }
 
 .account-item.on {
-    background-color: #FF7DA1 !important;
+    background-color: #00a1d6 !important;
     color: #fff !important;
     fill: #fff !important;
 }
