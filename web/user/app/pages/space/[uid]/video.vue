@@ -366,11 +366,11 @@ ol, ul {
 }
 
 .page-head__right .icon:hover {
-    fill: #FF7DA1;
+    fill: #00a1d6;
 }
 
 .page-head__right .icon.active {
-    fill: #FF7DA1;
+    fill: #00a1d6;
 }
 
 .section {

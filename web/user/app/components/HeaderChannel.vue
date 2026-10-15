@@ -13,7 +13,7 @@ withDefaults(defineProps<{
 }>(), {
   channels: () => [],
   iconCards: () => [
-    { name: '动态', icon: 'icon-fengche', color: 'var(--v-brand-pink, #FF6699)', href: '/dynamic' },
+    { name: '动态', icon: 'icon-fengche', color: 'var(--v-brand-pink, #00a1d6)', href: '/dynamic' },
     { name: '热门', icon: 'icon-huo', color: 'var(--v-operate-orange, #FF7F24)', href: '/hot' }
   ]
 })
@@ -85,7 +85,7 @@ const onCardClick = (href?: string) => {
   width: 40px;
   height: 40px;
   border-radius: var(--v-radius-md, 8px);
-  background: var(--icon-bg, var(--v-brand-pink, #FF6699));
+  background: var(--icon-bg, var(--v-brand-pink, #00a1d6));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -110,7 +110,7 @@ const onCardClick = (href?: string) => {
 }
 
 .v-channel-icon-item:hover .v-channel-icon-title {
-  color: var(--brand-pink, #FF6699);
+  color: var(--brand-pink, #00a1d6);
 }
 
 .v-channel-items {
@@ -130,6 +130,6 @@ const onCardClick = (href?: string) => {
 }
 
 .v-channel-link:hover {
-  color: var(--v-brand-pink, #FF6699);
+  color: var(--v-brand-pink, #00a1d6);
 }
 </style>

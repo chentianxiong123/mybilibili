@@ -196,7 +196,7 @@ onMounted(() => {
 }
 
 .top-tab.active {
-  color: var(--brand_pink, #ff6699);
+  color: var(--brand_pink, #00a1d6);
   font-weight: 700;
 }
 
@@ -207,7 +207,7 @@ onMounted(() => {
   right: 0;
   bottom: -1px;
   height: 2.5px;
-  background: var(--brand_pink, #ff6699);
+  background: var(--brand_pink, #00a1d6);
 }
 
 .subtitle-content {

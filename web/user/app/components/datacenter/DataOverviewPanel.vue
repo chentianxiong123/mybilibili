@@ -197,7 +197,7 @@ const trendSeries = computed(() => {
   const main = {
     name: `总${selectedLabel.value}`,
     type: 'line',
-    color: '#ff6699',
+    color: '#00a1d6',
     data: trendData.value[selectedMetric.value] || []
   }
   if (selectedMetric.value === 'views') {
@@ -448,7 +448,7 @@ onMounted(async () => {
 }
 
 .metric-card.selected {
-  background: linear-gradient(135deg, #ff7aa8, #ff6699);
+  background: linear-gradient(135deg, #2fb6e8, #00a1d6);
 }
 
 .metric-card.selected .metric-label,
@@ -612,7 +612,7 @@ onMounted(async () => {
 
 .income-link {
   font-size: 13px;
-  color: #ff6699;
+  color: #00a1d6;
   cursor: pointer;
 }
 </style>

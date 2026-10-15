@@ -68,7 +68,7 @@ const goSearch = (keyword) => {
   overflow: hidden;
   color: #fff;
   background:
-    radial-gradient(circle at 88% 74%, rgba(255, 155, 216, 0.85), transparent 20%),
+    radial-gradient(circle at 88% 74%, rgba(0, 161, 214, 0.85), transparent 20%),
     radial-gradient(circle at 14% 34%, rgba(210, 192, 255, 0.95), transparent 28%),
     linear-gradient(128deg, #8ea1ff 0%, #3565d8 62%, #2450c3 100%);
 }
@@ -233,7 +233,7 @@ const goSearch = (keyword) => {
     &.rise,
     &.exclusive {
       min-width: 34px;
-      background: #f25d9c;
+      background: #00a1d6;
     }
   }
 }

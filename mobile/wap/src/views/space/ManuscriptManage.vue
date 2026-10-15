@@ -334,7 +334,7 @@ onMounted(refresh)
     position: relative;
     border: 0;
     background: transparent;
-    color: #fb7299;
+    color: #00a1d6;
     font-size: 20px;
     font-weight: 600;
 
@@ -347,7 +347,7 @@ onMounted(refresh)
         bottom: 0;
         height: 4px;
         border-radius: 4px;
-        background: #fb7299;
+        background: #00a1d6;
       }
     }
   }
@@ -535,7 +535,7 @@ onMounted(refresh)
     border: 0;
     border-radius: 19px;
     color: #fff;
-    background: #fb7299;
+    background: #00a1d6;
     font-size: 16px;
   }
 }
@@ -563,8 +563,8 @@ onMounted(refresh)
   display: grid;
   place-items: center;
   color: #fff;
-  background: #fb7299;
-  box-shadow: 0 8px 18px rgba(251, 114, 153, 0.35);
+  background: #00a1d6;
+  box-shadow: 0 8px 18px rgba(0, 161, 214, 0.35);
 
   svg {
     width: 30px;

@@ -314,7 +314,7 @@ const goBack = () => {
       padding: 0 4px;
 
       &.active {
-        color: #fb7299;
+        color: #00a1d6;
         font-weight: bold;
         &::after {
           content: '';
@@ -324,7 +324,7 @@ const goBack = () => {
           transform: translateX(-50%);
           width: 20px;
           height: 2px;
-          background: #fb7299;
+          background: #00a1d6;
           border-radius: 1px;
         }
       }
@@ -366,7 +366,7 @@ const goBack = () => {
 
       &.active {
         background: #fff0f3;
-        color: #fb7299;
+        color: #00a1d6;
         font-weight: 500;
       }
     }
@@ -393,7 +393,7 @@ const goBack = () => {
         cursor: pointer;
 
         &.active {
-          color: #fb7299;
+          color: #00a1d6;
           font-weight: bold;
         }
       }

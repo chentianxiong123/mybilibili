@@ -254,7 +254,7 @@ const goToAuthor = (authorId) => {
 
 .title-icon {
   font-size: 24px;
-  color: #fb7299;
+  color: #00a1d6;
 }
 
 .hot-videos-grid {
@@ -288,7 +288,7 @@ const goToAuthor = (authorId) => {
 }
 
 .rank-badge.top-three {
-  background: #fb7299;
+  background: #00a1d6;
 }
 
 /* 统一的视频网格：列数由缩放 level 决定，自动行 */

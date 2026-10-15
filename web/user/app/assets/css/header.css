@@ -59,11 +59,11 @@
 
 .v-header-left .v-entry:hover {
     background: var(--v-bg2, #F6F7F8);
-    color: var(--v-brand-pink, #FF6699);
+    color: var(--v-brand-pink, #00a1d6);
 }
 
 .v-header-left .v-entry.is-active {
-    color: var(--v-brand-pink, #FF6699);
+    color: var(--v-brand-pink, #00a1d6);
 }
 
 .v-header-left .v-entry .iconfont {
@@ -146,7 +146,7 @@
 }
 
 .v-search-bar .v-searchform-btn:hover {
-    color: var(--v-brand-pink, #FF6699);
+    color: var(--v-brand-pink, #00a1d6);
 }
 
 .v-search-bar .v-searchform-btn .iconfont {
@@ -185,7 +185,7 @@
 }
 
 .v-search-panel-header .v-clear:hover {
-    color: var(--v-brand-pink, #FF6699);
+    color: var(--v-brand-pink, #00a1d6);
 }
 
 .v-history-list {
@@ -210,7 +210,7 @@
 
 .v-history-item:hover {
     background: var(--v-bg3, #F1F2F3);
-    color: var(--v-brand-pink, #FF6699);
+    color: var(--v-brand-pink, #00a1d6);
 }
 
 .v-history-item .iconfont {
@@ -254,7 +254,7 @@
 
 .v-trending-rank.top-three {
     color: var(--v-bg1, #FFFFFF);
-    background: var(--v-brand-pink, #FF6699);
+    background: var(--v-brand-pink, #00a1d6);
 }
 
 .v-trending-text {
@@ -289,7 +289,7 @@
 
 .v-header-right .v-icon-btn:hover {
     background: var(--v-bg2, #F6F7F8);
-    color: var(--v-brand-pink, #FF6699);
+    color: var(--v-brand-pink, #00a1d6);
 }
 
 .v-header-right .v-icon-btn .iconfont {
@@ -322,7 +322,7 @@
 }
 
 .v-header-right .v-avatar:hover {
-    border-color: var(--v-brand-pink, #FF6699);
+    border-color: var(--v-brand-pink, #00a1d6);
 }
 
 .v-header-right .v-avatar img {

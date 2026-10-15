@@ -201,7 +201,7 @@ const goManuscript = (item: any) => {
   }
   .video-title {
     font-size: 13px;
-    color: #fb7299;
+    color: #00a1d6;
     margin-top: 4px;
     overflow: hidden;
     text-overflow: ellipsis;

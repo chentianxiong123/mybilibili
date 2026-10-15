@@ -54,10 +54,10 @@ const router = useRouter()
 }
 
 .btn-primary {
-  background: #fb7299;
+  background: #00a1d6;
   color: #fff;
 
-  &:hover { background: #f5729a; }
+  &:hover { background: #0089bc; }
 }
 
 .btn-secondary {

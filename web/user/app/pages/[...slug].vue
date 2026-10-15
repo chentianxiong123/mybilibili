@@ -41,7 +41,7 @@
 
 .notfound-container img {
     width: 100%;
-    filter: drop-shadow(0 0 12px rgba(255, 102, 153, 0.4));
+    filter: drop-shadow(0 0 12px rgba(0, 161, 214, 0.4));
 }
 
 .goback {

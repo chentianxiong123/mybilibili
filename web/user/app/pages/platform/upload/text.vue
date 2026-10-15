@@ -120,7 +120,7 @@ const handlePublish = async (payload: any) => {
 
 .info-card-icon {
   font-size: 22px;
-  color: var(--brand_pink, #fb7299);
+  color: var(--brand_pink, #00a1d6);
   margin-top: 2px;
 }
 

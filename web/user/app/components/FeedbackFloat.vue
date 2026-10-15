@@ -95,10 +95,10 @@ const submit = async () => {
   gap: 6px;
   height: 42px;
   padding: 0 16px;
-  border: 1px solid rgba(251, 114, 153, 0.4);
+  border: 1px solid rgba(0, 161, 214, 0.4);
   border-radius: 21px;
   background: #fff;
-  color: #fb7299;
+  color: #00a1d6;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -107,7 +107,7 @@ const submit = async () => {
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(251, 114, 153, 0.3);
+    box-shadow: 0 6px 20px rgba(0, 161, 214, 0.3);
   }
 }
 

@@ -44,7 +44,7 @@ const handleClick = (tab) => emit('click', tab)
     white-space: nowrap;
 
     &.active {
-      color: #fb7299;
+      color: #00a1d6;
       font-weight: 700;
       &::after {
         content: '';
@@ -53,7 +53,7 @@ const handleClick = (tab) => emit('click', tab)
         left: 0;
         width: 26px;
         height: 4px;
-        background: #fb7299;
+        background: #00a1d6;
         border-radius: 4px;
       }
     }

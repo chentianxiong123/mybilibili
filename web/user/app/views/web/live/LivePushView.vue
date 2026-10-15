@@ -470,7 +470,7 @@ onUnmounted(() => {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  border: 6px solid #fb7299;
+  border: 6px solid #00a1d6;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -478,7 +478,7 @@ onUnmounted(() => {
   animation: countdown-pulse 1s infinite;
 }
 @keyframes countdown-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
-.countdown-number { font-size: 56px; font-weight: 700; color: #fb7299; }
+.countdown-number { font-size: 56px; font-weight: 700; color: #00a1d6; }
 .countdown-overlay p { color: #fff; font-size: 16px; margin: 0; }
 .live-dot {
   display: inline-block;
@@ -543,7 +543,7 @@ onUnmounted(() => {
 }
 .leaderboard-entry .rank {
   width: 16px; height: 16px;
-  background: #fb7299;
+  background: #00a1d6;
   color: #fff;
   border-radius: 50%;
   font-size: 10px;
@@ -551,7 +551,7 @@ onUnmounted(() => {
   font-weight: 600;
 }
 .leaderboard-entry .name { flex: 1; color: #18191c; font-weight: 500; }
-.leaderboard-entry .count { color: #fb7299; font-weight: 600; }
+.leaderboard-entry .count { color: #00a1d6; font-weight: 600; }
 
 .cover-card :deep(.el-card__header) {
   padding: 16px 20px;
@@ -631,7 +631,7 @@ onUnmounted(() => {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #fb7299, #ff9eb1);
+  background: linear-gradient(135deg, #00a1d6, #5cc9ee);
   color: #fff;
   display: flex;
   align-items: center;

@@ -92,7 +92,7 @@ describe('useLiveRoomPlayer', () => {
       const opts = ArtplayerCtor.mock.calls[0][0]
       expect(opts.url).toBe('http://localhost:28080/live/skey.flv')
       expect(opts.type).toBe('flv')
-      expect(opts.theme).toBe('#fb7299')
+      expect(opts.theme).toBe('#00a1d6')
     })
 
     it('自定义 hostname 生效', () => {

@@ -134,7 +134,7 @@ export default {
 }
 
 .home-user-spec {
-    background-color: #fb7299;
+    background-color: #00a1d6;
     color: #fff;
     border-radius: 4px;
     display: inline-block;

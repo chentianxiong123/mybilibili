@@ -47,14 +47,14 @@ const fetchHotSearch = async () => {
         rank: item.rank,
         title: item.keyword,
         hot: item.rank <= 3 ? '热' : (item.rank <= 5 ? '新' : ''),
-        color: item.rank <= 3 ? '#ff2442' : '#ff6699'
+        color: item.rank <= 3 ? '#0089bc' : '#00a1d6'
       }))
     } else if (response && response.code === 200 && response.data) {
       hotSearchList.value = response.data.map(item => ({
         rank: item.rank,
         title: item.keyword,
         hot: item.rank <= 3 ? '热' : (item.rank <= 5 ? '新' : ''),
-        color: item.rank <= 3 ? '#ff2442' : '#ff6699'
+        color: item.rank <= 3 ? '#0089bc' : '#00a1d6'
       }))
     }
   } catch (error) {
@@ -439,7 +439,7 @@ onMounted(() => {
   position: absolute;
   bottom: 0;
   right: 0;
-  background: linear-gradient(135deg, #ff6b9d, #feca57);
+  background: linear-gradient(135deg, #00a1d6, #feca57);
   color: #fff;
   font-size: 11px;
   padding: 2px 6px;
@@ -653,7 +653,7 @@ onMounted(() => {
 
 .hot-rank.top-three {
   color: #fff;
-  background: #ff2442;
+  background: #0089bc;
 }
 
 .hot-title {

@@ -1171,7 +1171,7 @@ watch(
 
 .honor.honor-rank {
     color: var(--brand_pink);
-    background-color: rgba(255, 102, 153, 0.1);
+    background-color: rgba(0, 161, 214, 0.1);
 }
 
 .honor .icon-paihang {

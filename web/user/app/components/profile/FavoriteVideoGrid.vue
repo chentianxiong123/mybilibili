@@ -356,14 +356,14 @@ const rule = computed(() => {
   align-items: center;
   font-size: 14px;
   color: #fff;
-  background-color: #FF7DA1;
+  background-color: #00a1d6;
   border-radius: 4px;
   transition: all .2s;
   cursor: pointer;
 }
 
 .play-all:hover {
-  background-color: #fb7299;
+  background-color: #00a1d6;
 }
 
 .play-all svg {
@@ -408,12 +408,12 @@ const rule = computed(() => {
 }
 
 .be-tab-item.active {
-  color: #fb7299;
+  color: #00a1d6;
 }
 
 .be-tab-cursor {
   left: 0;
-  border-bottom: 1px solid #fb7299;
+  border-bottom: 1px solid #00a1d6;
   transform: translateX(0);
   transition: width .2s ease, transform .2s ease;
   position: absolute;
@@ -426,7 +426,7 @@ const rule = computed(() => {
   content: "";
   left: 50%;
   transform: translateX(-50%);
-  border-bottom: 3px solid #fb7299;
+  border-bottom: 3px solid #00a1d6;
   border-top: 0;
   border-left: 3px solid transparent;
   border-right: 3px solid transparent;
@@ -448,7 +448,7 @@ const rule = computed(() => {
 }
 
 .batch-toggle:hover {
-  color: #fb7299;
+  color: #00a1d6;
 }
 
 .batch-bar {
@@ -489,7 +489,7 @@ const rule = computed(() => {
 }
 
 .search-box .search-input:focus {
-  border-color: #fb7299;
+  border-color: #00a1d6;
 }
 
 .search-box .search-btn {
@@ -539,7 +539,7 @@ const rule = computed(() => {
 }
 
 .small-item.batch-selected .cover {
-  outline: 2px solid #fb7299;
+  outline: 2px solid #00a1d6;
   outline-offset: 2px;
 }
 
@@ -555,7 +555,7 @@ const rule = computed(() => {
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: #fb7299;
+  accent-color: #00a1d6;
 }
 
 .small-item .cover {
@@ -647,7 +647,7 @@ const rule = computed(() => {
 }
 
 .small-item .title:hover {
-  color: #fb7299;
+  color: #00a1d6;
 }
 
 .small-item .meta {

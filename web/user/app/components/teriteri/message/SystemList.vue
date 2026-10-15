@@ -109,7 +109,7 @@ export default {
     font-size: 13px;
 }
 .list-error .btn {
-    color: var(--brand_pink, #fb7299);
+    color: var(--brand_pink, #00a1d6);
     cursor: pointer;
 }
 .system-item {

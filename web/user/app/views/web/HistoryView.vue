@@ -799,7 +799,7 @@ onMounted(() => {
 
 .progress-fill {
   height: 100%;
-  background: #fb7299;
+  background: #00a1d6;
   transition: width 0.3s;
 }
 
@@ -820,7 +820,7 @@ onMounted(() => {
   position: absolute;
   top: 8px;
   right: 8px;
-  background: #fb7299;
+  background: #00a1d6;
   color: #fff;
   padding: 2px 6px;
   border-radius: 2px;
@@ -894,7 +894,7 @@ onMounted(() => {
 .watch-progress {
   margin-top: 4px;
   font-size: 12px;
-  color: #fb7299;
+  color: #00a1d6;
 }
 
 /* 空状态 */

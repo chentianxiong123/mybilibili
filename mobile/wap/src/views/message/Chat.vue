@@ -208,7 +208,7 @@ const isMine = (msg: any) => {
     .bubble {
       padding: 12px 16px;
       border-radius: 18px 4px 18px 18px;
-      background: #fb7299;
+      background: #00a1d6;
       color: #fff;
       font-size: 18px;
     }
@@ -272,7 +272,7 @@ const isMine = (msg: any) => {
     display: grid;
     place-items: center;
     color: #fff;
-    background: #fb7299;
+    background: #00a1d6;
     font-size: 15px;
   }
 }

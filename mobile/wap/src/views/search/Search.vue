@@ -360,7 +360,7 @@ const goHot = () => router.push('/m/search/hot')
 }
 
 .search-btn {
-  color: #fb7299;
+  color: #00a1d6;
   font-size: 20px;
   font-weight: 600;
 }
@@ -448,7 +448,7 @@ const goHot = () => router.push('/m/search/hot')
 
     &.exclusive {
       min-width: 32px;
-      background: #f25d9c;
+      background: #00a1d6;
     }
   }
 }
@@ -630,7 +630,7 @@ const goHot = () => router.push('/m/search/hot')
   font-weight: 500;
 
   i {
-    color: #fb7299;
+    color: #00a1d6;
     font-style: normal;
     font-size: 12px;
     margin-left: 4px;
@@ -660,9 +660,9 @@ const goHot = () => router.push('/m/search/hot')
   cursor: pointer;
 
   &.active {
-    border-color: #fb7299;
-    color: #fb7299;
-    background: rgba(251, 114, 153, 0.06);
+    border-color: #00a1d6;
+    color: #00a1d6;
+    background: rgba(0, 161, 214, 0.06);
     font-weight: 600;
   }
 }
@@ -681,7 +681,7 @@ const goHot = () => router.push('/m/search/hot')
   font-family: inherit;
 
   &:focus {
-    border-color: #fb7299;
+    border-color: #00a1d6;
   }
 }
 
@@ -705,7 +705,7 @@ const goHot = () => router.push('/m/search/hot')
   outline: none;
 
   &:focus {
-    border-color: #fb7299;
+    border-color: #00a1d6;
   }
 
   &::placeholder {
@@ -719,14 +719,14 @@ const goHot = () => router.push('/m/search/hot')
   margin-top: 18px;
   border: 0;
   border-radius: 21px;
-  background: #fb7299;
+  background: #00a1d6;
   color: #fff;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
 
   &:disabled {
-    background: #f3cdd8;
+    background: #e0f4fc;
     cursor: not-allowed;
   }
 }

@@ -648,7 +648,7 @@ ol, ul {
     color: var(--brand_pink);
 }
 .action-btn.danger:hover {
-    color: #f25d8e;
+    color: #00a1d6;
 }
 
 .detail-sort {

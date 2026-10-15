@@ -240,11 +240,11 @@ onMounted(() => {
 }
 
 .appeal-tab:hover {
-  color: #ff6699;
+  color: #00a1d6;
 }
 
 .appeal-tab.active {
-  color: #ff6699;
+  color: #00a1d6;
   font-weight: 500;
 }
 
@@ -272,7 +272,7 @@ onMounted(() => {
 }
 
 .appeal-card:hover {
-  box-shadow: rgba(255, 102, 153, .4) 0 0 1px 1px;
+  box-shadow: rgba(0, 161, 214, .4) 0 0 1px 1px;
 }
 
 .appeal-card p {
@@ -358,8 +358,8 @@ onMounted(() => {
 }
 
 .appeal-card:hover .detail-btn {
-  color: #ff6699;
-  border-color: #ff6699;
+  color: #00a1d6;
+  border-color: #00a1d6;
 }
 
 /* 详情弹窗 */

@@ -79,7 +79,7 @@
                 <div class="person-row">
                   <span class="row-label">游客</span>
                   <div class="progress-bar">
-                    <div class="progress-bar-item" :style="{ width: pct(person.guestPercent), background: '#ff4682' }"></div>
+                    <div class="progress-bar-item" :style="{ width: pct(person.guestPercent), background: '#00a1d6' }"></div>
                   </div>
                   <span class="row-value">{{ formatPercent(person.guestPercent) }}</span>
                 </div>
@@ -251,7 +251,7 @@ const initRadar = () => {
     series: [{
       type: 'radar',
       data: [
-        { name: '我的指标', value: mineData, lineStyle: { color: '#ff4682', width: 2 }, itemStyle: { color: '#ff4682' }, areaStyle: { color: 'rgba(255,70,132,0.15)' } },
+        { name: '我的指标', value: mineData, lineStyle: { color: '#00a1d6', width: 2 }, itemStyle: { color: '#00a1d6' }, areaStyle: { color: 'rgba(0,161,214,0.15)' } },
         { name: '同类UP主', value: peerData, lineStyle: { color: 'rgba(4,4,21,0.4)', width: 2 }, itemStyle: { color: 'rgba(4,4,21,0.4)' }, areaStyle: { color: 'rgba(4,4,21,0.05)' } }
       ]
     }],
@@ -278,7 +278,7 @@ const initPersonDonut = () => {
       center: ['50%', '50%'],
       label: { show: false },
       data: [
-        { value: p.guestPercent, name: '游客', itemStyle: { color: '#ff4682' } },
+        { value: p.guestPercent, name: '游客', itemStyle: { color: '#00a1d6' } },
         { value: p.fanPercent, name: '粉丝', itemStyle: { color: '#c9ccd0' } }
       ]
     }],
@@ -421,7 +421,7 @@ onMounted(load)
   line-height: 1.6;
 }
 .highlight-text {
-  color: #ff4682;
+  color: #00a1d6;
   font-weight: 500;
 }
 .b-icon {
@@ -557,6 +557,6 @@ onMounted(load)
   text-align: right;
 }
 .progress-bar-item.highlight {
-  background: #ff4682;
+  background: #00a1d6;
 }
 </style>

@@ -662,7 +662,7 @@ const openVertical = () => {
       }
 
       &.active {
-        color: #fb7299;
+        color: #00a1d6;
         font-weight: bold;
         &::after {
           content: '';
@@ -671,7 +671,7 @@ const openVertical = () => {
           left: 0;
           right: 0;
           height: 2px;
-          background: #fb7299;
+          background: #00a1d6;
           border-radius: 1px;
         }
       }
@@ -724,12 +724,12 @@ const openVertical = () => {
     :deep(.apd-config-icon:hover),
     :deep(.apd-style-icon:hover) {
       opacity: 1;
-      fill: #fb7299;
+      fill: #00a1d6;
     }
 
     :deep([data-danmuku-visible='true'] .apd-toggle-on),
     :deep(.apd-toggle-on) {
-      fill: #fb7299;
+      fill: #00a1d6;
     }
 
     :deep(.apd-config-panel),
@@ -835,7 +835,7 @@ const openVertical = () => {
       padding: 0;
       border-radius: 0 14px 14px 0;
       background: #f1f2f3;
-      color: #fb7299;
+      color: #00a1d6;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -853,7 +853,7 @@ const openVertical = () => {
         font-size: 12px;
         line-height: 1;
         font-weight: 500;
-        color: #fb7299;
+        color: #00a1d6;
         background: transparent;
       }
 
@@ -909,7 +909,7 @@ const openVertical = () => {
 
     .follow-up-btn {
       font-size: 12px;
-      background: #fb7299;
+      background: #00a1d6;
       color: #fff;
       padding: 5px 16px;
       border-radius: 14px;
@@ -974,7 +974,7 @@ const openVertical = () => {
 
       &.active {
         .action-icon, .action-num {
-          color: #fb7299;
+          color: #00a1d6;
           font-weight: bold;
         }
       }
@@ -1012,8 +1012,8 @@ const openVertical = () => {
 
         &.active {
           background: #fff1f3;
-          border: 1px solid #fb7299;
-          .part-title { color: #fb7299; font-weight: bold; }
+          border: 1px solid #00a1d6;
+          .part-title { color: #00a1d6; font-weight: bold; }
         }
       }
     }
@@ -1162,7 +1162,7 @@ const openVertical = () => {
 
           .commenter-level {
             font-size: 8px;
-            background: #ff6699;
+            background: #00a1d6;
             color: #fff;
             padding: 0 3px;
             border-radius: 2px;
@@ -1203,7 +1203,7 @@ const openVertical = () => {
             .sub-name { color: #507ea6; font-weight: 500; }
             .sub-up-badge {
               font-size: 8px;
-              background: #fb7299;
+              background: #00a1d6;
               color: #fff;
               padding: 0 2px;
               border-radius: 2px;
@@ -1220,7 +1220,7 @@ const openVertical = () => {
     text-align: center;
     padding: 16px;
     font-size: 13px;
-    color: #fb7299;
+    color: #00a1d6;
     cursor: pointer;
   }
 
@@ -1261,7 +1261,7 @@ const openVertical = () => {
 
   .comment-emoji-btn {
     font-size: 13px;
-    color: #fb7299;
+    color: #00a1d6;
     cursor: pointer;
     font-weight: bold;
     white-space: nowrap;

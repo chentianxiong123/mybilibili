@@ -4,7 +4,7 @@ import flvJs from 'flv.js'
 import Artplayer from 'artplayer'
 import ArtplayerPluginDanmuku from 'artplayer-plugin-danmuku'
 
-const DEFAULT_LIVE_THEME = '#fb7299'
+const DEFAULT_LIVE_THEME = '#00a1d6'
 
 export function useLiveRoomPlayer({
   room,

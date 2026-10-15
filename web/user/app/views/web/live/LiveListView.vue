@@ -231,7 +231,7 @@ onUnmounted(() => {
   color: #18191c;
   margin-bottom: 16px;
 }
-.section-title .el-icon { font-size: 18px; color: #fb7299; }
+.section-title .el-icon { font-size: 18px; color: #00a1d6; }
 .filter-hint {
   font-size: 13px;
   color: #9499a0;

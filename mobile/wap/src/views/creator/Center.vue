@@ -166,9 +166,9 @@ const goPublish = () => {
   height: 190px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 86% 60%, rgba(255, 195, 244, 0.95), transparent 28%),
+    radial-gradient(circle at 86% 60%, rgba(0, 161, 214, 0.95), transparent 28%),
     radial-gradient(circle at 30% 10%, rgba(131, 168, 255, 0.8), transparent 38%),
-    linear-gradient(128deg, #81c5ff 0%, #9cb7ff 42%, #f7c9ef 100%);
+    linear-gradient(128deg, #81c5ff 0%, #9cb7ff 42%, #bce9f9 100%);
 }
 
 .creator-topbar {
@@ -400,7 +400,7 @@ const goPublish = () => {
   display: grid;
   place-items: center;
   color: #fff;
-  background: linear-gradient(120deg, #ff82ba, #fb3b91);
+  background: linear-gradient(120deg, #00a1d6, #00a1d6);
   font-size: 30px;
   transform: translateX(18px);
 }
@@ -439,7 +439,7 @@ const goPublish = () => {
   place-items: center;
   color: #fff;
   border-radius: 14px;
-  background: linear-gradient(160deg, #ff91c0, #fb7299);
+  background: linear-gradient(160deg, #3fbeeb, #00a1d6);
 
   &.task {
     background: linear-gradient(160deg, #ffbf72, #ff8a3d);

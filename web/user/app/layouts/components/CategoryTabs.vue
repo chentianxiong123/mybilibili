@@ -316,13 +316,13 @@ const handleHotTabClick = () => {
 
 /* 新的悬浮效果 */
 .hot-tab:hover .hot-icon {
-  background-color: #ff6b9d;
-  border-color: #ff6b9d;
+  background-color: #00a1d6;
+  border-color: #00a1d6;
   transform: scale(1.1);
 }
 
 .hot-tab:hover .hot-text {
-  color: #fb7299;
+  color: #00a1d6;
   font-weight: 500;
 }
 
@@ -336,11 +336,11 @@ const handleHotTabClick = () => {
   margin-bottom: 4px;
   transition: color 0.3s ease;
   border-radius: 50%;
-  background-color: #fb7299;
+  background-color: #00a1d6;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #fb7299;
+  border: 2px solid #00a1d6;
 }
 
 .hot-text {

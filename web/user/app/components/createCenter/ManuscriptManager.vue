@@ -748,7 +748,7 @@ onUnmounted(() => {
 
 .search-input :deep(.el-input__wrapper.is-focus) {
   background: #fff;
-  box-shadow: 0 0 0 1px #ff6699 inset;
+  box-shadow: 0 0 0 1px #00a1d6 inset;
 }
 
 /* 全部稿件 / 草稿（对齐B站.tabs：16px间距，选中不变粗） */
@@ -769,11 +769,11 @@ onUnmounted(() => {
 }
 
 .status-tab:hover {
-  color: #ff6699;
+  color: #00a1d6;
 }
 
 .status-tab.active {
-  color: #ff6699;
+  color: #00a1d6;
 }
 
 /* 状态细分（对齐B站secondTabs：32px大间距，弱化灰色，选中仅加粗） */
@@ -793,7 +793,7 @@ onUnmounted(() => {
 }
 
 .second-tab:hover {
-  color: #ff6699;
+  color: #00a1d6;
 }
 
 .second-tab.active {
@@ -931,7 +931,7 @@ onUnmounted(() => {
 }
 
 .card-title:hover {
-  color: #ff6699;
+  color: #00a1d6;
 }
 
 .card-ops {
@@ -1084,8 +1084,8 @@ onUnmounted(() => {
 }
 
 .bili-btn:hover {
-  color: #ff6699;
-  border-color: #ff6699;
+  color: #00a1d6;
+  border-color: #00a1d6;
 }
 
 .bili-more-btn {
@@ -1104,8 +1104,8 @@ onUnmounted(() => {
 }
 
 .bili-more-btn:hover {
-  color: #ff6699;
-  border-color: #ff6699;
+  color: #00a1d6;
+  border-color: #00a1d6;
 }
 
 </style>

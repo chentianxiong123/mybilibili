@@ -150,7 +150,7 @@ export default {
 }
 .transfer {
     font-size: 12px;
-    color: var(--brand_pink, #fb7299);
+    color: var(--brand_pink, #00a1d6);
     cursor: pointer;
 }
 .chat-body {
@@ -185,7 +185,7 @@ export default {
     white-space: pre-wrap;
 }
 .is-me .bubble {
-    background: var(--brand_pink, #fb7299);
+    background: var(--brand_pink, #00a1d6);
     color: #fff;
 }
 .is-ai .bubble {

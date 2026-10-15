@@ -128,7 +128,7 @@ onMounted(() => {
 }
 
 .stat-card.primary {
-    background: linear-gradient(135deg, #FF7DA1 0%, #fa799e 100%);
+    background: linear-gradient(135deg, #00a1d6 0%, #0096c7 100%);
     color: #fff;
     border-color: transparent;
 }
@@ -207,7 +207,7 @@ onMounted(() => {
 .action-item:hover {
     border-color: var(--brand_pink);
     color: var(--brand_pink);
-    background: rgba(255, 125, 161, 0.04);
+    background: rgba(0, 161, 214, 0.04);
 }
 
 .action-item .iconfont {

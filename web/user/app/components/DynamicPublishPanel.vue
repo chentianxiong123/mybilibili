@@ -220,7 +220,7 @@ defineExpose({ reset })
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #ff2442;
+  background: #0089bc;
   color: #fff;
   border: none;
   cursor: pointer;

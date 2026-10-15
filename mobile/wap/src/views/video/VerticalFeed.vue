@@ -580,7 +580,7 @@ onUnmounted(() => {
             </div>
             <div class="vf-rail-item" @click.stop="toggleLike(it)">
               <div class="vf-icon" :class="{ active: it.liked }">
-                <svg viewBox="0 0 24 24" width="34" height="34" :fill="it.liked ? '#fb7299' : 'none'" stroke="#fff" stroke-width="1.6">
+                <svg viewBox="0 0 24 24" width="34" height="34" :fill="it.liked ? '#00a1d6' : 'none'" stroke="#fff" stroke-width="1.6">
                   <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                 </svg>
               </div>
@@ -634,7 +634,7 @@ onUnmounted(() => {
 
         <!-- 双击点赞心形（跟随点击位置） -->
         <div v-if="i === activeIndex && heartShow" class="vf-heart" :style="heartStyle">
-          <svg viewBox="0 0 24 24" width="120" height="120" fill="#fb7299" stroke="#fff" stroke-width="0.5">
+          <svg viewBox="0 0 24 24" width="120" height="120" fill="#00a1d6" stroke="#fff" stroke-width="0.5">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
           </svg>
         </div>
@@ -698,7 +698,7 @@ onUnmounted(() => {
   width: 36px;
   height: 36px;
   border: 3px solid rgba(255, 255, 255, 0.2);
-  border-top-color: #fb7299;
+  border-top-color: #00a1d6;
   border-radius: 50%;
   animation: vf-spin 0.8s linear infinite;
 }
@@ -792,7 +792,7 @@ onUnmounted(() => {
   transform: translateX(-50%);
   width: 20px; height: 20px;
   border-radius: 50%;
-  background: #fb7299;
+  background: #00a1d6;
   color: #fff;
   font-size: 14px;
   line-height: 20px;
@@ -821,7 +821,7 @@ onUnmounted(() => {
   display: inline-block;
   width: 22px; height: 22px;
   border-radius: 50%;
-  background: #fb7299;
+  background: #00a1d6;
   color: #fff;
   text-align: center;
   line-height: 22px;
@@ -880,7 +880,7 @@ onUnmounted(() => {
 }
 .vf-progress-inner {
   height: 100%;
-  background: #fb7299;
+  background: #00a1d6;
   border-radius: 2px;
 }
 .vf-progress-thumb {
@@ -889,9 +889,9 @@ onUnmounted(() => {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #fb7299;
+  background: #00a1d6;
   transform: translate(-50%, -50%);
-  box-shadow: 0 0 0 3px rgba(251,114,153,0.25);
+  box-shadow: 0 0 0 3px rgba(0,161,214,0.25);
 }
 .vf-mute-btn { display: flex; cursor: pointer; opacity: 0.9; }
 

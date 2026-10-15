@@ -316,7 +316,7 @@ export default {
 }
 
 .load-more {
-    color: #ff91b9;
+    color: #3fbeeb;
     cursor: pointer;
 }
 
@@ -325,7 +325,7 @@ export default {
 }
 
 .error .btn {
-    color: #e36f90;
+    color: #0096c7;
     cursor: pointer;
 }
 
@@ -394,7 +394,7 @@ export default {
 }
 
 .is-me .message-content {
-    background: #ffa7c2;
+    background: #7fd3f2;
     border-radius: 16px 0 16px 16px;
 }
 

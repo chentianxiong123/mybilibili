@@ -60,7 +60,7 @@
     }
 
     // 预设底色（与原 carousel.json 风格一致）
-    const PRESET_COLORS = ['#FF6699', '#5894d4', '#836e61', '#728cb4', '#564e3e', '#724b50'];
+    const PRESET_COLORS = ['#00a1d6', '#5894d4', '#836e61', '#728cb4', '#564e3e', '#724b50'];
 
     export default {
         name: "CarouselIndex",

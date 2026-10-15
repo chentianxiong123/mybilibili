@@ -377,7 +377,7 @@ const openConversation = (item: any) => {
         color: #18191c;
 
         &.system-title {
-          color: #fb7299; /* “玩转Code” or system titles pink theme */
+          color: #00a1d6; /* “玩转Code” or system titles pink theme */
         }
       }
 

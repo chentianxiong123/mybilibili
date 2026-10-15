@@ -611,7 +611,7 @@ ol, ul {
 }
 
 .fav-item.cur {
-    background-color: #FF7DA1;
+    background-color: #00a1d6;
 }
 
 .fav-item.cur .icon-gengduo, .fav-item.cur svg, .fav-item.cur .num, .fav-item.cur .text {
@@ -801,7 +801,7 @@ ol, ul {
     align-items: center;
     font-size: 14px;
     color: #fff;
-    background-color: #FF7DA1;
+    background-color: #00a1d6;
     border-radius: 4px;
     transition: all .2s;
     cursor: pointer;

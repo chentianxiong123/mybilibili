@@ -1509,7 +1509,7 @@ import { hasAuthSession } from "@/utils/auth.ts"
     width: 90px;
     height: 34px;
     border-radius: 8px;
-    background: #fb7299;
+    background: #00a1d6;
     color: #fff;
     text-align: center;
     font-size: 14px;
@@ -1519,7 +1519,7 @@ import { hasAuthSession } from "@/utils/auth.ts"
 }
 
 .upload-buttom:hover {
-    background-color: #f992af;
+    background-color: #00a1d6;
 }
 
 .icon-shangchuan {

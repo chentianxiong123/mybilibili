@@ -409,11 +409,11 @@
 }
 
 .icon-bg__popular {
-    background: #f07775;
+    background: #0089bc;
 }
 
 .icon-bg__popular:hover {
-    background: #eb908f;
+    background: #4ac2ec;
 }
 
 .icon-bg .iconfont {

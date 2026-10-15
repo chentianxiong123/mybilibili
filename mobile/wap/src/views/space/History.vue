@@ -330,7 +330,7 @@ const goBack = () => {
       cursor: pointer;
 
       &.active {
-        color: #fb7299;
+        color: #00a1d6;
         font-weight: bold;
         &::after {
           content: '';
@@ -339,7 +339,7 @@ const goBack = () => {
           left: 0;
           right: 0;
           height: 2px;
-          background: #fb7299;
+          background: #00a1d6;
           border-radius: 1px;
         }
       }
@@ -419,7 +419,7 @@ const goBack = () => {
 
       .progress-fill {
         height: 100%;
-        background: #fb7299;
+        background: #00a1d6;
       }
     }
   }
@@ -508,8 +508,8 @@ const goBack = () => {
     width: 140px;
     height: 34px;
     background: #fff;
-    border: 1px solid #fb7299;
-    color: #fb7299;
+    border: 1px solid #00a1d6;
+    color: #00a1d6;
     font-size: 13px;
     border-radius: 17px;
     cursor: pointer;

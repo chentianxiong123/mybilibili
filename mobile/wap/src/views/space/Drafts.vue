@@ -137,7 +137,7 @@ const goWebDrafts = () => {
   padding: 9px 24px;
   font-size: 14px;
   color: #fff;
-  background: #fb7299;
+  background: #00a1d6;
   border: none;
   border-radius: 20px;
   cursor: pointer;

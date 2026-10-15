@@ -121,14 +121,14 @@ export default {
     width: 4px;
     height: 16px;
     margin-top: 17px;
-    background-color: #FF7DA1;
+    background-color: #00a1d6;
     border-radius: 4px;
 }
 
 .header-text {
     float: left;
     margin: 17px 0 0 5px;
-    color: #FF7DA1;
+    color: #00a1d6;
     font-size: 14px;
     cursor: default;
 }
@@ -225,8 +225,8 @@ export default {
 }
 
 .radio-item.check {
-    background-color: #FF7DA1;
-    border-color: #FF7DA1;
+    background-color: #00a1d6;
+    border-color: #00a1d6;
     color: #fff;
 }
 
@@ -261,7 +261,7 @@ export default {
 
 .btn.enable {
     cursor: pointer;
-    background: #FF7DA1;
+    background: #00a1d6;
     color: #fff;
 }
 </style>

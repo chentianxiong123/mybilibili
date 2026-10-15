@@ -498,7 +498,7 @@ onUnmounted(() => {
   gap: 6px;
 }
 .ended-tab:hover { color: #fff; }
-.ended-tab.active { background: #fb7299; color: #fff; font-weight: 500; }
+.ended-tab.active { background: #00a1d6; color: #fff; font-weight: 500; }
 .replay-count {
   background: rgba(255,255,255,0.2);
   border-radius: 10px;

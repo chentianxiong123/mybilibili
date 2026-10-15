@@ -398,11 +398,11 @@ onMounted(() => {
 }
 
 .action-btn.is-liked {
-  color: #fb7299;
+  color: #00a1d6;
 }
 
 .action-btn.delete:hover {
-  color: #fb7299;
+  color: #00a1d6;
 }
 
 .item-right {

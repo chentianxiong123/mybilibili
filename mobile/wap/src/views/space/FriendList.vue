@@ -249,7 +249,7 @@ watch(() => route.params.mId, () => {
     font-size: 17px;
 
     &.active {
-      color: #ff6aa2;
+      color: #00a1d6;
       font-weight: 600;
 
       &::after {
@@ -261,7 +261,7 @@ watch(() => route.params.mId, () => {
         height: 3px;
         transform: translateX(-50%);
         border-radius: 2px;
-        background: #ff6aa2;
+        background: #00a1d6;
       }
     }
   }
@@ -358,8 +358,8 @@ watch(() => route.params.mId, () => {
     font-size: 16px;
 
     &.active {
-      color: #ff6aa2;
-      background: rgba(255,106,162,0.12);
+      color: #00a1d6;
+      background: rgba(0,161,214,0.12);
     }
   }
 
@@ -441,9 +441,9 @@ watch(() => route.params.mId, () => {
   font-size: 15px;
 
   &.outline {
-    border: 1px solid #ff6aa2;
+    border: 1px solid #00a1d6;
     background: transparent;
-    color: #ff6aa2;
+    color: #00a1d6;
   }
 
   svg {

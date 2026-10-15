@@ -226,7 +226,7 @@ const handleToggleTheme = () => {
       <div class="tools-grid services-grid">
         <div class="tool-item">
           <div class="icon-wrap pink">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fb7299" stroke-width="2">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#00a1d6" stroke-width="2">
               <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
             </svg>
@@ -235,7 +235,7 @@ const handleToggleTheme = () => {
         </div>
         <div class="tool-item">
           <div class="icon-wrap pink">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fb7299" stroke-width="2">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#00a1d6" stroke-width="2">
               <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
               <line x1="12" y1="18" x2="12.01" y2="18" stroke-width="3" />
             </svg>
@@ -244,7 +244,7 @@ const handleToggleTheme = () => {
         </div>
         <div class="tool-item">
           <div class="icon-wrap pink">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fb7299" stroke-width="2">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#00a1d6" stroke-width="2">
               <path d="M20.37 8.91l-8-5a1 1 0 0 0-1.07 0l-8 5A1 1 0 0 0 3 9.76v8.48a1 1 0 0 0 .53.88l8 5a1 1 0 0 0 1.07 0l8-5a1 1 0 0 0 .53-.88V9.76a1 1 0 0 0-.53-.85z" />
             </svg>
           </div>
@@ -252,7 +252,7 @@ const handleToggleTheme = () => {
         </div>
         <div class="tool-item">
           <div class="icon-wrap pink">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fb7299" stroke-width="2">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#00a1d6" stroke-width="2">
               <rect x="2" y="4" width="20" height="16" rx="2" />
               <line x1="12" y1="10" x2="12" y2="16" />
               <line x1="8" y1="12" x2="16" y2="12" />
@@ -262,7 +262,7 @@ const handleToggleTheme = () => {
         </div>
         <div class="tool-item">
           <div class="icon-wrap pink">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fb7299" stroke-width="2">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#00a1d6" stroke-width="2">
               <path d="M23 7a2 2 0 0 0-2-2h-4l-3-3H10L7 5H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V7z" />
               <circle cx="12" cy="13" r="4" />
             </svg>
@@ -271,7 +271,7 @@ const handleToggleTheme = () => {
         </div>
         <div class="tool-item">
           <div class="icon-wrap pink">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fb7299" stroke-width="2">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#00a1d6" stroke-width="2">
               <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
             </svg>
           </div>
@@ -279,7 +279,7 @@ const handleToggleTheme = () => {
         </div>
         <div class="tool-item">
           <div class="icon-wrap pink">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fb7299" stroke-width="2">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#00a1d6" stroke-width="2">
               <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
             </svg>
           </div>
@@ -332,7 +332,7 @@ const handleToggleTheme = () => {
         opacity: 0.7;
       }
       &.active {
-        color: #fb7299;
+        color: #00a1d6;
         background: #fff1f3;
       }
     }
@@ -374,7 +374,7 @@ const handleToggleTheme = () => {
         }
 
         .level-badge {
-          background: #ff6699;
+          background: #00a1d6;
           color: #fff;
           font-size: 9px;
           padding: 1px 4px;
@@ -385,8 +385,8 @@ const handleToggleTheme = () => {
 
       .member-tag {
         display: inline-block;
-        border: 1px solid #fb7299;
-        color: #fb7299;
+        border: 1px solid #00a1d6;
+        color: #00a1d6;
         font-size: 10px;
         padding: 0px 4px;
         border-radius: 3px;
@@ -504,7 +504,7 @@ const handleToggleTheme = () => {
     }
 
     .publish-btn {
-      background: #fb7299;
+      background: #00a1d6;
       color: #fff;
       font-size: 12px;
       padding: 4px 12px;
@@ -515,7 +515,7 @@ const handleToggleTheme = () => {
       font-weight: bold;
       cursor: pointer;
       &:active {
-        background: #f5729a;
+        background: #0089bc;
       }
     }
   }

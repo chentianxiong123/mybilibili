@@ -248,7 +248,7 @@ onMounted(() => {
 }
 
 .top-tab.active {
-  color: var(--brand_pink, #ff6699);
+  color: var(--brand_pink, #00a1d6);
   font-weight: 700;
 }
 
@@ -259,7 +259,7 @@ onMounted(() => {
   right: 0;
   bottom: 0;
   height: 2.5px;
-  background: var(--brand_pink, #ff6699);
+  background: var(--brand_pink, #00a1d6);
 }
 
 .comment-content {
@@ -289,7 +289,7 @@ onMounted(() => {
 }
 
 .sub-tab.active {
-  color: var(--brand_pink, #ff6699);
+  color: var(--brand_pink, #00a1d6);
   font-weight: 500;
 }
 
@@ -394,7 +394,7 @@ onMounted(() => {
 }
 
 .article-wrap .title:hover {
-  color: var(--brand_pink, #ff6699);
+  color: var(--brand_pink, #00a1d6);
 }
 
 .main-col {
@@ -418,7 +418,7 @@ onMounted(() => {
 }
 
 .ci-user:hover {
-  color: var(--brand_pink, #ff6699);
+  color: var(--brand_pink, #00a1d6);
 }
 
 .ci-title-split {
@@ -451,7 +451,7 @@ onMounted(() => {
 }
 
 .reply-prefix {
-  color: var(--brand_pink, #ff6699);
+  color: var(--brand_pink, #00a1d6);
 }
 
 .ci-action {
@@ -481,7 +481,7 @@ onMounted(() => {
 }
 
 .ci-action .action:hover {
-  color: var(--brand_pink, #ff6699);
+  color: var(--brand_pink, #00a1d6);
 }
 
 .ci-action .like .num {

@@ -149,7 +149,7 @@ const handleTabClick = (tab: typeof tabs[0]) => {
   align-items: center;
   justify-content: center;
   color: #fff;
-  box-shadow: 0 6px 16px rgba(251, 114, 153, 0.38);
+  box-shadow: 0 6px 16px rgba(0, 161, 214, 0.38);
   transition: transform 0.2s, background-color 0.2s;
   transform: translateY(-10px);
 

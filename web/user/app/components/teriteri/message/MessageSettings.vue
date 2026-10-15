@@ -126,7 +126,7 @@ export default {
     font-size: 13px;
 }
 .settings-error .btn {
-    color: var(--brand_pink, #fb7299);
+    color: var(--brand_pink, #00a1d6);
     cursor: pointer;
 }
 .settings-group {
@@ -189,7 +189,7 @@ export default {
     color: #333;
 }
 .opt.active .opt-radio {
-    border-color: var(--brand_pink, #fb7299);
+    border-color: var(--brand_pink, #00a1d6);
 }
 .opt.active .opt-radio::after {
     content: '';
@@ -200,6 +200,6 @@ export default {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--brand_pink, #fb7299);
+    background: var(--brand_pink, #00a1d6);
 }
 </style>

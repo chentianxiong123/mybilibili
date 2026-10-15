@@ -200,7 +200,7 @@ const placeholderCover = '/assets/teriteri/img/bilibili/video-placeholder.png'
 }
 
 .fav-item.cur {
-  background-color: #FF7DA1;
+  background-color: #00a1d6;
 }
 
 .fav-item.cur .icon-gengduo, .fav-item.cur svg, .fav-item.cur .num, .fav-item.cur .text {
@@ -293,7 +293,7 @@ const placeholderCover = '/assets/teriteri/img/bilibili/video-placeholder.png'
 }
 
 .be-dropdown-item:hover {
-  color: #fb7299;
+  color: #00a1d6;
   background-color: #f0f0f0;
 }
 

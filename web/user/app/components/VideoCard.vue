@@ -176,7 +176,7 @@ const commentText = (v: number | string | undefined) => {
   position: absolute;
   top: 6px;
   left: 6px;
-  background: var(--v-brand-pink, #FF6699);
+  background: var(--v-brand-pink, #00a1d6);
   color: #fff;
   font-size: 11px;
   padding: 1px 5px;
@@ -204,7 +204,7 @@ const commentText = (v: number | string | undefined) => {
 }
 
 .video-title-text:hover {
-  color: var(--v-brand-pink, #FF6699);
+  color: var(--v-brand-pink, #00a1d6);
 }
 
 .video-meta {
@@ -223,7 +223,7 @@ const commentText = (v: number | string | undefined) => {
 }
 
 .video-author:hover {
-  color: var(--v-brand-pink, #FF6699);
+  color: var(--v-brand-pink, #00a1d6);
 }
 
 .video-separator {

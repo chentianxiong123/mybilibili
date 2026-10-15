@@ -470,10 +470,10 @@ watch(() => route.query.tab, (tab) => {
   width: calc(100% - 112px);
   height: 38px;
   margin: 12px 0 0 112px;
-  border: 1px solid #ff6aa2;
+  border: 1px solid #00a1d6;
   border-radius: 5px;
   background: transparent;
-  color: #ff6aa2;
+  color: #00a1d6;
   font-size: 17px;
   font-weight: 600;
 
@@ -604,7 +604,7 @@ watch(() => route.query.tab, (tab) => {
     font-weight: 600;
 
     &.active {
-      color: #ff6aa2;
+      color: #00a1d6;
 
       &::after {
         content: '';
@@ -615,7 +615,7 @@ watch(() => route.query.tab, (tab) => {
         height: 3px;
         border-radius: 3px;
         transform: translateX(-50%);
-        background: #ff6aa2;
+        background: #00a1d6;
       }
     }
   }
@@ -763,9 +763,9 @@ watch(() => route.query.tab, (tab) => {
     font-size: 16px;
 
     &.active {
-      border-color: rgba(255,106,162,0.16);
-      background: rgba(255,106,162,0.14);
-      color: #ff6aa2;
+      border-color: rgba(0,161,214,0.16);
+      background: rgba(0,161,214,0.14);
+      color: #00a1d6;
     }
   }
 
@@ -811,10 +811,10 @@ watch(() => route.query.tab, (tab) => {
     svg {
       width: 30px;
       height: 30px;
-      border: 2px solid #ff6aa2;
+      border: 2px solid #00a1d6;
       border-radius: 50%;
-      fill: #ff6aa2;
-      stroke: #ff6aa2;
+      fill: #00a1d6;
+      stroke: #00a1d6;
     }
   }
 
@@ -957,8 +957,8 @@ watch(() => route.query.tab, (tab) => {
     border: 0;
     border-radius: 3px;
     padding: 3px 8px;
-    background: rgba(255,106,162,0.14);
-    color: #ff6aa2;
+    background: rgba(0,161,214,0.14);
+    color: #00a1d6;
   }
 }
 
@@ -990,7 +990,7 @@ watch(() => route.query.tab, (tab) => {
   font-size: 16px;
 
   .liked {
-    color: #ff6aa2;
+    color: #00a1d6;
   }
 }
 

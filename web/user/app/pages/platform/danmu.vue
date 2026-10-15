@@ -303,7 +303,7 @@ onMounted(() => {
 }
 
 .top-tab.active {
-  color: var(--brand_pink, #ff6699);
+  color: var(--brand_pink, #00a1d6);
   font-weight: 700;
 }
 
@@ -314,7 +314,7 @@ onMounted(() => {
   right: 0;
   bottom: 0;
   height: 2.5px;
-  background: var(--brand_pink, #ff6699);
+  background: var(--brand_pink, #00a1d6);
 }
 
 /* 筛选表单 */
@@ -390,8 +390,8 @@ onMounted(() => {
 
 .search-btn {
   color: #fff;
-  background: var(--brand_pink, #ff6699);
-  border: 1px solid var(--brand_pink, #ff6699);
+  background: var(--brand_pink, #00a1d6);
+  border: 1px solid var(--brand_pink, #00a1d6);
 }
 
 /* 弹幕表格 */
@@ -466,7 +466,7 @@ onMounted(() => {
 }
 
 .video-title:hover .video-title-text {
-  color: var(--brand_pink, #ff6699);
+  color: var(--brand_pink, #00a1d6);
 }
 
 .op-btn {

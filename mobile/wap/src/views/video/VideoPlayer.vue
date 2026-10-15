@@ -113,7 +113,7 @@ const initPlayer = async () => {
     fullscreenWeb: false,
     miniProgressBar: false,
     quality: qualityOptions,
-    theme: '#fb7299',
+    theme: '#00a1d6',
     lang: 'zh-cn',
     type: defaultUrl.endsWith('.m3u8') ? 'm3u8' : 'mp4',
     customType: {

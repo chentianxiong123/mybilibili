@@ -134,14 +134,14 @@ const handleJump = (val) => {
 }
 
 .bcc-pagination-item:hover {
-  color: var(--brand_pink, #ff6699);
-  border-color: var(--brand_pink, #ff6699);
+  color: var(--brand_pink, #00a1d6);
+  border-color: var(--brand_pink, #00a1d6);
 }
 
 .bcc-pagination-item.selected {
   color: #fff;
-  background: var(--brand_pink, #ff6699);
-  border-color: var(--brand_pink, #ff6699);
+  background: var(--brand_pink, #00a1d6);
+  border-color: var(--brand_pink, #00a1d6);
 }
 
 .bcc-pagination-item.selected:hover {

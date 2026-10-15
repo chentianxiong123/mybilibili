@@ -495,7 +495,7 @@ export default {
 }
 
 .nav-upload-btn:hover {
-    background-color: #fa799e;
+    background-color: #0096c7;
 }
 
 .nav-upload-btn .iconfont {
@@ -573,7 +573,7 @@ export default {
 .nav-menu /deep/ .el-menu-item.is-active {
     color: var(--brand_pink);
     font-weight: 600;
-    background: rgba(255, 102, 153, .06) !important;
+    background: rgba(0, 161, 214, .06) !important;
 }
 /* 展开的父级标题保持高亮粗体（对齐B站含展开时菜单变色） */
 .nav-menu /deep/ .el-sub-menu.is-active .el-sub-menu__title {

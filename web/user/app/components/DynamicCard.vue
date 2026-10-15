@@ -139,7 +139,7 @@ const formatNumber = (num) => {
 .dynamic-username {
   font-size: 14px;
   font-weight: 500;
-  color: #fb7299;
+  color: #00a1d6;
   cursor: pointer;
 }
 

@@ -140,7 +140,7 @@ export default {
 }
 .mark-all {
     font-size: 12px;
-    color: var(--brand_pink, #fb7299);
+    color: var(--brand_pink, #00a1d6);
     cursor: pointer;
 }
 .mark-all:hover {
@@ -153,7 +153,7 @@ export default {
     font-size: 13px;
 }
 .list-error .btn {
-    color: var(--brand_pink, #fb7299);
+    color: var(--brand_pink, #00a1d6);
     cursor: pointer;
 }
 .notify-item {
@@ -189,7 +189,7 @@ export default {
     text-decoration: none;
 }
 .username:hover {
-    color: var(--brand_pink, #fb7299);
+    color: var(--brand_pink, #00a1d6);
 }
 .action {
     color: #666;
@@ -215,7 +215,7 @@ export default {
     font-size: 12px;
 }
 .item-link a {
-    color: var(--brand_pink, #fb7299);
+    color: var(--brand_pink, #00a1d6);
     text-decoration: none;
 }
 .unread-dot {
@@ -225,6 +225,6 @@ export default {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--stress_red, #fb7299);
+    background: var(--stress_red, #00a1d6);
 }
 </style>

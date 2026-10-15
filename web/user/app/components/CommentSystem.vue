@@ -887,7 +887,7 @@ onUnmounted(() => {
 }
 
 .action-btn.disliked {
-  color: #ff2442;
+  color: #0089bc;
 }
 
 /* 回复输入框 */

@@ -322,7 +322,7 @@ textarea {
   }
 
   .primary {
-    background: #ff6aa2;
+    background: #00a1d6;
     color: #fff;
   }
 }
