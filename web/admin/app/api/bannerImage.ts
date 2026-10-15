@@ -1,8 +1,12 @@
 import request from './client'
 
+// ?history=1 时返回含已归档（status=-1）的历史记录
+const getWithHistory = (url, history) =>
+  history ? request.get(url, { params: { history: 1 } }) : request.get(url)
+
 // 首页轮播图
-export const getHomeBanners = () => {
-  return request.get('/banner-images/home')
+export const getHomeBanners = (history) => {
+  return getWithHistory('/banner-images/home', history)
 }
 
 export const addHomeBanner = (data) => {
@@ -18,8 +22,8 @@ export const deleteHomeBanner = (id) => {
 }
 
 // 分类轮播图
-export const getCategoryBanners = (categoryId) => {
-  return request.get(`/banner-images/category/${categoryId}`)
+export const getCategoryBanners = (categoryId, history) => {
+  return getWithHistory(`/banner-images/category/${categoryId}`, history)
 }
 
 export const addCategoryBanner = (categoryId, data) => {
@@ -35,8 +39,8 @@ export const deleteCategoryBanner = (categoryId, id) => {
 }
 
 // 顶部背景图
-export const getBackgroundImage = () => {
-  return request.get('/banner-images/background')
+export const getBackgroundImage = (history) => {
+  return getWithHistory('/banner-images/background', history)
 }
 
 export const saveBackgroundImage = (data) => {
@@ -48,8 +52,8 @@ export const deleteBackgroundImage = () => {
 }
 
 // 用户主页背景图
-export const getUserProfileBackground = () => {
-  return request.get('/banner-images/user-profile')
+export const getUserProfileBackground = (history) => {
+  return getWithHistory('/banner-images/user-profile', history)
 }
 
 export const saveUserProfileBackground = (data) => {

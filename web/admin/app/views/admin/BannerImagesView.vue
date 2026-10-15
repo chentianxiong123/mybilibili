@@ -42,6 +42,9 @@ const bannerList = ref([])
 const backgroundData = ref(null)
 const loading = ref(false)
 
+// 历史记录（已归档 status=-1 的往期图，MinIO 对象不删，可回溯）
+const showHistory = ref(false)
+
 // 对话框
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加轮播图')
@@ -77,25 +80,30 @@ const normalizeBanner = (d) => ({
 const loadData = async () => {
   loading.value = true
   try {
+    const hist = showHistory.value
     if (currentType.value === 'home') {
-      const res = await getHomeBanners()
+      const res = await getHomeBanners(hist)
       if (res.code === 200) {
         const list = res.data || []
         bannerList.value = Array.isArray(list) ? list.map(normalizeBanner) : []
       }
     } else if (currentType.value === 'category') {
-      const res = await getCategoryBanners(currentCategoryId.value)
+      const res = await getCategoryBanners(currentCategoryId.value, hist)
       if (res.code === 200) {
         const list = res.data || []
         bannerList.value = Array.isArray(list) ? list.map(normalizeBanner) : []
       }
     } else if (currentType.value === 'background') {
-      const res = await getBackgroundImage()
+      const res = await getBackgroundImage(hist)
       if (res.code === 200) {
-        backgroundData.value = res.data ? normalizeBanner(res.data) : null
+        const raw = res.data
+        const list = Array.isArray(raw) ? raw : (raw ? [raw] : [])
+        bannerList.value = list.map(normalizeBanner)
+        const active = list.find(b => (b.status ?? 1) === 1) || list[0] || null
+        backgroundData.value = active ? normalizeBanner(active) : null
       }
     } else if (currentType.value === 'userProfile') {
-      const res = await getUserProfileBackground()
+      const res = await getUserProfileBackground(hist)
       if (res.code === 200) {
         const list = res.data || []
         bannerList.value = Array.isArray(list) ? list.map(normalizeBanner) : []
@@ -117,6 +125,11 @@ const handleTypeChange = () => {
 
 // 分类改变
 const handleCategoryChange = () => {
+  loadData()
+}
+
+// 切换历史记录
+const handleHistoryChange = () => {
   loadData()
 }
 
@@ -259,6 +272,7 @@ const formatTime = (time) => {
 
 // 状态文本
 const getStatusText = (status) => {
+  if (status === -1) return '历史'
   return status === 1 ? '启用' : '禁用'
 }
 
@@ -311,7 +325,15 @@ const loadCategories = async () => {
         />
       </el-select>
 
-      <el-button type="primary" @click="handleAdd" style="margin-left: auto">
+      <el-button
+        :type="showHistory ? 'warning' : 'default'"
+        @click="showHistory = !showHistory; handleHistoryChange()"
+        style="margin-left: auto"
+      >
+        {{ showHistory ? '返回在用' : '历史记录' }}
+      </el-button>
+
+      <el-button type="primary" @click="handleAdd" style="margin-left: 12px">
         <el-icon><Plus /></el-icon>
         {{ currentType === 'background' || currentType === 'userProfile' ? '设置背景图' : '添加轮播图' }}
       </el-button>
@@ -319,7 +341,7 @@ const loadCategories = async () => {
 
     <!-- 首页/分类/用户主页背景轮播图列表 -->
     <el-table
-      v-if="currentType !== 'background'"
+      v-if="currentType !== 'background' || showHistory"
       v-loading="loading"
       :data="bannerList"
       style="width: 100%"
@@ -355,18 +377,21 @@ const loadCategories = async () => {
       </el-table-column>
       <el-table-column label="操作" fixed="right" width="150">
         <template #default="{ row }">
-          <el-button link type="primary" size="small" @click="handleEdit(row)">
-            编辑
-          </el-button>
-          <el-button link type="danger" size="small" @click="handleDelete(row)">
-            删除
-          </el-button>
+          <template v-if="row.status !== -1">
+            <el-button link type="primary" size="small" @click="handleEdit(row)">
+              编辑
+            </el-button>
+            <el-button link type="danger" size="small" @click="handleDelete(row)">
+              删除
+            </el-button>
+          </template>
+          <el-tag v-else type="info" size="small">已归档</el-tag>
         </template>
       </el-table-column>
     </el-table>
 
     <!-- 顶部背景图展示 -->
-    <div v-else-if="currentType === 'background'" class="background-section">
+    <div v-else-if="currentType === 'background' && !showHistory" class="background-section">
       <el-empty v-if="!backgroundData" description="暂无背景图" />
       <div v-else class="background-card">
         <el-image
