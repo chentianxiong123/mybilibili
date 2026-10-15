@@ -5,6 +5,7 @@ import Header from '../components/Header.vue'
 import TabBar from '../components/TabBar.vue'
 import Drawer from '../components/Drawer.vue'
 import VideoItem from '../components/VideoItem.vue'
+import SkeletonList from '../components/SkeletonList.vue'
 import ScrollToTop from '../components/ScrollToTop.vue'
 import { getRankingPartitions, getRankingRegion } from '../api/channel'
 
@@ -104,7 +105,9 @@ const handleTabClick = (tab) => {
       </div>
     </div>
 
-    <div v-else class="loading">加载中...</div>
+    <div v-else class="loading">
+      <SkeletonList variant="grid" :count="6" />
+    </div>
     <ScrollToTop />
   </div>
 </template>
@@ -164,10 +167,6 @@ const handleTabClick = (tab) => {
 }
 
 .loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 200px;
   color: $text-secondary;
 }
 </style>

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { manuscriptApi, normalizeManuscriptList } from '../../api/manuscript'
+import SkeletonList from '../../components/SkeletonList.vue'
 import { formatTenThousand } from '../../utils/format'
 
 const router = useRouter()
@@ -180,7 +181,9 @@ onMounted(refresh)
 
     <main class="manage-content">
       <section>
-        <div v-if="loading" class="state-block">加载中...</div>
+        <div v-if="loading" class="state-block state-block--skeleton">
+          <SkeletonList variant="row" :count="3" />
+        </div>
         <div v-else-if="videoList.length === 0" class="state-block">
           <p>还没有视频稿件</p>
           <button @click="goPublish">发布视频</button>
@@ -516,6 +519,10 @@ onMounted(refresh)
   text-align: center;
   color: #9499a0;
   background: #fff;
+
+  &--skeleton {
+    padding: 12px;
+  }
 
   p {
     margin: 0 0 16px;

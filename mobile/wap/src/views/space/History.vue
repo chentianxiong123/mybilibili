@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { historyApi } from '../../api/index'
+import SkeletonList from '../../components/SkeletonList.vue'
 import { isLogin } from '../../utils/session'
 
 const router = useRouter()
@@ -176,7 +177,9 @@ const goBack = () => {
 
     <!-- 历史数据呈现区域 -->
     <div class="history-content">
-      <div v-if="loading" class="loading-wrap">加载中...</div>
+      <div v-if="loading" class="loading-wrap">
+        <SkeletonList variant="row" :count="4" />
+      </div>
 
       <div v-else-if="histories.length > 0" class="history-list">
         <div v-for="group in histories" :key="group.date" class="history-group">
@@ -358,9 +361,8 @@ const goBack = () => {
   padding: 0 16px;
 
   .loading-wrap {
-    text-align: center;
-    padding: 40px;
-    color: #9499a0;
+    padding: 0;
+    margin: 0 -16px;
   }
 }
 

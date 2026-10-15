@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCollectedVideos, getFavoriteFolders, getFavoriteFolderVideos } from '../../api/favorite'
+import SkeletonList from '../../components/SkeletonList.vue'
 import { isLogin } from '../../utils/session'
 
 const router = useRouter()
@@ -215,7 +216,9 @@ const goBack = () => {
 
     <!-- 收藏的稿件卡片展示区 -->
     <div class="favorite-content">
-      <div v-if="loading" class="loading-wrap">加载中...</div>
+      <div v-if="loading" class="loading-wrap">
+        <SkeletonList variant="row" :count="4" />
+      </div>
 
       <div v-else-if="favorites.length > 0" class="card-list">
         <!-- 1:1 卡片样式复刻 -->
@@ -413,9 +416,8 @@ const goBack = () => {
   padding: 0 16px;
 
   .loading-wrap {
-    text-align: center;
-    padding: 40px;
-    color: #9499a0;
+    padding: 0;
+    margin: 0 -16px;
   }
 }
 

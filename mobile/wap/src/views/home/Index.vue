@@ -5,6 +5,7 @@ import Header from '../../components/Header.vue'
 import TabBar from '../../components/TabBar.vue'
 import Drawer from '../../components/Drawer.vue'
 import VideoItem from '../../components/VideoItem.vue'
+import SkeletonList from '../../components/SkeletonList.vue'
 import LiveInfo from '../live/LiveInfo.vue'
 import ScrollToTop from '../../components/ScrollToTop.vue'
 import { getHomeContent, getBanners, getVideosByCategory, getCachedHome } from '../../api/index'
@@ -387,7 +388,7 @@ const activeCategoryBanners = computed(() => {
           />
         </div>
         <!-- 分类视频加载中 -->
-        <div v-else-if="partitionLoading" class="loading">加载中...</div>
+        <SkeletonList v-else-if="partitionLoading" variant="grid" :count="6" />
         <!-- 视频列表 -->
         <div v-else class="video-grid">
           <VideoItem
@@ -400,7 +401,9 @@ const activeCategoryBanners = computed(() => {
       </div>
     </div>
 
-    <div v-else class="loading">加载中...</div>
+    <div v-else class="loading">
+      <SkeletonList variant="grid" :count="8" />
+    </div>
     <ScrollToTop />
   </div>
 </template>
@@ -604,7 +607,6 @@ const activeCategoryBanners = computed(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 200px;
   color: $text-secondary;
 }
 </style>

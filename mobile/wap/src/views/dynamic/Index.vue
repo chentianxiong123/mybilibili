@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import Header from '../../components/Header.vue'
+import SkeletonList from '../../components/SkeletonList.vue'
 import dynamicApi from '../../api/dynamic'
 import api from '../../api/client'
 import { getLiveListData } from '../../api/live'
@@ -472,6 +473,7 @@ defineExpose({
 
     <!-- Dynamic feed list -->
     <main class="dynamic-feed-container">
+      <SkeletonList v-if="loading && dynamicList.length === 0" variant="feed" :count="3" />
       <div v-for="item in dynamicList" :key="item.id" class="feed-card">
         <!-- Feed Card Header -->
         <div class="feed-card-header">

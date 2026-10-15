@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Header from '../../components/Header.vue'
+import SkeletonList from '../../components/SkeletonList.vue'
 import { getAreas } from '../../api/live'
 
 const router = useRouter()
@@ -26,7 +27,9 @@ onMounted(async () => {
   <div class="live-area-page">
     <Header />
     <div class="area-title">全部分类</div>
-    <div v-if="loading" class="loading">加载中...</div>
+    <div v-if="loading" class="loading">
+      <SkeletonList variant="icon" :count="12" />
+    </div>
     <div v-else class="area-grid">
       <router-link
         v-for="area in areas"
@@ -97,8 +100,6 @@ onMounted(async () => {
 .area-name { font-size: 12px; color: $text-primary; }
 
 .loading {
-  text-align: center;
-  padding: 40px;
   color: $text-secondary;
 }
 </style>

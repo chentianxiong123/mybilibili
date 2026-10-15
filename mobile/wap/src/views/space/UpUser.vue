@@ -6,6 +6,7 @@ import { checkFollow, followUser } from '../../api/interaction'
 import { getFavoriteFolders } from '../../api/favorite'
 import dynamicApi from '../../api/dynamic'
 import { getLocalUserId } from '../../api/user'
+import SkeletonList from '../../components/SkeletonList.vue'
 import { formatDate, formatTenThousand } from '../../utils/format'
 import noface from '../../assets/noface.gif'
 
@@ -153,7 +154,9 @@ watch(() => route.query.tab, (tab) => {
       </div>
     </header>
 
-    <div v-if="loading" class="loading">加载中...</div>
+    <div v-if="loading" class="loading">
+      <SkeletonList variant="grid" :count="6" />
+    </div>
 
     <template v-else-if="upUser">
       <section v-if="activeTab === 'home'" class="hero-section">
@@ -1047,7 +1050,11 @@ watch(() => route.query.tab, (tab) => {
   }
 }
 
-.loading,
+.loading {
+  color: #9499a0;
+  text-align: center;
+}
+
 .empty {
   padding: 60px 16px;
   color: #9499a0;

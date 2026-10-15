@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import LiveInfo from './LiveInfo.vue'
+import SkeletonList from '../../components/SkeletonList.vue'
 import ScrollToTop from '../../components/ScrollToTop.vue'
 import { getLiveListData } from '../../api/live'
 
@@ -54,7 +55,9 @@ const loadMore = () => {
     </div>
 
     <div class="live-grid-wrap">
-      <div v-if="loading && page === 1" class="loading">加载中...</div>
+      <div v-if="loading && page === 1" class="loading">
+        <SkeletonList variant="grid" :count="6" />
+      </div>
       <div v-else-if="lives.length" class="live-grid">
         <LiveInfo v-for="live in lives" :key="live.roomId" :live="live" />
       </div>
@@ -95,7 +98,7 @@ const loadMore = () => {
 
 .loading, .empty {
   text-align: center;
-  padding: 40px;
+  padding: 0;
   color: $text-secondary;
 }
 

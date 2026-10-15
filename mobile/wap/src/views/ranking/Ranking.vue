@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import Header from '../../components/Header.vue'
 import TabBar from '../../components/TabBar.vue'
 import VideoItem from '../../components/VideoItem.vue'
+import SkeletonList from '../../components/SkeletonList.vue'
 import ScrollToTop from '../../components/ScrollToTop.vue'
 import { getRankings, getRankingArchive } from '../../api/ranking'
 import { formatTenThousand } from '../../utils/format'
@@ -93,7 +94,9 @@ const handleScroll = () => {
     </div>
 
     <div class="video-list">
-      <div v-if="loading && page === 1" class="loading">加载中...</div>
+      <div v-if="loading && page === 1" class="loading">
+        <SkeletonList variant="row" :count="6" />
+      </div>
       <div v-else>
         <div
           v-for="(video, index) in videos"

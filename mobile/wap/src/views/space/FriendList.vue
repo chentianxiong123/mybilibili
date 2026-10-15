@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { followUser } from '../../api/interaction'
 import { getFollowerList, getFollowingList, getLocalUserId } from '../../api/user'
+import SkeletonList from '../../components/SkeletonList.vue'
 import { formatTenThousand } from '../../utils/format'
 import noface from '../../assets/noface.gif'
 
@@ -151,7 +152,9 @@ watch(() => route.params.mId, () => {
     </section>
 
     <main class="friend-list">
-      <div v-if="loading" class="state">加载中...</div>
+      <div v-if="loading" class="state state--skeleton">
+        <SkeletonList variant="avatar" :count="8" />
+      </div>
       <div v-else-if="filteredList.length === 0" class="state">暂无{{ activeTab === 'following' ? '关注' : '粉丝' }}</div>
       <article v-for="user in filteredList" v-else :key="user.id" class="friend-row">
         <img :src="getAvatar(user)" class="avatar" alt="" @click="goSpace(user.id)" />
@@ -467,5 +470,9 @@ watch(() => route.params.mId, () => {
   padding: 72px 16px;
   text-align: center;
   color: #9499a0;
+
+  &--skeleton {
+    padding: 0;
+  }
 }
 </style>

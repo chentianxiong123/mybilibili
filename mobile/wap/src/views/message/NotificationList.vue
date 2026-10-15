@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getNotifications } from '../../api/message'
+import SkeletonList from '../../components/SkeletonList.vue'
 import { isLogin } from '../../utils/session'
 import noface from '../../assets/noface.gif'
 
@@ -68,7 +69,9 @@ const goManuscript = (item: any) => {
       <div class="right-spacer"></div>
     </div>
 
-    <div v-if="loading" class="loading">加载中...</div>
+    <div v-if="loading" class="loading">
+      <SkeletonList variant="avatar" :count="6" />
+    </div>
 
     <div v-else-if="list.length > 0" class="notify-list">
       <div
@@ -142,8 +145,7 @@ const goManuscript = (item: any) => {
 }
 
 .loading {
-  text-align: center;
-  padding: 40px 0;
+  padding: 0;
   color: #9499a0;
   font-size: 14px;
 }

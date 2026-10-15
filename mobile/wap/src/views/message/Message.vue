@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getConversations, getUnreadCounts } from '../../api/message'
+import SkeletonList from '../../components/SkeletonList.vue'
 import noface from '../../assets/noface.gif'
 import { isLogin } from '../../utils/session'
 
@@ -146,7 +147,9 @@ const openConversation = (item: any) => {
 
     <!-- 消息列表 -->
     <div class="chat-list-section">
-      <div v-if="loading" class="loading">加载中...</div>
+      <div v-if="loading" class="loading">
+        <SkeletonList variant="avatar" :count="6" />
+      </div>
 
       <div v-else-if="conversations.length > 0" class="chat-list">
         <!-- 单个聊天项 -->
@@ -296,8 +299,7 @@ const openConversation = (item: any) => {
   padding: 8px 0;
 
   .loading {
-    text-align: center;
-    padding: 40px;
+    padding: 0;
     color: #9499a0;
   }
 }

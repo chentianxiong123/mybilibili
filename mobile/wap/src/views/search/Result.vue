@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import VideoItem from '../../components/VideoItem.vue'
+import SkeletonList from '../../components/SkeletonList.vue'
 import ScrollToTop from '../../components/ScrollToTop.vue'
 import { getSearchResult } from '../../api/search'
 import { formatTenThousand } from '../../utils/format'
@@ -87,7 +88,9 @@ const loadMore = () => {
     </div>
 
     <div class="result-content">
-      <div v-if="loading && page === 1" class="loading">加载中...</div>
+      <div v-if="loading && page === 1" class="loading">
+        <SkeletonList variant="grid" :count="6" />
+      </div>
       <template v-else>
         <!-- 视频结果 -->
         <div v-if="searchType === 'all'" class="video-list">
@@ -232,7 +235,7 @@ const loadMore = () => {
 
 .loading {
   text-align: center;
-  padding: 40px;
+  padding: 0;
   color: $text-secondary;
   grid-column: 1 / -1;
 }

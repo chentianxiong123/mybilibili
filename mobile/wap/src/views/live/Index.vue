@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import Header from '../../components/Header.vue'
 import ScrollToTop from '../../components/ScrollToTop.vue'
 import { getLiveIndexData } from '../../api/live'
+import SkeletonList from '../../components/SkeletonList.vue'
 import LiveInfo from './LiveInfo.vue'
 
 const bannerList = ref([])
@@ -58,7 +59,9 @@ const initSwiper = () => {
       </div>
     </div>
 
-    <div v-if="loading" class="loading">加载中...</div>
+    <div v-if="loading" class="loading">
+      <SkeletonList variant="grid" :count="6" />
+    </div>
     <template v-else>
       <div v-for="group in itemList" :key="group.areaName" class="live-group">
         <div class="group-header">
@@ -150,8 +153,6 @@ const initSwiper = () => {
 }
 
 .loading {
-  text-align: center;
-  padding: 40px;
   color: $text-secondary;
 }
 </style>
