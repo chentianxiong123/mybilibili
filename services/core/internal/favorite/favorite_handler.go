@@ -44,7 +44,10 @@ func (h *FavoriteHandler) handleFavorites(w http.ResponseWriter, r *http.Request
 			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
 			return
 		}
-		h.listFolders(w, r, targetUID)
+		// 查看他人空间时只展示公开收藏夹；本人/自己空间可看到全部
+		viewerID := httputil.GetUserIDFromHeader(r)
+		visibleOnly := targetUID != viewerID
+		h.listFolders(w, r, targetUID, visibleOnly)
 	case "POST":
 		userID := httputil.GetUserIDFromHeader(r)
 		if userID == 0 {
@@ -57,9 +60,9 @@ func (h *FavoriteHandler) handleFavorites(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func (h *FavoriteHandler) listFolders(w http.ResponseWriter, r *http.Request, userID int64) {
+func (h *FavoriteHandler) listFolders(w http.ResponseWriter, r *http.Request, userID int64, visibleOnly bool) {
 	rows, err := h.db.QueryContext(r.Context(),
-		`SELECT f.id, f.name, f.created_at, f.updated_at,
+		`SELECT f.id, f.name, f.created_at, f.updated_at, f.visible,
 		        COALESCE(fc.cnt, 0) AS video_count,
 		        COALESCE(fm.cover_url, '') AS cover
 		 FROM favorite_folders f
@@ -77,7 +80,8 @@ func (h *FavoriteHandler) listFolders(w http.ResponseWriter, r *http.Request, us
 		     LIMIT 1
 		 ) fm ON true
 		 WHERE f.user_id = $1
-		 ORDER BY f.created_at DESC`, userID)
+		   AND ($2::boolean = false OR f.visible = 1)
+		 ORDER BY f.created_at DESC`, userID, visibleOnly)
 	if err != nil {
 		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "查询失败", "data": nil})
 		return
@@ -88,6 +92,7 @@ func (h *FavoriteHandler) listFolders(w http.ResponseWriter, r *http.Request, us
 		ID         int64  `json:"id"`
 		UserID     int64  `json:"user_id"`
 		Name       string `json:"name"`
+		Visible    int    `json:"visible"`
 		VideoCount int64  `json:"video_count"`
 		Cover      string `json:"cover"`
 		CreatedAt  string `json:"created_at"`
@@ -97,7 +102,7 @@ func (h *FavoriteHandler) listFolders(w http.ResponseWriter, r *http.Request, us
 	for rows.Next() {
 		var f folder
 		var createdAt, updatedAt time.Time
-		if err := rows.Scan(&f.ID, &f.Name, &createdAt, &updatedAt, &f.VideoCount, &f.Cover); err != nil {
+		if err := rows.Scan(&f.ID, &f.Name, &createdAt, &updatedAt, &f.Visible, &f.VideoCount, &f.Cover); err != nil {
 			continue
 		}
 		f.UserID = userID
@@ -110,7 +115,8 @@ func (h *FavoriteHandler) listFolders(w http.ResponseWriter, r *http.Request, us
 
 func (h *FavoriteHandler) createFolder(w http.ResponseWriter, r *http.Request, userID int64) {
 	var req struct {
-		Name string `json:"name"`
+		Name    string `json:"name"`
+		Visible *int   `json:"visible"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
@@ -120,15 +126,19 @@ func (h *FavoriteHandler) createFolder(w http.ResponseWriter, r *http.Request, u
 		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "name required", "data": nil})
 		return
 	}
+	visible := 1
+	if req.Visible != nil && (*req.Visible == 0 || *req.Visible == 1) {
+		visible = *req.Visible
+	}
 	var id int64
 	err := h.db.QueryRowContext(r.Context(),
-		`INSERT INTO favorite_folders (user_id, name) VALUES ($1, $2) RETURNING id`,
-		userID, req.Name).Scan(&id)
+		`INSERT INTO favorite_folders (user_id, name, visible) VALUES ($1, $2, $3) RETURNING id`,
+		userID, req.Name, visible).Scan(&id)
 	if err != nil {
 		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "创建失败", "data": nil})
 		return
 	}
-	httputil.WriteOK(w, map[string]any{"id": id, "name": req.Name})
+	httputil.WriteOK(w, map[string]any{"id": id, "name": req.Name, "visible": visible})
 }
 
 // PUT/DELETE /api/v1/favorites/{id}
@@ -165,19 +175,30 @@ func (h *FavoriteHandler) handleByID(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "PUT":
 		var req struct {
-			Name string `json:"name"`
+			Name    string `json:"name"`
+			Visible *int   `json:"visible"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
 		if strings.TrimSpace(req.Name) == "" {
 			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "name required", "data": nil})
 			return
 		}
-		_, err := h.db.ExecContext(r.Context(),
-			`UPDATE favorite_folders SET name = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3`,
-			req.Name, id, userID)
-		if err != nil {
-			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "更新失败", "data": nil})
-			return
+		if req.Visible != nil && (*req.Visible == 0 || *req.Visible == 1) {
+			_, err := h.db.ExecContext(r.Context(),
+				`UPDATE favorite_folders SET name = $1, visible = $3, updated_at = NOW() WHERE id = $2 AND user_id = $4`,
+				req.Name, id, *req.Visible, userID)
+			if err != nil {
+				httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "更新失败", "data": nil})
+				return
+			}
+		} else {
+			_, err := h.db.ExecContext(r.Context(),
+				`UPDATE favorite_folders SET name = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3`,
+				req.Name, id, userID)
+			if err != nil {
+				httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "更新失败", "data": nil})
+				return
+			}
 		}
 		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	case "DELETE":
@@ -274,19 +295,27 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 	}
 	userID := httputil.GetUserIDFromHeader(r)
 
-	// 鉴权先于资源检查（避免泄漏 folder 是否存在）
-	if userID == 0 {
-		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+	// 收藏夹归属与可见性：GET 允许本人或公开收藏夹(无需登录)，写操作仅本人
+	var folderUserID int64
+	var visible int
+	err = h.db.QueryRowContext(r.Context(),
+		`SELECT user_id, COALESCE(visible, 1) FROM favorite_folders WHERE id = $1`,
+		folderID).Scan(&folderUserID, &visible)
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "收藏夹不存在或无权操作", "data": nil})
 		return
 	}
-
-	// 验证 folder 存在且属于当前用户
-	var cnt int
-	h.db.QueryRowContext(r.Context(),
-		`SELECT COUNT(*) FROM favorite_folders WHERE id = $1 AND user_id = $2`,
-		folderID, userID).Scan(&cnt)
-	if cnt == 0 {
+	isOwner := userID != 0 && userID == folderUserID
+	if !isOwner && visible != 1 {
 		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "收藏夹不存在或无权操作", "data": nil})
+		return
+	}
+	if r.Method != http.MethodGet && r.Method != http.MethodPut {
+		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	if r.Method == http.MethodPut && !isOwner {
+		httputil.WriteJSON(w, http.StatusForbidden, map[string]any{"code": 403, "message": "无权操作", "data": nil})
 		return
 	}
 

@@ -185,23 +185,105 @@ func TestHandleFolderVideos_InvalidFolderID(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestHandleFolderVideos_NoUser(t *testing.T) {
-	h, _ := newMockFavorite(t)
+func TestHandleFolderVideos_NoFolder(t *testing.T) {
+	h, mock := newMockFavorite(t)
+	mock.ExpectQuery(`SELECT user_id, COALESCE\(visible, 1\) FROM favorite_folders`).
+		WithArgs(int64(5)).WillReturnError(errors.New("not found"))
 	w := doReq(muxForFav(h), "GET", "/api/v1/favorites/5/videos", "", nil)
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
-func TestHandleFolderVideos_FolderNotOwned(t *testing.T) {
+// 匿名用户不可读私密收藏夹
+func TestHandleFolderVideos_NoUser_Private(t *testing.T) {
 	h, mock := newMockFavorite(t)
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM favorite_folders`).WithArgs(int64(5), int64(1)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	mock.ExpectQuery(`SELECT user_id, COALESCE\(visible, 1\) FROM favorite_folders`).
+		WithArgs(int64(5)).WillReturnRows(sqlmock.NewRows([]string{"user_id", "visible"}).AddRow(int64(2), int32(0)))
+	w := doReq(muxForFav(h), "GET", "/api/v1/favorites/5/videos", "", nil)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// 他人私密收藏夹不可读
+func TestHandleFolderVideos_NotOwned_Private(t *testing.T) {
+	h, mock := newMockFavorite(t)
+	mock.ExpectQuery(`SELECT user_id, COALESCE\(visible, 1\) FROM favorite_folders`).
+		WithArgs(int64(5)).WillReturnRows(sqlmock.NewRows([]string{"user_id", "visible"}).AddRow(int64(2), int32(0)))
 	w := doReq(muxForFav(h), "GET", "/api/v1/favorites/5/videos", "", map[string]string{"X-User-Id": "1"})
 	assert.Equal(t, http.StatusNotFound, w.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// 公开收藏夹：匿名可读
+func TestHandleFolderVideos_Public_Anonymous(t *testing.T) {
+	h, mock := newMockFavorite(t)
+	now := time.Now()
+	mock.ExpectQuery(`SELECT user_id, COALESCE\(visible, 1\) FROM favorite_folders`).
+		WithArgs(int64(5)).WillReturnRows(sqlmock.NewRows([]string{"user_id", "visible"}).AddRow(int64(2), int32(1)))
+	mock.ExpectQuery(`SELECT ffv.manuscript_id`).
+		WithArgs(int64(5), int32(20), int64(0)).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"manuscript_id", "created_at",
+			"title", "description", "cover_url", "status", "review_status",
+			"duration", "duration_seconds", "view_count", "like_count",
+			"coin_count", "collect_count", "comment_count", "share_count",
+			"category_id", "upload_time",
+			"user_id", "nickname", "avatar",
+		}).AddRow(
+			int64(9), now,
+			"title", "", "", int32(3), int32(1),
+			"", int64(0), int64(0), int64(0),
+			int64(0), int64(0), int64(0), int64(0),
+			int64(0), now,
+			int64(2), "u", "",
+		))
+	w := doReq(muxForFav(h), "GET", "/api/v1/favorites/5/videos", "", nil)
+	assert.Equal(t, http.StatusOK, w.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// 公开收藏夹：他人登录后也可读
+func TestHandleFolderVideos_Public_OtherUser(t *testing.T) {
+	h, mock := newMockFavorite(t)
+	now := time.Now()
+	mock.ExpectQuery(`SELECT user_id, COALESCE\(visible, 1\) FROM favorite_folders`).
+		WithArgs(int64(5)).WillReturnRows(sqlmock.NewRows([]string{"user_id", "visible"}).AddRow(int64(2), int32(1)))
+	mock.ExpectQuery(`SELECT ffv.manuscript_id`).
+		WithArgs(int64(5), int32(20), int64(0)).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"manuscript_id", "created_at",
+			"title", "description", "cover_url", "status", "review_status",
+			"duration", "duration_seconds", "view_count", "like_count",
+			"coin_count", "collect_count", "comment_count", "share_count",
+			"category_id", "upload_time",
+			"user_id", "nickname", "avatar",
+		}).AddRow(
+			int64(9), now,
+			"title", "", "", int32(3), int32(1),
+			"", int64(0), int64(0), int64(0),
+			int64(0), int64(0), int64(0), int64(0),
+			int64(0), now,
+			int64(2), "u", "",
+		))
+	w := doReq(muxForFav(h), "GET", "/api/v1/favorites/5/videos", "", map[string]string{"X-User-Id": "1"})
+	assert.Equal(t, http.StatusOK, w.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// 非所有者不能修改他人（即使公开）收藏夹
+func TestHandleFolderVideos_Put_NotOwner(t *testing.T) {
+	h, mock := newMockFavorite(t)
+	mock.ExpectQuery(`SELECT user_id, COALESCE\(visible, 1\) FROM favorite_folders`).
+		WithArgs(int64(5)).WillReturnRows(sqlmock.NewRows([]string{"user_id", "visible"}).AddRow(int64(2), int32(1)))
+	w := doReq(muxForFav(h), "PUT", "/api/v1/favorites/5/videos", `{"manuscript_ids":[9]}`, map[string]string{"X-User-Id": "1"})
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestHandleFolderVideos_Get(t *testing.T) {
 	h, mock := newMockFavorite(t)
 	now := time.Now()
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM favorite_folders`).WithArgs(int64(5), int64(1)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery(`SELECT user_id, COALESCE\(visible, 1\) FROM favorite_folders`).
+		WithArgs(int64(5)).WillReturnRows(sqlmock.NewRows([]string{"user_id", "visible"}).AddRow(int64(1), int32(1)))
 	mock.ExpectQuery(`SELECT ffv.manuscript_id`).
 		WithArgs(int64(5), int32(20), int64(0)).
 		WillReturnRows(sqlmock.NewRows([]string{
@@ -226,7 +308,8 @@ func TestHandleFolderVideos_Get(t *testing.T) {
 
 func TestHandleFolderVideos_Get_QueryError(t *testing.T) {
 	h, mock := newMockFavorite(t)
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM favorite_folders`).WithArgs(int64(5), int64(1)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery(`SELECT user_id, COALESCE\(visible, 1\) FROM favorite_folders`).
+		WithArgs(int64(5)).WillReturnRows(sqlmock.NewRows([]string{"user_id", "visible"}).AddRow(int64(1), int32(1)))
 	mock.ExpectQuery(`SELECT ffv.manuscript_id, m.title`).WillReturnError(errors.New("boom"))
 	w := doReq(muxForFav(h), "GET", "/api/v1/favorites/5/videos", "", map[string]string{"X-User-Id": "1"})
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
@@ -234,7 +317,8 @@ func TestHandleFolderVideos_Get_QueryError(t *testing.T) {
 
 func TestHandleFolderVideos_Put(t *testing.T) {
 	h, mock := newMockFavorite(t)
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM favorite_folders`).WithArgs(int64(5), int64(1)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery(`SELECT user_id, COALESCE\(visible, 1\) FROM favorite_folders`).
+		WithArgs(int64(5)).WillReturnRows(sqlmock.NewRows([]string{"user_id", "visible"}).AddRow(int64(1), int32(1)))
 	mock.ExpectBegin()
 	mock.ExpectExec(`DELETE FROM favorite_folder_videos WHERE folder_id = \$1`).WithArgs(int64(5)).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`INSERT INTO favorite_folder_videos \(folder_id, manuscript_id\)`).WithArgs(int64(5), int64(9)).WillReturnResult(sqlmock.NewResult(0, 1))
@@ -247,7 +331,8 @@ func TestHandleFolderVideos_Put(t *testing.T) {
 
 func TestHandleFolderVideos_Put_BeginError(t *testing.T) {
 	h, mock := newMockFavorite(t)
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM favorite_folders`).WithArgs(int64(5), int64(1)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery(`SELECT user_id, COALESCE\(visible, 1\) FROM favorite_folders`).
+		WithArgs(int64(5)).WillReturnRows(sqlmock.NewRows([]string{"user_id", "visible"}).AddRow(int64(1), int32(1)))
 	mock.ExpectBegin().WillReturnError(errors.New("tx fail"))
 	w := doReq(muxForFav(h), "PUT", "/api/v1/favorites/5/videos", `{"manuscript_ids":[9]}`, map[string]string{"X-User-Id": "1"})
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
@@ -255,7 +340,8 @@ func TestHandleFolderVideos_Put_BeginError(t *testing.T) {
 
 func TestHandleFolderVideos_Put_DeleteError(t *testing.T) {
 	h, mock := newMockFavorite(t)
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM favorite_folders`).WithArgs(int64(5), int64(1)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery(`SELECT user_id, COALESCE\(visible, 1\) FROM favorite_folders`).
+		WithArgs(int64(5)).WillReturnRows(sqlmock.NewRows([]string{"user_id", "visible"}).AddRow(int64(1), int32(1)))
 	mock.ExpectBegin()
 	mock.ExpectExec(`DELETE FROM favorite_folder_videos WHERE folder_id = \$1`).WillReturnError(errors.New("boom"))
 	w := doReq(muxForFav(h), "PUT", "/api/v1/favorites/5/videos", `{"manuscript_ids":[9]}`, map[string]string{"X-User-Id": "1"})
@@ -264,7 +350,8 @@ func TestHandleFolderVideos_Put_DeleteError(t *testing.T) {
 
 func TestHandleFolderVideos_Put_InsertError(t *testing.T) {
 	h, mock := newMockFavorite(t)
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM favorite_folders`).WithArgs(int64(5), int64(1)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery(`SELECT user_id, COALESCE\(visible, 1\) FROM favorite_folders`).
+		WithArgs(int64(5)).WillReturnRows(sqlmock.NewRows([]string{"user_id", "visible"}).AddRow(int64(1), int32(1)))
 	mock.ExpectBegin()
 	mock.ExpectExec(`DELETE FROM favorite_folder_videos WHERE folder_id = \$1`).WithArgs(int64(5)).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`INSERT INTO favorite_folder_videos \(folder_id, manuscript_id\)`).WithArgs(int64(5), int64(9)).WillReturnError(errors.New("boom"))
@@ -274,7 +361,8 @@ func TestHandleFolderVideos_Put_InsertError(t *testing.T) {
 
 func TestHandleFolderVideos_MethodNotAllowed(t *testing.T) {
 	h, mock := newMockFavorite(t)
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM favorite_folders`).WithArgs(int64(5), int64(1)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery(`SELECT user_id, COALESCE\(visible, 1\) FROM favorite_folders`).
+		WithArgs(int64(5)).WillReturnRows(sqlmock.NewRows([]string{"user_id", "visible"}).AddRow(int64(1), int32(1)))
 	w := doReq(muxForFav(h), "POST", "/api/v1/favorites/5/videos", "", map[string]string{"X-User-Id": "1"})
 	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
 }
