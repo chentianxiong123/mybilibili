@@ -379,24 +379,33 @@ func (h *UserExtendHandler) handlePinnedVideo(w http.ResponseWriter, r *http.Req
 			`UPDATE users SET pinned_video_id = NULL WHERE id = $1`, userID)
 		httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
 	case "GET":
+		// 支持 ?uid= 查看他人空间的置顶；不传则取自己的
+		targetID := userID
+		if v := r.URL.Query().Get("uid"); v != "" {
+			if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
+				targetID = n
+			}
+		}
 		var videoID int64
 		h.svc.repo.db.QueryRowContext(r.Context(),
-			`SELECT COALESCE(pinned_video_id,0) FROM users WHERE id = $1`, userID).Scan(&videoID)
+			`SELECT COALESCE(pinned_video_id,0) FROM users WHERE id = $1`, targetID).Scan(&videoID)
 		if videoID == 0 {
 			httputil.WriteOK(w, nil)
 			return
 		}
 		var id int64
-		var title, coverURL string
-		var views int64
+		var title, coverURL, duration string
+		var views, comments int64
 		var uploadTime time.Time
 		h.svc.repo.db.QueryRowContext(r.Context(),
-			`SELECT id, COALESCE(title,''), COALESCE(cover_url,''), COALESCE(view_count,0), COALESCE(upload_time,NOW())
+			`SELECT id, COALESCE(title,''), COALESCE(cover_url,''), COALESCE(view_count,0),
+			        COALESCE(comment_count,0), COALESCE(duration,''), COALESCE(upload_time,NOW())
 			 FROM manuscripts WHERE id = $1`, videoID).
-			Scan(&id, &title, &coverURL, &views, &uploadTime)
+			Scan(&id, &title, &coverURL, &views, &comments, &duration, &uploadTime)
 		httputil.WriteOK(w, map[string]interface{}{
 			"id": id, "title": title, "coverUrl": coverURL,
-			"viewCount": views, "date": uploadTime.Format("2006-01-02"),
+			"viewCount": views, "commentCount": comments,
+			"duration": duration, "date": uploadTime.Format("2006-01-02"),
 		})
 	}
 }

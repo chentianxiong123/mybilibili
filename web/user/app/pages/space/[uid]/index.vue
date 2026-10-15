@@ -4,25 +4,28 @@
             <!-- 置顶视频 -->
             <div class="section text" v-if="pinnedVideo || isOwner">
                 <h3 class="section-title">
-                    <span class="t">置顶</span>
-                    <span class="more" v-if="isOwner && !pinnedVideo" @click="openPinnedDialog">设置置顶</span>
-                    <span class="more" v-if="isOwner && pinnedVideo" @click="openPinnedDialog">修改置顶</span>
-                    <span class="more danger" v-if="isOwner && pinnedVideo" @click="removePinned">取消置顶</span>
+                    <span class="t">置顶视频</span>
+                    <div class="pinned-actions" v-if="isOwner">
+                        <span class="more" @click="openPinnedDialog">{{ pinnedVideo ? '修改置顶' : '设置置顶' }}</span>
+                        <span class="more danger" v-if="pinnedVideo" @click="removePinned">取消置顶</span>
+                    </div>
                 </h3>
                 <div class="pinned-content" v-if="pinnedVideo">
                     <a :href="`/video/${pinnedVideo.id}`" target="_blank" class="pinned-cover">
                         <img v-if="pinnedVideo.coverUrl" :src="pinnedVideo.coverUrl" alt="">
                         <span class="pinned-badge">置顶</span>
+                        <span class="pinned-length" v-if="pinnedVideo.duration">{{ pinnedVideo.duration }}</span>
                     </a>
                     <div class="pinned-info">
                         <a :href="`/video/${pinnedVideo.id}`" target="_blank" class="pinned-title">{{ pinnedVideo.title }}</a>
                         <div class="pinned-meta">
-                            <span><i class="iconfont icon-bofangliang"></i>{{ handleNum(pinnedVideo.viewCount) }}</span>
+                            <span><i class="iconfont icon-bofangliang"></i>{{ handleNum(pinnedVideo.viewCount || 0) }}</span>
                             <span><i class="iconfont icon-pinglun"></i>{{ handleNum(pinnedVideo.commentCount || 0) }}</span>
                             <span>{{ pinnedVideo.date }}</span>
                         </div>
                     </div>
                 </div>
+                <div class="pinned-empty" v-else>暂无置顶视频</div>
             </div>
             <!-- 视频 -->
             <div class="section video">
@@ -196,27 +199,30 @@
         </div>
 
         <!-- 设置置顶视频对话框 -->
-        <el-dialog v-model="showPinnedDialog" title="设置置顶视频" width="520px" :close-on-click-modal="false">
+        <el-dialog v-model="showPinnedDialog" title="设置置顶视频" width="640px" :close-on-click-modal="false">
             <div class="pinned-select-wrap">
                 <div class="pinned-select-list" v-loading="pinnedLoading">
                     <div
                         v-for="item in videoList"
                         :key="item.video.vid"
                         class="pinned-select-item"
-                        :class="{'active': pinnedVideo && String(pinnedVideo.id) === String(item.video.vid)}"
-                        @click="pinnedVideo = { id: Number(item.video.vid), title: item.video.title, coverUrl: item.video.coverUrl, viewCount: item.stats ? item.stats.play : 0, commentCount: 0, date: item.video.uploadDate }"
+                        :class="{'active': pendingPinnedId === Number(item.video.vid)}"
+                        @click="selectPinnedItem(item)"
                     >
-                        <img v-if="item.video.coverUrl" :src="item.video.coverUrl" alt="">
-                        <div class="pinned-select-info">
-                            <p class="pinned-select-title">{{ item.video.title }}</p>
-                            <p class="pinned-select-meta">{{ handleNum(item.stats ? item.stats.play : 0) }}播放</p>
+                        <div class="pinned-select-cover">
+                            <img v-if="item.video.coverUrl" :src="item.video.coverUrl" alt="">
+                            <span class="pinned-select-length" v-if="item.video.duration">{{ handleDuration(item.video.duration) }}</span>
+                            <span class="pinned-select-check" v-if="pendingPinnedId === Number(item.video.vid)">✓</span>
                         </div>
+                        <p class="pinned-select-title">{{ item.video.title }}</p>
+                        <p class="pinned-select-meta">{{ handleNum(item.stats ? item.stats.play : 0) }}播放 · {{ handleDate(item.video.uploadDate) }}</p>
                     </div>
                 </div>
             </div>
             <template #footer>
+                <el-button v-if="pinnedVideo" @click="removePinned">取消置顶</el-button>
                 <el-button @click="showPinnedDialog = false">取消</el-button>
-                <el-button type="primary" :loading="pinnedSaving" @click="savePinned">确定</el-button>
+                <el-button type="primary" :loading="pinnedSaving" :disabled="pendingPinnedId === null" @click="savePinned">确定</el-button>
             </template>
         </el-dialog>
     </div>
@@ -240,6 +246,7 @@ export default {
             showPinnedDialog: false,  // 设置置顶对话框
             pinnedLoading: false,  // 选择列表加载
             pinnedSaving: false,  // 保存中
+            pendingPinnedId: null,  // 对话框里勾选的待置顶视频 id
             userProfile: null,  // 用户完整资料（签名/性别/标签等）
         }
     },
@@ -324,7 +331,7 @@ export default {
 
         // 获取置顶视频（访客也可看）
         async getPinnedVideo() {
-            const res = await this.$get("/user/pinned-video");
+            const res = await this.$get("/user/pinned-video", { params: { uid: this.uid } });
             if (res.data && res.data.code === 200) {
                 this.pinnedVideo = res.data.data;
             }
@@ -336,6 +343,8 @@ export default {
                 this.$message.warning('暂无可选的视频');
                 return;
             }
+            // 默认选中当前已置顶的视频
+            this.pendingPinnedId = this.pinnedVideo ? Number(this.pinnedVideo.id) : null;
             this.showPinnedDialog = true;
         },
 
@@ -344,10 +353,19 @@ export default {
             this.pinnedVideo = video;
         },
 
+        // 在对话框里勾选待置顶视频
+        selectPinnedItem(item) {
+            const vid = Number(item.video.vid);
+            // 再点一次已选中的则取消选择
+            this.pendingPinnedId = this.pendingPinnedId === vid ? null : vid;
+        },
+
         // 保存置顶
         async savePinned() {
-            if (!this.pinnedVideo || !this.pinnedVideo.id) return;
-            this.$post('/user/pinned-video', { videoId: this.pinnedVideo.id }).then((res: any) => {
+            if (!this.pendingPinnedId) return;
+            this.pinnedSaving = true;
+            try {
+                const res: any = await this.$post('/user/pinned-video', { videoId: this.pendingPinnedId });
                 if (res.data && res.data.code === 200) {
                     this.$message.success('置顶成功');
                     this.showPinnedDialog = false;
@@ -355,16 +373,26 @@ export default {
                 } else {
                     this.$message.error('置顶失败');
                 }
-            });
+            } catch (e) {
+                this.$message.error('置顶失败');
+            } finally {
+                this.pinnedSaving = false;
+            }
         },
 
         // 取消置顶
         async removePinned() {
-            const res = await this.$delete('/user/pinned-video');
-            if (res.data && res.data.code === 200) {
-                this.pinnedVideo = null;
-                this.$message.success('已取消置顶');
-            } else {
+            try {
+                const res: any = await this.$delete('/user/pinned-video');
+                if (res.data && res.data.code === 200) {
+                    this.pinnedVideo = null;
+                    this.pendingPinnedId = null;
+                    this.showPinnedDialog = false;
+                    this.$message.success('已取消置顶');
+                } else {
+                    this.$message.error('取消置顶失败');
+                }
+            } catch (e) {
                 this.$message.error('取消置顶失败');
             }
         },
@@ -780,18 +808,28 @@ ol, ul {
     cursor: pointer;
 }
 
-/* 置顶视频样式 */
-.section-title .more {
+/* 置顶视频样式（UI 对齐 teriteri，要素对齐 next-old） */
+.section-title .pinned-actions {
     position: absolute;
     right: 0;
-    top: 8px;
+    top: 6px;
+    display: flex;
+    gap: 8px;
 }
-.section-title .more.danger {
-    right: 58px;
+.section-title .pinned-actions .more {
+    position: static;
+    top: auto;
+    right: auto;
 }
 .section-title .more:hover {
     color: var(--brand_pink);
     border-color: var(--brand_pink);
+}
+.pinned-empty {
+    color: #9499a0;
+    font-size: 14px;
+    line-height: 22px;
+    padding-bottom: 17px;
 }
 .pinned-content {
     display: flex;
@@ -812,16 +850,33 @@ ol, ul {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform .2s ease;
+}
+.pinned-content:hover .pinned-cover img {
+    transform: scale(1.06);
 }
 .pinned-badge {
     position: absolute;
     top: 6px;
     left: 6px;
+    z-index: 5;
     background: var(--brand_pink);
     color: #fff;
     font-size: 12px;
     line-height: 18px;
     padding: 0 6px;
+    border-radius: 2px;
+}
+.pinned-length {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    z-index: 5;
+    background: rgba(0, 0, 0, .5);
+    color: #fff;
+    font-size: 12px;
+    line-height: 18px;
+    padding: 0 4px;
     border-radius: 2px;
 }
 .pinned-info {
@@ -856,43 +911,80 @@ ol, ul {
 .pinned-meta .iconfont {
     font-size: 13px;
 }
-/* 设置置顶对话框 */
+/* 设置置顶对话框：三列网格 + 选中态 */
 .pinned-select-wrap {
-    max-height: 360px;
+    max-height: 420px;
     overflow-y: auto;
 }
+.pinned-select-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
 .pinned-select-item {
-    display: flex;
-    align-items: center;
-    padding: 8px;
+    padding: 6px;
+    border: 1px solid transparent;
     border-radius: 4px;
     cursor: pointer;
+    transition: border-color .2s ease, background-color .2s ease;
 }
 .pinned-select-item:hover {
     background: #f4f5f7;
 }
 .pinned-select-item.active {
+    border-color: var(--brand_pink);
     background: #eaf6fc;
 }
-.pinned-select-item img {
-    width: 80px;
-    height: 50px;
-    object-fit: cover;
+.pinned-select-cover {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
     border-radius: 2px;
-    flex-shrink: 0;
+    overflow: hidden;
     background: url('@/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
     background-size: cover;
 }
-.pinned-select-info {
-    margin-left: 10px;
-    overflow: hidden;
+.pinned-select-cover img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.pinned-select-length {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    background: rgba(0, 0, 0, .5);
+    color: #fff;
+    font-size: 12px;
+    line-height: 18px;
+    padding: 0 4px;
+    border-radius: 2px;
+}
+.pinned-select-check {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--brand_pink);
+    color: #fff;
+    font-size: 12px;
+    line-height: 18px;
+    text-align: center;
 }
 .pinned-select-title {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--text1);
-    white-space: nowrap;
+    line-height: 18px;
+    margin-top: 6px;
+    height: 36px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
+    word-break: break-all;
 }
 .pinned-select-meta {
     font-size: 12px;
