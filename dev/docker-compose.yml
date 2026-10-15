@@ -55,8 +55,12 @@ services:
       - "--entrypoints.traefik.address=:8082"
       - "--api.insecure=true"
       - "--api.dashboard=true"
-      - "--accesslog=true"
       - "--log.level=WARN"
+    logging:
+      driver: local
+      options:
+        max-size: "2m"
+        max-file: "2"
     ports:
       - "80:80"
       - "8082:8082"  # traefik dashboard (仅 dev)
