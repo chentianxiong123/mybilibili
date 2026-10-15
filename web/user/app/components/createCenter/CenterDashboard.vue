@@ -314,11 +314,9 @@ const fetchDanmakuList = async () => {
       page: danmakuCurrentPage.value,
       size: danmakuPageSize.value
     })
-    console.log('弹幕API返回:', res)
     if (res.code === 200 && res.data) {
       danmakuList.value = res.data.list || []
       danmakuTotal.value = res.data.total || 0
-      console.log('弹幕列表:', danmakuList.value, '总数:', danmakuTotal.value)
     }
   } catch (error) {
     console.error('获取弹幕列表失败:', error)

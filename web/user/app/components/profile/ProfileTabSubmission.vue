@@ -23,7 +23,6 @@ const router = useRouter()
 
 // 处理投稿页面排序变化
 const handleSubmissionsSortChange = (option) => {
-  console.log('【调试】handleSubmissionsSortChange 被调用，选项:', option)
   props.submissions.activeSort = option
   // 同步更新主页和搜索页的排序选项
   emit('sort-change', option)

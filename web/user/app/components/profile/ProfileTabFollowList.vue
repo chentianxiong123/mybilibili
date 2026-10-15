@@ -17,7 +17,6 @@ const handleFollowFilterChange = (filterType) => {
 }
 
 const handleFollowSearch = () => {
-  console.log('搜索关键词:', props.followList.searchKeyword)
 }
 </script>
 

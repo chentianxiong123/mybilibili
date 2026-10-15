@@ -380,7 +380,7 @@ export default {
                     if (!uid) throw new Error("no uid");
                     this.$router.push(`/space/${uid}`);
                 } catch (e) {
-                    console.log("resolve uid exception:", e)
+                    console.error("resolve uid exception:", e)
                     this.$router.push("/");
                 }
             } else {

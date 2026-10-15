@@ -15,10 +15,14 @@ import (
 	"mybilibili/msg-danmaku/internal/danmaku"
 	"mybilibili/msg-danmaku/internal/message"
 	"mybilibili/pkg/auth"
+	"mybilibili/pkg/common/logging"
 	pb "mybilibili/pkg/pb"
 )
 
 func main() {
+	// 统一日志: LOG_DIR 未设置则 stdout(dev 不落盘), 设置则写 <LOG_DIR>/msg-danmaku.log(部署落盘)。
+	logWriter := logging.New(logging.Options{Name: "msg-danmaku"})
+	defer logWriter.Close()
 	dsn := os.Getenv("PG_DSN")
 	if dsn == "" {
 		dsn = "postgres://postgres:postgres@localhost:5432/mybilibili?sslmode=disable"

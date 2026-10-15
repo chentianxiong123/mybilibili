@@ -312,13 +312,9 @@ const loadUserVideos = async () => {
   try {
     // 获取当前排序参数
     const sortParam = sortOptionMap[videoSortOption.value] || 'latest'
-    console.log('【调试】当前排序选项:', videoSortOption.value)
-    console.log('【调试】映射后的排序参数:', sortParam)
-    console.log('【调试】用户ID:', userId.value)
 
     // 只获取已上架的稿件（status=3）
     const response = await videoApi.getVideosByUserId(userId.value, sortParam, 3)
-    console.log('【调试】API响应:', response)
 
     if (response.code === 200) {
       // 后端返回 {list,total}，不是数组
@@ -339,15 +335,6 @@ const loadUserVideos = async () => {
         videos.sort((a, b) => new Date(b.uploadTime) - new Date(a.uploadTime))
       }
 
-      console.log('【调试】获取到的视频数量:', videos.length)
-      console.log('【调试】视频列表（前3个）:', videos.slice(0, 3).map(v => ({
-        id: v.id,
-        title: v.title,
-        viewCount: v.viewCount,
-        collectCount: v.collectCount,
-        uploadTime: v.uploadTime
-      })))
-
       allVideos.value = videos
       // 更新投稿视频计数
       submissions.value.categories[0].count = videos.length
@@ -355,7 +342,7 @@ const loadUserVideos = async () => {
       submissions.value.pagination.totalItems = videos.length
     }
   } catch (error) {
-    console.error('【调试】获取用户视频失败:', error)
+    console.error('获取用户视频失败:', error)
   } finally {
     loading.value.videos = false
   }
@@ -513,7 +500,6 @@ const handleVideoSearch = async () => {
 
 // 监听路由参数变化
 watch(() => route.params.id, (newId) => {
-  console.log('路由参数变化，新的用户ID:', newId)
   const storedId = getCurrentUserId() || JSON.parse(safeStorage.getItem('user') || 'null')?.id
   userId.value = newId || storedId
   if (userId.value) {

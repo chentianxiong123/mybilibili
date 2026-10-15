@@ -155,8 +155,6 @@ const handleSearchManuscripts = () => {
 
 // 创建合集
 const handleCreateCollection = async () => {
-  console.log('【创建合集】newCollection:', newCollection.value)
-  console.log('【创建合集】manuscriptIds:', newCollection.value.manuscriptIds)
   if (!newCollection.value.name.trim()) {
     ElMessage.warning('请输入合集名称')
     return

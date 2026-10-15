@@ -800,7 +800,7 @@ function handleWsMessage(e: MessageEvent) {
 }
 
 function handleWsError(e: Event) {
-    console.log('弹幕websocket信道报错: ', e)
+    console.error('弹幕websocket信道报错: ', e)
 }
 
 function sendDanmu(dm: any) {

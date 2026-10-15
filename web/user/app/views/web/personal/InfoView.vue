@@ -56,8 +56,6 @@ onMounted(() => {
       
       // 保存原始数据
       originalData.value = { ...formData.value }
-      
-      console.log('用户信息:', currentUser.value)
     } catch (error) {
       console.error('解析用户信息失败:', error)
     }

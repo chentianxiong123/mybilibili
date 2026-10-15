@@ -229,12 +229,9 @@ const menuSubtitles = computed(() =>
 
 const loadSubtitles = async () => {
   try {
-    console.log('[字幕] 开始加载字幕列表, videoId:', videoId.value)
     const response = await subtitleApi.getSubtitles(videoId.value)
-    console.log('[字幕] 字幕列表响应:', response)
     if (response.code === 200) {
       subtitleList.value = response.data || []
-      console.log('[字幕] 字幕列表:', subtitleList.value)
       // 列表接口已带 content，直接过滤空壳（如 whisper 占位记录），避免选中空字幕
       const nonEmpty = subtitleList.value.filter((sub: any) => {
         const content = sub.content || sub.cues || []
@@ -243,13 +240,10 @@ const loadSubtitles = async () => {
       const defaultSub = nonEmpty.find((sub: any) => sub.isDefault || sub.is_default)
       const target = defaultSub || nonEmpty[0] || null
       if (target) {
-        console.log('[字幕] 加载默认字幕:', target.language, '条数:', (target.content || []).length)
         await loadSubtitleContent(target.language)
-      } else {
-        console.log('[字幕] 没有可用字幕')
       }
     }
-} catch (error) {
+  } catch (error) {
     console.error('[字幕] 加载字幕列表失败:', error)
     ElMessage.warning('字幕服务暂时不可用')
   }
@@ -257,7 +251,6 @@ const loadSubtitles = async () => {
 
 const loadSubtitleContent = async (language: string) => {
   try {
-    console.log('[字幕] 开始加载字幕内容, language:', language)
     // 优先直接用列表接口携带的 content（同语言可能有空壳占位记录，取非空的）
     const fromList = subtitleList.value.find((sub: any) => {
       if (sub.language !== language) return false
@@ -269,18 +262,13 @@ const loadSubtitleContent = async (language: string) => {
       currentSubtitle.value = fromList
       currentSubtitleContent.value = listContent
       currentLanguage.value = language
-      console.log('[字幕] 从列表载入字幕, 条数:', currentSubtitleContent.value.length)
       return
     }
     const response = await subtitleApi.getSubtitle(videoId.value, language)
-    console.log('[字幕] 字幕内容响应:', response)
     if (response && response.code === 200 && response.data) {
       currentSubtitle.value = response.data
       currentSubtitleContent.value = response.data.content || response.data.cues || []
       currentLanguage.value = language
-      console.log('[字幕] 字幕内容已加载, 条数:', currentSubtitleContent.value.length)
-    } else {
-      console.log('[字幕] 字幕内容为空')
     }
   } catch (error) {
     console.error('[字幕] 加载字幕内容失败:', error)
@@ -652,17 +640,10 @@ const initPlayer = async () => {
     ;(playerRef.value as any).__artResizeObserver = ro
   }
 
-  let lastLoggedSecond = -1
-
   const updateCurrentTime = () => {
     if (art && art.currentTime !== undefined) {
       const time = art.currentTime
       currentVideoTime.value = time
-      const currentSecond = Math.floor(time)
-      if (currentSecond !== lastLoggedSecond) {
-        console.log('[字幕] 时间更新, 当前时间:', time.toFixed(2))
-        lastLoggedSecond = currentSecond
-      }
       handleVideoTimeUpdate()
     }
   }
@@ -674,14 +655,9 @@ const initPlayer = async () => {
   timeUpdateInterval = setInterval(updateCurrentTime, 100)
 
   art.on('play', () => {
-    console.log('[字幕] 视频开始播放')
     if (!timeUpdateInterval) {
       timeUpdateInterval = setInterval(updateCurrentTime, 100)
     }
-  })
-
-  art.on('pause', () => {
-    console.log('[字幕] 视频暂停, 当前时间:', art.currentTime)
   })
 
   art.on('fullscreen', (isFullscreen: boolean) => {
@@ -798,7 +774,6 @@ watch(() => props.resumeTime, (val) => {
 const seekTo = (time: number) => {
   if (art && time !== undefined) {
     art.currentTime = time
-    console.log('跳转到时间:', time)
   }
 }
 

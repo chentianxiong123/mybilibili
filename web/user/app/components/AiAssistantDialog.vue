@@ -83,7 +83,6 @@ const startStreamSummary = () => {
   // 创建新的SSE连接
   eventSource.value = aiSummaryApi.streamSummary(props.videoId, {
     onStart: (data) => {
-      console.log('开始生成摘要:', data)
     },
     onData: (data) => {
       // 追加内容
@@ -92,10 +91,8 @@ const startStreamSummary = () => {
       scrollToBottom()
     },
     onMeta: (meta) => {
-      console.log('元数据:', meta)
     },
     onDone: (data) => {
-      console.log('摘要生成完成:', data)
       isGenerating.value = false
       showCursor.value = false
     },
@@ -150,9 +147,6 @@ const copySummary = () => {
 const formatSummary = (content) => {
   if (!content) return ''
   
-  console.log('原始内容长度:', content.length)
-  console.log('包含换行符数量:', (content.match(/\n/g) || []).length)
-  
   // 先处理标题，避免标题中的换行被替换
   let formatted = content
   
@@ -167,8 +161,6 @@ const formatSummary = (content) => {
   
   // 最后将换行符转换为<br>标签
   formatted = formatted.replace(/\n/g, '<br>')
-  
-  console.log('格式化后长度:', formatted.length)
   
   return formatted
 }

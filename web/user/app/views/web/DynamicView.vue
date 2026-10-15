@@ -104,7 +104,6 @@ const fetchFollowingUsers = async () => {
   try {
     const currentUserId = userStore.userInfo?.id
     if (!currentUserId) {
-      console.log('用户未登录，不获取关注列表')
       return
     }
     const res = await api.get(`/follow/user/${currentUserId}/following`)

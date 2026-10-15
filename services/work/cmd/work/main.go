@@ -13,10 +13,14 @@ import (
 	_ "github.com/lib/pq"
 	"mybilibili/pkg/abstraction"
 	"mybilibili/pkg/auth"
+	"mybilibili/pkg/common/logging"
 	"mybilibili/work/internal/work"
 )
 
 func main() {
+	// 统一日志: LOG_DIR 未设置则 stdout(dev 不落盘), 设置则写 <LOG_DIR>/work.log(部署落盘)。
+	logWriter := logging.New(logging.Options{Name: "work"})
+	defer logWriter.Close()
 	mqType := getEnv("MQ_TYPE", "nats")
 	mqPath := getEnv("MQ_PATH", "/tmp/mybilibili-mq")
 	natsURL := getEnv("NATS_URL", "nats://127.0.0.1:4222")

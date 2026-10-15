@@ -400,7 +400,7 @@ export function get<T = any>(url: string, config?: RequestConfig): Promise<Axios
       if (err.response && err.response.status === 401 && isRead) {
         return Promise.resolve({ ...err.response, data: { code: 401, data: [], message: '请先登录' } })
       }
-      console.log(err)
+      console.error(err)
       handleAuthFailure(err)
       return Promise.reject(err)
     }
@@ -437,7 +437,7 @@ export function post<T = any>(url: string, data?: any, headers?: any): Promise<A
       return origResponse
     },
     (err) => {
-      console.log(err)
+      console.error(err)
       handleAuthFailure(err)
       return Promise.reject(err)
     }
@@ -464,7 +464,7 @@ export function del<T = any>(url: string, config?: RequestConfig): Promise<Axios
       return origResponse
     },
     (err) => {
-      console.log(err)
+      console.error(err)
       handleAuthFailure(err)
       return Promise.reject(err)
     }
@@ -491,7 +491,7 @@ export function put<T = any>(url: string, data?: any, headers?: any): Promise<Ax
       return origResponse
     },
     (err) => {
-      console.log(err)
+      console.error(err)
       handleAuthFailure(err)
       return Promise.reject(err)
     }
@@ -520,7 +520,7 @@ export function request<T = any>(config: RequestConfig & { method?: string; data
       return origResponse
     },
     (err) => {
-      console.log(err)
+      console.error(err)
       handleAuthFailure(err)
       return Promise.reject(err)
     }

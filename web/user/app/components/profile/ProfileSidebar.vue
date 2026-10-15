@@ -25,7 +25,6 @@ const saveAnnouncement = async () => {
   try {
     const response = await userApi.updateUser(props.userId, { announcement: props.userInfo.announcement })
     if (response.code === 200) {
-      console.log('公告保存成功')
     }
   } catch (error) {
     console.error('保存公告失败:', error)

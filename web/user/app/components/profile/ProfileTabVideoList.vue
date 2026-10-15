@@ -105,7 +105,6 @@ const removePinnedVideo = async () => {
 
 // 处理排序变化
 const handleSortChange = (option) => {
-  console.log('【调试】handleSortChange 被调用，选项:', option)
   emit('sort-change', option)
 }
 

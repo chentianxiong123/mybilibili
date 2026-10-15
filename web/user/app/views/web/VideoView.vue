@@ -198,7 +198,6 @@ const recordWatchHistorySync = () => {
   }
 
   const watchRatio = duration > 0 ? progress / duration : 0
-  console.log('离开页面，记录最终播放进度', { progress, duration, watchRatio: (watchRatio * 100).toFixed(1) + '%' })
 
   try {
     if (!hasAuthSession()) return
@@ -340,20 +339,13 @@ const switchVideoPart = index => {
 
 // 加载互动状态
 const loadInteractionStatus = async () => {
-  console.log('=== 开始获取互动状态 ===')
-  console.log('当前 manuscriptId:', currentManuscriptId.value)
   try {
     const user = JSON.parse(safeStorage.getItem('user') || 'null')
-    console.log('当前用户信息:', user)
 
     if (hasAuthSession() && currentManuscriptId.value) {
-      console.log('正在调用 getInteractionStatus API...')
       const statusResponse = await interactionApi.getInteractionStatus(currentManuscriptId.value)
-      console.log('API 完整响应:', statusResponse)
 
       if (statusResponse.code === 200) {
-        console.log('API 返回的数据:', statusResponse.data)
-
         interactionStatus.value = {
           liked: statusResponse.data.isLiked || statusResponse.data.liked || false,
           favorited: statusResponse.data.isCollected || statusResponse.data.collected || false,
@@ -361,24 +353,14 @@ const loadInteractionStatus = async () => {
           shared: statusResponse.data.shared || false,
           coinCount: statusResponse.data.coinCount || 0
         }
-        console.log('设置后的 interactionStatus:', interactionStatus.value)
       } else {
         console.error('API 返回错误代码:', statusResponse.code)
         console.error('错误消息:', statusResponse.message)
       }
-    } else {
-      console.log('未登录或manuscriptId为空，跳过获取互动状态')
     }
   } catch (error) {
-    console.error('=== 获取互动状态异常 ===')
-    console.error('错误对象:', error)
-    console.error('错误消息:', error.message)
-    if (error.response) {
-      console.error('响应状态:', error.response.status)
-      console.error('响应数据:', error.response.data)
-    }
+    console.error('获取互动状态异常:', error)
   }
-  console.log('=== 互动状态获取结束 ===')
 }
 
 // 跳转到作者主页
@@ -418,7 +400,6 @@ const handleFollow = async () => {
 
   // 防止重复点击
   if (loadingFollow.value) {
-    console.log('正在处理中，请勿重复点击')
     return
   }
 
@@ -438,13 +419,10 @@ const handleFollow = async () => {
 
   try {
     loadingFollow.value = true
-    console.log('【前端调试】当前关注状态:', isFollowing.value)
-    console.log('【前端调试】准备调用关注API，目标用户ID:', videoInfo.value.uploader.id)
 
     // 根据当前关注状态决定调用关注还是取消关注接口
     const willFollow = !isFollowing.value
     const response = await userApi.follow(videoInfo.value.uploader.id, willFollow)
-    console.log('【前端调试】关注API响应:', response)
 
     if (response.code === 200) {
       // 根据前端预期的操作结果更新状态
@@ -469,18 +447,13 @@ const handleFollow = async () => {
 
 onMounted(async () => {
   // 检查token是否存在
-  console.log('【前端调试】登录态:', hasAuthSession() ? '已登录' : '未登录')
-  console.log('【前端调试】localStorage中的user:', safeStorage.getItem('user'))
-  console.log('【前端调试】当前路由参数:', route.params)
-  console.log('【前端调试】当前路由查询:', route.query)
 
   // 从路由参数重新获取 manuscriptId（确保正确）
   const manuscriptIdFromRoute = Number.parseInt(String(route.params.id))
   const pFromRoute = Number.parseInt(String(route.query.p)) || 1
-  console.log('【前端调试】从路由获取的 manuscriptId:', manuscriptIdFromRoute, 'p:', pFromRoute)
 
   if (!manuscriptIdFromRoute || isNaN(manuscriptIdFromRoute)) {
-    console.error('【前端调试】manuscriptId 无效:', route.params.id)
+    console.error('manuscriptId 无效:', route.params.id)
     ElMessage.error('稿件ID无效')
     return
   }
@@ -492,9 +465,7 @@ onMounted(async () => {
 
   try {
     // 使用新的API获取视频数据
-    console.log('【前端调试】开始获取视频详情，manuscriptId:', currentManuscriptId.value, 'p:', currentP.value)
     const videoResponse = await videoApi.getVideoByManuscriptId(currentManuscriptId.value, { p: currentP.value })
-    console.log('【前端调试】视频详情响应:', videoResponse)
 
     if (videoResponse.code === 200) {
       const data = videoResponse.data
@@ -506,7 +477,6 @@ onMounted(async () => {
 
       // 从当前视频获取videoId - 这是关键！
       videoId.value = currentVideo?.id || null
-      console.log('【前端调试】设置 videoId:', videoId.value, '当前分P:', currentP.value)
 
       // 更新当前视频索引
       currentVideoIndex.value = videoIndex >= 0 && videoIndex < videos.length ? videoIndex : 0
@@ -561,20 +531,11 @@ onMounted(async () => {
 
       // 初始化粉丝数 - 使用后端实时计算的粉丝数
       followerCount.value = data.uploader?.followerCount || 0
-      console.log('【前端调试】后端返回的uploader:', data.uploader)
-      console.log('【前端调试】后端返回的following:', data.uploader?.following)
-      console.log('【前端调试】后端返回的followerCount:', data.uploader?.followerCount)
-      console.log('【前端调试】后端返回的signature:', data.uploader?.signature)
-      console.log('【前端调试】后端返回的bio:', data.uploader?.bio)
 
       // 使用后端返回的关注状态（如果用户已登录）
       if (data.uploader?.following != null) {
         isFollowing.value = data.uploader.following
-        console.log('【前端调试】设置关注状态为:', isFollowing.value)
-      } else {
-        console.log('【前端调试】following为null或undefined，保持默认值false')
       }
-      console.log('视频信息获取成功:', videoInfo.value)
 
       // 在设置 videoId 后，再调用依赖 videoId 的函数
       // 获取视频互动状态
@@ -585,7 +546,7 @@ onMounted(async () => {
 
       // 不在打开时记录，只在退出时记录浏览历史
     } else {
-      console.error('【前端调试】API 返回错误:', videoResponse)
+      console.error('API 返回错误:', videoResponse)
       ElMessage.error(videoResponse.message || '获取视频信息失败')
     }
   } catch (error) {
@@ -595,8 +556,6 @@ onMounted(async () => {
 
   // 添加页面离开时记录浏览历史的监听
   window.addEventListener('beforeunload', recordWatchHistorySync)
-
-  console.log('视频信息加载完成，播放器初始化由 VideoPlayer 组件负责')
 })
 
 onUnmounted(() => {

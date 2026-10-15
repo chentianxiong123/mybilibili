@@ -60,8 +60,6 @@ onMounted(async () => {
       userInfo.value.coins = currentUser.value.coinCount || currentUser.value.coins || 0
 
       userInfo.value.maxExperience = currentUser.value.maxExperience || calculateMaxExperience(userInfo.value.level)
-      
-      console.log('当前用户:', currentUser.value)
     }
   }
 })

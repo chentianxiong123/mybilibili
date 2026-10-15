@@ -37,9 +37,7 @@ const userVideos = ref([
   { id: 6, title: '【ES6+】新特性详解', cover: 'https://i0.hdslb.com/bfs/archive/3579246810cedfab.jpg', viewCount: 23456, likeCount: 1234, duration: '28:42' }
 ])
 
-onMounted(() => {
-  console.log(`加载用户${userId.value}的主页信息`)
-})
+onMounted(() => {})
 </script>
 
 <template>

@@ -58,7 +58,6 @@ let fansInitialized = false
 const fetchFansStats = async () => {
   try {
     const res = await creatorApi.getMyFollowers()
-    console.log('粉丝统计 - API响应:', res)
     if (res.code === 200) {
       totalFans.value = Array.isArray(res.data) ? res.data.length : 0
     }
@@ -78,7 +77,6 @@ const fetchFansList = async () => {
       fansRes = await creatorApi.getMyFollowers()
     }
     
-    console.log('粉丝列表 - API响应:', fansRes)
     if (fansRes.code === 200) {
       fans.value = fansRes.data || []
       totalFans.value = Array.isArray(fansRes.data) ? fansRes.data.length : 0
@@ -90,7 +88,6 @@ const fetchFansList = async () => {
           ...fan,
           isFollowing: followingIds.has(fan.id)
         }))
-        console.log('更新后的粉丝列表:', fans.value)
       }
     }
   } catch (error) {

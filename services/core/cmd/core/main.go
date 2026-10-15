@@ -39,11 +39,16 @@ import (
 	"mybilibili/core/internal/video"
 	"mybilibili/pkg/abstraction"
 	"mybilibili/pkg/auth"
+	"mybilibili/pkg/common/logging"
 	"mybilibili/pkg/common/middleware"
 	pb "mybilibili/pkg/pb"
 )
 
 func main() {
+	// 统一日志: LOG_DIR 未设置则 stdout(dev 不落盘), 设置则写 <LOG_DIR>/core.log(部署落盘)。
+	logWriter := logging.New(logging.Options{Name: "core"})
+	defer logWriter.Close()
+
 	dsn := os.Getenv("PG_DSN")
 	if dsn == "" {
 		dsn = "postgres://postgres:postgres@localhost:5432/mybilibili?sslmode=disable"
@@ -346,9 +351,7 @@ func main() {
 		}
 	}()
 
-
 	interactionSvc.SetProfileRecorder(clients.NewHTTPProfileRecorder())
-
 
 	commentSvc.SetReviewService(aiClient)
 

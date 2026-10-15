@@ -203,7 +203,7 @@ const handleShare = async () => {
 }
 
 const handleAIAssistant = () => { emit('ai-assistant') }
-const handleTakeNotes = () => { console.log('打开记笔记') }
+const handleTakeNotes = () => {}
 const handleReport = () => { emit('report') }
 </script>
 

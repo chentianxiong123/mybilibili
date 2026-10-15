@@ -135,6 +135,6 @@ function handleSSEEvent({ event, data }: { event?: string; data?: string }, call
       if (onError) onError(data)
       break
     default:
-      console.log('未知事件类型:', event, data)
+      console.warn('未知事件类型:', event, data)
   }
 }

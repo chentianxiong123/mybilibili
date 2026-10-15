@@ -58,7 +58,7 @@ export const useTeriteriStore = defineStore('teriteri', {
     },
 
     handleWsClose() {
-      console.log('实时通信websocket关闭,请登录并刷新页面重试')
+      console.warn('实时通信websocket关闭,请登录并刷新页面重试')
       this.isLogin = false
       this.user = {}
       this.msgUnread = [0, 0, 0, 0, 0, 0]
@@ -205,7 +205,7 @@ export const useTeriteriStore = defineStore('teriteri', {
     },
 
     handleWsError(_, e) {
-      console.log('实时通信websocket报错: ', e)
+      console.error('实时通信websocket报错: ', e)
     },
 
     async getPersonalInfo() {

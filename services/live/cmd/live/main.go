@@ -10,9 +10,13 @@ import (
 
 	"mybilibili/live/internal/live"
 	"mybilibili/pkg/auth"
+	"mybilibili/pkg/common/logging"
 )
 
 func main() {
+	// 统一日志: LOG_DIR 未设置则 stdout(dev 不落盘), 设置则写 <LOG_DIR>/live.log(部署落盘)。
+	logWriter := logging.New(logging.Options{Name: "live"})
+	defer logWriter.Close()
 	dsn := os.Getenv("PG_DSN")
 	if dsn == "" {
 		dsn = "postgres://postgres:postgres@localhost:5432/mybilibili?sslmode=disable"

@@ -33,7 +33,6 @@ const saveSignature = async () => {
   try {
     const response = await userApi.updateUser(props.userId, { signature: props.userInfo.signature })
     if (response.code === 200) {
-      console.log('个人签名保存成功')
     }
   } catch (error) {
     console.error('保存个人签名失败:', error)

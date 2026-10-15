@@ -81,13 +81,11 @@ const adjustBannerHeight = () => {
 const fetchVideoList = async () => {
   // 防止重复加载
   if (hasLoadedVideos.value) {
-    console.log('视频列表已经加载过，跳过')
     return
   }
   
   loading.value = true
   try {
-    console.log(`开始获取${categoryName.value}分类的视频列表`)
     let response
     // 根据分类ID选择不同的API
     if (categoryId.value === '0') {
@@ -97,15 +95,11 @@ const fetchVideoList = async () => {
       // 普通分类，获取分类视频
       response = await videoApi.getVideosByCategoryId(categoryId.value)
     }
-    console.log('视频响应:', response)
     if (response.code === 200) {
       const videos = response.data?.list || response.data || []
-      console.log('原始视频列表:', videos)
-      console.log('原始视频数量:', videos ? videos.length : 0)
       
       // 清空现有视频列表
       videoList.value = []
-      console.log('清空视频列表后:', videoList.value)
       
       // 添加去重逻辑
       const uniqueVideos = []
@@ -113,33 +107,20 @@ const fetchVideoList = async () => {
       
       if (videos && Array.isArray(videos)) {
         for (const video of videos) {
-          console.log('处理视频:', video)
           const videoCard = normalizeVideoCard(video)
           if (videoCard) {
-            console.log('视频ID:', videoCard.manuscriptId)
             if (!videoIds.has(videoCard.manuscriptId)) {
               videoIds.add(videoCard.manuscriptId)
               uniqueVideos.push(videoCard)
-              console.log('添加视频:', videoCard.manuscriptId, videoCard.title)
-            } else {
-              console.log('跳过重复视频:', videoCard.manuscriptId, videoCard.title)
             }
-          } else {
-            console.log('跳过无效视频:', video)
           }
         }
       }
       
-      console.log('去重后视频列表:', uniqueVideos)
-      console.log('去重后视频数量:', uniqueVideos.length)
-      
       videoList.value = uniqueVideos
-      console.log('最终视频列表:', videoList.value)
-      console.log('最终视频数量:', videoList.value.length)
       
       // 标记视频列表已经加载过
       hasLoadedVideos.value = true
-      console.log('视频列表加载完成，标记为已加载')
     }
   } catch (error) {
     console.error('获取视频列表失败:', error)
@@ -217,8 +198,6 @@ watch(() => route.params.id, (newId) => {
     } else {
       categoryName.value = newId === '0' ? '热门' : '未知分类'
     }
-
-    console.log(`加载${categoryName.value}分类的视频列表`)
 
     nextTick(() => {
       adjustBannerHeight()

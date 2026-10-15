@@ -15,6 +15,7 @@ import (
 
 	"mybilibili/pkg/abstraction"
 	"mybilibili/pkg/auth"
+	"mybilibili/pkg/common/logging"
 	pb "mybilibili/pkg/pb"
 	"mybilibili/search/internal/analytics"
 	"mybilibili/search/internal/hot"
@@ -23,6 +24,9 @@ import (
 )
 
 func main() {
+	// 统一日志: LOG_DIR 未设置则 stdout(dev 不落盘), 设置则写 <LOG_DIR>/search.log(部署落盘)。
+	logWriter := logging.New(logging.Options{Name: "search"})
+	defer logWriter.Close()
 	dsn := os.Getenv("PG_DSN")
 	if dsn == "" {
 		dsn = "postgres://postgres:postgres@localhost:5432/mybilibili?sslmode=disable"

@@ -96,7 +96,6 @@ const loadMore = () => {
 }
 
 const handleReply = (item) => {
-  console.log('回复:', item)
 }
 
 const formatTime = (time) => {
