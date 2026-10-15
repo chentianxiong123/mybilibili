@@ -207,14 +207,29 @@ func (h *Handler) handleBannerImages(w http.ResponseWriter, r *http.Request) {
 	h.handleBanner(w, r)
 }
 
+// bannersFor 统一读取轮播/背景图；带 ?history=1 时返回含已归档（status=-1）的历史记录。
+func (h *Handler) bannersFor(r *http.Request, bannerType int32, categoryID int64) []*BannerImage {
+	var (
+		list []*BannerImage
+		err  error
+	)
+	if r.URL.Query().Get("history") == "1" {
+		list, err = h.svc.ListBannersHistory(r.Context(), bannerType, categoryID)
+	} else if categoryID > 0 {
+		list, err = h.svc.ListBannersByCategory(r.Context(), bannerType, categoryID)
+	} else {
+		list, err = h.svc.ListBanners(r.Context(), bannerType)
+	}
+	if err != nil || list == nil {
+		return []*BannerImage{}
+	}
+	return list
+}
+
 func (h *Handler) handleBannerHome(w http.ResponseWriter, r *http.Request, parts []string) {
 	switch {
 	case r.Method == "GET":
-		list, _ := h.svc.ListBanners(r.Context(), 1)
-		if list == nil {
-			list = []*BannerImage{}
-		}
-		writeJSON(w, list)
+		writeJSON(w, h.bannersFor(r, 1, 0))
 	case r.Method == "POST":
 		b := decodeBanner(r)
 		b.Type = 1
@@ -239,11 +254,7 @@ func (h *Handler) handleBannerCategory(w http.ResponseWriter, r *http.Request, p
 	categoryID, _ := strconv.ParseInt(parts[1], 10, 64)
 	switch {
 	case r.Method == "GET":
-		list, _ := h.svc.ListBannersByCategory(r.Context(), 2, categoryID)
-		if list == nil {
-			list = []*BannerImage{}
-		}
-		writeJSON(w, list)
+		writeJSON(w, h.bannersFor(r, 2, categoryID))
 	case r.Method == "POST":
 		b := decodeBanner(r)
 		b.Type = 2
@@ -269,11 +280,7 @@ func (h *Handler) handleBannerCategory(w http.ResponseWriter, r *http.Request, p
 func (h *Handler) handleBannerUserProfiles(w http.ResponseWriter, r *http.Request, parts []string) {
 	switch r.Method {
 	case "GET":
-		list, _ := h.svc.ListBanners(r.Context(), 4)
-		if list == nil {
-			list = []*BannerImage{}
-		}
-		writeJSON(w, list)
+		writeJSON(w, h.bannersFor(r, 4, 0))
 	case "POST":
 		b := decodeBanner(r)
 		b.Type = 4
@@ -302,11 +309,7 @@ func (h *Handler) handleBannerSingle(w http.ResponseWriter, r *http.Request, ban
 	case "GET":
 		// type=3 (background) 返回列表：支持 morning/afternoon/evening 三时段图；
 		// type=4 (user-profile) 返回列表：支持多张用户主页背景图供切换。
-		list, _ := h.svc.ListBanners(r.Context(), bannerType)
-		if list == nil {
-			list = []*BannerImage{}
-		}
-		writeJSON(w, list)
+		writeJSON(w, h.bannersFor(r, bannerType, 0))
 	case "POST":
 		b := decodeBanner(r)
 		b.Type = bannerType

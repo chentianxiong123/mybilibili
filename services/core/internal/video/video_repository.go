@@ -187,16 +187,35 @@ func (r *Repository) ListBannersByCategory(ctx context.Context, bannerType int32
 }
 
 func (r *Repository) listBanners(ctx context.Context, bannerType int32, categoryID int64) ([]*BannerImage, error) {
-	query := `SELECT id, title, image_url, link_url, sort_order, status, type, COALESCE(category_id,0),
-		        time_slot, start_time, end_time FROM banner_images
-		 WHERE type = $1 AND status = 1 AND (start_time IS NULL OR start_time <= NOW())
+	return r.queryBanners(ctx, bannerType, categoryID, false)
+}
+
+// ListBannersHistory 返回含已下架/已归档的历史记录（status IN (1,-1)），
+// 供管理后台查看往期配置；MinIO 对象从不删除，历史图仍可访问。
+func (r *Repository) ListBannersHistory(ctx context.Context, bannerType int32, categoryID int64) ([]*BannerImage, error) {
+	return r.queryBanners(ctx, bannerType, categoryID, true)
+}
+
+func (r *Repository) queryBanners(ctx context.Context, bannerType int32, categoryID int64, includeHistory bool) ([]*BannerImage, error) {
+	statusCond := "status = 1"
+	order := " ORDER BY sort_order, id"
+	if includeHistory {
+		statusCond = "status IN (1, -1)"
+		order = " ORDER BY updated_at DESC, id DESC"
+	}
+	// 可空列一律 COALESCE：lib/pq 遇到 NULL 字符串会中止 Scan，
+	// 导致该行之后的 status/type/time_slot 等字段全部落成零值。
+	query := `SELECT id, COALESCE(title,''), COALESCE(image_url,''), COALESCE(link_url,''),
+		        COALESCE(sort_order,0), COALESCE(status,0), COALESCE(type,0), COALESCE(category_id,0),
+		        COALESCE(time_slot,''), start_time, end_time FROM banner_images
+		 WHERE type = $1 AND ` + statusCond + ` AND (start_time IS NULL OR start_time <= NOW())
 		   AND (end_time IS NULL OR end_time >= NOW())`
 	args := []any{bannerType}
 	if categoryID > 0 {
 		query += ` AND category_id = $2`
 		args = append(args, categoryID)
 	}
-	query += ` ORDER BY sort_order, id`
+	query += order
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -234,8 +253,10 @@ func (r *Repository) UpdateBanner(ctx context.Context, id int64, b *BannerImage)
 	return err
 }
 
+// DeleteBanner 采用软删除：只把 status 置为 -1（归档），历史记录继续保留在库中；
+// MinIO 对象本身从不删除，往期图片仍可回溯。
 func (r *Repository) DeleteBanner(ctx context.Context, id int64) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM banner_images WHERE id = $1`, id)
+	_, err := r.db.ExecContext(ctx, `UPDATE banner_images SET status = -1, updated_at = NOW() WHERE id = $1`, id)
 	return err
 }
 

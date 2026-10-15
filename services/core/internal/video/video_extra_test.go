@@ -57,7 +57,7 @@ func TestRepo_UpdateBanner(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	require.NoError(t, repo.UpdateBanner(context.Background(), 5, &BannerImage{Title: "t", ImageURL: "u", LinkURL: "l", SortOrder: 1, Status: 1, TimeSlot: "default"}))
 
-	mock.ExpectExec(`DELETE FROM banner_images WHERE id = \$1`).WithArgs(int64(5)).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE banner_images SET status = -1, updated_at = NOW\(\) WHERE id = \$1`).WithArgs(int64(5)).WillReturnResult(sqlmock.NewResult(0, 1))
 	require.NoError(t, repo.DeleteBanner(context.Background(), 5))
 }
 
@@ -118,7 +118,7 @@ func TestService_BannerAndBatchDelete(t *testing.T) {
 	mock.ExpectExec(`UPDATE banner_images SET title=\$1`).WithArgs("t", "u", "l", int32(1), int32(1), nil, "default", nil, nil, int64(5)).WillReturnResult(sqlmock.NewResult(0, 1))
 	require.NoError(t, svc.UpdateBanner(context.Background(), 5, &BannerImage{Title: "t", ImageURL: "u", LinkURL: "l", SortOrder: 1, Status: 1, TimeSlot: "default"}))
 
-	mock.ExpectExec(`DELETE FROM banner_images WHERE id = \$1`).WithArgs(int64(5)).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE banner_images SET status = -1, updated_at = NOW\(\) WHERE id = \$1`).WithArgs(int64(5)).WillReturnResult(sqlmock.NewResult(0, 1))
 	require.NoError(t, svc.DeleteBanner(context.Background(), 5))
 
 	mock.ExpectExec(`DELETE FROM videos WHERE id = ANY\(\$1\)`).WithArgs("{1}").WillReturnResult(sqlmock.NewResult(0, 1))
@@ -144,7 +144,7 @@ func TestHandleBannerHome_Put(t *testing.T) {
 
 func TestHandleBannerHome_Delete(t *testing.T) {
 	h, mock := newTestHandler(t)
-	mock.ExpectExec(`DELETE FROM banner_images WHERE id = \$1`).WithArgs(int64(5)).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE banner_images SET status = -1, updated_at = NOW\(\) WHERE id = \$1`).WithArgs(int64(5)).WillReturnResult(sqlmock.NewResult(0, 1))
 	w := doReq(muxForVideo(h), "DELETE", "/api/v1/banner/home/5", "", nil)
 	assert.Equal(t, http.StatusOK, w.Code)
 	require.NoError(t, mock.ExpectationsWereMet())
@@ -167,7 +167,7 @@ func TestHandleBannerCategory_PostPutDelete(t *testing.T) {
 	w = doReq(muxForVideo(h), "PUT", "/api/v1/banner/category/5/3", `{"title":"t","image_url":"u","link_url":"l","sort_order":1,"status":1}`, nil)
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	mock.ExpectExec(`DELETE FROM banner_images WHERE id = \$1`).WithArgs(int64(3)).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE banner_images SET status = -1, updated_at = NOW\(\) WHERE id = \$1`).WithArgs(int64(3)).WillReturnResult(sqlmock.NewResult(0, 1))
 	w = doReq(muxForVideo(h), "DELETE", "/api/v1/banner/category/5/3", "", nil)
 	assert.Equal(t, http.StatusOK, w.Code)
 	require.NoError(t, mock.ExpectationsWereMet())
@@ -181,8 +181,8 @@ func TestHandleBannerSingle_Delete(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "title", "image_url", "link_url", "sort_order", "status", "type", "category_id", "time_slot", "start_time", "end_time"}).
 			AddRow(1, "a", "u", "l", 1, 1, 3, 0, "morning", now, nil).
 			AddRow(2, "b", "u", "l", 2, 1, 3, 0, "evening", now, nil))
-	mock.ExpectExec(`DELETE FROM banner_images WHERE id = \$1`).WithArgs(int64(1)).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec(`DELETE FROM banner_images WHERE id = \$1`).WithArgs(int64(2)).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE banner_images SET status = -1, updated_at = NOW\(\) WHERE id = \$1`).WithArgs(int64(1)).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE banner_images SET status = -1, updated_at = NOW\(\) WHERE id = \$1`).WithArgs(int64(2)).WillReturnResult(sqlmock.NewResult(0, 1))
 	w := doReq(muxForVideo(h), "DELETE", "/api/v1/banner/background", "", nil)
 	assert.Equal(t, http.StatusOK, w.Code)
 	require.NoError(t, mock.ExpectationsWereMet())

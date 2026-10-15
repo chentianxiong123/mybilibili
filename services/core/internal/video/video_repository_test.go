@@ -175,7 +175,7 @@ func TestListBanners(t *testing.T) {
 	repo, mock := newMockRepo(t)
 	now := time.Now()
 
-	mock.ExpectQuery(`SELECT id, title, image_url`).
+	mock.ExpectQuery(`SELECT id, COALESCE\(title`).
 		WithArgs(int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "title", "image_url", "link_url", "sort_order",
@@ -291,7 +291,7 @@ func TestUpdateBanner(t *testing.T) {
 func TestDeleteBanner(t *testing.T) {
 	repo, mock := newMockRepo(t)
 
-	mock.ExpectExec(`DELETE FROM banner_images WHERE id`).
+	mock.ExpectExec(`UPDATE banner_images SET status = -1, updated_at = NOW\(\) WHERE id`).
 		WithArgs(int64(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -318,7 +318,7 @@ func TestGetStatistics(t *testing.T) {
 
 func TestListBanners_Error(t *testing.T) {
 	repo, mock := newMockRepo(t)
-	mock.ExpectQuery(`SELECT id, title, image_url`).WillReturnError(errors.New("db down"))
+	mock.ExpectQuery(`SELECT id, COALESCE\(title`).WillReturnError(errors.New("db down"))
 	_, err := repo.ListBanners(context.Background(), 1)
 	assert.Error(t, err)
 }

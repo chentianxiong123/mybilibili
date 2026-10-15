@@ -49,6 +49,10 @@ func (s *Service) ListBannersByCategory(ctx context.Context, bannerType int32, c
 	return s.repo.ListBannersByCategory(ctx, bannerType, categoryID)
 }
 
+func (s *Service) ListBannersHistory(ctx context.Context, bannerType int32, categoryID int64) ([]*BannerImage, error) {
+	return s.repo.ListBannersHistory(ctx, bannerType, categoryID)
+}
+
 func (s *Service) CreateBanner(ctx context.Context, b *BannerImage) error {
 	_, err := s.repo.CreateBanner(ctx, b)
 	return err

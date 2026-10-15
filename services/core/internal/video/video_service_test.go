@@ -110,7 +110,7 @@ func TestService_DeleteCategory(t *testing.T) {
 func TestService_ListBanners(t *testing.T) {
 	svc, mock := newMockService(t)
 
-	mock.ExpectQuery(`SELECT id, title, image_url`).
+	mock.ExpectQuery(`SELECT id, COALESCE\(title`).
 		WithArgs(int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "title", "image_url", "link_url", "sort_order",
@@ -126,7 +126,7 @@ func TestService_ListBanners(t *testing.T) {
 func TestService_ListBannersByCategory(t *testing.T) {
 	svc, mock := newMockService(t)
 
-	mock.ExpectQuery(`SELECT id, title, image_url`).
+	mock.ExpectQuery(`SELECT id, COALESCE\(title`).
 		WithArgs(int32(1), int64(5)).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "title", "image_url", "link_url", "sort_order",
@@ -162,7 +162,7 @@ func TestService_UpdateBanner(t *testing.T) {
 func TestService_DeleteBanner(t *testing.T) {
 	svc, mock := newMockService(t)
 
-	mock.ExpectExec(`DELETE FROM banner_images WHERE id`).
+	mock.ExpectExec(`UPDATE banner_images SET status = -1, updated_at = NOW\(\) WHERE id`).
 		WithArgs(int64(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
