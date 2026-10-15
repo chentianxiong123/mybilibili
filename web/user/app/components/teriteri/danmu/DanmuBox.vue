@@ -36,7 +36,7 @@
                                 <span class="dm-info-text" :title="item.content">{{ item.content }}</span>
                                 <span class="dm-info-date">{{ handleDateTime(item.createDate) }}</span>
                                 <span class="dm-info-report-btn"
-                                    @click.stop="noOption"
+                                    @click.stop="reportDanmu(item)"
                                     @dblclick.stop="stopOption"
                                 >举报</span>
                                 <span class="dm-info-delete-btn"
@@ -49,7 +49,7 @@
                     </ul>
                 </div>
                 <div class="table-footer">
-                    <div class="btn-history" @click="noOption">
+                    <div class="btn-history" @click="noHistory">
                         查看历史弹幕
                         <!-- 日历组件 -->
                     </div>
@@ -82,6 +82,13 @@ export default {
         },
         // 视频作者id
         authorId: {
+            type: Number,
+            default() {
+                return 0;
+            }
+        },
+        // 稿件ID（举报弹幕时携带归属稿件）
+        manuscriptId: {
             type: Number,
             default() {
                 return 0;
@@ -195,8 +202,41 @@ export default {
             ElMessage.info("删除成功");
         },
 
-        noOption() {
-            ElMessage.warning("该功能暂未开放");
+        // 举报弹幕
+        async reportDanmu(item) {
+            if (!this.$store.state.user.uid) {
+                ElMessage.warning('请先登录');
+                return;
+            }
+            const reason = await ElMessageBox.prompt('请输入举报原因', '举报弹幕', {
+                confirmButtonText: '提交',
+                cancelButtonText: '取消',
+                inputPattern: /\S+/,
+                inputErrorMessage: '举报原因不能为空',
+            }).catch(() => null);
+            if (!reason) return;
+            try {
+                const { reportApi } = await import('@/api/client');
+                const res = await reportApi.submitReport({
+                    targetType: 'DANMU',
+                    targetId: item.id,
+                    manuscriptId: this.manuscriptId,
+                    reason: reason.value,
+                    description: `弹幕内容：${item.content}`,
+                });
+                if (res && (res.code === 200 || res.success || res.status === 'ok')) {
+                    ElMessage.success('举报成功');
+                } else {
+                    ElMessage.error((res && res.message) || '举报失败');
+                }
+            } catch (e) {
+                ElMessage.error('举报失败');
+            }
+        },
+
+        // 查看历史弹幕（暂无后端接口）
+        noHistory() {
+            ElMessage.info("暂无历史弹幕");
         },
 
         stopOption() {
@@ -209,7 +249,8 @@ export default {
             handler(curr) {
                 this.updateDanmuList(curr.slice());
             },
-            deep: true
+            deep: true,
+            immediate: true
         }
     }
 }

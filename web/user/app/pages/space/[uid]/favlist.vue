@@ -54,7 +54,7 @@
                             <span>{{ currFav.visible === 1 ? '公开' : '私密' }}</span>
                         </div>
                         <div class="fav-options">
-                            <div class="play-all" @click="noPage">
+                            <div class="play-all" @click="playAll">
                                 <svg t="1711992851151" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4395" width="16" height="16"><path d="M847.52000001 429.80266667L344.50133334 101.152c-78.176-45.184-142.21866667-8.18133333-142.21866667 82.13333333v657.22666667c0 90.368 64.04266667 127.30666667 142.21866667 82.19733333L847.52000001 594.13333333c78.25066667-45.25866667 78.25066667-119.14666667 0-164.33066666z m0 0" fill="#FFFFFF" p-id="4396"></path></svg>
                                 <span>播放全部</span>
                             </div>
@@ -304,9 +304,14 @@ export default {
             return handleTime(time);
         },
 
-        // 暂未开放
-        noPage() {
-            ElMessage.warning("该功能暂未开放");
+        // 播放全部（当前收藏夹内第一个视频）
+        playAll() {
+            const list = this.favVideos;
+            if (list.length > 0) {
+                window.open(`/video/${list[0].video.vid}`, '_blank');
+            } else {
+                ElMessage.info('这个收藏夹还没有视频');
+            }
         },
 
         // ===== 批量操作 =====

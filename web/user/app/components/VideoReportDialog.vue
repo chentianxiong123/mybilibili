@@ -28,7 +28,7 @@ const submitReport = async () => {
       reason: reportForm.value.reason,
       description: reportForm.value.description
     })
-    if (res.code === 200 || res.success) {
+    if (res.code === 200 || res.success || res.status === 'ok') {
       ElMessage.success(res.message || '举报成功')
       visible.value = false
     } else {

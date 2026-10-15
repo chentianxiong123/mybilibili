@@ -25,7 +25,7 @@
             <div class="default-entry" @click="noPage">
                 <span>漫画</span>
             </div>
-            <div class="default-entry" @click="noPage">
+            <div class="default-entry" @click="openNewPage('/live')">
                 <span>直播</span>
             </div>
             <div class="default-entry" @click="noPage">

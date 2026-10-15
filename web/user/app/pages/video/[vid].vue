@@ -82,7 +82,7 @@
                         </div>
                         <div class="toolbar-left-item-wrap">
                             <div class="video-toolbar-left-item"
-                                :class="{ 'on': store.attitudeToVideo.coin > 0 }" @click="noPage">
+                                :class="{ 'on': store.attitudeToVideo.coin > 0 }" @click="onCoin">
                                 <i class="iconfont icon-toubi"></i>
                                 <span class="video-toolbar-item-text">{{ handleNum(coin) }}</span>
                             </div>
@@ -95,7 +95,7 @@
                             </div>
                         </div>
                         <div class="toolbar-left-item-wrap">
-                            <div class="video-toolbar-left-item" @click="noPage">
+                            <div class="video-toolbar-left-item" @click="onShare">
                                 <i class="iconfont icon-zhuanfa"></i>
                                 <span class="video-toolbar-item-text">{{ handleNum(share) }}</span>
                             </div>
@@ -112,13 +112,14 @@
 
                                 <template #content>
                                     <div class="video-tool-more-dropdown">
-                                        <div class="dropdown-item">
+                                        <div class="dropdown-item" @click="openReportDialog">
                                             <i class="iconfont icon-jubao1"></i>
                                             <span>举报稿件</span>
                                         </div>
                                     </div>
                                 </template>
                             </VPopover>
+                            <VideoReportDialog v-model:visible="reportVisible" :manuscriptId="Number(manuscriptId)" />
                         </div>
                     </div>
                 </div>
@@ -217,7 +218,7 @@
                         </div>
                     </div>
                     <!-- 弹幕组件 -->
-                    <DanmuBox :boxHeight="playerSize.height" :authorId="user.uid"
+                    <DanmuBox :boxHeight="playerSize.height" :authorId="user.uid" :manuscriptId="Number(manuscriptId)"
                         @jump="(time) => jumpTimePoint = time">
                     </DanmuBox>
                     <!-- 分P列表 -->
@@ -379,6 +380,7 @@ import { handleTime, handleNum as _handleNum, handleDate, linkify } from '@/teri
 import { ElMessage } from 'element-plus'
 
 import { followApi } from '@/api/creator'
+import { interactionApi } from '@/api/client'
 import CommentVue from '@/components/teriteri/comment/CommentVue.vue'
 import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue'
 import VideoPlayer from '@/components/VideoPlayer.vue'
@@ -387,6 +389,7 @@ import VAvatar from '@/components/teriteri/avatar/VAvatar.vue'
 import UserCard from '@/components/teriteri/UserCard/UserCard.vue'
 import DanmuBox from '@/components/teriteri/danmu/DanmuBox.vue'
 import AddToFavorite from '@/components/teriteri/favorite/AddToFavorite.vue'
+import VideoReportDialog from '@/components/VideoReportDialog.vue'
 
 const store = useTeriteriStore()
 const route = useRoute()
@@ -400,6 +403,7 @@ const view = ref(0)
 const danmu = ref(0)
 const good = ref(0)
 const coin = ref(0)
+const coinLoading = ref(false)
 const collect = ref(0)
 const share = ref(0)
 const comment = ref(0)
@@ -417,6 +421,7 @@ const isGifShow = ref(false)
 const gifDisplay = ref(false)
 const collectVisible = ref(false)
 const collectedFids = ref<Set<number>>(new Set())
+const reportVisible = ref(false)
 const isMounted = ref(false)
 const isFollowing = ref(false)
 const followLoading = ref(false)
@@ -524,8 +529,28 @@ async function getVideoDetail() {
     if (hasAuthSession()) {
         getCollectedFids()
         checkFollowStatus()
+        loadInteractionStatus()
     }
     return true
+}
+
+async function loadInteractionStatus() {
+    const mid = Number(manuscriptId.value)
+    if (!mid) return
+    try {
+        const res = await interactionApi.getInteractionStatus(mid)
+        if (res?.code === 200 && res.data) {
+            const d = res.data
+            const status = {
+                love: !!d.liked,
+                coin: d.coined ? 1 : 0,
+                collect: !!d.collected,
+            }
+            store.updateAttitudeToVideo(status)
+        }
+    } catch (e) {
+        // 静默失败
+    }
 }
 
 async function getRecommendVideos() {
@@ -553,7 +578,7 @@ async function getRecommendVideos() {
 
 async function getDanmuList() {
     const { get } = await import('@/teriteri-src/network/request')
-    const res = await get(`/danmu-list/${route.params.vid}`)
+    const res = await get(`/danmaku/video/${route.params.vid}`)
     if (res.data.data == null || res.data.data.length === 0) {
         store.updateDanmuList([])
     } else if (res.data.data.length > 0) {
@@ -626,6 +651,60 @@ async function onLove() {
     } finally {
         loveLoading.value = false
     }
+}
+
+async function onCoin() {
+    if (coinLoading.value) return
+    if (!store.user.uid) {
+        store.openLogin = true
+        nextTick(() => { store.openLogin = false })
+        return
+    }
+    const mid = Number(manuscriptId.value)
+    if (!mid) {
+        ElMessage.error('稿件不存在')
+        return
+    }
+    if (store.attitudeToVideo.coin > 0) {
+        ElMessage.info('你已经投过硬币了')
+        return
+    }
+    coinLoading.value = true
+    try {
+        const res = await interactionApi.coinManuscript(mid, 1)
+        const ok = res && (res.code === 200 || res.success)
+        if (!ok) {
+            ElMessage.error(res?.message || '投币失败，请稍后重试')
+            return
+        }
+        store.updateAttitudeToVideo({ ...store.attitudeToVideo, coin: 1 })
+        coin.value += 1
+        ElMessage.success('投币成功')
+    } catch (e) {
+        ElMessage.error('投币失败，请稍后重试')
+    } finally {
+        coinLoading.value = false
+    }
+}
+
+function onShare() {
+    const mid = Number(manuscriptId.value)
+    if (!mid) return
+    if (navigator.share) {
+        navigator.share({
+            title: video.value.title || '',
+            text: video.value.descr || '',
+            url: window.location.href,
+        }).catch(() => {})
+        return
+    }
+    const url = window.location.href
+    try {
+        navigator.clipboard.writeText(url).then(() => ElMessage.success('链接已复制'))
+    } catch (e) {
+        ElMessage.info(url)
+    }
+    share.value += 1
 }
 
 function onDislike() {
@@ -851,6 +930,15 @@ function gifHide() {
     }, 300)
 }
 
+function openReportDialog() {
+    if (!store.user.uid) {
+        store.openLogin = true
+        nextTick(() => { store.openLogin = false })
+        return
+    }
+    reportVisible.value = true
+}
+
 function openCollectDialog() {
     if (!store.user.uid) {
         store.openLogin = true
@@ -870,10 +958,6 @@ function updateCollect(info: { fids: Set<number>; num: number }) {
     collectedFids.value = info.fids
     collect.value += info.num
     collectVisible.value = false
-}
-
-function noPage() {
-    ElMessage.warning('该功能暂未开放')
 }
 
 // 关注UP主（带稿件来源，用于涨粉归因）

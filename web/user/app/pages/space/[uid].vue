@@ -35,7 +35,7 @@
                             </div>
                         </div>
                         <div class="h-action" v-if="user.uid !== this.$store.state.user.uid">
-                            <div class="h-f-btn h-follow" @click="noPage">关注</div>
+                            <div class="h-f-btn h-follow" :class="{'h-followed': isFollowing}" @click="toggleFollow">{{ followLoading ? '…' : isFollowing ? '已关注' : '关注' }}</div>
                             <div class="h-f-btn h-message" @click="createChat">发消息</div>
                             <div class="be-dropdown h-add-to-black">
                                 <i class="iconfont icon-gengduo"></i>
@@ -169,6 +169,7 @@ import VAvatar from '@/components/teriteri/avatar/VAvatar.vue';
 import VLevel from '@/components/teriteri/UserCard/VLevel.vue';
 import { handleNum, handleLevel } from '@/teriteri-src/utils/utils';
 import { ElMessage } from 'element-plus';
+import { followApi } from '@/api/creator';
 
 export default {
     name: "SpaceView",
@@ -186,6 +187,8 @@ export default {
             themeShow: false,   // 是否展开更换头图的抽屉
             hoverIdx: -1,   // 悬停导航栏
             mounted: false,
+            isFollowing: false,   // 是否已关注
+            followLoading: false,
             profileThemes: [],   // 可选头图列表
         }
     },
@@ -315,6 +318,44 @@ export default {
             }
         },
 
+        // 检查关注状态
+        async checkFollowStatus(uid) {
+            this.isFollowing = false;
+            if (!hasAuthSession() || !uid || uid === this.$store.state.user.uid) return;
+            try {
+                const res = await followApi.checkFollow(uid);
+                this.isFollowing = !!(res && (res.data?.following ?? res.following));
+            } catch (e) {
+                this.isFollowing = false;
+            }
+        },
+
+        // 关注 / 取关
+        async toggleFollow() {
+            if (!hasAuthSession()) {
+                this.$store.state.openLogin = true;
+                return;
+            }
+            const uid = Number(this.user.uid);
+            if (!uid || this.followLoading) return;
+            this.followLoading = true;
+            try {
+                if (this.isFollowing) {
+                    await followApi.unfollow(uid);
+                    this.isFollowing = false;
+                    ElMessage.success('已取消关注');
+                } else {
+                    await followApi.follow(uid);
+                    this.isFollowing = true;
+                    ElMessage.success('关注成功');
+                }
+            } catch (e) {
+                ElMessage.error('操作失败，请稍后重试');
+            } finally {
+                this.followLoading = false;
+            }
+        },
+
         // 创建聊天
         createChat() {
             if (!this.$store.state.user.uid) {
@@ -366,10 +407,6 @@ export default {
         handleLevel(exp) {
             return handleLevel(exp);
         },
-
-        noPage() {
-            ElMessage.warning("该功能暂未开放");
-        },
     },
     async created() {
         if (this.$route.path === "/space" || this.$route.path === "/space/") {
@@ -395,6 +432,7 @@ export default {
                     await this.getUserWorksCount(uid);
                     await this.getUserProfileBg();
                     this.recordSpaceVisit(uid);
+                    this.checkFollowStatus(uid);
                 } else {
                     this.$router.push('/404');
                 }
@@ -413,6 +451,7 @@ export default {
                 await this.getUserInfo(uid);
                 await this.getUserWorksCount(uid);
                 this.recordSpaceVisit(uid);
+                this.checkFollowStatus(uid);
             } else {
                 this.$router.push('/404');
             }
@@ -673,6 +712,13 @@ export default {
 
 .h-follow:hover {
     background: #ff85ad;
+}
+
+.h-followed,
+.h-followed:hover {
+    background: rgba(255, 255, 255, .3);
+    box-shadow: 0 0 0 2px #fff;
+    color: #fff;
 }
 
 .h-add-to-black {

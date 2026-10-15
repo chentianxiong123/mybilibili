@@ -394,7 +394,13 @@ export const categoryApi = {
 }
 
 export const reportApi = {
-  submitReport: (data: any) => api.post('/report/submit', data)
+  submitReport: (data: any) => api.post('/report/submit', {
+    target_type: data.targetType,
+    target_id: data.targetId,
+    manuscript_id: data.manuscriptId,
+    reason: data.reason,
+    description: data.description
+  })
 }
 
 export const feedbackApi = {
