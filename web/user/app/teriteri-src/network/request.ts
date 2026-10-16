@@ -229,11 +229,25 @@ function adaptResponse(originalUrl: string, data: any) {
     return { code: 200, data: cards, message: 'ok' }
   }
   // 频道列表(/category/getall) → {mcId, mcName, scList}
+  // 后端返回扁平分区树(id 用真 B 站 tid, parentId=0 为一级, 否则为二级)
+  // HeaderChannel 硬编码 channels[0]=番剧、channels[1]=国创, 故置顶这两个一级分区
   if (String(originalUrl || '').includes('/category/getall')) {
-    const channels = (Array.isArray(data) ? data : []).map((c: any, idx: number) => ({
-      mcId: c.id,
-      mcName: c.name,
-      scList: idx < 2 ? [{ mcId: c.id, scId: 0, scName: '全部' }] : [],
+    const flat = Array.isArray(data) ? data : []
+    const mains = flat.filter((c: any) => !c.parentId)
+    const pinned = [13, 167] // 番剧 / 国创
+    mains.sort((a: any, b: any) => {
+      const ia = pinned.indexOf(a.id)
+      const ib = pinned.indexOf(b.id)
+      if (ia !== -1 || ib !== -1) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+      return (a.sortOrder || 0) - (b.sortOrder || 0)
+    })
+    const channels = mains.map((m: any) => ({
+      mcId: m.id,
+      mcName: m.name,
+      scList: flat
+        .filter((c: any) => c.parentId === m.id)
+        .sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0))
+        .map((s: any) => ({ mcId: m.id, scId: s.id, scName: s.name, descr: '' })),
     }))
     return { code: 200, data: channels, message: 'ok' }
   }

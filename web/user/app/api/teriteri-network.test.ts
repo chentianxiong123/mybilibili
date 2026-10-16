@@ -324,6 +324,25 @@ describe('adaptResponse', () => {
       expect(result.data[0].mcId).toBe(1)
       expect(result.data[0].mcName).toBe('Tech')
     })
+
+    it('groups sub-partitions into scList by parentId', () => {
+      const data = [
+        { id: 13, name: '番剧', parentId: 0, sortOrder: 2 },
+        { id: 1, name: '动画', parentId: 0, sortOrder: 1 },
+        { id: 32, name: '完结动画', parentId: 13, sortOrder: 1 },
+        { id: 33, name: '连载动画', parentId: 13, sortOrder: 2 },
+        { id: 24, name: 'MAD·AMV', parentId: 1, sortOrder: 1 },
+      ]
+      const result = adaptResponse('/category/getall', data)
+      // 番剧/国创置顶 → 番剧排第一
+      expect(result.data[0].mcId).toBe(13)
+      expect(result.data[0].mcName).toBe('番剧')
+      expect(result.data[0].scList.map(s => s.scName)).toEqual(['完结动画', '连载动画'])
+      expect(result.data[0].scList[0].scId).toBe(32)
+      // 动画排第二
+      expect(result.data[1].mcId).toBe(1)
+      expect(result.data[1].scList.map(s => s.scName)).toEqual(['MAD·AMV'])
+    })
   })
 
   describe('search results', () => {
