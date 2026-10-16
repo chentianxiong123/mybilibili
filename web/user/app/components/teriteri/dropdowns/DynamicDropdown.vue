@@ -74,7 +74,7 @@ export default {
     async fetchDynamics() {
       this.loading = true
       try {
-        const res = await api.get('/dynamic/all', { params: { page: 1, size: 10 } })
+        const res = await api.get('/dynamic/following', { params: { page: 1, size: 10 } })
         const raw = res?.data ?? res
         const list = raw?.list || raw || []
         this.dynamicList = list.map((item: any) => ({

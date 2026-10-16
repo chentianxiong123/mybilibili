@@ -31,8 +31,8 @@ func (s *DynamicService) ListByUser(ctx context.Context, userID int64, page, lim
 	return s.repo.ListByUser(ctx, userID, page, limit)
 }
 
-func (s *DynamicService) ListFollowing(ctx context.Context, userID int64, page, limit int32) ([]*Dynamic, error) {
-	return s.repo.ListFollowing(ctx, userID, page, limit)
+func (s *DynamicService) ListFollowing(ctx context.Context, userID int64, filterUserID int64, page, limit int32) ([]*Dynamic, error) {
+	return s.repo.ListFollowing(ctx, userID, filterUserID, page, limit)
 }
 
 func (s *DynamicService) ListAll(ctx context.Context, page, limit int32) ([]*Dynamic, error) {

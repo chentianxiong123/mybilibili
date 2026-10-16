@@ -63,9 +63,9 @@ func TestDynamicService_ListByUser(t *testing.T) {
 func TestDynamicService_ListFollowing(t *testing.T) {
 	svc, mock := newMockDynamicSvc(t)
 	mock.ExpectQuery(`FROM user_dynamics d WHERE d.status = 0`).
-		WithArgs(int64(100), int32(20), int32(0)).
+		WithArgs(int64(100), int64(0), int32(20), int32(0)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "content", "dynamic_type", "image_url", "ref_manuscript_id", "like_count", "comment_count", "share_count", "status", "created_at"}))
-	list, err := svc.ListFollowing(context.Background(), 100, 1, 20)
+	list, err := svc.ListFollowing(context.Background(), 100, 0, 1, 20)
 	require.NoError(t, err)
 	assert.Len(t, list, 0)
 }

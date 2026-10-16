@@ -123,10 +123,22 @@ func TestDynamicRepository_ListByUser_ScanError(t *testing.T) {
 func TestDynamicRepository_ListFollowing(t *testing.T) {
 	repo, mock := newMockDynamicRepo(t)
 	mock.ExpectQuery(`FROM user_dynamics d WHERE d.status = 0`).
-		WithArgs(int64(100), int32(10), int32(0)).
+		WithArgs(int64(100), int64(0), int32(10), int32(0)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "content", "dynamic_type", "image_url", "ref_manuscript_id", "like_count", "comment_count", "share_count", "status", "created_at"}).
 			AddRow(5, 200, "c", 1, "", 0, 0, 0, 0, 0, time.Now()))
-	list, err := repo.ListFollowing(context.Background(), 100, 1, 10)
+	list, err := repo.ListFollowing(context.Background(), 100, 0, 1, 10)
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.Equal(t, int64(5), list[0].ID)
+}
+
+func TestDynamicRepository_ListFollowing_Filter(t *testing.T) {
+	repo, mock := newMockDynamicRepo(t)
+	mock.ExpectQuery(`FROM user_dynamics d WHERE d.status = 0`).
+		WithArgs(int64(100), int64(200), int32(10), int32(0)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "content", "dynamic_type", "image_url", "ref_manuscript_id", "like_count", "comment_count", "share_count", "status", "created_at"}).
+			AddRow(5, 200, "c", 1, "", 0, 0, 0, 0, 0, time.Now()))
+	list, err := repo.ListFollowing(context.Background(), 100, 200, 1, 10)
 	require.NoError(t, err)
 	require.Len(t, list, 1)
 	assert.Equal(t, int64(5), list[0].ID)
@@ -135,7 +147,7 @@ func TestDynamicRepository_ListFollowing(t *testing.T) {
 func TestDynamicRepository_ListFollowing_QueryError(t *testing.T) {
 	repo, mock := newMockDynamicRepo(t)
 	mock.ExpectQuery(`FROM user_dynamics d WHERE d.status = 0`).WillReturnError(errors.New("boom"))
-	_, err := repo.ListFollowing(context.Background(), 100, 1, 10)
+	_, err := repo.ListFollowing(context.Background(), 100, 0, 1, 10)
 	assert.Error(t, err)
 }
 

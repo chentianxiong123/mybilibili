@@ -80,18 +80,17 @@ func (r *DynamicRepository) ListByUser(ctx context.Context, userID int64, page, 
 	return scanDynamics(rows)
 }
 
-func (r *DynamicRepository) ListFollowing(ctx context.Context, userID int64, page, limit int32) ([]*Dynamic, error) {
+func (r *DynamicRepository) ListFollowing(ctx context.Context, userID int64, filterUserID int64, page, limit int32) ([]*Dynamic, error) {
 	offset := (page - 1) * limit
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT d.id, d.user_id, d.content, d.dynamic_type, COALESCE(d.image_url,''), COALESCE(d.ref_manuscript_id,0),
 		        d.like_count, COALESCE((SELECT COUNT(*)::int FROM dynamic_comments c WHERE c.dynamic_id = d.id AND c.status = 0), 0) AS comment_count, d.share_count, d.status, d.created_at
 		 FROM user_dynamics d
-		 WHERE d.status = 0 AND (
-		       d.user_id = $1
-		       OR d.user_id IN (SELECT f.following_id FROM follows f WHERE f.follower_id = $1)
-		 )
-		 ORDER BY d.created_at DESC LIMIT $2 OFFSET $3`,
-		userID, limit, offset)
+		 WHERE d.status = 0
+		   AND d.user_id IN (SELECT f.following_id FROM follows f WHERE f.follower_id = $1)
+		   AND ($2 = 0 OR d.user_id = $2)
+		 ORDER BY d.created_at DESC LIMIT $3 OFFSET $4`,
+		userID, filterUserID, limit, offset)
 	if err != nil {
 		return nil, err
 	}

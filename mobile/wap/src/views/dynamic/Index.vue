@@ -120,8 +120,8 @@ const fetchDynamics = async (isRefresh = false) => {
 
   try {
     let res: any
-    // For WAP, we fetch global list or filter by "video" if selected
-    res = await dynamicApi.getDynamicList(currentPage.value, pageSize.value)
+    // For WAP, we fetch followed users' dynamics (filter by "video" if selected)
+    res = await dynamicApi.getFollowingDynamics(currentPage.value, pageSize.value)
 
     if (res && res.code === 200) {
       const list = res.data?.list || res.data || []
