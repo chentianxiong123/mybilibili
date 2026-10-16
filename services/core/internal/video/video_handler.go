@@ -81,13 +81,14 @@ func (h *Handler) handleCategory(w http.ResponseWriter, r *http.Request) {
 			Name      string `json:"name"`
 			Icon      string `json:"icon"`
 			SortOrder int32  `json:"sort_order"`
+			ParentID  int64  `json:"parent_id"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
 		if req.Name == "" {
 			writeJSON(w, map[string]any{"code": 400, "message": "name required"})
 			return
 		}
-		h.svc.CreateCategory(r.Context(), req.Name)
+		h.svc.CreateCategory(r.Context(), req.Name, req.ParentID)
 		writeJSON(w, map[string]any{"status": "ok"})
 	}
 }

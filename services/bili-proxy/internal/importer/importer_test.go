@@ -23,21 +23,21 @@ func TestMapCategory_ByTitleKeyword(t *testing.T) {
 		title string
 		want  int
 	}{
-		{"GPT 大模型入门", 1},
-		{"ChatGPT 实战", 1},
-		{"芯片拆解: 半导体工艺", 2},
-		{"微积分详解", 3},
-		{"新概念英语第三册", 4},
-		{"篮球场训练技巧", 5},
-		{"如何缓解焦虑与抑郁", 6},
-		{"Python 前端开发入门", 7},
-		{"显卡评测", 8},
-		{"量子力学基础", 9},
-		{"发动机工作原理: 机械工程", 10},
-		{"手机 5G 数码评测", 11},
-		{"国际政治与选举", 12},
-		{"毛泽东历史与古代王朝", 13},
-		{"股票投资: 财经房价", 14},
+		{"GPT 大模型入门", 231},
+		{"ChatGPT 实战", 231},
+		{"芯片拆解: 半导体工艺", 95},
+		{"微积分详解", 201},
+		{"新概念英语第三册", 208},
+		{"篮球场训练技巧", 164},
+		{"如何缓解焦虑与抑郁", 124},
+		{"Python 前端开发入门", 231},
+		{"显卡评测", 95},
+		{"量子力学基础", 201},
+		{"发动机工作原理: 机械工程", 232},
+		{"手机 5G 数码评测", 95},
+		{"国际政治与选举", 203},
+		{"古代王朝历史人文", 228},
+		{"股票投资: 财经房价", 207},
 	}
 	for _, tt := range tests {
 		t.Run(tt.title, func(t *testing.T) {
@@ -48,21 +48,24 @@ func TestMapCategory_ByTitleKeyword(t *testing.T) {
 
 func TestMapCategory_ByPartitionName(t *testing.T) {
 	for _, tname := range []string{"动画", "鬼畜", "影视", "音乐", "舞蹈", "生活", "美食", "搞笑", "娱乐"} {
-		assert.Equal(t, 11, mapCategory(tname, ""), "tname=%s", tname)
+		want := tidByName[tname]
+		assert.Equal(t, want, mapCategory(tname, ""), "tname=%s", tname)
 	}
 }
 
 func TestMapCategory_DefaultFallback(t *testing.T) {
-	assert.Equal(t, 11, mapCategory("", "随便聊聊"))
-	assert.Equal(t, 11, mapCategory("未知分区", "今天天气不错"))
+	assert.Equal(t, 188, mapCategory("", "随便聊聊"))
+	assert.Equal(t, 188, mapCategory("未知分区", "今天天气不错"))
 }
 
 func TestMapCategory_TitlePriorityOverPartition(t *testing.T) {
-	// 标题命中 AI 关键词 → 1，即使分区名是"游戏"
-	assert.Equal(t, 1, mapCategory("游戏", "chatgpt 新模型"))
+	// 分区名精确匹配优先于标题关键词：tname=游戏 → 游戏分区(4)
+	assert.Equal(t, 4, mapCategory("游戏", "chatgpt 新模型"))
+	// 无有效分区名时，标题关键词生效
+	assert.Equal(t, 231, mapCategory("", "chatgpt 新模型"))
 }
 
 func TestMapCategory_CaseInsensitive(t *testing.T) {
-	assert.Equal(t, 4, mapCategory("", "ENGLISH Grammar"))
-	assert.Equal(t, 7, mapCategory("", "LINUX 系统编程"))
+	assert.Equal(t, 208, mapCategory("", "ENGLISH Grammar"))
+	assert.Equal(t, 231, mapCategory("", "LINUX 系统编程"))
 }

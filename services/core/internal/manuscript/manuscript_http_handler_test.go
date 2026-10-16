@@ -223,7 +223,7 @@ func TestHTTPHandler_Recommended(t *testing.T) {
 				int64(0), int64(0), int64(0), int64(0), int64(0),
 				int64(0), int64(0), int32(3), int32(1), "",
 				now, int64(0), now, now, "", int32(0), "local"))
-	mock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 	mock.ExpectQuery(`SELECT is_vertical FROM videos`).WillReturnRows(sqlmock.NewRows([]string{"is_vertical"}).AddRow(0))
 
 	req := newReq("GET", "/api/v1/manuscript/recommended")
@@ -242,7 +242,7 @@ func TestHTTPHandler_Hot(t *testing.T) {
 				int64(100), int64(0), int64(0), int64(0), int64(0),
 				int64(0), int64(0), int32(3), int32(1), "",
 				now, int64(0), now, now, "", int32(0), "local"))
-	mock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 	mock.ExpectQuery(`SELECT is_vertical FROM videos`).WillReturnRows(sqlmock.NewRows([]string{"is_vertical"}).AddRow(0))
 
 	req := newReq("GET", "/api/v1/manuscript/hot")
@@ -263,7 +263,7 @@ func TestHTTPHandler_ManuscriptDetail(t *testing.T) {
 				int64(0), int64(0), int64(0), int64(0), int64(0),
 				int64(0), int64(0), int32(3), int32(1), "",
 				now, int64(0), now, now, "", int32(0), "local"))
-	mock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 	mock.ExpectQuery(`SELECT is_vertical FROM videos`).WillReturnRows(sqlmock.NewRows([]string{"is_vertical"}).AddRow(0))
 	mock.ExpectExec(`UPDATE manuscripts SET view_count`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`INSERT INTO manuscript_daily_metrics`).WillReturnResult(sqlmock.NewResult(0, 1))
@@ -292,7 +292,7 @@ func TestHTTPHandler_Category(t *testing.T) {
 			int64(0), int64(0), int64(0), int64(0), int64(0),
 			int64(0), int64(0), int32(3), int32(1), "",
 			now, int64(0), now, now, "", int32(0), "local"))
-	mock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 	mock.ExpectQuery(`SELECT is_vertical FROM videos`).WillReturnRows(sqlmock.NewRows([]string{"is_vertical"}).AddRow(0))
 
 	req := newReq("GET", "/api/v1/manuscript/category/1")
@@ -306,7 +306,7 @@ func TestHTTPHandler_UserManuscripts(t *testing.T) {
 
 	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM manuscripts WHERE user_id = \$1`).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(0)))
 	mock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE user_id`).WillReturnRows(sqlmock.NewRows(manuscriptCols))
-	mock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 
 	req := newReq("GET", "/api/v1/manuscript/user/10")
 	w := httptest.NewRecorder()
@@ -318,7 +318,7 @@ func TestHTTPHandler_UserSearch(t *testing.T) {
 	h, mock := newHTTPHandler(t)
 
 	mock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE user_id = .+ AND title ILIKE`).WillReturnRows(sqlmock.NewRows(manuscriptCols))
-	mock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 
 	req := newReq("GET", "/api/v1/manuscript/user/10/search?keyword=test")
 	w := httptest.NewRecorder()
@@ -701,8 +701,8 @@ func TestHTTPHandler_FavoriteFolderByID_MethodNotAllowed(t *testing.T) {
 func TestHTTPHandler_VideoFavoriteFolders_Get(t *testing.T) {
 	h, mock := newHTTPHandler(t)
 
-	mock.ExpectQuery(`SELECT ff.id, ff.name FROM favorite_folders ff`).WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).
-		AddRow(int64(1), "folder1"))
+	mock.ExpectQuery(`SELECT ff.id, ff.name FROM favorite_folders ff`).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).
+		AddRow(int64(1), "folder1", int64(0), int32(0)))
 
 	req := newReq("GET", "/api/v1/manuscript/1/favorite/folders")
 	w := httptest.NewRecorder()
@@ -1272,7 +1272,7 @@ func TestManuscriptsByIDs(t *testing.T) {
 				int64(0), int64(0), int64(0), int64(0), int64(0),
 				int64(0), int64(0), int32(3), int32(1), "",
 				now, int64(0), now, now, "", int32(0), "local"))
-	mock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 	mock.ExpectQuery(`SELECT is_vertical FROM videos`).WillReturnRows(sqlmock.NewRows([]string{"is_vertical"}).AddRow(0))
 
 	ctx := context.Background()

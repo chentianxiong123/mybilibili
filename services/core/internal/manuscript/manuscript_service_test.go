@@ -38,8 +38,8 @@ func TestGetManuscript_Success(t *testing.T) {
 				int64(0), int64(0), int32(3), int32(1), "ok",
 				now, int64(99), now, now, "03:00", int32(180), "local"))
 
-	msMock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WithArgs(int64(1)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "技术"))
+	msMock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "技术", int64(0), int32(0)))
 
 	resp, err := svc.GetManuscript(ctx, &pb.GetManuscriptRequest{Id: 1})
 	require.NoError(t, err)
@@ -70,8 +70,8 @@ func TestGetManuscriptWithVideos(t *testing.T) {
 				int64(0), int64(0), int32(3), int32(1), "",
 				now, int64(0), now, now, "00:00", int32(0), "local"))
 
-	msMock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WithArgs(int64(1)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "cat"))
+	msMock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "cat", int64(0), int32(0)))
 
 	msMock.ExpectQuery(`SELECT .+ FROM videos WHERE manuscript_id`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{
@@ -108,8 +108,8 @@ func TestSvcListUserManuscripts(t *testing.T) {
 				int64(0), int64(0), int32(3), int32(1), "",
 				now, int64(0), now, now, "", int32(0), "local"))
 
-	msMock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WithArgs(int64(1)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
+	msMock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 
 	msMock.ExpectQuery(`SELECT is_vertical FROM videos`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"is_vertical"}).AddRow(0))
@@ -133,8 +133,8 @@ func TestSvcListRecommended(t *testing.T) {
 				int64(0), int64(0), int32(3), int32(1), "",
 				now, int64(0), now, now, "", int32(0), "local"))
 
-	msMock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WithArgs(int64(1)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
+	msMock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 
 	userMock.ExpectQuery(`SELECT .+ FROM users WHERE id`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "nickname", "avatar", "level", "bio", "signature", "follower_count", "following_count", "liked_count"}).
@@ -160,8 +160,8 @@ func TestSvcListHot(t *testing.T) {
 				int64(0), int64(0), int32(3), int32(1), "",
 				now, int64(0), now, now, "", int32(0), "local"))
 
-	msMock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WithArgs(int64(1)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
+	msMock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 
 	userMock.ExpectQuery(`SELECT .+ FROM users WHERE id`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "nickname", "avatar", "level", "bio", "signature", "follower_count", "following_count", "liked_count"}).
@@ -192,8 +192,8 @@ func TestSvcListByCategory(t *testing.T) {
 				int64(0), int64(0), int32(3), int32(1), "",
 				now, int64(0), now, now, "", int32(0), "local"))
 
-	msMock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WithArgs(int64(5)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(5), "tech"))
+	msMock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WithArgs(int64(5)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(5), "tech", int64(0), int32(0)))
 
 	msMock.ExpectQuery(`SELECT is_vertical FROM videos`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"is_vertical"}).AddRow(0))
@@ -207,9 +207,9 @@ func TestSvcListCategories(t *testing.T) {
 	svc, msMock, _ := newService(t)
 	ctx := context.Background()
 
-	msMock.ExpectQuery(`SELECT id, name FROM categories`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).
-			AddRow(int64(1), "生活").AddRow(int64(2), "技术"))
+	msMock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).
+			AddRow(int64(1), "生活", int64(0), int32(0)).AddRow(int64(2), "技术", int64(0), int32(0)))
 
 	resp, err := svc.ListCategories(ctx, &pb.ListCategoriesRequest{})
 	require.NoError(t, err)
@@ -284,8 +284,8 @@ func TestSvcSearchUserManuscripts(t *testing.T) {
 				int64(0), int64(0), int32(3), int32(1), "",
 				now, int64(0), now, now, "", int32(0), "local"))
 
-	msMock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WithArgs(int64(1)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
+	msMock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 
 	msMock.ExpectQuery(`SELECT is_vertical FROM videos`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"is_vertical"}).AddRow(0))
@@ -315,8 +315,8 @@ func TestGetManuscriptWithVideos_CacheStore(t *testing.T) {
 				int64(0), int64(0), int32(3), int32(1), "",
 				now, int64(0), now, now, "", int32(0), "local"))
 
-	msMock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WithArgs(int64(1)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
+	msMock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 
 	msMock.ExpectExec(`UPDATE manuscripts SET view_count`).WillReturnResult(sqlmock.NewResult(0, 1))
 	msMock.ExpectExec(`INSERT INTO manuscript_daily_metrics`).WillReturnResult(sqlmock.NewResult(0, 1))

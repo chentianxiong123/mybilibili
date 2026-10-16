@@ -39,8 +39,8 @@ func TestManuscriptHandler_GetManuscript(t *testing.T) {
 			int64(0), int64(0), int32(3), int32(1), "",
 			now, int64(0), now, now, "", int32(0), "local"))
 
-	mock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WithArgs(int64(1)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 
 	resp, err := h.GetManuscript(ctx, &pb.GetManuscriptRequest{Id: 1})
 	require.NoError(t, err)
@@ -97,7 +97,7 @@ func TestManuscriptHandler_ListCategories(t *testing.T) {
 	h, mock := newManuscriptHandlerWithMocks(t)
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT id, name FROM categories`).WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories`).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 
 	resp, err := h.ListCategories(ctx, &pb.ListCategoriesRequest{})
 	require.NoError(t, err)
@@ -157,8 +157,8 @@ func TestManuscriptHandler_GetManuscriptWithVideos(t *testing.T) {
 			int64(0), int64(0), int32(3), int32(1), "",
 			now, int64(0), now, now, "", int32(0), "local"))
 
-	mock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WithArgs(int64(1)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(1), "c"))
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 
 	mock.ExpectQuery(`SELECT .+ FROM videos WHERE manuscript_id`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{

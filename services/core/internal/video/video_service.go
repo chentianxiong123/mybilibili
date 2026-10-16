@@ -28,8 +28,8 @@ func (s *Service) ListCategories(ctx context.Context) ([]*models.Category, error
 	return s.repo.ListCategories(ctx)
 }
 
-func (s *Service) CreateCategory(ctx context.Context, name string) error {
-	_, err := s.repo.CreateCategory(ctx, name)
+func (s *Service) CreateCategory(ctx context.Context, name string, parentID int64) error {
+	_, err := s.repo.CreateCategory(ctx, name, parentID)
 	return err
 }
 

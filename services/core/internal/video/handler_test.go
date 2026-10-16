@@ -82,10 +82,10 @@ func TestHandleCategory_200(t *testing.T) {
 	h.Register(mux)
 
 	mock.ExpectQuery(`SELECT.*FROM categories`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).
-			AddRow(1, "动画").
-			AddRow(2, "游戏").
-			AddRow(3, "音乐"))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).
+			AddRow(1, "动画", 0, 1).
+			AddRow(2, "游戏", 0, 2).
+			AddRow(3, "音乐", 0, 3))
 
 	req := httptest.NewRequest("GET", "/api/v1/category", nil)
 	rec := httptest.NewRecorder()
@@ -196,7 +196,7 @@ func TestHandleCategory_POST_200(t *testing.T) {
 	h.Register(mux)
 
 	mock.ExpectQuery(`INSERT INTO categories`).
-		WithArgs("测试分类").
+		WithArgs("测试分类", int64(0)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(99))
 
 	body := strings.NewReader(`{"name":"测试分类"}`)
@@ -231,7 +231,7 @@ func TestHandleCategoryByID_GET_200(t *testing.T) {
 
 	mock.ExpectQuery(`SELECT.*FROM categories.*WHERE.*id`).
 		WithArgs(int64(5)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(5, "动画"))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(5, "动画", 0, 5))
 
 	req := httptest.NewRequest("GET", "/api/v1/category/5", nil)
 	rec := httptest.NewRecorder()
@@ -266,7 +266,7 @@ func TestHandleCategoryByID_PUT_200(t *testing.T) {
 
 	mock.ExpectQuery(`SELECT.*FROM categories.*WHERE.*id`).
 		WithArgs(int64(5)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(5, "旧名"))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(5, "旧名", 0, 5))
 
 	mock.ExpectExec(`UPDATE categories SET name`).
 		WithArgs("新名", int64(5)).
@@ -289,7 +289,7 @@ func TestHandleCategoryByID_DELETE_200(t *testing.T) {
 
 	mock.ExpectQuery(`SELECT.*FROM categories.*WHERE.*id`).
 		WithArgs(int64(5)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(5, "动画"))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(5, "动画", 0, 5))
 
 	mock.ExpectExec(`DELETE FROM categories WHERE id`).
 		WithArgs(int64(5)).

@@ -197,10 +197,10 @@ func TestListBanners(t *testing.T) {
 func TestListCategories(t *testing.T) {
 	repo, mock := newMockRepo(t)
 
-	mock.ExpectQuery(`SELECT id, name FROM categories`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).
-			AddRow(1, "tech").
-			AddRow(2, "music"))
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).
+			AddRow(1, "tech", int64(0), int32(0)).
+			AddRow(2, "music", int64(0), int32(0)))
 
 	list, err := repo.ListCategories(context.Background())
 	require.NoError(t, err)
@@ -213,9 +213,9 @@ func TestListCategories(t *testing.T) {
 func TestGetCategoryByID(t *testing.T) {
 	repo, mock := newMockRepo(t)
 
-	mock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).
 		WithArgs(int64(1)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(1, "tech"))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(1, "tech", 0, 1))
 
 	c, err := repo.GetCategoryByID(context.Background(), 1)
 	require.NoError(t, err)
@@ -225,7 +225,7 @@ func TestGetCategoryByID(t *testing.T) {
 func TestGetCategoryByID_NotFound(t *testing.T) {
 	repo, mock := newMockRepo(t)
 
-	mock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WillReturnError(sql.ErrNoRows)
 	_, err := repo.GetCategoryByID(context.Background(), 99)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, sql.ErrNoRows)
@@ -235,10 +235,10 @@ func TestCreateCategory(t *testing.T) {
 	repo, mock := newMockRepo(t)
 
 	mock.ExpectQuery(`INSERT INTO categories`).
-		WithArgs("new-cat").
+		WithArgs("new-cat", int64(0)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(5))
 
-	id, err := repo.CreateCategory(context.Background(), "new-cat")
+	id, err := repo.CreateCategory(context.Background(), "new-cat", 0)
 	require.NoError(t, err)
 	assert.Equal(t, int64(5), id)
 }

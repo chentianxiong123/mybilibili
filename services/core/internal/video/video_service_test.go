@@ -67,9 +67,9 @@ func TestService_ListByManuscript(t *testing.T) {
 func TestService_ListCategories(t *testing.T) {
 	svc, mock := newMockService(t)
 
-	mock.ExpectQuery(`SELECT id, name FROM categories`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).
-			AddRow(1, "tech"))
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).
+			AddRow(1, "tech", int64(0), int32(0)))
 
 	list, err := svc.ListCategories(context.Background())
 	require.NoError(t, err)
@@ -81,10 +81,10 @@ func TestService_CreateCategory(t *testing.T) {
 	svc, mock := newMockService(t)
 
 	mock.ExpectQuery(`INSERT INTO categories`).
-		WithArgs("new").
+		WithArgs("new", int64(0)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(7))
 
-	require.NoError(t, svc.CreateCategory(context.Background(), "new"))
+	require.NoError(t, svc.CreateCategory(context.Background(), "new", 0))
 }
 
 func TestService_UpdateCategory(t *testing.T) {

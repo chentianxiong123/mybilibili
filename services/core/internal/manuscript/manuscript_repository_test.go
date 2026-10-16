@@ -172,8 +172,8 @@ func TestFindCategoryByID(t *testing.T) {
 	repo, mock := newRepo(t)
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WithArgs(int64(5)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(5), "技术"))
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WithArgs(int64(5)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(5), "技术", int64(0), int32(0)))
 
 	cat, err := repo.FindCategoryByID(ctx, 5)
 	require.NoError(t, err)
@@ -184,8 +184,8 @@ func TestFindCategoryByID_NotFound(t *testing.T) {
 	repo, mock := newRepo(t)
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT id, name FROM categories WHERE id`).WithArgs(int64(999)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}))
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WithArgs(int64(999)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}))
 
 	cat, err := repo.FindCategoryByID(ctx, 999)
 	assert.Nil(t, cat)
@@ -326,9 +326,9 @@ func TestListCategories(t *testing.T) {
 	repo, mock := newRepo(t)
 	ctx := context.Background()
 
-	rows := sqlmock.NewRows([]string{"id", "name"}).
-		AddRow(int64(1), "生活").AddRow(int64(2), "技术")
-	mock.ExpectQuery(`SELECT id, name FROM categories`).WillReturnRows(rows)
+	rows := sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).
+		AddRow(int64(1), "生活", int64(0), int32(0)).AddRow(int64(2), "技术", int64(0), int32(0))
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories`).WillReturnRows(rows)
 
 	cats, err := repo.ListCategories(ctx)
 	require.NoError(t, err)
@@ -340,7 +340,7 @@ func TestListCategories_Error(t *testing.T) {
 	repo, mock := newRepo(t)
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT id, name FROM categories`).WillReturnError(sql.ErrConnDone)
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories`).WillReturnError(sql.ErrConnDone)
 
 	_, err := repo.ListCategories(ctx)
 	assert.Error(t, err)

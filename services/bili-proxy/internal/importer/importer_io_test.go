@@ -359,19 +359,25 @@ func TestReclassifyAll_Success(t *testing.T) {
 	imp := New(db, Config{})
 	n, err := imp.ReclassifyAll()
 	require.NoError(t, err)
-	// "AI 大模型实战" 映射到 1（非 11），"随便聊聊" 兜底 11
-	assert.Equal(t, 1, n)
+	// 两条稿件分类都与当前值不同（均被 UPDATE），计数 2
+	assert.Equal(t, 2, n)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 // ==================== mapCategory partition switch ====================
 
 func TestMapCategory_GamePartitions(t *testing.T) {
-	// "电子竞技" 因含关键词 "电子" 走规则 2；"游戏"/"单机游戏" 走分区名兜底
-	for _, tname := range []string{"游戏", "单机游戏"} {
-		assert.Equal(t, 11, mapCategory(tname, ""), "tname=%s", tname)
-	}
-	assert.Equal(t, 2, mapCategory("电子竞技", ""))
+	// "游戏"/"单机游戏" 精确匹配一级/二级分区名
+	assert.Equal(t, 4, mapCategory("游戏", ""), "tname=游戏")
+	assert.Equal(t, 17, mapCategory("单机游戏", ""))
+
+	// "电子竞技" 精确匹配二级分区；若只有标题关键词则落到程序员相关
+	assert.Equal(t, 171, mapCategory("电子竞技", ""))
+	assert.Equal(t, 231, mapCategory("", "python编程入门"))
+	assert.Equal(t, 201, mapCategory("", "高中数学怎么提分"))
+	assert.Equal(t, 164, mapCategory("", "跳绳训练视频"))
+	// 未知分区兜底到 科技(188)
+	assert.Equal(t, 188, mapCategory("某冷门分区", ""))
 }
 
 // ==================== CollectBVs (真实文件 I/O + exec) ====================

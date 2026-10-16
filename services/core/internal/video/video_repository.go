@@ -138,7 +138,7 @@ func (r *Repository) ListBanners(ctx context.Context, bannerType int32) ([]*Bann
 }
 
 func (r *Repository) ListCategories(ctx context.Context) ([]*models.Category, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id, name FROM categories ORDER BY id`)
+	rows, err := r.db.QueryContext(ctx, `SELECT id, name, parent_id, sort_order FROM categories ORDER BY sort_order, id`)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func (r *Repository) ListCategories(ctx context.Context) ([]*models.Category, er
 	var list []*models.Category
 	for rows.Next() {
 		c := &models.Category{}
-		rows.Scan(&c.ID, &c.Name)
+		rows.Scan(&c.ID, &c.Name, &c.ParentID, &c.SortOrder)
 		list = append(list, c)
 	}
 	return list, nil
@@ -154,19 +154,19 @@ func (r *Repository) ListCategories(ctx context.Context) ([]*models.Category, er
 
 func (r *Repository) GetCategoryByID(ctx context.Context, id int64) (*models.Category, error) {
 	c := &models.Category{}
-	err := r.db.QueryRowContext(ctx, `SELECT id, name FROM categories WHERE id = $1`, id).
-		Scan(&c.ID, &c.Name)
+	err := r.db.QueryRowContext(ctx, `SELECT id, name, parent_id, sort_order FROM categories WHERE id = $1`, id).
+		Scan(&c.ID, &c.Name, &c.ParentID, &c.SortOrder)
 	if err != nil {
 		return nil, err
 	}
 	return c, nil
 }
 
-func (r *Repository) CreateCategory(ctx context.Context, name string) (int64, error) {
+func (r *Repository) CreateCategory(ctx context.Context, name string, parentID int64) (int64, error) {
 	var id int64
 	err := r.db.QueryRowContext(ctx,
-		`INSERT INTO categories (name) VALUES ($1) RETURNING id`,
-		name).Scan(&id)
+		`INSERT INTO categories (name, parent_id) VALUES ($1, $2) RETURNING id`,
+		name, parentID).Scan(&id)
 	return id, err
 }
 

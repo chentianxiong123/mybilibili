@@ -163,8 +163,8 @@ func (r *ManuscriptRepository) FindTagsByVideoID(ctx context.Context, videoID in
 
 func (r *ManuscriptRepository) FindCategoryByID(ctx context.Context, id int64) (*models.Category, error) {
 	c := &models.Category{}
-	err := r.db.QueryRowContext(ctx, `SELECT id, name FROM categories WHERE id = $1`, id).
-		Scan(&c.ID, &c.Name)
+	err := r.db.QueryRowContext(ctx, `SELECT id, name, parent_id, sort_order FROM categories WHERE id = $1`, id).
+		Scan(&c.ID, &c.Name, &c.ParentID, &c.SortOrder)
 	if err != nil {
 		return nil, err
 	}
@@ -341,7 +341,7 @@ func (r *ManuscriptRepository) ListByCategory(ctx context.Context, categoryID in
 }
 
 func (r *ManuscriptRepository) ListCategories(ctx context.Context) ([]*models.Category, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id, name FROM categories ORDER BY id`)
+	rows, err := r.db.QueryContext(ctx, `SELECT id, name, parent_id, sort_order FROM categories ORDER BY sort_order, id`)
 	if err != nil {
 		return nil, err
 	}
@@ -350,7 +350,7 @@ func (r *ManuscriptRepository) ListCategories(ctx context.Context) ([]*models.Ca
 	var cats []*models.Category
 	for rows.Next() {
 		c := &models.Category{}
-		if err := rows.Scan(&c.ID, &c.Name); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.ParentID, &c.SortOrder); err != nil {
 			return nil, err
 		}
 		cats = append(cats, c)

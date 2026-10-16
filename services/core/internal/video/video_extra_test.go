@@ -247,7 +247,7 @@ func TestHandleStatisticsByPath_Others(t *testing.T) {
 
 func TestHandleCategoryByID_Delete_NotFound(t *testing.T) {
 	h, mock := newTestHandler(t)
-	mock.ExpectQuery(`SELECT id, name FROM categories`).WithArgs(int64(99)).WillReturnError(errors.New("no rows"))
+	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories`).WithArgs(int64(99)).WillReturnError(errors.New("no rows"))
 	w := doReq(muxForVideo(h), "DELETE", "/api/v1/category/99", "", nil)
 	assert.Equal(t, http.StatusOK, w.Code)
 }
