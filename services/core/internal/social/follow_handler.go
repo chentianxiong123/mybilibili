@@ -43,6 +43,8 @@ func (h *FollowHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/follow/check/", h.handleCheck)
 	mux.HandleFunc("/api/v1/follow/me/followers", h.handleMyFollowers)
 	mux.HandleFunc("/api/v1/follow/me/following", h.handleMyFollowing)
+	mux.HandleFunc("/api/v1/follow/me/fans", h.handleMyFans)
+	mux.HandleFunc("/api/v1/follow/me/fans/stats", h.handleMyFansStats)
 	mux.HandleFunc("/api/v1/follow/user/", h.handleUserFollows)
 	mux.HandleFunc("/api/v1/space/visit", h.handleSpaceVisit)
 }
@@ -141,6 +143,68 @@ func (h *FollowHandler) handleMyFollowing(w http.ResponseWriter, r *http.Request
 	ids, _ := h.svc.ListFollowing(r.Context(), userID, page, pageSize)
 	users := h.loadUserBriefs(r.Context(), ids)
 	httputil.WriteOK(w, users)
+}
+
+func (h *FollowHandler) handleMyFans(w http.ResponseWriter, r *http.Request) {
+	userID := h.getUserID(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
+	page, pageSize := httputil.ParsePageParams(r)
+	mutual := r.URL.Query().Get("mutual") == "true"
+	entries, total, err := h.svc.ListFans(r.Context(), userID, page, pageSize, mutual)
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "internal error", "data": nil})
+		return
+	}
+	ids := make([]int64, len(entries))
+	for i, e := range entries {
+		ids[i] = e.FollowerID
+	}
+	briefs := h.loadUserBriefs(r.Context(), ids)
+	briefByID := make(map[int64]map[string]interface{}, len(briefs))
+	for _, b := range briefs {
+		if id, ok := b["id"].(int64); ok {
+			briefByID[id] = b
+		}
+	}
+	list := make([]map[string]interface{}, 0, len(entries))
+	for _, e := range entries {
+		b, ok := briefByID[e.FollowerID]
+		if !ok {
+			continue
+		}
+		b["isMutual"] = e.IsMutual
+		b["followedAt"] = e.FollowedAt.Format("2006-01-02 15:04:05")
+		list = append(list, b)
+	}
+	httputil.WriteOK(w, map[string]any{
+		"list":  list,
+		"total": total,
+		"page":  page,
+		"size":  pageSize,
+	})
+}
+
+func (h *FollowHandler) handleMyFansStats(w http.ResponseWriter, r *http.Request) {
+	userID := h.getUserID(r)
+	if userID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
+	stats, err := h.svc.FansStats(r.Context(), userID)
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "internal error", "data": nil})
+		return
+	}
+	httputil.WriteOK(w, map[string]any{
+		"totalFans":    stats.TotalFans,
+		"mutualFans":   stats.MutualFans,
+		"newFansToday": stats.NewFansToday,
+		"newFansWeek":  stats.NewFansWeek,
+		"newFansMonth": stats.NewFansMonth,
+	})
 }
 
 func (h *FollowHandler) handleUserFollows(w http.ResponseWriter, r *http.Request) {

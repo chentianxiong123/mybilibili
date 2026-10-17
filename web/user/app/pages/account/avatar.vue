@@ -16,7 +16,7 @@
                     @drop="handlePicDrop"
                     @click="selectPic"
                 >
-                    <img src="@/assets/teriteri/img/icon_add_img.png" alt="">
+                    <img src="@/assets/site/img/icon_add_img.png" alt="">
                     <span>选择本地图片</span>
                 </div>
                 <CropperDefault v-if="!isCurrAvatar"
@@ -56,7 +56,7 @@
 
 <script lang="ts">
 import { ElMessage } from 'element-plus';
-import CropperDefault from '@/components/teriteri/cropper/CropperDefault.vue';
+import CropperDefault from '@/components/site/cropper/CropperDefault.vue';
 
 export default {
     name: "AccountAvatar",

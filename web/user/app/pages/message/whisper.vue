@@ -34,7 +34,7 @@
 </template>
 
 <script lang="ts">
-import VAvatar from '@/components/teriteri/avatar/VAvatar.vue';
+import VAvatar from '@/components/site/avatar/VAvatar.vue';
 import { messageApi } from '@/api/message.ts';
 
 export default {

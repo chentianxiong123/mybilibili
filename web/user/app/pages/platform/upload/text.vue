@@ -45,7 +45,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Document, Picture, Link } from '@element-plus/icons-vue'
 import DynamicPublishPanel from '@/components/DynamicPublishPanel.vue'
-import UploadTypeTabs from '@/components/teriteri/uploadTypeTabs/UploadTypeTabs.vue'
+import UploadTypeTabs from '@/components/site/uploadTypeTabs/UploadTypeTabs.vue'
 import { dynamicApi } from '@/api/dynamic'
 
 const router = useRouter()

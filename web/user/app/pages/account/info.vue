@@ -47,7 +47,7 @@
 
 <script lang="ts">
 import { ElMessage } from 'element-plus';
-import { getNicknameLength } from '@/teriteri-src/utils/utils';
+import { getNicknameLength } from '@/shared/utils/utils';
 
 export default {
     name: "AccountInfo",

@@ -3,6 +3,9 @@ import api from './client'
 export const creatorApi = {
   getMyFollowers: () => api.get(`/follow/me/followers`),
   getMyFollowing: () => api.get(`/follow/me/following`),
+  getMyFans: (params: { page?: number; size?: number; mutual?: boolean }) =>
+    api.get('/follow/me/fans', { params }),
+  getMyFansStats: () => api.get('/follow/me/fans/stats'),
   getFans: (userId: number) => api.get(`/user/${userId}/followers`),
   getFollowing: (userId: number) => api.get(`/user/${userId}/following`),
   checkFollow: (userId: number) => api.get(`/follow/check/${userId}`),

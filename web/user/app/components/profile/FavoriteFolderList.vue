@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { MoreFilled } from '@element-plus/icons-vue'
 import { ref } from 'vue'
-import VPopover from '@/components/teriteri/popover/VPopover.vue'
+import VPopover from '@/components/site/popover/VPopover.vue'
 
 const props = defineProps({
   collections: {
@@ -40,7 +40,7 @@ const emit = defineEmits([
 
 const isFavnavOpen = ref(true)
 
-const placeholderCover = '/assets/teriteri/img/bilibili/video-placeholder.png'
+const placeholderCover = '/assets/site/img/bilibili/video-placeholder.png'
 </script>
 
 <template>

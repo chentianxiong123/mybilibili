@@ -76,9 +76,9 @@ const filteredFavorites = computed(() => {
 
 const getFavoriteFolderCover = (videos) => {
   if (!videos || videos.length === 0) {
-    return '/assets/teriteri/img/bilibili/video-placeholder.png'
+    return '/assets/site/img/bilibili/video-placeholder.png'
   }
-  return videos[0].coverUrl || videos[0].cover || '/assets/teriteri/img/bilibili/video-placeholder.png'
+  return videos[0].coverUrl || videos[0].cover || '/assets/site/img/bilibili/video-placeholder.png'
 }
 
 const allFolders = computed(() => [...props.collections, ...props.myFavorites])
@@ -237,7 +237,7 @@ const rule = computed(() => {
       </ul>
     </div>
     <div v-else class="fav-empty">
-      <img src="/assets/teriteri/img/nothing.png" alt="">
+      <img src="/assets/site/img/nothing.png" alt="">
       <p>{{ loading ? '加载中...' : (searchKeyword ? '没有匹配的视频' : '暂无收藏') }}</p>
     </div>
   </div>
@@ -264,7 +264,7 @@ const rule = computed(() => {
 }
 
 .favInfo-cover {
-  background: url('/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
+  background: url('/assets/site/img/bilibili/video-placeholder.png') 50%;
   background-size: cover;
   width: 190px;
   height: 119px;
@@ -559,7 +559,7 @@ const rule = computed(() => {
 }
 
 .small-item .cover {
-  background: url('/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
+  background: url('/assets/site/img/bilibili/video-placeholder.png') 50%;
   background-size: cover;
   border-radius: 4px;
   display: block;

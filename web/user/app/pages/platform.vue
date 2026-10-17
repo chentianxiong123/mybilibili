@@ -5,7 +5,7 @@
             <div class="header-content">
                 <div class="left-block">
                     <div class="logo-container" @click="this.$router.push('/platform/home')">
-                        <img src="@/assets/teriteri/img/teriteri-pink.png" alt="">
+                        <img src="@/assets/site/img/logo-pink.png" alt="">
                         <span>创作中心</span>
                     </div>
                     <div class="entry" @click="this.$router.push('/')">
@@ -137,7 +137,7 @@
 </template>
 
 <script lang="ts">
-import VPopover from '@/components/teriteri/popover/VPopover.vue';
+import VPopover from '@/components/site/popover/VPopover.vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
 export default {

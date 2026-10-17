@@ -49,10 +49,10 @@
 </template>
 
 <script lang="ts">
-import VPopover from '@/components/teriteri/popover/VPopover.vue';
-import EmojiBox from '@/components/teriteri/emoji/EmojiBox.vue';
-import MessageList from '@/components/teriteri/message/MessageList.vue';
-import EmojiJson from '@/assets/teriteri/json/emoji.json';
+import VPopover from '@/components/site/popover/VPopover.vue';
+import EmojiBox from '@/components/site/emoji/EmojiBox.vue';
+import MessageList from '@/components/site/message/MessageList.vue';
+import EmojiJson from '@/assets/site/json/emoji.json';
 import { messageApi } from '@/api/message.ts';
 import { ElMessage } from 'element-plus';
 

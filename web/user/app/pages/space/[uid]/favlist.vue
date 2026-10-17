@@ -145,7 +145,7 @@
                 </div>
             </div>
             <div class="no-more" v-else>
-                <img src="@/assets/teriteri/img/nothing.png" alt="">
+                <img src="@/assets/site/img/nothing.png" alt="">
             </div>
         </div>
 
@@ -172,8 +172,8 @@
 
 <script lang="ts">
 import { hasAuthSession } from "@/utils/auth.ts"
-import VPopover from '@/components/teriteri/popover/VPopover.vue';
-import { handleTime, handleNum, handleDate } from '@/teriteri-src/utils/utils';
+import VPopover from '@/components/site/popover/VPopover.vue';
+import { handleTime, handleNum, handleDate } from '@/shared/utils/utils';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import {
   ElDialog,
@@ -707,7 +707,7 @@ ol, ul {
 }
 
 .favInfo-cover {
-    background: url('@/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
+    background: url('@/assets/site/img/bilibili/video-placeholder.png') 50%;
     background-size: cover;
     width: 190px;
     height: 119px;
@@ -945,7 +945,7 @@ ol, ul {
 }
 
 .small-item .cover {
-    background: url('@/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
+    background: url('@/assets/site/img/bilibili/video-placeholder.png') 50%;
     background-size: cover;
     border-radius: 4px;
     display: block;
@@ -1056,7 +1056,7 @@ ol, ul {
     display: inline-block;
     width: 10px;
     height: 10px;
-    background: url('@/assets/teriteri/img/video-delete.svg') no-repeat;
+    background: url('@/assets/site/img/video-delete.svg') no-repeat;
     margin-right: 3px;
     position: relative;
     top: 1px;

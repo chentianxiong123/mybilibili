@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
@@ -16,6 +17,14 @@ import (
 
 	"mybilibili/pkg/auth"
 )
+
+func mustTime(s string) time.Time {
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
 
 // argConverter 允许 sqlmock 处理 []int64 参数（生产环境由 lib/pq 转换为数组字面量）。
 type argConverter struct{}
@@ -198,6 +207,58 @@ func TestFollowHandler_handleMyFollowing(t *testing.T) {
 	mock.ExpectQuery(`SELECT following_id FROM follows`).WithArgs(int64(1), int32(20), int32(0)).
 		WillReturnRows(sqlmock.NewRows([]string{"following_id"}).AddRow(9))
 	w = doReq(muxForFollow(h), "GET", "/api/v1/follow/me/following", "", map[string]string{"X-User-Id": "1"})
+	assert.Equal(t, http.StatusOK, w.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestFollowHandler_handleMyFans_Unauthorized(t *testing.T) {
+	h, _ := newMockFollowHandler(t)
+	w := doReq(muxForFollow(h), "GET", "/api/v1/follow/me/fans", "", nil)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestFollowHandler_handleMyFans_All(t *testing.T) {
+	h, mock := newMockFollowHandler(t)
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM follows WHERE following_id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
+	mock.ExpectQuery(`SELECT f\.follower_id, f\.created_at, EXISTS`).WithArgs(int64(1), int32(20), int32(0)).
+		WillReturnRows(sqlmock.NewRows([]string{"follower_id", "created_at", "is_mutual"}).
+			AddRow(9, mustTime("2026-01-01T00:00:00Z"), false).
+			AddRow(10, mustTime("2026-01-02T00:00:00Z"), true))
+	mock.ExpectQuery(`SELECT id, COALESCE\(username,''\)`).WithArgs("{9,10}").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "nickname", "avatar", "level", "signature"}).
+			AddRow(9, "u9", "n9", "", 1, "").
+			AddRow(10, "u10", "n10", "", 1, ""))
+	w := doReq(muxForFollow(h), "GET", "/api/v1/follow/me/fans?page=1&page_size=20", "", map[string]string{"X-User-Id": "1"})
+	assert.Equal(t, http.StatusOK, w.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestFollowHandler_handleMyFans_Mutual(t *testing.T) {
+	h, mock := newMockFollowHandler(t)
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM follows f`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery(`SELECT f\.follower_id, f\.created_at, true FROM follows f`).WithArgs(int64(1), int32(20), int32(0)).
+		WillReturnRows(sqlmock.NewRows([]string{"follower_id", "created_at", "is_mutual"}).
+			AddRow(9, mustTime("2026-01-01T00:00:00Z"), true))
+	mock.ExpectQuery(`SELECT id, COALESCE\(username,''\)`).WithArgs("{9}").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "nickname", "avatar", "level", "signature"}).
+			AddRow(9, "u9", "n9", "", 1, ""))
+	w := doReq(muxForFollow(h), "GET", "/api/v1/follow/me/fans?mutual=true&page=1&page_size=20", "", map[string]string{"X-User-Id": "1"})
+	assert.Equal(t, http.StatusOK, w.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestFollowHandler_handleMyFansStats(t *testing.T) {
+	h, mock := newMockFollowHandler(t)
+
+	w := doReq(muxForFollow(h), "GET", "/api/v1/follow/me/fans/stats", "", nil)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+	mock.ExpectQuery(`SELECT\s+COUNT\(\*\) FILTER`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"total", "mutual", "new_today", "new_week", "new_month"}).
+			AddRow(13, 5, 0, 2, 7))
+	w = doReq(muxForFollow(h), "GET", "/api/v1/follow/me/fans/stats", "", map[string]string{"X-User-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

@@ -1,6 +1,6 @@
 <template>
     <div class="fans-page">
-        <FansManager />
+        <FansManager :active="true" />
     </div>
 </template>
 

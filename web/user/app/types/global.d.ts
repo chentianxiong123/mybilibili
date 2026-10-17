@@ -13,7 +13,7 @@ declare global {
 
 declare module 'vue' {
   export interface ComponentCustomProperties {
-    // teriteri 全局方法注入（见 plugins/teriteri.client.ts）
+    // 全局方法注入（见 plugins/app.client.ts）
     $message: typeof ElMessage
     $axios: AxiosInstance
     $get: <T = any>(url: string, config?: AxiosRequestConfig) => Promise<AxiosResponse<ApiResponse<T> & any>>

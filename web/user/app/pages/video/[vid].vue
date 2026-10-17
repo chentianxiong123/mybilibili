@@ -48,7 +48,7 @@
                     @update:loading-danmus="() => {}"
                     @time-update="() => {}"
                 />
-                <!-- teriteri 风格状态栏 -->
+                <!-- 原版风格状态栏 -->
                 <div class="player-sending-area">
                     <div class="player-video-info">
                         <div class="player-video-info-text">
@@ -68,7 +68,7 @@
                                 <i class="iconfont icon-dianzan"></i>
                                 <span class="video-toolbar-item-text">{{ handleNum(good) }}</span>
                                 <div class="dianzan-gif" :class="isGifShow ? 'gif-show' : 'gif-hide'">
-                                    <img src="@/assets/teriteri/img/dianzan.gif" alt="" v-if="gifDisplay">
+                                    <img src="@/assets/site/img/dianzan.gif" alt="" v-if="gifDisplay">
                                 </div>
                             </div>
                         </div>
@@ -375,23 +375,23 @@
 import { hasAuthSession } from "@/utils/auth.ts"
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useTeriteriStore } from '@/stores/teriteri'
-import { handleTime, handleNum as _handleNum, handleDate, linkify } from '@/teriteri-src/utils/utils'
+import { useAppStore } from '@/stores/app'
+import { handleTime, handleNum as _handleNum, handleDate, linkify } from '@/shared/utils/utils'
 import { ElMessage } from 'element-plus'
 
 import { followApi } from '@/api/creator'
 import { interactionApi } from '@/api/client'
-import CommentVue from '@/components/teriteri/comment/CommentVue.vue'
-import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue'
+import CommentVue from '@/components/site/comment/CommentVue.vue'
+import HeaderBar from '@/components/site/headerBar/HeaderBar.vue'
 import VideoPlayer from '@/components/VideoPlayer.vue'
-import VPopover from '@/components/teriteri/popover/VPopover.vue'
-import VAvatar from '@/components/teriteri/avatar/VAvatar.vue'
-import UserCard from '@/components/teriteri/UserCard/UserCard.vue'
-import DanmuBox from '@/components/teriteri/danmu/DanmuBox.vue'
-import AddToFavorite from '@/components/teriteri/favorite/AddToFavorite.vue'
+import VPopover from '@/components/site/popover/VPopover.vue'
+import VAvatar from '@/components/site/avatar/VAvatar.vue'
+import UserCard from '@/components/site/UserCard/UserCard.vue'
+import DanmuBox from '@/components/site/danmu/DanmuBox.vue'
+import AddToFavorite from '@/components/site/favorite/AddToFavorite.vue'
 import VideoReportDialog from '@/components/VideoReportDialog.vue'
 
-const store = useTeriteriStore()
+const store = useAppStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -499,7 +499,7 @@ function openNewPage(routePath: string) {
 
 // ===== Request functions =====
 async function getVideoDetail() {
-    const { get } = await import('@/teriteri-src/network/request')
+    const { get } = await import('@/shared/network/request')
     const res = await get('/video/getone', {
         params: { vid: route.params.vid },
     })
@@ -554,7 +554,7 @@ async function loadInteractionStatus() {
 }
 
 async function getRecommendVideos() {
-    const { get } = await import('@/teriteri-src/network/request')
+    const { get } = await import('@/shared/network/request')
     recommendVideos.value = []
     vids.value = []
     vids.value.push(Number(route.params.vid))
@@ -577,7 +577,7 @@ async function getRecommendVideos() {
 }
 
 async function getDanmuList() {
-    const { get } = await import('@/teriteri-src/network/request')
+    const { get } = await import('@/shared/network/request')
     const res = await get(`/danmaku/video/${route.params.vid}`)
     if (res.data.data == null || res.data.data.length === 0) {
         store.updateDanmuList([])
@@ -628,7 +628,7 @@ async function onLove() {
     }
     const method = isSet ? 'post' : 'delete'
     try {
-        const { request } = await import('@/teriteri-src/network/request')
+        const { request } = await import('@/shared/network/request')
         const res = await request({
             url: `/manuscript/${mid}/like`,
             method,
@@ -739,7 +739,7 @@ function saveDislikedVids(set: Set<number>) {
 }
 
 async function getCollectedFids() {
-    const { get } = await import('@/teriteri-src/network/request')
+    const { get } = await import('@/shared/network/request')
     const res = await get('/video/collected-fids', {
         params: { vid: Number(video.value.vid) },
     })

@@ -42,9 +42,9 @@
 </template>
 
 <script lang="ts">
-import VAvatar from '@/components/teriteri/avatar/VAvatar.vue';
-import VLevel from '@/components/teriteri/UserCard/VLevel.vue';
-import { handleNum, handleLevel } from '@/teriteri-src/utils/utils';
+import VAvatar from '@/components/site/avatar/VAvatar.vue';
+import VLevel from '@/components/site/UserCard/VLevel.vue';
+import { handleNum, handleLevel } from '@/shared/utils/utils';
 
 export default {
     name: "SearchUser",

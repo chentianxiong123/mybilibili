@@ -149,7 +149,7 @@
 
 <script lang="ts">
 import { hasAuthSession } from "@/utils/auth.ts"
-import { handleTime, handleNum, handleDate } from '@/teriteri-src/utils/utils';
+import { handleTime, handleNum, handleDate } from '@/shared/utils/utils';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
 export default {
@@ -517,7 +517,7 @@ ol, ul {
     border-radius: 4px;
     overflow: hidden;
     position: relative;
-    background: url('@/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
+    background: url('@/assets/site/img/bilibili/video-placeholder.png') 50%;
     background-size: cover;
     border: 1px solid #eeeff1;
 }
@@ -585,7 +585,7 @@ ol, ul {
     border-radius: 4px;
     overflow: hidden;
     position: relative;
-    background: url('@/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
+    background: url('@/assets/site/img/bilibili/video-placeholder.png') 50%;
     background-size: cover;
     flex-shrink: 0;
 }
@@ -714,7 +714,7 @@ ol, ul {
     padding-right: 0;
 }
 .small-item .cover {
-    background: url('@/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
+    background: url('@/assets/site/img/bilibili/video-placeholder.png') 50%;
     background-size: cover;
     border-radius: 4px;
     display: block;
@@ -819,7 +819,7 @@ ol, ul {
     object-fit: cover;
     border-radius: 2px;
     flex-shrink: 0;
-    background: url('@/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
+    background: url('@/assets/site/img/bilibili/video-placeholder.png') 50%;
     background-size: cover;
 }
 .add-video-item .av-info {

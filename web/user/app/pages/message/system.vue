@@ -3,5 +3,5 @@
 </template>
 
 <script setup lang="ts">
-import SystemList from '@/components/teriteri/message/SystemList.vue'
+import SystemList from '@/components/site/message/SystemList.vue'
 </script>

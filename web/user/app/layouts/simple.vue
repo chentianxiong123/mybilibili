@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { inject } from 'vue'
-import HeaderBar from '../components/teriteri/headerBar/HeaderBar.vue'
+import HeaderBar from '../components/site/headerBar/HeaderBar.vue'
 import FeedbackFloat from '../components/FeedbackFloat.vue'
 
 const showLoginDialog = inject('showLoginDialog')

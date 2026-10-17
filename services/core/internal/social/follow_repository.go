@@ -136,6 +136,84 @@ func (r *FollowRepository) FollowerCount(ctx context.Context, userID int64) (int
 	return count, err
 }
 
+// ListFans 返回粉丝条目（含关注时间），支持互关筛选与总数。
+type FanEntry struct {
+	FollowerID int64
+	FollowedAt time.Time
+	IsMutual   bool
+}
+
+func (r *FollowRepository) ListFans(ctx context.Context, userID int64, page, pageSize int32, mutual bool) ([]FanEntry, int64, error) {
+	offset := (page - 1) * pageSize
+	var total int64
+	var rows *sql.Rows
+	var err error
+	if mutual {
+		err = r.db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM follows f
+			 WHERE f.following_id = $1
+			   AND EXISTS(SELECT 1 FROM follows f2 WHERE f2.follower_id = f.following_id AND f2.following_id = f.follower_id)`,
+			userID).Scan(&total)
+		if err != nil {
+			return nil, 0, err
+		}
+		rows, err = r.db.QueryContext(ctx,
+			`SELECT f.follower_id, f.created_at, true FROM follows f
+			 WHERE f.following_id = $1
+			   AND EXISTS(SELECT 1 FROM follows f2 WHERE f2.follower_id = f.following_id AND f2.following_id = f.follower_id)
+			 ORDER BY f.created_at DESC LIMIT $2 OFFSET $3`,
+			userID, pageSize, offset)
+	} else {
+		err = r.db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM follows WHERE following_id = $1`, userID).Scan(&total)
+		if err != nil {
+			return nil, 0, err
+		}
+		rows, err = r.db.QueryContext(ctx,
+			`SELECT f.follower_id, f.created_at,
+			        EXISTS(SELECT 1 FROM follows f2 WHERE f2.follower_id = f.following_id AND f2.following_id = f.follower_id)
+			 FROM follows f WHERE f.following_id = $1
+			 ORDER BY f.created_at DESC LIMIT $2 OFFSET $3`,
+			userID, pageSize, offset)
+	}
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	var out []FanEntry
+	for rows.Next() {
+		var e FanEntry
+		if err := rows.Scan(&e.FollowerID, &e.FollowedAt, &e.IsMutual); err != nil {
+			return nil, 0, err
+		}
+		out = append(out, e)
+	}
+	return out, total, nil
+}
+
+type FansStats struct {
+	TotalFans    int64
+	MutualFans   int64
+	NewFansToday int64
+	NewFansWeek  int64
+	NewFansMonth int64
+}
+
+func (r *FollowRepository) FansStats(ctx context.Context, userID int64) (FansStats, error) {
+	var s FansStats
+	err := r.db.QueryRowContext(ctx,
+		`SELECT
+		 COUNT(*) FILTER (WHERE f.following_id = $1) AS total,
+		 COUNT(*) FILTER (WHERE f.following_id = $1
+		   AND EXISTS(SELECT 1 FROM follows f2 WHERE f2.follower_id = f.following_id AND f2.following_id = f.follower_id)) AS mutual,
+		 COUNT(*) FILTER (WHERE f.following_id = $1 AND f.created_at >= CURRENT_DATE) AS new_today,
+		 COUNT(*) FILTER (WHERE f.following_id = $1 AND f.created_at >= CURRENT_DATE - INTERVAL '7 days') AS new_week,
+		 COUNT(*) FILTER (WHERE f.following_id = $1 AND f.created_at >= CURRENT_DATE - INTERVAL '30 days') AS new_month
+		 FROM follows f`,
+		userID).Scan(&s.TotalFans, &s.MutualFans, &s.NewFansToday, &s.NewFansWeek, &s.NewFansMonth)
+	return s, err
+}
+
 func incrCountsTx(ctx context.Context, tx *sql.Tx, followerID, followingID int64, delta int) error {
 	if _, err := tx.ExecContext(ctx,
 		`UPDATE users SET following_count = GREATEST(following_count + $1, 0) WHERE id = $2`, delta, followerID); err != nil {

@@ -58,7 +58,7 @@ export default {
 }
 
 .placeholder .is-im {
-    background-image: url('@/assets/teriteri/img/bilibili/no_message.png');
+    background-image: url('@/assets/site/img/bilibili/no_message.png');
     background-size: 402px 204px;
     margin-bottom: 32px;
     height: 204px;

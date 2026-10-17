@@ -3,7 +3,7 @@
         <HeaderBar :isFixHeaderBar="true"></HeaderBar>
         <div class="notfound__body">
             <div class="notfound-container">
-                <img src="@/assets/teriteri/img/404.png" alt="">
+                <img src="@/assets/site/img/404.png" alt="">
                 <div style="text-align: center; padding: 0 0 40px 0;">
                     <button class="goback" @click="$router.go(-1)">返回上一页</button>
                 </div>
@@ -13,7 +13,7 @@
 </template>
 
 <script lang="ts">
-    import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue';
+    import HeaderBar from '@/components/site/headerBar/HeaderBar.vue';
 
     export default {
         name: "NotFound",

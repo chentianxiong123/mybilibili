@@ -2,7 +2,7 @@
 import { inject, onMounted, onBeforeUnmount, ref } from 'vue'
 import TopBackground from './components/TopBackground.vue'
 import CategoryTabs from './components/CategoryTabs.vue'
-import HeaderBar from '../components/teriteri/headerBar/HeaderBar.vue'
+import HeaderBar from '../components/site/headerBar/HeaderBar.vue'
 import FeedbackFloat from '../components/FeedbackFloat.vue'
 
 const showLoginDialog = inject('showLoginDialog')

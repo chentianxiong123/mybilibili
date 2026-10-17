@@ -47,3 +47,11 @@ func (s *FollowService) FollowingCount(ctx context.Context, userID int64) (int64
 func (s *FollowService) FollowerCount(ctx context.Context, userID int64) (int64, error) {
 	return s.repo.FollowerCount(ctx, userID)
 }
+
+func (s *FollowService) ListFans(ctx context.Context, userID int64, page, pageSize int32, mutual bool) ([]FanEntry, int64, error) {
+	return s.repo.ListFans(ctx, userID, page, pageSize, mutual)
+}
+
+func (s *FollowService) FansStats(ctx context.Context, userID int64) (FansStats, error) {
+	return s.repo.FansStats(ctx, userID)
+}

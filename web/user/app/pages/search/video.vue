@@ -96,7 +96,7 @@
 </template>
 
 <script lang="ts">
-import { handleTime, handleNum, handleDate, highlightKeyword } from '@/teriteri-src/utils/utils';
+import { handleTime, handleNum, handleDate, highlightKeyword } from '@/shared/utils/utils';
 
 export default {
     name: "SearchVideo",

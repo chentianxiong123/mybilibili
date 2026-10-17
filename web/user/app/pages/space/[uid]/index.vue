@@ -230,7 +230,7 @@
 
 <script lang="ts">
 import { hasAuthSession } from "@/utils/auth.ts"
-import { handleTime, handleNum, handleDate } from '@/teriteri-src/utils/utils';
+import { handleTime, handleNum, handleDate } from '@/shared/utils/utils';
 
 export default {
     name: "SpaceHome",
@@ -539,7 +539,7 @@ ol, ul {
 }
 
 .section .count:before {
-    background-image: url('@/assets/teriteri/img/bilibili/icons1.png');
+    background-image: url('@/assets/site/img/bilibili/icons1.png');
     position: absolute;
 }
 
@@ -657,7 +657,7 @@ ol, ul {
 }
 
 .small-item .cover {
-    background: url('@/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
+    background: url('@/assets/site/img/bilibili/video-placeholder.png') 50%;
     background-size: cover;
     border-radius: 4px;
     display: block;
@@ -760,7 +760,7 @@ ol, ul {
     margin-bottom: 11px;
     overflow: hidden;
     position: relative;
-    background: url('@/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
+    background: url('@/assets/site/img/bilibili/video-placeholder.png') 50%;
     background-size: cover;
     cursor: pointer;
 }
@@ -808,7 +808,7 @@ ol, ul {
     cursor: pointer;
 }
 
-/* 置顶视频样式（UI 对齐 teriteri，要素对齐 next-old） */
+/* 置顶视频样式（UI 对齐原版，要素对齐 next-old） */
 .section-title .pinned-actions {
     position: absolute;
     right: 0;
@@ -843,7 +843,7 @@ ol, ul {
     border-radius: 4px;
     overflow: hidden;
     flex-shrink: 0;
-    background: url('@/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
+    background: url('@/assets/site/img/bilibili/video-placeholder.png') 50%;
     background-size: cover;
 }
 .pinned-cover img {
@@ -941,7 +941,7 @@ ol, ul {
     aspect-ratio: 16 / 9;
     border-radius: 2px;
     overflow: hidden;
-    background: url('@/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
+    background: url('@/assets/site/img/bilibili/video-placeholder.png') 50%;
     background-size: cover;
 }
 .pinned-select-cover img {

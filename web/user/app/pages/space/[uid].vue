@@ -164,10 +164,10 @@
 
 <script lang="ts">
 import { hasAuthSession, getCurrentUserId } from "@/utils/auth.ts"
-import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue';
-import VAvatar from '@/components/teriteri/avatar/VAvatar.vue';
-import VLevel from '@/components/teriteri/UserCard/VLevel.vue';
-import { handleNum, handleLevel } from '@/teriteri-src/utils/utils';
+import HeaderBar from '@/components/site/headerBar/HeaderBar.vue';
+import VAvatar from '@/components/site/avatar/VAvatar.vue';
+import VLevel from '@/components/site/UserCard/VLevel.vue';
+import { handleNum, handleLevel } from '@/shared/utils/utils';
 import { ElMessage } from 'element-plus';
 import { followApi } from '@/api/creator';
 import { getUserProfileBackground } from '@/api/banner';
@@ -511,7 +511,7 @@ export default {
 }
 
 .h-forbid .f-wrap .f-icon {
-    background-image: url('~/assets/teriteri/img/bilibili/icons1.png');
+    background-image: url('~/assets/site/img/bilibili/icons1.png');
     background-position: -664px -458px;
     display: inline-block;
     width: 80px;
@@ -542,7 +542,7 @@ export default {
     left: 0;
     width: 100%;
     height: 84px;
-    background-image: url('~/assets/teriteri/img/bg_shadow.png');
+    background-image: url('~/assets/site/img/bg_shadow.png');
     background-repeat: repeat-x;
 }
 
@@ -612,7 +612,7 @@ export default {
     vertical-align: middle;
     background-repeat: no-repeat;
     display: inline-block;
-    background-image: url('~/assets/teriteri/img/bilibili/icons1.png');
+    background-image: url('~/assets/site/img/bilibili/icons1.png');
 }
 
 .gender {
@@ -736,7 +736,7 @@ export default {
 }
 
 .space-theme-trigger {
-    background-image: url('~/assets/teriteri/img/bilibili/theme-trigger-new.png');
+    background-image: url('~/assets/site/img/bilibili/theme-trigger-new.png');
     background-position: 0px 0px;
     cursor: pointer;
     width: 58px;

@@ -4,7 +4,7 @@
         <div class="account-layout">
             <div class="top-header" :style="topBg ? { backgroundImage: `url('${topBg}')` } : {}">
                 <div class="top-img">
-                    <img src="@/assets/teriteri/img/teriteri-white.png" alt="">
+                    <img src="@/assets/site/img/logo-white.png" alt="">
                 </div>
             </div>
             <div class="account-container">
@@ -52,7 +52,7 @@
 </template>
 
 <script lang="ts">
-import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue';
+import HeaderBar from '@/components/site/headerBar/HeaderBar.vue';
 import { getUserProfileBackground } from '@/api/banner';
 
 export default {

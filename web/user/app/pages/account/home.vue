@@ -47,7 +47,7 @@
 </template>
 
 <script lang="ts">
-import { handleLevel } from '@/teriteri-src/utils/utils';
+import { handleLevel } from '@/shared/utils/utils';
 
 export default {
     name: "AccountHome",
@@ -182,7 +182,7 @@ export default {
     line-height: 24px;
     cursor: default;
     display: inline-block;
-    background: url('@/assets/teriteri/img/bilibili/icons.png') no-repeat;
+    background: url('@/assets/site/img/bilibili/icons.png') no-repeat;
 }
 
 .home-top-level-head-active {

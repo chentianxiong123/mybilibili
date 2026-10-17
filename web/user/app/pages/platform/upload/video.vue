@@ -60,7 +60,7 @@
                 </span>
             </div>
             <div class="footer-item">
-                <span>上传视频，即表示您已同意 <a target="_blank" class="agree-link">特丽特丽使用协议</a> 与 <a target="_blank" class="agree-link">特丽特丽社区公约</a> ，请勿上传色情，反动等违法视频。</span>
+                <span>上传视频，即表示您已同意 <a target="_blank" class="agree-link">哔哩哔哩使用协议</a> 与 <a target="_blank" class="agree-link">哔哩哔哩社区公约</a> ，请勿上传色情，反动等违法视频。</span>
             </div>
         </div>
         <!-- 填写投稿信息界面 -->
@@ -397,11 +397,11 @@
 <script lang="ts">
 import { ElMessage, ElMessageBox } from 'element-plus';
 import SparkMD5 from 'spark-md5';
-import CropperComp from '@/components/teriteri/cropper/CropperComp.vue';
-import CategorySelect from '@/components/teriteri/categorySelect/CategorySelect.vue';
-import TagInput from '@/components/teriteri/tagInput/TagInput.vue';
-import PlayerProgress from '@/components/teriteri/player/PlayerProgress.vue';
-import UploadTypeTabs from '@/components/teriteri/uploadTypeTabs/UploadTypeTabs.vue';
+import CropperComp from '@/components/site/cropper/CropperComp.vue';
+import CategorySelect from '@/components/site/categorySelect/CategorySelect.vue';
+import TagInput from '@/components/site/tagInput/TagInput.vue';
+import PlayerProgress from '@/components/site/player/PlayerProgress.vue';
+import UploadTypeTabs from '@/components/site/uploadTypeTabs/UploadTypeTabs.vue';
 import { saveDraft, getDraft, listDrafts } from '@/utils/drafts';
 
 export default {
@@ -568,7 +568,7 @@ export default {
             }
         },
 
-        // 用项目真实分区（数字 id）替换 teriteri 遗留的字符串占位分区，并把用户已选项
+        // 用项目真实分区（数字 id）替换遗留的字符串占位分区，并把用户已选项
         // 按数字 id 归一化，保证提交时 category_id 一定是有效数字。
         ensureRealCategory() {
             const channels = this.categoryList || [];
@@ -1319,7 +1319,7 @@ export default {
                 ElMessage.error('至少选一个标签哦');
                 return;
             }
-            // 强制选择真实分区（数字 id），避免沿用 teriteri 遗留的字符串占位分区
+            // 强制选择真实分区（数字 id），避免沿用遗留的字符串占位分区
             this.ensureRealCategory();
             if (!this.categoryValid()) {
                 ElMessage.error('请选择投稿分区');
@@ -1445,7 +1445,7 @@ export default {
     width: 12px;
     height: 66px;
     cursor: pointer;
-    background: url('@/assets/teriteri/img/slider-handle.png');
+    background: url('@/assets/site/img/slider-handle.png');
     box-sizing: border-box;
     background-size: cover;
     border-radius: 4px;

@@ -5,7 +5,7 @@
             <header :style="topBg ? { backgroundImage: `url('${topBg}')` } : {}">
                 <div class="header-banner__inner">
                     <div class="logo-box">
-                        <img src="@/assets/teriteri/img/teriteri-white.png" alt="">
+                        <img src="@/assets/site/img/logo-white.png" alt="">
                     </div>
                 </div>
                 <div class="taper-line"></div>
@@ -278,10 +278,10 @@
 </template>
 
 <script lang="ts">
-import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue';
-import HeaderChannel from '@/components/teriteri/headerChannel/HeaderChannel.vue';
-import CarouselIndex from '@/components/teriteri/carousel/CarouselIndex.vue';
-import { handleTime, handleNum, handleDate } from '@/teriteri-src/utils/utils';
+import HeaderBar from '@/components/site/headerBar/HeaderBar.vue';
+import HeaderChannel from '@/components/site/headerChannel/HeaderChannel.vue';
+import CarouselIndex from '@/components/site/carousel/CarouselIndex.vue';
+import { handleTime, handleNum, handleDate } from '@/shared/utils/utils';
 import { getBackgroundImage } from '@/api/banner';
 
 let headerHight, bottomDistance;

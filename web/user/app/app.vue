@@ -3,10 +3,10 @@
     <NuxtPage />
   </NuxtLayout>
 
-  <!-- teriteri loading 屏 -->
+  <!-- loading 屏 -->
   <div class="loading-mark" :class="isMarkShow ? 'show' : 'hide'" :style="`display: ${markDisplay};`">
     <div class="loading-box">
-      <img src="@/assets/teriteri/img/loading.gif" alt="">
+      <img src="@/assets/site/img/loading.gif" alt="">
     </div>
   </div>
 
@@ -309,12 +309,12 @@ import api from './api/client'
 import { setAuthSession, hasAuthSession } from './utils/auth'
 import { useZoomCompact } from './composables/useZoomCompact'
 import { onMounted, onUnmounted } from 'vue'
-import { useTeriteriStore } from '@/stores/teriteri'
+import { useAppStore } from '@/stores/app'
 
 const router = useRouter()
-const store = useTeriteriStore()
+const store = useAppStore()
 
-// === teriteri loading 屏 ===
+// === loading 屏 ===
 const markDisplay = ref('none')
 const isMarkShow = ref(false)
 
@@ -330,15 +330,15 @@ function hide() {
   }, 200)
 }
 
-// === teriteri 初始化 ===
+// === 应用初始化 ===
 async function getChannels() {
-  const { get } = await import('@/teriteri-src/network/request')
+  const { get } = await import('@/shared/network/request')
   const res = await get('/category/getall')
   store.updateChannels(res.data.data)
 }
 
 async function getHotSearch() {
-  const { get } = await import('@/teriteri-src/network/request')
+  const { get } = await import('@/shared/network/request')
   const res = await get('/search/hot/get')
   store.updateTrendings(res.data.data)
 }
@@ -358,7 +358,7 @@ async function closeIMWebSocket() {
 }
 
 async function getFavorites() {
-  const { get } = await import('@/teriteri-src/network/request')
+  const { get } = await import('@/shared/network/request')
   const res = await get('/favorite/get-all/user', {
     params: { uid: store.user.uid }
   })
@@ -370,7 +370,7 @@ async function getFavorites() {
 }
 
 async function getLikeAndDisLikeComment() {
-  const { get } = await import('@/teriteri-src/network/request')
+  const { get } = await import('@/shared/network/request')
   const res = await get('/comment/get-like-and-dislike', {
     params: { uid: store.user.uid }
   })
@@ -753,7 +753,7 @@ onMounted(async () => {
   window.addEventListener('resize', syncZoomBase)
   zoomBaseObserver = new ResizeObserver(syncZoomBase)
   zoomBaseObserver.observe(document.documentElement)
-  // teriteri 初始化（登录态由可读的 user_info cookie 回答）
+  // 应用初始化（登录态由可读的 user_info cookie 回答）
   if (hasAuthSession()) {
     await store.getPersonalInfo()
     await initIMServer()
@@ -776,7 +776,7 @@ onUnmounted(() => {
   zoomBaseObserver?.disconnect()
 })
 
-// teriteri loading watch
+// loading watch
 watch(() => store.isLoading, (current) => {
   if (current) show()
   else hide()
@@ -792,7 +792,7 @@ watch(() => store.isLoading, (current) => {
     background-color: var(--bg1);
 }
 
-/* teriteri loading 屏样式 */
+/* loading 屏样式 */
 .loading-mark {
     position: fixed;
     top: 0;

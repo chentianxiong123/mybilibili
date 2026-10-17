@@ -3,5 +3,5 @@
 </template>
 
 <script setup lang="ts">
-import AtList from '@/components/teriteri/message/AtList.vue'
+import AtList from '@/components/site/message/AtList.vue'
 </script>

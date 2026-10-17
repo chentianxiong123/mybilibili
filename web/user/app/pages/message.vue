@@ -49,15 +49,15 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import { useTeriteriStore } from '@/stores/teriteri'
-import messageBg from '@/assets/teriteri/img/message-bg.png'
+import { useAppStore } from '@/stores/app'
+import messageBg from '@/assets/site/img/message-bg.png'
 definePageMeta({ layout: 'simple' })
 
 const route = useRoute()
 const router = useRouter()
-const store = useTeriteriStore()
+const store = useAppStore()
 
-// teriteri 侧栏菜单：unread 为 store.msgUnread 数组下标，-1 表示无红点
+// 原版侧栏菜单：unread 为 store.msgUnread 数组下标，-1 表示无红点
 const menu = [
   { path: '/message/whisper', name: '我的消息', unread: 4 },
   { path: '/message/reply', name: '回复我的', unread: 0 },
@@ -86,7 +86,7 @@ if (import.meta.client) {
 }
 
 onMounted(() => {
-  // teriteri 原版：消息页全局背景图
+  // 原版消息页全局背景图
   document.body.style.cssText = `background: url(${messageBg}) top/cover no-repeat fixed;`
   document.querySelectorAll('#app').forEach((el) => {
     ;(el as HTMLElement).style.cssText = 'background-color: transparent;'
@@ -100,7 +100,7 @@ onBeforeUnmount(() => {
   })
 })
 
-// 未登录踢回首页（teriteri 原版行为）
+// 未登录踢回首页（原版行为）
 watch(() => store.isLogin, (curr) => {
   if (!curr) {
     router.push('/')

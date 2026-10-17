@@ -95,7 +95,7 @@
 </template>
 
 <script lang="ts">
-import { handleTime, handleNum, handleDate } from '@/teriteri-src/utils/utils';
+import { handleTime, handleNum, handleDate } from '@/shared/utils/utils';
 
 export default {
     name: "SpaceVideo",
@@ -412,7 +412,7 @@ ol, ul {
 }
 
 .small-item .cover {
-    background: url('@/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
+    background: url('@/assets/site/img/bilibili/video-placeholder.png') 50%;
     background-size: cover;
     border-radius: 4px;
     display: block;
@@ -510,7 +510,7 @@ ol, ul {
 }
 
 .list-item .cover {
-    background: url('@/assets/teriteri/img/bilibili/video-placeholder.png') 50%;
+    background: url('@/assets/site/img/bilibili/video-placeholder.png') 50%;
     background-size: cover;
     border-radius: 4px;
     width: 160px;

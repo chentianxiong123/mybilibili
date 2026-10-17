@@ -5,7 +5,7 @@
             <div class="search-entry-page" v-if="routerIndex === -1 || !keyword">
                 <div class="search-center">
                     <h1 class="search-center-title">
-                        <img src="@/assets/teriteri/img/teriteri-pink.png" alt="">
+                        <img src="@/assets/site/img/logo-pink.png" alt="">
                         <span class="center-title-text">搜索</span>
                     </h1>
                     <SearchInput style="margin-top: 30px;" :keyword="keyword ? keyword : ''"></SearchInput>
@@ -43,8 +43,8 @@
 </template>
 
 <script lang="ts">
-import HeaderBar from '@/components/teriteri/headerBar/HeaderBar.vue';
-import SearchInput from '@/components/teriteri/search/SearchInput.vue';
+import HeaderBar from '@/components/site/headerBar/HeaderBar.vue';
+import SearchInput from '@/components/site/search/SearchInput.vue';
 
 export default {
     name: "SearchView",
