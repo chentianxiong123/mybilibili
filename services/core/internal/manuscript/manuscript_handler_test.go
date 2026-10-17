@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"mybilibili/core/internal/user"
@@ -85,8 +86,15 @@ func TestManuscriptHandler_ListByCategory(t *testing.T) {
 	h, mock := newManuscriptHandlerWithMocks(t)
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM manuscripts WHERE category_id = \$1 AND status = 3`).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(0)))
-	mock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE category_id = .+ AND status = 3`).WillReturnRows(sqlmock.NewRows(manuscriptCols))
+	mock.ExpectQuery(`SELECT id FROM categories WHERE parent_id = \$1`).WithArgs(int64(5)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM manuscripts WHERE category_id = ANY\(\$1\) AND status = 3`).
+		WithArgs(pq.Array([]int64{int64(5)})).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(0)))
+	mock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE category_id = ANY\(\$1\) AND status = 3`).
+		WithArgs(pq.Array([]int64{int64(5)}), int32(20), int32(0)).
+		WillReturnRows(sqlmock.NewRows(manuscriptCols))
 
 	resp, err := h.ListByCategory(ctx, &pb.ListByCategoryRequest{CategoryId: 5, Page: 1, PageSize: 20})
 	require.NoError(t, err)

@@ -121,7 +121,16 @@ func (h *ManuscriptHTTPHandler) handleManuscriptRoute(w http.ResponseWriter, r *
 		} else {
 			r.SetPathValue("id", parts[1])
 		}
-		h.handleManuscriptDetail(w, r)
+		// 单段 /manuscript/{id} 上按 method 分派：GET 详情 / PUT 更新 / DELETE 删除。
+		// （此前这里无条件进 detail，导致编辑与删除请求被详情吞掉）
+		switch r.Method {
+		case http.MethodPut:
+			h.handleUpdateManuscript(w, r)
+		case http.MethodDelete:
+			h.handleDeleteManuscript(w, r)
+		default:
+			h.handleManuscriptDetail(w, r)
+		}
 	case "updateManuscript":
 		r.SetPathValue("id", parts[0])
 		h.handleUpdateManuscript(w, r)
@@ -319,6 +328,27 @@ func manuscriptRouteName(parts []string) string {
 
 // ---- 上传会话与内部兜底 ----
 
+// categoryExists 校验分区 id 是否真实存在于 categories 表。
+func (h *ManuscriptHTTPHandler) categoryExists(ctx context.Context, id int64) (bool, error) {
+	var exists bool
+	err := h.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM categories WHERE id = $1)`, id).Scan(&exists)
+	return exists, err
+}
+
+// requireCategory 校验分区必填且存在，否则返回 false（已写出错误响应）。
+func (h *ManuscriptHTTPHandler) requireCategory(ctx context.Context, w http.ResponseWriter, id int64) bool {
+	if id <= 0 {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "请选择稿件分区", "data": nil})
+		return false
+	}
+	exists, err := h.categoryExists(ctx, id)
+	if err != nil || !exists {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "分区不存在", "data": nil})
+		return false
+	}
+	return true
+}
+
 func (h *ManuscriptHTTPHandler) handleUploadSession(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "method not allowed", 405)
@@ -361,6 +391,13 @@ func (h *ManuscriptHTTPHandler) handleUploadSession(w http.ResponseWriter, r *ht
 	}
 	tags, _ := json.Marshal(req.Tags)
 	videos, _ := json.Marshal(req.Videos)
+	if req.CategoryID != 0 {
+		exists, err := h.categoryExists(r.Context(), req.CategoryID)
+		if err != nil || !exists {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "分区不存在", "data": nil})
+			return
+		}
+	}
 	_, err := h.db.ExecContext(r.Context(),
 		`INSERT INTO upload_sessions (id, user_id, title, description, category_id, tags, videos, total_chunks, status)
 		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending')
@@ -467,6 +504,9 @@ func (h *ManuscriptHTTPHandler) handleUploadComplete(w http.ResponseWriter, r *h
 	if catID.Valid {
 		categoryID = catID.Int64
 	}
+	if !h.requireCategory(r.Context(), w, categoryID) {
+		return
+	}
 	var msID int64
 	if err := h.db.QueryRowContext(r.Context(),
 		`INSERT INTO manuscripts (title, description, cover_url, user_id, category_id, status, review_status, upload_time, updated_at)
@@ -483,11 +523,20 @@ func (h *ManuscriptHTTPHandler) handleUploadComplete(w http.ResponseWriter, r *h
 		errors.WriteHTTPError(w, errors.ErrInternal("create video failed"))
 		return
 	}
-	for _, t := range strings.Split(tags, ",") {
-		t = strings.TrimSpace(t)
-		if t == "" {
-			continue
+	var tagList []string
+	if text := strings.TrimSpace(tags); text != "" {
+		if strings.HasPrefix(text, "[") {
+			_ = json.Unmarshal([]byte(text), &tagList)
+		} else {
+			for _, t := range strings.Split(text, ",") {
+				t = strings.TrimSpace(t)
+				if t != "" {
+					tagList = append(tagList, t)
+				}
+			}
 		}
+	}
+	for _, t := range tagList {
 		var tid int64
 		_ = h.db.QueryRowContext(r.Context(),
 			`INSERT INTO tags (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`, t).Scan(&tid)
@@ -876,24 +925,28 @@ func (h *ManuscriptHTTPHandler) handleUpdateManuscript(w http.ResponseWriter, r 
 		_, _ = h.db.ExecContext(r.Context(), `UPDATE manuscripts SET description = $1, updated_at = NOW() WHERE id = $2`, req.Description, id)
 	}
 	if req.CategoryID > 0 {
+		if !h.requireCategory(r.Context(), w, req.CategoryID) {
+			return
+		}
 		_, _ = h.db.ExecContext(r.Context(), `UPDATE manuscripts SET category_id = $1, updated_at = NOW() WHERE id = $2`, req.CategoryID, id)
 	}
 	if len(req.Tags) > 0 {
-		var firstVideoID int64
-		_ = h.db.QueryRowContext(r.Context(), `SELECT id FROM videos WHERE manuscript_id = $1 ORDER BY video_order LIMIT 1`, id).Scan(&firstVideoID)
-		if firstVideoID > 0 {
-			_, _ = h.db.ExecContext(r.Context(), `DELETE FROM video_tags WHERE video_id = $1`, firstVideoID)
-			for _, t := range req.Tags {
-				t = strings.TrimSpace(t)
-				if t == "" {
-					continue
-				}
-				var tid int64
-				_ = h.db.QueryRowContext(r.Context(),
-					`INSERT INTO tags (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`, t).Scan(&tid)
-				_, _ = h.db.ExecContext(r.Context(),
-					`INSERT INTO video_tags (video_id, tag_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, firstVideoID, tid)
+		// 清除该稿件所有分P的旧标签，再统一写入新标签，保证多P一致
+		_, _ = h.db.ExecContext(r.Context(),
+			`DELETE FROM video_tags WHERE video_id IN (SELECT id FROM videos WHERE manuscript_id = $1)`, id)
+		for _, t := range req.Tags {
+			t = strings.TrimSpace(t)
+			if t == "" {
+				continue
 			}
+			var tid int64
+			if err := h.db.QueryRowContext(r.Context(),
+				`INSERT INTO tags (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`, t).Scan(&tid); err != nil {
+				continue
+			}
+			_, _ = h.db.ExecContext(r.Context(),
+				`INSERT INTO video_tags (video_id, tag_id)
+				 SELECT id, $2 FROM videos WHERE manuscript_id = $1 ON CONFLICT DO NOTHING`, id, tid)
 		}
 	}
 	httputil.WriteOK(w, map[string]interface{}{"id": id, "status": "ok"})
@@ -1629,6 +1682,9 @@ func (h *ManuscriptHTTPHandler) handleUploadCompleteWeb(w http.ResponseWriter, r
 	categoryID := int64(0)
 	if catID.Valid {
 		categoryID = catID.Int64
+	}
+	if !h.requireCategory(r.Context(), w, categoryID) {
+		return
 	}
 	var msID int64
 	if err := h.db.QueryRowContext(r.Context(),

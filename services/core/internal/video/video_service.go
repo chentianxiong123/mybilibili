@@ -28,13 +28,13 @@ func (s *Service) ListCategories(ctx context.Context) ([]*models.Category, error
 	return s.repo.ListCategories(ctx)
 }
 
-func (s *Service) CreateCategory(ctx context.Context, name string, parentID int64) error {
-	_, err := s.repo.CreateCategory(ctx, name, parentID)
+func (s *Service) CreateCategory(ctx context.Context, name string, parentID int64, sortOrder int32) error {
+	_, err := s.repo.CreateCategory(ctx, name, parentID, sortOrder)
 	return err
 }
 
-func (s *Service) UpdateCategory(ctx context.Context, id int64, name string) error {
-	return s.repo.UpdateCategory(ctx, id, name)
+func (s *Service) UpdateCategory(ctx context.Context, id int64, name string, parentID int64, sortOrder int32) error {
+	return s.repo.UpdateCategory(ctx, id, name, parentID, sortOrder)
 }
 
 func (s *Service) DeleteCategory(ctx context.Context, id int64) error {

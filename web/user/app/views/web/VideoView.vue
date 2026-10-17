@@ -320,7 +320,7 @@ const goToVideo = video => {
 
 // 跳转到标签搜索页面
 const goToTagSearch = (tagName: string) => {
-  router.push({ path: '/search', query: { tag: tagName } })
+  router.push({ path: '/search/video', query: { tag: tagName } })
 }
 
 // 切换分P视频

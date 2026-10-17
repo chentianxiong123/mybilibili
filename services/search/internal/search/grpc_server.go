@@ -18,7 +18,7 @@ func NewGrpcServer(svc *Service) *GrpcServer {
 
 func (s *GrpcServer) SearchVideos(ctx context.Context, req *pb.SearchVideosRequest) (*pb.SearchVideosResponse, error) {
 	log.Printf("gRPC SearchVideos: keyword=%s page=%d", req.Keyword, req.Page)
-	list, err := s.svc.Search(ctx, req.Keyword, req.CategoryId, req.Page, req.PageSize)
+	list, err := s.svc.Search(ctx, req.Keyword, req.Tag, req.CategoryId, req.Page, req.PageSize)
 	if err != nil {
 		return nil, err
 	}

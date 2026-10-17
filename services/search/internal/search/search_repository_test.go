@@ -31,7 +31,7 @@ func TestSearchManuscripts_EmptyKeyword(t *testing.T) {
 
 	mock.ExpectQuery(`SELECT.*FROM manuscripts m`).WillReturnRows(rows)
 
-	result, err := repo.SearchManuscripts(ctx, "", 0, 1, 10)
+	result, err := repo.SearchManuscripts(ctx, "", "", 0, 1, 10)
 	require.NoError(t, err)
 	require.Len(t, result, 1)
 	assert.Equal(t, int64(1), result[0]["id"])
@@ -56,7 +56,7 @@ func TestSearchManuscripts_WithKeyword(t *testing.T) {
 
 	mock.ExpectQuery(`SELECT.*plainto_tsquery`).WillReturnRows(rows)
 
-	result, err := repo.SearchManuscripts(ctx, "test", 0, 1, 10)
+	result, err := repo.SearchManuscripts(ctx, "test", "", 0, 1, 10)
 	require.NoError(t, err)
 	require.Len(t, result, 1)
 	assert.Equal(t, int64(2), result[0]["id"])
@@ -78,9 +78,29 @@ func TestSearchManuscripts_EmptyResult(t *testing.T) {
 
 	mock.ExpectQuery(`SELECT.*FROM manuscripts m`).WillReturnRows(rows)
 
-	result, err := repo.SearchManuscripts(ctx, "", 0, 1, 10)
+	result, err := repo.SearchManuscripts(ctx, "", "", 0, 1, 10)
 	require.NoError(t, err)
 	assert.Empty(t, result)
+}
+
+func TestSearchManuscripts_WithTag(t *testing.T) {
+	repo, mock := newMockRepo(t)
+	ctx := context.Background()
+
+	columns := []string{"id", "title", "description", "cover_url", "user_id", "category_id",
+		"view_count", "like_count", "comment_count", "danmaku_count",
+		"duration", "status", "upload_time",
+		"id", "username", "nickname", "avatar", "level", "is_vertical"}
+	rows := sqlmock.NewRows(columns).
+		AddRow(3, "MCP 教程", "agent", "mcp.jpg", 30, 95, 900, 90, 5, 2, "8:00", 3, "2025-07-01", 30, "carol", "Carol", "c.jpg", 4, 0)
+
+	mock.ExpectQuery(`SELECT.*video_tags vt.*t\.name =`).WithArgs("mcp", int32(10), int32(0)).WillReturnRows(rows)
+
+	result, err := repo.SearchManuscripts(ctx, "", "mcp", 0, 1, 10)
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+	assert.Equal(t, int64(3), result[0]["id"])
+	assert.Equal(t, int64(95), result[0]["category_id"])
 }
 
 func TestSearchUsers_EmptyKeyword(t *testing.T) {

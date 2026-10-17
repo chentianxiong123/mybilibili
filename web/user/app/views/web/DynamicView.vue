@@ -3,7 +3,7 @@ import { getSessionUser, hasAuthSession } from '@/utils/auth.ts'
 import { safeStorage } from '@/utils/safeStorage'
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 
 import { dynamicApi } from '@/api/dynamic.ts'
 import { useUserStore } from '@/stores/user.ts'
@@ -36,6 +36,24 @@ const loading = ref(false)
 
 // 虚拟滚动
 const scrollContainer = ref(null)
+
+const followingBarRef = ref(null)
+const canScrollLeft = ref(false)
+const canScrollRight = ref(false)
+
+const updateFollowingArrows = () => {
+  const el = followingBarRef.value
+  if (!el) return
+  canScrollLeft.value = el.scrollLeft > 0
+  canScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1
+}
+
+const scrollFollowing = (dir: number) => {
+  const el = followingBarRef.value
+  if (!el) return
+  el.scrollBy({ left: dir * el.clientWidth * 0.6, behavior: 'smooth' })
+  setTimeout(updateFollowingArrows, 300)
+}
 
 const hotSearchList = ref([])
 
@@ -329,17 +347,37 @@ onMounted(() => {
           @publish="handlePublish"
         />
 
-        <div class="following-users-bar">
-          <div
-            v-for="user in followingUsers"
-            :key="user.id || 'all'"
-            :class="['following-user-item', { active: selectedUserId === user.id }]"
-            @click="selectUser(user.id)"
+        <div class="following-users-wrap">
+          <button
+            class="following-arrow following-arrow-left"
+            :class="{ disabled: !canScrollLeft }"
+            @click="scrollFollowing(-1)"
           >
-            <img loading="lazy" decoding="async" v-if="user.avatar" :src="user.avatar" :alt="user.name" class="following-avatar">
-            <div v-else class="following-avatar default-avatar">全</div>
-            <span class="following-name">{{ user.name }}</span>
+            <el-icon><ArrowLeft /></el-icon>
+          </button>
+          <div
+            class="following-users-bar"
+            ref="followingBarRef"
+            @scroll="updateFollowingArrows"
+          >
+            <div
+              v-for="user in followingUsers"
+              :key="user.id || 'all'"
+              :class="['following-user-item', { active: selectedUserId === user.id }]"
+              @click="selectUser(user.id)"
+            >
+              <img loading="lazy" decoding="async" v-if="user.avatar" :src="user.avatar" :alt="user.name" class="following-avatar">
+              <div v-else class="following-avatar default-avatar">全</div>
+              <span class="following-name">{{ user.name }}</span>
+            </div>
           </div>
+          <button
+            class="following-arrow following-arrow-right"
+            :class="{ disabled: !canScrollRight }"
+            @click="scrollFollowing(1)"
+          >
+            <el-icon><ArrowRight /></el-icon>
+          </button>
         </div>
 
         <div class="dynamic-list" ref="scrollContainer">
@@ -484,15 +522,58 @@ onMounted(() => {
   min-width: 0;
 }
 
-.following-users-bar {
+.following-users-wrap {
+  position: relative;
   background: #fff;
   border-radius: 8px;
-  padding: 16px;
   margin-bottom: 16px;
   display: flex;
-  gap: 16px;
-  overflow-x: auto;
+  align-items: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.following-users-bar {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.following-users-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.following-arrow {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  margin: 0 8px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  color: #61666d;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.following-arrow:hover {
+  background: #00aeec;
+  color: #fff;
+}
+
+.following-arrow.disabled {
+  color: #c0c4cc;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .following-user-item {
@@ -540,15 +621,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  height: calc(100vh - 260px);
-  overflow-y: auto;
-  padding-right: 4px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.dynamic-list::-webkit-scrollbar {
-  display: none;
+  padding-bottom: 40px;
 }
 
 .load-more {

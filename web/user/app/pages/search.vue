@@ -66,7 +66,7 @@ export default {
             return this.router.findIndex(item => this.$route.path.startsWith(item.path));
         },
         keyword() {
-            return this.$route.query.keyword || '';
+            return this.$route.query.keyword || this.$route.query.tag || '';
         }
     },
     methods: {
@@ -88,7 +88,10 @@ export default {
         // 跳转对应类型
         changeNav(path) {
             if (this.$route.path.startsWith(path)) return;
-            this.$router.push(`${path}?keyword=${this.keyword}`);
+            const target = this.$route.query.tag
+                ? `${path}?tag=${encodeURIComponent(this.$route.query.tag)}`
+                : `${path}?keyword=${this.keyword}`;
+            this.$router.push(target);
         }
     },
     created() {

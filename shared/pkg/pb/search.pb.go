@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        v3.21.12
-// source: core/v1/search.proto
+// source: search/v1/search.proto
 
 package pb
 
@@ -28,13 +28,14 @@ type SearchVideosRequest struct {
 	PageSize      int32                  `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	CategoryId    int64                  `protobuf:"varint,4,opt,name=category_id,json=categoryId,proto3" json:"category_id,omitempty"`
 	Order         string                 `protobuf:"bytes,5,opt,name=order,proto3" json:"order,omitempty"`
+	Tag           string                 `protobuf:"bytes,6,opt,name=tag,proto3" json:"tag,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SearchVideosRequest) Reset() {
 	*x = SearchVideosRequest{}
-	mi := &file_core_v1_search_proto_msgTypes[0]
+	mi := &file_search_v1_search_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -46,7 +47,7 @@ func (x *SearchVideosRequest) String() string {
 func (*SearchVideosRequest) ProtoMessage() {}
 
 func (x *SearchVideosRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_core_v1_search_proto_msgTypes[0]
+	mi := &file_search_v1_search_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -59,7 +60,7 @@ func (x *SearchVideosRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchVideosRequest.ProtoReflect.Descriptor instead.
 func (*SearchVideosRequest) Descriptor() ([]byte, []int) {
-	return file_core_v1_search_proto_rawDescGZIP(), []int{0}
+	return file_search_v1_search_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *SearchVideosRequest) GetKeyword() string {
@@ -97,6 +98,13 @@ func (x *SearchVideosRequest) GetOrder() string {
 	return ""
 }
 
+func (x *SearchVideosRequest) GetTag() string {
+	if x != nil {
+		return x.Tag
+	}
+	return ""
+}
+
 type SearchVideoItem struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -115,7 +123,7 @@ type SearchVideoItem struct {
 
 func (x *SearchVideoItem) Reset() {
 	*x = SearchVideoItem{}
-	mi := &file_core_v1_search_proto_msgTypes[1]
+	mi := &file_search_v1_search_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -127,7 +135,7 @@ func (x *SearchVideoItem) String() string {
 func (*SearchVideoItem) ProtoMessage() {}
 
 func (x *SearchVideoItem) ProtoReflect() protoreflect.Message {
-	mi := &file_core_v1_search_proto_msgTypes[1]
+	mi := &file_search_v1_search_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -140,7 +148,7 @@ func (x *SearchVideoItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchVideoItem.ProtoReflect.Descriptor instead.
 func (*SearchVideoItem) Descriptor() ([]byte, []int) {
-	return file_core_v1_search_proto_rawDescGZIP(), []int{1}
+	return file_search_v1_search_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *SearchVideoItem) GetId() int64 {
@@ -225,7 +233,7 @@ type SearchVideosResponse struct {
 
 func (x *SearchVideosResponse) Reset() {
 	*x = SearchVideosResponse{}
-	mi := &file_core_v1_search_proto_msgTypes[2]
+	mi := &file_search_v1_search_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -237,7 +245,7 @@ func (x *SearchVideosResponse) String() string {
 func (*SearchVideosResponse) ProtoMessage() {}
 
 func (x *SearchVideosResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_core_v1_search_proto_msgTypes[2]
+	mi := &file_search_v1_search_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -250,7 +258,7 @@ func (x *SearchVideosResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchVideosResponse.ProtoReflect.Descriptor instead.
 func (*SearchVideosResponse) Descriptor() ([]byte, []int) {
-	return file_core_v1_search_proto_rawDescGZIP(), []int{2}
+	return file_search_v1_search_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *SearchVideosResponse) GetList() []*SearchVideoItem {
@@ -289,7 +297,7 @@ type GetHotSearchRequest struct {
 
 func (x *GetHotSearchRequest) Reset() {
 	*x = GetHotSearchRequest{}
-	mi := &file_core_v1_search_proto_msgTypes[3]
+	mi := &file_search_v1_search_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -301,7 +309,7 @@ func (x *GetHotSearchRequest) String() string {
 func (*GetHotSearchRequest) ProtoMessage() {}
 
 func (x *GetHotSearchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_core_v1_search_proto_msgTypes[3]
+	mi := &file_search_v1_search_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -314,7 +322,7 @@ func (x *GetHotSearchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetHotSearchRequest.ProtoReflect.Descriptor instead.
 func (*GetHotSearchRequest) Descriptor() ([]byte, []int) {
-	return file_core_v1_search_proto_rawDescGZIP(), []int{3}
+	return file_search_v1_search_proto_rawDescGZIP(), []int{3}
 }
 
 type HotKeyword struct {
@@ -328,7 +336,7 @@ type HotKeyword struct {
 
 func (x *HotKeyword) Reset() {
 	*x = HotKeyword{}
-	mi := &file_core_v1_search_proto_msgTypes[4]
+	mi := &file_search_v1_search_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -340,7 +348,7 @@ func (x *HotKeyword) String() string {
 func (*HotKeyword) ProtoMessage() {}
 
 func (x *HotKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_core_v1_search_proto_msgTypes[4]
+	mi := &file_search_v1_search_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -353,7 +361,7 @@ func (x *HotKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HotKeyword.ProtoReflect.Descriptor instead.
 func (*HotKeyword) Descriptor() ([]byte, []int) {
-	return file_core_v1_search_proto_rawDescGZIP(), []int{4}
+	return file_search_v1_search_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *HotKeyword) GetKeyword() string {
@@ -386,7 +394,7 @@ type GetHotSearchResponse struct {
 
 func (x *GetHotSearchResponse) Reset() {
 	*x = GetHotSearchResponse{}
-	mi := &file_core_v1_search_proto_msgTypes[5]
+	mi := &file_search_v1_search_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -398,7 +406,7 @@ func (x *GetHotSearchResponse) String() string {
 func (*GetHotSearchResponse) ProtoMessage() {}
 
 func (x *GetHotSearchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_core_v1_search_proto_msgTypes[5]
+	mi := &file_search_v1_search_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -411,7 +419,7 @@ func (x *GetHotSearchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetHotSearchResponse.ProtoReflect.Descriptor instead.
 func (*GetHotSearchResponse) Descriptor() ([]byte, []int) {
-	return file_core_v1_search_proto_rawDescGZIP(), []int{5}
+	return file_search_v1_search_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetHotSearchResponse) GetList() []*HotKeyword {
@@ -431,7 +439,7 @@ type GetSuggestionsRequest struct {
 
 func (x *GetSuggestionsRequest) Reset() {
 	*x = GetSuggestionsRequest{}
-	mi := &file_core_v1_search_proto_msgTypes[6]
+	mi := &file_search_v1_search_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -443,7 +451,7 @@ func (x *GetSuggestionsRequest) String() string {
 func (*GetSuggestionsRequest) ProtoMessage() {}
 
 func (x *GetSuggestionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_core_v1_search_proto_msgTypes[6]
+	mi := &file_search_v1_search_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -456,7 +464,7 @@ func (x *GetSuggestionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSuggestionsRequest.ProtoReflect.Descriptor instead.
 func (*GetSuggestionsRequest) Descriptor() ([]byte, []int) {
-	return file_core_v1_search_proto_rawDescGZIP(), []int{6}
+	return file_search_v1_search_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetSuggestionsRequest) GetKeyword() string {
@@ -482,7 +490,7 @@ type GetSuggestionsResponse struct {
 
 func (x *GetSuggestionsResponse) Reset() {
 	*x = GetSuggestionsResponse{}
-	mi := &file_core_v1_search_proto_msgTypes[7]
+	mi := &file_search_v1_search_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -494,7 +502,7 @@ func (x *GetSuggestionsResponse) String() string {
 func (*GetSuggestionsResponse) ProtoMessage() {}
 
 func (x *GetSuggestionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_core_v1_search_proto_msgTypes[7]
+	mi := &file_search_v1_search_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -507,7 +515,7 @@ func (x *GetSuggestionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSuggestionsResponse.ProtoReflect.Descriptor instead.
 func (*GetSuggestionsResponse) Descriptor() ([]byte, []int) {
-	return file_core_v1_search_proto_rawDescGZIP(), []int{7}
+	return file_search_v1_search_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetSuggestionsResponse) GetSuggestions() []string {
@@ -517,18 +525,19 @@ func (x *GetSuggestionsResponse) GetSuggestions() []string {
 	return nil
 }
 
-var File_core_v1_search_proto protoreflect.FileDescriptor
+var File_search_v1_search_proto protoreflect.FileDescriptor
 
-const file_core_v1_search_proto_rawDesc = "" +
+const file_search_v1_search_proto_rawDesc = "" +
 	"\n" +
-	"\x14core/v1/search.proto\x12\acore.v1\"\x97\x01\n" +
+	"\x16search/v1/search.proto\x12\tsearch.v1\"\xa9\x01\n" +
 	"\x13SearchVideosRequest\x12\x18\n" +
 	"\akeyword\x18\x01 \x01(\tR\akeyword\x12\x12\n" +
 	"\x04page\x18\x02 \x01(\x05R\x04page\x12\x1b\n" +
 	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\x12\x1f\n" +
 	"\vcategory_id\x18\x04 \x01(\x03R\n" +
 	"categoryId\x12\x14\n" +
-	"\x05order\x18\x05 \x01(\tR\x05order\"\xae\x02\n" +
+	"\x05order\x18\x05 \x01(\tR\x05order\x12\x10\n" +
+	"\x03tag\x18\x06 \x01(\tR\x03tag\"\xae\x02\n" +
 	"\x0fSearchVideoItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x14\n" +
@@ -544,9 +553,9 @@ const file_core_v1_search_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\t \x01(\tR\tcreatedAt\x12 \n" +
 	"\vdescription\x18\n" +
-	" \x01(\tR\vdescription\"\x8b\x01\n" +
-	"\x14SearchVideosResponse\x12,\n" +
-	"\x04list\x18\x01 \x03(\v2\x18.core.v1.SearchVideoItemR\x04list\x12\x14\n" +
+	" \x01(\tR\vdescription\"\x8d\x01\n" +
+	"\x14SearchVideosResponse\x12.\n" +
+	"\x04list\x18\x01 \x03(\v2\x1a.search.v1.SearchVideoItemR\x04list\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
 	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x1b\n" +
 	"\tpage_size\x18\x04 \x01(\x05R\bpageSize\"\x15\n" +
@@ -555,51 +564,51 @@ const file_core_v1_search_proto_rawDesc = "" +
 	"HotKeyword\x12\x18\n" +
 	"\akeyword\x18\x01 \x01(\tR\akeyword\x12\x14\n" +
 	"\x05score\x18\x02 \x01(\x03R\x05score\x12!\n" +
-	"\fsearch_count\x18\x03 \x01(\x03R\vsearchCount\"?\n" +
-	"\x14GetHotSearchResponse\x12'\n" +
-	"\x04list\x18\x01 \x03(\v2\x13.core.v1.HotKeywordR\x04list\"G\n" +
+	"\fsearch_count\x18\x03 \x01(\x03R\vsearchCount\"A\n" +
+	"\x14GetHotSearchResponse\x12)\n" +
+	"\x04list\x18\x01 \x03(\v2\x15.search.v1.HotKeywordR\x04list\"G\n" +
 	"\x15GetSuggestionsRequest\x12\x18\n" +
 	"\akeyword\x18\x01 \x01(\tR\akeyword\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\":\n" +
 	"\x16GetSuggestionsResponse\x12 \n" +
-	"\vsuggestions\x18\x01 \x03(\tR\vsuggestions2\xfc\x01\n" +
-	"\rSearchService\x12K\n" +
-	"\fSearchVideos\x12\x1c.core.v1.SearchVideosRequest\x1a\x1d.core.v1.SearchVideosResponse\x12K\n" +
-	"\fGetHotSearch\x12\x1c.core.v1.GetHotSearchRequest\x1a\x1d.core.v1.GetHotSearchResponse\x12Q\n" +
-	"\x0eGetSuggestions\x12\x1e.core.v1.GetSuggestionsRequest\x1a\x1f.core.v1.GetSuggestionsResponseB\x13Z\x11mybilibili/pkg/pbb\x06proto3"
+	"\vsuggestions\x18\x01 \x03(\tR\vsuggestions2\x88\x02\n" +
+	"\rSearchService\x12O\n" +
+	"\fSearchVideos\x12\x1e.search.v1.SearchVideosRequest\x1a\x1f.search.v1.SearchVideosResponse\x12O\n" +
+	"\fGetHotSearch\x12\x1e.search.v1.GetHotSearchRequest\x1a\x1f.search.v1.GetHotSearchResponse\x12U\n" +
+	"\x0eGetSuggestions\x12 .search.v1.GetSuggestionsRequest\x1a!.search.v1.GetSuggestionsResponseB\x13Z\x11mybilibili/pkg/pbb\x06proto3"
 
 var (
-	file_core_v1_search_proto_rawDescOnce sync.Once
-	file_core_v1_search_proto_rawDescData []byte
+	file_search_v1_search_proto_rawDescOnce sync.Once
+	file_search_v1_search_proto_rawDescData []byte
 )
 
-func file_core_v1_search_proto_rawDescGZIP() []byte {
-	file_core_v1_search_proto_rawDescOnce.Do(func() {
-		file_core_v1_search_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_core_v1_search_proto_rawDesc), len(file_core_v1_search_proto_rawDesc)))
+func file_search_v1_search_proto_rawDescGZIP() []byte {
+	file_search_v1_search_proto_rawDescOnce.Do(func() {
+		file_search_v1_search_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_search_v1_search_proto_rawDesc), len(file_search_v1_search_proto_rawDesc)))
 	})
-	return file_core_v1_search_proto_rawDescData
+	return file_search_v1_search_proto_rawDescData
 }
 
-var file_core_v1_search_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
-var file_core_v1_search_proto_goTypes = []any{
-	(*SearchVideosRequest)(nil),    // 0: core.v1.SearchVideosRequest
-	(*SearchVideoItem)(nil),        // 1: core.v1.SearchVideoItem
-	(*SearchVideosResponse)(nil),   // 2: core.v1.SearchVideosResponse
-	(*GetHotSearchRequest)(nil),    // 3: core.v1.GetHotSearchRequest
-	(*HotKeyword)(nil),             // 4: core.v1.HotKeyword
-	(*GetHotSearchResponse)(nil),   // 5: core.v1.GetHotSearchResponse
-	(*GetSuggestionsRequest)(nil),  // 6: core.v1.GetSuggestionsRequest
-	(*GetSuggestionsResponse)(nil), // 7: core.v1.GetSuggestionsResponse
+var file_search_v1_search_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_search_v1_search_proto_goTypes = []any{
+	(*SearchVideosRequest)(nil),    // 0: search.v1.SearchVideosRequest
+	(*SearchVideoItem)(nil),        // 1: search.v1.SearchVideoItem
+	(*SearchVideosResponse)(nil),   // 2: search.v1.SearchVideosResponse
+	(*GetHotSearchRequest)(nil),    // 3: search.v1.GetHotSearchRequest
+	(*HotKeyword)(nil),             // 4: search.v1.HotKeyword
+	(*GetHotSearchResponse)(nil),   // 5: search.v1.GetHotSearchResponse
+	(*GetSuggestionsRequest)(nil),  // 6: search.v1.GetSuggestionsRequest
+	(*GetSuggestionsResponse)(nil), // 7: search.v1.GetSuggestionsResponse
 }
-var file_core_v1_search_proto_depIdxs = []int32{
-	1, // 0: core.v1.SearchVideosResponse.list:type_name -> core.v1.SearchVideoItem
-	4, // 1: core.v1.GetHotSearchResponse.list:type_name -> core.v1.HotKeyword
-	0, // 2: core.v1.SearchService.SearchVideos:input_type -> core.v1.SearchVideosRequest
-	3, // 3: core.v1.SearchService.GetHotSearch:input_type -> core.v1.GetHotSearchRequest
-	6, // 4: core.v1.SearchService.GetSuggestions:input_type -> core.v1.GetSuggestionsRequest
-	2, // 5: core.v1.SearchService.SearchVideos:output_type -> core.v1.SearchVideosResponse
-	5, // 6: core.v1.SearchService.GetHotSearch:output_type -> core.v1.GetHotSearchResponse
-	7, // 7: core.v1.SearchService.GetSuggestions:output_type -> core.v1.GetSuggestionsResponse
+var file_search_v1_search_proto_depIdxs = []int32{
+	1, // 0: search.v1.SearchVideosResponse.list:type_name -> search.v1.SearchVideoItem
+	4, // 1: search.v1.GetHotSearchResponse.list:type_name -> search.v1.HotKeyword
+	0, // 2: search.v1.SearchService.SearchVideos:input_type -> search.v1.SearchVideosRequest
+	3, // 3: search.v1.SearchService.GetHotSearch:input_type -> search.v1.GetHotSearchRequest
+	6, // 4: search.v1.SearchService.GetSuggestions:input_type -> search.v1.GetSuggestionsRequest
+	2, // 5: search.v1.SearchService.SearchVideos:output_type -> search.v1.SearchVideosResponse
+	5, // 6: search.v1.SearchService.GetHotSearch:output_type -> search.v1.GetHotSearchResponse
+	7, // 7: search.v1.SearchService.GetSuggestions:output_type -> search.v1.GetSuggestionsResponse
 	5, // [5:8] is the sub-list for method output_type
 	2, // [2:5] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
@@ -607,26 +616,26 @@ var file_core_v1_search_proto_depIdxs = []int32{
 	0, // [0:2] is the sub-list for field type_name
 }
 
-func init() { file_core_v1_search_proto_init() }
-func file_core_v1_search_proto_init() {
-	if File_core_v1_search_proto != nil {
+func init() { file_search_v1_search_proto_init() }
+func file_search_v1_search_proto_init() {
+	if File_search_v1_search_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_core_v1_search_proto_rawDesc), len(file_core_v1_search_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_search_v1_search_proto_rawDesc), len(file_search_v1_search_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_core_v1_search_proto_goTypes,
-		DependencyIndexes: file_core_v1_search_proto_depIdxs,
-		MessageInfos:      file_core_v1_search_proto_msgTypes,
+		GoTypes:           file_search_v1_search_proto_goTypes,
+		DependencyIndexes: file_search_v1_search_proto_depIdxs,
+		MessageInfos:      file_search_v1_search_proto_msgTypes,
 	}.Build()
-	File_core_v1_search_proto = out.File
-	file_core_v1_search_proto_goTypes = nil
-	file_core_v1_search_proto_depIdxs = nil
+	File_search_v1_search_proto = out.File
+	file_search_v1_search_proto_goTypes = nil
+	file_search_v1_search_proto_depIdxs = nil
 }

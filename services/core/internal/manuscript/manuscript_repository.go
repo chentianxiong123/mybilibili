@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/lib/pq"
+
 	"mybilibili/pkg/models"
 	pb "mybilibili/pkg/pb"
 )
@@ -305,8 +307,11 @@ func (r *ManuscriptRepository) ListHot(ctx context.Context, seed float64, offset
 }
 
 func (r *ManuscriptRepository) ListByCategory(ctx context.Context, categoryID int64, page, pageSize int32) ([]*Manuscript, int64, error) {
+	// 一级分区聚合：若 categoryID 是一级分区(parent_id=0)，包含其所有子分区稿件
+	catIDs := r.expandCategoryIDs(ctx, categoryID)
+
 	var total int64
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscripts WHERE category_id = $1 AND status = 3`, categoryID).Scan(&total)
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscripts WHERE category_id = ANY($1) AND status = 3`, pq.Array(catIDs)).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -318,8 +323,8 @@ func (r *ManuscriptRepository) ListByCategory(ctx context.Context, categoryID in
 		       comment_count, danmaku_count, status, review_status, COALESCE(review_reason,''),
 		       review_time, reviewer_id, upload_time, updated_at, duration, duration_seconds,
 		       COALESCE(source_type,'local')
-		FROM manuscripts WHERE category_id = $1 AND status = 3
-		ORDER BY upload_time DESC LIMIT $2 OFFSET $3`, categoryID, pageSize, offset)
+		FROM manuscripts WHERE category_id = ANY($1) AND status = 3
+		ORDER BY upload_time DESC LIMIT $2 OFFSET $3`, pq.Array(catIDs), pageSize, offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -338,6 +343,24 @@ func (r *ManuscriptRepository) ListByCategory(ctx context.Context, categoryID in
 		list = append(list, m)
 	}
 	return list, total, nil
+}
+
+// expandCategoryIDs 若 categoryID 是一级分区，返回自身+所有子分区 id；否则返回自身
+func (r *ManuscriptRepository) expandCategoryIDs(ctx context.Context, categoryID int64) []int64 {
+	ids := []int64{categoryID}
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id FROM categories WHERE parent_id = $1`, categoryID)
+	if err != nil {
+		return ids
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		if rows.Scan(&id) == nil {
+			ids = append(ids, id)
+		}
+	}
+	return ids
 }
 
 func (r *ManuscriptRepository) ListCategories(ctx context.Context) ([]*models.Category, error) {

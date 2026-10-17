@@ -30,10 +30,13 @@ const fetchCategories = async () => {
     const res = await api.get('/category')
     const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : [])
     if (list.length) {
-      categories.value = list.map(cat => ({
-        name: cat.name,
-        id: cat.id
-      }))
+      // 首页 Tab 只展示一级分区（parentId === 0），避免一级二级混排
+      categories.value = list
+        .filter(cat => cat.parentId === 0 || cat.parent_id === 0)
+        .map(cat => ({
+          name: cat.name,
+          id: cat.id
+        }))
     }
   } catch (error) {
     console.error('获取分类列表失败:', error)

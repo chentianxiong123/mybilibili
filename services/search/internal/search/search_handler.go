@@ -58,9 +58,10 @@ func (h *Handler) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 	keyword := r.URL.Query().Get("keyword")
+	tag := r.URL.Query().Get("tag")
 	categoryID, _ := strconv.ParseInt(r.URL.Query().Get("category_id"), 10, 64)
 	page, size := httputil.ParsePageParams(r)
-	list, _ := h.svc.Search(r.Context(), keyword, categoryID, page, size)
+	list, _ := h.svc.Search(r.Context(), keyword, tag, categoryID, page, size)
 	writeJSON(w, map[string]interface{}{"list": list, "total": len(list)})
 }
 

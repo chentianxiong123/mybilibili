@@ -69,8 +69,8 @@ func newReq(method, path string, body ...string) *http.Request {
 }
 
 type mocks struct {
-	h    *ManuscriptHTTPHandler
-	db   sqlmock.Sqlmock
+	h        *ManuscriptHTTPHandler
+	db       sqlmock.Sqlmock
 	interact sqlmock.Sqlmock
 }
 
@@ -420,6 +420,9 @@ func TestHTTPHandler_UpdateManuscript(t *testing.T) {
 
 	mock.ExpectQuery(`SELECT user_id FROM manuscripts WHERE id`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(int64(10)))
+	mock.ExpectQuery(`SELECT EXISTS\(SELECT 1 FROM categories WHERE id`).WithArgs(int64(2)).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	mock.ExpectExec(`UPDATE manuscripts SET category_id`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE manuscripts SET title`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`DELETE FROM manuscript_tags WHERE manuscript_id`).WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec(`INSERT INTO manuscript_tags`).WillReturnResult(sqlmock.NewResult(0, 1))
@@ -480,6 +483,8 @@ func TestHTTPHandler_UpdateManuscript_Forbidden(t *testing.T) {
 func TestHTTPHandler_UploadSession(t *testing.T) {
 	h, mock := newHTTPHandler(t)
 
+	mock.ExpectQuery(`SELECT EXISTS\(SELECT 1 FROM categories WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 	mock.ExpectExec(`INSERT INTO upload_sessions`).WillReturnResult(sqlmock.NewResult(0, 1))
 
 	body := `{"client_id":"abc","title":"my video","description":"desc","category_id":1,"tags":["go"],"videos":[]}`
@@ -489,6 +494,24 @@ func TestHTTPHandler_UploadSession(t *testing.T) {
 	w := httptest.NewRecorder()
 	h.handleRouter(w, req)
 	assert.Equal(t, 200, w.Code)
+}
+
+// 单段 /manuscript/{id} 上 PUT 必须走 update 而非 detail。
+func TestHTTPHandler_Router_PUT_Manuscript_GoesToUpdate(t *testing.T) {
+	h, mock := newHTTPHandler(t)
+
+	// 走 handleUpdateManuscript：owner 校验 + 非法分类 999999 应被拒
+	mock.ExpectQuery(`SELECT user_id FROM manuscripts WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(int64(10)))
+	mock.ExpectQuery(`SELECT EXISTS\(SELECT 1 FROM categories WHERE id`).WithArgs(int64(999999)).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+	req := newReq("PUT", "/api/v1/manuscript/1", `{"title":"t","category_id":999999}`)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-User-Id", "10")
+	w := httptest.NewRecorder()
+	h.handleRouter(w, req)
+	assert.Equal(t, 400, w.Code)
 }
 
 func TestHTTPHandler_UploadSession_MethodNotAllowed(t *testing.T) {
@@ -902,6 +925,8 @@ func TestHTTPHandler_UploadComplete(t *testing.T) {
 	mock.ExpectQuery(`SELECT user_id FROM upload_sessions WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(int64(10)))
 	mock.ExpectQuery(`SELECT title, description, category_id, tags, videos FROM upload_sessions`).WillReturnRows(sqlmock.NewRows([]string{"title", "description", "category_id", "tags", "videos"}).
 		AddRow("t", "d", int64(1), "[]", `[{"url":"http://video.mp4"}]`))
+	mock.ExpectQuery(`SELECT EXISTS\(SELECT 1 FROM categories WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 	mock.ExpectQuery(`INSERT INTO manuscripts`).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(1)))
 	mock.ExpectQuery(`INSERT INTO videos`).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(100)))
 	mock.ExpectExec(`UPDATE upload_sessions SET status`).WillReturnResult(sqlmock.NewResult(0, 1))
@@ -1177,6 +1202,8 @@ func TestHTTPHandler_UploadSessionByID_Delete_Error(t *testing.T) {
 func TestHTTPHandler_UploadSession_DBError(t *testing.T) {
 	h, mock := newHTTPHandler(t)
 
+	mock.ExpectQuery(`SELECT EXISTS\(SELECT 1 FROM categories WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 	mock.ExpectExec(`INSERT INTO upload_sessions`).WillReturnError(sql.ErrConnDone)
 
 	body := `{"client_id":"abc","title":"my video","description":"desc","category_id":1}`
@@ -1194,8 +1221,6 @@ func TestHTTPHandler_Register(t *testing.T) {
 	h.Register(mux)
 	assert.NotNil(t, mux)
 }
-
-
 
 func TestHTTPHandler_Like_Coin_Collect_Share_NoUser(t *testing.T) {
 	h, _ := newHTTPHandler(t)

@@ -18,7 +18,7 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) SearchManuscripts(ctx context.Context, keyword string, categoryID int64, page, size int32) ([]map[string]interface{}, error) {
+func (r *Repository) SearchManuscripts(ctx context.Context, keyword, tag string, categoryID int64, page, size int32) ([]map[string]interface{}, error) {
 	offset := (page - 1) * size
 	query := `SELECT m.id, m.title, m.description, m.cover_url, m.user_id, m.category_id,
 	                 m.view_count, m.like_count,
@@ -40,6 +40,14 @@ func (r *Repository) SearchManuscripts(ctx context.Context, keyword string, cate
 		args = append(args, keyword)
 		kwIdx = len(args)
 		query += ` AND m.search_vector @@ plainto_tsquery('zh_cn', $1)`
+	}
+	if tag != "" {
+		args = append(args, tag)
+		tagIdx := len(args)
+		query += fmt.Sprintf(` AND EXISTS (
+			SELECT 1 FROM video_tags vt JOIN tags t ON vt.tag_id = t.id JOIN videos v ON v.id = vt.video_id
+			WHERE v.manuscript_id = m.id AND t.name = $%d
+		)`, tagIdx)
 	}
 	if categoryID > 0 {
 		args = append(args, categoryID)
@@ -147,7 +155,7 @@ func (r *Repository) CountByKeyword(ctx context.Context, keyword string) (int64,
 }
 
 func (r *Repository) RecommendRelated(ctx context.Context, manuscriptID, categoryID int64, size int32) ([]map[string]interface{}, error) {
-	return r.SearchManuscripts(ctx, "", categoryID, 1, size)
+	return r.SearchManuscripts(ctx, "", "", categoryID, 1, size)
 }
 
 func (r *Repository) GetRecommendConfig(ctx context.Context) (string, error) {
@@ -175,11 +183,11 @@ func NewService(repo *Repository, hotRepo *hot.Repository) *Service {
 	return &Service{repo: repo, hotRepo: hotRepo}
 }
 
-func (s *Service) Search(ctx context.Context, keyword string, categoryID int64, page, size int32) ([]map[string]interface{}, error) {
+func (s *Service) Search(ctx context.Context, keyword, tag string, categoryID int64, page, size int32) ([]map[string]interface{}, error) {
 	if keyword != "" && s.hotRepo != nil {
 		_ = s.hotRepo.Increment(ctx, keyword)
 	}
-	return s.repo.SearchManuscripts(ctx, keyword, categoryID, page, size)
+	return s.repo.SearchManuscripts(ctx, keyword, tag, categoryID, page, size)
 }
 
 func (s *Service) SearchUsers(ctx context.Context, keyword string, page, size int32) ([]map[string]interface{}, error) {

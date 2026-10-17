@@ -235,10 +235,10 @@ func TestCreateCategory(t *testing.T) {
 	repo, mock := newMockRepo(t)
 
 	mock.ExpectQuery(`INSERT INTO categories`).
-		WithArgs("new-cat", int64(0)).
+		WithArgs("new-cat", int64(0), int32(0)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(5))
 
-	id, err := repo.CreateCategory(context.Background(), "new-cat", 0)
+	id, err := repo.CreateCategory(context.Background(), "new-cat", 0, 0)
 	require.NoError(t, err)
 	assert.Equal(t, int64(5), id)
 }
@@ -247,19 +247,24 @@ func TestUpdateCategory(t *testing.T) {
 	repo, mock := newMockRepo(t)
 
 	mock.ExpectExec(`UPDATE categories SET name`).
-		WithArgs("updated", int64(1)).
+		WithArgs("updated", int64(0), int32(1), int64(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	require.NoError(t, repo.UpdateCategory(context.Background(), 1, "updated"))
+	require.NoError(t, repo.UpdateCategory(context.Background(), 1, "updated", 0, 1))
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestDeleteCategory(t *testing.T) {
 	repo, mock := newMockRepo(t)
 
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE categories SET parent_id = 0 WHERE parent_id`).
+		WithArgs(int64(1)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`DELETE FROM categories WHERE id`).
 		WithArgs(int64(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
 
 	require.NoError(t, repo.DeleteCategory(context.Background(), 1))
 	require.NoError(t, mock.ExpectationsWereMet())

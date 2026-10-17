@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             v3.21.12
-// source: core/v1/search.proto
+// source: search/v1/search.proto
 
 package pb
 
@@ -19,9 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SearchService_SearchVideos_FullMethodName   = "/core.v1.SearchService/SearchVideos"
-	SearchService_GetHotSearch_FullMethodName   = "/core.v1.SearchService/GetHotSearch"
-	SearchService_GetSuggestions_FullMethodName = "/core.v1.SearchService/GetSuggestions"
+	SearchService_SearchVideos_FullMethodName   = "/search.v1.SearchService/SearchVideos"
+	SearchService_GetHotSearch_FullMethodName   = "/search.v1.SearchService/GetHotSearch"
+	SearchService_GetSuggestions_FullMethodName = "/search.v1.SearchService/GetSuggestions"
 )
 
 // SearchServiceClient is the client API for SearchService service.
@@ -176,7 +176,7 @@ func _SearchService_GetSuggestions_Handler(srv interface{}, ctx context.Context,
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var SearchService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "core.v1.SearchService",
+	ServiceName: "search.v1.SearchService",
 	HandlerType: (*SearchServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -193,5 +193,5 @@ var SearchService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "core/v1/search.proto",
+	Metadata: "search/v1/search.proto",
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"mybilibili/core/internal/user"
@@ -180,12 +181,16 @@ func TestSvcListByCategory(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 
-	msMock.ExpectQuery(`SELECT COUNT\(\*\) FROM manuscripts WHERE category_id = \$1 AND status = 3`).
+	msMock.ExpectQuery(`SELECT id FROM categories WHERE parent_id = \$1`).
 		WithArgs(int64(5)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
+	msMock.ExpectQuery(`SELECT COUNT\(\*\) FROM manuscripts WHERE category_id = ANY\(\$1\) AND status = 3`).
+		WithArgs(pq.Array([]int64{int64(5)})).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(1)))
 
-	msMock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE category_id = .+ AND status = 3`).
-		WithArgs(int64(5), int32(20), int32(0)).
+	msMock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE category_id = ANY\(\$1\) AND status = 3`).
+		WithArgs(pq.Array([]int64{int64(5)}), int32(20), int32(0)).
 		WillReturnRows(sqlmock.NewRows(manuscriptCols).
 			AddRow(1, "t", "d", "c.jpg", int64(10), int64(5),
 				int64(0), int64(0), int64(0), int64(0), int64(0),

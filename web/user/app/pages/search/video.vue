@@ -102,7 +102,8 @@ export default {
     name: "SearchVideo",
     data() {
         return {
-            keyword: this.$route.query.keyword || '',
+            keyword: this.$route.query.keyword || this.$route.query.tag || '',
+            tag: this.$route.query.tag || '',
             page: 1, // 当前页码
             videoList: [],  // 查询到的相关视频
             loading: true,  // 正在查询中
@@ -118,6 +119,12 @@ export default {
             this.keyword = val || '';
             this.page = 1;
             this.searchVideos();
+        },
+        '$route.query.tag'(val) {
+            this.tag = val || '';
+            this.keyword = val || '';
+            this.page = 1;
+            this.searchVideos();
         }
     },
     methods: {
@@ -129,6 +136,7 @@ export default {
             const res = await this.$get("/search/video/only-pass", {
                 params: {
                     keyword: keyword,
+                    tag: this.tag || undefined,
                     page: this.page
                 }
             });
@@ -166,6 +174,7 @@ export default {
 
     },
     created() {
+        this.tag = this.$route.query.tag || '';
         if (this.keyword) {
             this.searchVideos();
         }

@@ -16,6 +16,7 @@ message SearchVideosRequest {
   int32 page_size = 3;
   int64 category_id = 4;
   string order = 5;
+  string tag = 6;
 }
 
 message SearchVideoItem {

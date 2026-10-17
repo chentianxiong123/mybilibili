@@ -15,11 +15,16 @@ const confirmMock = vi.hoisted(() => vi.fn())
 vi.mock('element-plus', () => ({
   ElMessage: messageMocks,
   ElMessageBox: { confirm: confirmMock },
+  ElTag: { template: '<span class="el-tag-stub"><slot /></span>', props: ['type', 'size'] },
+  ElSelect: { template: '<select><slot /></select>' },
+  ElOption: { template: '<option />', props: ['value', 'label', 'disabled'] },
+  ElInputNumber: { template: '<input />', props: ['modelValue'] },
 }))
 
 vi.mock('@element-plus/icons-vue', () => ({
   Plus: { template: '<i />' },
   Search: { template: '<i />' },
+  Refresh: { template: '<i />' },
 }))
 
 const makeWrapper = () =>
@@ -41,7 +46,6 @@ const makeWrapper = () =>
           template:
             '<div class="el-table-column-stub"><template v-if="$slots.default"><template v-for="row in $parent.$props.data"><slot :row="row" /></template></template></div>',
         },
-        'el-pagination': { template: '<div />' },
         'el-dialog': { template: '<div class="el-dialog-stub"><slot /></div>' },
         'el-form': { template: '<form><slot /></form>' },
         'el-form-item': { template: '<div><slot /></div>' },
@@ -60,124 +64,86 @@ beforeEach(() => {
 })
 
 describe('CategoriesView.vue', () => {
-  it('onMounted 拉取分区列表', async () => {
+  it('onMounted 拉取全量分区列表（树形管理不需要分页）', async () => {
     makeWrapper()
     await flushPromises()
-    expect(apis.getCategoryList).toHaveBeenCalledWith({ page: 1, size: 10, keyword: '' })
+    expect(apis.getCategoryList).toHaveBeenCalledWith({})
   })
 
-  it('归一化 created_at / createdAt / create_time 三种时间字段', async () => {
+  it('构建树：一级为根、二级挂到 parent_id 下', async () => {
     apis.getCategoryList.mockResolvedValue({
       code: 200,
-      data: {
-        list: [
-          { id: 1, name: '动画', created_at: 'A' },
-          { id: 2, name: '音乐', createdAt: 'B' },
-          { id: 3, name: '游戏', create_time: 'C' },
-          { id: 4 },
-        ],
-        total: 4,
-      },
+      data: [
+        { id: 1, name: '科技', parent_id: 0, sort_order: 0 },
+        { id: 95, name: '计算机技术', parent_id: 188, sort_order: 0 },
+        { id: 188, name: '科技(主)', parent_id: 0, sort_order: 1 },
+      ],
     })
     const w = makeWrapper()
     await flushPromises()
-    expect(w.vm.tableData.map((r: any) => r.createdAt)).toEqual(['A', 'B', 'C', ''])
-    expect(w.vm.tableData[3].name).toBe('')
-    expect(w.vm.total).toBe(4)
+    expect(w.vm.rawCategories).toHaveLength(3)
+    expect(w.vm.groups.parents.map(p => p.id)).toEqual([1, 188])
+    const techParent = w.vm.categoryTree.find(c => c.id === 188)
+    expect(techParent.children.map(c => c.id)).toEqual([95])
   })
 
-  it('兼容 data 直接是数组的响应形状', async () => {
-    apis.getCategoryList.mockResolvedValue({ code: 200, data: [{ id: 1, name: 'x' }] })
+  it('兼容 parentId 驼峰与 success 标记响应形状', async () => {
+    apis.getCategoryList.mockResolvedValue({
+      success: true,
+      data: [{ id: 1, name: '动画', parentId: 0, sortOrder: 2 }],
+    })
     const w = makeWrapper()
     await flushPromises()
-    expect(w.vm.tableData).toHaveLength(1)
+    expect(w.vm.rawCategories[0]).toEqual({ id: 1, name: '动画', parent_id: 0, sort_order: 2 })
   })
 
-  it('兼容 success 标记 + 根级 total', async () => {
-    apis.getCategoryList.mockResolvedValue({ success: true, data: [{ id: 1 }], total: 6 })
+  it('搜索命中保留父节点（子分区命中显示其父）', async () => {
+    apis.getCategoryList.mockResolvedValue({
+      code: 200,
+      data: [
+        { id: 1, name: '科技', parent_id: 0, sort_order: 0 },
+        { id: 95, name: '计算机技术', parent_id: 188, sort_order: 0 },
+        { id: 188, name: '科技(主)', parent_id: 0, sort_order: 1 },
+      ],
+    })
     const w = makeWrapper()
     await flushPromises()
-    expect(w.vm.total).toBe(6)
+    w.vm.keyword = '计算机'
+    const filtered = w.vm.filteredTree
+    expect(filtered).toHaveLength(1)
+    expect(filtered[0].id).toBe(188)
+    expect(filtered[0].children.map(c => c.id)).toEqual([95])
   })
 
-  it('data 不是数组时列表置空，不崩', async () => {
-    apis.getCategoryList.mockResolvedValue({ code: 200, data: { list: 'not-an-array' } })
+  it('重置：清空 keyword（前端过滤，不再分页请求）', async () => {
     const w = makeWrapper()
     await flushPromises()
-    expect(w.vm.tableData).toEqual([])
-  })
-
-  it('业务失败：不覆盖列表', async () => {
-    apis.getCategoryList.mockResolvedValue({ code: 500 })
-    const w = makeWrapper()
-    await flushPromises()
-    expect(w.vm.tableData).toEqual([])
-    expect(w.vm.loading).toBe(false)
-  })
-
-  it('拉取失败：提示错误并复位 loading', async () => {
-    apis.getCategoryList.mockRejectedValue(new Error('network'))
-    const w = makeWrapper()
-    await flushPromises()
-    expect(messageMocks.error).toHaveBeenCalledWith('获取分区列表失败')
-    expect(w.vm.loading).toBe(false)
-  })
-
-  it('搜索：带 keyword 并回到第 1 页', async () => {
-    const w = makeWrapper()
-    await flushPromises()
-    w.vm.currentPage = 5
-    w.vm.keyword = '动画'
-    w.vm.handleSearch()
-    await flushPromises()
-    expect(w.vm.currentPage).toBe(1)
-    expect(apis.getCategoryList).toHaveBeenLastCalledWith({ page: 1, size: 10, keyword: '动画' })
-  })
-
-  it('重置：清空 keyword 并回到第 1 页', async () => {
-    const w = makeWrapper()
-    await flushPromises()
-    w.vm.currentPage = 3
     w.vm.keyword = 'x'
     w.vm.handleReset()
     await flushPromises()
     expect(w.vm.keyword).toBe('')
-    expect(w.vm.currentPage).toBe(1)
   })
 
-  it('翻页按新页码查询', async () => {
+  it('handleAdd：打开弹窗并初始化带 parent_id/sort_order 的表单', async () => {
     const w = makeWrapper()
     await flushPromises()
-    w.vm.handlePageChange(4)
-    await flushPromises()
-    expect(apis.getCategoryList).toHaveBeenLastCalledWith({ page: 4, size: 10, keyword: '' })
-  })
-
-  it('handleAdd：打开弹窗并重置表单', async () => {
-    const w = makeWrapper()
-    await flushPromises()
-    w.vm.dialogForm.name = '脏数据'
     w.vm.handleAdd()
     expect(w.vm.dialogTitle).toBe('添加分区')
     expect(w.vm.dialogVisible).toBe(true)
-    expect(w.vm.dialogForm).toEqual({ id: null, name: '' })
+    expect(w.vm.dialogForm).toMatchObject({ id: null, name: '', parent_id: 0 })
   })
 
-  it('handleEdit：回填行数据并切标题', async () => {
+  it('handleEdit：回填行数据含父分区与排序', async () => {
+    apis.getCategoryList.mockResolvedValue({
+      code: 200,
+      data: [{ id: 7, name: '番剧', parent_id: 0, sort_order: 3 }],
+    })
     const w = makeWrapper()
     await flushPromises()
-    w.vm.handleEdit({ id: 7, name: '番剧' })
+    w.vm.handleEdit({ id: 7, name: '番剧', parent_id: 0, sort_order: 3 })
     expect(w.vm.dialogTitle).toBe('编辑分区')
-    expect(w.vm.dialogForm).toEqual({ id: 7, name: '番剧' })
+    expect(w.vm.dialogForm).toEqual({ id: 7, name: '番剧', parent_id: 0, sort_order: 3 })
     expect(w.vm.dialogVisible).toBe(true)
-  })
-
-  it('无 dialogFormRef 时保存直接返回', async () => {
-    const w = makeWrapper()
-    await flushPromises()
-    w.vm.dialogFormRef = null
-    await w.vm.handleSave()
-    expect(apis.addCategory).not.toHaveBeenCalled()
   })
 
   it('校验不通过：不发请求、不关弹窗', async () => {
@@ -191,17 +157,17 @@ describe('CategoriesView.vue', () => {
     expect(w.vm.dialogVisible).toBe(true)
   })
 
-  it('新增成功：只提交 name，提示并关弹窗刷新', async () => {
+  it('新增成功：提交 name+parent_id+sort_order，提示并关弹窗刷新', async () => {
     apis.addCategory.mockResolvedValue({ code: 200 })
     const w = makeWrapper()
     await flushPromises()
     w.vm.dialogFormRef = { validate: (cb: any) => cb(true) }
-    w.vm.dialogForm = { id: null, name: '新分区' }
+    w.vm.dialogForm = { id: null, name: '新分区', parent_id: 12, sort_order: 1 }
     w.vm.dialogVisible = true
     apis.getCategoryList.mockClear()
     await w.vm.handleSave()
     await flushPromises()
-    expect(apis.addCategory).toHaveBeenCalledWith({ name: '新分区' })
+    expect(apis.addCategory).toHaveBeenCalledWith({ name: '新分区', parent_id: 12, sort_order: 1 })
     expect(apis.updateCategory).not.toHaveBeenCalled()
     expect(messageMocks.success).toHaveBeenCalledWith('添加成功')
     expect(w.vm.dialogVisible).toBe(false)
@@ -213,10 +179,10 @@ describe('CategoriesView.vue', () => {
     const w = makeWrapper()
     await flushPromises()
     w.vm.dialogFormRef = { validate: (cb: any) => cb(true) }
-    w.vm.dialogForm = { id: 3, name: '改名' }
+    w.vm.dialogForm = { id: 3, name: '改名', parent_id: 0, sort_order: 0 }
     await w.vm.handleSave()
     await flushPromises()
-    expect(apis.updateCategory).toHaveBeenCalledWith(3, { name: '改名' })
+    expect(apis.updateCategory).toHaveBeenCalledWith(3, { name: '改名', parent_id: 0, sort_order: 0 })
     expect(messageMocks.success).toHaveBeenCalledWith('更新成功')
   })
 

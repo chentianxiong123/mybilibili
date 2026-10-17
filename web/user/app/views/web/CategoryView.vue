@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowLeft, ArrowRight, View, Star } from '@element-plus/icons-vue'
 import { videoApi, categoryApi } from '@/api/client'
 import { getCategoryBanners } from '@/api/banner.ts'
 import { formatDuration, formatMonthDay, normalizeVideoCard } from '@/utils/videoCard.ts'
 import { useTabsVideoAlign } from '@/composables/useTabsVideoAlign'
+import VideoCard from '@/components/VideoCard.vue'
 
 const route = useRoute()
 const categoryId = ref(route.params.id)
@@ -167,23 +168,77 @@ const goToAuthor = (authorId) => {
 
 const categoryMap = ref({})
 
+// 全部分区列表（原始，含 parentId）
+const categoryListAll = ref([])
+// 当前分区对象（含 parentId/子分区）
+const currentCategory = ref(null)
+// 当前一级分区下的子分区 tab（一级分区时展示）
+const subCategories = ref([])
+// 当前是否热门(0)标签页
+const isHotTab = computed(() => categoryId.value === '0')
+// 当前是否为二级分区（有父级）
+const isSubCategory = computed(() => {
+  const c = currentCategory.value
+  return c && (c.parentId === 0 ? false : true)
+})
+
 const fetchCategoryName = async () => {
   try {
     const res = await categoryApi.getCategoryList()
     const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : (res?.list || []))
     const map = {}
+    const all = []
     for (const cat of list) {
       map[cat.id] = cat.name
+      all.push(cat)
     }
     map[0] = '热门'
     categoryMap.value = map
-    if (categoryId.value) {
-      categoryName.value = categoryMap.value[categoryId.value] || (categoryId.value === '0' ? '热门' : '未知分类')
-    }
+    categoryListAll.value = all
+    updateCurrentCategory()
   } catch (error) {
     console.error('获取分类列表失败:', error)
   }
 }
+
+// 根据当前 categoryId 计算分类名、是否一级分区、子分区列表
+const updateCurrentCategory = () => {
+  const id = categoryId.value
+  const numId = Number(id)
+  if (!id || isHotTab.value) {
+    currentCategory.value = null
+    subCategories.value = []
+    categoryName.value = id === '0' ? '热门' : (categoryMap.value[id] || '未知分类')
+    return
+  }
+  const cat = categoryListAll.value.find(c => Number(c.id) === numId) || null
+  currentCategory.value = cat
+  categoryName.value = cat ? cat.name : (categoryMap.value[numId] || '未知分类')
+  // 一级分区：列出直接子分区 tab
+  if (cat && cat.parentId === 0) {
+    subCategories.value = categoryListAll.value.filter(c => Number(c.parentId) === numId)
+  } else {
+    subCategories.value = []
+  }
+}
+
+const goSubCategory = (cat) => {
+  router.push(`/category/${cat.id}`)
+}
+
+// 二级分区的一级父分区（用于返回聚合页）
+const parentCategory = computed(() => {
+  const c = currentCategory.value
+  if (!c || c.parentId === 0) return null
+  return categoryListAll.value.find(x => Number(x.id) === Number(c.parentId)) || null
+})
+const parentCategoryName = computed(() => parentCategory.value?.name || '上级分区')
+
+const goParentCategory = () => {
+  if (parentCategory.value) router.push(`/category/${parentCategory.value.id}`)
+}
+
+const router = useRouter()
 
 // 监听路由参数变化，当categoryId变化时重新加载数据
 watch(() => route.params.id, (newId) => {
@@ -192,12 +247,7 @@ watch(() => route.params.id, (newId) => {
     hasLoadedVideos.value = false
     fetchCategoryBanners(newId)
     fetchVideoList()
-
-    if (categoryMap.value[newId] !== undefined) {
-      categoryName.value = categoryMap.value[newId]
-    } else {
-      categoryName.value = newId === '0' ? '热门' : '未知分类'
-    }
+    updateCurrentCategory()
 
     nextTick(() => {
       adjustBannerHeight()
@@ -220,6 +270,38 @@ onMounted(async () => {
     <!-- 分类标题 -->
     <div class="category-header">
       <h1 class="category-title">{{ categoryName }}</h1>
+      <div class="category-sub" v-if="isHotTab">
+        <div class="sub-tabs">
+          <div
+            :class="['sub-tab', { 'active': categoryId === '0' }]"
+            @click="router.push('/category/0')"
+          >热门</div>
+        </div>
+      </div>
+      <div class="category-sub" v-else-if="isSubCategory">
+        <!-- 二级分区：显示其一级父分区名，回跳父分区聚合页 -->
+        <div class="sub-tabs">
+          <div class="sub-tab back-tab" @click="goParentCategory()">
+            <el-icon><ArrowLeft /></el-icon>
+            <span>{{ parentCategoryName }}</span>
+          </div>
+          <div class="sub-tab-sub current">{{ categoryName }}</div>
+        </div>
+      </div>
+      <div class="category-sub" v-else-if="subCategories.length > 0">
+        <div class="sub-tabs">
+          <div
+            :class="['sub-tab', { 'active': currentCategory && Number(categoryId) === Number(currentCategory.id) }]"
+            @click="goSubCategory(currentCategory)"
+          >全部</div>
+          <div
+            v-for="sub in subCategories"
+            :key="sub.id"
+            :class="['sub-tab', { 'active': Number(categoryId) === Number(sub.id) }]"
+            @click="goSubCategory(sub)"
+          >{{ sub.name }}</div>
+        </div>
+      </div>
     </div>
     
     <!-- 统一的视频网格：包含轮播图和视频项 -->
@@ -297,6 +379,61 @@ onMounted(async () => {
   font-weight: bold;
   color: #333;
   margin: 0;
+}
+
+/* 子分区导航条 */
+.category-sub {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f1f2;
+}
+
+.sub-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sub-tab {
+  padding: 7px 18px;
+  font-size: 14px;
+  color: #333;
+  background-color: #f5f5f5;
+  border-radius: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.sub-tab:hover {
+  background-color: #e0e0e0;
+  color: #00a1d6;
+}
+
+.sub-tab.active {
+  background-color: #00a1d6;
+  color: #fff;
+}
+
+.sub-tab.back-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+}
+
+.sub-tab.back-tab:hover {
+  border-color: #00a1d6;
+}
+
+.sub-tab-sub {
+  padding: 7px 18px;
+  font-size: 14px;
+  color: #00a1d6;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* 统一的视频网格：5列布局，自动行 */

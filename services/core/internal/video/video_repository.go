@@ -162,24 +162,36 @@ func (r *Repository) GetCategoryByID(ctx context.Context, id int64) (*models.Cat
 	return c, nil
 }
 
-func (r *Repository) CreateCategory(ctx context.Context, name string, parentID int64) (int64, error) {
+func (r *Repository) CreateCategory(ctx context.Context, name string, parentID int64, sortOrder int32) (int64, error) {
 	var id int64
 	err := r.db.QueryRowContext(ctx,
-		`INSERT INTO categories (name, parent_id) VALUES ($1, $2) RETURNING id`,
-		name, parentID).Scan(&id)
+		`INSERT INTO categories (name, parent_id, sort_order) VALUES ($1, $2, $3) RETURNING id`,
+		name, parentID, sortOrder).Scan(&id)
 	return id, err
 }
 
-func (r *Repository) UpdateCategory(ctx context.Context, id int64, name string) error {
+func (r *Repository) UpdateCategory(ctx context.Context, id int64, name string, parentID int64, sortOrder int32) error {
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE categories SET name=$1, updated_at=NOW() WHERE id=$2`,
-		name, id)
+		`UPDATE categories SET name=$1, parent_id=$2, sort_order=$3, updated_at=NOW() WHERE id=$4`,
+		name, parentID, sortOrder, id)
 	return err
 }
 
 func (r *Repository) DeleteCategory(ctx context.Context, id int64) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM categories WHERE id = $1`, id)
-	return err
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	// 二级分区先从一级分区移除（parent 归零，避免被级联误删）
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE categories SET parent_id = 0 WHERE parent_id = $1`, id); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM categories WHERE id = $1`, id); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (r *Repository) ListBannersByCategory(ctx context.Context, bannerType int32, categoryID int64) ([]*BannerImage, error) {

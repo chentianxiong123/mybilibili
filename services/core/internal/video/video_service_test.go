@@ -81,28 +81,33 @@ func TestService_CreateCategory(t *testing.T) {
 	svc, mock := newMockService(t)
 
 	mock.ExpectQuery(`INSERT INTO categories`).
-		WithArgs("new", int64(0)).
+		WithArgs("new", int64(0), int32(0)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(7))
 
-	require.NoError(t, svc.CreateCategory(context.Background(), "new", 0))
+	require.NoError(t, svc.CreateCategory(context.Background(), "new", 0, 0))
 }
 
 func TestService_UpdateCategory(t *testing.T) {
 	svc, mock := newMockService(t)
 
 	mock.ExpectExec(`UPDATE categories SET name`).
-		WithArgs("upd", int64(1)).
+		WithArgs("upd", int64(0), int32(0), int64(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	require.NoError(t, svc.UpdateCategory(context.Background(), 1, "upd"))
+	require.NoError(t, svc.UpdateCategory(context.Background(), 1, "upd", 0, 0))
 }
 
 func TestService_DeleteCategory(t *testing.T) {
 	svc, mock := newMockService(t)
 
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE categories SET parent_id = 0 WHERE parent_id`).
+		WithArgs(int64(1)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`DELETE FROM categories WHERE id`).
 		WithArgs(int64(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
 
 	require.NoError(t, svc.DeleteCategory(context.Background(), 1))
 }

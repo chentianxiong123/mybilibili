@@ -459,9 +459,16 @@ export default {
             },
         }
     },
+    watch: {
+        // 频道加载完成后，若当前仍是旧版占位分区，则换成本项目真实分区（数字 id）
+        categoryList() {
+            this.ensureRealCategory();
+        },
+    },
     created() {
         // 本地草稿数量
         this.draftCount = listDrafts().length;
+        this.ensureRealCategory();
         // 从草稿箱跳转：?draftId= 恢复已填写的表单信息（视频文件需重新选择）
         const draftId = this.$route.query.draftId;
         if (draftId) {
@@ -559,6 +566,37 @@ export default {
                 tags: [],
                 descr: "",
             }
+        },
+
+        // 用项目真实分区（数字 id）替换 teriteri 遗留的字符串占位分区，并把用户已选项
+        // 按数字 id 归一化，保证提交时 category_id 一定是有效数字。
+        ensureRealCategory() {
+            const channels = this.categoryList || [];
+            if (!channels.length) return;
+            // 已选的真实数字分区（>0）视为合法，不覆盖
+            const cur = this.form.category && this.form.category[1];
+            if (cur && typeof cur.id === 'number' && cur.id > 0) return;
+            // 取第一个主分区下的第一个子分区作为默认
+            const main = channels.find(c => (c.scList || []).length > 0) || channels[0];
+            if (!main || !main.mcId) return;
+            const sub = (main.scList || [])[0];
+            if (!sub || !sub.scId) return;
+            this.form.category = [
+                { id: main.mcId, name: main.mcName },
+                { id: sub.scId, name: sub.scName },
+            ];
+        },
+
+        // 分区是否已合法选择（数字 id 且存在）
+        categoryValid() {
+            const cur = this.form.category && this.form.category[1];
+            if (!cur || typeof cur.id !== 'number' || cur.id <= 0) return false;
+            for (let i = 0; i < this.categoryList.length; i ++) {
+                for (let j = 0; j < (this.categoryList[i].scList || []).length; j ++) {
+                    if (this.categoryList[i].scList[j].scId === cur.id) return true;
+                }
+            }
+            return false;
         },
 
         // 切换投稿类型
@@ -1281,6 +1319,14 @@ export default {
                 ElMessage.error('至少选一个标签哦');
                 return;
             }
+            // 强制选择真实分区（数字 id），避免沿用 teriteri 遗留的字符串占位分区
+            this.ensureRealCategory();
+            if (!this.categoryValid()) {
+                ElMessage.error('请选择投稿分区');
+                return;
+            }
+            // 提交使用归一后的真实分区 id
+            const subCat = this.form.category[1];
             this.$store.state.isLoading = true;
             const submitComplete = async (coverBlobOrNull) => {
                 // 1) 用真实元数据更新 upload-session（同一 client_id 命中 ON CONFLICT UPDATE）

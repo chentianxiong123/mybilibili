@@ -196,10 +196,10 @@ func TestHandleCategory_POST_200(t *testing.T) {
 	h.Register(mux)
 
 	mock.ExpectQuery(`INSERT INTO categories`).
-		WithArgs("测试分类", int64(0)).
+		WithArgs("测试分类", int64(0), int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(99))
 
-	body := strings.NewReader(`{"name":"测试分类"}`)
+	body := strings.NewReader(`{"name":"测试分类","parent_id":0,"sort_order":1}`)
 	req := httptest.NewRequest("POST", "/api/v1/category", body)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
@@ -269,10 +269,10 @@ func TestHandleCategoryByID_PUT_200(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(5, "旧名", 0, 5))
 
 	mock.ExpectExec(`UPDATE categories SET name`).
-		WithArgs("新名", int64(5)).
+		WithArgs("新名", int64(0), int32(3), int64(5)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	body := strings.NewReader(`{"name":"新名"}`)
+	body := strings.NewReader(`{"name":"新名","parent_id":0,"sort_order":3}`)
 	req := httptest.NewRequest("PUT", "/api/v1/category/5", body)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
@@ -291,9 +291,14 @@ func TestHandleCategoryByID_DELETE_200(t *testing.T) {
 		WithArgs(int64(5)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(5, "动画", 0, 5))
 
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE categories SET parent_id = 0 WHERE parent_id`).
+		WithArgs(int64(5)).
+		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec(`DELETE FROM categories WHERE id`).
 		WithArgs(int64(5)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
 
 	req := httptest.NewRequest("DELETE", "/api/v1/category/5", nil)
 	rec := httptest.NewRecorder()

@@ -88,7 +88,7 @@ func (h *Handler) handleCategory(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, map[string]any{"code": 400, "message": "name required"})
 			return
 		}
-		h.svc.CreateCategory(r.Context(), req.Name, req.ParentID)
+		h.svc.CreateCategory(r.Context(), req.Name, req.ParentID, req.SortOrder)
 		writeJSON(w, map[string]any{"status": "ok"})
 	}
 }
@@ -105,14 +105,19 @@ func (h *Handler) handleCategoryByID(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, c)
 	case "PUT":
 		var req struct {
-			Name string `json:"name"`
+			Name      string `json:"name"`
+			ParentID  int64  `json:"parent_id"`
+			SortOrder int32  `json:"sort_order"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
 		if _, err := h.svc.repo.GetCategoryByID(r.Context(), id); err != nil {
 			writeJSON(w, map[string]any{"code": 404, "message": "category not found"})
 			return
 		}
-		h.svc.UpdateCategory(r.Context(), id, req.Name)
+		if err := h.svc.UpdateCategory(r.Context(), id, req.Name, req.ParentID, req.SortOrder); err != nil {
+			writeJSON(w, map[string]any{"code": 500, "message": err.Error()})
+			return
+		}
 		writeJSON(w, map[string]any{"status": "ok"})
 	case "DELETE":
 		if _, err := h.svc.repo.GetCategoryByID(r.Context(), id); err != nil {

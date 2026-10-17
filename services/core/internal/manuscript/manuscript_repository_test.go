@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -294,14 +295,18 @@ func TestListByCategory(t *testing.T) {
 	repo, mock := newRepo(t)
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM manuscripts WHERE category_id = \$1 AND status = 3`).
+	mock.ExpectQuery(`SELECT id FROM categories WHERE parent_id = \$1`).
 		WithArgs(int64(5)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM manuscripts WHERE category_id = ANY\(\$1\) AND status = 3`).
+		WithArgs(pq.Array([]int64{int64(5)})).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(1)))
 
 	rows := sqlmock.NewRows(manuscriptCols)
 	scanManuscriptRow(rows)
-	mock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE category_id = .+ ORDER BY upload_time`).
-		WithArgs(int64(5), int32(20), int32(0)).
+	mock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE category_id = ANY\(\$1\) AND status = 3 ORDER BY upload_time`).
+		WithArgs(pq.Array([]int64{int64(5)}), int32(20), int32(0)).
 		WillReturnRows(rows)
 
 	list, total, err := repo.ListByCategory(ctx, 5, 1, 20)
@@ -310,12 +315,43 @@ func TestListByCategory(t *testing.T) {
 	assert.Len(t, list, 1)
 }
 
+func TestListByCategory_AggregateChildren(t *testing.T) {
+	repo, mock := newRepo(t)
+	ctx := context.Background()
+
+	childRows := sqlmock.NewRows([]string{"id"}).
+		AddRow(int64(71)).AddRow(int64(74))
+	mock.ExpectQuery(`SELECT id FROM categories WHERE parent_id = \$1`).
+		WithArgs(int64(17)).
+		WillReturnRows(childRows)
+
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM manuscripts WHERE category_id = ANY\(\$1\) AND status = 3`).
+		WithArgs(pq.Array([]int64{int64(17), int64(71), int64(74)})).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(2)))
+
+	rows := sqlmock.NewRows(manuscriptCols)
+	scanManuscriptRow(rows)
+	scanManuscriptRow(rows)
+	mock.ExpectQuery(`SELECT .+ FROM manuscripts WHERE category_id = ANY\(\$1\) AND status = 3 ORDER BY upload_time`).
+		WithArgs(pq.Array([]int64{int64(17), int64(71), int64(74)}), int32(20), int32(0)).
+		WillReturnRows(rows)
+
+	list, total, err := repo.ListByCategory(ctx, 17, 1, 20)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), total)
+	assert.Len(t, list, 2)
+}
+
 func TestListByCategory_CountError(t *testing.T) {
 	repo, mock := newRepo(t)
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM manuscripts WHERE category_id = \$1 AND status = 3`).
+	mock.ExpectQuery(`SELECT id FROM categories WHERE parent_id = \$1`).
 		WithArgs(int64(5)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM manuscripts WHERE category_id = ANY\(\$1\) AND status = 3`).
+		WithArgs(pq.Array([]int64{int64(5)})).
 		WillReturnError(sql.ErrConnDone)
 
 	_, _, err := repo.ListByCategory(ctx, 5, 1, 20)
