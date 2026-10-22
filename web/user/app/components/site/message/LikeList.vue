@@ -1,38 +1,45 @@
 <template>
-    <div class="notify-list">
-        <div class="list-header">
-            <span class="header-title">收到的赞</span>
-            <span class="mark-all" v-if="unreadIds.length > 0" @click="markAllRead">全部已读</span>
-        </div>
-        <div class="list-loading" v-if="loading"><MessageLoading /></div>
-        <div class="list-error" v-else-if="error">加载失败，<span class="btn" @click="load">点击重试</span></div>
-        <div class="list-empty" v-else-if="list.length === 0">暂时没有收到赞</div>
-        <div class="notify-item" v-for="item in list" :key="item.id" :class="{ unread: !item.isRead }">
-            <a class="avatar" :href="`/space/${item.senderId}`" target="_blank"
-                :style="`background-image: url('${item.userAvatar || defaultAvatar}');`"></a>
-            <div class="item-main">
-                <div class="item-top">
-                    <a class="username" :href="`/space/${item.senderId}`" target="_blank">{{ item.username || item.usernames || '用户' }}</a>
-                    <span class="action">{{ item.actionText || '赞了你' }}</span>
-                    <span class="time">{{ formatTime(item.createdAt) }}</span>
+    <div class="love">
+        <div class="love-layout">
+            <div class="love-actions" v-if="unreadIds.length > 0">
+                <span class="mark-all" @click="markAllRead">全部已读</span>
+            </div>
+            <div class="love-empty" v-if="loading"><MessageLoading /></div>
+            <div class="love-empty" v-else-if="error">加载失败，<span class="btn" @click="load">点击重试</span></div>
+            <div class="love-empty empty" v-else-if="list.length === 0"><MessageEmpty /></div>
+            <div class="love-item" v-for="item in list" :key="item.id" :class="{ unread: !item.isRead }">
+                <div class="love-item__left">
+                    <a class="love-item__avatar" :href="`/space/${item.senderId}`" target="_blank"
+                        :style="`background-image: url('${item.userAvatar || defaultAvatar}');`"></a>
                 </div>
-                <!-- 赞评论：展示被赞的评论内容（actionText 已是"赞了你的评论"，这里只补内容）
-                <!-- 赞视频：展示视频标题（可点进稿件） -->
-                <div class="item-content" v-if="item.commentId || isCommentLike(item)"
-                    v-html="escapeHtml(item.commentContent || stripVideoTitle(item.content))"></div>
-                <div class="item-content" v-else>
-                    视频<a :href="`/video/${item.manuscriptId}`" target="_blank" v-if="item.manuscriptId">《{{ item.videoTitle }}》</a><span v-else>《{{ item.videoTitle }}》</span>
+                <div class="love-item__right">
+                    <div class="love-item__info">
+                        <div class="love-item__title">
+                            <a class="love-item__uname" :href="`/space/${item.senderId}`" target="_blank">
+                                {{ item.username || item.usernames || '用户' }}
+                            </a>
+                            <div class="love-item__action">{{ item.actionText || '赞了我' }}</div>
+                        </div>
+                        <div class="love-item__msg" v-if="item.commentId || isCommentLike(item)">
+                            {{ item.commentContent || stripVideoTitle(item.content) }}
+                        </div>
+                        <div class="love-item__reference" v-else-if="item.videoTitle">
+                            视频《{{ item.videoTitle }}》
+                        </div>
+                        <div class="love-item__time">{{ formatTime(item.createdAt) }}</div>
+                    </div>
+                    <a class="love-item__cover" v-if="item.videoCover && !isCommentLike(item)"
+                        :href="`/video/${item.manuscriptId}`" target="_blank"
+                        :style="`background-image: url('${item.videoCover}');`"></a>
                 </div>
             </div>
-            <a class="video-cover" v-if="item.videoCover" :href="`/video/${item.manuscriptId}`" target="_blank"
-                :style="`background-image: url('${item.videoCover}');`"></a>
-            <span class="unread-dot" v-if="!item.isRead"></span>
         </div>
     </div>
 </template>
 
 <script lang="ts">
 import MessageLoading from './MessageLoading.vue';
+import MessageEmpty from './MessageEmpty.vue';
 import { messageApi } from '@/api/message.ts';
 import { handleDateTime } from '@/shared/utils/utils';
 
@@ -40,12 +47,13 @@ const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726
 
 export default {
     name: 'LikeList',
-    components: { MessageLoading },
+    components: { MessageLoading, MessageEmpty },
     data() {
         return {
             list: [] as any[],
             loading: false,
             error: false,
+            defaultAvatar,
         };
     },
     computed: {
@@ -54,15 +62,9 @@ export default {
         },
     },
     methods: {
-        escapeHtml(s: string) {
-            return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        },
-        // 后端 actionText 已区分赞稿件/赞评论；这里以文案为准，
-        // 不能只看 videoTitle（后端会从 content 里兜底解析标题，赞评论也会被填上）
         isCommentLike(item: any) {
             return String(item.actionText || '').includes('评论');
         },
-        // 去掉 "赞了你的评论" 前缀，只留被赞的正文
         stripVideoTitle(s: string) {
             return String(s || '').replace(/^赞了你的评论/, '');
         },
@@ -129,118 +131,67 @@ export default {
 </script>
 
 <style scoped>
-.notify-list {
-    background: #fff;
-    border-radius: 4px;
-    min-height: 400px;
-    padding: 0 16px 16px;
+.love-layout {
+    height: 100%;
+    overflow-y: auto;
 }
-.list-header {
+.love-actions {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: 48px;
-    border-bottom: 1px solid #f0f0f0;
-}
-.header-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
+    justify-content: flex-end;
+    padding: 8px 16px 0;
 }
 .mark-all {
-    font-size: 12px;
-    color: var(--brand_pink, #00a1d6);
+    color: var(--brand_blue, #00a1d6);
+    font-size: 13px;
     cursor: pointer;
 }
 .mark-all:hover {
     opacity: 0.8;
 }
-.list-loading, .list-empty, .list-error {
-    text-align: center;
-    padding: 60px 0;
-    color: #999;
-    font-size: 13px;
-}
-.list-error .btn {
-    color: var(--brand_pink, #00a1d6);
+.love-empty .btn {
+    color: var(--brand_blue, #00a1d6);
     cursor: pointer;
 }
-.notify-item {
-    display: flex;
-    padding: 14px 0;
-    border-bottom: 1px solid #f4f4f4;
-    position: relative;
+.love-empty.empty {
+    padding: 0;
 }
-.notify-item:last-child {
-    border-bottom: none;
-}
-.avatar {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    border-radius: 50%;
+.love-item__avatar {
     background-size: cover;
     background-position: center;
-    background-color: #f0f0f0;
+    background-color: var(--graph_bg_thick, #f1f2f3);
 }
-.item-main {
-    flex: 1;
-    margin-left: 12px;
-    min-width: 0;
+.love-item.unread .love-item__uname {
+    color: var(--brand_blue, #00a1d6);
 }
-.item-top {
+.love-item__action {
+    display: flex;
+    align-items: center;
+}
+.love-item__msg {
+    margin-bottom: 6px;
+    color: var(--text2);
     font-size: 13px;
-    line-height: 20px;
+    line-height: 18px;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
-.username {
-    color: #333;
-    font-weight: 600;
-    text-decoration: none;
-}
-.username:hover {
-    color: var(--brand_pink, #00a1d6);
-}
-.action {
-    color: #666;
-    margin-left: 6px;
-}
-.time {
-    color: #999;
-    font-size: 12px;
-    margin-left: 8px;
-}
-.item-content {
-    margin-top: 6px;
+.love-item__reference {
+    margin-bottom: 6px;
+    color: var(--text2);
     font-size: 13px;
-    color: #333;
-    line-height: 20px;
-    word-break: break-all;
-    background: #f7f7f7;
-    border-radius: 4px;
-    padding: 8px 10px;
+    line-height: 18px;
 }
-.item-content a {
-    color: var(--brand_pink, #00a1d6);
-    text-decoration: none;
-}
-.video-cover {
+.love-item__cover {
+    flex-shrink: 0;
     width: 112px;
     height: 63px;
-    min-width: 112px;
-    margin-left: 12px;
+    margin-left: 16px;
     border-radius: 4px;
     background-size: cover;
     background-position: center;
-    background-color: #f0f0f0;
-    align-self: center;
-}
-.unread-dot {
-    position: absolute;
-    right: 2px;
-    top: 20px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--stress_red, #00a1d6);
+    background-color: var(--graph_bg_thick, #f1f2f3);
 }
 </style>
