@@ -476,6 +476,9 @@ func (h *Handler) toggleInteraction(w http.ResponseWriter, r *http.Request, id i
 			 VALUES ($1, 'article', $2, $3) ON CONFLICT DO NOTHING`, uid, id, itype)
 		h.db.ExecContext(r.Context(),
 			`UPDATE articles SET `+counterCol+` = `+counterCol+` + 1 WHERE id=$1`, id)
+		if itype == "like" {
+			h.notifyArticleLike(r, uid, id)
+		}
 	}
 	var count int64
 	h.db.QueryRowContext(r.Context(), `SELECT `+counterCol+` FROM articles WHERE id=$1`, id).Scan(&count)
@@ -785,6 +788,7 @@ func (h *Handler) handleCommentSub(w http.ResponseWriter, r *http.Request) {
 			h.db.ExecContext(r.Context(),
 				`INSERT INTO article_comment_likes (comment_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, cid, uid)
 			h.db.ExecContext(r.Context(), `UPDATE article_comments SET like_count = like_count + 1 WHERE id=$1`, cid)
+			h.notifyArticleCommentLike(r, uid, cid)
 		}
 		var count int
 		h.db.QueryRowContext(r.Context(), `SELECT like_count FROM article_comments WHERE id=$1`, cid).Scan(&count)
@@ -989,6 +993,41 @@ func (h *Handler) notifyArticleReply(r *http.Request, content string, senderID, 
 		`INSERT INTO messages (sender_id, receiver_id, content, message_type, target_id, comment_id, is_read, created_at)
 		 VALUES ($1,$2,$3,2,$4,$5,0,NOW())`,
 		senderID, receiverID, "回复了你的评论："+excerpt(content, 140), articleID, commentID)
+}
+
+// notifyArticleLike 点赞专栏时给作者写 messages(type=4)，自己赞自己不通知。
+func (h *Handler) notifyArticleLike(r *http.Request, senderID, articleID int64) {
+	var owner int64
+	var title string
+	if err := h.db.QueryRowContext(r.Context(),
+		`SELECT user_id, COALESCE(title,'') FROM articles WHERE id=$1`, articleID).Scan(&owner, &title); err != nil {
+		return
+	}
+	if owner <= 0 || owner == senderID {
+		return
+	}
+	h.db.ExecContext(r.Context(),
+		`INSERT INTO messages (sender_id, receiver_id, content, message_type, target_id, is_read, created_at)
+		 VALUES ($1,$2,$3,4,$4,0,NOW())`,
+		senderID, owner, "赞了你的专栏《"+title+"》", articleID)
+}
+
+// notifyArticleCommentLike 点赞专栏评论时给评论作者写 messages(type=6)。
+func (h *Handler) notifyArticleCommentLike(r *http.Request, senderID, commentID int64) {
+	var owner, articleID int64
+	var content string
+	if err := h.db.QueryRowContext(r.Context(),
+		`SELECT user_id, article_id, COALESCE(content,'') FROM article_comments WHERE id=$1`, commentID).
+		Scan(&owner, &articleID, &content); err != nil {
+		return
+	}
+	if owner <= 0 || owner == senderID {
+		return
+	}
+	h.db.ExecContext(r.Context(),
+		`INSERT INTO messages (sender_id, receiver_id, content, message_type, target_id, comment_id, is_read, created_at)
+		 VALUES ($1,$2,$3,6,$4,$5,0,NOW())`,
+		senderID, owner, "赞了你的评论\""+excerpt(content, 100)+"\"", articleID, commentID)
 }
 
 // notifyArticleMentions 解析评论里的 @昵称 并写入 messages(type=3)。

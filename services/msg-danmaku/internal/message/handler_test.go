@@ -370,8 +370,9 @@ func TestHandleLikes_200(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "sender_id", "username", "user_avatar", "content", "is_read", "created_at",
 			"message_type", "manuscript_id", "comment_id", "video_title", "video_cover", "comment_content",
+			"article_id", "article_title",
 		}).AddRow(600, 1002, "用户B", "http://b.png", "赞了你的视频《测试》", 0, now.Format("2006-01-02 15:04:05"),
-			4, 10, 0, "", "", ""))
+			4, 10, 0, "", "", "", 0, ""))
 
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/likes", "")
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -397,8 +398,9 @@ func TestHandleLikes_CommentType(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "sender_id", "username", "user_avatar", "content", "is_read", "created_at",
 			"message_type", "manuscript_id", "comment_id", "video_title", "video_cover", "comment_content",
+			"article_id", "article_title",
 		}).AddRow(601, 1002, "用户C", "http://c.png", "赞了你的评论\"好\"", 0, now.Format("2006-01-02 15:04:05"),
-			6, 10, 55, "", "", ""))
+			6, 10, 55, "", "", "", 0, ""))
 
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/likes", "")
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -414,6 +416,47 @@ func TestHandleLikes_CommentType(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+// 专栏点赞(type=4)/专栏评论点赞(type=6)：target_id 是专栏 id，
+// 应映射到 articleId 并清空视频字段，前端才不会显示「视频《》」或跳错链接。
+func TestHandleLikes_ArticleTarget(t *testing.T) {
+	h, mock := newTestMessageHandler(t)
+
+	now := time.Now()
+	mock.ExpectQuery(`SELECT m.id, m.sender_id`).
+		WithArgs(int64(1001)).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "sender_id", "username", "user_avatar", "content", "is_read", "created_at",
+			"message_type", "manuscript_id", "comment_id", "video_title", "video_cover", "comment_content",
+			"article_id", "article_title",
+		}).
+			AddRow(700, 1002, "用户D", "http://d.png", "赞了你的专栏《E2E 专栏》", 0, now.Format("2006-01-02 15:04:05"),
+				4, 8, 0, "", "", "", 8, "E2E 专栏").
+			AddRow(701, 1003, "用户E", "http://e.png", "赞了你的评论\"写得好\"", 0, now.Format("2006-01-02 15:04:05"),
+				6, 8, 9, "", "", "写得好", 8, "E2E 专栏"))
+
+	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/likes", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp struct {
+		Data []struct {
+			ActionText   string `json:"actionText"`
+			ArticleID    int64  `json:"articleId"`
+			ArticleTitle string `json:"articleTitle"`
+			ManuscriptID int64  `json:"manuscriptId"`
+			VideoTitle   string `json:"videoTitle"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	require.Len(t, resp.Data, 2)
+	assert.Equal(t, "赞了你的专栏", resp.Data[0].ActionText)
+	assert.Equal(t, int64(8), resp.Data[0].ArticleID)
+	assert.Equal(t, "E2E 专栏", resp.Data[0].ArticleTitle)
+	assert.Equal(t, int64(0), resp.Data[0].ManuscriptID)
+	assert.Equal(t, "", resp.Data[0].VideoTitle)
+	assert.Equal(t, "赞了你的评论", resp.Data[1].ActionText)
+	assert.Equal(t, int64(8), resp.Data[1].ArticleID)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestHandleLikes_Empty(t *testing.T) {
 	h, mock := newTestMessageHandler(t)
 
@@ -422,6 +465,7 @@ func TestHandleLikes_Empty(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "sender_id", "username", "user_avatar", "content", "is_read", "created_at",
 			"message_type", "manuscript_id", "comment_id", "video_title", "video_cover", "comment_content",
+			"article_id", "article_title",
 		}))
 
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/likes", "")

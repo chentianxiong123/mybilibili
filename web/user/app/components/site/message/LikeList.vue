@@ -23,6 +23,9 @@
                         <div class="love-item__msg" v-if="item.commentId || isCommentLike(item)">
                             {{ item.commentContent || stripVideoTitle(item.content) }}
                         </div>
+                        <div class="love-item__reference" v-else-if="item.articleId">
+                            专栏《{{ item.articleTitle }}》
+                        </div>
                         <div class="love-item__reference" v-else-if="item.videoTitle">
                             视频《{{ item.videoTitle }}》
                         </div>

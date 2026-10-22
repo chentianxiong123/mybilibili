@@ -409,6 +409,12 @@ func TestToggleLike_Add(t *testing.T) {
 	mock.ExpectExec(`UPDATE articles SET like_count = like_count \+ 1 WHERE id=\$1`).
 		WithArgs(int64(9)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(`SELECT user_id, COALESCE\(title,''\) FROM articles WHERE id=\$1`).
+		WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows([]string{"user_id", "title"}).AddRow(300, "专栏标题"))
+	mock.ExpectExec(`INSERT INTO messages \(sender_id, receiver_id, content, message_type, target_id, is_read, created_at\)`).
+		WithArgs(int64(7), int64(300), "赞了你的专栏《专栏标题》", int64(9)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectQuery(`SELECT like_count FROM articles WHERE id=\$1`).
 		WithArgs(int64(9)).
 		WillReturnRows(sqlmock.NewRows([]string{"like_count"}).AddRow(4))
@@ -732,6 +738,12 @@ func TestCommentLike_Toggle(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE article_comments SET like_count = like_count \+ 1 WHERE id=\$1`).
 		WithArgs(int64(11)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(`SELECT user_id, article_id, COALESCE\(content,''\) FROM article_comments WHERE id=\$1`).
+		WithArgs(int64(11)).
+		WillReturnRows(sqlmock.NewRows([]string{"user_id", "article_id", "content"}).AddRow(300, 9, "原评论"))
+	mock.ExpectExec(`INSERT INTO messages \(sender_id, receiver_id, content, message_type, target_id, comment_id, is_read, created_at\)`).
+		WithArgs(int64(7), int64(300), "赞了你的评论\"原评论\"", int64(9), int64(11)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectQuery(`SELECT like_count FROM article_comments WHERE id=\$1`).
 		WithArgs(int64(11)).

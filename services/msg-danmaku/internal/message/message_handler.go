@@ -391,21 +391,33 @@ func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request)
 		        m.content, m.is_read, COALESCE(m.created_at::text,''), m.message_type,
 		        COALESCE(m.target_id,0) AS manuscript_id, COALESCE(m.comment_id,0) AS comment_id,
 		        COALESCE(ms.title,'') AS video_title, COALESCE(ms.cover_url,'') AS video_cover,
-		        COALESCE(c.content,'') AS comment_content
+		        CASE WHEN ac2.id IS NOT NULL THEN COALESCE(ac.content,'') ELSE COALESCE(c.content,'') END AS comment_content,
+		        COALESCE(al.id, ac2.id, 0) AS article_id,
+		        COALESCE(al.title, ac2.title, '') AS article_title
 		 FROM messages m
 		 LEFT JOIN users u ON u.id = m.sender_id
 		 LEFT JOIN manuscripts ms ON ms.id = m.target_id
 		 LEFT JOIN comments c ON c.id = m.comment_id
+		 LEFT JOIN article_comments ac ON ac.id = m.comment_id
+		 LEFT JOIN articles al ON m.message_type = 4 AND al.id = m.target_id AND m.content LIKE '赞了你的专栏%'
+		 LEFT JOIN articles ac2 ON ac2.id = ac.article_id AND ac2.id = m.target_id
 		 WHERE m.receiver_id = $1 AND m.message_type IN (4,6) ORDER BY m.created_at DESC LIMIT 50`, userID)
 	defer rows.Close()
 	var list []map[string]interface{}
 	for rows.Next() {
-		var id, sID, manuscriptID, commentID, msgType int64
-		var username, avatar, content, t, videoTitle, videoCover, commentContent string
+		var id, sID, manuscriptID, commentID, msgType, articleID int64
+		var username, avatar, content, t, videoTitle, videoCover, commentContent, articleTitle string
 		var isRead int32
-		rows.Scan(&id, &sID, &username, &avatar, &content, &isRead, &t, &msgType, &manuscriptID, &commentID, &videoTitle, &videoCover, &commentContent)
+		rows.Scan(&id, &sID, &username, &avatar, &content, &isRead, &t, &msgType, &manuscriptID, &commentID,
+			&videoTitle, &videoCover, &commentContent, &articleID, &articleTitle)
+		// 专栏点赞/评论点赞：target_id 存的是专栏 id，归一到专栏字段，避免走视频链接
+		if articleID > 0 {
+			manuscriptID = 0
+			videoTitle = ""
+			videoCover = ""
+		}
 		// 从 content 兜底解析标题/评论内容（部分稿件已删除，JOIN 不到）
-		if videoTitle == "" {
+		if videoTitle == "" && articleID == 0 {
 			videoTitle = extractCommentText(content, "《")
 		}
 		if commentContent == "" {
@@ -416,11 +428,15 @@ func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request)
 			"content": content, "isRead": isRead == 1, "createdAt": t,
 			"createTime": t, "manuscriptId": manuscriptID, "commentId": commentID,
 			"videoTitle": videoTitle, "videoCover": videoCover, "commentContent": commentContent,
+			"articleId": articleID, "articleTitle": articleTitle,
 			"userCount": 1, "usernames": username,
 		}
-		if msgType == 6 {
+		switch {
+		case msgType == 6:
 			item["actionText"] = "赞了你的评论"
-		} else {
+		case articleID > 0:
+			item["actionText"] = "赞了你的专栏"
+		default:
 			item["actionText"] = "赞了你的视频"
 		}
 		list = append(list, item)
