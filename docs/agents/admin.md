@@ -1,13 +1,13 @@
 # docs/agents/admin.md —— admin agent 领域文档
 
 > 领域：管理后台（Vite SPA，Vue 3 + Element Plus），代码在 `web/admin/**`
-> 现状：2026-09-27
+> 现状：2026-10-22
 
 ## 职责边界
 
 - 只改 `web/admin/**`（app/router、app/api、app/views/admin）、`shared`（如
   需要会触碰 admin 鉴权的部分）
-- 测试：`bash scripts/test.sh frontend`（web/admin vitest，当前 481 条）
+- 测试：`bash scripts/test.sh frontend`（web/admin vitest，当前 693 条，全绿）
 - dev 端口 3100，traefik `PathPrefix('/admin/')`，Vite history base `/admin/`
 
 ## 技术栈
@@ -41,6 +41,8 @@ Vite SPA + Vue Router（`createWebHistory('/admin/')`）。路由在
 ## 遗留问题
 
 - 无真 bug 待修。
+- 2026-10-22 修复一处测试漂移：`SystemNotificationManagerView.test.ts` 仍按旧契约
+  断言 `{content}`，组件自 12dedb0f 起已改发 `{title, content}`；修正后 693 条全绿。
 - 可探索：带权限的前端路由守卫（低权限账号访问未授权路由是否跳到 no-permission）、
   大数据量表格的分页/排序（UsersView/ManuscriptsView 用 el-table 的远程分页）。
 - 后端侧（shared 不是独占，动前打招呼）：admin_api.go（work 服务）

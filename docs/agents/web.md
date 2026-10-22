@@ -1,18 +1,18 @@
 # docs/agents/web.md —— web agent 领域文档
 
-> 领域：桌面 Web 用户端（Nuxt SSR），代码在 `web/user/**`
-> 现状：2026-10-10
+> 领域：桌面 Web 用户端（Nuxt 4，`ssr:false`），代码在 `web/user/**`
+> 现状：2026-10-22
 
 ## 职责边界
 
 - 只改 `web/user/**`（app/pages、app/components、app/api、server/api Nuxt proxy）
 - 后端 `services/core/**`、`shared/**` 不是独占，但 web 涉及的接口改动优先自己处理
-- 测试：`bash scripts/test.sh frontend`（web/user vitest，当前 932 条）
+- 测试：`bash scripts/test.sh frontend`（web/user vitest，当前 949 条）
 
 ## 技术栈
 
-Nuxt 4 + Vue 3 + Element Plus。**Nuxt SSR**：`web/user/app` = app 目录，
-`web/user/server/api/[...path].ts` 是 teriteri 前端 URL → Go 后端路径的代理
+Nuxt 4 + Vue 3 + Element Plus。**`ssr:false`（SPA）**：`web/user/app` = app 目录，
+`web/user/server/api/[...path].ts` 是旧前端（teriteri）URL → Go 后端路径的代理
 （PATH_MAP，约 30 条映射）。dev 模式端口 3200，traefik `/` 兜底。
 
 ## 关键文件
@@ -23,7 +23,8 @@ Nuxt 4 + Vue 3 + Element Plus。**Nuxt SSR**：`web/user/app` = app 目录，
 | `web/user/app/api/client.ts` | axios + 401 处理（连续 3 次 401 才清会话，见 MAX_401_BEFORE_DROP）|
 | `web/user/app/api/subtitle.ts` | 字幕 API（对象双份：user 自用 + admin 管理站在同一文件）|
 | `web/user/app/api/userPrivacy.ts` | 隐私 + 标签 API —— ⚠️ tags 路径疑似错位，见「遗留」|
-| `web/user/app/api/message.ts` | 私信 API（getAtList 已补，whisper 相关看遗留）|
+| `web/user/app/api/message.ts` | 消息中心 API（@/回复/点赞/系统通知/未读/删除/私信）|
+| `web/user/app/api/article.ts` | 专栏 API（草稿/发布/feed/评论/点赞/收藏/@搜索）|
 | `web/user/app/views/web/UserProfileView.vue` | 922 行大组件（视频列表/关注/搜索都在这里）|
 
 ## 已验证的事实（别再查）
@@ -32,24 +33,27 @@ Nuxt 4 + Vue 3 + Element Plus。**Nuxt SSR**：`web/user/app` = app 目录，
   POST/DELETE 才是自身的。GET 不该锁。
 - `getVideosByUserId` → `/manuscript/user/{id}?status=3` 返回 `{list,total}`，
   不是数组（已修过一处 `.map`：response.data.list.map）。
-- web/user 的 `/message/whisper` → teriteri 旧私信 UI，调 `/msg/chat/*`（后端
-  无此路由），整页死。见遗留。
+- `/message/whisper` 已修复（前后端均无 `/msg/chat/*` 旧链路），详见遗留 #1。
 - 隐私设置 camelCase 契约：`publicCollection`/`publicBirthdayTags`/`publicCoinVideos`/
   `publicLikeVideos`/`publicFollowingList`/`publicFollowersList`（表列 snake_case）。
-- 全站导航已统一为 teriteri `HeaderBar`（`.header-bar` 64px）：`layouts/simple.vue`/
+- 全站导航已统一为 `components/site/headerBar/HeaderBar.vue`（`.header-bar` 64px）：`layouts/simple.vue`/
   `home.vue` 用布局，首页/空间/搜索/账号页内自带（banner 叠加需要），创作中心
   `platform.vue` 自有独立头。旧 Element 风格 `AppHeader.vue`（80px）已删，无残留引用。
-- 消息中心已统一为 teriteri 侧栏框架（`pages/message.vue` + `[type].vue` 别名跳转，
-  背景 `message-bg.png` + `msgUnread` 红点），内容沿用现有 List 实现；新增
-  `message/ai.vue`（AI 客服）。旧 `message/index.vue`（自带 HeaderBar 导致双导航）已删。
+- 消息中心已对齐真站 message.bilibili.com：`assets/site/css/message-center.css`（真站令牌/尺寸），
+  `pages/message.vue` 使用 `message-layout/aside/sidebar/header/content`，四个列表改为
+  `interaction-item`/`love-item`/`notify-item`，空态/加载用真站图（`MessageEmpty`/`MessageLoading`）。
+  侧栏保留自有「AI 客服」（`message/ai.vue`）。旧 `message/index.vue` 已删。
 - `app/pages-old/` 缓冲目录已删（Git 历史可查）；运行代码只剩 `app/pages/` 一份。
   `web/next-old/`（230 文件历史快照）、`web/teriteri-reference/`（原版对照）保留。
 - 测试按领域分 5 组（`test:api/composables/utils/components/stores`，vitest projects），
-  全量 `npm test` 932 条不变。
+  全量 `bun run test` 当前 949 条全绿。
+- 专栏（图文）已全栈接通：`/read/cv{id}` 阅读页、`/read/home` 信息流、`/platform/upload/text`
+  编辑器、空间专栏 Tab；后端 `services/core/internal/article`，迁移 `sql/041~043`；
+  互动/评论/@提及见 README「22. 专栏」。
 
-## 遗留问题（按优先级）
+## 近期修复（别再查）
 
-1. **`/message/whisper` 已修好**（2026-10-10，前端改调新接口，后端不动）。
+- **`/message/whisper` 已修好**（2026-10-10，前端改调新接口，后端不动）。
    改法：`pages/message/whisper.vue` 新父组件（左栏会话+`<NuxtPage/>`，原 index.vue
    的 `<router-view>` 嵌套在 Nuxt 下不生效）；`whisper/index.vue` 瘦身为占位+自动
    跳首个会话；`[mid].vue` 对话框调 `messageApi.sendMessage`/`markConversationRead`，
@@ -69,13 +73,16 @@ Nuxt 4 + Vue 3 + Element Plus。**Nuxt SSR**：`web/user/app` = app 目录，
   见 Go 侧注释；migration 不需要（表结构不动）。
    教训：commit 进 store 前的原始对象直接改不触发视图更新，改完必须从
    `store.state` 里重新取 reactive 代理再改（见 `[mid].vue ensureChatItem` 注释）。
-2. **`/user/privacy/tags` vs `/user/tags`**：前端 `userPrivacyApi.userTags` 三个
+
+## 遗留问题（按优先级）
+
+1. **`/user/privacy/tags` vs `/user/tags`**：前端 `userPrivacyApi.userTags` 三个
    函数调 `/user/privacy/tags`，但后端 `handlePrivacy` 只处理 GET(隐私JSON)/PUT，
    不做 tags；真正的 tags 在 `/api/v1/user/tags`（handleTags）。等于用户标签
    功能前端一直调错端点，从没生效。修法：前端三个函数改指 `/user/tags`。
-3. `/api/v1/ai/summary/*`、`/creator/comments*`、`/studio/export-tasks` 等
+2. `/api/v1/ai/summary/*`、`/creator/comments*`、`/studio/export-tasks` 等
    creator/内部端点未逐一核实该不该锁。
-4. 遗留 Vue warn：ElInput `rows="2"`（字符串 vs Number）、ElMenu `router="true"`
+3. 遗留 Vue warn：ElInput `rows="2"`（字符串 vs Number）、ElMenu `router="true"`
    （字符串 vs Boolean）。功能无碍，纯类型告警。
 
 ## 不要做

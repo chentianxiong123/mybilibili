@@ -1,6 +1,6 @@
 # mybilibili · 仿哔哩哔哩全栈项目
 
-一套完整仿 B 站的视频社区平台，覆盖用户端 Web（SSR）、管理后台、移动 H5、Flutter / NativeScript / Android WebView 多端。**当前主体为 Go 微服务架构**，容器化部署在三机 k3s 集群（部署机 + 开发机 + 边缘 Worker）。
+一套完整仿 B 站的视频社区平台，覆盖用户端 Web（Nuxt 4，SPA）、管理后台、移动 H5、Flutter / NativeScript / Android WebView 多端。**当前主体为 Go 微服务架构**，容器化部署在三机 k3s 集群（部署机 + 开发机 + 边缘 Worker）。
 
 ## 三个版本
 
@@ -8,7 +8,7 @@
 
 | 版本 | 后端技术 | 状态 | 代码位置 |
 |---|---|---|---|
-| **Go 微服务**（当前主线） | Go + gRPC + NATS JetStream | ✅ 运行中 | `mybilibili-go/` |
+| **Go 微服务**（当前主线） | Go + gRPC + NATS JetStream | ✅ 运行中 | `services/`、`shared/` |
 | **Java 微服务**（历史） | Spring Cloud + Nacos + RocketMQ | 存档 | `old/springboot3/`、`old/microservices/` |
 | **Java 单体**（历史） | Spring Boot + MyBatis + Redis + ES | 存档 | `old/java/` |
 
@@ -35,17 +35,58 @@
 
 ```
 mybilibili/
-├── mybilibili-go/            # Go 后端（10 个微服务）
-├── mybilibili-front/         # Web 前端（pnpm monorepo：web SSR + admin 后台 + ui 组件库）
-├── mybilibili-wap/           # 移动端 H5（Vue3 + Vite）
-├── mybilibili-app-flutter/   # Flutter 跨端 App
-├── mybilibili-ns/            # NativeScript 移动端
-├── mybilibili-webview-app/   # Android WebView 壳工程
-├── deploy/                   # 部署：k3s manifests + docker compose + 数据库备份 + SRS
-├── docs/                     # 架构演进与实战踩坑文档
-├── scripts/                  # 构建/启动脚本
-└── old/                      # Java Spring Cloud 历史版本（单体/微服务/直播桌面临播/OBS插件）
+├── services/                 # Go 后端（core/search/msg-danmaku/live/ai/studio/work/bili-proxy/transcoder）
+├── shared/                   # Go 公共包（auth/httputil/pb 客户端等）
+├── proto/                    # gRPC 定义
+├── contracts/                # OpenAPI 契约
+├── sql/                      # PostgreSQL 迁移（按编号递增）
+├── web/
+│   ├── user/                 # 用户端 Nuxt 4（app/ + server/api 反向代理）
+│   ├── admin/                # 管理后台 Vue3 + Vite + Element Plus
+│   ├── next-old/             # 历史前端快照（勿删）
+│   └── teriteri-reference/   # 原版 UI 对照（勿删）
+├── mobile/                   # flutter / ns / wap / webview 四端
+├── dev/                      # 本地 docker compose（17 个容器）
+├── deploy/                   # k3s manifests + 数据库备份 + SRS
+├── scripts/                  # test.sh / build.sh / frontend.sh 等
+├── docs/                     # 协作文档 + 架构演进与踩坑
+└── old/                      # Java Spring Cloud 历史版本（单体/微服务/桌面临播/OBS插件）
 ```
+
+## 本地开发（Docker Compose）
+
+```bash
+cd dev && docker compose up -d      # 首次会拉镜像/构建；共 17 个容器
+docker compose ps                   # 全部 running 即就绪
+docker logs -f mybilibili-core      # Go 服务（air 监听 .go 改动自动重建）
+docker logs -f mybilibili-web       # Nuxt（容器内 :3200，由 traefik 转发到 80）
+```
+
+| 入口 | 地址 |
+|---|---|
+| 用户端 | http://localhost/ |
+| 管理后台 | http://localhost/admin/ |
+| 移动 H5 | http://localhost/wap/ |
+| Traefik Dashboard | http://localhost:8082/ |
+
+| 依赖 / 账号 | 值 |
+|---|---|
+| PostgreSQL 16 | `localhost:15432`，`postgres/postgres`，库 `mybilibili` |
+| Redis | `localhost:16379` |
+| MinIO | API `localhost:19000`，控制台 `localhost:19001`（minioadmin/minioadmin） |
+| 测试用户 | `string` / `123456` |
+| 管理后台 | `super_admin` / `admin123` |
+
+```bash
+# 前端类型检查（必须在容器内）
+docker exec -w /app mybilibili-web bun node_modules/vue-tsc/bin/vue-tsc.js --noEmit
+# 测试
+bash scripts/test.sh frontend     # web/user + web/admin vitest
+bash scripts/test.sh backend      # 逐 Go 模块 go test
+```
+
+> 容器配置为 `restart: no`，机器重启后不会自启，重新 `docker compose up -d` 即可。
+> 改 `nuxt.config.ts` 会触发 dev server 重启，期间 traefik 短暂 503 属正常。
 
 ## 架构
 
@@ -53,15 +94,15 @@ mybilibili/
 
 | 端 | 技术栈 | 说明 |
 |---|---|---|
-| **Web 用户端** (`mybilibili-front/apps/web`) | Nuxt 4 (SSR) | 主站，SSR 渲染，traefik 按路径分流 |
-| **管理后台** (`mybilibili-front/apps/admin`) | Vue3 + Vite + Element Plus | 运营/内容管理后台，路径 `/admin/`，端口 3100 |
-| **UI 组件库** (`mybilibili-front/packages/ui`) | 自研组件库 | 多端共享 |
-| **移动 H5** (`mybilibili-wap`) | Vue3 + Vite | 手机浏览器版，独立 build |
-| **Flutter App** (`mybilibili-app-flutter`) | Flutter | iOS/Android/桌面 |
-| **NativeScript** (`mybilibili-ns`) | NativeScript + Vue | 备选移动端方案 |
-| **Android WebView** (`mybilibili-webview-app`) | Kotlin WebView 壳 | 包 H5 的原生壳 |
+| **Web 用户端** (`web/user`) | Nuxt 4（`ssr: false`，SPA 模式） | 主站，traefik 按路径分流；`server/api/[...path].ts` 做前端 URL → Go 后端代理 |
+| **管理后台** (`web/admin`) | Vue3 + Vite + Element Plus | 运营/内容管理后台，路径 `/admin/`，端口 3100 |
+| **UI 组件库** (`web/user/packages/ui`) | 自研组件库 | 多端共享 |
+| **移动 H5** (`mobile/wap`) | Vue3 + Vite | 手机浏览器版，base `/wap/`，端口 5174 |
+| **Flutter App** (`mobile/flutter`) | Flutter | iOS/Android/桌面 |
+| **NativeScript** (`mobile/ns`) | NativeScript + Vue | 备选移动端方案 |
+| **Android WebView** (`mobile/webview`) | Kotlin WebView 壳 | 包 H5 的原生壳 |
 
-### 后端（Go 微服务，`mybilibili-go/`）
+### 后端（Go 微服务，`services/`）
 
 | 服务 | 职责 | 关键能力 |
 |---|---|---|
@@ -76,7 +117,7 @@ mybilibili/
 | **transcoder-service** | 转码服务 | 视频方向检测/转码/抽音 |
 | **minio** | 对象存储 | 封面/头像/稿件/视频文件 |
 
-服务间通过 **gRPC** 通信（`mybilibili-go/proto/` 定义），异步任务走 **NATS JetStream**。HTTP 路由按 path 由 **Traefik IngressRoute** 分发，JWT 由各后端服务自行验证。
+服务间通过 **gRPC** 通信（`proto/` 定义），异步任务走 **NATS JetStream**。HTTP 路由按 path 由 **Traefik** 分发（开发环境读 Docker labels，生产用 IngressRoute），JWT 由各后端服务自行验证。
 
 ### 基础设施
 
@@ -100,11 +141,11 @@ mybilibili/
 - `pg-entrypoint.sh` / `pg-entrypoint.yaml`：PG 主从初始化与 pg_hba 授权
 - `kustomization.yaml` + `config/*.env`：配置集中管理（common + prod 差异）
 
-开发环境可用 `docker compose`（`deploy/` 下）一键起 17 个服务。
+开发环境用 `dev/docker-compose.yml` 一键起 17 个容器（见上文「本地开发」）。
 
 ## 功能清单
 
-> 以下功能点逐一列出（后端按 `mybilibili-go` 各服务注册的全部 HTTP/gRPC 端点 + 89 张数据表 + 前端各端页面组件整理，详见服务路由章节）。
+> 以下功能点逐一列出（后端按 `services/` 各服务注册的全部 HTTP/gRPC 端点 + 73 张数据表 + 前端各端页面组件整理，详见服务路由章节）。
 
 ### 1. 账号与用户体系（core-service：user / auth）
 - 注册、登录、登出，JWT 签发与刷新（`/user/token/refresh`）、`/auth/verify` 鉴权验证
@@ -222,7 +263,7 @@ mybilibili/
 - 客服会话（`/operation/message/tickets/customer-session`、`/operation/tickets/session/`）
 - 工单后台管理（`/support/admin/tickets`、`/operation/tickets`）
 
-### 15. 管理后台（`/admin/`，Vue3 + Element Plus，`apps/admin/app/views/admin/`）
+### 15. 管理后台（`/admin/`，Vue3 + Element Plus，`web/admin/app/views/admin/`）
 - **登录与权限**：管理员登录（LoginView）、角色管理（RolesView、`roles`/`permissions`/`role_permissions`/`admin_user_roles` 表）、管理员列表（AdminsView）、无权限页；权限用 `/admin/permissions`
 - **核心业务管理**：
   - 视频稿件管理（ManuscriptsView）＋稿件后台端点（`/manuscript/admin/all|pending|processing|statistics`）
@@ -253,7 +294,7 @@ mybilibili/
 - **稿件分析**（ManuscriptAnalysisPanel）
 - 趋势图（TrendChart）
 
-### 17. 创作中心（`/create-center/`，`CreateCenterView`）
+### 17. 创作中心（`/platform`）
 - 侧边导航（CenterSidebar）＋头部"成为创作者第 X 天"徽章
 - 首页仪表盘（CenterDashboard）
 - 稿件管理（ManuscriptManager）＋**稿件编辑弹窗**（ManuscriptEditDialog）
@@ -263,7 +304,7 @@ mybilibili/
 - 粉丝管理（FansManager）
 - 收藏夹管理（CollectionManager / CreateDialog / AddVideoDialog / Detail / List）
 
-### 18. 用户空间（个人主页，`profile/personal-center`）
+### 18. 用户空间（个人主页，`/space/{uid}`、`/personal-center`）
 - 主页 Tab（ProfileHeader + ProfileSidebar + Tab* 全家）
 - 投稿列表（Submission）、视频列表（VideoList）
 - 收藏（Favorite）/ 收藏夹（CollectionGrid / Detail / EditDialog / AddVideoDialog / FavoriteFolder*）
@@ -276,7 +317,7 @@ mybilibili/
 - 动态页（DynamicView + 详情 DynamicDetailView）
 
 ### 20. 多端（移动）
-- **H5 (wap，`/m/*` 全部路由)**：首页、频道（channel）、视频播放（横屏）+ **竖屏视频流**（vertical）、直播（areas/list/room）、搜索、热搜、排行、动态、空间（投稿/收藏/粉丝/历史/草稿/资料编辑）、消息（私信 chat/通知 notify）、创作中心、登录
+- **H5 (wap，`/wap/*` 路由)**：首页、频道（channel）、视频播放（横屏）+ **竖屏视频流**（vertical）、直播（areas/list/room）、搜索、热搜、排行、动态、空间（投稿/收藏/粉丝/历史/草稿/资料编辑）、消息（私信 chat/通知 notify）、创作中心、登录
 - **Flutter App**：auth / home / search / live / video / dynamic / follow / message / creator / profile / upload 模块
 - **NativeScript**：跨端备选
 - **Android WebView**：H5 原生壳
@@ -288,9 +329,22 @@ mybilibili/
 - Traefik 网关：限流、压缩、安全头、静态资源永久缓存、按 path 路由（含 live 反向代理、bili 反向代理、`/uploads/` 本地/MinIO 双后端）
 - 多副本高可用：业务、PostgreSQL、Redis、NATS 全部主从/集群冗余
 - 数据备份 / 恢复（`deploy/db/` 全量备份 + `README` 说明）
-- 数据库 89 张表：用户/稿件/视频/评论/弹幕/动态/直播(rooms+seats+linkmic)/收藏/关注/私信/通知/审核/举报/违禁词/热搜/上传会话/订阅/分享/客服工单/操作任务/定时任务/审计日志/登录日志/AI(会话/消息/技能/配置/用量/Api)/画像/交互/短视频 tags 等，多表按月分区
+- 数据库 73 张表：用户/稿件/视频/评论/弹幕/动态/直播(rooms+seats+linkmic)/收藏/关注/私信/通知/审核/举报/违禁词/热搜/上传会话/订阅/分享/客服工单/操作任务/定时任务/审计日志/登录日志/AI(会话/消息/技能/配置/用量/Api)/画像/交互/专栏/短视频 tags 等，多表按月分区
 
-## 快速访问（生产 k3s）
+### 22. 专栏（图文，core + web）
+- 后端 `services/core/internal/article`（`/api/v1/article/*`）：草稿箱、我的稿件、`feed` 信息流、按用户查询、保存/发布/软删、浏览量
+- 详情权限：未发布/私密专栏仅作者可见
+- 互动：点赞、收藏（写入 `favorite_folders`，`article.favorite_count` 同步）、投币（每篇每人上限 2）、分享
+- 评论：一级评论 + 回复、评论点赞、作者可关闭评论、评论中 `@昵称` 自动写站内信（`messages.type=3`）
+- 前端：阅读页 `/read/cv{id}`、专栏信息流 `/read/home`、动态专栏页 `/opus/{id}`、创作中心 `/platform/upload/text`（TipTap 编辑器）、空间专栏 Tab
+- 迁移：`sql/041~043`（articles / article_comments / article_comment_likes / article_coins / favorite_folder_articles）
+- 单测：`services/core/internal/article/article_handler_test.go`（覆盖 83%+）
+
+## 快速访问（本地 / 生产 k3s）
+
+本地：`http://localhost/`、`/admin/`、`/wap/`（见「本地开发」）。
+
+生产 k3s：
 
 ```
 用户端：    http://192.168.31.182/
@@ -325,14 +379,14 @@ push main ──► test(go vet + go build 门禁) ──► build-backend(8 服
   - **生产部署：`@sha256:` 不可变 digest** —— 在 `deploy/k3s/base/kustomization.yaml` 的 `images:` 段**单点锁定**，升级/回滚只改一个 digest
 - **发布流程**：push main → CI 构建并推 `latest`+`git-sha` → 取出新镜像 digest → 更新 `kustomization.yaml` 一处 → `kubectl apply -k` 滚动更新
 - **构建缓存**：`type=gha` 层缓存（`cache-from/cache-to`），增量构建提速
-- **多阶段构建**：`mybilibili-go/Dockerfile` 按 `SERVICE` build-arg + `target` 选服务，复用公共 base
+- **多阶段构建**：根目录 `Dockerfile` 按 `SERVICE` build-arg + `target` 选服务，复用公共 base
 - **节点绑定**：k3s 两节点拓扑约束——数据层主从按 nodeSelector 钉死节点，业务双副本用 topologySpreadConstraints 强制分散（fnos+laptop 各一）
 
 ### 边界说明
 
 - **transcoder 不打镜像**：裸跑宿主机使用系统 FFmpeg（无容器），故不在矩阵中
 - **wap 不打镜像**：将打包为移动 App
-- 构建仅覆盖 `mybilibili-go/`、`mybilibili-front/`、CI 自身变更（`paths` 过滤，减少无效构建）
+- 构建仅覆盖 `services/`、`shared/`、`web/`、根 `Dockerfile` 与 CI 自身变更（`paths` 过滤，减少无效构建）
 - 部署侧：CI 推镜像后更新 kustomization digest → `kubectl apply -k`（fnos），业务多副本滚动更新
 
 ## 文档

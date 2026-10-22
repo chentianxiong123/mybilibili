@@ -1,7 +1,7 @@
 # docs/agents/wap.md —— wap agent 领域文档
 
 > 领域：移动端 H5（Vite + Vue3 + SCSS），代码在 `mobile/wap/**`
-> 现状：2026-09-27
+> 现状：2026-10-22
 
 ## 职责边界
 
