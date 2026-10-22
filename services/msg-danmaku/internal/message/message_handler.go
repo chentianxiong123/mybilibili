@@ -297,7 +297,7 @@ func (h *MessageHTTPHandler) handleReplies(w http.ResponseWriter, r *http.Reques
 	}
 	rows, _ := h.repo.db.QueryContext(r.Context(),
 		`SELECT m.id, m.sender_id, COALESCE(u.nickname,u.username,'') AS username, COALESCE(u.avatar,'') AS user_avatar,
-		        m.content, m.is_read, COALESCE(m.created_at::text,''), m.comment_id, COALESCE(m.target_id,0) AS manuscript_id,
+		        m.content, m.is_read, COALESCE(to_char(m.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),''), m.comment_id, COALESCE(m.target_id,0) AS manuscript_id,
 		        CASE WHEN ac.article_id = m.target_id THEN ac.article_id ELSE 0 END AS article_id,
 		        COALESCE(a.title,'') AS article_title
 		 FROM messages m
@@ -339,7 +339,7 @@ func (h *MessageHTTPHandler) handleAt(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, _ := h.repo.db.QueryContext(r.Context(),
 		`SELECT m.id, m.sender_id, COALESCE(u.nickname,u.username,'') AS username, COALESCE(u.avatar,'') AS user_avatar,
-		        m.content, m.is_read, COALESCE(m.created_at::text,''), COALESCE(m.target_id,0) AS manuscript_id,
+		        m.content, m.is_read, COALESCE(to_char(m.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),''), COALESCE(m.target_id,0) AS manuscript_id,
 		        COALESCE(m.comment_id,0) AS comment_id, COALESCE(ac.article_id,0) AS article_id,
 		        COALESCE(a.title,'') AS article_title, COALESCE(ac.content,'') AS comment_content,
 		        COALESCE(ms.title,'') AS video_title
@@ -388,7 +388,7 @@ func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request)
 	}
 	rows, _ := h.repo.db.QueryContext(r.Context(),
 		`SELECT m.id, m.sender_id, COALESCE(u.nickname,u.username,'') AS username, COALESCE(u.avatar,'') AS user_avatar,
-		        m.content, m.is_read, COALESCE(m.created_at::text,''), m.message_type,
+		        m.content, m.is_read, COALESCE(to_char(m.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),''), m.message_type,
 		        COALESCE(m.target_id,0) AS manuscript_id, COALESCE(m.comment_id,0) AS comment_id,
 		        COALESCE(ms.title,'') AS video_title, COALESCE(ms.cover_url,'') AS video_cover,
 		        CASE WHEN ac2.id IS NOT NULL THEN COALESCE(ac.content,'') ELSE COALESCE(c.content,'') END AS comment_content,
@@ -474,7 +474,7 @@ func (h *MessageHTTPHandler) handleSystem(w http.ResponseWriter, r *http.Request
 		return
 	}
 	rows, _ := h.repo.db.QueryContext(r.Context(),
-		`SELECT m.id, m.content, COALESCE(m.title,''), m.is_read, COALESCE(m.created_at::text,'')
+		`SELECT m.id, m.content, COALESCE(m.title,''), m.is_read, COALESCE(to_char(m.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),'')
 		 FROM messages m
 		 WHERE m.receiver_id = $1 AND m.message_type = 5 ORDER BY m.created_at DESC LIMIT 50`, userID)
 	defer rows.Close()
