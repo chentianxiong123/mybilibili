@@ -297,29 +297,38 @@ func (h *MessageHTTPHandler) handleReplies(w http.ResponseWriter, r *http.Reques
 	}
 	rows, _ := h.repo.db.QueryContext(r.Context(),
 		`SELECT m.id, m.sender_id, COALESCE(u.nickname,u.username,'') AS username, COALESCE(u.avatar,'') AS user_avatar,
-		        m.content, m.is_read, COALESCE(m.created_at::text,''), m.comment_id, COALESCE(m.target_id,0) AS manuscript_id
+		        m.content, m.is_read, COALESCE(m.created_at::text,''), m.comment_id, COALESCE(m.target_id,0) AS manuscript_id,
+		        CASE WHEN ac.article_id = m.target_id THEN ac.article_id ELSE 0 END AS article_id,
+		        COALESCE(a.title,'') AS article_title
 		 FROM messages m
 		 LEFT JOIN users u ON u.id = m.sender_id
+		 LEFT JOIN article_comments ac ON ac.id = m.comment_id
+		 LEFT JOIN articles a ON a.id = ac.article_id
 		 WHERE m.receiver_id = $1 AND m.message_type = 2 ORDER BY m.created_at DESC LIMIT 50`, userID)
 	defer rows.Close()
 	var list []map[string]interface{}
 	for rows.Next() {
-		var id, sID, manuscriptID int64
-		var username, avatar, content, t string
+		var id, sID, manuscriptID, articleID int64
+		var username, avatar, content, t, articleTitle string
 		var isRead int32
 		var commentID sql.NullInt64
-		rows.Scan(&id, &sID, &username, &avatar, &content, &isRead, &t, &commentID, &manuscriptID)
+		rows.Scan(&id, &sID, &username, &avatar, &content, &isRead, &t, &commentID, &manuscriptID, &articleID, &articleTitle)
+		// 专栏回复：target_id 存的是专栏 id，归一到专栏字段，避免走视频链接
+		if articleID > 0 {
+			manuscriptID = 0
+		}
 		list = append(list, map[string]interface{}{
 			"id": id, "senderId": sID, "username": username, "userAvatar": avatar,
 			"content": content, "isRead": isRead == 1, "createdAt": t,
 			"createTime": t, "commentId": commentID.Int64, "manuscriptId": manuscriptID,
+			"articleId": articleID, "articleTitle": articleTitle,
 			"actionText": "回复了你的评论",
 		})
 	}
 	if list == nil {
 		list = []map[string]interface{}{}
 	}
-		httputil.WriteOK(w, list)
+	httputil.WriteOK(w, list)
 }
 
 func (h *MessageHTTPHandler) handleAt(w http.ResponseWriter, r *http.Request) {
@@ -368,7 +377,7 @@ func (h *MessageHTTPHandler) handleAt(w http.ResponseWriter, r *http.Request) {
 	if list == nil {
 		list = []map[string]interface{}{}
 	}
-		httputil.WriteOK(w, list)
+	httputil.WriteOK(w, list)
 }
 
 func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request) {
@@ -419,7 +428,7 @@ func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request)
 	if list == nil {
 		list = []map[string]interface{}{}
 	}
-		httputil.WriteOK(w, list)
+	httputil.WriteOK(w, list)
 }
 
 // extractCommentText 从形如 赞了你的视频《xxx》/赞了你的评论"xxx" 的消息内容中提取引号内的文本。
@@ -472,7 +481,7 @@ func (h *MessageHTTPHandler) handleSystem(w http.ResponseWriter, r *http.Request
 	if list == nil {
 		list = []map[string]interface{}{}
 	}
-		httputil.WriteOK(w, list)
+	httputil.WriteOK(w, list)
 }
 
 func (h *MessageHTTPHandler) handleMessageByID(w http.ResponseWriter, r *http.Request) {

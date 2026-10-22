@@ -701,6 +701,9 @@ func TestComments_PostReply(t *testing.T) {
 	mock.ExpectExec(`UPDATE articles SET comment_count = comment_count \+ 1 WHERE id=\$1`).
 		WithArgs(int64(9)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`INSERT INTO messages \(sender_id, receiver_id, content, message_type, target_id, comment_id, is_read, created_at\)`).
+		WithArgs(int64(7), int64(300), "回复了你的评论：re", int64(9), int64(12)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectQuery(`SELECT COALESCE\(nickname,''\), COALESCE\(avatar,''\) FROM users WHERE id=\$1`).
 		WithArgs(int64(7)).
 		WillReturnRows(sqlmock.NewRows([]string{"nickname", "avatar"}).AddRow("小明", "/a.png"))

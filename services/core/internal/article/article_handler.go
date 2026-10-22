@@ -733,6 +733,7 @@ func (h *Handler) handleComments(w http.ResponseWriter, r *http.Request, id int6
 		}
 		h.db.ExecContext(r.Context(), `UPDATE articles SET comment_count = comment_count + 1 WHERE id=$1`, id)
 		h.notifyArticleMentions(r, content, uid, id, newID)
+		h.notifyArticleReply(r, content, uid, replyTo, id, newID)
 		var nickname, avatar, replyName string
 		_ = h.db.QueryRowContext(r.Context(), `SELECT COALESCE(nickname,''), COALESCE(avatar,'') FROM users WHERE id=$1`, uid).Scan(&nickname, &avatar)
 		if replyTo > 0 {
@@ -977,6 +978,18 @@ func (h *Handler) handleMentionSearch(w http.ResponseWriter, r *http.Request) {
 }
 
 var mentionRe = regexp.MustCompile(`@([^\s@]+)`)
+
+// notifyArticleReply 回复评论时给被回复人写 messages(type=2)。
+// 与视频评论的 sendReplyNotification 对齐：自己回自己不通知。
+func (h *Handler) notifyArticleReply(r *http.Request, content string, senderID, receiverID, articleID, commentID int64) {
+	if receiverID <= 0 || receiverID == senderID {
+		return
+	}
+	h.db.ExecContext(r.Context(),
+		`INSERT INTO messages (sender_id, receiver_id, content, message_type, target_id, comment_id, is_read, created_at)
+		 VALUES ($1,$2,$3,2,$4,$5,0,NOW())`,
+		senderID, receiverID, "回复了你的评论："+excerpt(content, 140), articleID, commentID)
+}
 
 // notifyArticleMentions 解析评论里的 @昵称 并写入 messages(type=3)。
 func (h *Handler) notifyArticleMentions(r *http.Request, content string, senderID, articleID, commentID int64) {

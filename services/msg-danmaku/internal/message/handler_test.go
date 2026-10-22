@@ -56,7 +56,7 @@ func TestHandleConversations_200(t *testing.T) {
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/conversations", "")
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
-		Code int            `json:"code"`
+		Code int             `json:"code"`
 		Data []*Conversation `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
@@ -143,15 +143,16 @@ func TestHandleReplies_200(t *testing.T) {
 		WithArgs(int64(1001)).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "sender_id", "username", "user_avatar", "content", "is_read", "created_at", "comment_id", "manuscript_id",
-		}).AddRow(300, 1002, "对方", "http://avatar", "回复内容", 0, now.Format("2006-01-02 15:04:05"), 55, 66))
+			"article_id", "article_title",
+		}).AddRow(300, 1002, "对方", "http://avatar", "回复内容", 0, now.Format("2006-01-02 15:04:05"), 55, 66, 0, ""))
 
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/replies", "")
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int `json:"code"`
 		Data []struct {
-			ID        int64  `json:"id"`
-			Content   string `json:"content"`
+			ID         int64  `json:"id"`
+			Content    string `json:"content"`
 			ActionText string `json:"actionText"`
 		} `json:"data"`
 	}
@@ -317,7 +318,9 @@ func TestHandleAt_200(t *testing.T) {
 		WithArgs(int64(1001)).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "sender_id", "username", "user_avatar", "content", "is_read", "created_at", "manuscript_id",
-		}).AddRow(500, 1002, "用户A", "http://a.png", "@你好", 0, now.Format("2006-01-02 15:04:05"), 10))
+			"comment_id", "article_id", "article_title", "comment_content", "video_title",
+		}).AddRow(500, 1002, "用户A", "http://a.png", "@你好", 0, now.Format("2006-01-02 15:04:05"), 10,
+			0, 0, "", "", ""))
 
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/at", "")
 	assert.Equal(t, http.StatusOK, rr.Code)

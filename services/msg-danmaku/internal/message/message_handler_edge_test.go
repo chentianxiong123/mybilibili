@@ -56,6 +56,7 @@ func TestHandleReplies_Empty(t *testing.T) {
 		WithArgs(int64(1001)).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "sender_id", "username", "user_avatar", "content", "is_read", "created_at", "comment_id", "manuscript_id",
+			"article_id", "article_title",
 		}))
 
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/replies", "")
@@ -65,6 +66,35 @@ func TestHandleReplies_Empty(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
 	assert.Empty(t, resp.Data)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// 专栏回复的 target_id 存的是专栏 id：应映射到 articleId 并清空 manuscriptId，
+// 否则前端会显示「查看原视频」并跳到错误的视频链接。
+func TestHandleReplies_ArticleTarget(t *testing.T) {
+	h, mock := newTestMessageHandler(t)
+
+	mock.ExpectQuery(`FROM messages m`).
+		WithArgs(int64(1001)).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "sender_id", "username", "user_avatar", "content", "is_read", "created_at", "comment_id", "manuscript_id",
+			"article_id", "article_title",
+		}).AddRow(9, 1002, "柯洁", "http://avatar", "回复了你的评论：hi", 0, "2026-10-22 12:00:00", 8, 8, 8, "E2E 专栏"))
+
+	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/replies", "")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp struct {
+		Data []struct {
+			ArticleID    int64  `json:"articleId"`
+			ArticleTitle string `json:"articleTitle"`
+			ManuscriptID int64  `json:"manuscriptId"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	require.Len(t, resp.Data, 1)
+	assert.Equal(t, int64(8), resp.Data[0].ArticleID)
+	assert.Equal(t, "E2E 专栏", resp.Data[0].ArticleTitle)
+	assert.Equal(t, int64(0), resp.Data[0].ManuscriptID)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
