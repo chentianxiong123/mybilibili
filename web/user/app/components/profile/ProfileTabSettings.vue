@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { userPrivacyApi } from '@/api/userPrivacy.ts'
 
@@ -117,6 +117,14 @@ const loadUserTags = async () => {
 onMounted(() => {
   loadPrivacySettings()
   loadUserTags()
+})
+
+// 用户信息异步水合：挂载时可能还没判定为本人空间，水合后补拉一次
+watch(() => props.isOwnSpace, (v) => {
+  if (v) {
+    loadPrivacySettings()
+    loadUserTags()
+  }
 })
 </script>
 

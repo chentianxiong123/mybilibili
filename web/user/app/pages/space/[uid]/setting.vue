@@ -215,6 +215,16 @@ export default {
             }
         },
     },
+    watch: {
+        // 用户信息是异步水合的，挂载时 isOwner 可能还是 false；
+        // 水合完成后再补拉，否则直接进本页会看到空标签。
+        isOwner(v) {
+            if (v) {
+                this.loadPrivacySettings();
+                this.loadUserTags();
+            }
+        }
+    },
     mounted() {
         if (this.isOwner) {
             this.loadPrivacySettings();
