@@ -605,8 +605,10 @@ export default {
                 ElMessage.warning('请先取消当前投稿再切换类型');
                 return;
             }
-            if (type === 'text') {
+            if (type === 'article') {
                 this.$router.push('/platform/upload/text');
+            } else if (type === 'dynamic') {
+                this.$router.push('/platform/upload/dynamic');
             }
         },
 

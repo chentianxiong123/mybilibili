@@ -105,6 +105,7 @@
                         <span>内容管理</span>
                     </template>
                     <el-menu-item index="/platform/upload-manager/manuscript">稿件管理</el-menu-item>
+                    <el-menu-item index="/platform/upload/text">专栏管理</el-menu-item>
                     <el-menu-item index="/platform/drafts">草稿箱</el-menu-item>
                     <el-menu-item index="/platform/upload-manager/subtitle">字幕管理</el-menu-item>
                     <el-menu-item index="/platform/upload-manager/appeal">申诉管理</el-menu-item>
@@ -148,7 +149,7 @@ export default {
     data() {
         return {
             active: "",
-            path: ["/platform/home", "/platform/upload-manager/manuscript", "/platform/upload-manager/subtitle", "/platform/upload-manager/appeal", "/platform/drafts", "/platform/data-up", "/platform/fans", "/platform/comment", "/platform/danmu"],
+            path: ["/platform/home", "/platform/upload-manager/manuscript", "/platform/upload/text", "/platform/upload-manager/subtitle", "/platform/upload-manager/appeal", "/platform/drafts", "/platform/data-up", "/platform/fans", "/platform/comment", "/platform/danmu"],
         }
     },
     computed: {
@@ -158,6 +159,9 @@ export default {
             }
             if (this.$route.path.startsWith('/platform/data-up')) {
                 return 'content-body--gray';
+            }
+            if (this.$route.path.startsWith('/platform/upload/text')) {
+                return 'content-body--editor';
             }
             return '';
         },
@@ -535,6 +539,14 @@ export default {
 /* 创作中心首页：与B站一致，整页灰底(#fafafa)，各模块为独立白色圆角卡片 */
 .content-body--home {
     background: #fafafa;
+}
+
+/* 专栏投稿/编辑：整块区域全宽（对齐B站专栏编辑器 iframe 铺满内容区） */
+.content-body--editor {
+    margin: 0;
+    padding: 16px 24px 0;
+    background: #fff;
+    min-height: calc(100vh - 60px);
 }
 
 /* element 导航元素 */

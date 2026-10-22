@@ -10,8 +10,16 @@
         </div>
         <div
             class="upload-type-tab"
-            :class="{ 'is-active': activeType === 'text' }"
-            @click="goTo('text')"
+            :class="{ 'is-active': activeType === 'article' }"
+            @click="goTo('article')"
+        >
+            <span class="tab-text">专栏投稿</span>
+            <span class="tab-line"></span>
+        </div>
+        <div
+            class="upload-type-tab"
+            :class="{ 'is-active': activeType === 'dynamic' }"
+            @click="goTo('dynamic')"
         >
             <span class="tab-text">图文投稿</span>
             <span class="tab-line"></span>

@@ -26,6 +26,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"mybilibili/core/internal/admin"
+	"mybilibili/core/internal/article"
 	"mybilibili/core/internal/clients"
 	"mybilibili/core/internal/comment"
 	"mybilibili/core/internal/coreapi"
@@ -359,6 +360,8 @@ func main() {
 
 	adminContentH := moderation.NewAdminContentHandler(db)
 
+	articleH := article.NewHandler(db)
+
 	// 吊销名单 / 刷新令牌防重放：Redis 抖动时降级为进程内，不影响可用性
 	auth.LogSetupWarning(auth.SetupStoresFromEnv())
 
@@ -369,6 +372,7 @@ func main() {
 		userAdminH, manuscriptAdminH, videoAdminH, commentAdminH, moderationAdminH,
 		adminContentH,
 		videoProcessAdminH,
+		articleH,
 		social.NewSearchHistoryHandler(cacheStore, auth.NewJWT(jwtSecret)))
 
 	lis, err := net.Listen("tcp", grpcAddr)

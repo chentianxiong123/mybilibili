@@ -330,22 +330,39 @@ func (h *MessageHTTPHandler) handleAt(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, _ := h.repo.db.QueryContext(r.Context(),
 		`SELECT m.id, m.sender_id, COALESCE(u.nickname,u.username,'') AS username, COALESCE(u.avatar,'') AS user_avatar,
-		        m.content, m.is_read, COALESCE(m.created_at::text,''), COALESCE(m.target_id,0) AS manuscript_id
+		        m.content, m.is_read, COALESCE(m.created_at::text,''), COALESCE(m.target_id,0) AS manuscript_id,
+		        COALESCE(m.comment_id,0) AS comment_id, COALESCE(ac.article_id,0) AS article_id,
+		        COALESCE(a.title,'') AS article_title, COALESCE(ac.content,'') AS comment_content,
+		        COALESCE(ms.title,'') AS video_title
 		 FROM messages m
 		 LEFT JOIN users u ON u.id = m.sender_id
+		 LEFT JOIN article_comments ac ON ac.id = m.comment_id
+		 LEFT JOIN articles a ON a.id = ac.article_id
+		 LEFT JOIN manuscripts ms ON ms.id = m.target_id
 		 WHERE m.receiver_id = $1 AND m.message_type = 3 ORDER BY m.created_at DESC LIMIT 50`, userID)
 	defer rows.Close()
 	var list []map[string]interface{}
 	for rows.Next() {
-		var id, sID, manuscriptID int64
-		var username, avatar, content, t string
+		var id, sID, manuscriptID, commentID, articleID int64
+		var username, avatar, content, t, articleTitle, commentContent, videoTitle string
 		var isRead int32
-		rows.Scan(&id, &sID, &username, &avatar, &content, &isRead, &t, &manuscriptID)
+		rows.Scan(&id, &sID, &username, &avatar, &content, &isRead, &t, &manuscriptID,
+			&commentID, &articleID, &articleTitle, &commentContent, &videoTitle)
+		// 专栏提及：target_id 存的是专栏 id，这里归一到专栏字段，避免走视频链接
+		if articleID > 0 {
+			manuscriptID = 0
+		}
+		action := "在评论中@了我"
+		if articleID > 0 {
+			action = "在专栏中@了我"
+		}
 		list = append(list, map[string]interface{}{
-			"id": id, "username": username, "userAvatar": avatar,
+			"id": id, "senderId": sID, "username": username, "userAvatar": avatar,
 			"content": content, "isRead": isRead == 1, "createdAt": t,
-			"createTime": t, "manuscriptId": manuscriptID,
-			"actionText": "在评论中@了我",
+			"createTime": t, "manuscriptId": manuscriptID, "commentId": commentID,
+			"articleId": articleID, "articleTitle": articleTitle,
+			"commentContent": commentContent, "videoTitle": videoTitle,
+			"actionText": action,
 		})
 	}
 	if list == nil {

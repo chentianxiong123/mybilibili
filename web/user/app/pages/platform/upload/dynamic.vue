@@ -1,6 +1,6 @@
 <template>
   <div class="upload-container">
-    <UploadTypeTabs active="text" @change="switchUploadType" />
+    <UploadTypeTabs active="dynamic" @change="switchUploadType" />
     <!-- 页面标题 -->
     <div class="page-header">
       <h1 class="page-title">图文投稿</h1>
@@ -54,6 +54,8 @@ const publishPanelRef = ref<InstanceType<typeof DynamicPublishPanel> | null>(nul
 const switchUploadType = (type?: string) => {
   if (type === 'video') {
     router.push('/platform/upload/video')
+  } else if (type === 'article') {
+    router.push('/platform/upload/text')
   }
 }
 
