@@ -611,9 +611,17 @@ func (h *MessageHTTPHandler) handleBatchRead(w http.ResponseWriter, r *http.Requ
 	}
 	userID := h.getUserID(r)
 	var req struct {
-		IDs []int64 `json:"ids"`
+		IDs   []int64 `json:"ids"`
+		Types []int32 `json:"types"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
+	if len(req.Types) > 0 {
+		// 按消息类型整类已读：列表只加载前 50 条，未加载的旧消息也要一起清掉，
+		// 否则侧栏红点会因为「看不见的未读」一直挂着。
+		_, _ = h.repo.db.ExecContext(r.Context(),
+			`UPDATE messages SET is_read = 1
+			 WHERE receiver_id = $1 AND message_type = ANY($2) AND is_read = 0`, userID, pq.Array(req.Types))
+	}
 	if len(req.IDs) > 0 {
 		_, _ = h.repo.db.ExecContext(r.Context(),
 			`UPDATE messages SET is_read = 1 WHERE id = ANY($1) AND receiver_id = $2`, pq.Array(req.IDs), userID)

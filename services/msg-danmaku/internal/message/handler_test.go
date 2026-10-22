@@ -645,6 +645,18 @@ func TestHandleBatchRead_200(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestHandleBatchRead_Types(t *testing.T) {
+	h, mock := newTestMessageHandler(t)
+
+	mock.ExpectExec(`UPDATE messages SET is_read = 1\s+WHERE receiver_id = \$1 AND message_type = ANY`).
+		WithArgs(int64(1001), sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(0, 3))
+
+	rr := doMessage(t, h, http.MethodPut, "/api/v1/message/batch/read", `{"types":[4,6]}`)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestHandleBatchRead_EmptyIDs(t *testing.T) {
 	h, _ := newTestMessageHandler(t)
 

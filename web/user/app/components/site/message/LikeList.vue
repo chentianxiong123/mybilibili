@@ -108,10 +108,8 @@ export default {
             }
         },
         async markAllRead() {
-            const ids = this.unreadIds;
-            if (ids.length === 0) return;
             try {
-                await messageApi.batchMarkAsRead(ids);
+                await messageApi.markCategoryRead([4, 6]);
             } catch (e) {
                 // 本地先行，失败下次进页再清
             }

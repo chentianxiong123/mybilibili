@@ -22,6 +22,10 @@ func (s *GrpcServer) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 	if err != nil {
 		return nil, err
 	}
+	// 先失效缓存再推未读数，否则 pushUnread 会读到旧缓存把过期红点推给前端。
+	if s.cache != nil {
+		s.cache.Invalidate(ctx, req.ReceiverId)
+	}
 	if s.notif != nil {
 		s.notif.Send(req.ReceiverId, &NotificationEvent{
 			Type:    "message",
@@ -29,9 +33,6 @@ func (s *GrpcServer) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 			FromUID: req.SenderId,
 		})
 		s.pushUnread(ctx, req.ReceiverId)
-	}
-	if s.cache != nil {
-		s.cache.Invalidate(ctx, req.ReceiverId)
 	}
 	return &pb.SendMessageResponse{MessageId: msg.ID}, nil
 }

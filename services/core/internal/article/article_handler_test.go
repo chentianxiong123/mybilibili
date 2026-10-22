@@ -1,6 +1,7 @@
 package article
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
@@ -395,6 +396,53 @@ func TestHandleArticle_DeleteOK(t *testing.T) {
 
 	w := do(t, h, h.handleByID, http.MethodDelete, "/api/v1/article/5", 7, "")
 	require.Equal(t, http.StatusOK, w.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+type fakeNotifier struct {
+	sender, receiver int64
+	content          string
+	typ              int32
+	target, comment  int64
+	calls            int
+}
+
+func (f *fakeNotifier) SendNotification(_ context.Context, senderID, receiverID int64, content string, msgType int32, targetID, commentID int64) {
+	f.calls++
+	f.sender, f.receiver, f.content, f.typ, f.target, f.comment = senderID, receiverID, content, msgType, targetID, commentID
+}
+
+// 生产环境注入 notifier 后应走 gRPC（不直写 messages 表），由 msg-danmaku
+// 落库、失效未读缓存并推 SSE，避免红点读到 5 分钟的旧缓存。
+func TestToggleLike_Add_UsesNotifier(t *testing.T) {
+	h, mock := newTestHandler(t)
+	mock.ExpectQuery(`SELECT EXISTS\(SELECT 1 FROM user_interactions`).
+		WithArgs(int64(7), int64(9), "like").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectExec(`INSERT INTO user_interactions`).
+		WithArgs(int64(7), int64(9), "like").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE articles SET like_count = like_count \+ 1`).
+		WithArgs(int64(9)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(`SELECT user_id, COALESCE\(title,''\) FROM articles`).
+		WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows([]string{"user_id", "title"}).AddRow(300, "专栏标题"))
+	mock.ExpectQuery(`SELECT like_count FROM articles`).
+		WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows([]string{"like_count"}).AddRow(4))
+
+	n := &fakeNotifier{}
+	h.SetNotifier(n)
+
+	w := do(t, h, h.handleByID, http.MethodPost, "/api/v1/article/9/like", 7, "")
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, 1, n.calls)
+	assert.Equal(t, int64(7), n.sender)
+	assert.Equal(t, int64(300), n.receiver)
+	assert.Equal(t, int32(4), n.typ)
+	assert.Equal(t, int64(9), n.target)
+	assert.Equal(t, "赞了你的专栏《专栏标题》", n.content)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

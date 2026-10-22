@@ -74,10 +74,8 @@ export default {
             }
         },
         async markAllRead() {
-            const ids = this.list.filter(i => !i.isRead).map(i => i.id);
-            if (ids.length === 0) return;
             try {
-                await messageApi.batchMarkAsRead(ids);
+                await messageApi.markCategoryRead([5]);
             } catch (e) {
                 // 本地先行，失败下次进页再清
             }

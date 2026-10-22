@@ -26,6 +26,7 @@ export const messageApi = {
   markAsRead: (messageId) => authRequired(null) || api.put(`/message/${messageId}/read`),
 
   batchMarkAsRead: (ids) => authRequired(null) || api.put('/message/batch/read', { ids }),
+  markCategoryRead: (types) => authRequired(null) || api.put('/message/batch/read', { types }),
 
   getUnreadCounts: () => authRequired({ private: 0, reply: 0, at: 0, like: 0, system: 0, dynamic: 0 }) || api.get('/message/unread/counts'),
 

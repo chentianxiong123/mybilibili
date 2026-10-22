@@ -1,6 +1,7 @@
 package article
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"html"
@@ -17,11 +18,22 @@ import (
 // Handler 专栏（图文）HTTP 接口。挂在 core 服务 /api/v1/article/* 下，
 // 由 traefik 默认 /api/v1/ 路由转发（无需新增路由标签）。
 type Handler struct {
-	db *sql.DB
+	db       *sql.DB
+	notifier MessageNotifier
+}
+
+// MessageNotifier 写站内信的通知出口。生产环境由 msg-danmaku gRPC 客户端实现，
+// 负责落库、失效未读缓存并推送 SSE；测试环境未注入时退回直写 messages 表。
+type MessageNotifier interface {
+	SendNotification(ctx context.Context, senderID, receiverID int64, content string, msgType int32, targetID, commentID int64)
 }
 
 func NewHandler(db *sql.DB) *Handler {
 	return &Handler{db: db}
+}
+
+func (h *Handler) SetNotifier(n MessageNotifier) {
+	h.notifier = n
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
@@ -989,10 +1001,15 @@ func (h *Handler) notifyArticleReply(r *http.Request, content string, senderID, 
 	if receiverID <= 0 || receiverID == senderID {
 		return
 	}
+	text := "回复了你的评论：" + excerpt(content, 140)
+	if h.notifier != nil {
+		h.notifier.SendNotification(r.Context(), senderID, receiverID, text, 2, articleID, commentID)
+		return
+	}
 	h.db.ExecContext(r.Context(),
 		`INSERT INTO messages (sender_id, receiver_id, content, message_type, target_id, comment_id, is_read, created_at)
 		 VALUES ($1,$2,$3,2,$4,$5,0,NOW())`,
-		senderID, receiverID, "回复了你的评论："+excerpt(content, 140), articleID, commentID)
+		senderID, receiverID, text, articleID, commentID)
 }
 
 // notifyArticleLike 点赞专栏时给作者写 messages(type=4)，自己赞自己不通知。
@@ -1006,10 +1023,15 @@ func (h *Handler) notifyArticleLike(r *http.Request, senderID, articleID int64) 
 	if owner <= 0 || owner == senderID {
 		return
 	}
+	text := "赞了你的专栏《" + title + "》"
+	if h.notifier != nil {
+		h.notifier.SendNotification(r.Context(), senderID, owner, text, 4, articleID, 0)
+		return
+	}
 	h.db.ExecContext(r.Context(),
 		`INSERT INTO messages (sender_id, receiver_id, content, message_type, target_id, is_read, created_at)
 		 VALUES ($1,$2,$3,4,$4,0,NOW())`,
-		senderID, owner, "赞了你的专栏《"+title+"》", articleID)
+		senderID, owner, text, articleID)
 }
 
 // notifyArticleCommentLike 点赞专栏评论时给评论作者写 messages(type=6)。
@@ -1024,10 +1046,15 @@ func (h *Handler) notifyArticleCommentLike(r *http.Request, senderID, commentID 
 	if owner <= 0 || owner == senderID {
 		return
 	}
+	text := "赞了你的评论\"" + excerpt(content, 100) + "\""
+	if h.notifier != nil {
+		h.notifier.SendNotification(r.Context(), senderID, owner, text, 6, articleID, commentID)
+		return
+	}
 	h.db.ExecContext(r.Context(),
 		`INSERT INTO messages (sender_id, receiver_id, content, message_type, target_id, comment_id, is_read, created_at)
 		 VALUES ($1,$2,$3,6,$4,$5,0,NOW())`,
-		senderID, owner, "赞了你的评论\""+excerpt(content, 100)+"\"", articleID, commentID)
+		senderID, owner, text, articleID, commentID)
 }
 
 // notifyArticleMentions 解析评论里的 @昵称 并写入 messages(type=3)。
@@ -1052,9 +1079,14 @@ func (h *Handler) notifyArticleMentions(r *http.Request, content string, senderI
 			continue
 		}
 		seen[uid] = true
+		text := "在评论中@了你：" + snippet
+		if h.notifier != nil {
+			h.notifier.SendNotification(r.Context(), senderID, uid, text, 3, articleID, commentID)
+			continue
+		}
 		h.db.ExecContext(r.Context(),
 			`INSERT INTO messages (sender_id, receiver_id, content, message_type, target_id, comment_id, is_read, created_at)
 			 VALUES ($1,$2,$3,3,$4,$5,0,NOW())`,
-			senderID, uid, "在评论中@了你："+snippet, articleID, commentID)
+			senderID, uid, text, articleID, commentID)
 	}
 }
