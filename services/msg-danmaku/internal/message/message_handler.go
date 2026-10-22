@@ -299,29 +299,33 @@ func (h *MessageHTTPHandler) handleReplies(w http.ResponseWriter, r *http.Reques
 		`SELECT m.id, m.sender_id, COALESCE(u.nickname,u.username,'') AS username, COALESCE(u.avatar,'') AS user_avatar,
 		        m.content, m.is_read, COALESCE(to_char(m.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),''), m.comment_id, COALESCE(m.target_id,0) AS manuscript_id,
 		        CASE WHEN ac.article_id = m.target_id THEN ac.article_id ELSE 0 END AS article_id,
-		        COALESCE(a.title,'') AS article_title
+		        COALESCE(a.title,'') AS article_title, COALESCE(a.cover_url,'') AS article_cover,
+		        COALESCE(ms.cover_url,'') AS video_cover
 		 FROM messages m
 		 LEFT JOIN users u ON u.id = m.sender_id
 		 LEFT JOIN article_comments ac ON ac.id = m.comment_id
 		 LEFT JOIN articles a ON a.id = ac.article_id
+		 LEFT JOIN manuscripts ms ON ms.id = m.target_id
 		 WHERE m.receiver_id = $1 AND m.message_type = 2 ORDER BY m.created_at DESC LIMIT 50`, userID)
 	defer rows.Close()
 	var list []map[string]interface{}
 	for rows.Next() {
 		var id, sID, manuscriptID, articleID int64
-		var username, avatar, content, t, articleTitle string
+		var username, avatar, content, t, articleTitle, articleCover, videoCover string
 		var isRead int32
 		var commentID sql.NullInt64
-		rows.Scan(&id, &sID, &username, &avatar, &content, &isRead, &t, &commentID, &manuscriptID, &articleID, &articleTitle)
+		rows.Scan(&id, &sID, &username, &avatar, &content, &isRead, &t, &commentID, &manuscriptID, &articleID, &articleTitle, &articleCover, &videoCover)
 		// 专栏回复：target_id 存的是专栏 id，归一到专栏字段，避免走视频链接
 		if articleID > 0 {
 			manuscriptID = 0
+			videoCover = ""
 		}
 		list = append(list, map[string]interface{}{
 			"id": id, "senderId": sID, "username": username, "userAvatar": avatar,
 			"content": content, "isRead": isRead == 1, "createdAt": t,
 			"createTime": t, "commentId": commentID.Int64, "manuscriptId": manuscriptID,
 			"articleId": articleID, "articleTitle": articleTitle,
+			"videoCover": videoCover, "articleCover": articleCover,
 			"actionText": "回复了你的评论",
 		})
 	}
@@ -342,7 +346,8 @@ func (h *MessageHTTPHandler) handleAt(w http.ResponseWriter, r *http.Request) {
 		        m.content, m.is_read, COALESCE(to_char(m.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),''), COALESCE(m.target_id,0) AS manuscript_id,
 		        COALESCE(m.comment_id,0) AS comment_id, COALESCE(ac.article_id,0) AS article_id,
 		        COALESCE(a.title,'') AS article_title, COALESCE(ac.content,'') AS comment_content,
-		        COALESCE(ms.title,'') AS video_title
+		        COALESCE(ms.title,'') AS video_title, COALESCE(ms.cover_url,'') AS video_cover,
+		        COALESCE(a.cover_url,'') AS article_cover
 		 FROM messages m
 		 LEFT JOIN users u ON u.id = m.sender_id
 		 LEFT JOIN article_comments ac ON ac.id = m.comment_id
@@ -353,13 +358,15 @@ func (h *MessageHTTPHandler) handleAt(w http.ResponseWriter, r *http.Request) {
 	var list []map[string]interface{}
 	for rows.Next() {
 		var id, sID, manuscriptID, commentID, articleID int64
-		var username, avatar, content, t, articleTitle, commentContent, videoTitle string
+		var username, avatar, content, t, articleTitle, commentContent, videoTitle, videoCover, articleCover string
 		var isRead int32
 		rows.Scan(&id, &sID, &username, &avatar, &content, &isRead, &t, &manuscriptID,
-			&commentID, &articleID, &articleTitle, &commentContent, &videoTitle)
+			&commentID, &articleID, &articleTitle, &commentContent, &videoTitle, &videoCover, &articleCover)
 		// 专栏提及：target_id 存的是专栏 id，这里归一到专栏字段，避免走视频链接
 		if articleID > 0 {
 			manuscriptID = 0
+			videoTitle = ""
+			videoCover = ""
 		}
 		action := "在评论中@了我"
 		if articleID > 0 {
@@ -371,6 +378,7 @@ func (h *MessageHTTPHandler) handleAt(w http.ResponseWriter, r *http.Request) {
 			"createTime": t, "manuscriptId": manuscriptID, "commentId": commentID,
 			"articleId": articleID, "articleTitle": articleTitle,
 			"commentContent": commentContent, "videoTitle": videoTitle,
+			"videoCover": videoCover, "articleCover": articleCover,
 			"actionText": action,
 		})
 	}
@@ -393,7 +401,8 @@ func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request)
 		        COALESCE(ms.title,'') AS video_title, COALESCE(ms.cover_url,'') AS video_cover,
 		        CASE WHEN ac2.id IS NOT NULL THEN COALESCE(ac.content,'') ELSE COALESCE(c.content,'') END AS comment_content,
 		        COALESCE(al.id, ac2.id, 0) AS article_id,
-		        COALESCE(al.title, ac2.title, '') AS article_title
+		        COALESCE(al.title, ac2.title, '') AS article_title,
+		        COALESCE(al.cover_url, ac2.cover_url, '') AS article_cover
 		 FROM messages m
 		 LEFT JOIN users u ON u.id = m.sender_id
 		 LEFT JOIN manuscripts ms ON ms.id = m.target_id
@@ -406,10 +415,10 @@ func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request)
 	var list []map[string]interface{}
 	for rows.Next() {
 		var id, sID, manuscriptID, commentID, msgType, articleID int64
-		var username, avatar, content, t, videoTitle, videoCover, commentContent, articleTitle string
+		var username, avatar, content, t, videoTitle, videoCover, commentContent, articleTitle, articleCover string
 		var isRead int32
 		rows.Scan(&id, &sID, &username, &avatar, &content, &isRead, &t, &msgType, &manuscriptID, &commentID,
-			&videoTitle, &videoCover, &commentContent, &articleID, &articleTitle)
+			&videoTitle, &videoCover, &commentContent, &articleID, &articleTitle, &articleCover)
 		// 专栏点赞/评论点赞：target_id 存的是专栏 id，归一到专栏字段，避免走视频链接
 		if articleID > 0 {
 			manuscriptID = 0
@@ -428,7 +437,7 @@ func (h *MessageHTTPHandler) handleLikes(w http.ResponseWriter, r *http.Request)
 			"content": content, "isRead": isRead == 1, "createdAt": t,
 			"createTime": t, "manuscriptId": manuscriptID, "commentId": commentID,
 			"videoTitle": videoTitle, "videoCover": videoCover, "commentContent": commentContent,
-			"articleId": articleID, "articleTitle": articleTitle,
+			"articleId": articleID, "articleTitle": articleTitle, "articleCover": articleCover,
 			"userCount": 1, "usernames": username,
 		}
 		switch {

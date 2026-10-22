@@ -56,7 +56,7 @@ func TestHandleReplies_Empty(t *testing.T) {
 		WithArgs(int64(1001)).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "sender_id", "username", "user_avatar", "content", "is_read", "created_at", "comment_id", "manuscript_id",
-			"article_id", "article_title",
+			"article_id", "article_title", "article_cover", "video_cover",
 		}))
 
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/replies", "")
@@ -78,8 +78,8 @@ func TestHandleReplies_ArticleTarget(t *testing.T) {
 		WithArgs(int64(1001)).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "sender_id", "username", "user_avatar", "content", "is_read", "created_at", "comment_id", "manuscript_id",
-			"article_id", "article_title",
-		}).AddRow(9, 1002, "柯洁", "http://avatar", "回复了你的评论：hi", 0, "2026-10-22 12:00:00", 8, 8, 8, "E2E 专栏"))
+			"article_id", "article_title", "article_cover", "video_cover",
+		}).AddRow(9, 1002, "柯洁", "http://avatar", "回复了你的评论：hi", 0, "2026-10-22 12:00:00", 8, 8, 8, "E2E 专栏", "", ""))
 
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/replies", "")
 	assert.Equal(t, http.StatusOK, rr.Code)

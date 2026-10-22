@@ -7,17 +7,20 @@
                     加载失败，<span class="btn" @click="load">点击重试</span>
                 </div>
                 <div class="system-item empty" v-else-if="list.length === 0"><MessageEmpty /></div>
-                <div class="system-item" v-for="item in list" :key="item.id">
-                    <div class="notify-item message-box-shadow">
-                        <div class="notify-item__top">
-                            <span class="notify-item__title">{{ item.title || '系统通知' }}</span>
-                            <span class="notify-item__time">{{ formatTime(item.createdAt) }}</span>
-                        </div>
-                        <div class="notify-item__bottom">
-                            <div class="notify-item__msg">{{ item.content }}</div>
+                <template v-for="(item, idx) in list" :key="item.id">
+                    <MessageDivider v-if="idx === dividerIndex" />
+                    <div class="system-item">
+                        <div class="notify-item message-box-shadow">
+                            <div class="notify-item__top">
+                                <span class="notify-item__title">{{ item.title || '系统通知' }}</span>
+                                <span class="notify-item__time">{{ formatTime(item.createdAt) }}</span>
+                            </div>
+                            <div class="notify-item__bottom">
+                                <div class="notify-item__msg">{{ item.content }}</div>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </template>
             </div>
         </div>
     </div>
@@ -26,20 +29,26 @@
 <script lang="ts">
 import MessageLoading from './MessageLoading.vue';
 import MessageEmpty from './MessageEmpty.vue';
+import MessageDivider from './MessageDivider.vue';
 import { messageApi } from '@/api/message.ts';
 import { handleDateTime } from '@/shared/utils/utils';
 
 export default {
     name: 'SystemList',
-    components: { MessageLoading, MessageEmpty },
+    components: { MessageLoading, MessageEmpty, MessageDivider },
     data() {
         return {
             list: [] as any[],
             loading: false,
             error: false,
+            dividerIndex: -1,
         };
     },
     methods: {
+        updateDivider() {
+            const idx = this.list.findIndex((i: any) => i.isRead);
+            this.dividerIndex = idx > 0 ? idx : -1;
+        },
         formatTime(t: string) {
             try {
                 return handleDateTime(t);
@@ -54,6 +63,7 @@ export default {
                 const res = await messageApi.getSystemNotifications({});
                 if (res && res.code === 200 && Array.isArray(res.data)) {
                     this.list = res.data;
+                    this.updateDivider();
                 } else {
                     throw new Error('bad response');
                 }

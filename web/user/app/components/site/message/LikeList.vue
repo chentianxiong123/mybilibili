@@ -7,35 +7,41 @@
             <div class="love-empty" v-if="loading"><MessageLoading /></div>
             <div class="love-empty" v-else-if="error">加载失败，<span class="btn" @click="load">点击重试</span></div>
             <div class="love-empty empty" v-else-if="list.length === 0"><MessageEmpty /></div>
-            <div class="love-item" v-for="item in list" :key="item.id" :class="{ unread: !item.isRead }">
-                <div class="love-item__left">
-                    <a class="love-item__avatar" :href="`/space/${item.senderId}`" target="_blank"
-                        :style="`background-image: url('${item.userAvatar || defaultAvatar}');`"></a>
-                </div>
-                <div class="love-item__right">
-                    <div class="love-item__info">
-                        <div class="love-item__title">
-                            <a class="love-item__uname" :href="`/space/${item.senderId}`" target="_blank">
-                                {{ item.username || item.usernames || '用户' }}
-                            </a>
-                            <div class="love-item__action">{{ item.actionText || '赞了我' }}</div>
-                        </div>
-                        <div class="love-item__msg" v-if="item.commentId || isCommentLike(item)">
-                            {{ item.commentContent || stripVideoTitle(item.content) }}
-                        </div>
-                        <div class="love-item__reference" v-else-if="item.articleId">
-                            专栏《{{ item.articleTitle }}》
-                        </div>
-                        <div class="love-item__reference" v-else-if="item.videoTitle">
-                            视频《{{ item.videoTitle }}》
-                        </div>
-                        <div class="love-item__time">{{ formatTime(item.createdAt) }}</div>
+            <template v-for="(item, idx) in list" :key="item.id">
+                <MessageDivider v-if="idx === dividerIndex" />
+                <div class="love-item" :class="{ unread: !item.isRead }">
+                    <div class="love-item__left">
+                        <a class="love-item__avatar" :href="`/space/${item.senderId}`" target="_blank"
+                            :style="`background-image: url('${item.userAvatar || defaultAvatar}');`"></a>
                     </div>
-                    <a class="love-item__cover" v-if="item.videoCover && !isCommentLike(item)"
-                        :href="`/video/${item.manuscriptId}`" target="_blank"
-                        :style="`background-image: url('${item.videoCover}');`"></a>
+                    <div class="love-item__right">
+                        <div class="love-item__info">
+                            <div class="love-item__title">
+                                <a class="love-item__uname" :href="`/space/${item.senderId}`" target="_blank">
+                                    {{ item.username || item.usernames || '用户' }}
+                                </a>
+                                <div class="love-item__action">{{ item.actionText || '赞了我' }}</div>
+                            </div>
+                            <div class="love-item__msg" v-if="item.commentId || isCommentLike(item)">
+                                {{ item.commentContent || stripVideoTitle(item.content) }}
+                            </div>
+                            <div class="love-item__reference" v-else-if="item.articleId">
+                                专栏《{{ item.articleTitle }}》
+                            </div>
+                            <div class="love-item__reference" v-else-if="item.videoTitle">
+                                视频《{{ item.videoTitle }}》
+                            </div>
+                            <div class="love-item__time">{{ formatTime(item.createdAt) }}</div>
+                        </div>
+                        <a class="love-item__cover" v-if="item.videoCover && !isCommentLike(item)"
+                            :href="`/video/${item.manuscriptId}`" target="_blank"
+                            :style="`background-image: url('${item.videoCover}');`"></a>
+                        <a class="love-item__cover" v-else-if="item.articleCover && !isCommentLike(item)"
+                            :href="`/read/cv${item.articleId}`" target="_blank"
+                            :style="`background-image: url('${item.articleCover}');`"></a>
+                    </div>
                 </div>
-            </div>
+            </template>
         </div>
     </div>
 </template>
@@ -43,6 +49,7 @@
 <script lang="ts">
 import MessageLoading from './MessageLoading.vue';
 import MessageEmpty from './MessageEmpty.vue';
+import MessageDivider from './MessageDivider.vue';
 import { messageApi } from '@/api/message.ts';
 import { handleDateTime } from '@/shared/utils/utils';
 
@@ -50,12 +57,13 @@ const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726
 
 export default {
     name: 'LikeList',
-    components: { MessageLoading, MessageEmpty },
+    components: { MessageLoading, MessageEmpty, MessageDivider },
     data() {
         return {
             list: [] as any[],
             loading: false,
             error: false,
+            dividerIndex: -1,
             defaultAvatar,
         };
     },
@@ -65,6 +73,10 @@ export default {
         },
     },
     methods: {
+        updateDivider() {
+            const idx = this.list.findIndex((i: any) => i.isRead);
+            this.dividerIndex = idx > 0 ? idx : -1;
+        },
         isCommentLike(item: any) {
             return String(item.actionText || '').includes('评论');
         },
@@ -85,6 +97,7 @@ export default {
                 const res = await messageApi.getLikes({});
                 if (res && res.code === 200 && Array.isArray(res.data)) {
                     this.list = res.data;
+                    this.updateDivider();
                 } else {
                     throw new Error('bad response');
                 }

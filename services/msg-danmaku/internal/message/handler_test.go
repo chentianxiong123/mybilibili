@@ -143,8 +143,8 @@ func TestHandleReplies_200(t *testing.T) {
 		WithArgs(int64(1001)).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "sender_id", "username", "user_avatar", "content", "is_read", "created_at", "comment_id", "manuscript_id",
-			"article_id", "article_title",
-		}).AddRow(300, 1002, "对方", "http://avatar", "回复内容", 0, now.Format("2006-01-02 15:04:05"), 55, 66, 0, ""))
+			"article_id", "article_title", "article_cover", "video_cover",
+		}).AddRow(300, 1002, "对方", "http://avatar", "回复内容", 0, now.Format("2006-01-02 15:04:05"), 55, 66, 0, "", "", ""))
 
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/replies", "")
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -318,9 +318,9 @@ func TestHandleAt_200(t *testing.T) {
 		WithArgs(int64(1001)).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "sender_id", "username", "user_avatar", "content", "is_read", "created_at", "manuscript_id",
-			"comment_id", "article_id", "article_title", "comment_content", "video_title",
+			"comment_id", "article_id", "article_title", "comment_content", "video_title", "video_cover", "article_cover",
 		}).AddRow(500, 1002, "用户A", "http://a.png", "@你好", 0, now.Format("2006-01-02 15:04:05"), 10,
-			0, 0, "", "", ""))
+			0, 0, "", "", "", "", ""))
 
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/at", "")
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -370,9 +370,9 @@ func TestHandleLikes_200(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "sender_id", "username", "user_avatar", "content", "is_read", "created_at",
 			"message_type", "manuscript_id", "comment_id", "video_title", "video_cover", "comment_content",
-			"article_id", "article_title",
+			"article_id", "article_title", "article_cover",
 		}).AddRow(600, 1002, "用户B", "http://b.png", "赞了你的视频《测试》", 0, now.Format("2006-01-02 15:04:05"),
-			4, 10, 0, "", "", "", 0, ""))
+			4, 10, 0, "", "", "", 0, "", ""))
 
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/likes", "")
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -398,9 +398,9 @@ func TestHandleLikes_CommentType(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "sender_id", "username", "user_avatar", "content", "is_read", "created_at",
 			"message_type", "manuscript_id", "comment_id", "video_title", "video_cover", "comment_content",
-			"article_id", "article_title",
+			"article_id", "article_title", "article_cover",
 		}).AddRow(601, 1002, "用户C", "http://c.png", "赞了你的评论\"好\"", 0, now.Format("2006-01-02 15:04:05"),
-			6, 10, 55, "", "", "", 0, ""))
+			6, 10, 55, "", "", "", 0, "", ""))
 
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/likes", "")
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -427,12 +427,12 @@ func TestHandleLikes_ArticleTarget(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "sender_id", "username", "user_avatar", "content", "is_read", "created_at",
 			"message_type", "manuscript_id", "comment_id", "video_title", "video_cover", "comment_content",
-			"article_id", "article_title",
+			"article_id", "article_title", "article_cover",
 		}).
 			AddRow(700, 1002, "用户D", "http://d.png", "赞了你的专栏《E2E 专栏》", 0, now.Format("2006-01-02 15:04:05"),
-				4, 8, 0, "", "", "", 8, "E2E 专栏").
+				4, 8, 0, "", "", "", 8, "E2E 专栏", "").
 			AddRow(701, 1003, "用户E", "http://e.png", "赞了你的评论\"写得好\"", 0, now.Format("2006-01-02 15:04:05"),
-				6, 8, 9, "", "", "写得好", 8, "E2E 专栏"))
+				6, 8, 9, "", "", "写得好", 8, "E2E 专栏", ""))
 
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/likes", "")
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -465,7 +465,7 @@ func TestHandleLikes_Empty(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "sender_id", "username", "user_avatar", "content", "is_read", "created_at",
 			"message_type", "manuscript_id", "comment_id", "video_title", "video_cover", "comment_content",
-			"article_id", "article_title",
+			"article_id", "article_title", "article_cover",
 		}))
 
 	rr := doMessage(t, h, http.MethodGet, "/api/v1/message/likes", "")

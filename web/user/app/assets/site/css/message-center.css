@@ -517,6 +517,9 @@
   height: 100%;
   border-radius: 2px;
   overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--bg3);
 }
 
 .interaction-item__reference {
@@ -625,6 +628,24 @@
 
 .love-item__info {
   flex: 1;
+}
+
+.love-item__cover {
+  flex-shrink: 0;
+  width: 60px;
+  height: 38px;
+  margin-left: 16px;
+  border-radius: 2px;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--bg3);
+}
+
+.at-layout > .message-divider,
+.reply-layout > .message-divider,
+.love-layout > .message-divider,
+.system-list > .message-divider {
+  padding: 12px 0;
 }
 
 .love-item__title {

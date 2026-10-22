@@ -7,37 +7,46 @@
             <div class="reply-empty" v-if="loading"><MessageLoading /></div>
             <div class="reply-empty" v-else-if="error">加载失败，<span class="btn" @click="load">点击重试</span></div>
             <div class="reply-empty empty" v-else-if="list.length === 0"><MessageEmpty /></div>
-            <div class="interaction-item" v-for="item in list" :key="item.id"
-                :class="{ unread: !item.isRead }" @click="openTarget(item)">
-                <div class="interaction-item__left">
-                    <div class="interaction-item__avatar">
-                        <div class="message-user-avatar"
-                            :style="`background-image: url('${item.userAvatar || defaultAvatar}');`"></div>
+            <template v-for="(item, idx) in list" :key="item.id">
+                <MessageDivider v-if="idx === dividerIndex" />
+                <div class="interaction-item"
+                    :class="{ unread: !item.isRead }" @click="openTarget(item)">
+                    <div class="interaction-item__left">
+                        <div class="interaction-item__avatar">
+                            <div class="message-user-avatar"
+                                :style="`background-image: url('${item.userAvatar || defaultAvatar}');`"></div>
+                        </div>
                     </div>
-                </div>
-                <div class="interaction-item__right">
-                    <div class="interaction-item__content">
-                        <div class="interaction-item__title">
-                            <a class="interaction-item__uname" :href="`/space/${item.senderId}`" target="_blank"
-                                @click.stop>{{ item.username || '用户' }}</a>
-                            <span class="interaction-item__action">{{ item.actionText || '回复了我的评论' }}</span>
-                        </div>
-                        <div class="interaction-item__msg">{{ stripActionText(item.content) }}</div>
-                        <div class="interaction-item__reference" v-if="item.articleId">
-                            查看专栏{{ item.articleTitle ? `《${item.articleTitle}》` : '' }} &gt;
-                        </div>
-                        <div class="interaction-item__reference" v-else-if="item.manuscriptId">
-                            查看原视频 &gt;
-                        </div>
-                        <div class="interaction-item__metadata">
-                            <span class="interaction-item__time">{{ formatTime(item.createdAt) }}</span>
-                            <div class="interaction-item__btn invisible" @click.stop="removeItem(item)">
-                                <span>删除该通知</span>
+                    <div class="interaction-item__right">
+                        <div class="interaction-item__content">
+                            <a class="interaction-item__cover" v-if="item.articleCover || item.videoCover"
+                                :href="item.articleId ? `/read/cv${item.articleId}` : `/video/${item.manuscriptId}`"
+                                target="_blank" @click.stop>
+                                <div class="b-img"
+                                    :style="`background-image: url('${item.articleCover || item.videoCover}');`"></div>
+                            </a>
+                            <div class="interaction-item__title">
+                                <a class="interaction-item__uname" :href="`/space/${item.senderId}`" target="_blank"
+                                    @click.stop>{{ item.username || '用户' }}</a>
+                                <span class="interaction-item__action">{{ item.actionText || '回复了我的评论' }}</span>
+                            </div>
+                            <div class="interaction-item__msg">{{ stripActionText(item.content) }}</div>
+                            <div class="interaction-item__reference" v-if="item.articleId">
+                                查看专栏{{ item.articleTitle ? `《${item.articleTitle}》` : '' }} &gt;
+                            </div>
+                            <div class="interaction-item__reference" v-else-if="item.manuscriptId">
+                                查看原视频 &gt;
+                            </div>
+                            <div class="interaction-item__metadata">
+                                <span class="interaction-item__time">{{ formatTime(item.createdAt) }}</span>
+                                <div class="interaction-item__btn invisible" @click.stop="removeItem(item)">
+                                    <span>删除该通知</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </template>
         </div>
     </div>
 </template>
@@ -45,6 +54,7 @@
 <script lang="ts">
 import MessageLoading from './MessageLoading.vue';
 import MessageEmpty from './MessageEmpty.vue';
+import MessageDivider from './MessageDivider.vue';
 import { messageApi } from '@/api/message.ts';
 import { handleDateTime } from '@/shared/utils/utils';
 
@@ -52,12 +62,13 @@ const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726
 
 export default {
     name: 'ReplyList',
-    components: { MessageLoading, MessageEmpty },
+    components: { MessageLoading, MessageEmpty, MessageDivider },
     data() {
         return {
             list: [] as any[],
             loading: false,
             error: false,
+            dividerIndex: -1,
             defaultAvatar,
         };
     },
@@ -67,6 +78,10 @@ export default {
         },
     },
     methods: {
+        updateDivider() {
+            const idx = this.list.findIndex((i: any) => i.isRead);
+            this.dividerIndex = idx > 0 ? idx : -1;
+        },
         escapeHtml(s: string) {
             return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         },
@@ -102,6 +117,7 @@ export default {
                 const res = await messageApi.getReplies({});
                 if (res && res.code === 200 && Array.isArray(res.data)) {
                     this.list = res.data;
+                    this.updateDivider();
                 } else {
                     throw new Error('bad response');
                 }
