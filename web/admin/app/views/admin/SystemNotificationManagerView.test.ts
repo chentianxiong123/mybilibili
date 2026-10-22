@@ -68,7 +68,7 @@ describe('SystemNotificationManagerView.vue', () => {
     const w = makeWrapper()
     w.vm.form.content = '  系统维护通知  '
     await w.vm.handleBroadcast()
-    expect(broadcast).toHaveBeenCalledWith({ content: '系统维护通知' })
+    expect(broadcast).toHaveBeenCalledWith({ title: '', content: '系统维护通知' })
     expect(messageMocks.success).toHaveBeenCalledWith('全站系统通知发送成功')
     expect(w.vm.form.content).toBe('')
     expect(w.vm.sending).toBe(false)
