@@ -187,7 +187,7 @@ async function publish() {
     if (res.code === 200) {
       const id = res.data?.id || currentId.value
       await articleApi.view(id).catch(() => {})
-      ElMessage.success('发布成功')
+      ElMessage.success('已提交审核，审核通过后将在专栏区展示')
       router.push(`/read/cv${id}`)
     } else {
       ElMessage.error(res.message || '发布失败')

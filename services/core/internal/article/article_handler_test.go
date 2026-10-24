@@ -50,6 +50,20 @@ var articleRowCols = []string{
 
 func articleRows() *sqlmock.Rows { return sqlmock.NewRows(articleRowCols) }
 
+var articleReviewRowCols = append(append([]string{}, articleRowCols...), "review_status", "review_reason")
+
+func articleReviewRows() *sqlmock.Rows { return sqlmock.NewRows(articleReviewRowCols) }
+
+func addArticleReviewRow(rows *sqlmock.Rows, id, uid int64, status, visibility, reviewStatus int, reason string) *sqlmock.Rows {
+	now := time.Now()
+	return rows.AddRow(
+		id, uid, "标题", "<p>正文</p>", "正文", "", "", "",
+		status, visibility, 1, 0, 1, 0, 2, 10, 3, 1, 0, 0, 0,
+		nil, now, now, now, "小明", "/a.png",
+		reviewStatus, reason,
+	)
+}
+
 func addArticleRow(rows *sqlmock.Rows, id, uid int64, status, visibility int) *sqlmock.Rows {
 	now := time.Now()
 	return rows.AddRow(
@@ -105,7 +119,7 @@ func TestHelpers(t *testing.T) {
 
 func TestHandleFeed_OK(t *testing.T) {
 	h, mock := newTestHandler(t)
-	mock.ExpectQuery(`FROM articles a LEFT JOIN users u ON u.id = a.user_id WHERE a.status = 1 AND a.visibility = 1 ORDER BY`).
+	mock.ExpectQuery(`FROM articles a LEFT JOIN users u ON u.id = a.user_id WHERE a.status = 1 AND a.review_status = 1 AND a.visibility = 1 ORDER BY`).
 		WithArgs(int64(20), int64(0)).
 		WillReturnRows(addArticleRow(articleRows(), 2, 4, 1, 1))
 
@@ -163,7 +177,7 @@ func TestHandleMine_StatusFilter(t *testing.T) {
 	h, mock := newTestHandler(t)
 	mock.ExpectQuery(`FROM articles a LEFT JOIN users u ON u.id = a.user_id WHERE a.user_id = \$1 AND a.status = 1 ORDER BY`).
 		WithArgs(int64(7)).
-		WillReturnRows(addArticleRow(articleRows(), 4, 7, 1, 1))
+		WillReturnRows(addArticleReviewRow(articleReviewRows(), 4, 7, 1, 1, 1, ""))
 
 	w := do(t, h, h.handleMine, http.MethodGet, "/api/v1/article/mine?status=1", 7, "")
 	require.Equal(t, http.StatusOK, w.Code)
@@ -183,7 +197,7 @@ func TestHandleUserArticles_InvalidUID(t *testing.T) {
 
 func TestHandleUserArticles_OK(t *testing.T) {
 	h, mock := newTestHandler(t)
-	mock.ExpectQuery(`WHERE a.user_id = \$1 AND a.status = 1 AND \(a.visibility = 1 OR \$2 = a.user_id\)`).
+	mock.ExpectQuery(`WHERE a.user_id = \$1 AND a.status = 1 AND a.review_status = 1 AND \(a.visibility = 1 OR \$2 = a.user_id\)`).
 		WithArgs(int64(9), int64(5), int64(20), int64(0)).
 		WillReturnRows(addArticleRow(articleRows(), 5, 9, 1, 1))
 
@@ -236,8 +250,8 @@ func TestHandleSave_PublishValidation(t *testing.T) {
 
 func TestHandleSave_CreateDraft(t *testing.T) {
 	h, mock := newTestHandler(t)
-	mock.ExpectQuery(`INSERT INTO articles \(user_id, title, content, summary, cover_url, topics, collection_name, status, visibility, comment_enabled, featured_comment, is_original, ai_declaration, word_count, publish_time\) VALUES`).
-		WithArgs(int64(7), "hi", "<p>hello</p>", "hello", "", "", "", int64(0), int64(1), int64(1), int64(0), int64(0), int64(0), int64(5), nil).
+	mock.ExpectQuery(`INSERT INTO articles \(user_id, title, content, summary, cover_url, topics, collection_name, status, visibility, comment_enabled, featured_comment, is_original, ai_declaration, word_count, review_status, publish_time\) VALUES`).
+		WithArgs(int64(7), "hi", "<p>hello</p>", "hello", "", "", "", int64(0), int64(1), int64(1), int64(0), int64(0), int64(0), int64(5), int64(0), nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(42))
 
 	w := do(t, h, h.handleSave, http.MethodPost, "/api/v1/article/save", 7, `{"title":"  hi  ","content":"<p>hello</p>"}`)
@@ -254,8 +268,8 @@ func TestHandleSave_CreateDraft(t *testing.T) {
 
 func TestHandleSave_CreatePublish(t *testing.T) {
 	h, mock := newTestHandler(t)
-	mock.ExpectQuery(`INSERT INTO articles \(user_id, title, content, summary, cover_url, topics, collection_name, status, visibility, comment_enabled, featured_comment, is_original, ai_declaration, word_count, publish_time\) VALUES`).
-		WithArgs(int64(7), "t", "<p>abc</p>", "abc", "", "", "", int64(1), int64(0), int64(0), int64(0), int64(1), int64(1), int64(3), sqlmock.AnyArg()).
+	mock.ExpectQuery(`INSERT INTO articles \(user_id, title, content, summary, cover_url, topics, collection_name, status, visibility, comment_enabled, featured_comment, is_original, ai_declaration, word_count, review_status, publish_time\) VALUES`).
+		WithArgs(int64(7), "t", "<p>abc</p>", "abc", "", "", "", int64(1), int64(0), int64(0), int64(0), int64(1), int64(1), int64(3), int64(0), nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(43))
 
 	w := do(t, h, h.handleSave, http.MethodPost, "/api/v1/article/save", 7,
@@ -298,7 +312,7 @@ func TestHandleSave_UpdatePublish(t *testing.T) {
 	mock.ExpectQuery(`SELECT user_id FROM articles WHERE id = \$1`).
 		WithArgs(int64(5)).
 		WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(7))
-	mock.ExpectExec(`UPDATE articles SET title=\$1, content=\$2, summary=\$3.*word_count=\$12, status = 1, publish_time = COALESCE\(publish_time, NOW\(\)\), updated_at=NOW\(\) WHERE id=\$13 AND user_id=\$14`).
+	mock.ExpectExec(`UPDATE articles SET title=\$1, content=\$2, summary=\$3.*word_count=\$12, status = 1,.*review_status = CASE WHEN review_status = 1 THEN 1 ELSE 0 END.*WHERE id=\$13 AND user_id=\$14`).
 		WithArgs("t", "<p>body</p>", "body", "", "", "", int64(1), int64(1), int64(0), int64(0), int64(0), int64(4), int64(5), int64(7)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -318,7 +332,7 @@ func TestHandleArticle_GetHiddenFromOther(t *testing.T) {
 	h, mock := newTestHandler(t)
 	mock.ExpectQuery(`FROM articles a LEFT JOIN users u ON u.id = a.user_id WHERE a.id = \$1`).
 		WithArgs(int64(5)).
-		WillReturnRows(addArticleRow(articleRows(), 5, 4, 0, 1))
+		WillReturnRows(addArticleReviewRow(articleReviewRows(), 5, 4, 0, 1, 0, ""))
 
 	w := do(t, h, h.handleByID, http.MethodGet, "/api/v1/article/5", 7, "")
 	assert.Equal(t, http.StatusNotFound, w.Code)
@@ -329,7 +343,7 @@ func TestHandleArticle_GetOwnerDraft(t *testing.T) {
 	h, mock := newTestHandler(t)
 	mock.ExpectQuery(`FROM articles a LEFT JOIN users u ON u.id = a.user_id WHERE a.id = \$1`).
 		WithArgs(int64(5)).
-		WillReturnRows(addArticleRow(articleRows(), 5, 4, 0, 1))
+		WillReturnRows(addArticleReviewRow(articleReviewRows(), 5, 4, 0, 1, 0, ""))
 	mock.ExpectQuery(`SELECT EXISTS\(SELECT 1 FROM user_interactions WHERE user_id=\$1 AND target_type='article' AND target_id=\$2 AND interaction_type='like'\), EXISTS`).
 		WithArgs(int64(4), int64(5)).
 		WillReturnRows(sqlmock.NewRows([]string{"liked", "favorited"}).AddRow(true, false))
@@ -352,7 +366,7 @@ func TestHandleArticle_GetAnonymousPublic(t *testing.T) {
 	h, mock := newTestHandler(t)
 	mock.ExpectQuery(`FROM articles a LEFT JOIN users u ON u.id = a.user_id WHERE a.id = \$1`).
 		WithArgs(int64(5)).
-		WillReturnRows(addArticleRow(articleRows(), 5, 4, 1, 1))
+		WillReturnRows(addArticleReviewRow(articleReviewRows(), 5, 4, 1, 1, 1, ""))
 
 	w := do(t, h, h.handleByID, http.MethodGet, "/api/v1/article/5", 0, "")
 	require.Equal(t, http.StatusOK, w.Code)

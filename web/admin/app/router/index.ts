@@ -64,6 +64,12 @@ const router = createRouter({
       meta: { title: '违禁词与安全设置 - 管理后台', requiresAuth: true, permission: 'comment:manage' }
     },
     {
+      path: '/article-review',
+      name: 'articleReview',
+      component: () => import('~/views/admin/ArticleReviewView.vue'),
+      meta: { title: '专栏审核 - 管理后台', requiresAuth: true, permission: 'review:manage' }
+    },
+    {
       path: '/content-review',
       name: 'contentReview',
       component: () => import('~/views/admin/ContentReviewView.vue'),

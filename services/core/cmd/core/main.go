@@ -362,6 +362,8 @@ func main() {
 
 	articleH := article.NewHandler(db)
 	articleH.SetNotifier(msgDanmakuClient)
+	articleAdminH := article.NewAdminHandler(db)
+	articleAdminH.SetPermChecker(adminH)
 
 	// 吊销名单 / 刷新令牌防重放：Redis 抖动时降级为进程内，不影响可用性
 	auth.LogSetupWarning(auth.SetupStoresFromEnv())
@@ -373,7 +375,7 @@ func main() {
 		userAdminH, manuscriptAdminH, videoAdminH, commentAdminH, moderationAdminH,
 		adminContentH,
 		videoProcessAdminH,
-		articleH,
+		articleH, articleAdminH,
 		social.NewSearchHistoryHandler(cacheStore, auth.NewJWT(jwtSecret)))
 
 	lis, err := net.Listen("tcp", grpcAddr)

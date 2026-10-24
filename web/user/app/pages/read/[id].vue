@@ -35,6 +35,14 @@
         <!-- 标题 -->
         <h1 class="opus-module-title">{{ article.title || '无标题' }}</h1>
 
+        <!-- 审核状态（仅作者可见） -->
+        <div v-if="article.review_status === 0" class="opus-review-tip">
+          该专栏正在审核中，审核通过后才会在专栏区展示（当前仅自己可见）
+        </div>
+        <div v-else-if="article.review_status === 2" class="opus-review-tip opus-review-tip--reject">
+          审核未通过：{{ article.review_reason || '内容不符合规范' }}
+        </div>
+
         <!-- 作者 -->
         <div class="opus-module-author">
           <img v-if="article.author_avatar" :src="article.author_avatar" alt="" class="opus-avatar" />
@@ -651,4 +659,6 @@ watch(() => route.params.id, load)
 .mention-pop__empty { text-align: center; color: #9499a0; font-size: 12px; padding: 14px 0; }
 .comment-replies { margin-top: 12px; background: #f6f7f8; border-radius: 6px; padding: 8px 12px; }
 .comment-reply { display: flex; gap: 10px; padding: 8px 0; }
+.opus-review-tip { margin: 12px 0 0; padding: 10px 14px; border-radius: 6px; background: #fff7e6; color: #ad6800; font-size: 13px; }
+.opus-review-tip--reject { background: #fff1f0; color: #cf1322; }
 </style>

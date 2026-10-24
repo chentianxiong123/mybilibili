@@ -7,6 +7,7 @@ export const permissionRouteOrder = [
   { path: '/recommend-config', permission: 'search:manage' },
   { path: '/audit-logs', permission: 'audit:manage' },
   { path: '/manuscripts', permission: 'review:manage' },
+  { path: '/article-review', permission: 'review:manage' },
   { path: '/content-review', permission: 'review:manage' },
   { path: '/prohibited-words', permission: 'comment:manage' },
   { path: '/ai-usage', permission: 'ai:manage' },

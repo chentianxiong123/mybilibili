@@ -40,6 +40,7 @@ const allMenuItems = [
     type: 'group', icon: 'DocumentChecked', title: '审核治理',
     children: [
       { path: '/manuscripts', icon: 'Document', title: '稿件管理', permission: 'review:manage' },
+      { path: '/article-review', icon: 'Document', title: '专栏审核', permission: 'review:manage' },
       { path: '/content-review', icon: 'DocumentChecked', title: '内容审核中心', permission: 'review:manage' },
       { path: '/prohibited-words', icon: 'Warning', title: '违禁词与安全设置', permission: 'comment:manage' },
       { path: '/system-notification', icon: 'Message', title: '系统通知', permission: 'message:manage' }

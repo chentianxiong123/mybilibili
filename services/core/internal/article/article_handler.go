@@ -59,6 +59,8 @@ type articleRow struct {
 	Topics          string `json:"topics"`
 	CollectionName  string `json:"collection_name"`
 	Status          int    `json:"status"`
+	ReviewStatus    int    `json:"review_status"`
+	ReviewReason    string `json:"review_reason"`
 	Visibility      int    `json:"visibility"`
 	CommentEnabled  int    `json:"comment_enabled"`
 	FeaturedComment int    `json:"featured_comment"`
@@ -123,24 +125,25 @@ const articleCols = `a.id, a.user_id, a.title, a.content, a.summary, a.cover_url
 	a.created_at, a.updated_at, COALESCE(u.nickname,''), COALESCE(u.avatar,'')`
 
 func scanArticle(rows interface{ Scan(...any) error }, withContent bool) (articleRow, error) {
+	return scanArticleRow(rows, withContent, false)
+}
+
+// scanArticleRow 可选读取附加的 review_status / review_reason 两列（稿件列表与详情用）。
+func scanArticleRow(rows interface{ Scan(...any) error }, withContent, withReview bool) (articleRow, error) {
 	var a articleRow
 	var content string
-	var scheduled sql.NullTime
-	var publish, created, updated sql.NullTime
-	var err error
+	var scheduled, publish, created, updated sql.NullTime
+	dest := []any{&a.ID, &a.UserID, &a.Title, &content, &a.Summary, &a.CoverURL, &a.Topics,
+		&a.CollectionName, &a.Status, &a.Visibility, &a.CommentEnabled, &a.FeaturedComment,
+		&a.IsOriginal, &a.AIDeclaration, &a.WordCount, &a.ViewCount, &a.LikeCount,
+		&a.FavoriteCount, &a.CommentCount, &a.CoinCount, &a.ShareCount, &scheduled, &publish,
+		&created, &updated, &a.AuthorNickname, &a.AuthorAvatar}
+	if withReview {
+		dest = append(dest, &a.ReviewStatus, &a.ReviewReason)
+	}
+	err := rows.Scan(dest...)
 	if withContent {
-		err = rows.Scan(&a.ID, &a.UserID, &a.Title, &content, &a.Summary, &a.CoverURL, &a.Topics,
-			&a.CollectionName, &a.Status, &a.Visibility, &a.CommentEnabled, &a.FeaturedComment,
-			&a.IsOriginal, &a.AIDeclaration, &a.WordCount, &a.ViewCount, &a.LikeCount,
-			&a.FavoriteCount, &a.CommentCount, &a.CoinCount, &a.ShareCount, &scheduled, &publish,
-			&created, &updated, &a.AuthorNickname, &a.AuthorAvatar)
 		a.Content = content
-	} else {
-		err = rows.Scan(&a.ID, &a.UserID, &a.Title, &content, &a.Summary, &a.CoverURL, &a.Topics,
-			&a.CollectionName, &a.Status, &a.Visibility, &a.CommentEnabled, &a.FeaturedComment,
-			&a.IsOriginal, &a.AIDeclaration, &a.WordCount, &a.ViewCount, &a.LikeCount,
-			&a.FavoriteCount, &a.CommentCount, &a.CoinCount, &a.ShareCount, &scheduled, &publish,
-			&created, &updated, &a.AuthorNickname, &a.AuthorAvatar)
 	}
 	a.PublishTime = fmtTime(publish)
 	a.CreatedAt = fmtTime(created)
@@ -185,14 +188,15 @@ func (h *Handler) handleMine(w http.ResponseWriter, r *http.Request) {
 		clause = "a.status = 1"
 	}
 	rows, err := h.db.QueryContext(r.Context(),
-		`SELECT `+articleCols+` FROM articles a LEFT JOIN users u ON u.id = a.user_id
+		`SELECT `+articleCols+`, COALESCE(a.review_status,0), COALESCE(a.review_reason,'')
+		 FROM articles a LEFT JOIN users u ON u.id = a.user_id
 		 WHERE a.user_id = $1 AND `+clause+` ORDER BY a.updated_at DESC`, args...)
 	if err != nil {
 		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "查询失败", "data": nil})
 		return
 	}
 	defer rows.Close()
-	httputil.WriteOK(w, h.collect(rows, false))
+	httputil.WriteOK(w, h.collectReview(rows))
 }
 
 // GET /api/v1/article/user/{uid}?page&size — 某用户已发布且公开的专栏
@@ -207,7 +211,8 @@ func (h *Handler) handleUserArticles(w http.ResponseWriter, r *http.Request) {
 	page, size := httputil.ParsePageParams(r)
 	rows, err := h.db.QueryContext(r.Context(),
 		`SELECT `+articleCols+` FROM articles a LEFT JOIN users u ON u.id = a.user_id
-		 WHERE a.user_id = $1 AND a.status = 1 AND (a.visibility = 1 OR $2 = a.user_id)
+		 WHERE a.user_id = $1 AND a.status = 1 AND a.review_status = 1
+		   AND (a.visibility = 1 OR $2 = a.user_id)
 		 ORDER BY a.publish_time DESC NULLS LAST, a.id DESC LIMIT $3 OFFSET $4`,
 		uid, viewer, size, (page-1)*size)
 	if err != nil {
@@ -223,7 +228,7 @@ func (h *Handler) handleFeed(w http.ResponseWriter, r *http.Request) {
 	page, size := httputil.ParsePageParams(r)
 	rows, err := h.db.QueryContext(r.Context(),
 		`SELECT `+articleCols+` FROM articles a LEFT JOIN users u ON u.id = a.user_id
-		 WHERE a.status = 1 AND a.visibility = 1
+		 WHERE a.status = 1 AND a.review_status = 1 AND a.visibility = 1
 		 ORDER BY a.publish_time DESC NULLS LAST, a.id DESC LIMIT $1 OFFSET $2`,
 		size, (page-1)*size)
 	if err != nil {
@@ -232,6 +237,19 @@ func (h *Handler) handleFeed(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 	httputil.WriteOK(w, map[string]any{"list": h.collect(rows, false), "page": page, "size": size})
+}
+
+// collectReview 读取带 review_status/review_reason 两列的结果集。
+func (h *Handler) collectReview(rows *sql.Rows) []articleRow {
+	list := []articleRow{}
+	for rows.Next() {
+		a, err := scanArticleRow(rows, false, true)
+		if err != nil {
+			continue
+		}
+		list = append(list, a)
+	}
+	return list
 }
 
 func (h *Handler) collect(rows *sql.Rows, withContent bool) []articleRow {
@@ -327,7 +345,10 @@ func (h *Handler) handleSave(w http.ResponseWriter, r *http.Request) {
 		}
 		setPublish := ""
 		if req.Publish {
-			setPublish = ", status = 1, publish_time = COALESCE(publish_time, NOW())"
+			// 首次发布/被拒后重投进入待审；已过审的旧文编辑不重复送审
+			setPublish = `, status = 1,
+				review_status = CASE WHEN review_status = 1 THEN 1 ELSE 0 END,
+				review_reason = CASE WHEN review_status = 1 THEN review_reason ELSE '' END`
 		}
 		_, err := h.db.ExecContext(r.Context(),
 			`UPDATE articles SET title=$1, content=$2, summary=$3, cover_url=$4, topics=$5,
@@ -345,19 +366,21 @@ func (h *Handler) handleSave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status := 0
+	reviewStatus := 0
 	var publishTime any = nil
 	if req.Publish {
 		status = 1
-		publishTime = time.Now()
+		// 发布即进入待审，审核通过后才写入 publish_time 并对外可见
+		reviewStatus = 0
 	}
 	var id int64
 	err := h.db.QueryRowContext(r.Context(),
 		`INSERT INTO articles (user_id, title, content, summary, cover_url, topics, collection_name,
 			status, visibility, comment_enabled, featured_comment, is_original, ai_declaration,
-			word_count, publish_time)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
+			word_count, review_status, publish_time)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id`,
 		uid, title, req.Content, summary, req.CoverURL, req.Topics, req.CollectionName,
-		status, visibility, commentEnabled, featured, isOriginal, aiDecl, wordCount, publishTime).Scan(&id)
+		status, visibility, commentEnabled, featured, isOriginal, aiDecl, wordCount, reviewStatus, publishTime).Scan(&id)
 	if err != nil {
 		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": "创建失败", "data": nil})
 		return
@@ -420,16 +443,21 @@ func (h *Handler) handleByID(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		viewer := httputil.GetUserIDFromHeader(r)
 		row := h.db.QueryRowContext(r.Context(),
-			`SELECT `+articleCols+` FROM articles a LEFT JOIN users u ON u.id = a.user_id WHERE a.id = $1`, id)
-		a, err := scanArticle(row, true)
+			`SELECT `+articleCols+`, COALESCE(a.review_status,0), COALESCE(a.review_reason,'')
+			 FROM articles a LEFT JOIN users u ON u.id = a.user_id WHERE a.id = $1`, id)
+		a, err := scanArticleRow(row, true, true)
 		if err != nil {
 			httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "专栏不存在", "data": nil})
 			return
 		}
 		isOwner := viewer != 0 && viewer == a.UserID
-		if !isOwner && (a.Status != 1 || a.Visibility != 1) {
+		if !isOwner && (a.Status != 1 || a.Visibility != 1 || a.ReviewStatus != 1) {
 			httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "专栏不存在或无权查看", "data": nil})
 			return
+		}
+		if !isOwner {
+			// 拒绝原因只对作者可见，避免泄露审核信息
+			a.ReviewReason = ""
 		}
 		if viewer != 0 {
 			_ = h.db.QueryRowContext(r.Context(),
