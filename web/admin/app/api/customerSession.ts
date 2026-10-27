@@ -11,24 +11,24 @@ export const getPendingSessions = () => {
 // 获取会话消息历史
 export const getSessionMessages = (sessionId) => {
   return request({
-    url: `/ai/admin/customer/sessions/${sessionId}/messages`,
+    url: `/ai/customer/${sessionId}/messages`,
     method: 'get'
   })
 }
 
 // 客服发送消息
-export const sendReply = (sessionId, adminId, content) => {
+export const sendReply = (sessionId, content) => {
   return request({
-    url: `/ai/admin/customer/sessions/${sessionId}/reply`,
+    url: `/ai/customer/${sessionId}/reply`,
     method: 'post',
-    data: { adminId, content }
+    data: { content }
   })
 }
 
 // 标记会话为已处理
 export const resolveSession = (sessionId) => {
   return request({
-    url: `/ai/admin/customer/sessions/${sessionId}/resolve`,
+    url: `/ai/customer/${sessionId}/resolve`,
     method: 'post'
   })
 }

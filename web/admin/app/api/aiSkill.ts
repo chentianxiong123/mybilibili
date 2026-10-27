@@ -17,14 +17,15 @@ export function getAiSkills() {
 
 export function getAiSkillsByType(type) {
   return request({
-    url: `/ai/admin/skills/type/${type}`,
-    method: 'get'
+    url: '/ai/skills',
+    method: 'get',
+    params: { type }
   })
 }
 
 export function getAiSkill(id) {
   return request({
-    url: `/ai/admin/skills/${id}`,
+    url: `/ai/skills/${id}`,
     method: 'get'
   })
 }
@@ -39,7 +40,7 @@ export function createAiSkill(data) {
 
 export function updateAiSkill(id, data) {
   return request({
-    url: `/ai/admin/skills/${id}`,
+    url: `/ai/skills/${id}`,
     method: 'put',
     data: toSnake(data)
   })
@@ -47,14 +48,14 @@ export function updateAiSkill(id, data) {
 
 export function deleteAiSkill(id) {
   return request({
-    url: `/ai/admin/skills/${id}`,
+    url: `/ai/skills/${id}`,
     method: 'delete'
   })
 }
 
 export function toggleAiSkill(id) {
   return request({
-    url: `/ai/admin/skills/${id}/toggle`,
+    url: `/ai/skills/${id}/toggle`,
     method: 'put'
   })
 }

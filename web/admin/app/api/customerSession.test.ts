@@ -36,30 +36,30 @@ describe('customerSession api', () => {
     expect(requestMock).toHaveBeenCalledWith({ url: '/ai/customer/sessions', method: 'get' })
   })
 
-  it('getSessionMessages GET /ai/admin/customer/sessions/:id/messages', async () => {
+  it('getSessionMessages GET /ai/customer/:id/messages', async () => {
     requestMock.mockResolvedValue({ code: 200, data: [] })
     await getSessionMessages(7)
     expect(requestMock).toHaveBeenCalledWith({
-      url: '/ai/admin/customer/sessions/7/messages',
+      url: '/ai/customer/7/messages',
       method: 'get',
     })
   })
 
-  it('sendReply POST /ai/admin/customer/sessions/:id/reply 透传 adminId/content', async () => {
+  it('sendReply POST /ai/customer/:id/reply 透传 content', async () => {
     requestMock.mockResolvedValue({ code: 200, data: null })
-    await sendReply(7, 100, '你好')
+    await sendReply(7, '你好')
     expect(requestMock).toHaveBeenCalledWith({
-      url: '/ai/admin/customer/sessions/7/reply',
+      url: '/ai/customer/7/reply',
       method: 'post',
-      data: { adminId: 100, content: '你好' },
+      data: { content: '你好' },
     })
   })
 
-  it('resolveSession POST /ai/admin/customer/sessions/:id/resolve', async () => {
+  it('resolveSession POST /ai/customer/:id/resolve', async () => {
     requestMock.mockResolvedValue({ code: 200, data: null })
     await resolveSession(8)
     expect(requestMock).toHaveBeenCalledWith({
-      url: '/ai/admin/customer/sessions/8/resolve',
+      url: '/ai/customer/8/resolve',
       method: 'post',
     })
   })

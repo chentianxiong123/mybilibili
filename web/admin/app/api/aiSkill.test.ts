@@ -38,19 +38,20 @@ describe('aiSkill api', () => {
     expect(requestMock).toHaveBeenCalledWith({ url: '/ai/skills', method: 'get' })
   })
 
-  it('getAiSkillsByType GET /ai/admin/skills/type/:type', async () => {
+  it('getAiSkillsByType GET /ai/skills 带 type 参数', async () => {
     requestMock.mockResolvedValue({ code: 200, data: [] })
     await getAiSkillsByType('customer_service')
     expect(requestMock).toHaveBeenCalledWith({
-      url: '/ai/admin/skills/type/customer_service',
+      url: '/ai/skills',
       method: 'get',
+      params: { type: 'customer_service' },
     })
   })
 
-  it('getAiSkill GET /ai/admin/skills/:id', async () => {
+  it('getAiSkill GET /ai/skills/:id', async () => {
     requestMock.mockResolvedValue({ code: 200, data: { id: 3 } })
     await getAiSkill(3)
-    expect(requestMock).toHaveBeenCalledWith({ url: '/ai/admin/skills/3', method: 'get' })
+    expect(requestMock).toHaveBeenCalledWith({ url: '/ai/skills/3', method: 'get' })
   })
 
   it('createAiSkill POST /ai/skills 字段 camelCase 转 snake_case', async () => {
@@ -63,30 +64,30 @@ describe('aiSkill api', () => {
     })
   })
 
-  it('updateAiSkill PUT /ai/admin/skills/:id 字段转 snake_case', async () => {
+  it('updateAiSkill PUT /ai/skills/:id 字段转 snake_case', async () => {
     requestMock.mockResolvedValue({ code: 200, data: null })
     await updateAiSkill(4, { skillName: 'y' })
     expect(requestMock).toHaveBeenCalledWith({
-      url: '/ai/admin/skills/4',
+      url: '/ai/skills/4',
       method: 'put',
       data: { skill_name: 'y' },
     })
   })
 
-  it('deleteAiSkill DELETE /ai/admin/skills/:id', async () => {
+  it('deleteAiSkill DELETE /ai/skills/:id', async () => {
     requestMock.mockResolvedValue({ code: 200, data: null })
     await deleteAiSkill(8)
     expect(requestMock).toHaveBeenCalledWith({
-      url: '/ai/admin/skills/8',
+      url: '/ai/skills/8',
       method: 'delete',
     })
   })
 
-  it('toggleAiSkill PUT /ai/admin/skills/:id/toggle', async () => {
+  it('toggleAiSkill PUT /ai/skills/:id/toggle', async () => {
     requestMock.mockResolvedValue({ code: 200, data: null })
     await toggleAiSkill(2)
     expect(requestMock).toHaveBeenCalledWith({
-      url: '/ai/admin/skills/2/toggle',
+      url: '/ai/skills/2/toggle',
       method: 'put',
     })
   })

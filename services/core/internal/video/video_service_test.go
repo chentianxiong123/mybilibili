@@ -181,6 +181,7 @@ func TestService_Statistics(t *testing.T) {
 	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM users`).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(5))
 	mock.ExpectQuery(`SELECT COALESCE\(SUM\(view_count\),0\) FROM manuscripts`).WillReturnRows(sqlmock.NewRows([]string{"sum"}).AddRow(500))
 	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM manuscripts WHERE status`).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM videos`).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(30))
 
 	stats, err := svc.Statistics(context.Background())
 	require.NoError(t, err)
@@ -188,6 +189,7 @@ func TestService_Statistics(t *testing.T) {
 	assert.Equal(t, int64(5), stats["user_count"])
 	assert.Equal(t, int64(500), stats["view_count"])
 	assert.Equal(t, int64(2), stats["pending_count"])
+	assert.Equal(t, int64(30), stats["video_count"])
 }
 
 func TestService_ListUserManuscriptIDs(t *testing.T) {

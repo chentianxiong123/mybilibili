@@ -273,14 +273,15 @@ func (r *Repository) DeleteBanner(ctx context.Context, id int64) error {
 }
 
 func (r *Repository) GetStatistics(ctx context.Context) (map[string]interface{}, error) {
-	var msCount, userCount, viewCount, pendingCount int64
+	var msCount, userCount, viewCount, pendingCount, videoCount int64
 	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscripts`).Scan(&msCount)
 	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&userCount)
 	r.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(view_count),0) FROM manuscripts`).Scan(&viewCount)
 	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscripts WHERE status = 0`).Scan(&pendingCount)
+	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM videos`).Scan(&videoCount)
 	return map[string]interface{}{
 		"manuscript_count": msCount, "user_count": userCount,
-		"view_count": viewCount, "pending_count": pendingCount,
+		"view_count": viewCount, "pending_count": pendingCount, "video_count": videoCount,
 	}, nil
 }
 

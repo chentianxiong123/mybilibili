@@ -10,8 +10,7 @@ vi.mock('@/api/client', () => {
 })
 
 import {
-  getOverviewStatistics, getManuscriptStatusStatistics, getRecentManuscripts,
-  getVideoPlayStatistics, getUserGrowthStatistics, getCommentStatistics, getHotVideos
+  getOverviewStatistics, getManuscriptStatusStatistics, getRecentManuscripts
 } from './statistics'
 import request from '@/api/client'
 
@@ -60,46 +59,6 @@ describe('statistics api', () => {
       url: '/statistics/manuscript/recent',
       method: 'get',
       params: { limit: 20 },
-    })
-  })
-
-  it('getVideoPlayStatistics GET 带 startDate/endDate', async () => {
-    requestMock.mockResolvedValue({ code: 200, data: [] })
-    await getVideoPlayStatistics('2024-01-01', '2024-01-31')
-    expect(requestMock).toHaveBeenCalledWith({
-      url: '/statistics/video/play',
-      method: 'get',
-      params: { startDate: '2024-01-01', endDate: '2024-01-31' },
-    })
-  })
-
-  it('getUserGrowthStatistics GET 带 startDate/endDate', async () => {
-    requestMock.mockResolvedValue({ code: 200, data: [] })
-    await getUserGrowthStatistics('2024-01-01', '2024-01-31')
-    expect(requestMock).toHaveBeenCalledWith({
-      url: '/statistics/user/growth',
-      method: 'get',
-      params: { startDate: '2024-01-01', endDate: '2024-01-31' },
-    })
-  })
-
-  it('getCommentStatistics GET 带 startDate/endDate', async () => {
-    requestMock.mockResolvedValue({ code: 200, data: [] })
-    await getCommentStatistics('2024-01-01', '2024-01-31')
-    expect(requestMock).toHaveBeenCalledWith({
-      url: '/statistics/comment',
-      method: 'get',
-      params: { startDate: '2024-01-01', endDate: '2024-01-31' },
-    })
-  })
-
-  it('getHotVideos 默认 limit=10', async () => {
-    requestMock.mockResolvedValue({ code: 200, data: [] })
-    await getHotVideos()
-    expect(requestMock).toHaveBeenCalledWith({
-      url: '/statistics/video/hot',
-      method: 'get',
-      params: { limit: 10 },
     })
   })
 

@@ -99,6 +99,7 @@ func TestRepo_GetStatistics(t *testing.T) {
 	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM users`).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(10))
 	mock.ExpectQuery(`SELECT COALESCE\(SUM\(view_count\),0\) FROM manuscripts`).WillReturnRows(sqlmock.NewRows([]string{"sum"}).AddRow(100))
 	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM manuscripts WHERE status = 0`).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(3))
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM videos$`).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(12))
 
 	stats, err := repo.GetStatistics(context.Background())
 	require.NoError(t, err)
@@ -106,6 +107,7 @@ func TestRepo_GetStatistics(t *testing.T) {
 	assert.Equal(t, int64(10), stats["user_count"])
 	assert.Equal(t, int64(100), stats["view_count"])
 	assert.Equal(t, int64(3), stats["pending_count"])
+	assert.Equal(t, int64(12), stats["video_count"])
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

@@ -406,9 +406,6 @@ func (h *Handler) handleStatisticsByPath(w http.ResponseWriter, r *http.Request)
 			list = append(list, item)
 		}
 		writeJSON(w, list)
-	case "video/play", "user/growth", "comment", "video/hot":
-		// 前端已调用但后端暂未实现，返回空结构避免 404 报错
-		writeJSON(w, map[string]interface{}{})
 	default:
 		writeJSON(w, map[string]interface{}{})
 	}

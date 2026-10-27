@@ -19,7 +19,6 @@ const currentSession = ref(null)
 const messages = ref([])
 const messageInput = ref('')
 const sending = ref(false)
-const adminId = ref(parseInt(safeStorage.getItem('admin_user')?.id || '1'))
 
 // 轮询定时器
 let pollTimer = null
@@ -99,7 +98,7 @@ const handleSend = async () => {
   sending.value = true
 
   try {
-    const res = await sendReply(currentSession.value.sessionId, adminId.value, content)
+    const res = await sendReply(currentSession.value.sessionId, content)
     if (res.code === 200 || res.success) {
       // 乐观更新：立即显示消息
       messages.value.push({
