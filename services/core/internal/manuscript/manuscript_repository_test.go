@@ -35,6 +35,16 @@ func scanManuscriptRow(row *sqlmock.Rows) {
 		now, int64(99), now, now, "03:00", int32(180), "local")
 }
 
+var manuscriptColsWithExposure = append(append([]string{}, manuscriptCols...), "exposure_weight")
+
+func scanManuscriptRowWithExposure(row *sqlmock.Rows, exposure int64) {
+	now := time.Now()
+	row.AddRow(1, "title1", "desc1", "cover.jpg", int64(10), int64(1),
+		int64(100), int64(20), int64(5), int64(3), int64(1),
+		int64(0), int64(0), int32(3), int32(1), "ok",
+		now, int64(99), now, now, "03:00", int32(180), "local", exposure)
+}
+
 func TestFindByID(t *testing.T) {
 	repo, mock := newRepo(t)
 	ctx := context.Background()
@@ -247,13 +257,14 @@ func TestListRecommended(t *testing.T) {
 	repo, mock := newRepo(t)
 	ctx := context.Background()
 
-	rows := sqlmock.NewRows(manuscriptCols)
-	scanManuscriptRow(rows)
+	rows := sqlmock.NewRows(manuscriptColsWithExposure)
+	scanManuscriptRowWithExposure(rows, 120)
 	mock.ExpectQuery(`WITH _seed AS .+ SELECT .+ FROM manuscripts`).WillReturnRows(rows)
 
 	list, err := repo.ListRecommended(ctx, 0)
 	require.NoError(t, err)
-	assert.Len(t, list, 1)
+	require.Len(t, list, 1)
+	assert.Equal(t, int64(120), list[0].ExposureWeight)
 }
 
 func TestListRecommended_Error(t *testing.T) {
@@ -271,8 +282,8 @@ func TestListHot(t *testing.T) {
 	repo, mock := newRepo(t)
 	ctx := context.Background()
 
-	rows := sqlmock.NewRows(manuscriptCols)
-	scanManuscriptRow(rows)
+	rows := sqlmock.NewRows(manuscriptColsWithExposure)
+	scanManuscriptRowWithExposure(rows, 0)
 	mock.ExpectQuery(`WITH _seed AS .+ SELECT .+ FROM manuscripts`).WillReturnRows(rows)
 
 	list, err := repo.ListHot(ctx, 0, 0)

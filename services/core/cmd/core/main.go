@@ -30,6 +30,7 @@ import (
 	"mybilibili/core/internal/clients"
 	"mybilibili/core/internal/comment"
 	"mybilibili/core/internal/coreapi"
+	"mybilibili/core/internal/creator"
 	"mybilibili/core/internal/events"
 	"mybilibili/core/internal/favorite"
 	"mybilibili/core/internal/manuscript"
@@ -365,6 +366,9 @@ func main() {
 	articleAdminH := article.NewAdminHandler(db)
 	articleAdminH.SetPermChecker(adminH)
 
+	creatorH := creator.NewHandler(creator.NewService(creator.NewRepo(db)))
+	creatorH.SetPermChecker(adminH)
+
 	// 吊销名单 / 刷新令牌防重放：Redis 抖动时降级为进程内，不影响可用性
 	auth.LogSetupWarning(auth.SetupStoresFromEnv())
 
@@ -376,6 +380,7 @@ func main() {
 		adminContentH,
 		videoProcessAdminH,
 		articleH, articleAdminH,
+		creatorH,
 		social.NewSearchHistoryHandler(cacheStore, auth.NewJWT(jwtSecret)))
 
 	lis, err := net.Listen("tcp", grpcAddr)

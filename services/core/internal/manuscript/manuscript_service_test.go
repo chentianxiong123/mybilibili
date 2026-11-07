@@ -128,11 +128,11 @@ func TestSvcListRecommended(t *testing.T) {
 	now := time.Now()
 
 	msMock.ExpectQuery(`WITH _seed AS .+ SELECT .+ FROM manuscripts`).
-		WillReturnRows(sqlmock.NewRows(manuscriptCols).
+		WillReturnRows(sqlmock.NewRows(manuscriptColsWithExposure).
 			AddRow(1, "t", "d", "c.jpg", int64(10), int64(1),
 				int64(0), int64(0), int64(0), int64(0), int64(0),
 				int64(0), int64(0), int32(3), int32(1), "",
-				now, int64(0), now, now, "", int32(0), "local"))
+				now, int64(0), now, now, "", int32(0), "local", int64(0)))
 
 	msMock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
@@ -155,11 +155,11 @@ func TestSvcListHot(t *testing.T) {
 	now := time.Now()
 
 	msMock.ExpectQuery(`WITH _seed AS .+ SELECT .+ FROM manuscripts`).
-		WillReturnRows(sqlmock.NewRows(manuscriptCols).
+		WillReturnRows(sqlmock.NewRows(manuscriptColsWithExposure).
 			AddRow(1, "t", "d", "c.jpg", int64(10), int64(1),
 				int64(0), int64(0), int64(0), int64(0), int64(0),
 				int64(0), int64(0), int32(3), int32(1), "",
-				now, int64(0), now, now, "", int32(0), "local"))
+				now, int64(0), now, now, "", int32(0), "local", int64(0)))
 
 	msMock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))

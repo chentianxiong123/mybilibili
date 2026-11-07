@@ -218,11 +218,11 @@ func TestHTTPHandler_Recommended(t *testing.T) {
 	now := time.Now()
 
 	mock.ExpectQuery(`WITH _seed AS .+ SELECT .+ FROM manuscripts`).
-		WillReturnRows(sqlmock.NewRows(manuscriptCols).
+		WillReturnRows(sqlmock.NewRows(manuscriptColsWithExposure).
 			AddRow(1, "t", "d", "c.jpg", int64(10), int64(1),
 				int64(0), int64(0), int64(0), int64(0), int64(0),
 				int64(0), int64(0), int32(3), int32(1), "",
-				now, int64(0), now, now, "", int32(0), "local"))
+				now, int64(0), now, now, "", int32(0), "local", int64(0)))
 	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 	mock.ExpectQuery(`SELECT is_vertical FROM videos`).WillReturnRows(sqlmock.NewRows([]string{"is_vertical"}).AddRow(0))
 
@@ -237,11 +237,11 @@ func TestHTTPHandler_Hot(t *testing.T) {
 	now := time.Now()
 
 	mock.ExpectQuery(`WITH _seed AS .+ SELECT .+ FROM manuscripts`).
-		WillReturnRows(sqlmock.NewRows(manuscriptCols).
+		WillReturnRows(sqlmock.NewRows(manuscriptColsWithExposure).
 			AddRow(1, "t", "d", "c.jpg", int64(10), int64(1),
 				int64(100), int64(0), int64(0), int64(0), int64(0),
 				int64(0), int64(0), int32(3), int32(1), "",
-				now, int64(0), now, now, "", int32(0), "local"))
+				now, int64(0), now, now, "", int32(0), "local", int64(0)))
 	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "parent_id", "sort_order"}).AddRow(int64(1), "c", int64(0), int32(0)))
 	mock.ExpectQuery(`SELECT is_vertical FROM videos`).WillReturnRows(sqlmock.NewRows([]string{"is_vertical"}).AddRow(0))
 

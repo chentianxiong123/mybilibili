@@ -36,6 +36,7 @@ type Manuscript struct {
 	Duration        string
 	DurationSeconds int32
 	SourceType      string
+	ExposureWeight  int64
 }
 
 type Video struct {
@@ -233,7 +234,7 @@ func (r *ManuscriptRepository) ListRecommended(ctx context.Context, seed float64
 		       m.view_count, m.like_count, m.coin_count, m.collect_count, m.share_count,
 		       m.comment_count, m.danmaku_count, m.status, m.review_status, COALESCE(m.review_reason,''),
 		       m.review_time, m.reviewer_id, m.upload_time, m.updated_at, m.duration, m.duration_seconds,
-		       COALESCE(m.source_type,'local')
+		       COALESCE(m.source_type,'local'), COALESCE(m.exposure_weight, 0)
 		FROM manuscripts m, _seed
 		WHERE m.status = 3 AND m.review_status = 1
 		ORDER BY (
@@ -246,6 +247,9 @@ func (r *ManuscriptRepository) ListRecommended(ctx context.Context, seed float64
 		  END
 		  -- 热度加成：播放量微弱贡献
 		  + ln(1.0 + GREATEST(m.view_count, 1)::numeric) / 200.0
+		  -- 流量券曝光加权：创作者 redeem 累加到 exposure_weight，对数压缩避免完全压制
+		  --   e.g. 100 点 → ln(101)/10 ≈ 0.46，接近甚至超过强新鲜度加成(0.3)
+		  + ln(1.0 + GREATEST(m.exposure_weight, 0)::numeric) / 10.0
 		  -- 随机噪声：主导因子
 		  + random()
 		) DESC
@@ -262,7 +266,7 @@ func (r *ManuscriptRepository) ListRecommended(ctx context.Context, seed float64
 			&m.ViewCount, &m.LikeCount, &m.CoinCount, &m.CollectCount, &m.ShareCount,
 			&m.CommentCount, &m.DanmakuCount, &m.Status, &m.ReviewStatus, &m.ReviewReason,
 			&m.ReviewTime, &m.ReviewerID, &m.UploadTime, &m.UpdatedAt, &m.Duration, &m.DurationSeconds,
-			&m.SourceType); err != nil {
+			&m.SourceType, &m.ExposureWeight); err != nil {
 			return nil, err
 		}
 		list = append(list, m)
@@ -281,7 +285,7 @@ func (r *ManuscriptRepository) ListHot(ctx context.Context, seed float64, offset
 		       m.view_count, m.like_count, m.coin_count, m.collect_count, m.share_count,
 		       m.comment_count, m.danmaku_count, m.status, m.review_status, COALESCE(m.review_reason,''),
 		       m.review_time, m.reviewer_id, m.upload_time, m.updated_at, m.duration, m.duration_seconds,
-		       COALESCE(m.source_type,'local')
+		       COALESCE(m.source_type,'local'), COALESCE(m.exposure_weight, 0)
 		FROM manuscripts m, _seed
 		WHERE m.status = 3 AND m.review_status = 1
 		ORDER BY random()
@@ -298,7 +302,7 @@ func (r *ManuscriptRepository) ListHot(ctx context.Context, seed float64, offset
 			&m.ViewCount, &m.LikeCount, &m.CoinCount, &m.CollectCount, &m.ShareCount,
 			&m.CommentCount, &m.DanmakuCount, &m.Status, &m.ReviewStatus, &m.ReviewReason,
 			&m.ReviewTime, &m.ReviewerID, &m.UploadTime, &m.UpdatedAt, &m.Duration, &m.DurationSeconds,
-			&m.SourceType); err != nil {
+			&m.SourceType, &m.ExposureWeight); err != nil {
 			return nil, err
 		}
 		list = append(list, m)
