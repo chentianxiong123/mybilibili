@@ -36,20 +36,20 @@ func TestHub_Unregister_MultiConnSameUser_RemovesLiveEntry(t *testing.T) {
 	// Older connection A disconnects.
 	hub.unregister(a)
 
-	// BUG: users[100] is deleted even though b is still connected.
+	// FINDING-053 修复：A 断开后 users[100] 仍指向仍连接的 B。
 	hub.mu.RLock()
 	_, exists := hub.users[100]
 	hub.mu.RUnlock()
-	assert.False(t, exists,
-		"FINDING-A: users[100] was deleted while b is still connected; SendToUser will miss b")
+	assert.True(t, exists,
+		"FINDING-053 修复: users[100] 应保留（B 仍连接），SendToUser 应能达 B")
 
-	// Impact: SendToUser(100) no longer reaches the surviving connection b.
+	// Impact: SendToUser(100) now reaches the surviving connection b (FINDING-053 修复).
 	hub.SendToUser(100, map[string]interface{}{"type": "kicked", "room_id": int64(1)})
 	select {
 	case <-b.send:
-		t.Fatal("FINDING-A: surviving connection b should still receive, but users[100] was removed")
-	default:
-		// Bug demonstrated: b received nothing.
+		// FINDING-053 修复：b 仍能收到 kick 通知。
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("FINDING-053 修复失败: b 应收到 kick，但 users[100] 未保留")
 	}
 
 	// b is still correctly present in the room set (only the user map is corrupted).

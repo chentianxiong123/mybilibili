@@ -49,7 +49,12 @@ func (h *Hub) unregister(c *Client) {
 		delete(set, c)
 		close(c.send)
 	}
-	delete(h.users, c.userID)
+	// FINDING-053 修复：仅当该用户当前注册的是此连接时才删除——同一用户持
+	// 2 个并发 WS 连接（A 后 B，users[100]=B）时，A 断开不应删除 B 的条目
+	// （此前无条件 delete 使 SendToUser 漏发 kick/通知给仍连接的 B）。
+	if h.users[c.userID] == c {
+		delete(h.users, c.userID)
+	}
 }
 
 func (h *Hub) BroadcastRoom(roomID int64, msg map[string]interface{}) {
