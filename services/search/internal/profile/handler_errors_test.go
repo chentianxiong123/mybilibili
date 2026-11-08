@@ -3,14 +3,12 @@ package profile
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"mybilibili/pkg/abstraction"
 )
 
@@ -69,15 +67,13 @@ func TestHandler_InitServiceError(t *testing.T) {
 	assert.Equal(t, 500, rr.Code)
 	assert.Contains(t, rr.Body.String(), "init query down")
 
-	// POST /init -> GetByUser fails (ignored by Init) -> creates a new profile
+	// POST /init -> GetByUser fails -> FINDING-019 修复：错误传播，handler 返回 400
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/profile/42/init",
 		bytes.NewBufferString(`{"tags":["a"]}`))
 	rr2 := httptest.NewRecorder()
 	mux.ServeHTTP(rr2, req2)
-	assert.Equal(t, 200, rr2.Code)
-	var p Profile
-	require.NoError(t, json.Unmarshal(rr2.Body.Bytes(), &p))
-	assert.Equal(t, int64(42), p.UserID)
+	assert.Equal(t, 400, rr2.Code)
+	assert.Contains(t, rr2.Body.String(), "init query down")
 }
 
 func TestHandler_InitServiceUpdateError(t *testing.T) {

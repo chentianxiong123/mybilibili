@@ -115,9 +115,8 @@ func TestGrpcGetHotSearch_Error(t *testing.T) {
 	s := NewGrpcServer(svc)
 
 	resp, err := s.GetHotSearch(context.Background(), &pb.GetHotSearchRequest{})
-	require.NoError(t, err) // 实现吞掉错误
-	assert.NotNil(t, resp)
-	assert.Empty(t, resp.List)
+	require.Error(t, err) // FINDING-005 修复：错误已传播
+	assert.Nil(t, resp)
 }
 
 func TestGrpcGetSuggestions_Success(t *testing.T) {
@@ -153,9 +152,8 @@ func TestGrpcGetSuggestions_Error(t *testing.T) {
 	mock.ExpectQuery(`SELECT title FROM manuscripts`).WillReturnError(sql.ErrConnDone)
 
 	resp, err := s.GetSuggestions(context.Background(), &pb.GetSuggestionsRequest{Keyword: "x", Limit: 5})
-	require.NoError(t, err) // 实现吞掉错误
-	assert.NotNil(t, resp)
-	assert.Empty(t, resp.Suggestions)
+	require.Error(t, err) // FINDING-005 修复：错误已传播
+	assert.Nil(t, resp)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

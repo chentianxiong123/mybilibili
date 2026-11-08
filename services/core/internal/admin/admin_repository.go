@@ -459,12 +459,17 @@ func (r *Repository) InitPermissions(ctx context.Context) error {
 	var ids []int64
 	for permRows.Next() {
 		var id int64
-		permRows.Scan(&id)
+		if err := permRows.Scan(&id); err != nil {
+			return err
+		}
 		ids = append(ids, id)
 	}
 	for _, pid := range ids {
-		r.db.ExecContext(ctx,
-			`INSERT INTO role_permissions (role_id, permission_id) VALUES (1, $1) ON CONFLICT DO NOTHING`, pid)
+		// FINDING-008 修复：循环内插入错误不再被静默丢弃。
+		if _, err := r.db.ExecContext(ctx,
+			`INSERT INTO role_permissions (role_id, permission_id) VALUES (1, $1) ON CONFLICT DO NOTHING`, pid); err != nil {
+			return err
+		}
 	}
 	return nil
 }

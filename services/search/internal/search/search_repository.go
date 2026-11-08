@@ -200,9 +200,11 @@ func (s *Service) Count(ctx context.Context, keyword string) (int64, int64, erro
 
 func (s *Service) Hot(ctx context.Context) ([]map[string]interface{}, error) {
 	if s.hotRepo != nil {
-		if list, err := s.hotRepo.Top(ctx, 10); err == nil && len(list) > 0 {
-			return list, nil
+		list, err := s.hotRepo.Top(ctx, 10)
+		if err != nil {
+			return nil, err // FINDING-005 修复：后端故障不再被当作"无热搜"吞掉
 		}
+		return list, nil
 	}
 	return []map[string]interface{}{}, nil
 }

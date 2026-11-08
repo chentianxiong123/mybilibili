@@ -55,6 +55,10 @@ func (r *Repository) Increment(ctx context.Context, keyword string) error {
 
 // Top 返回热度最高的前 n 个关键词
 func (r *Repository) Top(ctx context.Context, n int64) ([]map[string]interface{}, error) {
+	// FINDING-006 修复：n≤0 返回空（此前 n<0 make 负容量 panic；n=0 仍返回 1 条）。
+	if n <= 0 {
+		return []map[string]interface{}{}, nil
+	}
 	// 多取一些再过滤空 member，避免历史脏数据（空串/仅空白）被当成关键词返回
 	res, err := r.rdb.ZRevRangeWithScores(ctx, rankKey, 0, n+extraScan-1).Result()
 	if err != nil {

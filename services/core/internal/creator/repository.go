@@ -73,8 +73,16 @@ func (r *Repo) DB() *sql.DB { return r.db }
 
 // GrantCoupon 给创作者发一张券。
 func (r *Repo) GrantCoupon(ctx context.Context, c *Coupon) (int64, error) {
+	return grantCouponTx(ctx, r.db, c)
+}
+
+// grantCouponTx 在给定事务/连接里插入一张券（FINDING-003 修复：与标记
+// reward_claimed 同事务提交，消除"已标记已领但券未发"的丢失/重复发奖窗口）。
+func grantCouponTx(ctx context.Context, exec interface {
+	QueryRowContext(context.Context, string, ...interface{}) *sql.Row
+}, c *Coupon) (int64, error) {
 	var id int64
-	err := r.db.QueryRowContext(ctx, `
+	err := exec.QueryRowContext(ctx, `
 		INSERT INTO traffic_coupons (user_id, amount, reason, task_id, status, expires_at)
 		VALUES ($1, $2, $3, $4, 0, $5)
 		RETURNING id`, c.UserID, c.Amount, c.Reason, c.TaskID, c.ExpiresAt).Scan(&id)
@@ -222,7 +230,8 @@ func (r *Repo) GetTaskProgress(ctx context.Context, userID, taskID int64) (*Task
 }
 
 // UpsertTaskProgress 记一次进度。若本次达标且未领奖，返回 (rewardToGrant, true)。
-func (r *Repo) UpsertTaskProgress(ctx context.Context, userID, taskID int64, delta, target int) (int, bool, error) {
+// reward 非 nil 时，达标发奖与标记 reward_claimed 在同一事务内完成（FINDING-003 修复）。
+func (r *Repo) UpsertTaskProgress(ctx context.Context, userID, taskID int64, delta, target int, reward *Coupon) (int, bool, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, false, err
@@ -266,7 +275,7 @@ func (r *Repo) UpsertTaskProgress(ctx context.Context, userID, taskID int64, del
 		done = current >= target
 	}
 
-	// 达标且还没发过奖 → 标记已领，返回应发券数
+	// 达标且还没发过奖 → 标记已领 + 同事务发券，返回应发券数
 	if done {
 		var claimed bool
 		_ = tx.QueryRowContext(ctx, `
@@ -278,8 +287,18 @@ func (r *Repo) UpsertTaskProgress(ctx context.Context, userID, taskID int64, del
 				WHERE user_id = $1 AND task_id = $2`, userID, taskID); err != nil {
 				return 0, false, err
 			}
+			// FINDING-003 修复：发券与标记 reward_claimed 同事务，消除中间态
+			// （此前标记已领后 GrantCoupon 在独立事务，失败则券永久丢失）。
+			if reward != nil && reward.Amount > 0 {
+				if _, err := grantCouponTx(ctx, tx, reward); err != nil {
+					return 0, false, err
+				}
+			}
 			if err := tx.Commit(); err != nil {
 				return 0, false, err
+			}
+			if reward != nil && reward.Amount > 0 {
+				return reward.Amount, true, nil
 			}
 			return target, true, nil
 		}

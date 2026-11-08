@@ -212,19 +212,15 @@ func TestHotTopNonPositiveN(t *testing.T) {
 	require.NoError(t, repo.UpdateScore(ctx, "a", 100))
 	require.NoError(t, repo.UpdateScore(ctx, "b", 200))
 
-	// n == 0：当前缺陷行为是返回 1 个元素（预期应为 0）。
+	// FINDING-006 修复后：Top(0) 返回空。
 	top, err := repo.Top(ctx, 0)
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(top), "BUG: Top(0) 应返回空列表，当前却返回 1 个元素")
+	assert.Equal(t, 0, len(top), "FINDING-006 修复：Top(0) 应返回空列表")
 
-	// n < 0：当前缺陷行为是 panic（make 负容量）。
-	func() {
-		defer func() {
-			r := recover()
-			assert.NotNil(t, r, "BUG: Top(负数) 应被守卫，当前却 panic")
-		}()
-		_, _ = repo.Top(ctx, -1)
-	}()
+	// FINDING-006 修复后：Top(负数) 返回空，不 panic。
+	neg, err := repo.Top(ctx, -1)
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(neg), "FINDING-006 修复：Top(负数) 应返回空列表")
 }
 
 // Get 在 HGetAll 出错时会把 detail 置为 nil，仍返回 keyword/score 而不报错。

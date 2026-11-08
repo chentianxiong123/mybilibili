@@ -39,16 +39,14 @@ func TestService_Init_ExistingReplacesTags(t *testing.T) {
 }
 
 func TestService_Init_UpstreamGetByUserErrorStillCreates(t *testing.T) {
-	// Init swallows GetByUser errors; it proceeds as if no profile exists.
+	// FINDING-019 修复后：Init 传播 GetByUser 错误（不再静默创建）。
 	svc, store := newTestServiceWithFake(t)
 	store.queryFail = true
 	store.queryErr = errors.New("query failed")
 
-	p, err := svc.Init(context.Background(), 9, []string{"tag"})
-	require.NoError(t, err)
-	assert.Equal(t, int64(9), p.UserID)
-	assert.Equal(t, []string{"tag"}, p.Tags)
-	assert.NotEmpty(t, p.ID)
+	_, err := svc.Init(context.Background(), 9, []string{"tag"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "query failed")
 }
 
 func TestService_Init_UpsertError(t *testing.T) {

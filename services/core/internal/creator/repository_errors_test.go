@@ -290,7 +290,7 @@ func TestRepo_UpsertTaskProgress_BeginError(t *testing.T) {
 	repo, mock := newRepo(t)
 	mock.ExpectBegin().WillReturnError(errors.New("cannot begin tx"))
 
-	_, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 1, 5)
+	_, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 1, 5, nil)
 	assert.Error(t, err)
 	assert.False(t, done)
 }
@@ -303,7 +303,7 @@ func TestRepo_UpsertTaskProgress_QueryError(t *testing.T) {
 		WillReturnError(errors.New("progress query failed"))
 	mock.ExpectRollback()
 
-	_, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 1, 5)
+	_, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 1, 5, nil)
 	assert.Error(t, err)
 	assert.False(t, done)
 }
@@ -318,7 +318,7 @@ func TestRepo_UpsertTaskProgress_InsertError(t *testing.T) {
 		WillReturnError(errors.New("insert progress failed"))
 	mock.ExpectRollback()
 
-	_, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 1, 5)
+	_, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 1, 5, nil)
 	assert.Error(t, err)
 	assert.False(t, done)
 }
@@ -336,7 +336,7 @@ func TestRepo_UpsertTaskProgress_AlreadyClaimed(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"reward_claimed"}).AddRow(true))
 	mock.ExpectCommit()
 
-	reward, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 1, 5)
+	reward, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 1, 5, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 0, reward)
 	assert.False(t, done)
@@ -358,7 +358,7 @@ func TestRepo_UpsertTaskProgress_NotDone(t *testing.T) {
 	// final claimed check (done=false, so this is skipped; commit directly)
 	mock.ExpectCommit()
 
-	reward, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 1, 5)
+	reward, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 1, 5, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 0, reward)
 	assert.False(t, done)
@@ -386,7 +386,7 @@ func TestRepo_UpsertTaskProgress_ClaimedAfterNotDone(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
-	reward, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 2, 5)
+	reward, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 2, 5, nil)
 	require.NoError(t, err)
 	assert.True(t, done)
 	assert.Equal(t, 5, reward) // returns target
@@ -404,7 +404,7 @@ func TestRepo_UpsertTaskProgress_UpdateError(t *testing.T) {
 		WillReturnError(errors.New("update progress failed"))
 	mock.ExpectRollback()
 
-	_, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 1, 5)
+	_, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 1, 5, nil)
 	assert.Error(t, err)
 	assert.False(t, done)
 }
@@ -424,7 +424,7 @@ func TestRepo_UpsertTaskProgress_MarkClaimedError(t *testing.T) {
 		WillReturnError(errors.New("mark claimed failed"))
 	mock.ExpectRollback()
 
-	_, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 2, 5)
+	_, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 2, 5, nil)
 	assert.Error(t, err)
 	assert.False(t, done)
 }
@@ -441,7 +441,7 @@ func TestRepo_UpsertTaskProgress_FinalCommitError(t *testing.T) {
 	// final commit fails
 	mock.ExpectCommit().WillReturnError(errors.New("final commit failed"))
 
-	_, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 1, 5)
+	_, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 1, 5, nil)
 	assert.Error(t, err)
 	assert.False(t, done)
 }
@@ -461,7 +461,7 @@ func TestRepo_UpsertTaskProgress_TailCommitError(t *testing.T) {
 	// tail commit fails
 	mock.ExpectCommit().WillReturnError(errors.New("tail commit failed"))
 
-	_, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 2, 5)
+	_, done, err := repo.UpsertTaskProgress(context.Background(), 7, 1, 2, 5, nil)
 	assert.Error(t, err)
 	assert.False(t, done)
 }
@@ -472,7 +472,7 @@ func TestRepo_UpsertTaskProgress_CancelledCtx(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, done, err := repo.UpsertTaskProgress(ctx, 7, 1, 1, 5)
+	_, done, err := repo.UpsertTaskProgress(ctx, 7, 1, 1, 5, nil)
 	assert.ErrorIs(t, err, context.Canceled)
 	assert.False(t, done)
 }

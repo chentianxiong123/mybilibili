@@ -227,13 +227,14 @@ func TestRepository_Upsert_UpdateError(t *testing.T) {
 }
 
 func TestRepository_Upsert_SwallowedGetByUserError(t *testing.T) {
-	// GetByUser errors are intentionally ignored in Upsert (existing, _ := ...).
+	// FINDING-019 修复后：GetByUser 错误不再被当作"不存在"，Upsert 传播错误。
 	store := newFakeDocumentStore()
 	store.queryFail = true
 	store.queryErr = errors.New("query failed")
 	repo := NewRepository(store)
 	p := &Profile{UserID: 1}
 
-	require.NoError(t, repo.Upsert(context.Background(), p))
-	assert.NotEmpty(t, p.ID)
+	err := repo.Upsert(context.Background(), p)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "query failed")
 }

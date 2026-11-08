@@ -49,7 +49,7 @@ func (s *GrpcServer) SearchVideos(ctx context.Context, req *pb.SearchVideosReque
 func (s *GrpcServer) GetHotSearch(ctx context.Context, req *pb.GetHotSearchRequest) (*pb.GetHotSearchResponse, error) {
 	keywords, err := s.svc.Hot(ctx)
 	if err != nil {
-		return &pb.GetHotSearchResponse{}, nil
+		return nil, err // FINDING-005 修复：后端故障不再静默返回空榜单
 	}
 	resp := &pb.GetHotSearchResponse{}
 	for _, kw := range keywords {
@@ -62,7 +62,7 @@ func (s *GrpcServer) GetHotSearch(ctx context.Context, req *pb.GetHotSearchReque
 func (s *GrpcServer) GetSuggestions(ctx context.Context, req *pb.GetSuggestionsRequest) (*pb.GetSuggestionsResponse, error) {
 	suggestions, err := s.svc.Suggest(ctx, req.Keyword, req.Limit)
 	if err != nil {
-		return &pb.GetSuggestionsResponse{}, nil
+		return nil, err // FINDING-005 修复
 	}
 	return &pb.GetSuggestionsResponse{Suggestions: suggestions}, nil
 }

@@ -44,7 +44,10 @@ func (r *Repository) GetByUser(ctx context.Context, userID int64) (*Profile, err
 }
 
 func (r *Repository) Upsert(ctx context.Context, p *Profile) error {
-	existing, _ := r.GetByUser(ctx, p.UserID)
+	existing, err := r.GetByUser(ctx, p.UserID)
+	if err != nil {
+		return err // FINDING-019 修复：存储层真实故障不再被当作"不存在"吞掉
+	}
 	if existing != nil {
 		p.ID = existing.ID
 		return r.store.Update(ctx, collection, p.ID, p)
@@ -70,7 +73,10 @@ func (s *Service) Get(ctx context.Context, userID int64) (*Profile, error) {
 }
 
 func (s *Service) Init(ctx context.Context, userID int64, tags []string) (*Profile, error) {
-	existing, _ := s.repo.GetByUser(ctx, userID)
+	existing, err := s.repo.GetByUser(ctx, userID)
+	if err != nil {
+		return nil, err // FINDING-019 修复：传播底层错误
+	}
 	if existing != nil {
 		existing.Tags = tags
 		existing.UpdatedAt = time.Now()

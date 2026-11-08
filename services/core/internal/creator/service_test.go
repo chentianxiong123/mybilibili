@@ -131,11 +131,10 @@ func TestService_RecordTaskProgress_Completed(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"reward_claimed"}).AddRow(false))
 	mock.ExpectExec(`UPDATE creator_task_progress SET reward_claimed`).WithArgs(int64(7), int64(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectCommit()
-
-	// GrantCoupon (reward)
+	// FINDING-003 修复：发券与标记 reward_claimed 同事务 → INSERT 在 Commit 前。
 	mock.ExpectQuery(`INSERT INTO traffic_coupons`).WithArgs(int64(7), 100, "任务奖励", int64(1), sql.NullTime{}).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(2)))
+	mock.ExpectCommit()
 
 	reward, err := svc.RecordTaskProgress(ctx, 7, 1, 1)
 	require.NoError(t, err)

@@ -172,20 +172,17 @@ func (s *Service) RecordTaskProgress(ctx context.Context, userID, taskID int64, 
 	if !task.Enabled {
 		return 0, myerr.ErrInvalidArgument("task disabled")
 	}
-	rewardAmount, done, err := s.repo.UpsertTaskProgress(ctx, userID, taskID, delta, task.Target)
+	var rewardCoupon *Coupon
+	if task.RewardCoupon > 0 {
+		rewardCoupon = &Coupon{UserID: userID, Amount: task.RewardCoupon, Reason: "任务奖励", TaskID: task.ID}
+	}
+	rewardAmount, done, err := s.repo.UpsertTaskProgress(ctx, userID, taskID, delta, task.Target, rewardCoupon)
 	if err != nil {
 		return 0, myerr.ErrInternal("database error")
 	}
-	if done && task.RewardCoupon > 0 {
-		if _, gerr := s.repo.GrantCoupon(ctx, &Coupon{
-			UserID: userID,
-			Amount: task.RewardCoupon,
-			Reason: "任务奖励",
-			TaskID: task.ID,
-		}); gerr != nil {
-			return 0, myerr.ErrInternal("database error")
-		}
-		return task.RewardCoupon, nil
+	if done && rewardAmount > 0 {
+		// FINDING-003 修复：券已在 UpsertTaskProgress 同事务内发放，无需再 GrantCoupon。
+		return rewardAmount, nil
 	}
 	_ = rewardAmount
 	return 0, nil
