@@ -156,8 +156,47 @@ func (r *redisTokenStore) Consume(ctx context.Context, key string, ttl time.Dura
 // ---- 进程内实现（Redis 不可用 / 测试用）----
 
 type memRevocation struct {
-	mu sync.Mutex
-	m  map[string]time.Time
+	mu      sync.Mutex
+	m       map[string]time.Time
+	sweepCh chan struct{} // 定时清理（FINDING-081）：close 时停表
+	once    sync.Once
+}
+
+// startSweeper 启动后台定时清理，防止已过期且不再访问的 jti 永久驻留（Redis 宕机回退）。
+func (m *memRevocation) startSweeper() {
+	m.once.Do(func() {
+		m.sweepCh = make(chan struct{})
+		go func() {
+			ticker := time.NewTicker(30 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					m.sweep()
+				case <-m.sweepCh:
+					return
+				}
+			}
+		}()
+	})
+}
+
+func (m *memRevocation) sweep() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	now := time.Now()
+	for jti, exp := range m.m {
+		if now.After(exp) {
+			delete(m.m, jti)
+		}
+	}
+}
+
+// Stop 停止后台清理（测试/关停用）。
+func (m *memRevocation) Stop() {
+	if m.sweepCh != nil {
+		close(m.sweepCh)
+	}
 }
 
 func (m *memRevocation) Revoke(_ context.Context, jti string, ttl time.Duration) error {
@@ -170,17 +209,25 @@ func (m *memRevocation) Revoke(_ context.Context, jti string, ttl time.Duration)
 		m.m = map[string]time.Time{}
 	}
 	m.m[jti] = time.Now().Add(ttl)
+	m.startSweeper()
 	return nil
 }
 
 func (m *memRevocation) IsRevoked(_ context.Context, jti string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	// FINDING-081 修复：任一次访问清理全部过期条目（此前仅清理该精确 jti）。
+	now := time.Now()
+	for j, exp := range m.m {
+		if now.After(exp) {
+			delete(m.m, j)
+		}
+	}
 	exp, ok := m.m[jti]
 	if !ok {
 		return false, nil
 	}
-	if time.Now().After(exp) {
+	if now.After(exp) {
 		delete(m.m, jti)
 		return false, nil
 	}

@@ -31,12 +31,11 @@ func TestMemRevocation_ExpiredEntriesOnlyClearedOnAccess(t *testing.T) {
 	size := reflectMapSize(t, st.m)
 	require.Greater(t, size, 0, "expired entries should be pruned without explicit query")
 
-	// Queried entries are cleaned up...
+	// Queried entries are cleaned up... and (FINDING-081 修复) ALL expired are pruned.
 	_, err := st.IsRevoked(ctx, "jti-0")
 	require.NoError(t, err)
-	// ...but the other 99 are still resident even though all have expired.
 	size2 := reflectMapSize(t, st.m)
-	require.Equal(t, size-1, size2, "only the queried jti was pruned; the rest leak")
+	require.Equal(t, 0, size2, "FINDING-081 修复: 一次访问应清理全部过期条目")
 }
 
 func reflectMapSize(t *testing.T, m map[string]time.Time) int {
