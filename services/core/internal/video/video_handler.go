@@ -262,13 +262,21 @@ func (h *Handler) handleBannerHome(w http.ResponseWriter, r *http.Request, parts
 	case r.Method == "GET":
 		writeJSON(w, h.bannersFor(r, 1, 0))
 	case r.Method == "POST":
-		b := decodeBanner(r)
+		b, err := decodeBanner(r)
+		if err != nil {
+			writeJSON(w, map[string]any{"code": 400, "message": "invalid body"})
+			return
+		}
 		b.Type = 1
 		h.svc.CreateBanner(r.Context(), b)
 		writeJSON(w, map[string]any{"status": "ok"})
 	case r.Method == "PUT" && len(parts) >= 2:
 		id, _ := strconv.ParseInt(parts[1], 10, 64)
-		b := decodeBanner(r)
+		b, err := decodeBanner(r)
+		if err != nil {
+			writeJSON(w, map[string]any{"code": 400, "message": "invalid body"})
+			return
+		}
 		b.Type = 1
 		h.svc.UpdateBanner(r.Context(), id, b)
 		writeJSON(w, map[string]any{"status": "ok"})
@@ -287,14 +295,22 @@ func (h *Handler) handleBannerCategory(w http.ResponseWriter, r *http.Request, p
 	case r.Method == "GET":
 		writeJSON(w, h.bannersFor(r, 2, categoryID))
 	case r.Method == "POST":
-		b := decodeBanner(r)
+		b, err := decodeBanner(r)
+		if err != nil {
+			writeJSON(w, map[string]any{"code": 400, "message": "invalid body"})
+			return
+		}
 		b.Type = 2
 		b.CategoryID = categoryID
 		h.svc.CreateBanner(r.Context(), b)
 		writeJSON(w, map[string]any{"status": "ok"})
 	case r.Method == "PUT" && len(parts) >= 3:
 		id, _ := strconv.ParseInt(parts[2], 10, 64)
-		b := decodeBanner(r)
+		b, err := decodeBanner(r)
+		if err != nil {
+			writeJSON(w, map[string]any{"code": 400, "message": "invalid body"})
+			return
+		}
 		b.Type = 2
 		b.CategoryID = categoryID
 		h.svc.UpdateBanner(r.Context(), id, b)
@@ -313,7 +329,11 @@ func (h *Handler) handleBannerUserProfiles(w http.ResponseWriter, r *http.Reques
 	case "GET":
 		writeJSON(w, h.bannersFor(r, 4, 0))
 	case "POST":
-		b := decodeBanner(r)
+		b, err := decodeBanner(r)
+		if err != nil {
+			writeJSON(w, map[string]any{"code": 400, "message": "invalid body"})
+			return
+		}
 		b.Type = 4
 		h.svc.CreateBanner(r.Context(), b)
 		writeJSON(w, map[string]any{"status": "ok"})
@@ -342,7 +362,11 @@ func (h *Handler) handleBannerSingle(w http.ResponseWriter, r *http.Request, ban
 		// type=4 (user-profile) 返回列表：支持多张用户主页背景图供切换。
 		writeJSON(w, h.bannersFor(r, bannerType, 0))
 	case "POST":
-		b := decodeBanner(r)
+		b, err := decodeBanner(r)
+		if err != nil {
+			writeJSON(w, map[string]any{"code": 400, "message": "invalid body"})
+			return
+		}
 		b.Type = bannerType
 		h.svc.CreateBanner(r.Context(), b)
 		writeJSON(w, map[string]any{"status": "ok"})
@@ -357,7 +381,7 @@ func (h *Handler) handleBannerSingle(w http.ResponseWriter, r *http.Request, ban
 	}
 }
 
-func decodeBanner(r *http.Request) *BannerImage {
+func decodeBanner(r *http.Request) (*BannerImage, error) {
 	var req struct {
 		Title     string `json:"title"`
 		ImageURL  string `json:"image_url"`
@@ -366,14 +390,17 @@ func decodeBanner(r *http.Request) *BannerImage {
 		Status    int32  `json:"status"`
 		TimeSlot  string `json:"time_slot"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		// FINDING-061 修复：畸形 body 不再静默成功（此前 decode 错被吞）。
+		return nil, err
+	}
 	if req.Status == 0 {
 		req.Status = 1
 	}
 	if req.TimeSlot == "" {
 		req.TimeSlot = "default"
 	}
-	return &BannerImage{Title: req.Title, ImageURL: req.ImageURL, LinkURL: req.LinkURL, SortOrder: req.SortOrder, Status: req.Status, TimeSlot: req.TimeSlot}
+	return &BannerImage{Title: req.Title, ImageURL: req.ImageURL, LinkURL: req.LinkURL, SortOrder: req.SortOrder, Status: req.Status, TimeSlot: req.TimeSlot}, nil
 }
 
 func (h *Handler) handleStatistics(w http.ResponseWriter, r *http.Request) {

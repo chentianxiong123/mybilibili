@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
@@ -40,11 +41,9 @@ func TestGetStatistics_SwallowsScanErrors(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(3)))
 
 	stats, err := repo.GetStatistics(ctx)
-	require.NoError(t, err) // BUG: error swallowed, reports success
-
-	// BUG confirmed: manuscript_count is silently 0 despite the query failing.
-	assert.Equal(t, int64(0), stats["manuscript_count"])
-	assert.Equal(t, int64(5), stats["user_count"])
+	// FINDING-061 修复：DB 错误现返回 err（不再吞错 → 全零结果 + nil）。
+	require.Error(t, err, "FINDING-061 修复: GetStatistics 必须传播 DB 错误")
+	assert.Nil(t, stats)
 }
 
 // TestListByManuscript_SwallowsScanError pins the same class of bug in
@@ -63,14 +62,12 @@ func TestListByManuscript_SwallowsScanError(t *testing.T) {
 			"process_stage", "has_subtitle", "has_summary",
 			"process_status", "process_error", "source_video_url",
 			"duration_seconds", "is_vertical",
-		}).RowError(0, errors.New("scan boom"))) // Scan fails on the only row
+		}).AddRow("bad", int64(10), int32(1), "t", "h", "s", "l",
+			time.Now(), time.Now(), int32(0), "", int32(0), int32(0),
+			int32(0), "", "src", int32(0), int32(0))) // id 不可扫描 → Scan 错
 
 	list, err := repo.ListByManuscript(ctx, 1)
-	require.NoError(t, err) // BUG: rows.Scan error discarded
-
-	// BUG confirmed: the row whose Scan failed is silently dropped and the
-	// function reports success. A correct implementation returns the scan error
-	// to the caller. (sqlmock RowError makes Next() stop, so the error never
-	// surfaces — same class of swallow.)
-	assert.Len(t, list, 0)
+	// FINDING-061 修复：扫描错误现返回 err（不再静默丢弃失败行）。
+	require.Error(t, err, "FINDING-061 修复: ListByManuscript 必须传播 rows 错误")
+	assert.Nil(t, list)
 }

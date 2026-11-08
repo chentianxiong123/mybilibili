@@ -84,11 +84,10 @@ func TestRepo_ListByManuscript_RowsError(t *testing.T) {
 			"h", "s", "l", time.Now(), time.Now(), int32(0), "", int32(0), int32(0),
 			int32(0), "", "src", int32(0), int32(0),
 		))
-	// The loop swallows rows.Scan errors (only QueryContext errors are returned),
-	// so the call must not fail even though the row's id is unscannable.
+	// FINDING-061 修复：不可扫描行现返回错误（不再吞错 → 零垃圾行 + nil）。
 	list, err := repo.ListByManuscript(context.Background(), 10)
-	assert.NoError(t, err)
-	assert.Len(t, list, 1)
+	assert.Error(t, err)
+	assert.Nil(t, list)
 }
 
 func TestRepo_ListUserManuscriptIDs_QueryError(t *testing.T) {

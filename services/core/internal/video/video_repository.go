@@ -83,11 +83,16 @@ func (r *Repository) ListByManuscript(ctx context.Context, manuscriptID int64) (
 	var list []*Video
 	for rows.Next() {
 		v := &Video{}
-		rows.Scan(&v.ID, &v.ManuscriptID, &v.VideoOrder, &v.Title,
+		if err := rows.Scan(&v.ID, &v.ManuscriptID, &v.VideoOrder, &v.Title,
 			&v.PlayURLHD, &v.PlayURLSD, &v.PlayURLLD, &v.UploadTime, &v.UpdatedAt,
 			&v.ProcessProgress, &v.ProcessStage, &v.HasSubtitle, &v.HasSummary,
-			&v.ProcessStatus, &v.ProcessError, &v.SourceVideoURL, &v.DurationSeconds, &v.IsVertical)
+			&v.ProcessStatus, &v.ProcessError, &v.SourceVideoURL, &v.DurationSeconds, &v.IsVertical); err != nil {
+			return nil, err
+		}
 		list = append(list, v)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return list, nil
 }
@@ -102,8 +107,13 @@ func (r *Repository) ListUserManuscriptIDs(ctx context.Context, userID int64) ([
 	var ids []int64
 	for rows.Next() {
 		var id int64
-		rows.Scan(&id)
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
 		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return ids, nil
 }
@@ -119,8 +129,13 @@ func (r *Repository) ListUserVideoIDs(ctx context.Context, userID int64) ([]int6
 	var ids []int64
 	for rows.Next() {
 		var id int64
-		rows.Scan(&id)
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
 		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return ids, nil
 }
@@ -146,8 +161,13 @@ func (r *Repository) ListCategories(ctx context.Context) ([]*models.Category, er
 	var list []*models.Category
 	for rows.Next() {
 		c := &models.Category{}
-		rows.Scan(&c.ID, &c.Name, &c.ParentID, &c.SortOrder)
+		if err := rows.Scan(&c.ID, &c.Name, &c.ParentID, &c.SortOrder); err != nil {
+			return nil, err
+		}
 		list = append(list, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return list, nil
 }
@@ -237,7 +257,9 @@ func (r *Repository) queryBanners(ctx context.Context, bannerType int32, categor
 	for rows.Next() {
 		b := &BannerImage{}
 		var st, et sql.NullTime
-		rows.Scan(&b.ID, &b.Title, &b.ImageURL, &b.LinkURL, &b.SortOrder, &b.Status, &b.Type, &b.CategoryID, &b.TimeSlot, &st, &et)
+		if err := rows.Scan(&b.ID, &b.Title, &b.ImageURL, &b.LinkURL, &b.SortOrder, &b.Status, &b.Type, &b.CategoryID, &b.TimeSlot, &st, &et); err != nil {
+			return nil, err
+		}
 		if st.Valid {
 			b.StartTime = &st.Time
 		}
@@ -245,6 +267,9 @@ func (r *Repository) queryBanners(ctx context.Context, bannerType int32, categor
 			b.EndTime = &et.Time
 		}
 		result = append(result, b)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return result, nil
 }
@@ -274,11 +299,22 @@ func (r *Repository) DeleteBanner(ctx context.Context, id int64) error {
 
 func (r *Repository) GetStatistics(ctx context.Context) (map[string]interface{}, error) {
 	var msCount, userCount, viewCount, pendingCount, videoCount int64
-	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscripts`).Scan(&msCount)
-	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&userCount)
-	r.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(view_count),0) FROM manuscripts`).Scan(&viewCount)
-	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscripts WHERE status = 0`).Scan(&pendingCount)
-	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM videos`).Scan(&videoCount)
+	// FINDING-061 修复：5 处 Scan 错不再静默（此前忽略 → 全零结果 + nil error）。
+	scans := []struct {
+		dst  *int64
+		call func(dst *int64) error
+	}{
+		{&msCount, func(d *int64) error { return r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscripts`).Scan(d) }},
+		{&userCount, func(d *int64) error { return r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(d) }},
+		{&viewCount, func(d *int64) error { return r.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(view_count),0) FROM manuscripts`).Scan(d) }},
+		{&pendingCount, func(d *int64) error { return r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM manuscripts WHERE status = 0`).Scan(d) }},
+		{&videoCount, func(d *int64) error { return r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM videos`).Scan(d) }},
+	}
+	for _, s := range scans {
+		if err := s.call(s.dst); err != nil {
+			return nil, err
+		}
+	}
 	return map[string]interface{}{
 		"manuscript_count": msCount, "user_count": userCount,
 		"view_count": viewCount, "pending_count": pendingCount, "video_count": videoCount,

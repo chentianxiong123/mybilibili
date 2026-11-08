@@ -434,6 +434,8 @@ func TestHandleStatisticsByPath_Overview(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"sum"}).AddRow(1000))
 	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM manuscripts WHERE status = 0`).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM videos`).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(3))
 
 	req := httptest.NewRequest("GET", "/api/v1/statistics/overview", nil)
 	rec := httptest.NewRecorder()

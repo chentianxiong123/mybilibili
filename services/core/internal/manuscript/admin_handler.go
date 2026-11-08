@@ -181,8 +181,11 @@ func (h *ManuscriptAdminHandler) handleAll(w http.ResponseWriter, r *http.Reques
 	}
 
 	var total int
-	h.db.QueryRowContext(r.Context(),
-		`SELECT COUNT(*) FROM manuscripts`).Scan(&total)
+	if err := h.db.QueryRowContext(r.Context(),
+		`SELECT COUNT(*) FROM manuscripts`).Scan(&total); err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+		return
+	}
 
 	httputil.WriteOK(w, map[string]any{"list": list, "total": total, "page": page, "size": size})
 }
@@ -195,27 +198,36 @@ func (h *ManuscriptAdminHandler) handleStatistics(w http.ResponseWriter, r *http
 	}
 	stats := map[string]any{}
 
+	// FINDING-061 修复：8 处 QueryRow.Scan 错不再静默（此前忽略 → 全零统计 + nil error）。
 	var total, pending, approved, rejected, draft int64
-	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts`).Scan(&total)
-	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts WHERE review_status = 0`).Scan(&pending)
-	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts WHERE review_status = 1`).Scan(&approved)
-	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts WHERE review_status = 2`).Scan(&rejected)
-	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM manuscripts WHERE status = -1`).Scan(&draft)
+	var totalViews, totalLikes, videoCount int64
+	statsQueries := []struct {
+		dst *int64
+		sql string
+	}{
+		{&total, `SELECT COUNT(*) FROM manuscripts`},
+		{&pending, `SELECT COUNT(*) FROM manuscripts WHERE review_status = 0`},
+		{&approved, `SELECT COUNT(*) FROM manuscripts WHERE review_status = 1`},
+		{&rejected, `SELECT COUNT(*) FROM manuscripts WHERE review_status = 2`},
+		{&draft, `SELECT COUNT(*) FROM manuscripts WHERE status = -1`},
+		{&totalViews, `SELECT COALESCE(SUM(view_count),0) FROM manuscripts`},
+		{&totalLikes, `SELECT COALESCE(SUM(like_count),0) FROM manuscripts`},
+		{&videoCount, `SELECT COUNT(*) FROM videos`},
+	}
+	for _, q := range statsQueries {
+		if err := h.db.QueryRowContext(r.Context(), q.sql).Scan(q.dst); err != nil {
+			httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+			return
+		}
+	}
 
 	stats["total"] = total
 	stats["pending"] = pending
 	stats["approved"] = approved
 	stats["rejected"] = rejected
 	stats["draft"] = draft
-
-	var totalViews, totalLikes int64
-	h.db.QueryRowContext(r.Context(), `SELECT COALESCE(SUM(view_count),0) FROM manuscripts`).Scan(&totalViews)
-	h.db.QueryRowContext(r.Context(), `SELECT COALESCE(SUM(like_count),0) FROM manuscripts`).Scan(&totalLikes)
 	stats["total_views"] = totalViews
 	stats["total_likes"] = totalLikes
-
-	var videoCount int64
-	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM videos`).Scan(&videoCount)
 	stats["total_videos"] = videoCount
 
 	httputil.WriteOK(w, stats)
@@ -810,8 +822,11 @@ func (h *ManuscriptAdminHandler) listByStatus(w http.ResponseWriter, r *http.Req
 	}
 
 	var total int
-	h.db.QueryRowContext(r.Context(),
-		`SELECT COUNT(*) FROM manuscripts WHERE review_status = $1`, status).Scan(&total)
+	if err := h.db.QueryRowContext(r.Context(),
+		`SELECT COUNT(*) FROM manuscripts WHERE review_status = $1`, status).Scan(&total); err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+		return
+	}
 
 	httputil.WriteOK(w, map[string]any{"list": list, "total": total, "page": page, "size": size})
 }
