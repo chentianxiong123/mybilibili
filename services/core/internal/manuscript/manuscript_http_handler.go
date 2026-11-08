@@ -565,6 +565,10 @@ func (h *ManuscriptHTTPHandler) handleInternalByPath(w http.ResponseWriter, r *h
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/manuscript/internal/")
 	parts := strings.Split(path, "/")
 	if len(parts) >= 2 && parts[1] == "take-down" && r.Method == "PUT" {
+		// FINDING-022 修复：下架稿件是管理操作，需 admin 身份（此前未认证者可下架任意稿件）。
+		if _, ok := httputil.RequireAdmin(w, r); !ok {
+			return
+		}
 		id, _ := strconv.ParseInt(parts[0], 10, 64)
 		_, _ = h.db.ExecContext(r.Context(),
 			`UPDATE manuscripts SET status = -1, review_status = 2, updated_at = NOW() WHERE id = $1`, id)
@@ -579,6 +583,10 @@ func (h *ManuscriptHTTPHandler) handleCommentCount(w http.ResponseWriter, r *htt
 		http.Error(w, "method not allowed", 405)
 		return
 	}
+	// FINDING-022 修复：评论数篡改需 admin（comment 服务直接写 DB，不走此 HTTP 端点）。
+	if _, ok := httputil.RequireAdmin(w, r); !ok {
+		return
+	}
 	id, _ := strconv.ParseInt(httputil.PathValue(r, "id"), 10, 64)
 	count, _ := strconv.ParseInt(r.URL.Query().Get("count"), 10, 64)
 	_, _ = h.db.ExecContext(r.Context(), `UPDATE manuscripts SET comment_count = $2 WHERE id = $1`, id, count)
@@ -590,6 +598,10 @@ func (h *ManuscriptHTTPHandler) handleIncrementComment(w http.ResponseWriter, r 
 		http.Error(w, "method not allowed", 405)
 		return
 	}
+	// FINDING-022 修复：同上，需 admin。
+	if _, ok := httputil.RequireAdmin(w, r); !ok {
+		return
+	}
 	id, _ := strconv.ParseInt(httputil.PathValue(r, "id"), 10, 64)
 	_, _ = h.db.ExecContext(r.Context(), `UPDATE manuscripts SET comment_count = comment_count + 1 WHERE id = $1`, id)
 	w.Write([]byte(`{"status":"ok"}`))
@@ -598,6 +610,10 @@ func (h *ManuscriptHTTPHandler) handleIncrementComment(w http.ResponseWriter, r 
 func (h *ManuscriptHTTPHandler) handleDecrementComment(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "method not allowed", 405)
+		return
+	}
+	// FINDING-022 修复：同上，需 admin。
+	if _, ok := httputil.RequireAdmin(w, r); !ok {
 		return
 	}
 	id, _ := strconv.ParseInt(httputil.PathValue(r, "id"), 10, 64)

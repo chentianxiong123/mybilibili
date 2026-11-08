@@ -81,6 +81,17 @@ func RequireUser(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	return uid, true
 }
 
+// RequireAdmin 校验管理员身份（X-Admin-Id），未认证时 401（FINDING-022 修复：
+// 此前 IdentityMiddleware 缺失/无效 token 时不 401，导致未认证者可调敏感端点）。
+func RequireAdmin(w http.ResponseWriter, r *http.Request) (int64, bool) {
+	aid := GetAdminIDFromHeader(r)
+	if aid == 0 {
+		WriteJSON(w, http.StatusUnauthorized, map[string]interface{}{"code": 401, "message": "unauthorized", "data": nil})
+		return 0, false
+	}
+	return aid, true
+}
+
 func PathValue(r *http.Request, key string) string {
 	v := r.PathValue(key)
 	if v != "" {

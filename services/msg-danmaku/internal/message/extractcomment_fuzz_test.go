@@ -5,20 +5,19 @@ import (
 	"testing"
 )
 
-// TestExtractCommentText_KnownPanicBug 钉住 FINDING-010：
-// extractCommentText 在 open 命中 s 的非 rune 对齐字节（非法 UTF-8）时 panic
-// （slice bounds out of range）。该 bug 在项目源码 message_handler.go:476，
-// 生产输入为合法 UTF-8 时不可达，但属真实潜在崩溃。此测试在 bug 修复前应通过
-// （断言 panic 存在）；修复后应更新（移除断言 panic）。
+// TestExtractCommentText_KnownPanicBug 钉住 FINDING-010（已修复）：
+// extractCommentText 在 open 命中 s 的非 rune 对齐字节（非法 UTF-8）时此前 panic
+// （slice bounds out of range）。修复后应不 panic，返回 ""（守卫 start 越界）。
 func TestExtractCommentText_KnownPanicBug(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatalf("FINDING-010 expected panic but got none: extractCommentText(\"《\", \"\\x80\") should panic (mid-rune match)")
-		}
-	}()
 	// open="\x80" 命中 s="《" 的中间字节(0x80)，s[:1]="\xE3" 非法 UTF-8
-	// → runeCount 过度计数 → runes[2:] 越界 panic。
-	_ = extractCommentText("《", "\x80")
+	// → runeCount 过度计数 → runes[2:] 越界；守卫后返回 ""。
+	if got := extractCommentText("《", "\x80"); got != "" {
+		t.Fatalf("FINDING-010 修复后应返回空串, got %q", got)
+	}
+	// 合法输入仍正常提取。
+	if got := extractCommentText("赞了你的视频《测试》", "《"); got != "测试" {
+		t.Fatalf("合法输入提取失败: %q", got)
+	}
 }
 
 // FuzzExtractCommentText 穷尽任意输入。已知 FINDING-010 panic（非 rune 对齐）

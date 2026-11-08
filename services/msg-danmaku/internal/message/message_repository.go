@@ -3,6 +3,7 @@ package message
 import (
 	"context"
 	"database/sql"
+	"sync"
 	"time"
 )
 
@@ -246,6 +247,7 @@ func (r *MessageRepository) GetUnreadCountsByType(ctx context.Context, userID in
 }
 
 type NotificationBroadcaster struct {
+	mu       sync.Mutex
 	channels map[int64]chan *NotificationEvent
 }
 
@@ -263,6 +265,8 @@ func NewNotificationBroadcaster() *NotificationBroadcaster {
 }
 
 func (b *NotificationBroadcaster) Subscribe(userID int64) <-chan *NotificationEvent {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if b.channels[userID] == nil {
 		b.channels[userID] = make(chan *NotificationEvent, 50)
 	}
@@ -270,15 +274,20 @@ func (b *NotificationBroadcaster) Subscribe(userID int64) <-chan *NotificationEv
 }
 
 func (b *NotificationBroadcaster) Unsubscribe(userID int64, ch <-chan *NotificationEvent) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if b.channels[userID] == ch {
 		delete(b.channels, userID)
 	}
 }
 
 func (b *NotificationBroadcaster) Send(userID int64, event *NotificationEvent) {
-	if b.channels[userID] != nil {
+	b.mu.Lock()
+	ch := b.channels[userID]
+	b.mu.Unlock()
+	if ch != nil {
 		select {
-		case b.channels[userID] <- event:
+		case ch <- event:
 		default:
 		}
 	}

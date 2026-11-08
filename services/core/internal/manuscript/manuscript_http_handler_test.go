@@ -142,6 +142,7 @@ func TestHTTPHandler_InternalByPath(t *testing.T) {
 	mock.ExpectExec(`UPDATE manuscripts SET status = -1`).WillReturnResult(sqlmock.NewResult(0, 1))
 
 	req := newReq("PUT", "/api/v1/manuscript/internal/1/take-down")
+	req.Header.Set("X-Admin-Id", "1") // FINDING-022 修复：admin 身份
 	w := httptest.NewRecorder()
 	h.handleRouter(w, req)
 	assert.Equal(t, 200, w.Code)
@@ -162,6 +163,7 @@ func TestHTTPHandler_CommentCount(t *testing.T) {
 
 	req := newReq("PUT", "/api/v1/manuscript/1/comment-count?count=5")
 	req.SetPathValue("id", "1")
+	req.Header.Set("X-Admin-Id", "1") // FINDING-022 修复：admin 身份
 	w := httptest.NewRecorder()
 	h.handleRouter(w, req)
 	assert.Equal(t, 200, w.Code)
@@ -181,6 +183,7 @@ func TestHTTPHandler_IncrementComment(t *testing.T) {
 	mock.ExpectExec(`UPDATE manuscripts SET comment_count = comment_count \+ 1`).WillReturnResult(sqlmock.NewResult(0, 1))
 
 	req := newReq("POST", "/api/v1/manuscript/1/increment-comment")
+	req.Header.Set("X-Admin-Id", "1") // FINDING-022 修复：admin 身份
 	w := httptest.NewRecorder()
 	h.handleRouter(w, req)
 	assert.Equal(t, 200, w.Code)
@@ -200,6 +203,7 @@ func TestHTTPHandler_DecrementComment(t *testing.T) {
 	mock.ExpectExec(`UPDATE manuscripts SET comment_count = GREATEST`).WillReturnResult(sqlmock.NewResult(0, 1))
 
 	req := newReq("POST", "/api/v1/manuscript/1/decrement-comment")
+	req.Header.Set("X-Admin-Id", "1") // FINDING-022 修复：admin 身份
 	w := httptest.NewRecorder()
 	h.handleRouter(w, req)
 	assert.Equal(t, 200, w.Code)

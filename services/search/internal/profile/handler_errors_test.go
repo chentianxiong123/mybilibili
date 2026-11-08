@@ -164,7 +164,7 @@ func TestHandler_RecordServiceErrorGetOrCreate(t *testing.T) {
 }
 
 func TestHandler_RecordMissingUserHeader(t *testing.T) {
-	// No X-User-Id header -> userID 0 -> a profile is created for user 0.
+	// No X-User-Id header -> RequireUser 401（FINDING-018 修复：不再为 user 0 建 profile）。
 	fake := newFakeDocumentStore()
 	h := NewHandler(NewService(NewRepository(fake)))
 	mux := http.NewServeMux()
@@ -174,16 +174,11 @@ func TestHandler_RecordMissingUserHeader(t *testing.T) {
 		bytes.NewBufferString(`{}`))
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
-	assert.Equal(t, 200, rr.Code)
-	// Verify the profile was created for user 0.
-	p, err := h.svc.Get(req.Context(), 0)
-	require.NoError(t, err)
-	require.NotNil(t, p)
-	assert.Equal(t, int64(0), p.UserID)
+	assert.Equal(t, 401, rr.Code)
 }
 
 func TestHandler_RecordInvalidUserHeader(t *testing.T) {
-	// Invalid X-User-Id header value -> userID 0 (same as missing).
+	// Invalid X-User-Id header value -> RequireUser 401（FINDING-018 修复）。
 	fake := newFakeDocumentStore()
 	h := NewHandler(NewService(NewRepository(fake)))
 	mux := http.NewServeMux()
@@ -194,5 +189,5 @@ func TestHandler_RecordInvalidUserHeader(t *testing.T) {
 	req.Header.Set("X-User-Id", "not-a-number")
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
-	assert.Equal(t, 200, rr.Code)
+	assert.Equal(t, 401, rr.Code)
 }

@@ -63,22 +63,19 @@ func TestAuthGap_ProfileRecord_AnonymousReachable(t *testing.T) {
 
 	realMux(h).ServeHTTP(rr, req)
 
-	// A correctly-enforced auth boundary returns 401. Observed: 200 => reachable.
-	assert.Equal(t, http.StatusOK, rr.Code, "unauthenticated POST /profile/record/watch must NOT return 200")
-
-	// The write landed on the synthetic user 0 profile.
-	p, err := h.svc.Get(context.Background(), 0)
-	require.NoError(t, err)
-	require.NotNil(t, p, "profile for user 0 was created by an anonymous caller")
-	assert.Equal(t, int64(1), p.WatchCount)
+	// FINDING-018 修复后：未认证 → 401（此前 200 + user0 污染）。
+	assert.Equal(t, http.StatusUnauthorized, rr.Code, "unauthenticated POST /profile/record/watch must return 401")
 }
 
-// sanity: an authenticated caller with X-User-Id still gets 200 (regression guard).
+// sanity: an authenticated caller (valid JWT) still gets 200 (regression guard).
 func TestAuthGap_ProfileRecord_AuthedStillWorks(t *testing.T) {
 	h := newTestHandler(t)
 	body := bytes.NewBufferString(`{"categoryId":5,"tags":["user"]}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/profile/record/like", body)
-	req.Header.Set("X-User-Id", "7")
+	// IdentityMiddleware 删除客户端身份头，仅从有效 JWT 重建 → 需真 token。
+	tok, err := auth.NewJWT("dev-secret").Generate(7)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+tok)
 	rr := httptest.NewRecorder()
 
 	realMux(h).ServeHTTP(rr, req)

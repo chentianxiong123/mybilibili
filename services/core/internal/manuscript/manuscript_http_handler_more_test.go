@@ -505,6 +505,7 @@ func TestHandleInternalByPath_Takedown(t *testing.T) {
 	mock.ExpectExec(`UPDATE manuscripts SET status = -1`).WillReturnResult(sqlmock.NewResult(0, 1))
 
 	req := httptest.NewRequest("PUT", "/api/v1/manuscript/internal/5/take-down", nil)
+	req.Header.Set("X-Admin-Id", "1") // FINDING-022 修复：admin 身份
 	w := httptest.NewRecorder()
 	h.handleInternalByPath(w, req)
 	assert.Equal(t, 200, w.Code)

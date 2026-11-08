@@ -68,7 +68,11 @@ func (h *Handler) handleRecord(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	userID := httputil.GetUserIDFromHeader(r)
+	// FINDING-018 修复：未认证请求不得静默操作 userID=0（此前 GetUserIDFromHeader 返回 0 仍继续）。
+	userID, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
 	action := strings.TrimPrefix(r.URL.Path, "/api/v1/profile/record/")
 	var req struct {
 		CategoryID     int64    `json:"categoryId"`

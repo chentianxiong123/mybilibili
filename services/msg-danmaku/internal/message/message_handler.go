@@ -465,6 +465,10 @@ func extractCommentText(s, open string) string {
 	// 全在 rune 层面操作，避免字节索引与 rune 数组错位
 	runes := []rune(s)
 	start := utf8.RuneCountInString(s[:i]) + len([]rune(open))
+	// FINDING-010 修复：非法 UTF-8（如 s="《"、open 命中中间字节）时 start 可能越界 → 守卫防 panic。
+	if start < 0 || start >= len(runes) {
+		return ""
+	}
 	// 匹配闭合：中文《》或英文/中文引号
 	for j := start; j < len(runes); j++ {
 		c := runes[j]

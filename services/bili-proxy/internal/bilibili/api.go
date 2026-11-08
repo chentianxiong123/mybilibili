@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 )
 
@@ -23,6 +24,8 @@ type Client struct {
 	sessdata   string
 	lastCall   time.Time
 	playPrefix string
+	// throttleMu 保护 lastCall（FINDING-004 修复：并发 doGet 下 lastCall 竞态）。
+	throttleMu sync.Mutex
 }
 
 func NewClient(sessdata string) *Client {
@@ -36,6 +39,8 @@ func (c *Client) PlayPrefix() string { return c.playPrefix }
 
 // throttle 简单的全局限流，避免触发风控。
 func (c *Client) throttle() {
+	c.throttleMu.Lock()
+	defer c.throttleMu.Unlock()
 	elapsed := time.Since(c.lastCall)
 	if elapsed < minInterval {
 		time.Sleep(minInterval - elapsed)

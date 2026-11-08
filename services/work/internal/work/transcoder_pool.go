@@ -163,7 +163,9 @@ func (p *TranscoderPool) applyConfig(cfg PoolConfig) {
 	for i := range cfg.Transcoders {
 		n := cfg.Transcoders[i]
 		if existing, ok := p.nodes[n.Name]; ok {
-			// 保留运行时状态
+			// 保留运行时状态（FINDING-013 续：持 existing.mu 读运行时字段，避免
+			// 与 recordResult/probeAll 的写并发产生数据竞态）。
+			existing.mu.Lock()
 			n.Status = existing.Status
 			n.LastCheck = existing.LastCheck
 			n.LastError = existing.LastError
@@ -172,6 +174,7 @@ func (p *TranscoderPool) applyConfig(cfg PoolConfig) {
 			n.FailedJobs = existing.FailedJobs
 			n.TotalLatMs = existing.TotalLatMs
 			n.Concurrency = existing.Concurrency
+			existing.mu.Unlock()
 		} else {
 			n.Status = StatusHealthy // 新节点初始健康
 		}
@@ -346,9 +349,7 @@ func (p *TranscoderPool) List() []*Node {
 	defer p.mu.RUnlock()
 	out := make([]*Node, 0, len(p.nodes))
 	for _, n := range p.nodes {
-		copy := *n
-		copy.mu = sync.Mutex{}
-		out = append(out, &copy)
+		out = append(out, cloneNode(n))
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out
@@ -362,9 +363,29 @@ func (p *TranscoderPool) Get(name string) (*Node, bool) {
 	if !ok {
 		return nil, false
 	}
-	copy := *n
-	copy.mu = sync.Mutex{}
-	return &copy, true
+	return cloneNode(n), true
+}
+
+// cloneNode 深拷贝节点（不含 mutex；FINDING-013 修复：持 n.mu 读运行时字段，
+// 避免与 recordResult/probeAll 的写并发产生数据竞态，且不拷贝已锁的 mutex）。
+func cloneNode(n *Node) *Node {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	c := &Node{
+		Name:         n.Name,
+		Addr:         n.Addr,
+		Capabilities: n.Capabilities,
+		Weight:       n.Weight,
+		Status:       n.Status,
+		LastCheck:    n.LastCheck,
+		LastError:    n.LastError,
+		FailCount:    n.FailCount,
+		TotalJobs:    n.TotalJobs,
+		FailedJobs:   n.FailedJobs,
+		TotalLatMs:   n.TotalLatMs,
+		Concurrency:  n.Concurrency,
+	}
+	return c
 }
 
 // Add 新增节点，立即持久化到 YAML。
