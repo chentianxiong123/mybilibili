@@ -404,7 +404,7 @@ func TestDanmakuService_Broadcaster(t *testing.T) {
 	assert.NotNil(t, svc.Broadcaster())
 
 	// Test Subscribe
-	ch := broadcaster.Subscribe(100)
+	ch, _ := broadcaster.Subscribe(100)
 	assert.NotNil(t, ch)
 
 	// Test Broadcast - should send to subscriber
@@ -422,11 +422,12 @@ func TestDanmakuService_Broadcaster(t *testing.T) {
 	// Test Broadcast to non-subscribed video (no panic)
 	broadcaster.Broadcast(999, event)
 
-	// Test Subscribe same video returns same channel
-	ch2 := broadcaster.Subscribe(100)
-	assert.Equal(t, ch, ch2)
+	// Test Subscribe same video returns DIFFERENT channel (FINDING-041 修复：每订阅者独立通道)
+	ch2, cancel2 := broadcaster.Subscribe(100)
+	assert.NotEqual(t, ch, ch2)
+	cancel2()
 
-	// Test Unsubscribe (no-op, just ensure no panic)
+	// Test Unsubscribe (compat no-op, just ensure no panic)
 	broadcaster.Unsubscribe(100, ch)
 }
 
@@ -439,7 +440,7 @@ func TestDanmakuService_Broadcaster_BufferFull(t *testing.T) {
 	broadcaster := NewDanmakuBroadcaster()
 	_ = NewDanmakuService(repo, broadcaster)
 
-	ch := broadcaster.Subscribe(200)
+	ch, _ := broadcaster.Subscribe(200)
 
 	// Fill the buffer (capacity 100)
 	for i := 0; i < 100; i++ {
@@ -490,7 +491,7 @@ func TestHandleSSE_Events(t *testing.T) {
 
 	// Subscribe first to get the channel
 	videoID := int64(777)
-	_ = h.broadcaster.Subscribe(videoID)
+	_, _ = h.broadcaster.Subscribe(videoID)
 
 	// Start SSE in background
 	ctx, cancel := context.WithCancel(context.Background())

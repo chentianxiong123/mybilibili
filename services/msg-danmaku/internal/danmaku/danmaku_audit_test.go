@@ -34,7 +34,7 @@ func setupAuditHandler(t *testing.T) (*HTTPHandler, *DanmakuBroadcaster, sqlmock
 // AND the HTTP handler broadcasts again (http_handler.go:66).
 func TestAuditDanmakuSend_DoubleBroadcast(t *testing.T) {
 	h, bc, mock := setupAuditHandler(t)
-	ch := bc.Subscribe(99)
+	ch, _ := bc.Subscribe(99)
 
 	mock.ExpectQuery(`INSERT INTO danmaku`).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(7))
@@ -60,27 +60,24 @@ drain:
 			break drain
 		}
 	}
-	assert.Equalf(t, 2, len(got),
-		"FINDING-039: 每 send 应广播 1 次但实际 %d（svc.Send + handler 双广播）", len(got))
+	assert.Equalf(t, 1, len(got),
+		"FINDING-039 修复: 每 send 应广播 1 次但实际 %d（此前 svc.Send + handler 双广播）", len(got))
 }
 
-// AUDIT-2 (fan-out): two SSE clients on the same video share ONE channel; a
-// single broadcast is delivered to only ONE of them, so concurrent viewers miss
-// danmaku. Root cause: Subscribe() returns the shared per-video channel
-// (danmaku_repository.go:229-234) instead of a per-subscriber channel.
+// AUDIT-2 (fan-out): two SSE clients on the same video each get their OWN
+// channel (FINDING-040/041 修复): a single broadcast reaches BOTH.
 func TestAuditDanmakuBroadcaster_Fanout(t *testing.T) {
 	bc := NewDanmakuBroadcaster()
 
-	ch1 := bc.Subscribe(42)
-	ch2 := bc.Subscribe(42) // same shared channel returned
+	ch1, _ := bc.Subscribe(42)
+	ch2, _ := bc.Subscribe(42) // FINDING-041 修复：每订阅者独立通道
 
 	bc.Broadcast(42, &DanmakuEvent{ID: 1, VideoID: 42, Content: "hello"})
 
-	// FINDING-041 钉住：两订阅者共享单通道——仅 1 人收到（got1!=nil 且 got2==nil）。
 	got1 := readWithTimeout(ch1)
 	got2 := readWithTimeout(ch2)
 	assert.NotNil(t, got1, "subscriber 1 should receive the event")
-	assert.Nil(t, got2, "FINDING-041: fan-out broken — 共享通道仅投递到 1 个接收者，subscriber 2 收不到")
+	assert.NotNil(t, got2, "FINDING-041 修复: fan-out 修复后 subscriber 2 也应收到")
 }
 
 // AUDIT-3 (data race): concurrent Subscribe/Broadcast/Unsubscribe on the
@@ -99,9 +96,9 @@ func TestAuditDanmakuBroadcaster_ConcurrentAccess(t *testing.T) {
 		go func(n int) {
 			defer wg.Done()
 			for j := 0; j < 50; j++ {
-				ch := bc.Subscribe(int64(n))
+				ch, cancel := bc.Subscribe(int64(n))
 				bc.Broadcast(int64(n), &DanmakuEvent{ID: int64(j), VideoID: int64(n)})
-				bc.Unsubscribe(int64(n), ch)
+				cancel()
 				_ = ch
 			}
 		}(i)

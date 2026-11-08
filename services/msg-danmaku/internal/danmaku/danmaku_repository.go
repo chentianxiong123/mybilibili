@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/lib/pq"
@@ -204,7 +205,9 @@ func (r *DanmakuRepository) DeleteByCreator(ctx context.Context, id, userID int6
 }
 
 type DanmakuBroadcaster struct {
-	channels map[int64]chan *DanmakuEvent
+	mu       sync.Mutex
+	channels map[int64]map[int64]chan *DanmakuEvent // videoID -> subscriberID -> ch
+	nextID   int64
 }
 
 type DanmakuEvent struct {
@@ -223,24 +226,50 @@ type DanmakuEvent struct {
 }
 
 func NewDanmakuBroadcaster() *DanmakuBroadcaster {
-	return &DanmakuBroadcaster{channels: make(map[int64]chan *DanmakuEvent)}
+	return &DanmakuBroadcaster{channels: make(map[int64]map[int64]chan *DanmakuEvent)}
 }
 
-func (b *DanmakuBroadcaster) Subscribe(videoID int64) <-chan *DanmakuEvent {
+// Subscribe 为每个订阅者分配独立缓冲通道，返回通道与注销函数。
+// FINDING-040/041 修复：加 mutex（-race 下 map 无锁并发读写触发 panic）；
+// 每订阅者独立通道（此前共享单通道，N 订阅者仅 1 人收到每事件）；
+// 注销真实删除通道并 close（此前 no-op，通道泄漏）。
+func (b *DanmakuBroadcaster) Subscribe(videoID int64) (<-chan *DanmakuEvent, func()) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.nextID++
+	id := b.nextID
 	if b.channels[videoID] == nil {
-		b.channels[videoID] = make(chan *DanmakuEvent, 100)
+		b.channels[videoID] = make(map[int64]chan *DanmakuEvent)
 	}
-	return b.channels[videoID]
+	ch := make(chan *DanmakuEvent, 100)
+	b.channels[videoID][id] = ch
+	cancel := func() {
+		b.mu.Lock()
+		defer b.mu.Unlock()
+		if m := b.channels[videoID]; m != nil {
+			if c, ok := m[id]; ok {
+				delete(m, id)
+				close(c)
+			}
+			if len(m) == 0 {
+				delete(b.channels, videoID)
+			}
+		}
+	}
+	return ch, cancel
 }
 
+// Unsubscribe 保留兼容签名（由 Subscribe 返回的 cancel 实现真实注销）。
 func (b *DanmakuBroadcaster) Unsubscribe(videoID int64, ch <-chan *DanmakuEvent) {
-	// closed by caller
+	// 兼容：无 subscriberID 无法精确删除；真实注销走 Subscribe 返回的 cancel。
 }
 
 func (b *DanmakuBroadcaster) Broadcast(videoID int64, event *DanmakuEvent) {
-	if b.channels[videoID] != nil {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for _, ch := range b.channels[videoID] {
 		select {
-		case b.channels[videoID] <- event:
+		case ch <- event:
 		default:
 		}
 	}

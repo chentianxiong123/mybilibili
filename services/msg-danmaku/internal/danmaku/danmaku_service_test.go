@@ -49,7 +49,7 @@ func TestSvcSend_DBError(t *testing.T) {
 func TestSvcSend_Broadcast(t *testing.T) {
 	svc, mock := newMockService(t)
 
-	ch := svc.broadcaster.Subscribe(10)
+	ch, _ := svc.broadcaster.Subscribe(10)
 
 	mock.ExpectQuery(`INSERT INTO danmaku`).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
@@ -212,7 +212,7 @@ func TestSvcBroadcaster_SubscribeAndBroadcast(t *testing.T) {
 	_ = mock
 
 	b := svc.Broadcaster()
-	ch := b.Subscribe(5)
+	ch, _ := b.Subscribe(5)
 
 	mock.ExpectQuery(`INSERT INTO danmaku`).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))

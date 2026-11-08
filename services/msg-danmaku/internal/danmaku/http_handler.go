@@ -63,7 +63,8 @@ func (h *HTTPHandler) handleSend(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "发送弹幕失败", "data": nil})
 		return
 	}
-	h.broadcaster.Broadcast(req.VideoID, event)
+	// FINDING-039 修复：svc.Send 内部已 Broadcast（danmaku_service.go:39），
+	// 此处不再二次广播（此前每 send 双广播）。
 	httputil.WriteOK(w, event)
 }
 
@@ -207,8 +208,8 @@ func (h *HTTPHandler) handleSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
-	ch := h.broadcaster.Subscribe(videoID)
-	defer h.broadcaster.Unsubscribe(videoID, ch)
+	ch, cancel := h.broadcaster.Subscribe(videoID)
+	defer cancel()
 
 	ctx := r.Context()
 	for {

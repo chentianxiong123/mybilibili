@@ -227,7 +227,7 @@ func TestUpsertDailyMetric(t *testing.T) {
 
 func TestDanmakuBroadcaster_PubSub(t *testing.T) {
 	b := NewDanmakuBroadcaster()
-	ch := b.Subscribe(1)
+	ch, _ := b.Subscribe(1)
 
 	event := &DanmakuEvent{ID: 1, VideoID: 1, Content: "hello"}
 	b.Broadcast(1, event)
@@ -244,15 +244,16 @@ func TestDanmakuBroadcaster_BroadcastNoSubscriber(t *testing.T) {
 
 func TestDanmakuBroadcaster_MultipleSubscribers(t *testing.T) {
 	b := NewDanmakuBroadcaster()
-	ch1 := b.Subscribe(1)
-	ch2 := b.Subscribe(1)
-	assert.Equal(t, ch1, ch2)
+	ch1, _ := b.Subscribe(1)
+	ch2, _ := b.Subscribe(1)
+	// FINDING-041 修复：每订阅者独立通道（此前共享单通道，fan-out 仅 1 人收到）。
+	assert.NotEqual(t, ch1, ch2)
 }
 
 func TestDanmakuBroadcaster_DifferentVideos(t *testing.T) {
 	b := NewDanmakuBroadcaster()
-	ch1 := b.Subscribe(1)
-	ch2 := b.Subscribe(2)
+	ch1, _ := b.Subscribe(1)
+	ch2, _ := b.Subscribe(2)
 
 	b.Broadcast(1, &DanmakuEvent{ID: 1, VideoID: 1, Content: "a"})
 	b.Broadcast(2, &DanmakuEvent{ID: 2, VideoID: 2, Content: "b"})
