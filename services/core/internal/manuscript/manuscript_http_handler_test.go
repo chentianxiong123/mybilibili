@@ -708,6 +708,8 @@ func TestHTTPHandler_FavoriteFolderByID_Put(t *testing.T) {
 func TestHTTPHandler_FavoriteFolderByID_Delete(t *testing.T) {
 	h, mock := newHTTPHandler(t)
 
+	mock.ExpectQuery(`SELECT user_id FROM favorite_folders WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(int64(10)))
 	mock.ExpectExec(`DELETE FROM favorite_folder_videos WHERE folder_id`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`DELETE FROM favorite_folders WHERE id`).WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -1091,6 +1093,8 @@ func TestHTTPHandler_FavoriteFolderByID_Put_EmptyName(t *testing.T) {
 func TestHTTPHandler_FavoriteFolderByID_Delete_Error(t *testing.T) {
 	h, mock := newHTTPHandler(t)
 
+	mock.ExpectQuery(`SELECT user_id FROM favorite_folders WHERE id`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(int64(10)))
 	mock.ExpectExec(`DELETE FROM favorite_folder_videos WHERE folder_id`).WillReturnError(sql.ErrConnDone)
 
 	req := newReq("DELETE", "/api/v1/manuscript/favorite/folders/1")

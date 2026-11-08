@@ -1350,11 +1350,27 @@ func (h *ManuscriptHTTPHandler) handleFavoriteFolderByID(w http.ResponseWriter, 
 		}
 		httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
 	case http.MethodDelete:
-		_, _ = h.db.ExecContext(r.Context(), `DELETE FROM favorite_folder_videos WHERE folder_id = $1`, id)
-		_, err := h.db.ExecContext(r.Context(),
+		// FINDING-064 修复：先校验 folder 归属（此前第一个 DELETE 非 owner 作用域，
+		// 可破坏他人收藏夹-视频链接）；两 DELETE 均 owner 作用域 + 检查 RowsAffected。
+		var folderOwner int64
+		if err := h.db.QueryRowContext(r.Context(), `SELECT user_id FROM favorite_folders WHERE id = $1`, id).Scan(&folderOwner); err != nil {
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]interface{}{"code": 404, "message": "folder not found", "data": nil})
+			return
+		}
+		if folderOwner != uid {
+			httputil.WriteJSON(w, http.StatusForbidden, map[string]interface{}{"code": 403, "message": "forbidden", "data": nil})
+			return
+		}
+		_, _ = h.db.ExecContext(r.Context(),
+			`DELETE FROM favorite_folder_videos WHERE folder_id = $1 AND folder_id IN (SELECT id FROM favorite_folders WHERE user_id = $2)`, id, uid)
+		res, err := h.db.ExecContext(r.Context(),
 			`DELETE FROM favorite_folders WHERE id = $1 AND user_id = $2`, id, uid)
 		if err != nil {
 			errors.WriteHTTPError(w, errors.ErrInternal("delete failed"))
+			return
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			httputil.WriteJSON(w, http.StatusNotFound, map[string]interface{}{"code": 404, "message": "folder not found", "data": nil})
 			return
 		}
 		httputil.WriteOK(w, map[string]interface{}{"status": "ok"})
