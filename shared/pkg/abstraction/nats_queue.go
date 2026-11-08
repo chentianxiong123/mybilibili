@@ -3,6 +3,7 @@ package abstraction
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -50,7 +51,11 @@ func (q *natsQueue) ensureStream(topic string) error {
 		MaxAge:            24 * time.Hour,
 		MaxMsgsPerSubject: 100000,
 	})
-	if err != nil && strings.Contains(err.Error(), "already exists") {
+	// FINDING-016 修复：nats-server 对重名 stream 返回 "stream name already in use"（错误码 10058），
+	// 原 "already exists" 判断不匹配 → 并发 ensureStream 误报错误。按错误值 + 两种文案判断。
+	if err != nil && (errors.Is(err, nats.ErrStreamNameAlreadyInUse) ||
+		strings.Contains(err.Error(), "already exists") ||
+		strings.Contains(err.Error(), "already in use")) {
 		return nil
 	}
 	return err

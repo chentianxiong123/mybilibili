@@ -491,7 +491,8 @@ func (h *ManuscriptHTTPHandler) handleUploadComplete(w http.ResponseWriter, r *h
 		if u, ok := vv[0]["url"].(string); ok {
 			playURL = u
 		}
-		if u, ok := vv[0]["video_url"].(string); ok {
+		// FINDING-021 修复：空/缺失 video_url 不覆盖有效 url（此前误报无播放源）。
+		if u, ok := vv[0]["video_url"].(string); ok && u != "" {
 			playURL = u
 		}
 	}

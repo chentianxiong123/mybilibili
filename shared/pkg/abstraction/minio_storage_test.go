@@ -15,8 +15,9 @@ import (
 
 func TestDefaultMinioConfig(t *testing.T) {
 	c := DefaultMinioConfig()
-	assert.Equal(t, "http://127.0.0.1:9000", c.Endpoint)
-	assert.Equal(t, "http://127.0.0.1:9000", c.PublicEndpoint)
+	// FINDING-014 修复：默认端点用裸 host:port（minio-go 拒绝带 scheme）。
+	assert.Equal(t, "127.0.0.1:9000", c.Endpoint)
+	assert.Equal(t, "127.0.0.1:9000", c.PublicEndpoint)
 	assert.Equal(t, "minioadmin", c.AccessKey)
 	assert.Equal(t, "minioadmin", c.SecretKey)
 	assert.Equal(t, "mybilibili", c.BucketName)

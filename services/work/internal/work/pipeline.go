@@ -51,6 +51,9 @@ func (p *Pipeline) SetDatabase(db *sql.DB) {
 	p.db = db
 }
 
+// maxProcessRetries 失败任务的最大重试次数（FINDING-020 修复）。
+const maxProcessRetries = 3
+
 func (p *Pipeline) Start(ctx context.Context) error {
 	ch, err := p.mq.Subscribe(ctx, TopicVideoProcess, "work-worker")
 	if err != nil {
@@ -65,42 +68,56 @@ func (p *Pipeline) Start(ctx context.Context) error {
 			continue
 		}
 		log.Printf("received task: video=%d type=%s", task.VideoID, task.ProcessType)
-		p.process(ctx, task)
+		if !p.process(ctx, task) && task.Retry < maxProcessRetries {
+			// FINDING-020 修复：失败任务有限重试（重新发布），避免 at-most-once 静默丢失。
+			task.Retry++
+			payload, _ := json.Marshal(task)
+			_ = p.mq.Publish(ctx, TopicVideoProcess, abstraction.Message{
+				Topic: TopicVideoProcess, Payload: payload,
+			})
+			log.Printf("retry task video=%d type=%s attempt=%d", task.VideoID, task.ProcessType, task.Retry)
+		}
 	}
 	return nil
 }
 
-func (p *Pipeline) process(ctx context.Context, task ProcessMessage) {
+func (p *Pipeline) process(ctx context.Context, task ProcessMessage) bool {
 	workDir := filepath.Join(p.workDir, fmt.Sprintf("v%d_%d", task.VideoID, time.Now().Unix()))
 	os.MkdirAll(workDir, 0o755)
 	defer os.RemoveAll(workDir)
 
 	p.emitProgress(task.VideoID, task.ManuscriptID, "started", "开始处理", 0, 0, "")
-	defer p.emitProgress(task.VideoID, task.ManuscriptID, "done", "处理完成", 100, 5, "")
+	// FINDING-020 修复：不再无条件 defer "done"；仅处理成功时发 "done"，
+	// 失败时子任务已发 "failed"，最终状态保持 "failed"（此前 done 掩盖失败）。
 
+	ok := true
 	switch task.ProcessType {
 	case ProcessTypeTranscode:
-		p.doTranscode(ctx, task, workDir)
+		ok = p.doTranscode(ctx, task, workDir)
 	case ProcessTypeExtractAudio:
-		p.doExtractAudio(ctx, task, workDir)
+		ok = p.doExtractAudio(ctx, task, workDir)
 	case ProcessTypeGenerateSub:
-		p.doGenerateSubtitle(ctx, task, workDir)
+		ok = p.doGenerateSubtitle(ctx, task, workDir)
 	case ProcessTypeAISummary:
-		p.doAISummary(ctx, task, workDir)
+		ok = p.doAISummary(ctx, task, workDir)
 	}
 
-	if task.ProcessMode == ProcessModeAutoChain {
+	if ok && task.ProcessMode == ProcessModeAutoChain {
 		p.chainNext(ctx, task)
 	}
+	if ok {
+		p.emitProgress(task.VideoID, task.ManuscriptID, "done", "处理完成", 100, 5, "")
+	}
+	return ok
 }
 
-func (p *Pipeline) doTranscode(ctx context.Context, task ProcessMessage, dir string) {
+func (p *Pipeline) doTranscode(ctx context.Context, task ProcessMessage, dir string) bool {
 	p.emitProgress(task.VideoID, task.ManuscriptID, "transcoding", "转码中", 10, 1, "")
 
 	sourceKey := sourceKeyFromURL(task.SourceURL)
 	if sourceKey == "" {
 		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "源对象 key 为空", 0, 6, "empty source key")
-		return
+		return false
 	}
 
 	req := TranscodeRequest{
@@ -116,7 +133,7 @@ func (p *Pipeline) doTranscode(ctx context.Context, task ProcessMessage, dir str
 	res, lastErr := p.transcodeWithRetry(ctx, req)
 	if res == nil {
 		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "转码失败", 0, 6, lastErr.Error())
-		return
+		return false
 	}
 
 	// 回写 is_vertical（横竖屏）
@@ -134,10 +151,11 @@ func (p *Pipeline) doTranscode(ctx context.Context, task ProcessMessage, dir str
 	// 回写 play_url_hd/sd/ld
 	if err := p.writePlayURLs(ctx, task, res.PlayURLs); err != nil {
 		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "回写播放地址失败", 0, 6, err.Error())
-		return
+		return false
 	}
 
 	p.emitProgress(task.VideoID, task.ManuscriptID, "transcoding", "转码完成", 100, 1, "")
+	return true
 }
 
 // transcodeWithRetry 按 round-robin 选节点调用 transcoder，失败换下一个，最多 N 次。
@@ -164,12 +182,12 @@ func (p *Pipeline) transcodeWithRetry(ctx context.Context, req TranscodeRequest)
 	return nil, lastErr
 }
 
-func (p *Pipeline) doExtractAudio(ctx context.Context, task ProcessMessage, dir string) {
+func (p *Pipeline) doExtractAudio(ctx context.Context, task ProcessMessage, dir string) bool {
 	p.emitProgress(task.VideoID, task.ManuscriptID, "audio", "提取音频", 10, 2, "")
 	sourceKey := sourceKeyFromURL(task.SourceURL)
 	if sourceKey == "" {
 		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "源对象 key 为空", 0, 7, "empty source key")
-		return
+		return false
 	}
 	res, err := p.transcodeWithRetry(ctx, TranscodeRequest{
 		Bucket:       "mybilibili",
@@ -180,43 +198,46 @@ func (p *Pipeline) doExtractAudio(ctx context.Context, task ProcessMessage, dir 
 	})
 	if err != nil {
 		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "音频提取失败", 0, 7, err.Error())
-		return
+		return false
 	}
 	if res == nil || res.AudioKey == "" {
 		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "音频提取无返回", 0, 7, "no audio key")
-		return
+		return false
 	}
 	p.emitProgress(task.VideoID, task.ManuscriptID, "audio", "音频提取完成", 100, 2, "")
+	return true
 }
 
-func (p *Pipeline) doGenerateSubtitle(ctx context.Context, task ProcessMessage, dir string) {
+func (p *Pipeline) doGenerateSubtitle(ctx context.Context, task ProcessMessage, dir string) bool {
 	p.emitProgress(task.VideoID, task.ManuscriptID, "subtitle", "生成字幕", 10, 3, "")
 
 	// 字幕/whisper 转写已归位 ai-service（从 MinIO 读音频、写字幕对象）。
 	if p.aiClient == nil {
 		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "AI 客户端未配置", 0, 8, "ai client not configured")
-		return
+		return false
 	}
 	if err := p.aiClient.GenerateSubtitle(ctx, task.ManuscriptID, task.VideoID); err != nil {
 		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "字幕生成失败", 0, 8, err.Error())
-		return
+		return false
 	}
 	p.emitProgress(task.VideoID, task.ManuscriptID, "subtitle", "字幕生成完成", 100, 3, "")
+	return true
 }
 
-func (p *Pipeline) doAISummary(ctx context.Context, task ProcessMessage, dir string) {
+func (p *Pipeline) doAISummary(ctx context.Context, task ProcessMessage, dir string) bool {
 	p.emitProgress(task.VideoID, task.ManuscriptID, "summary", "AI摘要", 10, 4, "")
 
 	// AI 摘要已归位 ai-service（写 MinIO 摘要文件）。
 	if p.aiClient == nil {
 		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "AI 客户端未配置", 0, 9, "ai client not configured")
-		return
+		return false
 	}
 	if err := p.aiClient.GenerateSummary(ctx, task.ManuscriptID, task.VideoID); err != nil {
 		p.emitProgress(task.VideoID, task.ManuscriptID, "failed", "AI摘要失败", 0, 9, err.Error())
-		return
+		return false
 	}
 	p.emitProgress(task.VideoID, task.ManuscriptID, "summary", "AI摘要完成", 100, 4, "")
+	return true
 }
 
 func (p *Pipeline) chainNext(ctx context.Context, task ProcessMessage) {

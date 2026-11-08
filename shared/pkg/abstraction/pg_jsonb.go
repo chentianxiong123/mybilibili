@@ -135,7 +135,10 @@ func (p *pgJSONB) Query(ctx context.Context, collection string, filter QueryFilt
 			continue
 		}
 		var doc any
-		json.Unmarshal([]byte(jsonBytes), &doc)
+		// FINDING-017 修复：解析失败的行跳过（不再无条件 append nil/空文档混入结果）。
+		if err := json.Unmarshal([]byte(jsonBytes), &doc); err != nil {
+			continue
+		}
 		if m, ok := doc.(map[string]any); ok {
 			if v, has := m["id"]; !has || v == nil || fmt.Sprintf("%v", v) == "" {
 				m["id"] = rowID

@@ -411,7 +411,8 @@ func parseMentionNames(s string) []string {
 			seen[name] = true
 			out = append(out, name)
 		}
-		i = j
+		// FINDING-007 修复：i=j-1 使循环 i++ 落在 j，不跳过相邻 @（@a,@b → [a,b]）。
+		i = j - 1
 	}
 	return out
 }

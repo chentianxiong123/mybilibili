@@ -30,6 +30,8 @@ type ProcessMessage struct {
 	ProcessType  string `json:"process_type"`
 	ProcessMode  string `json:"process_mode"`
 	Priority     int32  `json:"priority"`
+	// Retry 记录已重试次数（FINDING-020 修复：失败任务有限重试，避免 at-most-once 丢失）。
+	Retry int `json:"retry"`
 }
 
 type ProgressEvent struct {

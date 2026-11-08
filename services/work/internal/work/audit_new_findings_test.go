@@ -65,7 +65,7 @@ func TestAudit_ChainAdvancesAfterTranscodeFailure(t *testing.T) {
 	}
 	require.True(t, sawFailed, "precondition: transcode emitted 'failed'")
 
-	// (2) BUG: chain still advances to the next step after failure
+	// (2) FINDING-020 修复：失败后不再 chain 到下一步（此前 BUG 在 TRANSCODE 失败后仍发布 EXTRACT_AUDIO）。
 	chained := false
 	for _, msg := range mq.published {
 		if msg.Topic != TopicVideoProcess {
@@ -77,9 +77,8 @@ func TestAudit_ChainAdvancesAfterTranscodeFailure(t *testing.T) {
 			chained = true
 		}
 	}
-	assert.True(t, chained,
-		"BUG: AUTO_CHAIN advanced to EXTRACT_AUDIO even though TRANSCODE failed; "+
-			"failed step should stop the chain, not publish a broken video")
+	assert.False(t, chained,
+		"FINDING-020 修复：TRANSCODE 失败后不应 chain 到 EXTRACT_AUDIO")
 }
 
 // ---------------------------------------------------------------------------
