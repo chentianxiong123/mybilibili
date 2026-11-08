@@ -15,6 +15,10 @@ func GetUserIDFromHeader(r *http.Request) int64 {
 	if err != nil {
 		return 0
 	}
+	// FINDING-082 修复：负 ID 视为无效（此前 -5 作为有效身份通过）。
+	if id <= 0 {
+		return 0
+	}
 	return id
 }
 
@@ -31,6 +35,10 @@ func GetAdminIDFromHeader(r *http.Request) int64 {
 	}
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
+		return 0
+	}
+	// FINDING-082 修复：负 ID 视为无效。
+	if id <= 0 {
 		return 0
 	}
 	return id

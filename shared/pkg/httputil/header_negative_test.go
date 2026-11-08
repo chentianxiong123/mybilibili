@@ -19,9 +19,8 @@ func TestGetUserIDFromHeader_NegativeAccepted(t *testing.T) {
 	r.Header.Set("X-User-Id", "-5")
 
 	uid := GetUserIDFromHeader(r)
-	// Correct behavior: 0 (invalid). Bug: -5 passes through as a valid identity.
-	require.NotEqual(t, int64(0), uid, "negative X-User-Id should be rejected")
-	require.Equal(t, int64(-5), uid)
+	// FINDING-082 修复：负 X-User-Id 应被拒绝（0）。
+	require.Equal(t, int64(0), uid, "negative X-User-Id should be rejected")
 }
 
 // TestParsePageParams_OverflowPins FINDING: ParsePageParams clamps an overflowing
