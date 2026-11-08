@@ -30,6 +30,26 @@ func doPost(t *testing.T, url string, body interface{}) (*http.Response, apiResp
 	return resp, apiResp
 }
 
+// doPostAuth 携带 Bearer token 的 POST（受保护端点需要鉴权）。
+func doPostAuth(t *testing.T, url, token string, body interface{}) (*http.Response, apiResponse) {
+	t.Helper()
+	b, _ := json.Marshal(body)
+	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("POST %s failed: %v", url, err)
+	}
+	defer resp.Body.Close()
+	var apiResp apiResponse
+	json.NewDecoder(resp.Body).Decode(&apiResp)
+	return resp, apiResp
+}
+
 func doGet(t *testing.T, url string, token string) (*http.Response, apiResponse) {
 	t.Helper()
 	req, _ := http.NewRequest("GET", url, nil)

@@ -34,8 +34,8 @@ func TestLiveFlow_Complete(t *testing.T) {
 	json.Unmarshal(login.Data, &loginData)
 	assert.NotEmpty(t, loginData.Token)
 
-	// 创建直播间
-	resp, createRoom := doPost(t, liveURL+"/api/v1/live/room", map[string]interface{}{
+	// 创建直播间（需携带登录 token）
+	resp, createRoom := doPostAuth(t, liveURL+"/api/v1/live/room", loginData.Token, map[string]interface{}{
 		"room_name": "集成测试直播间",
 		"category":  "游戏",
 	})
@@ -50,7 +50,7 @@ func TestLiveFlow_Complete(t *testing.T) {
 	assert.Equal(t, "集成测试直播间", room.RoomName)
 
 	// 获取直播间
-	resp, _ = doGet(t, fmt.Sprintf(liveURL+"/api/v1/live/room/%d", room.ID), "")
+	resp, _ = doGet(t, fmt.Sprintf(liveURL+"/api/v1/live/room/%d", room.ID), loginData.Token)
 	assert.Equal(t, 200, resp.StatusCode)
 
 	// 直播间列表，创建后应能查到
