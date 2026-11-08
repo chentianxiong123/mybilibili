@@ -90,6 +90,7 @@ func TestHandleDanmakuSSE_NoFlusher(t *testing.T) {
 	h.Register(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/sse/danmaku?video_id=99", nil)
+	req.Header.Set("X-User-Id", "1")
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(danmakuNoFlusher{w: rec}, req)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)

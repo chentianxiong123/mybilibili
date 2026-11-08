@@ -144,8 +144,8 @@ func TestAuditDanmakuSSE_AnonymousConnect(t *testing.T) {
 	cancel()
 	<-done
 
-	// FINDING-042 钉住：匿名连接被接受（200）——无 token/X-User-Id 仍可流式弹幕。
-	assert.Equalf(t, http.StatusOK, rr.Code,
-		"FINDING-042: SSE 匿名连接应 401 但实际 %d（仅 video_id 即可连接）", rr.Code)
+	// FINDING-042 修复：匿名连接被拒（401）。
+	assert.Equalf(t, http.StatusUnauthorized, rr.Code,
+		"FINDING-042 修复: SSE 匿名连接应 401 但实际 %d（仅 video_id 即可连接）", rr.Code)
 	_ = json.Valid(rr.Body.Bytes())
 }

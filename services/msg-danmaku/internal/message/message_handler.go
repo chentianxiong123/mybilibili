@@ -32,18 +32,10 @@ func NewMessageHTTPHandler(repo *MessageRepository, notif *NotificationBroadcast
 }
 
 func (h *MessageHTTPHandler) getUserID(r *http.Request) int64 {
-	uid := httputil.GetUserIDFromHeader(r)
-	if uid != 0 {
-		return uid
-	}
-	if h.jwt != nil {
-		if tokenStr := auth.TokenFromRequest(r); tokenStr != "" {
-			if id, err := h.jwt.ParseUserID(tokenStr); err == nil {
-				return id
-			}
-		}
-	}
-	return 0
+	// FINDING-045 修复：仅信任 IdentityMiddleware 注入的 X-User-Id 头（有效 JWT
+	// 且未被吊销）。不再回退直接解析 token（ParseUserID 无撤销检查，已撤销的
+	// access token 经此回退仍可认证每个 message 端点）。
+	return httputil.GetUserIDFromHeader(r)
 }
 
 func (h *MessageHTTPHandler) Register(mux *http.ServeMux) {

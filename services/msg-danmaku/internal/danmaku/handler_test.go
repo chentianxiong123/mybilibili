@@ -477,6 +477,7 @@ func TestHandleSSE_InvalidVideoID(t *testing.T) {
 	h.Register(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/sse/danmaku?video_id=abc", nil)
+	req.Header.Set("X-User-Id", "1")
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
@@ -496,6 +497,7 @@ func TestHandleSSE_Events(t *testing.T) {
 	defer cancel()
 
 	req := httptest.NewRequest(http.MethodGet, "/sse/danmaku?video_id=777", nil)
+	req.Header.Set("X-User-Id", "1")
 	req = req.WithContext(ctx)
 	rr := httptest.NewRecorder()
 	rr.Header().Set("Content-Type", "text/event-stream")

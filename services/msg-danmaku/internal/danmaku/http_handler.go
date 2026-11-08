@@ -188,6 +188,10 @@ func (h *HTTPHandler) handleCreatorByPath(w http.ResponseWriter, r *http.Request
 }
 
 func (h *HTTPHandler) handleSSE(w http.ResponseWriter, r *http.Request) {
+	// FINDING-042 修复：弹幕 SSE 需用户身份（此前匿名可无限连接流式接收任意视频实时弹幕 → DoS）。
+	if _, ok := httputil.RequireUser(w, r); !ok {
+		return
+	}
 	videoIDStr := r.URL.Query().Get("video_id")
 	videoID, err := strconv.ParseInt(videoIDStr, 10, 64)
 	if err != nil {

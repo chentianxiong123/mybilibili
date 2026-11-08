@@ -59,9 +59,6 @@ func TestGetUserID_FromJWT(t *testing.T) {
 	j := auth.NewJWT("test-secret")
 	h := NewMessageHTTPHandler(repo, NewNotificationBroadcaster(), nil, j)
 
-	token, err := j.Generate(1001)
-	require.NoError(t, err)
-
 	mock.ExpectQuery(`SELECT c.id, c.user_id, c.target_user_id`).
 		WithArgs(int64(1001)).
 		WillReturnRows(sqlmock.NewRows([]string{
@@ -72,7 +69,8 @@ func TestGetUserID_FromJWT(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/message/conversations", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
+	// FINDING-045 修复：身份经 X-User-Id 头（真实服务由 IdentityMiddleware 注入）。
+	req.Header.Set("X-User-Id", "1001")
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 
