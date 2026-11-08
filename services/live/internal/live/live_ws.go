@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"golang.org/x/net/websocket"
+
+	"mybilibili/pkg/httputil"
 )
 
 type Client struct {
@@ -111,7 +113,10 @@ type wsMsg struct {
 }
 
 func (h *Hub) ServeWS(ws *websocket.Conn, svc *Service) {
-	userID := userIDFromQuery(ws.Request())
+	// FINDING-028 修复：WS 身份优先取 IdentityMiddleware 注入的 X-User-Id 头
+	// （源自有效 JWT）；不再信任可伪造的 ?user_id= 查询参数（IDOR）。
+	// 无认证 → userID=0（匿名观众），不赋予任何 host/seat 能力。
+	userID := httputil.GetUserIDFromHeader(ws.Request())
 	roomID := roomIDFromQuery(ws.Request())
 	if roomID == 0 {
 		return

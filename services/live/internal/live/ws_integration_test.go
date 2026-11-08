@@ -2,7 +2,9 @@ package live
 
 import (
 	"database/sql"
+	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -23,8 +25,15 @@ func newWSConnPair(t *testing.T) (*websocket.Conn, *websocket.Conn, *httptest.Se
 		serverConnCh <- ws
 		<-done
 	}))
-	url := "ws://" + srv.Listener.Addr().String() + "/ws?room_id=1&user_id=100"
-	client, err := websocket.Dial(url, "", srv.URL)
+	loc, _ := url.Parse("ws://" + srv.Listener.Addr().String() + "/ws?room_id=1&user_id=100")
+	orig, _ := url.Parse(srv.URL)
+	// FINDING-028 修复：WS 身份经 X-User-Id 头传递（不再信任可伪造的 ?user_id= 查询）。
+	client, err := websocket.DialConfig(&websocket.Config{
+		Location: loc,
+		Origin:   orig,
+		Version:  13,
+		Header:   http.Header{"X-User-Id": []string{"100"}},
+	})
 	require.NoError(t, err)
 	var server *websocket.Conn
 	select {
@@ -134,8 +143,15 @@ func TestServeWS_NoRoomID_Returns(t *testing.T) {
 
 func TestServeWS_ApplySeatError_RespondsToClient(t *testing.T) {
 	_, _, mock, srv := newServeWSEnv(t)
-	url := "ws://" + srv.Listener.Addr().String() + "/ws?room_id=1&user_id=100"
-	client, err := websocket.Dial(url, "", srv.URL)
+	loc, _ := url.Parse("ws://" + srv.Listener.Addr().String() + "/ws?room_id=1&user_id=100")
+	orig, _ := url.Parse(srv.URL)
+	// FINDING-028 修复：WS 身份经 X-User-Id 头传递（不再信任可伪造的 ?user_id= 查询）。
+	client, err := websocket.DialConfig(&websocket.Config{
+		Location: loc,
+		Origin:   orig,
+		Version:  13,
+		Header:   http.Header{"X-User-Id": []string{"100"}},
+	})
 	require.NoError(t, err)
 	defer client.Close()
 
@@ -157,8 +173,15 @@ func TestServeWS_ApplySeatError_RespondsToClient(t *testing.T) {
 
 func TestServeWS_BadJSON_Continues(t *testing.T) {
 	_, _, mock, srv := newServeWSEnv(t)
-	url := "ws://" + srv.Listener.Addr().String() + "/ws?room_id=1&user_id=100"
-	client, err := websocket.Dial(url, "", srv.URL)
+	loc, _ := url.Parse("ws://" + srv.Listener.Addr().String() + "/ws?room_id=1&user_id=100")
+	orig, _ := url.Parse(srv.URL)
+	// FINDING-028 修复：WS 身份经 X-User-Id 头传递（不再信任可伪造的 ?user_id= 查询）。
+	client, err := websocket.DialConfig(&websocket.Config{
+		Location: loc,
+		Origin:   orig,
+		Version:  13,
+		Header:   http.Header{"X-User-Id": []string{"100"}},
+	})
 	require.NoError(t, err)
 	defer client.Close()
 
@@ -181,8 +204,15 @@ func TestServeWS_BadJSON_Continues(t *testing.T) {
 func TestServeWS_Unregistered_NoRoom(t *testing.T) {
 	_, _, _, srv := newServeWSEnv(t)
 	// 连接后立即关闭，服务端 Receive 失败 → ServeWS 返回 → unregister
-	url := "ws://" + srv.Listener.Addr().String() + "/ws?room_id=1&user_id=100"
-	client, err := websocket.Dial(url, "", srv.URL)
+	loc, _ := url.Parse("ws://" + srv.Listener.Addr().String() + "/ws?room_id=1&user_id=100")
+	orig, _ := url.Parse(srv.URL)
+	// FINDING-028 修复：WS 身份经 X-User-Id 头传递（不再信任可伪造的 ?user_id= 查询）。
+	client, err := websocket.DialConfig(&websocket.Config{
+		Location: loc,
+		Origin:   orig,
+		Version:  13,
+		Header:   http.Header{"X-User-Id": []string{"100"}},
+	})
 	require.NoError(t, err)
 	_ = client.Close()
 	// 无 DB 交互，连接关闭后服务端清理
@@ -458,8 +488,15 @@ func TestHandleMessage_Default_RelaysToOthers(t *testing.T) {
 
 func TestServeWS_LeaveSeat_EndToEnd(t *testing.T) {
 	_, _, mock, srv := newServeWSEnv(t)
-	url := "ws://" + srv.Listener.Addr().String() + "/ws?room_id=1&user_id=100"
-	client, err := websocket.Dial(url, "", srv.URL)
+	loc, _ := url.Parse("ws://" + srv.Listener.Addr().String() + "/ws?room_id=1&user_id=100")
+	orig, _ := url.Parse(srv.URL)
+	// FINDING-028 修复：WS 身份经 X-User-Id 头传递（不再信任可伪造的 ?user_id= 查询）。
+	client, err := websocket.DialConfig(&websocket.Config{
+		Location: loc,
+		Origin:   orig,
+		Version:  13,
+		Header:   http.Header{"X-User-Id": []string{"100"}},
+	})
 	require.NoError(t, err)
 	defer client.Close()
 

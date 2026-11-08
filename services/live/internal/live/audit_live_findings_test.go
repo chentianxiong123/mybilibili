@@ -211,10 +211,8 @@ func TestLinkmicApply_NoAuth_InsertsViewerZero(t *testing.T) {
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 
-	assert.Equal(t, http.StatusOK, rr.Code,
-		"FINDING-F: unauthenticated linkmic apply should be rejected (401), but returns 200")
-	require.NoError(t, mock.ExpectationsWereMet(),
-		"FINDING-F: anonymous apply still INSERTs live_linkmic with viewer_id=0")
+	assert.Equal(t, http.StatusUnauthorized, rr.Code,
+		"FINDING-026 修复: unauthenticated linkmic apply 应 401")
 }
 
 // ---------------------------------------------------------------------------

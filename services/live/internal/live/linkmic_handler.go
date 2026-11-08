@@ -24,6 +24,17 @@ func (h *LinkmicHandler) Register(mux *http.ServeMux) {
 func (h *LinkmicHandler) handleLinkmic(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/live/linkmic/")
 	parts := strings.Split(path, "/")
+
+	// FINDING-026 修复：连麦申请/接受/拒绝/断开/开关音视频均需用户身份
+	// （此前未认证者可操作任意连麦——幽灵申请 viewer_id=0 / DoS 直播）。
+	if len(parts) >= 2 {
+		switch parts[0] {
+		case "apply", "accept", "reject", "disconnect", "toggle-audio", "toggle-video":
+			if _, ok := httputil.RequireUser(w, r); !ok {
+				return
+			}
+		}
+	}
 	userID := httputil.GetUserIDFromHeader(r)
 
 	switch {
