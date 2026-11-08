@@ -642,12 +642,17 @@ func (s *Service) RouteSkills(ctx context.Context, content string, limit int) ([
 	if limit <= 0 {
 		limit = 3
 	}
+	// FINDING-073 修复：空 content 短路返回空（此前 strings.Contains(name,"") 恒真
+	// → 每个启用 skill 得 +50 且 matched:true，误路由到全部）。
+	contentLower := strings.ToLower(strings.TrimSpace(content))
+	if contentLower == "" {
+		return []map[string]any{}, nil
+	}
 	type scored struct {
 		skill *Skill
 		score int
 	}
 	var scoredSkills []scored
-	contentLower := strings.ToLower(content)
 	words := strings.Fields(contentLower)
 	for _, sk := range skills {
 		if sk.Enabled == 0 {

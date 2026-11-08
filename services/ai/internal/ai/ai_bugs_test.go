@@ -76,8 +76,8 @@ func TestRouteSkills_EmptyContentMatchesAll_Pinned(t *testing.T) {
 	svc := NewService(repo)
 	out, err := svc.RouteSkills(context.Background(), "", 3)
 	require.NoError(t, err)
-	// Pinned: empty content matches all enabled skills.
-	require.Len(t, out, 2, "pinned: empty content should match nothing but returns all skills")
+	// FINDING-073 修复：空 content → 空结果（不再匹配全部）。
+	require.Len(t, out, 0, "FINDING-073 修复: 空 content 应匹配空，而非全部 skill")
 }
 
 // BUG: GrpcServer.ReviewContent dereferences s.reviewSvc without a nil check
