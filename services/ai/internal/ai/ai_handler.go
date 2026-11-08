@@ -158,6 +158,12 @@ func (h *Handler) handleConfigByID(w http.ResponseWriter, r *http.Request) {
 		var req ApiConfig
 		json.NewDecoder(r.Body).Decode(&req)
 		req.ID = id
+		// FINDING-071 修复：部分更新省略 api_key 时保留现有值（此前写 '' 静默清空凭据）。
+		if req.APIKey == "" {
+			if existing, err := h.svc.GetConfig(r.Context(), id); err == nil {
+				req.APIKey = existing.APIKey
+			}
+		}
 		h.svc.UpdateConfig(r.Context(), &req)
 		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	case r.Method == "DELETE":

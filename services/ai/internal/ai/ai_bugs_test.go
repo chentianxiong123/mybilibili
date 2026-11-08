@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
@@ -37,9 +38,13 @@ func TestMaskKey_ShortKeyFullyRevealed_Pinned(t *testing.T) {
 // ai_repository.go:98-103.
 func TestUpdateConfig_PartialUpdateWipesAPIKey_Pinned(t *testing.T) {
 	repo, mock := newRepoAndMock(t)
-	// PUT body without api_key -> api_key arg is "" (wiped).
+	// FINDING-071 修复：部分更新省略 api_key → 先读现有值保留，不写 ''。
+	mock.ExpectQuery(`FROM ai_api_configs WHERE id = \$1`).
+		WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "type", "base_url", "api_key", "model", "max_tokens", "temperature", "enabled", "extra_config", "created_at"}).
+			AddRow(1, "old", "openai", "http://x", "secret-key", "gpt-4o", 0, 0, int32(1), "", time.Now()))
 	mock.ExpectExec(`UPDATE ai_api_configs SET name=\$1`).
-		WithArgs("new-name", "", "", "", "gpt-4o", int32(0), float64(0), int64(1)).
+		WithArgs("new-name", "", "", "secret-key", "gpt-4o", int32(0), float64(0), int64(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	svc := NewService(repo)
@@ -53,7 +58,7 @@ func TestUpdateConfig_PartialUpdateWipesAPIKey_Pinned(t *testing.T) {
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 	require.NoError(t, mock.ExpectationsWereMet())
-	// Pinned: api_key was overwritten with "" on a partial update.
+	// FINDING-071 修复：api_key 保留现有值，未被清空。
 	assert.Equal(t, http.StatusOK, rr.Code)
 }
 
