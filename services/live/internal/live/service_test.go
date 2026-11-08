@@ -130,7 +130,17 @@ func TestService_HandleSRSCallback_OnPublish_Success(t *testing.T) {
 }
 
 func TestService_HandleSRSCallback_OtherAction(t *testing.T) {
-	svc, _ := newTestService(t)
+	svc, mock := newTestService(t)
+	now := time.Now()
+	// FINDING-027 修复：on_unpublish 现查询房间并重置 idle。
+	mock.ExpectQuery(`SELECT .+ FROM live_rooms WHERE stream_key = \$1`).
+		WithArgs("skey123").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "room_name", "user_id", "stream_key", "cover_url", "category", "status", "viewer_count", "created_at", "updated_at",
+		}).AddRow(1, "测试", 5001, "skey123", "", "", RoomStatusLive, 0, now, now))
+	mock.ExpectExec(`UPDATE live_rooms SET status=\$1`).
+		WithArgs(RoomStatusIdle, int64(1)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	err := svc.HandleSRSCallback(t.Context(), "on_unpublish", "skey123")
 	assert.NoError(t, err)
 }

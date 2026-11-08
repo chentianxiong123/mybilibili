@@ -563,9 +563,20 @@ func TestHandleRoomByID_Update_BadJSON(t *testing.T) {
 }
 
 func TestHandleSRSCallback_OtherAction(t *testing.T) {
-	h, _ := newTestLiveHandler(t)
+	h, mock := newTestLiveHandler(t)
 	mux := http.NewServeMux()
 	h.Register(mux)
+
+	// FINDING-027 修复：on_unpublish 现查询房间并重置 idle。
+	now := time.Now()
+	mock.ExpectQuery(`SELECT .+ FROM live_rooms WHERE stream_key = \$1`).
+		WithArgs("key").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "room_name", "user_id", "stream_key", "cover_url", "category", "status", "viewer_count", "created_at", "updated_at",
+		}).AddRow(1, "测试", 5001, "key", "", "", RoomStatusLive, 0, now, now))
+	mock.ExpectExec(`UPDATE live_rooms SET status=\$1`).
+		WithArgs(RoomStatusIdle, int64(1)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	body := `{"action":"on_unpublish","stream":"key","client_id":"c1","ip":"127.0.0.1"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/live/srs/hook", strings.NewReader(body))
@@ -574,6 +585,7 @@ func TestHandleSRSCallback_OtherAction(t *testing.T) {
 	mux.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Contains(t, rr.Body.String(), `"code":0`)
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestHandleSRSCallback_BadJSON(t *testing.T) {

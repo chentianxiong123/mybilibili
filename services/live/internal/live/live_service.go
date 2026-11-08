@@ -117,19 +117,34 @@ func (s *Service) ScheduleRoom(ctx context.Context, roomID, userID int64, schedu
 }
 
 func (s *Service) HandleSRSCallback(ctx context.Context, action, streamKey string) error {
-	if action != "on_publish" {
+	// FINDING-027 修复：仅处理已知动作；未知动作 no-op（不触发 DB 查询）。
+	switch action {
+	case "on_publish", "on_unpublish", "on_stop":
+	default:
 		return nil
 	}
 	room, err := s.repo.GetRoomByStreamKey(ctx, streamKey)
 	if err != nil {
 		return ErrNotFound("invalid stream key")
 	}
-	if err := s.repo.UpdateRoomStatus(ctx, room.ID, RoomStatusLive); err != nil {
-		return err
+	// FINDING-027 修复：on_unpublish/on_stop 结束流 → 房间重置 idle（此前仅处理 on_publish，
+	// 房间永久卡在 "live"，观众误判直播中）。
+	switch action {
+	case "on_publish":
+		if err := s.repo.UpdateRoomStatus(ctx, room.ID, RoomStatusLive); err != nil {
+			return err
+		}
+		s.hub.BroadcastRoom(room.ID, map[string]interface{}{
+			"type": "room_live", "room_id": room.ID, "host_id": room.UserID,
+		})
+	case "on_unpublish", "on_stop":
+		if err := s.repo.UpdateRoomStatus(ctx, room.ID, RoomStatusIdle); err != nil {
+			return err
+		}
+		s.hub.BroadcastRoom(room.ID, map[string]interface{}{
+			"type": "room_offline", "room_id": room.ID, "host_id": room.UserID,
+		})
 	}
-	s.hub.BroadcastRoom(room.ID, map[string]interface{}{
-		"type": "room_live", "room_id": room.ID, "host_id": room.UserID,
-	})
 	return nil
 }
 
