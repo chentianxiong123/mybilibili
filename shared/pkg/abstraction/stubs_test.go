@@ -41,7 +41,9 @@ func TestMemoryCache_Expired(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	require.NoError(t, c.Set(ctx, "k", []byte("v"), -time.Second))
+	// FINDING-079 修复：ttl<=0 为持久（不再即时过期）；用正 ttl + sleep 测过期。
+	require.NoError(t, c.Set(ctx, "k", []byte("v"), time.Nanosecond))
+	time.Sleep(5 * time.Millisecond)
 	_, err = c.Get(ctx, "k")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "expired")

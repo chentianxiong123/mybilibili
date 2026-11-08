@@ -22,10 +22,10 @@ func TestMemoryCache_IncrStuckAtTwo(t *testing.T) {
 
 	require.Equal(t, int64(1), mustIncr(t, m, "k"))
 	require.Equal(t, int64(2), mustIncr(t, m, "k"))
-	// Correct behavior would be 3,4,5,...; the bug freezes at 2.
-	require.Equal(t, int64(2), mustIncr(t, m, "k"))
-	require.Equal(t, int64(2), mustIncr(t, m, "k"))
-	require.Equal(t, int64(2), mustIncr(t, m, "k"))
+	// FINDING-077 修复：计数器不再冻结在 2，应继续递增。
+	require.Equal(t, int64(3), mustIncr(t, m, "k"))
+	require.Equal(t, int64(4), mustIncr(t, m, "k"))
+	require.Equal(t, int64(5), mustIncr(t, m, "k"))
 }
 
 func mustIncr(t *testing.T, m CacheStore, key string) int64 {
@@ -46,11 +46,11 @@ func TestMemoryCache_MaxItemsNotEnforced(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		require.NoError(t, m.Set(ctx, "k"+string(rune('a'+i)), []byte("v"), time.Hour))
 	}
-	// Correct behavior: only maxItems (2) entries retained. Bug: all 5 resident.
+	// FINDING-078 修复：MaxItems=2 → 仅保留最近 2 个，最旧被驱逐。
 	_, err = m.Get(ctx, "ka")
-	require.NoError(t, err, "MaxItems=2 should evict; all 5 keys are still resident")
+	require.Error(t, err, "FINDING-078 修复: ka 应被驱逐")
 	_, err = m.Get(ctx, "ke")
-	require.NoError(t, err)
+	require.NoError(t, err, "ke 应保留")
 }
 
 // TestMemoryCache_TTLZeroIsImmediatelyExpired pins FINDING: memoryCache.Set with ttl=0
@@ -64,6 +64,6 @@ func TestMemoryCache_TTLZeroIsImmediatelyExpired(t *testing.T) {
 
 	require.NoError(t, m.Set(ctx, "k", []byte("v"), 0))
 	_, err = m.Get(ctx, "k")
-	// Pins the buggy behavior: ttl=0 must mean persistent, but the entry is expired.
-	require.Error(t, err, "ttl=0 must mean persistent; entry is immediately expired (bug)")
+	// FINDING-079 修复：ttl=0 为持久（不再即时过期）。
+	require.NoError(t, err, "FINDING-079 修复: ttl=0 应持久")
 }

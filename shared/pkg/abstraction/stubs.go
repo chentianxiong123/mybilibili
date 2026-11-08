@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -85,7 +86,19 @@ func (m *memoryCache) Get(ctx context.Context, key string) ([]byte, error) {
 func (m *memoryCache) Set(ctx context.Context, key string, value []byte, ttl time.Duration) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.data[key] = cacheEntry{value: value, exp: time.Now().Add(ttl)}
+	// FINDING-078 修复：达 maxItems 时驱逐（FIFO）防无界增长。
+	if _, exists := m.data[key]; !exists && len(m.data) >= m.maxItems {
+		for k := range m.data {
+			delete(m.data, k)
+			break
+		}
+	}
+	// FINDING-079 修复：ttl<=0 视为持久（exp 零值），与 Redis 语义一致（此前 ttl=0 → 即时过期）。
+	exp := time.Time{}
+	if ttl > 0 {
+		exp = time.Now().Add(ttl)
+	}
+	m.data[key] = cacheEntry{value: value, exp: exp}
 	return nil
 }
 
@@ -121,11 +134,29 @@ func (m *memoryCache) Incr(ctx context.Context, key string, ttl time.Duration) (
 	defer m.mu.Unlock()
 	var n int64
 	if e, ok := m.data[key]; ok {
-		n = int64(len(e.value))
+		n = parseCounter(e.value)
 	}
 	n++
-	m.data[key] = cacheEntry{value: []byte{byte(n)}, exp: time.Now().Add(ttl)}
+	exp := time.Time{}
+	if ttl > 0 {
+		exp = time.Now().Add(ttl)
+	}
+	m.data[key] = cacheEntry{value: counterBytes(n), exp: exp}
 	return n, nil
+}
+
+// counterBytes 将 int64 编码为十进制字节（供 Incr 存取），避免 []byte{byte(n)}
+// 的 1 字节长度冻结问题（FINDING-077）。
+func counterBytes(n int64) []byte {
+	return strconv.AppendInt(nil, n, 10)
+}
+
+func parseCounter(v []byte) int64 {
+	n, err := strconv.ParseInt(string(v), 10, 64)
+	if err != nil {
+		return int64(len(v))
+	}
+	return n
 }
 
 func (m *memoryCache) Close() error { return nil }
