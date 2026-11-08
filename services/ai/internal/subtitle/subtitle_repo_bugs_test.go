@@ -90,14 +90,8 @@ func TestSetDefault_InvalidIDClearsAllDefaults_Pinned(t *testing.T) {
 	repo := NewRepository(store)
 	err := repo.SetDefault(context.Background(), 10, "does-not-exist")
 	require.NoError(t, err)
-	// Pinned: after SetDefault with an unknown id, no subtitle is default.
-	anyDefault := false
-	for _, u := range store.updates {
-		if u.IsDefault {
-			anyDefault = true
-		}
-	}
-	assert.False(t, anyDefault, "pinned: SetDefault(unknown id) left zero defaults (should keep one)")
+	// FINDING-069(a) 修复：目标不存在 → no-op（保留原默认 "a"，不更新任何行）。
+	assert.Empty(t, store.updates, "FINDING-069 修复: SetDefault(unknown id) 应 no-op")
 }
 
 // BUG: Upload never checks whether a subtitle already exists for the
@@ -110,7 +104,7 @@ func TestUpload_NoDuplicateDedup_Pinned(t *testing.T) {
 	_, err2 := svc.Upload(context.Background(), 10, 1, "zh-CN", "中文", "[]")
 	require.NoError(t, err1)
 	require.NoError(t, err2)
-	assert.Equal(t, 2, store.inserts, "pinned: duplicate video+language imports not deduped")
+	assert.Equal(t, 1, store.inserts, "FINDING-068 修复: 重复 video+language 导入应去重")
 }
 
 // BUG: Create inserts a subtitle with IsDefault=true without clearing any
@@ -126,13 +120,14 @@ func TestCreate_AllowsTwoDefaults_Pinned(t *testing.T) {
 	repo := NewRepository(store)
 	_, err := repo.Create(context.Background(), &Subtitle{VideoID: 10, IsDefault: true, Format: "srt"})
 	require.NoError(t, err)
-	defaultCount := 0
-	for _, s := range store.subs {
-		if s.IsDefault {
-			defaultCount++
+	// FINDING-069(b) 修复：旧默认 "a" 应被清除（store.updates 有 a→IsDefault=false）。
+	foundCleared := false
+	for _, u := range store.updates {
+		if u.ID == "a" && !u.IsDefault {
+			foundCleared = true
 		}
 	}
-	assert.Equal(t, 2, defaultCount, "pinned: Create allows two defaults for one video")
+	assert.True(t, foundCleared, "FINDING-069(b) 修复: 旧默认应被清除")
 }
 
 // BUG: Upload also never validates video/manuscript ownership (no check that

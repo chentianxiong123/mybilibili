@@ -42,6 +42,17 @@ func (r *Repository) Create(ctx context.Context, s *Subtitle) (string, error) {
 	if s.UploadTime.IsZero() {
 		s.UploadTime = time.Now()
 	}
+	// FINDING-069(b) 修复：新字幕为默认时先清该视频旧默认，避免每视频两个默认。
+	if s.IsDefault {
+		if list, err := r.ListByVideo(ctx, s.VideoID); err == nil {
+			for _, old := range list {
+				if old.ID != s.ID && old.IsDefault {
+					old.IsDefault = false
+					_ = r.store.Update(ctx, collection, old.ID, old)
+				}
+			}
+		}
+	}
 	return r.store.Insert(ctx, collection, s)
 }
 
@@ -112,6 +123,17 @@ func (r *Repository) SetDefault(ctx context.Context, videoID int64, subtitleID s
 	if err != nil {
 		return err
 	}
+	// FINDING-069(a) 修复：目标字幕不存在时 no-op（此前清空全部默认 → 零默认）。
+	exists := false
+	for _, s := range list {
+		if s.ID == subtitleID {
+			exists = true
+			break
+		}
+	}
+	if !exists {
+		return nil
+	}
 	for _, s := range list {
 		s.IsDefault = s.ID == subtitleID
 		if err := r.store.Update(ctx, collection, s.ID, s); err != nil {
@@ -130,6 +152,10 @@ func NewService(repo *Repository) *Service {
 }
 
 func (s *Service) Upload(ctx context.Context, videoID, uploadedBy int64, language, languageName, content string) (*Subtitle, error) {
+	// FINDING-068 修复：video+language 已有则不重复创建（此前重复导入创建重复字幕行）。
+	if existing, _ := s.repo.GetByLanguage(ctx, videoID, language); existing != nil {
+		return existing, nil
+	}
 	st := &Subtitle{
 		VideoID: videoID, Language: language, LanguageName: languageName,
 		Content: content, Format: "srt", UploadedBy: uploadedBy,
