@@ -49,12 +49,13 @@ func TestUpsertDailyMetric_FieldInterpolation(t *testing.T) {
 	mock.ExpectExec(`INSERT INTO manuscript_daily_metrics.*comment_count`).
 		WithArgs(int64(10), int64(20), int32(1)).
 		WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec(`INSERT INTO manuscript_daily_metrics.*favorite_count`).
+	// 修正：favorite_count 不在 dailyMetricFields allowlist（schema 无该列），改用 like_count。
+	mock.ExpectExec(`INSERT INTO manuscript_daily_metrics.*like_count`).
 		WithArgs(int64(11), int64(21), int32(2)).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	require.NoError(t, UpsertDailyMetric(context.Background(), db, 10, 20, "comment_count", 1))
-	require.NoError(t, UpsertDailyMetric(context.Background(), db, 11, 21, "favorite_count", 2))
+	require.NoError(t, UpsertDailyMetric(context.Background(), db, 11, 21, "like_count", 2))
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
