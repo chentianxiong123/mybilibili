@@ -43,12 +43,9 @@ func TestParseSRT_MalformedSkipped(t *testing.T) {
 00:00:01,000 --> 00:00:02,000
 valid block
 `
-	cues, err := ParseSRT(content)
-	require.NoError(t, err)
-	// 第一块缺 index 行 → 被跳过（只有 3 行但第一行不是数字）
-	// 实际 strings.SplitN(block, "\n", 3) 对 "garbage\n00:00:01..." 会得到 ["garbage", "00:00:01,000 --> ...", "valid block"]
-	// index=garbage 解析失败 → skip
-	assert.Empty(t, cues)
+	// FINDING-066 修复：非空但零有效 cue（全畸形块）→ 报错（此前静默空列表）。
+	_, err := ParseSRT(content)
+	require.Error(t, err)
 }
 
 func TestParseSRT_InvalidTimeRangeSkipped(t *testing.T) {
@@ -56,9 +53,8 @@ func TestParseSRT_InvalidTimeRangeSkipped(t *testing.T) {
 00:00:01,000 00:00:02,000
 no arrow here
 `
-	cues, err := ParseSRT(content)
-	require.NoError(t, err)
-	assert.Empty(t, cues)
+	_, err := ParseSRT(content)
+	require.Error(t, err)
 }
 
 func TestParseSRT_MultiLineText(t *testing.T) {

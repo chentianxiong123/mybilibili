@@ -17,6 +17,9 @@ type SRTCue struct {
 
 func ParseSRT(content string) ([]SRTCue, error) {
 	content = strings.TrimSpace(strings.ReplaceAll(content, "\r\n", "\n"))
+	if content == "" {
+		return nil, nil // 空输入：合法"无字幕"结果
+	}
 	blocks := strings.Split(content, "\n\n")
 	var cues []SRTCue
 	for _, block := range blocks {
@@ -36,10 +39,29 @@ func ParseSRT(content string) ([]SRTCue, error) {
 		if err != nil {
 			continue
 		}
-		text := strings.TrimSpace(lines[2])
+		text := sanitizeCueText(strings.TrimSpace(lines[2]))
 		cues = append(cues, SRTCue{Index: index, Start: start, End: end, Text: text})
 	}
+	// FINDING-066 修复：非空但零有效 cue（垃圾输入）返回错误（此前恒 nil + 空列表，
+	// 调用方存 "[]" 静默覆盖）。
+	if len(cues) == 0 {
+		return nil, fmt.Errorf("no valid SRT cues found")
+	}
+	// FINDING-066 修复：按开始时间排序（此前乱序/重叠接受）。
+	for i := 1; i < len(cues); i++ {
+		for j := i; j > 0 && cues[j].Start < cues[j-1].Start; j-- {
+			cues[j], cues[j-1] = cues[j-1], cues[j]
+		}
+	}
 	return cues, nil
+}
+
+// sanitizeCueText 转义 HTML 特殊字符（FINDING-066：<script> 原样存储 → stored-XSS）。
+func sanitizeCueText(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	return s
 }
 
 func parseTimeRange(s string) (time.Duration, time.Duration, error) {
@@ -54,6 +76,10 @@ func parseTimeRange(s string) (time.Duration, time.Duration, error) {
 	end, err := parseTime(strings.TrimSpace(parts[1]))
 	if err != nil {
 		return 0, 0, err
+	}
+	// FINDING-066 修复：End>Start 校验（此前 End<Start 负时长接受）。
+	if end <= start {
+		return 0, 0, fmt.Errorf("end must be after start: %s", s)
 	}
 	return start, end, nil
 }
@@ -70,7 +96,12 @@ func parseTime(s string) (time.Duration, error) {
 	sec, err3 := strconv.Atoi(secParts[0])
 	ms := 0
 	if len(secParts) > 1 {
-		ms, _ = strconv.Atoi(secParts[1])
+		// FINDING-066 修复：ms 非数字应报错（此前 _ = Atoi 吞错 → 0）。
+		var err4 error
+		ms, err4 = strconv.Atoi(secParts[1])
+		if err4 != nil {
+			return 0, fmt.Errorf("invalid milliseconds: %s", s)
+		}
 	}
 	// FINDING-011 修复：校验范围，防 time.Duration 溢出为负（如 parseTime("8000000::")）。
 	if err1 != nil || err2 != nil || err3 != nil {

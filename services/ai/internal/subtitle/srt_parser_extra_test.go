@@ -105,23 +105,20 @@ func TestParseSRT_DotSeparator(t *testing.T) {
 
 func TestParseSRT_InvalidIndex_Skipped(t *testing.T) {
 	srt := "not-a-number\n00:00:01,000 --> 00:00:02,000\nhello"
-	cues, err := ParseSRT(srt)
-	require.NoError(t, err)
-	assert.Empty(t, cues)
+	_, err := ParseSRT(srt)
+	require.Error(t, err, "FINDING-066 修复：非空但零有效 cue 应报错")
 }
 
 func TestParseSRT_TooFewLines_Skipped(t *testing.T) {
 	srt := "1\n00:00:01,000 --> 00:00:02,000"
-	cues, err := ParseSRT(srt)
-	require.NoError(t, err)
-	assert.Empty(t, cues)
+	_, err := ParseSRT(srt)
+	require.Error(t, err, "FINDING-066 修复：非空但零有效 cue 应报错")
 }
 
 func TestParseSRT_InvalidTimeRange_Skipped(t *testing.T) {
 	srt := "1\ninvalid time range\nhello"
-	cues, err := ParseSRT(srt)
-	require.NoError(t, err)
-	assert.Empty(t, cues)
+	_, err := ParseSRT(srt)
+	require.Error(t, err, "FINDING-066 修复：非空但零有效 cue 应报错")
 }
 
 func TestParseSRT_MultipleBlocks(t *testing.T) {
