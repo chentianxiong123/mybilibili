@@ -31,7 +31,7 @@ func NewService(repo *Repository, hub *Hub) *Service {
 	return &Service{repo: repo, hub: hub}
 }
 
-func (s *Service) CreateRoom(ctx context.Context, roomName, cover, category string, hostID int64, _ int32) (*Room, error) {
+func (s *Service) CreateRoom(ctx context.Context, roomName, cover, category string, hostID int64, maxSeats int32) (*Room, error) {
 	if roomName == "" {
 		return nil, ErrInvalidArgument("room name required")
 	}
@@ -41,6 +41,14 @@ func (s *Service) CreateRoom(ctx context.Context, roomName, cover, category stri
 		UserID: hostID, Status: RoomStatusIdle,
 	}
 	if err := s.repo.CreateRoom(ctx, room); err != nil {
+		return nil, err
+	}
+	// FINDING-054 修复：播种 maxSeats 个座位（此前 maxSeats 被丢弃且 InitSeats 从未
+	// 调用 → 新房间 live_seats 0 行 → ApplySeat 恒 "no available seats"，连麦死掉）。
+	if maxSeats <= 0 {
+		maxSeats = 6
+	}
+	if err := s.repo.InitSeats(ctx, room.ID, maxSeats); err != nil {
 		return nil, err
 	}
 	return room, nil

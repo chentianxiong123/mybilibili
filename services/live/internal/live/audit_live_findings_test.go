@@ -73,19 +73,20 @@ func TestService_CreateRoom_NeverSeedsSeats(t *testing.T) {
 	mock.ExpectQuery(`INSERT INTO live_rooms`).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
 			AddRow(1, now, now))
+	// FINDING-054 修复：CreateRoom 现调用 InitSeats 播种 maxSeats=8 个座位。
+	mock.ExpectExec(`INSERT INTO live_seats`).WillReturnResult(sqlmock.NewResult(0, 8))
 
 	room, err := svc.CreateRoom(t.Context(), "新直播间", "", "游戏", 5001, 8)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), room.ID)
 
-	// maxSeats=8 was accepted by the handler but silently dropped: GetSeats
-	// returns zero seat rows, so the first ApplySeat fails.
-	mock.ExpectQuery(`SELECT .+ FROM live_seats`).
-		WithArgs(int64(1)).
-		WillReturnRows(seatRow()) // no seats seeded
+	// 座位已播种：第一个 ApplySeat 应能占座（此前 live_seats 0 行 → "no available seats"）。
+	mock.ExpectQuery(`SELECT .+ FROM live_seats`).WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "room_id", "seat_index", "user_id", "status", "muted", "joined_at"}).
+			AddRow(1, int64(1), 0, int64(0), int32(0), false, nil))
+	mock.ExpectExec(`UPDATE live_seats`).WillReturnResult(sqlmock.NewResult(0, 1))
 	err = svc.ApplySeat(t.Context(), room.ID, 100)
-	assert.Error(t, err, "FINDING-B: room created with maxSeats=8 has no seats")
-	assert.Contains(t, err.Error(), "no available seats")
+	require.NoError(t, err, "FINDING-054 修复：座位已播种，ApplySeat 应成功")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

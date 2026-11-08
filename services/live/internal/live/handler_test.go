@@ -50,6 +50,8 @@ func TestHandleCreateRoom_200(t *testing.T) {
 	mock.ExpectQuery(`INSERT INTO live_rooms`).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
 			AddRow(1, now, now))
+	// FINDING-054 修复：CreateRoom 调 InitSeats。
+	mock.ExpectExec(`INSERT INTO live_seats`).WillReturnResult(sqlmock.NewResult(0, 6))
 
 	rr := doLive(t, h, http.MethodPost, "/api/v1/live/room", `{"room_name":"测试直播间"}`)
 	assert.Equal(t, http.StatusOK, rr.Code)
