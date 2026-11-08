@@ -6,7 +6,6 @@ package subtitle
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,21 +34,16 @@ func TestParseSRT_OverlappingOutOfOrderAccepted_Pinned(t *testing.T) {
 
 // BUG: parseTime treats any fractional-seconds digit group as a bare integer
 // of milliseconds, so "00:00:01,1234" is parsed as 1s + 1234ms = 2.234s
-// instead of 1.1234s. ms is never bounded to 0..999.
-// File: srt_parser.go:69-74.
+// FINDING-011 修复后：ms>999 → error（不再静默溢出/归一化）。
 func TestParseTime_OverLongMilliseconds_Pinned(t *testing.T) {
-	d, err := parseTime("00:00:01,1234")
-	require.NoError(t, err)
-	assert.Equal(t, 2234*time.Millisecond, d, "pinned: ms>999 not normalized")
+	_, err := parseTime("00:00:01,1234")
+	require.Error(t, err, "FINDING-011 修复：ms>999 应报错")
 }
 
-// BUG: parseTime ignores strconv.Atoi errors, so a fully non-numeric time
-// "abc:def:ghi" silently parses to 0s instead of failing.
-// File: srt_parser.go:67-73.
+// FINDING-011 修复后：非数字 → error（不再静默 0s）。
 func TestParseTime_NonNumericAccepted_Pinned(t *testing.T) {
-	d, err := parseTime("abc:def:ghi")
-	require.NoError(t, err)
-	assert.Equal(t, time.Duration(0), d, "pinned: Atoi errors ignored, garbage time -> 0s")
+	_, err := parseTime("abc:def:ghi")
+	require.Error(t, err, "FINDING-011 修复：非数字应报错")
 }
 
 // BUG: ParseSRT never returns an error (signature always yields nil), so a

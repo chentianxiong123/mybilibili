@@ -43,6 +43,12 @@ func NewRepository(db *sql.DB) *Repository {
 }
 
 func (r *Repository) ListWords(ctx context.Context, page, size int32) ([]*ProhibitedWord, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * size
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, word, match_type, COALESCE(category,''), is_enabled, created_at, updated_at
@@ -123,6 +129,12 @@ func (r *Repository) CreateReport(ctx context.Context, reporterID int64, targetT
 }
 
 func (r *Repository) ListReports(ctx context.Context, page, size int32, status string) ([]*Report, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * size
 	query := `SELECT id, reporter_id, target_type, target_id, COALESCE(manuscript_id,0), reason, description,
 	          status, COALESCE(admin_remark,''), processed_at, COALESCE(ai_verdict,''), COALESCE(ai_risk_level,''), created_at

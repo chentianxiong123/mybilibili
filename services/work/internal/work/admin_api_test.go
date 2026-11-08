@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -378,7 +379,7 @@ func TestHandleTestAddr_ConnectFail(t *testing.T) {
 }
 
 func TestNode_AvgLatencyMs(t *testing.T) {
-	n := &Node{}
+	n := &Node{mu: &sync.Mutex{}}
 	assert.Equal(t, int64(0), n.AvgLatencyMs(), "zero jobs should return 0")
 
 	n.recordResult(true, 100*time.Millisecond)

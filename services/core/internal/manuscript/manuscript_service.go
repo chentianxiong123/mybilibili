@@ -10,8 +10,8 @@ import (
 	"mybilibili/core/internal/user"
 	"mybilibili/pkg/abstraction"
 	"mybilibili/pkg/errors"
-	"mybilibili/pkg/repository"
 	pb "mybilibili/pkg/pb"
+	"mybilibili/pkg/repository"
 )
 
 type Repository = user.Repository

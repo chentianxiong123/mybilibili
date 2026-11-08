@@ -934,8 +934,8 @@ func TestHandlePrivacy_PUT_IgnoresUnknownKeys(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	body := map[string]interface{}{
-		"publicCollection": 1,
-		"publicFollowersList; DROP TABLE users--": 1, // 注入尝试，必须被忽略
+		"publicCollection":                                  1,
+		"publicFollowersList; DROP TABLE users--":           1, // 注入尝试，必须被忽略
 		"user_id = 1; UPDATE admin_users SET admin_level=2": 1,
 	}
 	rec := doRequest(t, mux, "PUT", "/api/v1/user/privacy/test", body, map[string]string{

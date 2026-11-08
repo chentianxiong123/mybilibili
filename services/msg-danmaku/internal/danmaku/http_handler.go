@@ -13,7 +13,7 @@ import (
 )
 
 type HTTPHandler struct {
-	svc        *DanmakuService
+	svc         *DanmakuService
 	broadcaster *DanmakuBroadcaster
 }
 
@@ -224,4 +224,3 @@ func (h *HTTPHandler) handleSSE(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
-

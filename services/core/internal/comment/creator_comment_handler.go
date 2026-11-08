@@ -93,11 +93,11 @@ func (h *CreatorCommentHTTPHandler) handleList(w http.ResponseWriter, r *http.Re
 		list = append(list, map[string]any{
 			"id":              c.ID,
 			"manuscriptId":    c.ManuscriptID,
-			"manuscriptTitle":  manuscriptTitleOf(m),
+			"manuscriptTitle": manuscriptTitleOf(m),
 			"manuscriptCover": manuscriptCoverOf(m),
 			"userId":          c.UserID,
 			"userName":        userNicknameOf(u),
-			"userAvatar":       userAvatarOf(u),
+			"userAvatar":      userAvatarOf(u),
 			"content":         c.Content,
 			"likeCount":       c.LikeCount,
 			"replyCount":      c.ReplyCount,
@@ -120,11 +120,11 @@ func (h *CreatorCommentHTTPHandler) handleList(w http.ResponseWriter, r *http.Re
 		list = append(list, map[string]any{
 			"id":              rep.ID,
 			"manuscriptId":    rep.ManuscriptID,
-			"manuscriptTitle":  manuscriptTitleOf(m),
+			"manuscriptTitle": manuscriptTitleOf(m),
 			"manuscriptCover": manuscriptCoverOf(m),
 			"userId":          rep.UserID,
 			"userName":        userNicknameOf(u),
-			"userAvatar":       userAvatarOf(u),
+			"userAvatar":      userAvatarOf(u),
 			"content":         rep.Content,
 			"likeCount":       rep.LikeCount,
 			"replyCount":      0,
@@ -338,4 +338,3 @@ func (h *CreatorCommentHTTPHandler) handleDeleteReply(w http.ResponseWriter, r *
 	}
 	httputil.WriteOK(w, map[string]any{"status": "ok"})
 }
-

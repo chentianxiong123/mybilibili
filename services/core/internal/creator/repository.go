@@ -7,7 +7,8 @@ import (
 )
 
 // Coupon 流量券：平台发给创作者的一张曝光资源。
-//   status 0 未使用 / 1 已使用 / -1 已过期作废
+//
+//	status 0 未使用 / 1 已使用 / -1 已过期作废
 type Coupon struct {
 	ID        int64
 	UserID    int64
@@ -31,7 +32,8 @@ type CouponUse struct {
 }
 
 // Task 任务定义。
-//   period once / daily / weekly / total
+//
+//	period once / daily / weekly / total
 type Task struct {
 	ID           int64
 	Code         string

@@ -179,6 +179,9 @@ func (r *MessageRepository) GetConversations(ctx context.Context, userID int64) 
 }
 
 func (r *MessageRepository) GetMessages(ctx context.Context, conversationID int64, page, pageSize int32) ([]*Message, error) {
+	if page < 1 {
+		page = 1
+	}
 	offset := (page - 1) * pageSize
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, sender_id, receiver_id, conversation_id, content, message_type, is_read, created_at
@@ -252,11 +255,11 @@ type NotificationBroadcaster struct {
 }
 
 type NotificationEvent struct {
-	Type      string         `json:"type"`
-	Content   string         `json:"content,omitempty"`
-	FromUID   int64          `json:"from_uid,omitempty"`
-	FromName  string         `json:"from_name,omitempty"`
-	CreatedAt string         `json:"created_at,omitempty"`
+	Type      string           `json:"type"`
+	Content   string           `json:"content,omitempty"`
+	FromUID   int64            `json:"from_uid,omitempty"`
+	FromName  string           `json:"from_name,omitempty"`
+	CreatedAt string           `json:"created_at,omitempty"`
 	Data      map[string]int32 `json:"data,omitempty"`
 }
 

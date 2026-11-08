@@ -80,9 +80,9 @@ type danmakuNoFlusher struct {
 	w http.ResponseWriter
 }
 
-func (n danmakuNoFlusher) Header() http.Header        { return n.w.Header() }
+func (n danmakuNoFlusher) Header() http.Header         { return n.w.Header() }
 func (n danmakuNoFlusher) Write(b []byte) (int, error) { return n.w.Write(b) }
-func (n danmakuNoFlusher) WriteHeader(s int)          { n.w.WriteHeader(s) }
+func (n danmakuNoFlusher) WriteHeader(s int)           { n.w.WriteHeader(s) }
 
 func TestHandleDanmakuSSE_NoFlusher(t *testing.T) {
 	h, _ := newTestDanmaku(t)

@@ -83,6 +83,12 @@ func (r *InteractionRepository) UpsertWatchHistory(ctx context.Context, userID, 
 }
 
 func (r *InteractionRepository) GetWatchHistory(ctx context.Context, userID int64, page, pageSize int32) ([]*pb.WatchHistoryItem, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * pageSize
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT m.id, m.title, m.cover_url, wh.progress_seconds, m.duration_seconds, wh.watched_at

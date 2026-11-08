@@ -664,6 +664,9 @@ func (h *MessageHTTPHandler) handleMessagesByUser(w http.ResponseWriter, r *http
 		if page < 1 {
 			page = 1
 		}
+		if page > 1_000_000 { // FINDING-012 修复：防 (page-1)*size int32 溢出
+			page = 1_000_000
+		}
 		if size < 1 || size > 50 {
 			size = 20
 		}

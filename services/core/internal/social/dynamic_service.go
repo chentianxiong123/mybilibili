@@ -154,6 +154,12 @@ func (r *CollectionRepository) RemoveManuscript(ctx context.Context, collectionI
 }
 
 func (r *CollectionRepository) ListManuscripts(ctx context.Context, collectionID int64, page, limit int32) ([]int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * limit
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT manuscript_id FROM manuscript_collection_relations WHERE collection_id = $1 ORDER BY collection_order LIMIT $2 OFFSET $3`,
@@ -173,6 +179,12 @@ func (r *CollectionRepository) ListManuscripts(ctx context.Context, collectionID
 
 // ListManuscriptsDetail JOIN manuscripts 返回完整稿件对象（供前端渲染）。
 func (r *CollectionRepository) ListManuscriptsDetail(ctx context.Context, collectionID int64, page, limit int32) ([]map[string]interface{}, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * limit
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT m.id, COALESCE(m.title,''), COALESCE(m.cover_url,''), COALESCE(m.view_count,0),
@@ -194,15 +206,15 @@ func (r *CollectionRepository) ListManuscriptsDetail(ctx context.Context, collec
 			continue
 		}
 		list = append(list, map[string]interface{}{
-			"id":         id,
-			"title":      title,
-			"cover_url":  cover,
-			"view_count": viewCount,
+			"id":          id,
+			"title":       title,
+			"cover_url":   cover,
+			"view_count":  viewCount,
 			"upload_time": uploadTime,
-			"created_at": uploadTime,
-			"duration":   duration,
-			"user_id":    userID,
-			"status":     status,
+			"created_at":  uploadTime,
+			"duration":    duration,
+			"user_id":     userID,
+			"status":      status,
 		})
 	}
 	var total int64

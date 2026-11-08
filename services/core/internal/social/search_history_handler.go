@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
+	"mybilibili/pkg/abstraction"
 	"mybilibili/pkg/auth"
 	"mybilibili/pkg/httputil"
-	"mybilibili/pkg/abstraction"
 )
 
 // SearchHistoryHandler 把用户搜索历史存 Redis（TTL 滚动），不落 PostgreSQL。

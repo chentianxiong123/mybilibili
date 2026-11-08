@@ -20,9 +20,9 @@ type Danmaku struct {
 	Mode         int32
 	CreatedAt    time.Time
 	// 创作者列表补充信息（查询时填充）
-	UserName         string
-	ManuscriptTitle  string
-	ManuscriptCover  string
+	UserName        string
+	ManuscriptTitle string
+	ManuscriptCover string
 }
 
 type DanmakuRepository struct {

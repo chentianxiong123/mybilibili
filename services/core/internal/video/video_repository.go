@@ -284,5 +284,3 @@ func (r *Repository) GetStatistics(ctx context.Context) (map[string]interface{},
 		"view_count": viewCount, "pending_count": pendingCount, "video_count": videoCount,
 	}, nil
 }
-
-

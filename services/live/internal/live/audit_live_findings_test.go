@@ -128,14 +128,16 @@ func TestService_ApplySeat_PendingUserClaimsSecondSeat(t *testing.T) {
 
 // ---------------------------------------------------------------------------
 // Finding D (MEDIUM): admin handler functional bugs.
-//  D1 handleStats compares varchar status to integer 1 (`WHERE status = 1`)
-//     instead of `status = 'live'` (live_admin_handler.go:116-117). In PG this
-//     errors and the error is swallowed (`_ =`), so live_count/total_viewers
-//     are always 0.
-//  D2 handleRooms/handleRoomByID select a non-existent `title` column while the
-//     live_rooms schema column is `room_name` (live_admin_handler.go:67,90).
-//     The query errors and is swallowed, so the room list is always empty and
-//     by-id always 404.
+//
+//	D1 handleStats compares varchar status to integer 1 (`WHERE status = 1`)
+//	   instead of `status = 'live'` (live_admin_handler.go:116-117). In PG this
+//	   errors and the error is swallowed (`_ =`), so live_count/total_viewers
+//	   are always 0.
+//	D2 handleRooms/handleRoomByID select a non-existent `title` column while the
+//	   live_rooms schema column is `room_name` (live_admin_handler.go:67,90).
+//	   The query errors and is swallowed, so the room list is always empty and
+//	   by-id always 404.
+//
 // ---------------------------------------------------------------------------
 func TestAdminHandler_StatsUsesIntegerCompare(t *testing.T) {
 	db, mock, err := sqlmock.New()

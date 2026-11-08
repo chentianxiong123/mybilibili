@@ -16,12 +16,14 @@ import (
 
 type fakeQueue struct{}
 
-func (fakeQueue) Publish(ctx context.Context, topic string, msg abstraction.Message) error { return nil }
+func (fakeQueue) Publish(ctx context.Context, topic string, msg abstraction.Message) error {
+	return nil
+}
 func (fakeQueue) Subscribe(ctx context.Context, topic, group string) (<-chan abstraction.Message, error) {
 	return nil, nil
 }
-func (fakeQueue) Ack(ctx context.Context, topic string, msg abstraction.Message) error    { return nil }
-func (fakeQueue) Nack(ctx context.Context, topic string, msg abstraction.Message) error   { return nil }
+func (fakeQueue) Ack(ctx context.Context, topic string, msg abstraction.Message) error  { return nil }
+func (fakeQueue) Nack(ctx context.Context, topic string, msg abstraction.Message) error { return nil }
 func (fakeQueue) Enqueue(ctx context.Context, queue string, msg abstraction.Message, delay time.Duration) error {
 	return nil
 }

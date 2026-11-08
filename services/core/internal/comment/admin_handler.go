@@ -31,6 +31,12 @@ func (h *AdminHandler) handleRoute(w http.ResponseWriter, r *http.Request) {
 		status := r.URL.Query().Get("status")
 		keyword := r.URL.Query().Get("keyword")
 		page, size := httputil.ParsePageParams(r)
+		if page < 1 {
+			page = 1
+		}
+		if page > 1_000_000 {
+			page = 1_000_000
+		} // FINDING-012: 防 int32 溢出
 		offset := (page - 1) * size
 		conds := ""
 		args := []interface{}{}

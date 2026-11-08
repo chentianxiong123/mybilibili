@@ -6,8 +6,8 @@ import (
 
 	"mybilibili/core/internal/events"
 	"mybilibili/pkg/errors"
-	"mybilibili/pkg/repository"
 	pb "mybilibili/pkg/pb"
+	"mybilibili/pkg/repository"
 )
 
 type EventPublisher = events.EventPublisher

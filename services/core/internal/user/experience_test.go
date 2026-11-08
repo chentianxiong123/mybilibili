@@ -35,9 +35,9 @@ func TestLevelThreshold_LargeValues(t *testing.T) {
 func TestAwardExperience_Guards(t *testing.T) {
 	ctx := context.Background()
 	cases := []struct {
-		name     string
-		userID   int64
-		amount   int32
+		name   string
+		userID int64
+		amount int32
 	}{
 		{"zero user", 0, 100},
 		{"zero amount", 1, 0},

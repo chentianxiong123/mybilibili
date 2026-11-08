@@ -152,7 +152,7 @@ func (h *Handler) handleBanner(w http.ResponseWriter, r *http.Request) {
 	case "upload":
 		if r.Method == "POST" {
 			if err := r.ParseMultipartForm(32 << 20); err != nil {
-				writeJSON(w, map[string]any{"code": 400, "message": "parse form: "+err.Error()})
+				writeJSON(w, map[string]any{"code": 400, "message": "parse form: " + err.Error()})
 				return
 			}
 			file, header, err := r.FormFile("file")
@@ -171,7 +171,7 @@ func (h *Handler) handleBanner(w http.ResponseWriter, r *http.Request) {
 			f, err := os.Create(dst)
 			if err != nil {
 				file.Close()
-				writeJSON(w, map[string]any{"code": 500, "message": "create file: "+err.Error()})
+				writeJSON(w, map[string]any{"code": 500, "message": "create file: " + err.Error()})
 				return
 			}
 			io.Copy(f, file)

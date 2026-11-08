@@ -117,7 +117,7 @@ func TestHandleDanmakuBatchCount_200(t *testing.T) {
 	rr := doDanmaku(t, h, http.MethodGet, "/api/v1/danmaku/batch-count?ids=10,20,30", "")
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
-		Code int            `json:"code"`
+		Code int              `json:"code"`
 		Data map[string]int64 `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))

@@ -112,6 +112,12 @@ func (r *Repository) GetRoomByUserID(ctx context.Context, userID int64) (*Room, 
 }
 
 func (r *Repository) ListLiveRooms(ctx context.Context, page, pageSize int32) ([]*Room, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * pageSize
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, room_name, user_id, stream_key, COALESCE(cover_url,''), COALESCE(category,''), status, viewer_count, created_at, updated_at

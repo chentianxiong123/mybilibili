@@ -45,7 +45,7 @@ type Node struct {
 	TotalLatMs   int64      `yaml:"-" json:"-"`
 	Concurrency  int32      `yaml:"-" json:"concurrency"`
 
-	mu sync.Mutex `yaml:"-" json:"-"`
+	mu *sync.Mutex `yaml:"-" json:"-"`
 }
 
 // AvgLatencyMs 平均转码耗时（毫秒），运行时计算。
@@ -177,6 +177,9 @@ func (p *TranscoderPool) applyConfig(cfg PoolConfig) {
 			existing.mu.Unlock()
 		} else {
 			n.Status = StatusHealthy // 新节点初始健康
+		}
+		if n.mu == nil { // FINDING-009: mu 指针化后须初始化，避免 nil Lock() panic
+			n.mu = &sync.Mutex{}
 		}
 		newNodes[n.Name] = &n
 	}
@@ -384,6 +387,7 @@ func cloneNode(n *Node) *Node {
 		FailedJobs:   n.FailedJobs,
 		TotalLatMs:   n.TotalLatMs,
 		Concurrency:  n.Concurrency,
+		mu:           &sync.Mutex{}, // FINDING-009: 快照副本用独立锁
 	}
 	return c
 }
@@ -403,6 +407,9 @@ func (p *TranscoderPool) Add(n Node) error {
 	}
 	n.Status = StatusHealthy
 	n.LastCheck = time.Now()
+	if n.mu == nil { // FINDING-009: 调用方可能传未初始化锁的 Node（测试字面量）
+		n.mu = &sync.Mutex{}
+	}
 	p.nodes[n.Name] = &n
 	p.mu.Unlock()
 	return p.saveConfig()

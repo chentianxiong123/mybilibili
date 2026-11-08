@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"mybilibili/pkg/httputil"
 	"mybilibili/pkg/errors"
+	"mybilibili/pkg/httputil"
 )
 
 type GenericInteractionHandler struct {

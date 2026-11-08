@@ -102,9 +102,9 @@ type noFlusherWriter struct {
 	w http.ResponseWriter
 }
 
-func (n noFlusherWriter) Header() http.Header       { return n.w.Header() }
+func (n noFlusherWriter) Header() http.Header         { return n.w.Header() }
 func (n noFlusherWriter) Write(b []byte) (int, error) { return n.w.Write(b) }
-func (n noFlusherWriter) WriteHeader(s int)         { n.w.WriteHeader(s) }
+func (n noFlusherWriter) WriteHeader(s int)           { n.w.WriteHeader(s) }
 
 func TestHandleNotificationSSE_Unauthorized(t *testing.T) {
 	h, _ := newTestMessageHandler(t)

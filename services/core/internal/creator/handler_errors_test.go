@@ -201,4 +201,3 @@ func TestTaskProgress_ServiceError_NotFound(t *testing.T) {
 		`{"task_id":999,"delta":1}`, map[string]string{"X-User-Id": "7"})
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
-

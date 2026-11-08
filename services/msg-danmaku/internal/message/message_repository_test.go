@@ -277,4 +277,3 @@ func TestMessageRepository_GetUnreadCount_Error(t *testing.T) {
 	assert.Equal(t, int32(0), count)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
-

@@ -15,7 +15,9 @@ import (
 // ROOT CAUSE: RedeemCoupon validates that the COUPON belongs to userID
 // (owner != userID → sql.ErrNoRows) but never validates that the MANUSCRIPT
 // belongs to userID. The final
-//   UPDATE manuscripts SET exposure_weight = exposure_weight + $1 WHERE id = $2
+//
+//	UPDATE manuscripts SET exposure_weight = exposure_weight + $1 WHERE id = $2
+//
 // runs against any manuscript id, so a creator can boost ANYONE ELSE's
 // manuscript (cross-user exposure hijack) — and also their own.
 //

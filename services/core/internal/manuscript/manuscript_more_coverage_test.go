@@ -20,10 +20,10 @@ import (
 // failingFlusher 实现 http.Flusher 但 Write 恒失败，用于覆盖 SSE 写失败路径。
 type failingFlusher struct{}
 
-func (failingFlusher) Header() http.Header         { return http.Header{} }
-func (failingFlusher) WriteHeader(int)             {}
-func (failingFlusher) Write([]byte) (int, error)   { return 0, fmt.Errorf("boom") }
-func (failingFlusher) Flush()                      {}
+func (failingFlusher) Header() http.Header       { return http.Header{} }
+func (failingFlusher) WriteHeader(int)           {}
+func (failingFlusher) Write([]byte) (int, error) { return 0, fmt.Errorf("boom") }
+func (failingFlusher) Flush()                    {}
 
 // ---- handleStream: SSE 循环（事件 + ctx 取消） ----
 

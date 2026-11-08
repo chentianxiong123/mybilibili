@@ -197,8 +197,10 @@ func (h *HTTPHandler) handleListRooms(w http.ResponseWriter, r *http.Request) {
 
 	page, _ := strconv.ParseInt(r.URL.Query().Get("page"), 10, 32)
 	pageSize, _ := strconv.ParseInt(r.URL.Query().Get("page_size"), 10, 32)
+	// FINDING-012 修复：钳制分页（page=0/超大 → 负 OFFSET/溢出 500）。
+	page32, size32 := httputil.SafePage(int32(page), int32(pageSize))
 
-	rooms, err := h.svc.ListLiveRooms(r.Context(), int32(page), int32(pageSize))
+	rooms, err := h.svc.ListLiveRooms(r.Context(), page32, size32)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return

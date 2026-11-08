@@ -67,6 +67,12 @@ func (r *DynamicRepository) GetByID(ctx context.Context, id int64) (*Dynamic, er
 }
 
 func (r *DynamicRepository) ListByUser(ctx context.Context, userID int64, page, limit int32) ([]*Dynamic, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * limit
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, user_id, content, dynamic_type, COALESCE(image_url,''), COALESCE(ref_manuscript_id,0),
@@ -81,6 +87,12 @@ func (r *DynamicRepository) ListByUser(ctx context.Context, userID int64, page, 
 }
 
 func (r *DynamicRepository) ListFollowing(ctx context.Context, userID int64, filterUserID int64, page, limit int32) ([]*Dynamic, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * limit
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT d.id, d.user_id, d.content, d.dynamic_type, COALESCE(d.image_url,''), COALESCE(d.ref_manuscript_id,0),
@@ -99,6 +111,12 @@ func (r *DynamicRepository) ListFollowing(ctx context.Context, userID int64, fil
 }
 
 func (r *DynamicRepository) ListAll(ctx context.Context, page, limit int32) ([]*Dynamic, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * limit
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, user_id, content, dynamic_type, COALESCE(image_url,''), COALESCE(ref_manuscript_id,0),
@@ -153,6 +171,12 @@ func (r *DynamicRepository) CreateComment(ctx context.Context, dc *DynamicCommen
 }
 
 func (r *DynamicRepository) ListComments(ctx context.Context, dynamicID int64, page, limit int32, sort string) ([]*DynamicComment, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * limit
 	order := `created_at DESC`
 	if sort == "hot" {
@@ -181,6 +205,12 @@ func (r *DynamicRepository) ListComments(ctx context.Context, dynamicID int64, p
 }
 
 func (r *DynamicRepository) ListReplies(ctx context.Context, commentID int64, page, limit int32) ([]*DynamicComment, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * limit
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, dynamic_id, user_id, content, COALESCE(parent_id,0), COALESCE(reply_user_id,0),
@@ -221,5 +251,3 @@ func scanDynamics(rows *sql.Rows) ([]*Dynamic, error) {
 	}
 	return list, nil
 }
-
-

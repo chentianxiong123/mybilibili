@@ -191,6 +191,12 @@ func (r *ManuscriptRepository) ListByUser(ctx context.Context, userID int64, sta
 		return nil, 0, err
 	}
 
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * pageSize
 	order := " ORDER BY upload_time DESC LIMIT $" + itoa(argN) + " OFFSET $" + itoa(argN+1)
 	args = append(args, pageSize, offset)
@@ -320,6 +326,12 @@ func (r *ManuscriptRepository) ListByCategory(ctx context.Context, categoryID in
 		return nil, 0, err
 	}
 
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * pageSize
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, title, description, cover_url, user_id, category_id,

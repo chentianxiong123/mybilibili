@@ -415,8 +415,8 @@ type plainResponseWriter struct {
 	buf    []byte
 }
 
-func (p *plainResponseWriter) Header() http.Header         { return http.Header{} }
-func (p *plainResponseWriter) WriteHeader(code int)        { p.status = code }
+func (p *plainResponseWriter) Header() http.Header  { return http.Header{} }
+func (p *plainResponseWriter) WriteHeader(code int) { p.status = code }
 func (p *plainResponseWriter) Write(b []byte) (int, error) {
 	p.buf = append(p.buf, b...)
 	return len(b), nil

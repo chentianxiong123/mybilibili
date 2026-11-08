@@ -47,11 +47,11 @@ func parseTimeRange(s string) (time.Duration, time.Duration, error) {
 	if len(parts) != 2 {
 		return 0, 0, fmt.Errorf("invalid time range: %s", s)
 	}
-	start, err := parseTime(parts[0])
+	start, err := parseTime(strings.TrimSpace(parts[0]))
 	if err != nil {
 		return 0, 0, err
 	}
-	end, err := parseTime(parts[1])
+	end, err := parseTime(strings.TrimSpace(parts[1]))
 	if err != nil {
 		return 0, 0, err
 	}
@@ -64,13 +64,23 @@ func parseTime(s string) (time.Duration, error) {
 	if len(parts) != 3 {
 		return 0, fmt.Errorf("invalid time: %s", s)
 	}
-	h, _ := strconv.Atoi(parts[0])
-	m, _ := strconv.Atoi(parts[1])
+	h, err1 := strconv.Atoi(parts[0])
+	m, err2 := strconv.Atoi(parts[1])
 	secParts := strings.Split(parts[2], ".")
-	sec, _ := strconv.Atoi(secParts[0])
+	sec, err3 := strconv.Atoi(secParts[0])
 	ms := 0
 	if len(secParts) > 1 {
 		ms, _ = strconv.Atoi(secParts[1])
+	}
+	// FINDING-011 修复：校验范围，防 time.Duration 溢出为负（如 parseTime("8000000::")）。
+	if err1 != nil || err2 != nil || err3 != nil {
+		return 0, fmt.Errorf("invalid time components: %s", s)
+	}
+	if h < 0 || h > 100 { // 长视频最多 100h，超出视为畸形
+		return 0, fmt.Errorf("hours out of range: %s", s)
+	}
+	if m < 0 || m > 59 || sec < 0 || sec > 59 || ms < 0 || ms > 999 {
+		return 0, fmt.Errorf("minutes/seconds/millis out of range: %s", s)
 	}
 	return time.Duration(h)*time.Hour + time.Duration(m)*time.Minute + time.Duration(sec)*time.Second + time.Duration(ms)*time.Millisecond, nil
 }

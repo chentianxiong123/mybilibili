@@ -9,9 +9,9 @@ import "testing"
 // page=2^31-1 → int32 溢出 → offset 负 → 500。此测试在修复前应通过（断言负 offset）。
 func TestLivePagination_KnownOverflowBug(t *testing.T) {
 	cases := []struct {
-		name            string
-		page, pageSize  int32
-		wantNegative    bool
+		name           string
+		page, pageSize int32
+		wantNegative   bool
 	}{
 		{"缺page但有pageSize", 0, 20, true},
 		{"正常", 1, 20, false},

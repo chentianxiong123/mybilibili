@@ -495,6 +495,12 @@ func (h *SocialHandler) handleWatchHistory(w http.ResponseWriter, r *http.Reques
 	switch r.Method {
 	case "GET":
 		page, limit := httputil.ParsePageParams(r)
+		if page < 1 {
+			page = 1
+		}
+		if page > 1_000_000 {
+			page = 1_000_000
+		} // FINDING-012: 防 int32 溢出
 		offset := (page - 1) * limit
 		rows, err := h.shareRepo.db.QueryContext(r.Context(),
 			`SELECT wh.id, wh.manuscript_id, wh.progress_seconds, wh.watched_at,

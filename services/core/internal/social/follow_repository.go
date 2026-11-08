@@ -85,6 +85,12 @@ func (r *FollowRepository) IsFollowing(ctx context.Context, followerID, followin
 }
 
 func (r *FollowRepository) ListFollowing(ctx context.Context, userID int64, page, pageSize int32) ([]int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * pageSize
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT following_id FROM follows WHERE follower_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
@@ -105,6 +111,12 @@ func (r *FollowRepository) ListFollowing(ctx context.Context, userID int64, page
 }
 
 func (r *FollowRepository) ListFollowers(ctx context.Context, userID int64, page, pageSize int32) ([]int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * pageSize
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT follower_id FROM follows WHERE following_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
@@ -144,6 +156,12 @@ type FanEntry struct {
 }
 
 func (r *FollowRepository) ListFans(ctx context.Context, userID int64, page, pageSize int32, mutual bool) ([]FanEntry, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * pageSize
 	var total int64
 	var rows *sql.Rows

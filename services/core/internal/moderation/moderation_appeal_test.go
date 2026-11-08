@@ -45,13 +45,13 @@ func TestAppealStatusGroup(t *testing.T) {
 
 func TestAppealStatusText(t *testing.T) {
 	cases := map[string]string{
-		"pending":    "申诉处理中",
-		"processing": "申诉处理中",
+		"pending":     "申诉处理中",
+		"processing":  "申诉处理中",
 		"  PENDING  ": "申诉处理中",
-		"approved":   "申诉完成",
-		"rejected":   "申诉完成",
-		"weird":      "申诉处理中",
-		"":           "申诉处理中",
+		"approved":    "申诉完成",
+		"rejected":    "申诉完成",
+		"weird":       "申诉处理中",
+		"":            "申诉处理中",
 	}
 	for in, want := range cases {
 		t.Run(fmt.Sprintf("%q", in), func(t *testing.T) {

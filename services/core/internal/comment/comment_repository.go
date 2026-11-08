@@ -74,6 +74,12 @@ func (r *CommentRepository) ListByManuscript(ctx context.Context, manuscriptID i
 		order = "ORDER BY like_count DESC, created_at DESC"
 	}
 
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * pageSize
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, manuscript_id, user_id, content, like_count, reply_count, status, created_at, updated_at
@@ -135,6 +141,12 @@ func (r *CommentRepository) FindReplyByID(ctx context.Context, id int64) (*Reply
 }
 
 func (r *CommentRepository) ListRepliesByComment(ctx context.Context, commentID int64, page, pageSize int32) ([]*Reply, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * pageSize
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, comment_id, user_id, reply_to_user_id, content, like_count, status, created_at, updated_at

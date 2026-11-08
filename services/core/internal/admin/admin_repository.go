@@ -20,10 +20,10 @@ type AdminUser struct {
 }
 
 type Role struct {
-	ID          int64     `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreateTime  string    `json:"create_time"`
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	CreateTime  string `json:"create_time"`
 }
 
 type Permission struct {
@@ -322,6 +322,12 @@ func (s *Service) RecordAudit(ctx context.Context, operatorID int64, operatorNam
 }
 
 func (r *Repository) ListAuditLogs(ctx context.Context, page, size int32) ([]*AuditLog, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * size
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, operator_id, operator_name, operator_role, module, action, target_type, target_id,
@@ -365,6 +371,12 @@ func (r *Repository) RecordLoginLog(ctx context.Context, userID int64, ip, userA
 }
 
 func (r *Repository) ListLoginLogs(ctx context.Context, userID int64, page, size int32) ([]map[string]interface{}, error) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * size
 	var query string
 	var args []interface{}

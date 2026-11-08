@@ -610,6 +610,12 @@ func (h *Handler) handleLoginLogs(w http.ResponseWriter, r *http.Request) {
 		conds += fmt.Sprintf(" AND login_time <= $%d", argIdx)
 	}
 
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * size
 	query := `SELECT id, user_id, ip, user_agent, status, login_time FROM login_logs ` + conds + ` ORDER BY login_time DESC LIMIT $` + fmt.Sprintf("%d", argIdx+1) + ` OFFSET $` + fmt.Sprintf("%d", argIdx+2)
 	args = append(args, size, offset)

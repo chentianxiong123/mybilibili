@@ -333,16 +333,16 @@ func TestGetManuscriptWithVideos_CacheStore(t *testing.T) {
 
 type fakeCacheStore struct{}
 
-func (f *fakeCacheStore) Get(_ context.Context, _ string) ([]byte, error)  { return nil, nil }
+func (f *fakeCacheStore) Get(_ context.Context, _ string) ([]byte, error) { return nil, nil }
 func (f *fakeCacheStore) Set(_ context.Context, _ string, _ []byte, _ time.Duration) error {
 	return nil
 }
-func (f *fakeCacheStore) Delete(_ context.Context, _ string) error              { return nil }
-func (f *fakeCacheStore) Exists(_ context.Context, _ string) (bool, error)      { return false, nil }
+func (f *fakeCacheStore) Delete(_ context.Context, _ string) error         { return nil }
+func (f *fakeCacheStore) Exists(_ context.Context, _ string) (bool, error) { return false, nil }
 func (f *fakeCacheStore) Lock(_ context.Context, _ string, _ time.Duration) (bool, error) {
 	return true, nil
 }
-func (f *fakeCacheStore) Unlock(_ context.Context, _ string) error              { return nil }
+func (f *fakeCacheStore) Unlock(_ context.Context, _ string) error { return nil }
 func (f *fakeCacheStore) Incr(_ context.Context, _ string, _ time.Duration) (int64, error) {
 	return 1, nil
 }

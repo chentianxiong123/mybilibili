@@ -322,6 +322,9 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 	switch r.Method {
 	case "GET":
 		page, size := httputil.ParsePageParams(r)
+		if page < 1 {
+			page = 1
+		}
 		offset := (int(page) - 1) * int(size)
 		rule := r.URL.Query().Get("rule")
 		orderBy := "ffv.created_at DESC"
@@ -365,13 +368,13 @@ func (h *FavoriteHandler) handleFolderVideos(w http.ResponseWriter, r *http.Requ
 				UploadDate string `json:"uploadDate"`
 			} `json:"video"`
 			Stats struct {
-				Play     int `json:"play"`
-				Collect  int `json:"collect"`
-				Like     int `json:"like"`
-				Coin     int `json:"coin"`
-				Share    int `json:"share"`
-				Comment  int `json:"comment"`
-				Danmaku  int `json:"danmaku"`
+				Play    int `json:"play"`
+				Collect int `json:"collect"`
+				Like    int `json:"like"`
+				Coin    int `json:"coin"`
+				Share   int `json:"share"`
+				Comment int `json:"comment"`
+				Danmaku int `json:"danmaku"`
 			} `json:"stats"`
 			User struct {
 				UID      int64  `json:"uid"`
@@ -604,5 +607,3 @@ func (h *FavoriteHandler) handleManuscriptFolders(w http.ResponseWriter, r *http
 	}
 	httputil.WriteOK(w, list)
 }
-
-

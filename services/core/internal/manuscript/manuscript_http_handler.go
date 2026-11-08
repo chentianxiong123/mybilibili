@@ -17,10 +17,10 @@ import (
 	"time"
 
 	"mybilibili/core/internal/comment"
-	"mybilibili/core/internal/user"
-	"mybilibili/pkg/httputil"
 	"mybilibili/core/internal/social"
+	"mybilibili/core/internal/user"
 	"mybilibili/pkg/errors"
+	"mybilibili/pkg/httputil"
 	"mybilibili/pkg/imageutil"
 	pb "mybilibili/pkg/pb"
 )
@@ -663,24 +663,24 @@ func manuscriptToMap(info *pb.ManuscriptInfo) map[string]interface{} {
 		"coin_count": info.CoinCount, "collect_count": info.CollectCount,
 		"share_count": info.ShareCount, "comment_count": info.CommentCount,
 		"danmaku_count": info.DanmakuCount,
-		"duration": info.Duration, "duration_seconds": info.DurationSeconds,
+		"duration":      info.Duration, "duration_seconds": info.DurationSeconds,
 		"status": info.Status, "review_status": info.ReviewStatus,
 		"review_reason": info.ReviewReason,
-		"created_at": info.CreatedAt, "updated_at": info.UpdatedAt,
-		"first_video_id": info.FirstVideoId,
+		"created_at":    info.CreatedAt, "updated_at": info.UpdatedAt,
+		"first_video_id":       info.FirstVideoId,
 		"first_video_play_url": info.FirstVideoPlayUrl,
-		"is_vertical": info.IsVertical,
-		"source_type": info.SourceType,
+		"is_vertical":          info.IsVertical,
+		"source_type":          info.SourceType,
 	}
 	if info.Uploader != nil {
 		m["uploader"] = map[string]interface{}{
 			"id": info.Uploader.Id, "name": info.Uploader.Name,
 			"avatar": info.Uploader.Avatar, "level": info.Uploader.Level,
 			"bio": info.Uploader.Bio, "signature": info.Uploader.Signature,
-			"follower_count": info.Uploader.FollowerCount,
+			"follower_count":  info.Uploader.FollowerCount,
 			"following_count": info.Uploader.FollowingCount,
-			"liked_count": info.Uploader.LikedCount,
-			"following": info.Uploader.Following,
+			"liked_count":     info.Uploader.LikedCount,
+			"following":       info.Uploader.Following,
 		}
 	}
 	if info.Tags != nil {
@@ -695,9 +695,9 @@ func manuscriptToMap(info *pb.ManuscriptInfo) map[string]interface{} {
 				"playUrlSd": v.PlayUrlSd, "playUrlLd": v.PlayUrlLd,
 				"duration": v.Duration, "durationSeconds": v.DurationSeconds,
 				"videoOrder": v.VideoOrder, "status": v.Status,
-				"processStatus": v.ProcessStatus,
+				"processStatus":   v.ProcessStatus,
 				"processProgress": v.ProcessProgress,
-				"processStage": v.ProcessStage, "processError": v.ProcessError,
+				"processStage":    v.ProcessStage, "processError": v.ProcessError,
 				"isVertical": v.IsVertical,
 			})
 		}
@@ -1099,13 +1099,13 @@ func (h *ManuscriptHTTPHandler) handleMySubtitles(w http.ResponseWriter, r *http
 		}
 		videos := list[di]["videos"].([]map[string]any)
 		videos = append(videos, map[string]any{
-			"id":             vid,
-			"videoOrder":     vorder,
-			"title":          vtitle,
+			"id":              vid,
+			"videoOrder":      vorder,
+			"title":           vtitle,
 			"durationSeconds": dur,
-			"hasSubtitle":    hasSub,
-			"processStage":   stage,
-			"processStatus":  pstatus,
+			"hasSubtitle":     hasSub,
+			"processStage":    stage,
+			"processStatus":   pstatus,
 		})
 		list[di]["videos"] = videos
 	}
@@ -1778,7 +1778,8 @@ func (h *ManuscriptHTTPHandler) handleUploadCompleteWeb(w http.ResponseWriter, r
 
 // ---- 互动 ----
 
-func (h *ManuscriptHTTPHandler) handleInteractionStatus(w http.ResponseWriter, r *http.Request) {	id, _ := strconv.ParseInt(httputil.PathValue(r, "id"), 10, 64)
+func (h *ManuscriptHTTPHandler) handleInteractionStatus(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(httputil.PathValue(r, "id"), 10, 64)
 	if id <= 0 {
 		httputil.WriteJSON(w, http.StatusBadRequest, map[string]interface{}{"code": 400, "message": "invalid manuscript id", "data": nil})
 		return

@@ -336,7 +336,7 @@ func TestHandleBannerHome_POST_200(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-mock.ExpectQuery(`INSERT INTO banner_images`).
+	mock.ExpectQuery(`INSERT INTO banner_images`).
 		WithArgs("New Banner", "/img.jpg", "/link", int32(0), int32(1), nil, "default", (*time.Time)(nil), (*time.Time)(nil)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(10))
 

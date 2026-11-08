@@ -16,7 +16,7 @@ import (
 
 type fakeAiService struct {
 	pb.UnimplementedAiServiceServer
-	reviewFunc func(ctx context.Context, req *pb.ReviewContentRequest) (*pb.ReviewContentResponse, error)
+	reviewFunc  func(ctx context.Context, req *pb.ReviewContentRequest) (*pb.ReviewContentResponse, error)
 	summaryFunc func(ctx context.Context, req *pb.GetSummaryRequest) (*pb.GetSummaryResponse, error)
 }
 

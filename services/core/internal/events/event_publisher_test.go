@@ -22,8 +22,12 @@ func (r *recordingQueue) Publish(ctx context.Context, topic string, msg abstract
 func (r *recordingQueue) Subscribe(ctx context.Context, topic, group string) (<-chan abstraction.Message, error) {
 	return nil, nil
 }
-func (r *recordingQueue) Ack(ctx context.Context, topic string, msg abstraction.Message) error   { return nil }
-func (r *recordingQueue) Nack(ctx context.Context, topic string, msg abstraction.Message) error  { return nil }
+func (r *recordingQueue) Ack(ctx context.Context, topic string, msg abstraction.Message) error {
+	return nil
+}
+func (r *recordingQueue) Nack(ctx context.Context, topic string, msg abstraction.Message) error {
+	return nil
+}
 func (r *recordingQueue) Enqueue(ctx context.Context, queue string, msg abstraction.Message, delay time.Duration) error {
 	return nil
 }

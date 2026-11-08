@@ -123,6 +123,12 @@ func (h *UserAdminHandler) withPerm(w http.ResponseWriter, r *http.Request, perm
 
 func (h *UserAdminHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	page, size := httputil.ParsePageParams(r)
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * size
 	rows, err := h.db.QueryContext(r.Context(),
 		`SELECT id, username, nickname, COALESCE(email,''), COALESCE(avatar,''), level, status, created_at,

@@ -49,13 +49,34 @@ func ParsePageParams(r *http.Request) (int32, int32) {
 		sizeStr = r.URL.Query().Get("limit")
 	}
 	size, _ := strconv.ParseInt(sizeStr, 10, 32)
+	page32, size32 := SafePage(int32(page), int32(size))
+	return page32, size32
+}
+
+// SafePage 钳制分页参数：page∈[1,1e6]、size∈[1,50]（默认 20）。
+// FINDING-012 修复：page 此前可高达 2^31-1，使 (page-1)*size int32 溢出为负
+// （切片 panic / SQL 负 OFFSET / 500）。
+func SafePage(page, size int32) (int32, int32) {
+	const (
+		maxPage = 1_000_000
+		maxSize = 50
+	)
 	if page < 1 {
 		page = 1
 	}
-	if size < 1 || size > 50 {
+	if page > maxPage {
+		page = maxPage
+	}
+	if size < 1 || size > maxSize {
 		size = 20
 	}
-	return int32(page), int32(size)
+	return page, size
+}
+
+// PageOffset 计算安全偏移量：page∈[1,1e6]、size∈[1,50] → offset≤5e7，int32 不溢出。
+func PageOffset(page, size int32) int32 {
+	page, size = SafePage(page, size)
+	return (page - 1) * size
 }
 
 func WriteOK(w http.ResponseWriter, data interface{}) {

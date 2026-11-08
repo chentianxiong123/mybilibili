@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"mybilibili/pkg/auth"
-	"mybilibili/pkg/httputil"
 	"mybilibili/pkg/errors"
+	"mybilibili/pkg/httputil"
 	"mybilibili/pkg/imageutil"
 	pb "mybilibili/pkg/pb"
 )
@@ -431,6 +431,12 @@ func (h *UserExtendHandler) handleLoginLogs(w http.ResponseWriter, r *http.Reque
 	if size < 1 || size > 50 {
 		size = 20
 	}
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * size
 	rows, err := h.svc.repo.db.QueryContext(r.Context(),
 		`SELECT id, user_id, ip, user_agent, status, login_time FROM login_logs WHERE user_id = $1 ORDER BY login_time DESC LIMIT $2 OFFSET $3`,
@@ -866,26 +872,26 @@ func (h *UserExtendHandler) handleUserByID(w http.ResponseWriter, r *http.Reques
 		}
 	}
 	httputil.WriteOK(w, map[string]interface{}{
-		"id":               user.ID,
-		"username":         user.Username,
-		"nickname":         user.Nickname,
-		"avatar":           user.Avatar,
-		"avatar_url":       user.Avatar,
-		"level":            user.Level,
-		"experience":       user.Experience,
-		"maxExperience":    LevelThreshold(user.Level),
-		"signature":        signature,
-		"announcement":     announcement,
-		"bio":              bio,
-		"gender":           gender,
-		"birthdate":        birthdate,
-		"tags":             tags,
-		"followerCount":    followerCount,
-		"followingCount":   followingCount,
-		"dynamicCount":     dynamicCount,
-		"totalLikeCount":   totalLikeCount,
-		"totalViewCount":   totalViewCount,
-		"created_at":       user.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		"id":             user.ID,
+		"username":       user.Username,
+		"nickname":       user.Nickname,
+		"avatar":         user.Avatar,
+		"avatar_url":     user.Avatar,
+		"level":          user.Level,
+		"experience":     user.Experience,
+		"maxExperience":  LevelThreshold(user.Level),
+		"signature":      signature,
+		"announcement":   announcement,
+		"bio":            bio,
+		"gender":         gender,
+		"birthdate":      birthdate,
+		"tags":           tags,
+		"followerCount":  followerCount,
+		"followingCount": followingCount,
+		"dynamicCount":   dynamicCount,
+		"totalLikeCount": totalLikeCount,
+		"totalViewCount": totalViewCount,
+		"created_at":     user.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	})
 }
 

@@ -95,6 +95,12 @@ func (h *Handler) handleAppealList(w http.ResponseWriter, r *http.Request) {
 	_ = h.svc.repo.db.QueryRowContext(r.Context(),
 		`SELECT COUNT(*) FROM appeals a WHERE a.user_id = $1`+statusFilter, args...).Scan(&total)
 
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * size
 	rows, err := h.svc.repo.db.QueryContext(r.Context(),
 		`SELECT a.id, a.manuscript_id, COALESCE(m.title,''), COALESCE(m.status,0), COALESCE(m.cover_url,''),
@@ -119,19 +125,19 @@ func (h *Handler) handleAppealList(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		list = append(list, map[string]interface{}{
-			"id":                    id,
-			"manuscriptId":          manuscriptID,
-			"title":                 title,
-			"coverUrl":              coverUrl,
-			"manuscriptStatus":      manuscriptStatus,
-			"manuscriptStatusText":  manuscriptAppealStatusText(manuscriptStatus),
-			"reason":                reason,
-			"description":           description,
-			"status":                status,
-			"statusText":            appealStatusText(status),
-			"adminRemark":           adminRemark,
-			"appealTime":            createdAt.Format("2006-01-02 15:04:05"),
-			"appealNo":              id,
+			"id":                   id,
+			"manuscriptId":         manuscriptID,
+			"title":                title,
+			"coverUrl":             coverUrl,
+			"manuscriptStatus":     manuscriptStatus,
+			"manuscriptStatusText": manuscriptAppealStatusText(manuscriptStatus),
+			"reason":               reason,
+			"description":          description,
+			"status":               status,
+			"statusText":           appealStatusText(status),
+			"adminRemark":          adminRemark,
+			"appealTime":           createdAt.Format("2006-01-02 15:04:05"),
+			"appealNo":             id,
 		})
 	}
 	totalPages := int64(0)

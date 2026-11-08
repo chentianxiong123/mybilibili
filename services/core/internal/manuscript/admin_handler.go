@@ -108,6 +108,12 @@ func (h *ManuscriptAdminHandler) handleAll(w http.ResponseWriter, r *http.Reques
 	statusStr := r.URL.Query().Get("status")
 	keyword := r.URL.Query().Get("keyword")
 
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * size
 	var rows *sql.Rows
 	var err error
@@ -431,13 +437,13 @@ func (h *ManuscriptAdminHandler) getVideos(w http.ResponseWriter, r *http.Reques
 	defer rows.Close()
 
 	type video struct {
-		ID          int64  `json:"id"`
-		VideoOrder  int    `json:"video_order"`
-		Title       string `json:"title"`
-		PlayURLHD   string `json:"play_url_hd"`
-		PlayURLSD   string `json:"play_url_sd"`
-		PlayURLLD   string `json:"play_url_ld"`
-		UploadTime  string `json:"upload_time"`
+		ID         int64  `json:"id"`
+		VideoOrder int    `json:"video_order"`
+		Title      string `json:"title"`
+		PlayURLHD  string `json:"play_url_hd"`
+		PlayURLSD  string `json:"play_url_sd"`
+		PlayURLLD  string `json:"play_url_ld"`
+		UploadTime string `json:"upload_time"`
 	}
 	list := []video{}
 	for rows.Next() {
@@ -755,6 +761,12 @@ func (h *ManuscriptAdminHandler) approveWithProcess(w http.ResponseWriter, r *ht
 }
 
 func (h *ManuscriptAdminHandler) listByStatus(w http.ResponseWriter, r *http.Request, page, size int32, status int, statusLabel string) {
+	if page < 1 {
+		page = 1
+	}
+	if page > 1_000_000 {
+		page = 1_000_000
+	} // FINDING-012: 防 int32 溢出
 	offset := (page - 1) * size
 	rows, err := h.db.QueryContext(r.Context(),
 		`SELECT m.id, m.title, m.user_id, m.category_id, m.status, m.review_status,
