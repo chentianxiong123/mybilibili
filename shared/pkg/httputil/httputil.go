@@ -45,7 +45,12 @@ func GetAdminIDFromHeader(r *http.Request) int64 {
 }
 
 func ParsePageParams(r *http.Request) (int32, int32) {
-	page, _ := strconv.ParseInt(r.URL.Query().Get("page"), 10, 32)
+	// FINDING-083 修复：溢出/解析失败 → page/size 归零 → SafePage 重置 page=1/size=20
+	// （此前 ParseInt 溢出返回钳制 max 值 → 荒谬 offset）。
+	page, err := strconv.ParseInt(r.URL.Query().Get("page"), 10, 32)
+	if err != nil {
+		page = 0
+	}
 	sizeStr := r.URL.Query().Get("page_size")
 	if sizeStr == "" {
 		sizeStr = r.URL.Query().Get("pageSize")
@@ -56,7 +61,10 @@ func ParsePageParams(r *http.Request) (int32, int32) {
 	if sizeStr == "" {
 		sizeStr = r.URL.Query().Get("limit")
 	}
-	size, _ := strconv.ParseInt(sizeStr, 10, 32)
+	size, err := strconv.ParseInt(sizeStr, 10, 32)
+	if err != nil {
+		size = 0
+	}
 	page32, size32 := SafePage(int32(page), int32(size))
 	return page32, size32
 }

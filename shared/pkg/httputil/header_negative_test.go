@@ -29,6 +29,6 @@ func TestGetUserIDFromHeader_NegativeAccepted(t *testing.T) {
 func TestParsePageParams_Overflow(t *testing.T) {
 	r := httptest.NewRequest("GET", "/?page=99999999999999&page_size=20", nil)
 	page, size := ParsePageParams(r)
-	require.NotEqual(t, int32(1), page, "overflowing page should fall back to 1")
+	require.Equal(t, int32(1), page, "FINDING-083 修复: 溢出 page 应重置为 1")
 	require.Equal(t, int32(20), size)
 }
