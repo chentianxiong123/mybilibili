@@ -138,13 +138,13 @@ func TestHandleDynamicShare_NonPost(t *testing.T) {
 func TestHandleDynamicCommentIncrement_Post(t *testing.T) {
 	h, mock := newMockSocialHandler(t)
 	mock.ExpectExec(`comment_count = GREATEST`).WillReturnResult(sqlmock.NewResult(0, 1))
-	w := doReq(muxForSocial(h), "POST", "/api/v1/dynamic/comment/increment/1", "", nil)
+	w := doReq(muxForSocial(h), "POST", "/api/v1/dynamic/comment/increment/1", "", map[string]string{"X-User-Id": "10"})
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestHandleDynamicCommentIncrement_NonPost(t *testing.T) {
 	h, _ := newMockSocialHandler(t)
-	w := doReq(muxForSocial(h), "GET", "/api/v1/dynamic/comment/increment/1", "", nil)
+	w := doReq(muxForSocial(h), "GET", "/api/v1/dynamic/comment/increment/1", "", map[string]string{"X-User-Id": "10"})
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 

@@ -235,6 +235,10 @@ func (h *SocialHandler) handleDynamicShare(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *SocialHandler) handleDynamicCommentIncrement(w http.ResponseWriter, r *http.Request) {
+	// FINDING-030 修复：评论数膨胀端点须登录（此前无鉴权，任意未认证者可无限递增任意动态评论数）。
+	if _, ok := httputil.RequireUser(w, r); !ok {
+		return
+	}
 	id, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/dynamic/comment/increment/"), 10, 64)
 	if r.Method == "POST" && id > 0 {
 		h.dynamicSvc.IncrCommentCount(r.Context(), id, 1)
