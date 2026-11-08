@@ -9,39 +9,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestIncrementManuscriptCount_NoAllowlist pins a latent SQL-injection bug in
-// interaction_repository.go:IncrementManuscriptCount / DecrementManuscriptCount
-// / GetManuscriptCount (lines ~121-144).
-//
-// ROOT CAUSE: the `field` parameter is concatenated verbatim into the SQL text
-// (`UPDATE manuscripts SET `+field+` = `+field+` + 1 ...`) with NO allowlist
-// validation against a fixed set of counter columns. Today all call sites pass
-// hardcoded literals ("like_count", "coin_count", "collect_count", "share_count"),
-// so it is not exploitable through the public API — but any future caller that
-// forwards a user-controlled string becomes a full SQL injection. The same
-// unsafe pattern exists in shared/pkg/repository/metrics.go:UpsertDailyMetric.
-//
-// IMPACT: latent injection; also a correctness hazard (a typo'd column name is
-// silently turned into a SQL error instead of being rejected early).
+// TestIncrementManuscriptCount_NoAllowlist pins FINDING-062（已修复）：
+// IncrementManuscriptCount/DecrementManuscriptCount/GetManuscriptCount 现在对
+// field 做 allowlist 校验（{like_count,coin_count,collect_count,share_count,view_count}），
+// 非白名单列名返回 error，不再原样拼进 SQL（防未来调用方转发用户输入 → 完整 SQLi）。
 func TestIncrementManuscriptCount_NoAllowlist(t *testing.T) {
-	repo, mock := newMockInteractionRepo(t)
+	repo, _ := newMockInteractionRepo(t)
 	ctx := context.Background()
 
-	// A non-allowlisted identifier passes through verbatim with no validation.
-	// A correct implementation whitelists {like_count, coin_count, collect_count,
-	// share_count} and rejects anything else.
-	mock.ExpectExec(`UPDATE manuscripts SET nonsense_col = nonsense_col \+ 1 WHERE id = \$1`).
-		WithArgs(int64(1)).
-		WillReturnResult(sqlmock.NewResult(0, 1))
-
 	err := repo.IncrementManuscriptCount(ctx, "nonsense_col", 1)
-	require.NoError(t, err) // BUG: arbitrary column name accepted
+	assert.Error(t, err, "FINDING-062 修复：非白名单列名应拒绝")
+}
 
-	// GetManuscriptCount reads the same concatenated column.
-	mock.ExpectQuery(`SELECT nonsense_col FROM manuscripts WHERE id = \$1`).
-		WithArgs(int64(1)).
-		WillReturnRows(sqlmock.NewRows([]string{"nonsense_col"}).AddRow(int32(7)))
-	count, err := repo.GetManuscriptCount(ctx, "nonsense_col", 1)
-	require.NoError(t, err)
-	assert.Equal(t, int32(7), count)
+// TestIncrementManuscriptCount_Allowlisted confirms allowlisted fields still work.
+func TestIncrementManuscriptCount_Allowlisted(t *testing.T) {
+	repo, mock := newMockInteractionRepo(t)
+	ctx := context.Background()
+	mock.ExpectExec(`UPDATE manuscripts SET like_count = like_count \+ 1 WHERE id = \$1`).
+		WithArgs(int64(1)).WillReturnResult(sqlmock.NewResult(0, 1))
+	require.NoError(t, repo.IncrementManuscriptCount(ctx, "like_count", 1))
 }

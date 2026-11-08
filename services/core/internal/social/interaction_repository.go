@@ -3,6 +3,7 @@ package social
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	pb "mybilibili/pkg/pb"
@@ -124,12 +125,32 @@ func (r *InteractionRepository) GetManuscriptTitle(ctx context.Context, id int64
 	return title, err
 }
 
+// manuscriptCountFields 是 manuscripts 上可安全自增/递减/读取的计数列 allowlist，
+// 防动态列名拼接（FINDING-062：当前调用方传硬编码字面量不可利用，但任何未来
+// 调用方转发用户输入 → 完整 SQLi）。
+var manuscriptCountFields = map[string]bool{
+	"like_count": true, "coin_count": true, "collect_count": true, "share_count": true, "view_count": true,
+}
+
+func checkManuscriptCountField(field string) error {
+	if !manuscriptCountFields[field] {
+		return fmt.Errorf("unsupported manuscript count field: %q", field)
+	}
+	return nil
+}
+
 func (r *InteractionRepository) IncrementManuscriptCount(ctx context.Context, field string, manuscriptID int64) error {
+	if err := checkManuscriptCountField(field); err != nil {
+		return err
+	}
 	_, err := r.db.ExecContext(ctx, `UPDATE manuscripts SET `+field+` = `+field+` + 1 WHERE id = $1`, manuscriptID)
 	return err
 }
 
 func (r *InteractionRepository) DecrementManuscriptCount(ctx context.Context, field string, manuscriptID int64) error {
+	if err := checkManuscriptCountField(field); err != nil {
+		return err
+	}
 	_, err := r.db.ExecContext(ctx, `UPDATE manuscripts SET `+field+` = GREATEST(`+field+` - 1, 0) WHERE id = $1`, manuscriptID)
 	return err
 }
@@ -140,6 +161,9 @@ func (r *InteractionRepository) DecrementManuscriptCount(ctx context.Context, fi
 // 页面卡片、详情、推荐列表展示的都是它，两边口径不一致会让用户点一下赞
 // 看到的数字发生跳变。
 func (r *InteractionRepository) GetManuscriptCount(ctx context.Context, field string, manuscriptID int64) (int32, error) {
+	if err := checkManuscriptCountField(field); err != nil {
+		return 0, err
+	}
 	var count int32
 	err := r.db.QueryRowContext(ctx,
 		`SELECT `+field+` FROM manuscripts WHERE id = $1`, manuscriptID).Scan(&count)
