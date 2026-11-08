@@ -94,15 +94,23 @@ func (s *InteractionService) UnlikeManuscript(ctx context.Context, req *pb.Unlik
 }
 
 func (s *InteractionService) CoinManuscript(ctx context.Context, req *pb.CoinManuscriptRequest) (*pb.CoinManuscriptResponse, error) {
+	// FINDING-063 修复：尊重 req.CoinCount（此前恒扣 1 币）。
+	coins := req.CoinCount
+	if coins <= 0 {
+		coins = 1
+	}
 	coinCount, err := s.repo.GetUserCoinCount(ctx, req.UserId)
-	if err != nil || coinCount <= 0 {
+	if err != nil || coinCount < int64(coins) {
 		return nil, errors.ErrResourceExhausted("insufficient coins")
 	}
 	s.repo.AddInteraction(ctx, req.UserId, "MANUSCRIPT", "COIN", req.ManuscriptId)
 	s.repo.IncrementManuscriptCount(ctx, "coin_count", req.ManuscriptId)
 	repository.UpsertDailyMetric(ctx, s.db, req.ManuscriptId, req.UserId, "coin_count", 1)
 	s.publishAnalytics(ctx, req.ManuscriptId, req.UserId, "MANUSCRIPT_COIN", "coin_count", 1)
-	s.repo.DeductCoin(ctx, req.UserId)
+	// FINDING-063 修复：检查 DeductCoin 错误（余额不足/扣减失败 → 报错，避免计数已增但币未扣）。
+	if err := s.repo.DeductCoin(ctx, req.UserId); err != nil {
+		return nil, errors.ErrResourceExhausted("insufficient coins")
+	}
 	return &pb.CoinManuscriptResponse{Success: true}, nil
 }
 

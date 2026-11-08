@@ -180,6 +180,14 @@ func (r *InteractionRepository) GetUserCoinCount(ctx context.Context, userID int
 }
 
 func (r *InteractionRepository) DeductCoin(ctx context.Context, userID int64) error {
-	_, err := r.db.ExecContext(ctx, `UPDATE users SET coin_count = coin_count - 1 WHERE id = $1 AND coin_count > 0`, userID)
-	return err
+	// FINDING-063 修复：检查 RowsAffected——coin_count<=0 时扣减失败应报错而非静默成功
+	// （此前不查 RowsAffected，并发/余额不足时稿件计数已增但币未扣 → 通货膨胀）。
+	res, err := r.db.ExecContext(ctx, `UPDATE users SET coin_count = coin_count - 1 WHERE id = $1 AND coin_count > 0`, userID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return fmt.Errorf("insufficient coins for user %d", userID)
+	}
+	return nil
 }

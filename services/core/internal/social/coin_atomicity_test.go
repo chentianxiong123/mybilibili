@@ -6,7 +6,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // TestDeductCoin_IgnoresRowsAffected pins a coin-balance arithmetic bug in
@@ -36,10 +35,5 @@ func TestDeductCoin_IgnoresRowsAffected(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 0)) // RowsAffected = 0
 
 	err := repo.DeductCoin(ctx, 7)
-	require.NoError(t, err) // BUG: no error despite zero coins deducted
-
-	// BUG confirmed: DeductCoin reports success even when no coin was deducted.
-	// A correct implementation returns an error on RowsAffected==0 (or the
-	// service must wrap the check+deduct+increment in one transaction).
-	assert.NoError(t, err)
+	assert.Error(t, err, "FINDING-063 修复: 余额不足/扣减失败应报错（RowsAffected==0）")
 }
