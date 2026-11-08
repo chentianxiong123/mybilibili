@@ -285,7 +285,8 @@ func TestModerateWith_ErrorFallback(t *testing.T) {
 		Passed bool `json:"passed"`
 	}
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
-	assert.True(t, resp.Passed)
+	// FINDING-050 修复：provider 故障应 fail-closed（此前 passed:true 自动放行）。
+	assert.False(t, resp.Passed)
 }
 
 func TestHandleCustomerChat_200(t *testing.T) {

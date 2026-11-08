@@ -2,6 +2,7 @@ package ai
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -84,7 +85,10 @@ func (h *AIChatHandler) moderateWith(w http.ResponseWriter, r *http.Request, sce
 	content := r.URL.Query().Get("content")
 	resp, err := h.review.Moderate(r.Context(), content, scene)
 	if err != nil {
-		resp = map[string]interface{}{"passed": true, "reason": ""}
+		// FINDING-050 修复：fail-closed——审核 provider 故障不得自动批准（此前
+		// passed:true 使不当内容在审核服务不可用时全部放行）。
+		log.Printf("ai review %s failed: %v — fail closed", scene, err)
+		resp = map[string]interface{}{"passed": false, "reason": "审核服务不可用，请稍后重试"}
 	}
 	passed, _ := resp["passed"].(bool)
 	reason, _ := resp["reason"].(string)
