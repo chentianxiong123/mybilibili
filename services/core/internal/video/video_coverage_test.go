@@ -261,7 +261,7 @@ func TestBannersFor_QueryErrorReturnsEmpty(t *testing.T) {
 func TestHandleBannerUserProfile_POST(t *testing.T) {
 	h, mock := newTestHandler(t)
 	mock.ExpectQuery(`INSERT INTO banner_images`).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
-	w := doReq(muxForVideo(h), "POST", "/api/v1/banner/user-profile", `{"title":"p","image_url":"/p.jpg"}`, nil)
+	w := doReq(muxForVideo(h), "POST", "/api/v1/banner/user-profile", `{"title":"p","image_url":"/p.jpg"}`, map[string]string{"X-Admin-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "ok")
 }
@@ -270,7 +270,7 @@ func TestHandleBannerUserProfile_DeleteOne(t *testing.T) {
 	h, mock := newTestHandler(t)
 	mock.ExpectExec(`UPDATE banner_images SET status = -1`).
 		WithArgs(int64(5)).WillReturnResult(sqlmock.NewResult(0, 1))
-	w := doReq(muxForVideo(h), "DELETE", "/api/v1/banner/user-profile/5", "", nil)
+	w := doReq(muxForVideo(h), "DELETE", "/api/v1/banner/user-profile/5", "", map[string]string{"X-Admin-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
@@ -284,14 +284,14 @@ func TestHandleBannerUserProfile_DeleteAll(t *testing.T) {
 			AddRow(12, "b", "u", "l", 2, 1, 4, 0, "default", nil, nil))
 	mock.ExpectExec(`UPDATE banner_images SET status = -1`).WithArgs(int64(11)).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE banner_images SET status = -1`).WithArgs(int64(12)).WillReturnResult(sqlmock.NewResult(0, 1))
-	w := doReq(muxForVideo(h), "DELETE", "/api/v1/banner/user-profile", "", nil)
+	w := doReq(muxForVideo(h), "DELETE", "/api/v1/banner/user-profile", "", map[string]string{"X-Admin-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestHandleBannerUserProfile_MethodNotAllowed(t *testing.T) {
 	h, _ := newTestHandler(t)
-	w := doReq(muxForVideo(h), "PATCH", "/api/v1/banner/user-profile", "", nil)
+	w := doReq(muxForVideo(h), "PATCH", "/api/v1/banner/user-profile", "", map[string]string{"X-Admin-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
@@ -299,7 +299,7 @@ func TestHandleBannerUserProfile_MethodNotAllowed(t *testing.T) {
 
 func TestHandleBannerSingle_MethodNotAllowed(t *testing.T) {
 	h, _ := newTestHandler(t)
-	w := doReq(muxForVideo(h), "PATCH", "/api/v1/banner/background", "", nil)
+	w := doReq(muxForVideo(h), "PATCH", "/api/v1/banner/background", "", map[string]string{"X-Admin-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
@@ -321,6 +321,7 @@ func uploadReq(t *testing.T, filename, content string) *http.Request {
 	require.NoError(t, err)
 	require.NoError(t, w.Close())
 	r := httptest.NewRequest("POST", "/api/v1/banner/upload", &buf)
+	r.Header.Set("X-Admin-Id", "1")
 	r.Header.Set("Content-Type", w.FormDataContentType())
 	r.Header.Set("X-Admin-Id", "1") // FINDING-023 修复：需 admin 身份
 	return r
@@ -354,6 +355,7 @@ func TestHandleBanner_Upload_NoFile(t *testing.T) {
 	fw.Write([]byte("hello"))
 	require.NoError(t, w.Close())
 	r := httptest.NewRequest("POST", "/api/v1/banner/upload", &buf)
+	r.Header.Set("X-Admin-Id", "1")
 	r.Header.Set("Content-Type", w.FormDataContentType())
 	r.Header.Set("X-Admin-Id", "1") // FINDING-023 修复：需 admin 身份
 	wrec := httptest.NewRecorder()
@@ -418,7 +420,7 @@ func TestHandleCategoryByID_PUT_UpdateError(t *testing.T) {
 
 func TestHandleBannerCategory_Default(t *testing.T) {
 	h, _ := newTestHandler(t)
-	w := doReq(muxForVideo(h), "PATCH", "/api/v1/banner/category/5", "", nil)
+	w := doReq(muxForVideo(h), "PATCH", "/api/v1/banner/category/5", "", map[string]string{"X-Admin-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 

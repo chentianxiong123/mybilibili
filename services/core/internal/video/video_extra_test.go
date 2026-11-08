@@ -139,7 +139,7 @@ func TestHandleBannerImages_Route(t *testing.T) {
 func TestHandleBannerHome_Put(t *testing.T) {
 	h, mock := newTestHandler(t)
 	mock.ExpectExec(`UPDATE banner_images SET title=\$1`).WithArgs("t", "u", "l", int32(1), int32(1), nil, "default", nil, nil, int64(5)).WillReturnResult(sqlmock.NewResult(0, 1))
-	w := doReq(muxForVideo(h), "PUT", "/api/v1/banner/home/5", `{"title":"t","image_url":"u","link_url":"l","sort_order":1,"status":1}`, nil)
+	w := doReq(muxForVideo(h), "PUT", "/api/v1/banner/home/5", `{"title":"t","image_url":"u","link_url":"l","sort_order":1,"status":1}`, map[string]string{"X-Admin-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -147,14 +147,14 @@ func TestHandleBannerHome_Put(t *testing.T) {
 func TestHandleBannerHome_Delete(t *testing.T) {
 	h, mock := newTestHandler(t)
 	mock.ExpectExec(`UPDATE banner_images SET status = -1, updated_at = NOW\(\) WHERE id = \$1`).WithArgs(int64(5)).WillReturnResult(sqlmock.NewResult(0, 1))
-	w := doReq(muxForVideo(h), "DELETE", "/api/v1/banner/home/5", "", nil)
+	w := doReq(muxForVideo(h), "DELETE", "/api/v1/banner/home/5", "", map[string]string{"X-Admin-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestHandleBannerHome_MethodNotAllowed(t *testing.T) {
 	h, _ := newTestHandler(t)
-	w := doReq(muxForVideo(h), "PATCH", "/api/v1/banner/home", "", nil)
+	w := doReq(muxForVideo(h), "PATCH", "/api/v1/banner/home", "", map[string]string{"X-Admin-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
@@ -162,15 +162,15 @@ func TestHandleBannerCategory_PostPutDelete(t *testing.T) {
 	h, mock := newTestHandler(t)
 
 	mock.ExpectQuery(`INSERT INTO banner_images`).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
-	w := doReq(muxForVideo(h), "POST", "/api/v1/banner/category/5", `{"title":"t"}`, nil)
+	w := doReq(muxForVideo(h), "POST", "/api/v1/banner/category/5", `{"title":"t"}`, map[string]string{"X-Admin-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	mock.ExpectExec(`UPDATE banner_images SET title=\$1`).WithArgs("t", "u", "l", int32(1), int32(1), int64(5), "default", nil, nil, int64(3)).WillReturnResult(sqlmock.NewResult(0, 1))
-	w = doReq(muxForVideo(h), "PUT", "/api/v1/banner/category/5/3", `{"title":"t","image_url":"u","link_url":"l","sort_order":1,"status":1}`, nil)
+	w = doReq(muxForVideo(h), "PUT", "/api/v1/banner/category/5/3", `{"title":"t","image_url":"u","link_url":"l","sort_order":1,"status":1}`, map[string]string{"X-Admin-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	mock.ExpectExec(`UPDATE banner_images SET status = -1, updated_at = NOW\(\) WHERE id = \$1`).WithArgs(int64(3)).WillReturnResult(sqlmock.NewResult(0, 1))
-	w = doReq(muxForVideo(h), "DELETE", "/api/v1/banner/category/5/3", "", nil)
+	w = doReq(muxForVideo(h), "DELETE", "/api/v1/banner/category/5/3", "", map[string]string{"X-Admin-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -185,7 +185,7 @@ func TestHandleBannerSingle_Delete(t *testing.T) {
 			AddRow(2, "b", "u", "l", 2, 1, 3, 0, "evening", now, nil))
 	mock.ExpectExec(`UPDATE banner_images SET status = -1, updated_at = NOW\(\) WHERE id = \$1`).WithArgs(int64(1)).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`UPDATE banner_images SET status = -1, updated_at = NOW\(\) WHERE id = \$1`).WithArgs(int64(2)).WillReturnResult(sqlmock.NewResult(0, 1))
-	w := doReq(muxForVideo(h), "DELETE", "/api/v1/banner/background", "", nil)
+	w := doReq(muxForVideo(h), "DELETE", "/api/v1/banner/background", "", map[string]string{"X-Admin-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -193,7 +193,7 @@ func TestHandleBannerSingle_Delete(t *testing.T) {
 func TestHandleBannerSingle_Post(t *testing.T) {
 	h, mock := newTestHandler(t)
 	mock.ExpectQuery(`INSERT INTO banner_images`).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
-	w := doReq(muxForVideo(h), "POST", "/api/v1/banner/background", `{"title":"t"}`, nil)
+	w := doReq(muxForVideo(h), "POST", "/api/v1/banner/background", `{"title":"t"}`, map[string]string{"X-Admin-Id": "1"})
 	assert.Equal(t, http.StatusOK, w.Code)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

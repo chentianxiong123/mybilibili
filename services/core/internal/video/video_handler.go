@@ -153,6 +153,14 @@ func (h *Handler) handleBanner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// FINDING-023a 修复：banner 增删改（home/category/background/user-profile 的
+	// POST/PUT/DELETE）全部是管理操作，需 admin；此前未认证者可任意替换/删除全站 banner。
+	if r.Method != "GET" && r.Method != "OPTIONS" {
+		if _, ok := httputil.RequireAdmin(w, r); !ok {
+			return
+		}
+	}
+
 	switch parts[0] {
 	case "home":
 		h.handleBannerHome(w, r, parts)

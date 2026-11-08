@@ -346,6 +346,7 @@ func TestHandleBannerHome_POST_200(t *testing.T) {
 
 	body := strings.NewReader(`{"title":"New Banner","image_url":"/img.jpg","link_url":"/link"}`)
 	req := httptest.NewRequest("POST", "/api/v1/banner/home", body)
+	req.Header.Set("X-Admin-Id", "1")
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
