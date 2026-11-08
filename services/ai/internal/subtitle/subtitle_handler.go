@@ -1,6 +1,7 @@
 package subtitle
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -13,10 +14,40 @@ import (
 type Handler struct {
 	svc *Service
 	gen *WhisperGenerator
+	// VideoOwnerCheck 校验视频归属（FINDING-067：此前 Upload 接受任意 videoID
+	// 不查所有权，任何调用者可将字幕挂到任意视频）。由 main 注入 db 查询。
+	VideoOwnerCheck func(ctx context.Context, videoID, userID int64) (bool, error)
 }
 
 func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
+}
+
+// SetVideoOwnerCheck 注入视频所有权校验函数（main 用 db 查询 videos JOIN manuscripts）。
+func (h *Handler) SetVideoOwnerCheck(fn func(ctx context.Context, videoID, userID int64) (bool, error)) *Handler {
+	h.VideoOwnerCheck = fn
+	return h
+}
+
+// requireVideoOwner 校验当前用户是否为该视频的归属者；非归属者写 403 并返回 false。
+func (h *Handler) requireVideoOwner(w http.ResponseWriter, r *http.Request, videoID, userID int64) bool {
+	if videoID <= 0 {
+		http.Error(w, "invalid video_id", 400)
+		return false
+	}
+	if h.VideoOwnerCheck == nil {
+		return true // 未注入检查（测试/降级）则放行，由鉴权层兜底。
+	}
+	ok, err := h.VideoOwnerCheck(r.Context(), videoID, userID)
+	if err != nil {
+		http.Error(w, "video ownership check failed", 500)
+		return false
+	}
+	if !ok {
+		http.Error(w, "forbidden", 403)
+		return false
+	}
+	return true
 }
 
 // SetGenerator 注入 whisper 字幕生成器（由 main 注入 MinIO 存储）。
@@ -177,6 +208,10 @@ func (h *Handler) handleUpload(w http.ResponseWriter, r *http.Request) {
 	if req.Language == "" {
 		req.Language = "zh-CN"
 	}
+	// FINDING-067 修复：校验视频归属（此前任意 videoID 可挂字幕）。
+	if !h.requireVideoOwner(w, r, req.VideoID, userID) {
+		return
+	}
 	if req.LanguageName == "" {
 		req.LanguageName = "中文"
 	}
@@ -286,6 +321,10 @@ func (h *Handler) handleImport(w http.ResponseWriter, r *http.Request) {
 	cues, err := ParseSRT(req.Srt)
 	if err != nil || len(cues) == 0 {
 		http.Error(w, "invalid srt content", 400)
+		return
+	}
+	// FINDING-067 修复：校验视频归属（此前任意 videoID 可挂字幕）。
+	if !h.requireVideoOwner(w, r, req.VideoID, httputil.GetUserIDFromHeader(r)) {
 		return
 	}
 	storeContent := SRTCuesToJSON(cues)

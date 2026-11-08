@@ -58,6 +58,17 @@ func main() {
 	subtitleRepo := subtitle.NewRepository(docStore)
 	subtitleSvc := subtitle.NewService(subtitleRepo)
 	subtitleH := subtitle.NewHandler(subtitleSvc)
+	// FINDING-067 修复：视频归属校验（Upload 此前接受任意 videoID）。
+	subtitleH.SetVideoOwnerCheck(func(ctx context.Context, videoID, userID int64) (bool, error) {
+		var owner int64
+		err := db.QueryRowContext(ctx,
+			`SELECT m.user_id FROM videos v JOIN manuscripts m ON m.id = v.manuscript_id WHERE v.id = $1`,
+			videoID).Scan(&owner)
+		if err != nil {
+			return false, nil // 视频不存在 → 拒绝
+		}
+		return owner == userID, nil
+	})
 	// 真实 LLM 调用器（langchaingo）：端点/密钥/模型从 env 读取；
 	// 未配置时 Call 返回显式 "AI LLM not configured"（不占位/不假装成功）。
 	caller, cerr := ai.NewLangchaingoCaller(ai.LangchaingoConfig{})

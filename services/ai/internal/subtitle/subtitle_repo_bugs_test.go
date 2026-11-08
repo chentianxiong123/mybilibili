@@ -5,6 +5,9 @@ package subtitle
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 
@@ -139,9 +142,28 @@ func TestCreate_AllowsTwoDefaults_Pinned(t *testing.T) {
 func TestUpload_NoOwnershipCheck_Pinned(t *testing.T) {
 	store := &recordingStore{}
 	svc := NewService(NewRepository(store))
-	// Any caller id can attach to any video; the service never consults a
-	// video/manuscript ownership store.
+	// 服务层 Upload 本身不查所有权（无 DB 访问）；FINDING-067 的修复在 Handler 层：
+	// 通过注入的 VideoOwnerCheck 在 handleUpload/handleImport 校验归属（非本人 → 403）。
 	_, err := svc.Upload(context.Background(), 999999, 1, "zh-CN", "中文", "[]")
 	require.NoError(t, err)
-	assert.Equal(t, 1, store.inserts, "pinned: upload accepted without ownership validation")
+	assert.Equal(t, 1, store.inserts)
+}
+
+// TestUpload_NonOwner_Forbidden pins FINDING-067（已修复）：handleUpload 对非本人
+// 视频返回 403，不落库。
+func TestUpload_NonOwner_Forbidden(t *testing.T) {
+	store := &recordingStore{}
+	svc := NewService(NewRepository(store))
+	h := NewHandler(svc)
+	h.SetVideoOwnerCheck(func(ctx context.Context, videoID, userID int64) (bool, error) {
+		return false, nil // 非本人
+	})
+
+	req := httptest.NewRequest("POST", "/api/v1/subtitle/videos",
+		strings.NewReader(`{"video_id":999999,"language":"zh-CN","language_name":"中文","content":"[]"}`))
+	req.Header.Set("X-User-Id", "1")
+	w := httptest.NewRecorder()
+	h.handleUpload(w, req)
+	assert.Equal(t, http.StatusForbidden, w.Code, "FINDING-067 修复：非本人视频应 403")
+	assert.Equal(t, 0, store.inserts, "非本人不应落库")
 }
