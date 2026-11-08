@@ -120,6 +120,22 @@ func doSubtitleAsUser(t *testing.T, h *Handler, method, path, body string, uid i
 	return rr
 }
 
+// doSubtitleAsAdmin 带 admin 身份：审核 approve/reject 现要求 X-Admin-Id。
+func doSubtitleAsAdmin(t *testing.T, h *Handler, method, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	mux := http.NewServeMux()
+	h.Register(mux)
+	var rdr io.Reader
+	if body != "" {
+		rdr = strings.NewReader(body)
+	}
+	req := httptest.NewRequest(method, path, rdr)
+	req.Header.Set("X-Admin-Id", "1")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	return rr
+}
+
 // doMultipartAsUser 带登录身份的 multipart 版（/subtitle/upload-srt 需要 X-User-Id）。
 func doMultipartAsUser(t *testing.T, h *Handler, path string, fields map[string]string, fileField, fileName, fileContent string, uid int64) *httptest.ResponseRecorder {
 	t.Helper()
@@ -154,7 +170,7 @@ func TestHandleSubtitleGenerate_200(t *testing.T) {
 	store.insertID = "subtitle-gen-1"
 	h.SetGenerator(NewWhisperGenerator(NewRepository(store), storage))
 
-	rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/generate", `{"manuscript_id":10,"video_id":99}`)
+	rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/generate", `{"manuscript_id":10,"video_id":99}`, 42)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int `json:"code"`
@@ -226,7 +242,7 @@ func TestHandleSubtitleGenerate_400(t *testing.T) {
 	h.SetGenerator(NewWhisperGenerator(NewRepository(store), storage))
 
 	// 缺少 video_id → 400
-	rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/generate", `{"manuscript_id":10}`)
+	rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/generate", `{"manuscript_id":10}`, 42)
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
 	var resp map[string]interface{}
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
@@ -602,35 +618,35 @@ func TestHandleImport(t *testing.T) {
 			"video_id": 10,
 			"srt":      srt,
 		})
-		rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/import-srt", string(body))
+		rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/import-srt", string(body), 42)
 		assert.Equal(t, http.StatusOK, rr.Code)
 	})
 
 	t.Run("POST missing fields -> 400", func(t *testing.T) {
 		h := newFlexHandler(&flexMockStore{})
-		rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/import-srt",
-			`{"video_id":10}`)
+		rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/import-srt",
+			`{"video_id":10}`, 42)
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	})
 
 	t.Run("POST invalid srt -> 400", func(t *testing.T) {
 		h := newFlexHandler(&flexMockStore{})
-		rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/import-srt",
-			`{"video_id":10,"srt":"not valid srt"}`)
+		rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/import-srt",
+			`{"video_id":10,"srt":"not valid srt"}`, 42)
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	})
 
 	t.Run("POST empty srt -> 400", func(t *testing.T) {
 		h := newFlexHandler(&flexMockStore{})
-		rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/import-srt",
-			`{"video_id":10,"srt":""}`)
+		rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/import-srt",
+			`{"video_id":10,"srt":""}`, 42)
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	})
 
 	t.Run("POST zero video_id -> 400", func(t *testing.T) {
 		h := newFlexHandler(&flexMockStore{})
-		rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/import-srt",
-			`{"video_id":0,"srt":"1\n00:00:01,000 --> 00:00:04,000\nHello\n"}`)
+		rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/import-srt",
+			`{"video_id":0,"srt":"1\n00:00:01,000 --> 00:00:04,000\nHello\n"}`, 42)
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	})
 
@@ -701,8 +717,8 @@ func TestHandleSetDefault(t *testing.T) {
 			},
 		}
 		h := newFlexHandler(store)
-		rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/set-default",
-			`{"video_id":10,"id":"sub-a"}`)
+		rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/set-default",
+			`{"video_id":10,"id":"sub-a"}`, 42)
 		assert.Equal(t, http.StatusOK, rr.Code)
 	})
 
@@ -767,13 +783,13 @@ func TestHandleSubtitleByID(t *testing.T) {
 
 	t.Run("POST approve", func(t *testing.T) {
 		h := newFlexHandler(&flexMockStore{})
-		rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/sub-1/approve", "")
+		rr := doSubtitleAsAdmin(t, h, http.MethodPost, "/api/v1/subtitle/sub-1/approve", "")
 		assert.Equal(t, http.StatusOK, rr.Code)
 	})
 
 	t.Run("POST reject", func(t *testing.T) {
 		h := newFlexHandler(&flexMockStore{})
-		rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/sub-1/reject", "")
+		rr := doSubtitleAsAdmin(t, h, http.MethodPost, "/api/v1/subtitle/sub-1/reject", "")
 		assert.Equal(t, http.StatusOK, rr.Code)
 	})
 
@@ -896,14 +912,14 @@ func TestHandleSubtitleGenerate_MethodNotAllowed(t *testing.T) {
 
 func TestHandleSubtitleGenerate_NilGenerator(t *testing.T) {
 	h := newFlexHandler(&flexMockStore{})
-	rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/generate", `{"video_id":1}`)
+	rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/generate", `{"video_id":1}`, 42)
 	assert.Equal(t, http.StatusServiceUnavailable, rr.Code)
 }
 
 func TestHandleSubtitleGenerate_BadJSON(t *testing.T) {
 	h, store, storage := newTestSubtitleHandler(t)
 	h.SetGenerator(NewWhisperGenerator(NewRepository(store), storage))
-	rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/generate", `not json`)
+	rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/generate", `not json`, 42)
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
 }
 

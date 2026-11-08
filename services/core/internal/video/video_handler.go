@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"mybilibili/pkg/abstraction"
+	"mybilibili/pkg/httputil"
 	"mybilibili/pkg/imageutil"
 )
 
@@ -77,6 +78,10 @@ func (h *Handler) handleCategory(w http.ResponseWriter, r *http.Request) {
 		list, _ := h.svc.ListCategories(r.Context())
 		writeJSON(w, list)
 	} else if r.Method == "POST" {
+		// FINDING-023 修复：分类创建是管理操作，需 admin 身份（此前未认证者可建分类）。
+		if _, ok := httputil.RequireAdmin(w, r); !ok {
+			return
+		}
 		var req struct {
 			Name      string `json:"name"`
 			Icon      string `json:"icon"`
@@ -104,6 +109,10 @@ func (h *Handler) handleCategoryByID(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, c)
 	case "PUT":
+		// FINDING-023 修复：改分类是管理操作，需 admin。
+		if _, ok := httputil.RequireAdmin(w, r); !ok {
+			return
+		}
 		var req struct {
 			Name      string `json:"name"`
 			ParentID  int64  `json:"parent_id"`
@@ -120,6 +129,10 @@ func (h *Handler) handleCategoryByID(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, map[string]any{"status": "ok"})
 	case "DELETE":
+		// FINDING-023 修复：删分类是管理操作，需 admin。
+		if _, ok := httputil.RequireAdmin(w, r); !ok {
+			return
+		}
 		if _, err := h.svc.repo.GetCategoryByID(r.Context(), id); err != nil {
 			writeJSON(w, map[string]any{"code": 404, "message": "category not found"})
 			return
@@ -151,6 +164,10 @@ func (h *Handler) handleBanner(w http.ResponseWriter, r *http.Request) {
 		h.handleBannerUserProfiles(w, r, parts)
 	case "upload":
 		if r.Method == "POST" {
+			// FINDING-023 修复：轮播图上传是管理操作，需 admin（此前未认证者可传任意图）。
+			if _, ok := httputil.RequireAdmin(w, r); !ok {
+				return
+			}
 			if err := r.ParseMultipartForm(32 << 20); err != nil {
 				writeJSON(w, map[string]any{"code": 400, "message": "parse form: " + err.Error()})
 				return

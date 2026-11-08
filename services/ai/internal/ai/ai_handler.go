@@ -79,6 +79,10 @@ func (h *Handler) handleConfigs(w http.ResponseWriter, r *http.Request) {
 		}
 		httputil.WriteOK(w, list)
 	case "POST":
+		// FINDING-024 修复：AI 配置创建是管理操作，需 admin（此前未认证者可建含 APIKey 配置）。
+		if _, ok := httputil.RequireAdmin(w, r); !ok {
+			return
+		}
 		var req struct {
 			Name        string  `json:"name"`
 			Type        string  `json:"type"`
@@ -92,8 +96,7 @@ func (h *Handler) handleConfigs(w http.ResponseWriter, r *http.Request) {
 		if req.Type == "" {
 			req.Type = "LLM"
 		}
-		c := &ApiConfig{
-			Name: req.Name, Type: req.Type, BaseURL: req.BaseURL, APIKey: req.APIKey,
+		c := &ApiConfig{			Name: req.Name, Type: req.Type, BaseURL: req.BaseURL, APIKey: req.APIKey,
 			Model: req.Model, MaxTokens: req.MaxTokens, Temperature: req.Temperature,
 		}
 		h.svc.CreateConfig(r.Context(), c)
@@ -122,9 +125,17 @@ func (h *Handler) handleConfigByID(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseInt(parts[0], 10, 64)
 	switch {
 	case len(parts) >= 2 && parts[1] == "toggle" && r.Method == "PUT":
+		// FINDING-024 修复：toggle 是管理操作。
+		if _, ok := httputil.RequireAdmin(w, r); !ok {
+			return
+		}
 		h.svc.ToggleConfig(r.Context(), id)
 		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	case len(parts) >= 2 && parts[1] == "bind" && r.Method == "POST":
+		// FINDING-024 修复：改绑定是管理操作。
+		if _, ok := httputil.RequireAdmin(w, r); !ok {
+			return
+		}
 		var req struct {
 			ConfigID int64 `json:"config_id"`
 		}
@@ -140,12 +151,20 @@ func (h *Handler) handleConfigByID(w http.ResponseWriter, r *http.Request) {
 		c.APIKey = maskKey(c.APIKey)
 		httputil.WriteOK(w, c)
 	case r.Method == "PUT":
+		// FINDING-024 修复：改写配置（含 APIKey/BaseURL）是管理操作。
+		if _, ok := httputil.RequireAdmin(w, r); !ok {
+			return
+		}
 		var req ApiConfig
 		json.NewDecoder(r.Body).Decode(&req)
 		req.ID = id
 		h.svc.UpdateConfig(r.Context(), &req)
 		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	case r.Method == "DELETE":
+		// FINDING-024 修复：删配置是管理操作。
+		if _, ok := httputil.RequireAdmin(w, r); !ok {
+			return
+		}
 		h.svc.DeleteConfig(r.Context(), id)
 		httputil.WriteOK(w, map[string]any{"status": "ok"})
 	}
@@ -157,6 +176,10 @@ func (h *Handler) handleBindings(w http.ResponseWriter, r *http.Request) {
 		bindings, _ := h.svc.ListAllBindings(r.Context())
 		httputil.WriteOK(w, bindings)
 	case "POST":
+		// FINDING-024 修复：改绑定是管理操作。
+		if _, ok := httputil.RequireAdmin(w, r); !ok {
+			return
+		}
 		var req struct {
 			Feature  string `json:"feature"`
 			ConfigID int64  `json:"config_id"`
@@ -178,6 +201,10 @@ func (h *Handler) handleBindingsByPath(w http.ResponseWriter, r *http.Request) {
 		configID, _ := h.svc.GetBinding(r.Context(), feature)
 		httputil.WriteOK(w, map[string]any{"feature": feature, "config_id": configID})
 	case "POST":
+		// FINDING-024 修复：改绑定是管理操作。
+		if _, ok := httputil.RequireAdmin(w, r); !ok {
+			return
+		}
 		var req struct {
 			ConfigID int64 `json:"configId"`
 		}
@@ -486,6 +513,10 @@ func (h *Handler) handleCustomerDefaults(w http.ResponseWriter, r *http.Request)
 		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
+	// FINDING-024 修复：创建默认配置是管理操作。
+	if _, ok := httputil.RequireAdmin(w, r); !ok {
+		return
+	}
 	created, _ := h.svc.CreateMissingCustomerServiceDefaults(r.Context())
 	httputil.WriteOK(w, map[string]any{"created": created})
 }
@@ -493,6 +524,10 @@ func (h *Handler) handleCustomerDefaults(w http.ResponseWriter, r *http.Request)
 func (h *Handler) handleConfigTest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	// FINDING-024 修复：连接测试是管理操作。
+	if _, ok := httputil.RequireAdmin(w, r); !ok {
 		return
 	}
 	var req map[string]string

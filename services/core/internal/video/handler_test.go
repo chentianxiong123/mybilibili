@@ -201,6 +201,7 @@ func TestHandleCategory_POST_200(t *testing.T) {
 
 	body := strings.NewReader(`{"name":"测试分类","parent_id":0,"sort_order":1}`)
 	req := httptest.NewRequest("POST", "/api/v1/category", body)
+	req.Header.Set("X-Admin-Id", "1") // FINDING-023 修复：需 admin 身份
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -216,6 +217,7 @@ func TestHandleCategory_POST_EmptyName(t *testing.T) {
 
 	body := strings.NewReader(`{"name":""}`)
 	req := httptest.NewRequest("POST", "/api/v1/category", body)
+	req.Header.Set("X-Admin-Id", "1") // FINDING-023 修复：需 admin 身份
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -274,6 +276,7 @@ func TestHandleCategoryByID_PUT_200(t *testing.T) {
 
 	body := strings.NewReader(`{"name":"新名","parent_id":0,"sort_order":3}`)
 	req := httptest.NewRequest("PUT", "/api/v1/category/5", body)
+	req.Header.Set("X-Admin-Id", "1") // FINDING-023 修复：需 admin 身份
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -301,6 +304,7 @@ func TestHandleCategoryByID_DELETE_200(t *testing.T) {
 	mock.ExpectCommit()
 
 	req := httptest.NewRequest("DELETE", "/api/v1/category/5", nil)
+	req.Header.Set("X-Admin-Id", "1") // FINDING-023 修复：需 admin 身份
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 

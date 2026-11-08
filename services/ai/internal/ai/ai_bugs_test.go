@@ -48,6 +48,7 @@ func TestUpdateConfig_PartialUpdateWipesAPIKey_Pinned(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/ai/configs/1",
 		strings.NewReader(`{"name":"new-name","model":"gpt-4o"}`))
+	req.Header.Set("X-Admin-Id", "1") // FINDING-024 修复：需 admin 身份
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 	require.NoError(t, mock.ExpectationsWereMet())

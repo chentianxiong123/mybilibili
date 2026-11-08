@@ -322,6 +322,7 @@ func uploadReq(t *testing.T, filename, content string) *http.Request {
 	require.NoError(t, w.Close())
 	r := httptest.NewRequest("POST", "/api/v1/banner/upload", &buf)
 	r.Header.Set("Content-Type", w.FormDataContentType())
+	r.Header.Set("X-Admin-Id", "1") // FINDING-023 修复：需 admin 身份
 	return r
 }
 
@@ -354,6 +355,7 @@ func TestHandleBanner_Upload_NoFile(t *testing.T) {
 	require.NoError(t, w.Close())
 	r := httptest.NewRequest("POST", "/api/v1/banner/upload", &buf)
 	r.Header.Set("Content-Type", w.FormDataContentType())
+	r.Header.Set("X-Admin-Id", "1") // FINDING-023 修复：需 admin 身份
 	wrec := httptest.NewRecorder()
 	h.handleBanner(wrec, r)
 	assert.Contains(t, wrec.Body.String(), "file required")
@@ -363,6 +365,7 @@ func TestHandleBanner_Upload_BadMultipart(t *testing.T) {
 	h, _ := newTestHandler(t)
 	// not multipart at all → ParseMultipartForm fails
 	r := httptest.NewRequest("POST", "/api/v1/banner/upload", strings.NewReader("plain text"))
+	r.Header.Set("X-Admin-Id", "1") // FINDING-023 修复：需 admin 身份
 	w := httptest.NewRecorder()
 	h.handleBanner(w, r)
 	assert.Contains(t, w.Body.String(), "parse form")
@@ -390,7 +393,7 @@ func TestHandleCategoryByID_PUT_NotFound(t *testing.T) {
 	mock.ExpectQuery(`SELECT id, name, parent_id, sort_order FROM categories WHERE id`).
 		WithArgs(int64(99)).WillReturnError(sql.ErrNoRows)
 	body := strings.NewReader(`{"name":"x"}`)
-	w := doReq(muxForVideo(h), "PUT", "/api/v1/category/99", "", map[string]string{"Content-Type": "application/json"})
+	w := doReq(muxForVideo(h), "PUT", "/api/v1/category/99", "", map[string]string{"Content-Type": "application/json", "X-Admin-Id": "1"})
 	_ = body
 	assert.Contains(t, w.Body.String(), "category not found")
 	_ = mock
@@ -404,6 +407,7 @@ func TestHandleCategoryByID_PUT_UpdateError(t *testing.T) {
 	mock.ExpectExec(`UPDATE categories SET name`).WillReturnError(errors.New("update failed"))
 	body := strings.NewReader(`{"name":"new"}`)
 	req := httptest.NewRequest("PUT", "/api/v1/category/5", body)
+	req.Header.Set("X-Admin-Id", "1") // FINDING-023 修复：需 admin 身份
 	w := httptest.NewRecorder()
 	mux := muxForVideo(h)
 	mux.ServeHTTP(w, req)

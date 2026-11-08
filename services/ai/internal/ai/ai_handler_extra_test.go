@@ -85,7 +85,7 @@ func TestHandleCustomerDefaults_POST(t *testing.T) {
 	}
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodPost, "/api/v1/ai/skills/customer-service/defaults", "")
+	rr := doAIAdmin(t, mux, http.MethodPost, "/api/v1/ai/skills/customer-service/defaults", "", true)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                    `json:"code"`

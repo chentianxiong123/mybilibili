@@ -248,7 +248,7 @@ func TestHandleGenerate_GeneratorError(t *testing.T) {
 	store := &errStore{}
 	h := NewHandler(NewService(NewRepository(store)))
 	h.SetGenerator(NewWhisperGenerator(NewRepository(store), &failingStorage{err: errors.New("storage down")}))
-	rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/generate", `{"manuscript_id":1,"video_id":99}`)
+	rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/generate", `{"manuscript_id":1,"video_id":99}`, 42)
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 }
 
@@ -322,7 +322,7 @@ func TestHandleImport_UploadError(t *testing.T) {
 	h := NewHandler(NewService(NewRepository(&errStore{insertErr: errors.New("db fail")})))
 	srt := "1\n00:00:01,000 --> 00:00:04,000\nHello\n"
 	body, _ := json.Marshal(map[string]interface{}{"video_id": 10, "srt": srt})
-	rr := doSubtitle(t, h, http.MethodPost, "/api/v1/subtitle/import-srt", string(body))
+	rr := doSubtitleAsUser(t, h, http.MethodPost, "/api/v1/subtitle/import-srt", string(body), 42)
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 }
 

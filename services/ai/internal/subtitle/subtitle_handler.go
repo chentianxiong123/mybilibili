@@ -44,6 +44,10 @@ func (h *Handler) handleGenerate(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed"})
 		return
 	}
+	// FINDING-034 修复：generate 触发昂贵 whisper 识别，需用户身份（此前未认证者可反复触发 DoS）。
+	if _, ok := httputil.RequireUser(w, r); !ok {
+		return
+	}
 	if h.gen == nil {
 		httputil.WriteJSON(w, http.StatusServiceUnavailable, map[string]any{"code": 503, "message": "whisper generator not configured"})
 		return
@@ -266,6 +270,10 @@ func (h *Handler) handleImport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
+	// FINDING-034 修复：导入字幕需用户身份（此前未认证者可向任意视频注入字幕 user_id=0）。
+	if _, ok := httputil.RequireUser(w, r); !ok {
+		return
+	}
 	var req struct {
 		VideoID int64  `json:"video_id"`
 		Srt     string `json:"srt"`
@@ -339,6 +347,10 @@ func (h *Handler) handleSetDefault(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
+	// FINDING-034 修复：设默认字幕需用户身份。
+	if _, ok := httputil.RequireUser(w, r); !ok {
+		return
+	}
 	var req struct {
 		VideoID int64  `json:"video_id"`
 		ID      string `json:"id"`
@@ -355,9 +367,17 @@ func (h *Handler) handleSubtitleByID(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case len(parts) >= 2 && parts[1] == "approve" && r.Method == "POST":
+		// FINDING-034 修复：审核通过是管理操作。
+		if _, ok := httputil.RequireAdmin(w, r); !ok {
+			return
+		}
 		h.svc.Approve(r.Context(), id)
 		httputil.WriteOK(w, map[string]string{"status": "ok"})
 	case len(parts) >= 2 && parts[1] == "reject" && r.Method == "POST":
+		// FINDING-034 修复：审核拒绝是管理操作。
+		if _, ok := httputil.RequireAdmin(w, r); !ok {
+			return
+		}
 		h.svc.Reject(r.Context(), id)
 		httputil.WriteOK(w, map[string]string{"status": "ok"})
 	case len(parts) >= 2 && parts[1] == "preview" && r.Method == "GET":

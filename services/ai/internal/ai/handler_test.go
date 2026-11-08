@@ -214,8 +214,8 @@ func TestHandleConfigs_POST_200(t *testing.T) {
 
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodPost, "/api/v1/ai/configs",
-		`{"name":"test","type":"LLM","base_url":"http://localhost","api_key":"sk-xxx","model":"gpt-4","max_tokens":2048,"temperature":0.5}`)
+	rr := doAIAdmin(t, mux, http.MethodPost, "/api/v1/ai/configs",
+		`{"name":"test","type":"LLM","base_url":"http://localhost","api_key":"sk-xxx","model":"gpt-4","max_tokens":2048,"temperature":0.5}`, true)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                    `json:"code"`
@@ -257,8 +257,8 @@ func TestHandleConfigByID_PUT_200(t *testing.T) {
 
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodPut, "/api/v1/ai/configs/1",
-		`{"name":"updated","type":"LLM","model":"gpt-4o"}`)
+	rr := doAIAdmin(t, mux, http.MethodPut, "/api/v1/ai/configs/1",
+		`{"name":"updated","type":"LLM","model":"gpt-4o"}`, true)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                    `json:"code"`
@@ -275,7 +275,7 @@ func TestHandleConfigByID_DELETE_200(t *testing.T) {
 
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodDelete, "/api/v1/ai/configs/1", "")
+	rr := doAIAdmin(t, mux, http.MethodDelete, "/api/v1/ai/configs/1", "", true)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                    `json:"code"`
@@ -294,7 +294,7 @@ func TestHandleConfigByID_Toggle(t *testing.T) {
 
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodPut, "/api/v1/ai/configs/1/toggle", "")
+	rr := doAIAdmin(t, mux, http.MethodPut, "/api/v1/ai/configs/1/toggle", "", true)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                    `json:"code"`
@@ -313,8 +313,8 @@ func TestHandleConfigByID_Bind(t *testing.T) {
 
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodPost, "/api/v1/ai/configs/chat/bind",
-		`{"config_id":1}`)
+	rr := doAIAdmin(t, mux, http.MethodPost, "/api/v1/ai/configs/chat/bind",
+		`{"config_id":1}`, true)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                    `json:"code"`
@@ -389,8 +389,8 @@ func TestHandleBindings_POST_200(t *testing.T) {
 
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodPost, "/api/v1/ai/bindings",
-		`{"feature":"chat","config_id":1}`)
+	rr := doAIAdmin(t, mux, http.MethodPost, "/api/v1/ai/bindings",
+		`{"feature":"chat","config_id":1}`, true)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                    `json:"code"`
@@ -428,8 +428,8 @@ func TestHandleBindingsByPath_POST(t *testing.T) {
 
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodPost, "/api/v1/ai/bindings/chat",
-		`{"configId":5}`)
+	rr := doAIAdmin(t, mux, http.MethodPost, "/api/v1/ai/bindings/chat",
+		`{"configId":5}`, true)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                    `json:"code"`
@@ -928,7 +928,7 @@ func TestHandleCustomerDefaults_405(t *testing.T) {
 
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodGet, "/api/v1/ai/skills/customer-service/defaults", "")
+	rr := doAIAdmin(t, mux, http.MethodGet, "/api/v1/ai/skills/customer-service/defaults", "", true)
 	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
 	var resp map[string]interface{}
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
@@ -942,8 +942,8 @@ func TestHandleConfigTest_200(t *testing.T) {
 
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodPost, "/api/v1/ai/config/test",
-		`{"provider":"openai","model":"gpt-4o"}`)
+	rr := doAIAdmin(t, mux, http.MethodPost, "/api/v1/ai/config/test",
+		`{"provider":"openai","model":"gpt-4o"}`, true)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                    `json:"code"`
