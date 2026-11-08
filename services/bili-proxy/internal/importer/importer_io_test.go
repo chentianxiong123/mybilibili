@@ -174,7 +174,8 @@ func TestImportOne_ZeroAIDCID(t *testing.T) {
 	db, _ := newImpDB(t)
 	imp := New(db, Config{})
 	err := imp.importOne(&bilibili.ViewInfo{AID: 0, CID: 0})
-	require.NoError(t, err)
+	// FINDING-033 修复：无 AID/CID 返回可识别错误（不再静默 no-op）。
+	require.ErrorIs(t, err, errNoAIDCID)
 }
 
 func TestImportOne_EnsureUserError(t *testing.T) {

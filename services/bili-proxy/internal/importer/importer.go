@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -18,6 +19,9 @@ import (
 )
 
 var bvRe = regexp.MustCompile(`BV[0-9A-Za-z]{10}`)
+
+// errNoAIDCID 标记无 AID/CID 的视频（FINDING-033：此前返回 nil 被 Run 误计为 imported）。
+var errNoAIDCID = errors.New("video has no AID/CID")
 
 // Config 导入配置。
 type Config struct {
@@ -171,7 +175,8 @@ func (i *Importer) ensureUser(owner bilibili.ViewOwner) (int64, error) {
 // importOne 导入单个稿件（首个分P）。
 func (i *Importer) importOne(info *bilibili.ViewInfo) error {
 	if info.AID == 0 || info.CID == 0 {
-		return nil
+		// FINDING-033 修复：无 AID/CID 返回可识别错误（此前返回 nil → Run 误计 imported）。
+		return errNoAIDCID
 	}
 	categoryID := mapCategory(info.TName, info.Title)
 	uploaderID, err := i.ensureUser(info.Owner)

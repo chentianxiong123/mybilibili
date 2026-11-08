@@ -62,9 +62,9 @@ func TestRun_CountsNoopImportAsImported(t *testing.T) {
 	imported, skipped, err := imp.Run([]string{"BV1xx0000000"})
 	require.NoError(t, err)
 
-	// BUG: imported=1 although the video was NOT imported (no insert executed).
-	assert.Equal(t, 1, imported, "no-op view (AID=0,CID=0) must NOT count as imported")
-	assert.Equal(t, 0, skipped)
+	// FINDING-033 修复：无 AID/CID 计为 skipped（不再误计 imported）。
+	assert.Equal(t, 0, imported, "FINDING-033 修复: 无 AID/CID 不应计为 imported")
+	assert.Equal(t, 1, skipped)
 
 	// Proof importOne never touched the DB: only bvExists's COUNT query ran.
 	require.NoError(t, mock.ExpectationsWereMet())
