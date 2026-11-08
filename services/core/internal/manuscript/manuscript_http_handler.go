@@ -508,8 +508,16 @@ func (h *ManuscriptHTTPHandler) handleUploadComplete(w http.ResponseWriter, r *h
 	if !h.requireCategory(r.Context(), w, categoryID) {
 		return
 	}
+	// FINDING-058 修复：稿件+视频+标签+upload_session 状态包进同一事务——
+	// 视频插入失败则稿件回滚，不产生孤儿稿件（此前独立 autocommit，视频失败仍持久稿件）。
+	tx, err := h.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal("begin tx failed"))
+		return
+	}
+	defer tx.Rollback()
 	var msID int64
-	if err := h.db.QueryRowContext(r.Context(),
+	if err := tx.QueryRowContext(r.Context(),
 		`INSERT INTO manuscripts (title, description, cover_url, user_id, category_id, status, review_status, upload_time, updated_at)
 		 VALUES ($1,$2,'',$3,$4,0,0,NOW(),NOW()) RETURNING id`,
 		title, desc, uid, categoryID).Scan(&msID); err != nil {
@@ -517,7 +525,7 @@ func (h *ManuscriptHTTPHandler) handleUploadComplete(w http.ResponseWriter, r *h
 		return
 	}
 	var vid int64
-	if err := h.db.QueryRowContext(r.Context(),
+	if err := tx.QueryRowContext(r.Context(),
 		`INSERT INTO videos (manuscript_id, video_order, title, play_url_hd, source_video_url, process_status, upload_time, updated_at)
 		 VALUES ($1,0,$2,$3,$3,0,NOW(),NOW()) RETURNING id`,
 		msID, title, playURL).Scan(&vid); err != nil {
@@ -539,13 +547,17 @@ func (h *ManuscriptHTTPHandler) handleUploadComplete(w http.ResponseWriter, r *h
 	}
 	for _, t := range tagList {
 		var tid int64
-		_ = h.db.QueryRowContext(r.Context(),
+		_ = tx.QueryRowContext(r.Context(),
 			`INSERT INTO tags (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`, t).Scan(&tid)
-		_, _ = h.db.ExecContext(r.Context(),
+		_, _ = tx.ExecContext(r.Context(),
 			`INSERT INTO video_tags (video_id, tag_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, vid, tid)
 	}
-	_, _ = h.db.ExecContext(r.Context(),
+	_, _ = tx.ExecContext(r.Context(),
 		`UPDATE upload_sessions SET status = 'uploaded', updated_at = NOW() WHERE id = $1`, uploadID)
+	if err := tx.Commit(); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal("commit tx failed"))
+		return
+	}
 	user.AwardExperience(r.Context(), h.db, uid, 10)
 	httputil.WriteOK(w, map[string]interface{}{"manuscript_id": msID, "status": "uploaded"})
 }
@@ -1703,8 +1715,16 @@ func (h *ManuscriptHTTPHandler) handleUploadCompleteWeb(w http.ResponseWriter, r
 	if !h.requireCategory(r.Context(), w, categoryID) {
 		return
 	}
+	// FINDING-058 修复：稿件+视频+标签+upload_session 状态包进同一事务——
+	// 任一视频插入失败则整体回滚，不产生孤儿稿件（此前视频失败 continue，稿件 0 视频仍提交）。
+	tx, err := h.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal("begin tx failed"))
+		return
+	}
+	defer tx.Rollback()
 	var msID int64
-	if err := h.db.QueryRowContext(r.Context(),
+	if err := tx.QueryRowContext(r.Context(),
 		`INSERT INTO manuscripts (title, description, cover_url, user_id, category_id, status, review_status, upload_time, updated_at)
 		 VALUES ($1,$2,$3,$4,$5,0,0,NOW(),NOW()) RETURNING id`,
 		title, desc, coverURL, uid, categoryID).Scan(&msID); err != nil {
@@ -1753,11 +1773,12 @@ func (h *ManuscriptHTTPHandler) handleUploadCompleteWeb(w http.ResponseWriter, r
 			}
 		}
 		var vid int64
-		if err := h.db.QueryRowContext(r.Context(),
+		if err := tx.QueryRowContext(r.Context(),
 			`INSERT INTO videos (manuscript_id, video_order, title, play_url_hd, source_video_url, process_status, upload_time, updated_at)
 			 VALUES ($1,$2,$3,$4,$4,0,NOW(),NOW()) RETURNING id`,
 			msID, i, vt, playURL).Scan(&vid); err != nil {
-			continue
+			errors.WriteHTTPError(w, errors.ErrInternal("create video failed"))
+			return
 		}
 		for _, t := range allTags {
 			t = strings.TrimSpace(t)
@@ -1765,14 +1786,18 @@ func (h *ManuscriptHTTPHandler) handleUploadCompleteWeb(w http.ResponseWriter, r
 				continue
 			}
 			var tid int64
-			_ = h.db.QueryRowContext(r.Context(),
+			_ = tx.QueryRowContext(r.Context(),
 				`INSERT INTO tags (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`, t).Scan(&tid)
-			_, _ = h.db.ExecContext(r.Context(),
+			_, _ = tx.ExecContext(r.Context(),
 				`INSERT INTO video_tags (video_id, tag_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, vid, tid)
 		}
 	}
-	_, _ = h.db.ExecContext(r.Context(),
+	_, _ = tx.ExecContext(r.Context(),
 		`UPDATE upload_sessions SET status = 'uploaded', updated_at = NOW() WHERE id = $1`, uploadID)
+	if err := tx.Commit(); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal("commit tx failed"))
+		return
+	}
 	user.AwardExperience(r.Context(), h.db, uid, 10)
 	httputil.WriteOK(w, map[string]interface{}{"manuscript_id": msID, "status": "uploaded"})
 }

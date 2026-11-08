@@ -931,9 +931,11 @@ func TestHTTPHandler_UploadComplete(t *testing.T) {
 		AddRow("t", "d", int64(1), "[]", `[{"url":"http://video.mp4"}]`))
 	mock.ExpectQuery(`SELECT EXISTS\(SELECT 1 FROM categories WHERE id`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	mock.ExpectBegin() // FINDING-058 修复：事务内
 	mock.ExpectQuery(`INSERT INTO manuscripts`).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(1)))
 	mock.ExpectQuery(`INSERT INTO videos`).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(100)))
 	mock.ExpectExec(`UPDATE upload_sessions SET status`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit() // FINDING-058 修复：事务提交
 	mock.ExpectExec(`UPDATE users SET experience`).WillReturnResult(sqlmock.NewResult(0, 1))
 
 	req := newReq("POST", "/api/v1/manuscript/upload-session/abc/complete")

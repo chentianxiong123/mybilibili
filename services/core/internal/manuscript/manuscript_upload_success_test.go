@@ -43,6 +43,7 @@ func TestHandleUploadCompleteWeb_Success(t *testing.T) {
 			AddRow("t", "d", int64(1), `["a","b"]`, `[{"title":"T1"}]`))
 	mock.ExpectQuery(`SELECT EXISTS\(SELECT 1 FROM categories WHERE id = \$1\)`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	mock.ExpectBegin() // FINDING-058 修复：事务内
 	mock.ExpectQuery(`INSERT INTO manuscripts`).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(1)))
 
@@ -63,6 +64,7 @@ func TestHandleUploadCompleteWeb_Success(t *testing.T) {
 	mock.ExpectExec(`INSERT INTO video_tags`).WillReturnResult(sqlmock.NewResult(0, 1))
 
 	mock.ExpectExec(`UPDATE upload_sessions SET status`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit() // FINDING-058 修复：事务提交
 	mock.ExpectQuery(`SELECT level, experience FROM users WHERE id = \$1`).WithArgs(int64(10)).
 		WillReturnRows(sqlmock.NewRows([]string{"level", "experience"}).AddRow(int32(1), int64(0)))
 	mock.ExpectExec(`UPDATE users SET experience`).WillReturnResult(sqlmock.NewResult(0, 1))
@@ -151,7 +153,7 @@ func TestHandleUploadCompleteWeb_CreateManuscriptError(t *testing.T) {
 	assert.Equal(t, 500, w.Code)
 }
 
-// ---- handleUploadCompleteWeb: 视频插入失败 → 跳过该分片但整体成功 ----
+// ---- handleUploadCompleteWeb: 视频插入失败 → 整体回滚 500（FINDING-058 修复）----
 
 func TestHandleUploadCompleteWeb_CreateVideoError(t *testing.T) {
 	dir := setupUploadDir(t, "up-v", map[int][]string{0: {"0"}})
@@ -167,14 +169,11 @@ func TestHandleUploadCompleteWeb_CreateVideoError(t *testing.T) {
 			AddRow("t", "d", int64(1), "[]", `[{"title":"T1"}]`))
 	mock.ExpectQuery(`SELECT EXISTS\(SELECT 1 FROM categories WHERE id = \$1\)`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	mock.ExpectBegin() // FINDING-058 修复：事务内
 	mock.ExpectQuery(`INSERT INTO manuscripts`).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(1)))
 	mock.ExpectQuery(`INSERT INTO videos`).WillReturnError(sql.ErrConnDone)
-
-	mock.ExpectExec(`UPDATE upload_sessions SET status`).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(`SELECT level, experience FROM users WHERE id = \$1`).WithArgs(int64(10)).
-		WillReturnRows(sqlmock.NewRows([]string{"level", "experience"}).AddRow(int32(1), int64(0)))
-	mock.ExpectExec(`UPDATE users SET experience`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectRollback() // FINDING-058 修复：视频失败 → 回滚，不产生孤儿稿件
 
 	boundary := "b"
 	body := buildMultipartFile(boundary, map[string]string{"uploadId": "up-v"}, "f", "data")
@@ -183,8 +182,8 @@ func TestHandleUploadCompleteWeb_CreateVideoError(t *testing.T) {
 	req.Header.Set("Content-Type", "multipart/form-data; boundary="+boundary)
 	w := httptest.NewRecorder()
 	h.handleUploadCompleteWeb(w, req)
-	// 视频插入失败被 continue 跳过，整体仍返回成功
-	assert.Equal(t, 200, w.Code)
+	// FINDING-058 修复：视频插入失败 → 整体回滚 500（此前 continue 跳过分片，稿件 0 视频仍成功）。
+	assert.Equal(t, 500, w.Code)
 }
 
 // ---- handleUploadComplete: 逗号分隔标签路径 + video_url 字段 + 完整成功 ----
@@ -200,6 +199,7 @@ func TestHandleUploadComplete_CSVTagsAndVideoURL(t *testing.T) {
 			AddRow("t", "d", int64(1), "a, b, c", `[{"video_url":"http://v.mp4"}]`))
 	mock.ExpectQuery(`SELECT EXISTS\(SELECT 1 FROM categories WHERE id = \$1\)`).WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	mock.ExpectBegin() // FINDING-058 修复：事务内
 	mock.ExpectQuery(`INSERT INTO manuscripts`).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(1)))
 	mock.ExpectQuery(`INSERT INTO videos`).
@@ -212,6 +212,7 @@ func TestHandleUploadComplete_CSVTagsAndVideoURL(t *testing.T) {
 	mock.ExpectExec(`INSERT INTO video_tags`).WillReturnResult(sqlmock.NewResult(0, 1))
 
 	mock.ExpectExec(`UPDATE upload_sessions SET status`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit() // FINDING-058 修复：事务提交
 	mock.ExpectQuery(`SELECT level, experience FROM users WHERE id = \$1`).WithArgs(int64(10)).
 		WillReturnRows(sqlmock.NewRows([]string{"level", "experience"}).AddRow(int32(1), int64(0)))
 	mock.ExpectExec(`UPDATE users SET experience`).WillReturnResult(sqlmock.NewResult(0, 1))
