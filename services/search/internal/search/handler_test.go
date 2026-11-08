@@ -482,7 +482,12 @@ func TestHandleHotScore_405(t *testing.T) {
 func TestHandleCleanExpired_200(t *testing.T) {
 	h, _ := newTestHandlerNoHot(t)
 
-	rr := do(t, h, http.MethodPost, "/api/v1/search/hot/clean-expired", "")
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/search/hot/clean-expired", nil)
+	req.Header.Set("X-Admin-Id", "1") // FINDING-036 修复：需 admin 身份
+	rr := httptest.NewRecorder()
+	mux := http.NewServeMux()
+	h.Register(mux)
+	mux.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 }
 

@@ -803,6 +803,18 @@ func (h *UserExtendHandler) handleUserByID(w http.ResponseWriter, r *http.Reques
 
 	// PUT: 更新用户资料（简介、公告等）
 	if r.Method == "PUT" || r.Method == "PATCH" {
+		// FINDING-029 修复：资料更新需认证且仅限本人（admin 可代改）；
+		// 此前未认证者可覆写任意用户资料（昵称/公告/简介/性别/封面）。
+		if httputil.GetAdminIDFromHeader(r) == 0 {
+			uid, ok := httputil.RequireUser(w, r)
+			if !ok {
+				return
+			}
+			if uid != id {
+				httputil.WriteJSON(w, http.StatusForbidden, map[string]any{"code": 403, "message": "forbidden: can only update own profile", "data": nil})
+				return
+			}
+		}
 		var req map[string]interface{}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})

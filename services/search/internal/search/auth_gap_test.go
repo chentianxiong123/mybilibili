@@ -56,7 +56,7 @@ func TestAuthGap_HotCleanExpired_AnonymousReachable(t *testing.T) {
 
 	realMux(h).ServeHTTP(rr, anonRequest(http.MethodPost, "/api/v1/search/hot/clean-expired", ""))
 
-	assert.Equal(t, http.StatusOK, rr.Code, "unauthenticated POST /search/hot/clean-expired must NOT return 200")
+	assert.Equal(t, http.StatusUnauthorized, rr.Code, "FINDING-036 修复: unauthenticated POST /search/hot/clean-expired 应 401")
 }
 
 // NEGATIVE CONTROL: hot/keyword, hot/rank, hot/score and hot/delete ARE

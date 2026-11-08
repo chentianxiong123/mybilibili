@@ -180,6 +180,10 @@ func (h *Handler) handleCleanExpired(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
+	// FINDING-036 修复：清理 hot-search 是管理操作，需 admin（此前无 token/secret 校验）。
+	if _, ok := httputil.RequireAdmin(w, r); !ok {
+		return
+	}
 	_ = h.svc.CleanExpiredHotSearch(r.Context())
 	writeJSON(w, map[string]any{"status": "ok"})
 }

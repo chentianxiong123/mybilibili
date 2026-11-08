@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -70,6 +71,21 @@ func newTestHandler(t *testing.T) (*Handler, sqlmock.Sqlmock) {
 func doAI(t *testing.T, mux http.Handler, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	return doAIAdmin(t, mux, method, path, body, false)
+}
+
+// doAIUser 设置 X-User-Id（用户身份），供受 FINDING-038 修复约束的
+// 聊天历史测试使用（匿名现在应 401）。
+func doAIUser(t *testing.T, mux http.Handler, method, path, body string, uid int) *httptest.ResponseRecorder {
+	t.Helper()
+	var rdr io.Reader
+	if body != "" {
+		rdr = strings.NewReader(body)
+	}
+	req := httptest.NewRequest(method, path, rdr)
+	req.Header.Set("X-User-Id", strconv.Itoa(uid))
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	return rr
 }
 
 // doAIAdmin 设置 X-Admin-Id（admin 身份），供受 FINDING-065 修复约束的

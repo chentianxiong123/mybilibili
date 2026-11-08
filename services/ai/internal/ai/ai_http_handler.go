@@ -119,6 +119,15 @@ func (h *AIChatHandler) handleCustomerHistory(w http.ResponseWriter, r *http.Req
 		http.Error(w, "method not allowed", 405)
 		return
 	}
+	// FINDING-038 修复：聊天历史需认证；非 admin 时强制用认证 uid（忽略路径 id，
+	// 防 IDOR 泄露任意用户历史）。
+	if httputil.GetAdminIDFromHeader(r) == 0 {
+		uid, ok := httputil.RequireUser(w, r)
+		if !ok {
+			return
+		}
+		r.Header.Set("X-User-Id", strconv.FormatInt(uid, 10))
+	}
 	userID, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/ai/customer/history/"), 10, 64)
 	if userID == 0 {
 		userID = httputil.GetUserIDFromHeader(r)

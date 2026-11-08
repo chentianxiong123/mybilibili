@@ -380,7 +380,7 @@ func TestHandleUpdateUser_200(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	body := map[string]interface{}{"signature": "new signature"}
-	rec := doRequest(t, mux, "PUT", "/api/v1/user/1", body, nil)
+	rec := doRequest(t, mux, "PUT", "/api/v1/user/1", body, map[string]string{"X-User-Id": "1"}) // FINDING-029 修复：需本人身份
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), `"status":"ok"`)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -986,6 +986,7 @@ func TestHandleUserByID_PutInvalidBody(t *testing.T) {
 	h.Register(mux)
 
 	req := httptest.NewRequest("PUT", "/api/v1/user/1", strings.NewReader("not json"))
+	req.Header.Set("X-User-Id", "1") // FINDING-029 修复：需本人身份
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -997,7 +998,7 @@ func TestHandleUserByID_PutNoFields(t *testing.T) {
 	h.Register(mux)
 
 	body := map[string]interface{}{"unknown_field": "value"}
-	rec := doRequest(t, mux, "PUT", "/api/v1/user/1", body, nil)
+	rec := doRequest(t, mux, "PUT", "/api/v1/user/1", body, map[string]string{"X-User-Id": "1"}) // FINDING-029 修复：需本人身份
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	assert.Contains(t, rec.Body.String(), "no updatable fields")
 }

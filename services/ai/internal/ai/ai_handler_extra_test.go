@@ -327,7 +327,7 @@ func TestHandleCustomerHistory_200(t *testing.T) {
 	chatH := NewAIChatHandler(nil, customer)
 	mux := http.NewServeMux()
 	chatH.Register(mux)
-	rr := doAI(t, mux, http.MethodGet, "/api/v1/ai/customer/history/7", "")
+	rr := doAIUser(t, mux, http.MethodGet, "/api/v1/ai/customer/history/7", "", 7)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                      `json:"code"`
@@ -342,7 +342,7 @@ func TestHandleCustomerHistory_Error(t *testing.T) {
 	chatH := NewAIChatHandler(nil, customer)
 	mux := http.NewServeMux()
 	chatH.Register(mux)
-	rr := doAI(t, mux, http.MethodGet, "/api/v1/ai/customer/history/1", "")
+	rr := doAIUser(t, mux, http.MethodGet, "/api/v1/ai/customer/history/1", "", 1)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                      `json:"code"`

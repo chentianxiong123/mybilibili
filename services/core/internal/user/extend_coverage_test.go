@@ -308,7 +308,7 @@ func TestHandleUserByID_PutUpdateError(t *testing.T) {
 	mock.ExpectExec(`UPDATE users SET signature`).
 		WillReturnError(errors.New("boom"))
 
-	w := doRequest(t, muxForUserExtend(h), "PUT", "/api/v1/user/1", map[string]interface{}{"signature": "s"}, nil)
+	w := doRequest(t, muxForUserExtend(h), "PUT", "/api/v1/user/1", map[string]interface{}{"signature": "s"}, map[string]string{"X-User-Id": "1"}) // FINDING-029 修复：需本人身份
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
