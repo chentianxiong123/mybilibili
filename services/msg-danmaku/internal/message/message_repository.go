@@ -251,7 +251,7 @@ func (r *MessageRepository) GetUnreadCountsByType(ctx context.Context, userID in
 
 type NotificationBroadcaster struct {
 	mu       sync.Mutex
-	channels map[int64]chan *NotificationEvent
+	channels map[int64][]chan *NotificationEvent
 }
 
 type NotificationEvent struct {
@@ -264,31 +264,43 @@ type NotificationEvent struct {
 }
 
 func NewNotificationBroadcaster() *NotificationBroadcaster {
-	return &NotificationBroadcaster{channels: make(map[int64]chan *NotificationEvent)}
+	return &NotificationBroadcaster{channels: make(map[int64][]chan *NotificationEvent)}
 }
 
+// Subscribe 为每个订阅者分配独立通道（FINDING-044 修复：此前同用户共享单通道，
+// 2 连接仅 1 人收到事件）。返回后调用方负责 Unsubscribe。
 func (b *NotificationBroadcaster) Subscribe(userID int64) <-chan *NotificationEvent {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if b.channels[userID] == nil {
-		b.channels[userID] = make(chan *NotificationEvent, 50)
-	}
-	return b.channels[userID]
+	ch := make(chan *NotificationEvent, 50)
+	b.channels[userID] = append(b.channels[userID], ch)
+	return ch
 }
 
 func (b *NotificationBroadcaster) Unsubscribe(userID int64, ch <-chan *NotificationEvent) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if b.channels[userID] == ch {
+	set := b.channels[userID]
+	for i, c := range set {
+		if c == ch {
+			set = append(set[:i], set[i+1:]...)
+			break
+		}
+	}
+	if len(set) == 0 {
 		delete(b.channels, userID)
+	} else {
+		b.channels[userID] = set
 	}
 }
 
+// Send 广播到该用户所有连接（FINDING-044 修复：不再只发给单个共享通道）。
 func (b *NotificationBroadcaster) Send(userID int64, event *NotificationEvent) {
 	b.mu.Lock()
-	ch := b.channels[userID]
+	chans := make([]chan *NotificationEvent, len(b.channels[userID]))
+	copy(chans, b.channels[userID])
 	b.mu.Unlock()
-	if ch != nil {
+	for _, ch := range chans {
 		select {
 		case ch <- event:
 		default:

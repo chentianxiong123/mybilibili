@@ -366,9 +366,9 @@ func TestNotificationBroadcaster_SubscribeUnsubscribeSend(t *testing.T) {
 
 	ch := b.Subscribe(1)
 	require.NotNil(t, ch)
-	// 同用户返回同一 channel
+	// FINDING-044 修复：同用户两次订阅返回不同通道（每连接独立通道）。
 	ch2 := b.Subscribe(1)
-	assert.Equal(t, ch, ch2)
+	assert.NotEqual(t, ch, ch2)
 
 	// 已订阅的 receive
 	b.Send(1, &NotificationEvent{Type: "a"})
@@ -377,6 +377,11 @@ func TestNotificationBroadcaster_SubscribeUnsubscribeSend(t *testing.T) {
 		assert.Equal(t, "a", ev.Type)
 	default:
 		t.Fatal("expected event")
+	}
+	// 排空 ch2（广播也投递给 ch2）
+	select {
+	case <-ch2:
+	default:
 	}
 
 	// 未订阅用户 no-op，不 panic
@@ -394,9 +399,17 @@ func TestNotificationBroadcaster_SubscribeUnsubscribeSend(t *testing.T) {
 		t.Fatal("expected buffered event")
 	}
 
-	// Unsubscribe 正确删除匹配 channel
+	// Unsubscribe 正确删除匹配 channel（ch 移除后 ch2 仍在）
 	b.Unsubscribe(1, ch)
-	assert.Nil(t, b.channels[1])
+	require.Len(t, b.channels[1], 1)
+	// 剩余 ch2 仍可接收
+	b.Send(1, &NotificationEvent{Type: "after"})
+	select {
+	case ev := <-ch2:
+		assert.Equal(t, "after", ev.Type)
+	default:
+		t.Fatal("expected ch2 to still deliver")
+	}
 
 	// Unsubscribe 传入不匹配 channel：保留原 channel
 	ch1 := b.Subscribe(3)

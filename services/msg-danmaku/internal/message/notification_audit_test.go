@@ -46,18 +46,17 @@ func TestAuditNotificationBroadcaster_ConcurrentAccess(t *testing.T) {
 	assert.NotNil(t, notif)
 }
 
-// AUDIT-6 (fan-out): two SSE connections for the same user share one channel, so
-// a single notification is delivered to only one of the two subscribers.
+// AUDIT-6 (fan-out): two SSE connections for the same user each get their own
+// channel (FINDING-044 修复), so a single notification is delivered to both.
 func TestAuditNotificationBroadcaster_Fanout(t *testing.T) {
 	notif := NewNotificationBroadcaster()
 	ch1 := notif.Subscribe(7)
-	ch2 := notif.Subscribe(7) // same channel
+	ch2 := notif.Subscribe(7) // 独立通道（修复后）
 
 	notif.Send(7, &NotificationEvent{Type: "message", Content: "hello"})
 
-	// FINDING-044 钉住：同用户两订阅者共享单通道——仅 1 人收到。
 	got1 := recvTimeout(ch1)
 	got2 := recvTimeout(ch2)
 	assert.NotNil(t, got1, "subscriber 1 should receive")
-	assert.Nil(t, got2, "FINDING-044: 共享通道仅投递到 1 个接收者，subscriber 2 收不到")
+	assert.NotNil(t, got2, "FINDING-044 修复: 两订阅者都应收到")
 }
