@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -18,6 +20,10 @@ import (
 type natsQueue struct {
 	nc *nats.Conn
 	js nats.JetStreamContext
+	// deliveries 关联投递 id → *nats.Msg，供 Ack/Nack 延迟确认（FINDING-051：
+	// 不再投递前立即 Ack，消息在消费者处理完成后由 Ack 确认）。
+	deliveries sync.Map
+	deliveryID atomic.Uint64
 }
 
 func newNATSQueue(cfg MessageQueueConfig) (*natsQueue, error) {
@@ -84,7 +90,11 @@ func (q *natsQueue) Subscribe(ctx context.Context, topic, group string) (<-chan 
 	if err := q.ensureStream(topic); err != nil {
 		return nil, err
 	}
-	sub, err := q.js.SubscribeSync(topic, nats.Durable(group), nats.ManualAck(), nats.BindStream(natsStreamName(topic)))
+	sub, err := q.js.SubscribeSync(topic,
+		nats.Durable(group), nats.ManualAck(), nats.BindStream(natsStreamName(topic)),
+		// FINDING-051 修复：有限重投（防止毒消息无限重投）。
+		nats.MaxDeliver(3),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -105,14 +115,22 @@ func (q *natsQueue) Subscribe(ctx context.Context, topic, group string) (<-chan 
 				}
 				return
 			}
-			_ = m.Ack()
 			var msg Message
 			if err := json.Unmarshal(m.Data, &msg); err != nil {
+				// FINDING-051 修复：畸形消息不再静默丢弃，Nak 重投（MaxDeliver 限次）。
+				_ = m.Nak()
 				continue
 			}
+			// FINDING-051 修复：投递前不再立即 Ack；记录投递 id，由消费者处理完成后
+			// 显式 Ack/Nack（否则消息重投）。
+			deliveryID := q.deliveryID.Add(1)
+			key := fmt.Sprintf("%d", deliveryID)
+			q.deliveries.Store(key, m)
+			msg.ID = key
 			select {
 			case ch <- msg:
 			case <-ctx.Done():
+				q.deliveries.Delete(key)
 				return
 			}
 		}
@@ -120,8 +138,27 @@ func (q *natsQueue) Subscribe(ctx context.Context, topic, group string) (<-chan 
 	return ch, nil
 }
 
-func (q *natsQueue) Ack(ctx context.Context, topic string, msg Message) error  { return nil }
-func (q *natsQueue) Nack(ctx context.Context, topic string, msg Message) error { return nil }
+func (q *natsQueue) Ack(ctx context.Context, topic string, msg Message) error {
+	if msg.ID == "" {
+		return nil
+	}
+	if v, ok := q.deliveries.Load(msg.ID); ok {
+		q.deliveries.Delete(msg.ID)
+		return v.(*nats.Msg).Ack()
+	}
+	return nil
+}
+
+func (q *natsQueue) Nack(ctx context.Context, topic string, msg Message) error {
+	if msg.ID == "" {
+		return nil
+	}
+	if v, ok := q.deliveries.Load(msg.ID); ok {
+		q.deliveries.Delete(msg.ID)
+		return v.(*nats.Msg).Nak()
+	}
+	return nil
+}
 func (q *natsQueue) Enqueue(ctx context.Context, queue string, msg Message, delay time.Duration) error {
 	return q.Publish(ctx, queue, msg)
 }

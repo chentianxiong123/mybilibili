@@ -269,6 +269,8 @@ func main() {
 			}
 			json.Unmarshal(msg.Payload, &evt)
 			if evt.ManuscriptID == 0 {
+				// FINDING-051 修复：处理完成后显式 Ack（此前投递前 Ack → at-most-once）。
+				_ = mq.Ack(context.Background(), "video-publish-topic", msg)
 				continue
 			}
 			var remaining int
@@ -277,6 +279,7 @@ func main() {
 				_, _ = db.Exec(`UPDATE manuscripts SET status = 3 WHERE id = $1 AND status = 0`, evt.ManuscriptID)
 				log.Printf("auto-published manuscript %d (all videos completed)", evt.ManuscriptID)
 			}
+			_ = mq.Ack(context.Background(), "video-publish-topic", msg)
 		}
 	}()
 
@@ -301,6 +304,7 @@ func main() {
 			}
 			json.Unmarshal(msg.Payload, &evt)
 			if evt.VideoID == 0 {
+				_ = mq.Ack(context.Background(), "video-process-progress-topic", msg)
 				continue
 			}
 			// 转码时探测出的横竖屏方向（>=0 表示已设置）
@@ -311,6 +315,7 @@ func main() {
 			if stage == "failed" {
 				_, _ = db.Exec(`UPDATE videos SET process_status = $1, process_stage = 'FAILED', process_error = $2, updated_at = NOW() WHERE id = $3`,
 					evt.Status, evt.Error, evt.VideoID)
+				_ = mq.Ack(context.Background(), "video-process-progress-topic", msg)
 				continue
 			}
 			_, _ = db.Exec(`UPDATE videos SET process_status = $1, process_stage = $2, process_progress = $3, updated_at = NOW() WHERE id = $4`,
@@ -323,6 +328,7 @@ func main() {
 					_, _ = db.Exec(`UPDATE videos SET has_summary = 1 WHERE id = $1`, evt.VideoID)
 				}
 			}
+			_ = mq.Ack(context.Background(), "video-process-progress-topic", msg)
 		}
 	}()
 
@@ -347,9 +353,11 @@ func main() {
 			}
 			json.Unmarshal(msg.Payload, &evt)
 			if evt.VideoID == 0 {
+				_ = mq.Ack(context.Background(), "video-process-progress-topic", msg)
 				continue
 			}
 			videoProcessAdminH.Hub().Broadcast(manuscript.ProgressEvt(evt))
+			_ = mq.Ack(context.Background(), "video-process-progress-topic", msg)
 		}
 	}()
 

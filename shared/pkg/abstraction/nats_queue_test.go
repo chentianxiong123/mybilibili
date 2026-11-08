@@ -35,6 +35,41 @@ func TestNewNATSQueue_Unreachable(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// FINDING-051 修复验证：延迟 Ack 语义——Nack 重投、Ack 后不再重投。
+func TestNATSQueue_DelayedAck_NackRedelivers_ThenAck(t *testing.T) {
+	_, url := startEmbeddedNATS(t)
+	q, err := newNATSQueue(MessageQueueConfig{NATSURL: url})
+	require.NoError(t, err)
+	defer q.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	topic := "delayack.topic." + time.Now().Format("150405.000000000")
+	ch, err := q.Subscribe(ctx, topic, "g1")
+	require.NoError(t, err)
+	require.NoError(t, q.Publish(ctx, topic, Message{Key: "k", Payload: []byte("hello")}))
+
+	// 第一次投递
+	var first Message
+	select {
+	case first = <-ch:
+		assert.NotEmpty(t, first.ID, "FINDING-051 修复: 投递消息应携带投递 id")
+	case <-ctx.Done():
+		t.Fatal("timeout waiting for first delivery")
+	}
+	// Nack → 消息应被重投（再次收到）。
+	require.NoError(t, q.Nack(ctx, topic, first))
+	select {
+	case <-ch:
+	case <-ctx.Done():
+		t.Fatal("FINDING-051 修复: Nack 后应重投消息")
+	}
+	// Ack 后应确认完成，不再重投。
+	require.NoError(t, q.Ack(ctx, topic, first))
+}
+
+
 func TestNATSQueue_NoOpAckNack(t *testing.T) {
 	// 直接构造 natsQueue (零值), Ack/Nack/Enqueue 都是 trivial / Enqueue = Publish
 	// Publish 在空 js 上会 panic, 所以只测 Ack/Nack.
