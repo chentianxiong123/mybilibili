@@ -90,6 +90,51 @@ func TestAdminTools_TableReply(t *testing.T) {
 	}
 }
 
+// TestAdminTools_FullSet 全工具集（统计/查询/写操作/图表）不为空。
+func TestAdminTools_FullSet(t *testing.T) {
+	env := &AdminToolEnv{
+		Statistics:      func(context.Context) (map[string]any, error) { return map[string]any{"x": 1}, nil },
+		ListManuscripts: func(context.Context, string, int) ([]map[string]any, error) { return nil, nil },
+		ListUsers:       func(context.Context, string, int) ([]map[string]any, error) { return nil, nil },
+		ListTickets:     func(context.Context, int) ([]map[string]any, error) { return nil, nil },
+		GetManuscript:   func(context.Context, int64) (map[string]any, error) { return nil, nil },
+		GetUser:         func(context.Context, int64) (map[string]any, error) { return nil, nil },
+		ListComments:    func(context.Context, string, int) ([]map[string]any, error) { return nil, nil },
+		ListReviews:     func(context.Context, string, int) ([]map[string]any, error) { return nil, nil },
+		ListAuditLogs:   func(context.Context, int) ([]map[string]any, error) { return nil, nil },
+		ListConfigs:     func(context.Context) ([]map[string]any, error) { return nil, nil },
+		ListSkills:      func(context.Context) ([]map[string]any, error) { return nil, nil },
+		ManuscriptMetrics: func(context.Context, int64, int) (map[string]any, error) { return nil, nil },
+		UserGrowth:      func(context.Context, int) (map[string]any, error) { return nil, nil },
+		UpdateManuscriptStatus: func(context.Context, int64, int64) error { return nil },
+		UpdateUserStatus: func(context.Context, int64, int64) error { return nil },
+		ReplyTicket:     func(context.Context, string, string) error { return nil },
+		CloseTicket:     func(context.Context, string) error { return nil },
+		DeleteComment:   func(context.Context, int64) error { return nil },
+	}
+	tools := AdminTools(env)
+	if len(tools) < 15 {
+		t.Fatalf("全工具集应 >=15, got %d", len(tools))
+	}
+}
+
+// TestAdminTools_ChartRender 图表渲染（line）。
+func TestAdminTools_ChartRender(t *testing.T) {
+	tools := AdminTools(&AdminToolEnv{
+		UserGrowth: func(context.Context, int) (map[string]any, error) {
+			return map[string]any{"categories": []string{"01-01"}, "series": []map[string]any{{"name": "新增", "data": []int64{5}}}}, nil
+		},
+	})
+	state := &AdminState{}
+	ctx := context.WithValue(context.Background(), adminStateKey{}, state)
+	if _, err := tools[0].Fn(ctx, `{"days":7}`); err != nil {
+		t.Fatalf("chart tool: %v", err)
+	}
+	if state.getRender() == nil || state.getRender().ChartType != "line" {
+		t.Fatalf("期望 line 渲染, got %+v", state.getRender())
+	}
+}
+
 // TestAdminTools_EmptyEnv 空 env 时工具集为空（不崩）。
 func TestAdminTools_EmptyEnv(t *testing.T) {
 	tools := AdminTools(nil)

@@ -154,6 +154,20 @@ func main() {
 			ListManuscripts: func(ctx context.Context, q string, limit int) ([]map[string]any, error) { return aiRepo.ListAdminManuscripts(ctx, q, limit) },
 			ListUsers:       func(ctx context.Context, q string, limit int) ([]map[string]any, error) { return aiRepo.ListAdminUsers(ctx, q, limit) },
 			ListTickets:     func(ctx context.Context, limit int) ([]map[string]any, error) { return aiRepo.ListAdminTickets(ctx, limit) },
+			GetManuscript:   func(ctx context.Context, id int64) (map[string]any, error) { return aiRepo.GetManuscriptByID(ctx, id) },
+			GetUser:         func(ctx context.Context, id int64) (map[string]any, error) { return aiRepo.GetUserByID(ctx, id) },
+			ListComments:    func(ctx context.Context, q string, limit int) ([]map[string]any, error) { return aiRepo.ListComments(ctx, q, limit) },
+			ListReviews:     func(ctx context.Context, status string, limit int) ([]map[string]any, error) { return aiRepo.ListReviews(ctx, status, limit) },
+			ListAuditLogs:   func(ctx context.Context, limit int) ([]map[string]any, error) { return aiRepo.ListAuditLogs(ctx, limit) },
+			ListConfigs:     func(ctx context.Context) ([]map[string]any, error) { return aiRepo.ListAIConfigs(ctx) },
+			ListSkills:      func(ctx context.Context) ([]map[string]any, error) { return aiRepo.ListAISkills(ctx) },
+			ManuscriptMetrics: func(ctx context.Context, id int64, days int) (map[string]any, error) { return aiRepo.GetManuscriptMetrics(ctx, id, days) },
+			UserGrowth:      func(ctx context.Context, days int) (map[string]any, error) { return aiRepo.GetUserGrowth(ctx, days) },
+			UpdateManuscriptStatus: func(ctx context.Context, id, status int64) error { return aiRepo.UpdateManuscriptStatus(ctx, id, status) },
+			UpdateUserStatus: func(ctx context.Context, id, status int64) error { return aiRepo.UpdateUserStatus(ctx, id, status) },
+			ReplyTicket:     func(ctx context.Context, ticketNo, reply string) error { return aiRepo.ReplyTicket(ctx, ticketNo, reply) },
+			CloseTicket:     func(ctx context.Context, ticketNo string) error { return aiRepo.CloseTicket(ctx, ticketNo) },
+			DeleteComment:   func(ctx context.Context, id int64) error { return aiRepo.DeleteComment(ctx, id) },
 		}))
 		adminAssistant.SetUsageLog(func(feature string, userID int64, tokenCount, durationMs int) {
 			if err := aiRepo.LogUsage(context.Background(), feature, userID, os.Getenv("AI_LLM_MODEL"), tokenCount, durationMs); err != nil {
