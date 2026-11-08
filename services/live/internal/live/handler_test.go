@@ -1478,6 +1478,11 @@ func TestHandleCoverUpload_NoFile(t *testing.T) {
 
 func TestHandleCoverUpload_WithFile(t *testing.T) {
 	h, mock := newTestLiveHandler(t)
+	// FINDING-025 修复：UpdateRoom 现先 GetRoomByID 校验所有权（user_id=5001），再 UPDATE。
+	mock.ExpectQuery(`SELECT id, room_name, user_id, stream_key`).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "room_name", "user_id", "stream_key", "cover_url", "category", "status", "viewer_count", "created_at", "updated_at",
+		}).AddRow(1, "r", 5001, "s", "", "", RoomStatusIdle, 0, time.Now(), time.Now()))
 	// mock UpdateRoom for when roomID > 0
 	mock.ExpectExec(`UPDATE live_rooms SET room_name=\$1`).
 		WillReturnResult(sqlmock.NewResult(0, 1))

@@ -241,6 +241,12 @@ func (h *HTTPHandler) handleCoverUpload(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "method not allowed", 405)
 		return
 	}
+	// FINDING-025 修复：封面上传需用户身份（此前未认证者可上传任意图片 + 硬编码
+	// userID=0 导致 UpdateRoom 恒 403 被吞、封面永不更新）。
+	userID, ok := httputil.RequireUser(w, r)
+	if !ok {
+		return
+	}
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		http.Error(w, "parse form: "+err.Error(), 400)
 		return
@@ -271,7 +277,11 @@ func (h *HTTPHandler) handleCoverUpload(w http.ResponseWriter, r *http.Request) 
 	imageutil.CompressAndReplace(dst)
 	coverURL := "/uploads/live-covers/" + filepath.Base(dst)
 	if roomID > 0 {
-		h.svc.UpdateRoom(r.Context(), roomID, 0, "", coverURL, "")
+		// FINDING-025 修复：传真实 userID 并检查错误（此前硬编码 0 + 吞错 → 封面永不更新）。
+		if err := h.svc.UpdateRoom(r.Context(), roomID, userID, "", coverURL, ""); err != nil {
+			http.Error(w, "update room cover: "+err.Error(), 403)
+			return
+		}
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{"status": "uploaded", "url": coverURL})
 }
