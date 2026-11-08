@@ -39,6 +39,7 @@ func TestHandleProfileByPath_Init(t *testing.T) {
 	h := newTestHandler(t)
 	body := bytes.NewBufferString(`{"tags":["游戏","科技"]}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/profile/42/init", body)
+	req.Header.Set("X-User-Id", "42")
 	rr := httptest.NewRecorder()
 	newMux(h).ServeHTTP(rr, req)
 

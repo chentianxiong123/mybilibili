@@ -41,6 +41,18 @@ func (h *Handler) handleProfileByPath(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "method not allowed", 405)
 			return
 		}
+		// FINDING-035 修复：init 是写操作，需认证身份；仅允许初始化自己的画像
+		// （admin 可代写）。此前 URL 路径 userID 无鉴权 → 任意用户画像可被覆写（IDOR）。
+		if httputil.GetAdminIDFromHeader(r) == 0 {
+			uid, ok := httputil.RequireUser(w, r)
+			if !ok {
+				return
+			}
+			if uid != userID {
+				http.Error(w, "forbidden: can only init own profile", 403)
+				return
+			}
+		}
 		var req struct {
 			Tags []string `json:"tags"`
 		}

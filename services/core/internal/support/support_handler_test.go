@@ -161,6 +161,7 @@ func TestHandleCustomerSession_ServiceError(t *testing.T) {
 	rec := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPost, "/api/v1/operation/internal/tickets/customer-session",
 		strings.NewReader(`{"userId":9,"title":"err"}`))
+	r.Header.Set("X-User-Id", "9") // FINDING-031 修复：需用户身份
 	mux.ServeHTTP(rec, r)
 
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -224,6 +225,7 @@ func TestHandleSessionProcess_Success(t *testing.T) {
 	rec := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPut, "/api/v1/operation/internal/tickets/session/99",
 		strings.NewReader(`{"adminReply":"已回复"}`))
+	r.Header.Set("X-Admin-Id", "1") // FINDING-031 修复：需 admin
 	mux.ServeHTTP(rec, r)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -241,6 +243,7 @@ func TestHandleSessionProcess_DBError(t *testing.T) {
 	rec := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPut, "/api/v1/operation/internal/tickets/session/1",
 		strings.NewReader(`{"adminReply":"fail"}`))
+	r.Header.Set("X-Admin-Id", "1") // FINDING-031 修复：需 admin
 	mux.ServeHTTP(rec, r)
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)

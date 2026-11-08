@@ -91,6 +91,15 @@ func (h *Handler) handleCustomerSession(w http.ResponseWriter, r *http.Request) 
 		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
+	// FINDING-031 修复：建工单需认证身份；body `userId` 不可信（此前可伪造成任意用户/投毒）。
+	// 非 admin 时强制用认证 uid；admin 可代建（保留 body userId）。
+	if httputil.GetAdminIDFromHeader(r) == 0 {
+		uid, ok := httputil.RequireUser(w, r)
+		if !ok {
+			return
+		}
+		r.Header.Set("X-User-Id", strconv.FormatInt(uid, 10))
+	}
 	var req struct {
 		UserID   int64  `json:"userId"`
 		TicketNo string `json:"ticketNo"`
@@ -98,8 +107,11 @@ func (h *Handler) handleCustomerSession(w http.ResponseWriter, r *http.Request) 
 		Content  string `json:"content"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
+	// 认证身份优先，忽略 body 中伪造的 userId（IDOR 防护）。
+	req.UserID = httputil.GetUserIDFromHeader(r)
 	if req.UserID == 0 {
-		req.UserID = httputil.GetUserIDFromHeader(r)
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
 	}
 	t, err := h.svc.Create(r.Context(), req.UserID, req.Title, req.Content)
 	if err != nil {
@@ -114,6 +126,10 @@ func (h *Handler) handleCustomerSession(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) handleSessionProcess(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "PUT" {
 		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
+		return
+	}
+	// FINDING-031 修复：处理工单（伪造 admin 回复）是管理操作，需 admin。
+	if _, ok := httputil.RequireAdmin(w, r); !ok {
 		return
 	}
 	sessionID, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/operation/internal/tickets/session/"), 10, 64)

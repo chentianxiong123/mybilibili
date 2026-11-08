@@ -70,6 +70,7 @@ func TestHandler_InitServiceError(t *testing.T) {
 	// POST /init -> GetByUser fails -> FINDING-019 修复：错误传播，handler 返回 400
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/profile/42/init",
 		bytes.NewBufferString(`{"tags":["a"]}`))
+	req2.Header.Set("X-User-Id", "42")
 	rr2 := httptest.NewRecorder()
 	mux.ServeHTTP(rr2, req2)
 	assert.Equal(t, 400, rr2.Code)
@@ -86,6 +87,7 @@ func TestHandler_InitServiceUpdateError(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/profile/42/init",
 		bytes.NewBufferString(`{"tags":["new"]}`))
+	req.Header.Set("X-User-Id", "42")
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 	assert.Equal(t, 400, rr.Code)

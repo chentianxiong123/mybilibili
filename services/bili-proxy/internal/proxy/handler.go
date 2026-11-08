@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"mybilibili/bili-proxy/internal/bilibili"
+	"mybilibili/pkg/httputil"
 )
 
 const cdnCacheTTL = 5 * time.Minute
@@ -61,7 +62,7 @@ func (h *Handler) loadVideo(r *http.Request, videoID int64) (*videoRow, error) {
 	err := h.db.QueryRowContext(r.Context(),
 		`SELECT v.id, COALESCE(v.cid,0) FROM videos v
 		   JOIN manuscripts m ON v.manuscript_id = m.id
-		  WHERE v.id = $1 AND m.source_type = 'bilibili'`, videoID,
+		  WHERE v.id = $1 AND m.source_type = 'bilibili' AND m.status = 3`, videoID,
 	).Scan(&row.ID, &row.CID)
 	if err != nil {
 		return nil, err
@@ -73,6 +74,10 @@ func (h *Handler) loadVideo(r *http.Request, videoID int64) (*videoRow, error) {
 }
 
 func (h *Handler) handleResolve(w http.ResponseWriter, r *http.Request) {
+	// FINDING-032 修复：解析 CDN 泄露私有/未发布内容，需用户身份。
+	if _, ok := httputil.RequireUser(w, r); !ok {
+		return
+	}
 	id, err := strconv.ParseInt(stripPrefix(r.URL.Path, "/api/v1/bili/resolve/"), 10, 64)
 	if id == 0 {
 		id, err = strconv.ParseInt(stripPrefix(r.URL.Path, "/resolve/"), 10, 64)
@@ -93,7 +98,7 @@ func (h *Handler) handleResolve(w http.ResponseWriter, r *http.Request) {
 	// 需要从中取 bvid
 	var bvid string
 	if err := h.db.QueryRowContext(r.Context(),
-		`SELECT bvid FROM manuscripts WHERE id = (SELECT manuscript_id FROM videos WHERE id=$1)`, id,
+		`SELECT bvid FROM manuscripts WHERE id = (SELECT manuscript_id FROM videos WHERE id=$1) AND status = 3`, id,
 	).Scan(&bvid); err != nil {
 		writeErr(w, http.StatusNotFound, "manuscript not found")
 		return
@@ -107,6 +112,10 @@ func (h *Handler) handleResolve(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleStream(w http.ResponseWriter, r *http.Request) {
+	// FINDING-032 修复：拉流泄露私有/未发布内容，需用户身份。
+	if _, ok := httputil.RequireUser(w, r); !ok {
+		return
+	}
 	id, err := strconv.ParseInt(stripPrefix(r.URL.Path, "/api/v1/bili/stream/"), 10, 64)
 	if id == 0 {
 		id, err = strconv.ParseInt(stripPrefix(r.URL.Path, "/stream/"), 10, 64)
@@ -122,7 +131,7 @@ func (h *Handler) handleStream(w http.ResponseWriter, r *http.Request) {
 	}
 	var bvid string
 	if err := h.db.QueryRowContext(r.Context(),
-		`SELECT m.bvid FROM manuscripts m JOIN videos v ON v.manuscript_id = m.id WHERE v.id = $1`, id,
+		`SELECT m.bvid FROM manuscripts m JOIN videos v ON v.manuscript_id = m.id WHERE v.id = $1 AND m.status = 3`, id,
 	).Scan(&bvid); err != nil {
 		writeErr(w, http.StatusNotFound, "manuscript not found")
 		return

@@ -217,6 +217,7 @@ func TestHandleResolve_502_GetCDNError(t *testing.T) {
 	h.Register(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/bili/resolve/42?qn=64", nil)
+	req.Header.Set("X-User-Id", "42") // FINDING-032 修复：需用户身份
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -248,6 +249,7 @@ func TestHandleResolve_200_GetCDNCacheMiss_DefaultQn(t *testing.T) {
 
 	// No ?qn parameter -> default 64.
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/bili/resolve/42", nil)
+	req.Header.Set("X-User-Id", "42") // FINDING-032 修复：需用户身份
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -280,6 +282,7 @@ func TestHandleStream_502_GetCDNError(t *testing.T) {
 	h.Register(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/bili/stream/42?qn=64", nil)
+	req.Header.Set("X-User-Id", "42") // FINDING-032 修复：需用户身份
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -319,6 +322,7 @@ func TestHandleStream_QnDefault_CacheHit(t *testing.T) {
 
 	// No ?qn -> default 64 -> cache key uses 64.
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/bili/stream/42", nil)
+	req.Header.Set("X-User-Id", "42") // FINDING-032 修复：需用户身份
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -360,6 +364,7 @@ func TestHandleStream_200_GetCDNCacheMiss(t *testing.T) {
 	h.Register(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/bili/stream/42?qn=64", nil)
+	req.Header.Set("X-User-Id", "42") // FINDING-032 修复：需用户身份
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -481,6 +486,7 @@ func TestHandleLegacyPaths_ValidID(t *testing.T) {
 
 	// Legacy /resolve/ path with valid id -> 200 (cache hit).
 	req := httptest.NewRequest(http.MethodGet, "/resolve/42", nil)
+	req.Header.Set("X-User-Id", "42") // FINDING-032 修复：需用户身份
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code, "body=%s", rec.Body.String())
@@ -516,6 +522,7 @@ func TestHandleStream_404_DBError(t *testing.T) {
 	h.Register(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/bili/stream/42", nil)
+	req.Header.Set("X-User-Id", "42") // FINDING-032 修复：需用户身份
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -539,6 +546,7 @@ func TestHandleResolve_404_DBError(t *testing.T) {
 	h.Register(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/bili/resolve/42", nil)
+	req.Header.Set("X-User-Id", "42") // FINDING-032 修复：需用户身份
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
