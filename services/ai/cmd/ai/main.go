@@ -97,6 +97,8 @@ func main() {
 		}
 	})
 
+	aiH := ai.NewHandler(aiSvc).WithSummary(summarySvc).WithReview(reviewSvc).WithCustomer(customerSvc)
+
 	// 多轮客服 agent（langchaingo conversational agent + 工具）：
 	// 复用同一 langchaingo 模型；未配置真实 LLM 时 agent.Chat 返回显式"未配置"错误。
 	if model := ai.ModelFromCaller(caller); model != nil {
@@ -146,11 +148,24 @@ func main() {
 		})
 		customerSvc.SetAgent(customerAgent)
 		log.Printf("ai: 多轮客服 agent 已启用（langchaingo conversational agent + 工具）")
+		// 管理后台 AI 助手（FINDING-088）：多轮工具调用 agent，产出表格/指标卡渲染。
+		adminAssistant := ai.NewAdminAssistant(model, ai.AdminTools(&ai.AdminToolEnv{
+			Statistics:      func(ctx context.Context) (map[string]any, error) { return aiRepo.GetAdminStatistics(ctx) },
+			ListManuscripts: func(ctx context.Context, q string, limit int) ([]map[string]any, error) { return aiRepo.ListAdminManuscripts(ctx, q, limit) },
+			ListUsers:       func(ctx context.Context, q string, limit int) ([]map[string]any, error) { return aiRepo.ListAdminUsers(ctx, q, limit) },
+			ListTickets:     func(ctx context.Context, limit int) ([]map[string]any, error) { return aiRepo.ListAdminTickets(ctx, limit) },
+		}))
+		adminAssistant.SetUsageLog(func(feature string, userID int64, tokenCount, durationMs int) {
+			if err := aiRepo.LogUsage(context.Background(), feature, userID, os.Getenv("AI_LLM_MODEL"), tokenCount, durationMs); err != nil {
+				log.Printf("WARN: ai usage log (admin assistant): %v", err)
+			}
+		})
+		aiH = aiH.WithAssistant(adminAssistant)
+		log.Printf("ai: 管理后台 AI 助手已启用（工具调用 agent + 表格/指标卡渲染）")
 	} else {
 		log.Printf("WARN: 未配置真实 LLM，客服回退单轮调用器（未配置时返回显式错误）")
 	}
 
-	aiH := ai.NewHandler(aiSvc).WithSummary(summarySvc).WithReview(reviewSvc).WithCustomer(customerSvc)
 	aiChatH := ai.NewAIChatHandler(reviewSvc, customerSvc)
 
 	go func() {

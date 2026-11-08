@@ -19,6 +19,7 @@ type Handler struct {
 	summarySvc  *SummaryService
 	reviewSvc   *ReviewService
 	customerSvc *CustomerService
+	assistant   *AdminAssistant
 }
 
 func NewHandler(svc *Service) *Handler {
@@ -32,6 +33,12 @@ func (h *Handler) WithSummary(svc *SummaryService) *Handler {
 
 func (h *Handler) WithReview(svc *ReviewService) *Handler {
 	h.reviewSvc = svc
+	return h
+}
+
+// WithAssistant 注入管理后台 AI 助手（工具调用 agent）。
+func (h *Handler) WithAssistant(a *AdminAssistant) *Handler {
+	h.assistant = a
 	return h
 }
 
@@ -509,8 +516,25 @@ func (h *Handler) handleAssistantSend(w http.ResponseWriter, r *http.Request) {
 	if msg == "" {
 		msg = req.Content
 	}
+	// FINDING-088 修复：admin 助手由回显 stub 改为真实多轮工具调用 agent。
+	// adminID 来自 X-Admin-Id（IdentityMiddleware 重建）；未认证时返回 401。
+	adminID := getAdminID(r)
+	if adminID == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
+	if h.assistant == nil {
+		httputil.WriteJSON(w, http.StatusServiceUnavailable, map[string]any{"code": 503, "message": "admin assistant not configured", "data": nil})
+		return
+	}
+	reply, err := h.assistant.Chat(r.Context(), adminID, msg)
+	if err != nil {
+		httputil.WriteJSON(w, http.StatusBadGateway, map[string]any{"code": 502, "message": err.Error(), "data": nil})
+		return
+	}
 	httputil.WriteOK(w, map[string]any{
-		"reply": "已收到: " + msg,
+		"reply":  reply.Reply,
+		"render": reply.Render,
 	})
 }
 

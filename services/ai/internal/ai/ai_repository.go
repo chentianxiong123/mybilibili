@@ -234,6 +234,120 @@ func (r *Repository) LogUsage(ctx context.Context, feature string, userID int64,
 	return err
 }
 
+// GetAdminStatistics 管理后台核心统计（供 admin 助手指标卡渲染）。
+func (r *Repository) GetAdminStatistics(ctx context.Context) (map[string]any, error) {
+	var manuscripts, users, pendingTickets, comments int64
+	queries := []struct {
+		sql string
+		dst *int64
+	}{
+		{`SELECT COUNT(*) FROM manuscripts`, &manuscripts},
+		{`SELECT COUNT(*) FROM users`, &users},
+		{`SELECT COUNT(*) FROM support_tickets WHERE status='PENDING'`, &pendingTickets},
+		{`SELECT COUNT(*) FROM article_comments`, &comments},
+	}
+	for _, q := range queries {
+		if err := r.db.QueryRowContext(ctx, q.sql).Scan(q.dst); err != nil {
+			// 单表查询失败不阻塞整体（表可能不存在）。
+			continue
+		}
+	}
+	return map[string]any{
+		"稿件总数": manuscripts,
+		"用户总数": users,
+		"待处理工单": pendingTickets,
+		"评论总数": comments,
+	}, nil
+}
+
+// ListAdminManuscripts 稿件列表（供 admin 助手表格渲染）。
+func (r *Repository) ListAdminManuscripts(ctx context.Context, q string, limit int) ([]map[string]any, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 20
+	}
+	sqlStr := `SELECT id, title, view_count, like_count, coin_count, status FROM manuscripts`
+	args := []any{}
+	if q != "" {
+		sqlStr += ` WHERE title ILIKE '%'||$1||'%'`
+		args = append(args, q)
+	}
+	sqlStr += fmt.Sprintf(` ORDER BY id DESC LIMIT %d`, limit)
+	rows, err := r.db.QueryContext(ctx, sqlStr, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []map[string]any{}
+	for rows.Next() {
+		var (
+			id, view, like, coin, status int64
+			title                        string
+		)
+		if err := rows.Scan(&id, &title, &view, &like, &coin, &status); err != nil {
+			return nil, err
+		}
+		out = append(out, map[string]any{"ID": id, "标题": title, "播放": view, "点赞": like, "投币": coin, "状态": status})
+	}
+	return out, rows.Err()
+}
+
+// ListAdminUsers 用户列表（供 admin 助手表格渲染）。
+func (r *Repository) ListAdminUsers(ctx context.Context, q string, limit int) ([]map[string]any, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 20
+	}
+	sqlStr := `SELECT id, username, nickname, email, level, status FROM users`
+	args := []any{}
+	if q != "" {
+		sqlStr += ` WHERE username ILIKE '%'||$1||'%' OR nickname ILIKE '%'||$1||'%'`
+		args = append(args, q)
+	}
+	sqlStr += fmt.Sprintf(` ORDER BY id DESC LIMIT %d`, limit)
+	rows, err := r.db.QueryContext(ctx, sqlStr, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []map[string]any{}
+	for rows.Next() {
+		var (
+			id, level, status     int64
+			username, nickname, email string
+		)
+		if err := rows.Scan(&id, &username, &nickname, &email, &level, &status); err != nil {
+			return nil, err
+		}
+		out = append(out, map[string]any{"ID": id, "用户名": username, "昵称": nickname, "邮箱": email, "等级": level, "状态": status})
+	}
+	return out, rows.Err()
+}
+
+// ListAdminTickets 客服工单列表（供 admin 助手表格渲染）。
+func (r *Repository) ListAdminTickets(ctx context.Context, limit int) ([]map[string]any, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	rows, err := r.db.QueryContext(ctx,
+		fmt.Sprintf(`SELECT ticket_no, title, status, priority, user_id, created_at FROM support_tickets ORDER BY id DESC LIMIT %d`, limit))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []map[string]any{}
+	for rows.Next() {
+		var (
+			no, title, status, priority string
+			userID                      int64
+			createdAt                   string
+		)
+		if err := rows.Scan(&no, &title, &status, &priority, &userID, &createdAt); err != nil {
+			return nil, err
+		}
+		out = append(out, map[string]any{"单号": no, "标题": title, "状态": status, "优先级": priority, "用户ID": userID, "创建时间": createdAt})
+	}
+	return out, rows.Err()
+}
+
 func (r *Repository) DeleteSkill(ctx context.Context, id int64) error {
 	_, err := r.db.ExecContext(ctx, `DELETE FROM ai_skills WHERE id = $1`, id)
 	return err

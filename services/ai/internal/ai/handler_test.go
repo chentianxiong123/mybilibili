@@ -958,11 +958,12 @@ func TestHandleConfigTest_200(t *testing.T) {
 
 func TestHandleAssistantSend_200(t *testing.T) {
 	h, _ := newTestHandler(t)
+	h.WithAssistant(NewAdminAssistant(&fakeLLM{reply: "帮我查一下订单"}, nil))
 
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodPost, "/api/v1/ai/assistant/send",
-		`{"message":"帮我查一下订单"}`)
+	rr := doAIAdmin(t, mux, http.MethodPost, "/api/v1/ai/assistant/send",
+		`{"message":"帮我查一下订单"}`, true)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                    `json:"code"`
@@ -974,11 +975,12 @@ func TestHandleAssistantSend_200(t *testing.T) {
 
 func TestHandleAssistantSend_Content(t *testing.T) {
 	h, _ := newTestHandler(t)
+	h.WithAssistant(NewAdminAssistant(&fakeLLM{reply: "content字段测试"}, nil))
 
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodPost, "/api/v1/ai/assistant/send",
-		`{"content":"content字段测试"}`)
+	rr := doAIAdmin(t, mux, http.MethodPost, "/api/v1/ai/assistant/send",
+		`{"content":"content字段测试"}`, true)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                    `json:"code"`
