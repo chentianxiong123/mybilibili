@@ -56,6 +56,28 @@ func TestCustomerAgent_Reset(t *testing.T) {
 	}
 }
 
+// TestCustomerAgent_UsageLog 统一用量：agent.Chat 后调用 usageLog 回调。
+func TestCustomerAgent_UsageLog(t *testing.T) {
+	agent := NewCustomerAgent(&fakeLLM{reply: "统一用量回复"}, nil)
+	called := false
+	var gotFeature string
+	var gotUser int64
+	agent.SetUsageLog(func(feature string, userID int64, tokenCount, durationMs int) {
+		called = true
+		gotFeature = feature
+		gotUser = userID
+	})
+	if _, err := agent.Chat(context.Background(), 99, "hi"); err != nil {
+		t.Fatalf("Chat: %v", err)
+	}
+	if !called {
+		t.Fatalf("agent 应调用 usageLog（统一用量管理）")
+	}
+	if gotFeature != "customer_service" || gotUser != 99 {
+		t.Fatalf("usageLog feature=%q user=%d, want customer_service/99", gotFeature, gotUser)
+	}
+}
+
 // TestCustomerTools_LookupSkill 技能检索工具。
 func TestCustomerTools_LookupSkill(t *testing.T) {
 	env := &CustomerToolEnv{

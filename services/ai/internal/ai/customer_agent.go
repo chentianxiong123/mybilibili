@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/tmc/langchaingo/agents"
 	"github.com/tmc/langchaingo/llms"
@@ -31,6 +32,8 @@ type CustomerAgent struct {
 	mu        sync.Mutex
 	base      *agents.ConversationalAgent
 	executors map[int64]*agents.Executor // sessionID -> executor(含独立 memory)
+	// usageLog 统一写入 ai_usage_logs（与调用器一致）；nil 时不记录。
+	usageLog func(feature string, userID int64, tokenCount, durationMs int)
 }
 
 // NewCustomerAgent 构造多轮客服 agent。
@@ -65,16 +68,30 @@ func (a *CustomerAgent) executor(sessionID int64) *agents.Executor {
 	return e
 }
 
+// SetUsageLog 注入统一用量日志回调（与调用器共享同一写入，AI 模块统一管理用量）。
+func (a *CustomerAgent) SetUsageLog(fn func(feature string, userID int64, tokenCount, durationMs int)) {
+	a.usageLog = fn
+}
+
 // Chat 处理一条用户消息（多轮：自动带上该会话历史 + 工具调用）。
 func (a *CustomerAgent) Chat(ctx context.Context, sessionID int64, content string) (string, error) {
 	if a.base == nil {
 		return "", fmt.Errorf("ai customer agent not configured")
 	}
+	start := time.Now()
 	out, err := a.executor(sessionID).Call(ctx, map[string]any{"input": content})
 	if err != nil {
 		return "", fmt.Errorf("customer agent: %w", err)
 	}
 	if v, ok := out["output"].(string); ok {
+		if a.usageLog != nil {
+			// 统一用量：feature=customer_service，userID=sessionID，token 按长度估算。
+			tokens := len(v) / 4
+			if tokens < 1 {
+				tokens = 1
+			}
+			a.usageLog("customer_service", sessionID, tokens, int(time.Since(start).Milliseconds()))
+		}
 		return v, nil
 	}
 	return "", fmt.Errorf("customer agent: no output")

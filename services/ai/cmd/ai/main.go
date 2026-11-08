@@ -107,7 +107,7 @@ func main() {
 		} else {
 			log.Printf("WARN: 技能检索回退关键词匹配（未配置 AI_PGVECTOR_URL 或模型不支持嵌入）")
 		}
-		customerSvc.SetAgent(ai.NewCustomerAgent(model, ai.CustomerTools(&ai.CustomerToolEnv{
+		customerAgent := ai.NewCustomerAgent(model, ai.CustomerTools(&ai.CustomerToolEnv{
 			LookupSkill: func(ctx context.Context, query string) (string, error) {
 				if skillIndex != nil {
 					docs, err := skillIndex.Search(ctx, query, 5)
@@ -137,7 +137,14 @@ func main() {
 			},
 			CreateTicket:  func(ctx context.Context, userID int64, content string) (string, error) { return aiRepo.CreateTicket(ctx, userID, content) },
 			TransferHuman: func(ctx context.Context, userID int64) (string, error) { return aiRepo.CreateTicket(ctx, userID, "用户申请转人工客服") },
-		})))
+		}))
+		// 统一用量管理：agent 与调用器共享同一 ai_usage_logs 写入回调。
+		customerAgent.SetUsageLog(func(feature string, userID int64, tokenCount, durationMs int) {
+			if err := aiRepo.LogUsage(context.Background(), feature, userID, os.Getenv("AI_LLM_MODEL"), tokenCount, durationMs); err != nil {
+				log.Printf("WARN: ai usage log (agent): %v", err)
+			}
+		})
+		customerSvc.SetAgent(customerAgent)
 		log.Printf("ai: 多轮客服 agent 已启用（langchaingo conversational agent + 工具）")
 	} else {
 		log.Printf("WARN: 未配置真实 LLM，客服回退单轮调用器（未配置时返回显式错误）")
