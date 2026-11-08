@@ -193,6 +193,11 @@ func (h *Handler) handleSkills(w http.ResponseWriter, r *http.Request) {
 		list, _ := h.svc.ListSkills(r.Context())
 		httputil.WriteOK(w, list)
 	case "POST":
+		// FINDING-065 修复：skill 创建（含 customer_service_defaults）须管理员。
+		if getAdminID(r) == 0 {
+			httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+			return
+		}
 		var req struct {
 			Name            string `json:"name"`
 			Description     string `json:"description"`
@@ -219,6 +224,13 @@ func (h *Handler) handleSkillByPath(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/ai/skills/")
 	parts := strings.Split(path, "/")
 	id, _ := strconv.ParseInt(parts[0], 10, 64)
+	// FINDING-065 修复：skill 变更（toggle/PUT/DELETE）须管理员。
+	mutating := r.Method == "PUT" || r.Method == "DELETE" ||
+		(r.Method == "PUT" && len(parts) >= 2 && parts[1] == "toggle")
+	if mutating && getAdminID(r) == 0 {
+		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
 	switch {
 	case len(parts) >= 2 && parts[1] == "toggle" && r.Method == "PUT":
 		h.svc.ToggleSkill(r.Context(), id)

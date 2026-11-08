@@ -69,11 +69,22 @@ func newTestHandler(t *testing.T) (*Handler, sqlmock.Sqlmock) {
 
 func doAI(t *testing.T, mux http.Handler, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
+	return doAIAdmin(t, mux, method, path, body, false)
+}
+
+// doAIAdmin 设置 X-Admin-Id（admin 身份），供受 FINDING-065 修复约束的
+// skills 变更测试使用（匿名现在应 401）。
+func doAIAdmin(t *testing.T, mux http.Handler, method, path, body string, admin bool) *httptest.ResponseRecorder {
+	t.Helper()
 	var rdr io.Reader
 	if body != "" {
 		rdr = strings.NewReader(body)
 	}
 	req := httptest.NewRequest(method, path, rdr)
+	if admin {
+		req.Header.Set("X-Admin-Id", "1")
+		req.Header.Set("X-User-Role", "admin")
+	}
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 	return rr
@@ -445,8 +456,8 @@ func TestHandleSkills_POST_CreateMissingDefaults(t *testing.T) {
 
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodPost, "/api/v1/ai/skills",
-		`{"customer_service_defaults":true}`)
+	rr := doAIAdmin(t, mux, http.MethodPost, "/api/v1/ai/skills",
+		`{"customer_service_defaults":true}`, true)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                    `json:"code"`
@@ -487,7 +498,7 @@ func TestHandleSkillByPath_Toggle(t *testing.T) {
 
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodPut, "/api/v1/ai/skills/1/toggle", "")
+	rr := doAIAdmin(t, mux, http.MethodPut, "/api/v1/ai/skills/1/toggle", "", true)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                    `json:"code"`
@@ -526,8 +537,8 @@ func TestHandleSkillByPath_PUT_200(t *testing.T) {
 
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodPut, "/api/v1/ai/skills/1",
-		`{"name":"updated","description":"desc","type":"LLM"}`)
+	rr := doAIAdmin(t, mux, http.MethodPut, "/api/v1/ai/skills/1",
+		`{"name":"updated","description":"desc","type":"LLM"}`, true)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                    `json:"code"`
@@ -546,7 +557,7 @@ func TestHandleSkillByPath_DELETE_200(t *testing.T) {
 
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodDelete, "/api/v1/ai/skills/1", "")
+	rr := doAIAdmin(t, mux, http.MethodDelete, "/api/v1/ai/skills/1", "", true)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	var resp struct {
 		Code int                    `json:"code"`

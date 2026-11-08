@@ -195,8 +195,8 @@ func (s *ReviewService) Moderate(ctx context.Context, content, scene string) (ma
 	req := map[string]interface{}{"content": content, "scene": scene}
 	var resp map[string]interface{}
 	if s.caller == nil {
-		// local fallback: basic check
-		return map[string]interface{}{"passed": true, "reason": ""}, nil
+		// FINDING-050 修复：无调用器时失败关闭（返回错误），不再 passed=true 假装通过。
+		return nil, errors.New("review service not configured")
 	}
 	if err := s.caller.Call(ctx, "ai", "Moderate", req, &resp); err != nil {
 		return nil, err
@@ -263,7 +263,21 @@ func (s *SummaryService) GenerateSummary(ctx context.Context, manuscriptID, vide
 	if s.storage == nil {
 		return errors.New("storage not configured")
 	}
-	summary := "AI generated summary (stub)"
+	// FINDING-083 修复：真实 LLM 生成摘要（langchaingo），不再写死 stub。
+	// 未配置真模型时调用器返回显式错误（不假装成功）。
+	req := map[string]interface{}{"video_id": videoID, "manuscript_id": manuscriptID}
+	var resp struct {
+		Summary string `json:"summary"`
+	}
+	if s.caller == nil {
+		return errors.New("summary service not configured")
+	}
+	if err := s.caller.Call(ctx, "ai", "Summary", req, &resp); err != nil {
+		return fmt.Errorf("generate summary: %w", err)
+	}
+	if resp.Summary == "" {
+		return errors.New("generate summary: empty LLM response")
+	}
 	key := summaryObjectKey(manuscriptID, videoID)
-	return s.storage.Put(ctx, "mybilibili", key, strings.NewReader(summary), "text/plain")
+	return s.storage.Put(ctx, "mybilibili", key, strings.NewReader(resp.Summary), "text/plain")
 }

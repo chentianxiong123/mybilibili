@@ -332,9 +332,8 @@ func TestGenerateSummary_NilStorage(t *testing.T) {
 func TestModerate_NilCaller(t *testing.T) {
 	svc := NewReviewService(nil)
 	resp, err := svc.Moderate(context.Background(), "test content", "COMMENT")
-	assert.NoError(t, err)
-	assert.Equal(t, true, resp["passed"])
-	assert.Equal(t, "", resp["reason"])
+	assert.Error(t, err, "FINDING-050: 无调用器应失败关闭（报错），不再 passed=true 假装通过")
+	assert.Nil(t, resp)
 }
 
 func TestModerate_WithCaller(t *testing.T) {

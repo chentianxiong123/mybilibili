@@ -104,8 +104,8 @@ func TestHandleSkills_POST_CreateSingle(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(9)))
 	mux := http.NewServeMux()
 	h.Register(mux)
-	rr := doAI(t, mux, http.MethodPost, "/api/v1/ai/skills",
-		`{"name":"新技能","description":"d","type":"LLM"}`)
+	rr := doAIAdmin(t, mux, http.MethodPost, "/api/v1/ai/skills",
+		`{"name":"新技能","description":"d","type":"LLM"}`, true)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

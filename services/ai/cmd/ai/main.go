@@ -55,7 +55,16 @@ func main() {
 	subtitleRepo := subtitle.NewRepository(docStore)
 	subtitleSvc := subtitle.NewService(subtitleRepo)
 	subtitleH := subtitle.NewHandler(subtitleSvc)
-	caller, _ := abstraction.NewServiceCaller(abstraction.ServiceCallerConfig{Type: "ollama"})
+	// 真实 LLM 调用器（langchaingo）：端点/密钥/模型从 env 读取；
+	// 未配置时 Call 返回显式 "AI LLM not configured"（不占位/不假装成功）。
+	caller, cerr := ai.NewLangchaingoCaller(ai.LangchaingoConfig{})
+	if cerr != nil {
+		log.Printf("ai: langchaingo caller init failed: %v", cerr)
+	}
+	if caller == nil {
+		// 极端情况：构造失败仍提供调用器（其 Call 会返回未配置错误）。
+		caller, _ = abstraction.NewServiceCaller(abstraction.ServiceCallerConfig{Type: "ollama"})
+	}
 	summarySvc := ai.NewSummaryService(caller)
 	summarySvc.SetDatabase(db)
 	minioEndpoint := os.Getenv("MINIO_ENDPOINT")

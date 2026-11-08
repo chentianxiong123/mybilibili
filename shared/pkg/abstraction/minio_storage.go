@@ -29,10 +29,28 @@ type MinioConfig struct {
 	Region         string
 }
 
+// normalizeEndpoint 将 minio-go 要求的主机端点规范化：剥掉 http(s):// scheme
+// 与路径，返回裸 host:port 与 Secure 标志。minio-go v7 拒绝带 scheme 的端点
+// （"Endpoint url cannot have fully qualified paths"），scheme 须由 Secure 表达。
+func normalizeEndpoint(endpoint string) (bare string, secure bool) {
+	bare = strings.TrimSpace(endpoint)
+	switch {
+	case strings.HasPrefix(bare, "https://"):
+		secure = true
+		bare = strings.TrimPrefix(bare, "https://")
+	case strings.HasPrefix(bare, "http://"):
+		bare = strings.TrimPrefix(bare, "http://")
+	}
+	if i := strings.IndexByte(bare, '/'); i >= 0 {
+		bare = bare[:i]
+	}
+	return bare, secure
+}
+
 func DefaultMinioConfig() MinioConfig {
 	return MinioConfig{
-		Endpoint:       "http://127.0.0.1:9000",
-		PublicEndpoint: "http://127.0.0.1:9000",
+		Endpoint:       "127.0.0.1:9000",
+		PublicEndpoint: "127.0.0.1:9000",
 		AccessKey:      "minioadmin",
 		SecretKey:      "minioadmin",
 		BucketName:     "mybilibili",
@@ -41,9 +59,10 @@ func DefaultMinioConfig() MinioConfig {
 }
 
 func NewMinioStorageService(cfg MinioConfig) (*MinioStorageService, error) {
-	client, err := minio.New(cfg.Endpoint, &minio.Options{
+	endpoint, secure := normalizeEndpoint(cfg.Endpoint)
+	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
-		Secure: strings.HasPrefix(cfg.Endpoint, "https"),
+		Secure: secure,
 		Region: cfg.Region,
 	})
 	if err != nil {
@@ -54,10 +73,11 @@ func NewMinioStorageService(cfg MinioConfig) (*MinioStorageService, error) {
 	if publicEndpoint == "" {
 		publicEndpoint = cfg.Endpoint
 	}
+	publicBare, publicSecure := normalizeEndpoint(publicEndpoint)
 
-	publicClient, err := minio.New(publicEndpoint, &minio.Options{
+	publicClient, err := minio.New(publicBare, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
-		Secure: strings.HasPrefix(publicEndpoint, "https"),
+		Secure: publicSecure,
 		Region: cfg.Region,
 	})
 	if err != nil {
@@ -65,10 +85,10 @@ func NewMinioStorageService(cfg MinioConfig) (*MinioStorageService, error) {
 	}
 
 	svc := &MinioStorageService{
-		client:        client,
-		publicClient:  publicClient,
-		bucketName:    cfg.BucketName,
-		publicEndpoint: publicEndpoint,
+		client:         client,
+		publicClient:   publicClient,
+		bucketName:     cfg.BucketName,
+		publicEndpoint: publicBare,
 	}
 
 	exists, err := client.BucketExists(context.Background(), cfg.BucketName)
