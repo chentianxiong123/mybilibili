@@ -35,7 +35,24 @@ func newFileQueue(cfg MessageQueueConfig) (*fileQueue, error) {
 	return &fileQueue{dir: dir, stop: make(chan struct{})}, nil
 }
 
+// safeSegment 校验 topic/group 分段名，拒绝路径遍历（FINDING-075：
+// 原始值此前直接 filepath.Join(q.dir, topic)，`topic="../escaped"` 可写出队列根之外）。
+func safeSegment(seg string) (string, error) {
+	seg = strings.TrimSpace(seg)
+	if seg == "" {
+		return "", fmt.Errorf("empty queue segment")
+	}
+	if filepath.IsAbs(seg) || seg == "." || seg == ".." || strings.ContainsAny(seg, `/\`) {
+		return "", fmt.Errorf("invalid queue segment: %q", seg)
+	}
+	return seg, nil
+}
+
 func (q *fileQueue) Publish(ctx context.Context, topic string, msg Message) error {
+	topic, err := safeSegment(topic)
+	if err != nil {
+		return err
+	}
 	if msg.Topic == "" {
 		msg.Topic = topic
 	}
@@ -56,6 +73,14 @@ func (q *fileQueue) Publish(ctx context.Context, topic string, msg Message) erro
 }
 
 func (q *fileQueue) Subscribe(ctx context.Context, topic, group string) (<-chan Message, error) {
+	topic, err := safeSegment(topic)
+	if err != nil {
+		return nil, err
+	}
+	group, err = safeSegment(group)
+	if err != nil {
+		return nil, err
+	}
 	ch := make(chan Message, 100)
 	topicDir := filepath.Join(q.dir, topic)
 	consumeDir := filepath.Join(q.dir, topic+"."+group)

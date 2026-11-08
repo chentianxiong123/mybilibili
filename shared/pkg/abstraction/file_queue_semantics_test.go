@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,14 +24,12 @@ func TestFileQueue_PublishTopicTraversal(t *testing.T) {
 	require.NoError(t, err)
 	defer q.Close()
 
-	require.NoError(t, q.Publish(context.Background(), "../escaped", Message{ID: "x"}))
-
-	// FINDING-074 钉住：topic "../escaped" 写出队列根之外（路径遍历 bug）。
+	// FINDING-075 修复：topic "../escaped" 应被拒绝（返回 error），不写出队列根之外。
+	assert.Error(t, q.Publish(context.Background(), "../escaped", Message{ID: "x"}), "FINDING-075: 路径遍历 topic 应被拒绝")
 	outside := filepath.Join(base, "..", "escaped")
-	entries, readErr := os.ReadDir(outside)
-	require.NoError(t, readErr, "topic ../escaped 应被拒绝，实际写出队列根之外")
-	require.NotEmpty(t, entries, "FINDING-074: 消息被写出队列根之外（路径遍历）")
-	_ = os.RemoveAll(outside)
+	if _, err := os.Stat(outside); !os.IsNotExist(err) {
+		t.Fatalf("FINDING-075 修复失败: 消息仍被写出队列根之外 (%v)", outside)
+	}
 }
 
 // TestFileQueue_AckIsNoopAndConsumeDirGrows pins FINDING: file_queue Ack/Nack are
