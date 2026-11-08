@@ -87,6 +87,9 @@ func (q *fileQueue) Subscribe(ctx context.Context, topic, group string) (<-chan 
 
 	go func() {
 		defer close(ch)
+		// FINDING-076 修复：启动重读 consumeDir——上次崩溃留下的已 rename 未 Ack
+		// 消息移回 topicDir 重新投递（否则永久孤儿丢失）。
+		recoverConsumed(ctx, topicDir, consumeDir)
 		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
 		for {
@@ -121,6 +124,7 @@ func (q *fileQueue) Subscribe(ctx context.Context, topic, group string) (<-chan 
 				if err := json.Unmarshal(data, &msg); err != nil {
 					continue
 				}
+				msg.Group = group // 供 Ack/Nack 定位消费组目录
 				select {
 				case ch <- msg:
 				case <-ctx.Done():
@@ -133,8 +137,129 @@ func (q *fileQueue) Subscribe(ctx context.Context, topic, group string) (<-chan 
 	return ch, nil
 }
 
-func (q *fileQueue) Ack(ctx context.Context, topic string, msg Message) error  { return nil }
-func (q *fileQueue) Nack(ctx context.Context, topic string, msg Message) error { return nil }
+// recoverConsumed 将消费组目录中未被 Ack 的遗留文件移回待投递目录（FINDING-076 崩溃恢复）。
+func recoverConsumed(ctx context.Context, topicDir, consumeDir string) {
+	entries, err := os.ReadDir(consumeDir)
+	if err != nil {
+		return
+	}
+	// topicDir 可能尚未创建（首次消费），先建目录。
+	_ = os.MkdirAll(topicDir, 0o755)
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		src := filepath.Join(consumeDir, e.Name())
+		dst := filepath.Join(topicDir, e.Name())
+		_ = os.Rename(src, dst)
+	}
+}
+
+// consumeDirFor 定位消息所属的消费组目录：优先 msg.Group，否则扫描所有 {topic}.* 目录。
+func (q *fileQueue) consumeDirFor(topic string, msg Message) (string, error) {
+	if msg.Group != "" {
+		seg, err := safeSegment(msg.Group)
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(q.dir, topic+"."+seg), nil
+	}
+	// 未带 Group：扫描匹配 topic.<group> 的目录，找到含 msg.ID 的文件的那个。
+	matches, err := filepath.Glob(filepath.Join(q.dir, topic+".*"))
+	if err != nil {
+		return "", err
+	}
+	for _, dir := range matches {
+		if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
+			continue
+		}
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+				continue
+			}
+			data, err := os.ReadFile(filepath.Join(dir, e.Name()))
+			if err != nil {
+				continue
+			}
+			var m Message
+			if json.Unmarshal(data, &m) == nil && m.ID == msg.ID {
+				return dir, nil
+			}
+		}
+	}
+	return "", nil // 未找到（已被 Ack/不存在）→ 调用方按 no-op 处理
+}
+
+func (q *fileQueue) Ack(ctx context.Context, topic string, msg Message) error {
+	topic, err := safeSegment(topic)
+	if err != nil {
+		return err
+	}
+	dir, err := q.consumeDirFor(topic, msg)
+	if err != nil {
+		return err
+	}
+	if dir == "" {
+		return nil
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			continue
+		}
+		var m Message
+		if json.Unmarshal(data, &m) == nil && m.ID == msg.ID {
+			// FINDING-076 修复：Ack 删除已处理消息文件（此前 no-op → 无界增长）。
+			return os.Remove(filepath.Join(dir, e.Name()))
+		}
+	}
+	return nil
+}
+
+func (q *fileQueue) Nack(ctx context.Context, topic string, msg Message) error {
+	topic, err := safeSegment(topic)
+	if err != nil {
+		return err
+	}
+	dir, err := q.consumeDirFor(topic, msg)
+	if err != nil {
+		return err
+	}
+	if dir == "" {
+		return nil
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	topicDir := filepath.Join(q.dir, topic)
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			continue
+		}
+		var m Message
+		if json.Unmarshal(data, &m) == nil && m.ID == msg.ID {
+			// FINDING-076 修复：Nack 移回待投递目录重试（此前 no-op → 失败静默丢弃）。
+			return os.Rename(filepath.Join(dir, e.Name()), filepath.Join(topicDir, e.Name()))
+		}
+	}
+	return nil
+}
 func (q *fileQueue) Enqueue(ctx context.Context, queue string, msg Message, delay time.Duration) error {
 	return q.Publish(ctx, queue, msg)
 }

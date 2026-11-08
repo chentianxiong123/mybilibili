@@ -32,14 +32,8 @@ func TestFileQueue_PublishTopicTraversal(t *testing.T) {
 	}
 }
 
-// TestFileQueue_AckIsNoopAndConsumeDirGrows pins FINDING: file_queue Ack/Nack are
-// no-ops and the consume directory is never pruned, so delivered messages accumulate
-// forever and are orphaned (never redelivered) after a restart.
-//
-// After Subscribe delivers a message, the renamed file remains in {topic}.{group}/
-// permanently. There is no redelivery on startup, so a crash after the rename (but
-// before the channel send) loses the message, and a normal delivery is never acked
-// away — unbounded disk growth.
+// TestFileQueue_AckIsNoopAndConsumeDirGrows 验证 FINDING-076 修复：
+// Ack 现删除消费组目录中的消息文件（此前 no-op → 无界增长 + 孤儿丢失）。
 func TestFileQueue_AckIsNoopAndConsumeDirGrows(t *testing.T) {
 	base := t.TempDir()
 	q, err := newFileQueue(MessageQueueConfig{Path: base})
@@ -59,9 +53,66 @@ func TestFileQueue_AckIsNoopAndConsumeDirGrows(t *testing.T) {
 		t.Fatal("timeout waiting for delivery")
 	}
 
-	// Ack is a no-op; the delivered file must remain in the consume dir.
+	// FINDING-076 修复：Ack 删除消息文件 → 消费组目录清空。
 	require.NoError(t, q.Ack(ctx, "topic", Message{ID: "m1"}))
 	entries, err := os.ReadDir(filepath.Join(base, "topic.g1"))
 	require.NoError(t, err)
-	require.NotEmpty(t, entries, "Ack is a no-op: delivered message should be removed from consume dir")
+	require.Empty(t, entries, "FINDING-076 修复: Ack 应删除消费组目录中的消息文件")
+}
+
+// FINDING-076 修复：Nack 应把消息移回待投递目录重新投递。
+func TestFileQueue_NackRequeuesToTopicDir(t *testing.T) {
+	base := t.TempDir()
+	q, err := newFileQueue(MessageQueueConfig{Path: base})
+	require.NoError(t, err)
+	defer q.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ch, err := q.Subscribe(ctx, "topic", "g1")
+	require.NoError(t, err)
+	require.NoError(t, q.Publish(ctx, "topic", Message{ID: "m2", Payload: []byte("p2")}))
+
+	select {
+	case <-ch:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for delivery")
+	}
+
+	require.NoError(t, q.Nack(ctx, "topic", Message{ID: "m2"}))
+	// 消息应回到 topicDir（再次可投递），consumeDir 清空。
+	consumeEntries, err := os.ReadDir(filepath.Join(base, "topic.g1"))
+	require.NoError(t, err)
+	require.Empty(t, consumeEntries)
+	topicEntries, err := os.ReadDir(filepath.Join(base, "topic"))
+	require.NoError(t, err)
+	require.NotEmpty(t, topicEntries, "FINDING-076 修复: Nack 应移回待投递目录")
+}
+
+// FINDING-076 修复：启动重读 consumeDir——遗留未 Ack 消息被移回 topicDir 重新投递。
+func TestFileQueue_StartupRecoversConsumedOrphans(t *testing.T) {
+	base := t.TempDir()
+	q, err := newFileQueue(MessageQueueConfig{Path: base})
+	require.NoError(t, err)
+	defer q.Close()
+
+	// 手工模拟崩溃遗留：直接在 consumeDir 放一个消息文件。
+	consumeDir := filepath.Join(base, "topic.g1")
+	require.NoError(t, os.MkdirAll(consumeDir, 0o755))
+	orphan := filepath.Join(consumeDir, "123.456.json")
+	require.NoError(t, os.WriteFile(orphan, []byte(`{"id":"m3","topic":"topic","payload":"cA=="}`), 0o644))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ch, err := q.Subscribe(ctx, "topic", "g1")
+	require.NoError(t, err)
+
+	// 启动恢复 + 重新投递应把 m3 重新送达到通道。
+	select {
+	case msg := <-ch:
+		assert.Equal(t, "m3", msg.ID)
+	case <-time.After(2 * time.Second):
+		t.Fatal("FINDING-076 修复: 启动恢复应重新投递遗留消息")
+	}
 }

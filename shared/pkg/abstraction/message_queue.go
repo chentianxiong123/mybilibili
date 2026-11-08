@@ -8,6 +8,7 @@ import (
 type Message struct {
 	ID        string
 	Topic     string
+	Group     string // 消费组（Subscribe 投递时填充，供 Ack/Nack 定位文件）
 	Key       string
 	Payload   []byte
 	Timestamp time.Time
