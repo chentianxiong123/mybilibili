@@ -25,9 +25,10 @@ import (
 func TestMaskKey_ShortKeyFullyRevealed_Pinned(t *testing.T) {
 	key := "abcdefghij" // length 10
 	masked := maskKey(key)
-	// Pinned: stripping the mask marker leaves every real character exposed.
-	assert.Equal(t, key, strings.ReplaceAll(masked, "*", ""),
-		"pinned: maskKey leaks the entire key for keys of length <= 10")
+	// FINDING-070 修复：len<=10 完全打码，剥离 * 后不含任何真实字符。
+	assert.Equal(t, "****", masked)
+	assert.NotEqual(t, key, strings.ReplaceAll(masked, "*", ""),
+		"FINDING-070 修复: 短 key 不应泄露")
 }
 
 // BUG: PUT /api/v1/ai/configs/{id} decodes the body into ApiConfig; when the
@@ -89,5 +90,5 @@ func TestGrpcServer_ReviewContentNilReviewSvc_Panics_Pinned(t *testing.T) {
 		}()
 		_, _ = s.ReviewContent(context.Background(), &pb.ReviewContentRequest{Content: "x"})
 	}()
-	assert.True(t, panicked, "pinned: ReviewContent should not panic on nil reviewSvc")
+	assert.False(t, panicked, "FINDING-072 修复: ReviewContent 不应 panic 于 nil reviewSvc")
 }

@@ -17,6 +17,10 @@ func NewGrpcServer(reviewSvc *ReviewService, summarySvc *SummaryService) *GrpcSe
 }
 
 func (s *GrpcServer) ReviewContent(ctx context.Context, req *pb.ReviewContentRequest) (*pb.ReviewContentResponse, error) {
+	// FINDING-072 修复：reviewSvc 可 nil（如 NewGrpcServer(nil,...)），此前无守卫 → nil 指针 panic。
+	if s.reviewSvc == nil {
+		return &pb.ReviewContentResponse{Passed: true, Reason: "", Score: 0}, nil
+	}
 	scene := req.Scene
 	if scene == "" {
 		scene = "COMMENT"

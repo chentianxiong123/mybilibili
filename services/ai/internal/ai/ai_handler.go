@@ -343,7 +343,9 @@ func (h *Handler) handleCustomer(w http.ResponseWriter, r *http.Request) {
 }
 
 func maskKey(key string) string {
-	if len(key) <= 8 {
+	// FINDING-070 修复：len<=10 时 key[:6] 与 key[len-4:] 重叠会覆盖完整 key；
+	// 此类短 key 完全打码（此前仅 <=8 打码，9-10 泄露）。
+	if len(key) <= 10 {
 		return "****"
 	}
 	return key[:6] + "****" + key[len(key)-4:]
