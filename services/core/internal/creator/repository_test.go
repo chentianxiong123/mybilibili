@@ -70,7 +70,7 @@ func TestRedeemCoupon_OK(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"amount", "user_id", "status", "expires_at"}).AddRow(100, int64(7), 0, nil))
 	mock.ExpectExec(`UPDATE traffic_coupons SET status = 1`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`INSERT INTO traffic_coupon_uses`).WillReturnResult(sqlmock.NewResult(2, 1))
-	mock.ExpectExec(`UPDATE manuscripts SET exposure_weight`).WithArgs(100, int64(50)).
+	mock.ExpectExec(`UPDATE manuscripts SET exposure_weight`).WithArgs(100, int64(50), int64(7)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 

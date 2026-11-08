@@ -160,10 +160,16 @@ func (r *Repo) RedeemCoupon(ctx context.Context, couponID, userID, manuscriptID 
 		VALUES ($1, $2, $3, $4)`, couponID, userID, manuscriptID, amount); err != nil {
 		return 0, err
 	}
-	if _, err := tx.ExecContext(ctx, `
-		UPDATE manuscripts SET exposure_weight = exposure_weight + $1 WHERE id = $2`,
-		amount, manuscriptID); err != nil {
+	res, err := tx.ExecContext(ctx, `
+		UPDATE manuscripts SET exposure_weight = exposure_weight + $1
+		 WHERE id = $2 AND user_id = $3`, amount, manuscriptID, userID)
+	if err != nil {
 		return 0, err
+	}
+	// FINDING-059 修复：校验稿件归属（非本人稿件不加权重）+ 检查 RowsAffected，
+	// 避免兑换到不存在/非本人稿件时 coupon 仍被消耗（status=1 + use 行）而零效果。
+	if n, _ := res.RowsAffected(); n == 0 {
+		return 0, errCouponManuscriptNotFound
 	}
 	if err := tx.Commit(); err != nil {
 		return 0, err

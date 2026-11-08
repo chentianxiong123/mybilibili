@@ -9,21 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestRedeemCoupon_AppliesToAnyManuscript pins a correctness bug in
-// creator/repository.go:RedeemCoupon (lines ~144-157).
-//
-// ROOT CAUSE: RedeemCoupon validates that the COUPON belongs to userID
-// (owner != userID → sql.ErrNoRows) but never validates that the MANUSCRIPT
-// belongs to userID. The final
-//
-//	UPDATE manuscripts SET exposure_weight = exposure_weight + $1 WHERE id = $2
-//
-// runs against any manuscript id, so a creator can boost ANYONE ELSE's
-// manuscript (cross-user exposure hijack) — and also their own.
-//
-// IMPACT: exposure_weight is a ranking/boosting signal in ListRecommended.
-// A user can buy traffic exposure for a competitor's (or any) manuscript,
-// corrupting recommendation ranking. No authorization/ownership gate.
+// TestRedeemCoupon_AppliesToAnyManuscript pins FINDING-059（已修复）：
+// RedeemCoupon 现在对稿件 UPDATE 加 `AND user_id = $3`（归属校验）——稿件非本人
+// 所有时 RowsAffected==0 → 报错回滚，coupon 不被消耗。此前可给任意稿件加 exposure。
 func TestRedeemCoupon_AppliesToAnyManuscript(t *testing.T) {
 	svc, mock := newService(t)
 	ctx := context.Background()
@@ -35,32 +23,17 @@ func TestRedeemCoupon_AppliesToAnyManuscript(t *testing.T) {
 			AddRow(100, int64(7), 0, nil)) // coupon owner = 7
 	mock.ExpectExec(`UPDATE traffic_coupons SET status = 1`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`INSERT INTO traffic_coupon_uses`).WillReturnResult(sqlmock.NewResult(1, 1))
-	// Manuscript 50 is NOT owned by user 7, but the code applies the exposure anyway.
-	// (A correct implementation would first SELECT user_id FROM manuscripts WHERE id=$1
-	// and reject when it != userID; no such query is issued here.)
-	mock.ExpectExec(`UPDATE manuscripts SET exposure_weight`).WithArgs(100, int64(50)).
-		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectCommit()
+	// 稿件 50 非本人（user_id != 7）→ WHERE id AND user_id 不匹配 → RowsAffected 0。
+	mock.ExpectExec(`UPDATE manuscripts SET exposure_weight`).WithArgs(100, int64(50), int64(7)).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectRollback()
 
-	amount, err := svc.Redeem(ctx, 7, 1, 50)
-	require.NoError(t, err)
-	assert.Equal(t, 100, amount)
-
-	// BUG confirmed: no manuscript-ownership SELECT was ever issued.
-	// A correct fix adds an ownership gate, which would make the mock fail here
-	// with an unexpected query.
+	_, err := svc.Redeem(ctx, 7, 1, 50)
+	assert.Error(t, err, "FINDING-059 修复：非本人稿件不应加权重")
 }
 
-// TestRedeemCoupon_NonexistentManuscript_BurnsCoupon pins a second correctness
-// bug in the same function: the manuscript UPDATE does not check RowsAffected.
-//
-// ROOT CAUSE: `UPDATE manuscripts SET exposure_weight = exposure_weight + $1
-// WHERE id = $2` returns RowsAffected==0 when the manuscript id does not exist,
-// but the result is discarded. The coupon is still marked used (status=1) and a
-// traffic_coupon_uses row is written, then the tx commits.
-//
-// IMPACT: a coupon is silently burned (never recoverable) with zero effect —
-// the creator loses the exposure points permanently without any error.
+// TestRedeemCoupon_NonexistentManuscript_BurnsCoupon pins FINDING-059（已修复）：
+// 稿件不存在时 RowsAffected==0 → 报错回滚，coupon 不被消耗（status 不置 1）。
 func TestRedeemCoupon_NonexistentManuscript_BurnsCoupon(t *testing.T) {
 	svc, mock := newService(t)
 	ctx := context.Background()
@@ -72,12 +45,11 @@ func TestRedeemCoupon_NonexistentManuscript_BurnsCoupon(t *testing.T) {
 			AddRow(100, int64(7), 0, nil))
 	mock.ExpectExec(`UPDATE traffic_coupons SET status = 1`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`INSERT INTO traffic_coupon_uses`).WillReturnResult(sqlmock.NewResult(1, 1))
-	// Manuscript 999999 does not exist → RowsAffected == 0, but the code ignores it.
-	mock.ExpectExec(`UPDATE manuscripts SET exposure_weight`).WithArgs(100, int64(999999)).
+	mock.ExpectExec(`UPDATE manuscripts SET exposure_weight`).WithArgs(100, int64(999999), int64(7)).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mock.ExpectCommit()
+	mock.ExpectRollback()
 
-	amount, err := svc.Redeem(ctx, 7, 1, 999999)
-	require.NoError(t, err)
-	assert.Equal(t, 100, amount) // BUG: success despite zero manuscripts updated
+	_, err := svc.Redeem(ctx, 7, 1, 999999)
+	assert.Error(t, err, "FINDING-059 修复：稿件不存在不应消耗 coupon")
+	require.NoError(t, mock.ExpectationsWereMet())
 }

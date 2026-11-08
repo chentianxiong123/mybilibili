@@ -12,6 +12,7 @@ import (
 var (
 	errCouponUsed    = errors.New("coupon already used")
 	errCouponExpired = errors.New("coupon expired")
+	errCouponManuscriptNotFound = errors.New("manuscript not found or not owned by user")
 )
 
 // Service 创作者流量/激励业务逻辑。
@@ -102,6 +103,9 @@ func (s *Service) Redeem(ctx context.Context, userID, couponID, manuscriptID int
 			return 0, myerr.ErrInvalidArgument("coupon already used")
 		case errors.Is(err, errCouponExpired):
 			return 0, myerr.ErrInvalidArgument("coupon expired")
+		case errors.Is(err, errCouponManuscriptNotFound):
+			// FINDING-059 修复：稿件不存在或非本人所有，不消耗 coupon。
+			return 0, myerr.ErrNotFound("manuscript not found or not owned by you")
 		default:
 			return 0, myerr.ErrInternal("database error")
 		}
