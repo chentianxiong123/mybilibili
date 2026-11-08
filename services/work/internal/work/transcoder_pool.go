@@ -103,7 +103,8 @@ type TranscoderPool struct {
 	// HTTP 客户端缓存（每个节点一个，复用 TCP 连接）
 	httpc *http.Client
 
-	stopCh chan struct{}
+	stopCh   chan struct{}
+	stopOnce sync.Once
 }
 
 // NewTranscoderPool 从 YAML 文件加载配置；文件不存在则用空配置启动。
@@ -129,8 +130,10 @@ func (p *TranscoderPool) Start(ctx context.Context) {
 	go p.healthLoop(ctx)
 }
 
-// Stop 停止健康检查。
-func (p *TranscoderPool) Stop() { close(p.stopCh) }
+// Stop 停止健康检查。FINDING-048 修复：sync.Once 保证幂等（此前第二次 Stop 关闭已关闭通道 panic）。
+func (p *TranscoderPool) Stop() {
+	p.stopOnce.Do(func() { close(p.stopCh) })
+}
 
 // loadConfig 从 YAML 文件读配置（不重置统计，保留运行时状态）。
 func (p *TranscoderPool) loadConfig() error {

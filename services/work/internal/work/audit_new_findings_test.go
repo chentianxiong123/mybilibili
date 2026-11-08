@@ -135,12 +135,10 @@ func TestAudit_StopTwicePanics(t *testing.T) {
 	pool.Stop()
 	defer func() {
 		if r := recover(); r != nil {
-			// BUG confirmed: double close panics
-			return
+			t.Fatal("FINDING-048 修复失败: 第二次 Stop() 不应 panic (close of closed channel)")
 		}
-		t.Fatal("BUG: second Stop() did not panic (close of closed channel)")
 	}()
-	pool.Stop()
+	pool.Stop() // FINDING-048 修复: sync.Once 使二次 Stop 幂等，不 panic
 }
 
 // ---------------------------------------------------------------------------
@@ -156,15 +154,13 @@ func TestAudit_NowLabeledUTCButUsesLocalTime(t *testing.T) {
 	time.Local = time.FixedZone("CST", 8*3600) // UTC+8
 	defer func() { time.Local = saved }()
 
-	got := now() // e.g. 2026-11-08T06:26:40Z
+	got := now()
 	parsed, err := time.Parse("2006-01-02T15:04:05Z", got)
 	require.NoError(t, err, "now() should be RFC3339-parseable")
 
 	realUTC := time.Now().UTC().Truncate(time.Second)
 	delta := parsed.Sub(realUTC).Abs()
-	// Demonstrates the bug: now() is off by the server's UTC offset (+8h here),
-	// even though the "Z" suffix claims UTC. If now() were honest UTC, delta≈0.
-	assert.True(t, delta > time.Hour,
-		"expected now() to be mislabeled (local time claimed as UTC); got %q (delta=%v)",
-		got, delta)
+	// FINDING-049 修复：now() 返回真实 UTC（此前本地时间标注 "Z"，UTC+8 差 8h）。
+	assert.True(t, delta < time.Minute,
+		"FINDING-049 修复: now() 应为 UTC；got %q (delta=%v)", got, delta)
 }

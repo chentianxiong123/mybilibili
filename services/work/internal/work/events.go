@@ -68,7 +68,9 @@ func marshal(v any) []byte {
 }
 
 func now() string {
-	return time.Now().Format("2006-01-02T15:04:05Z")
+	// FINDING-049 修复：用 UTC 时间（此前 time.Now() 本地时间标注 "Z" 声明 UTC，
+	// 非 UTC 服务器时间戳偏差（UTC+8 差 8h））。
+	return time.Now().UTC().Format("2006-01-02T15:04:05Z")
 }
 
 var _ = marshal
