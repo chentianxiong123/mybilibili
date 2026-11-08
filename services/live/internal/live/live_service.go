@@ -146,6 +146,11 @@ func (s *Service) ApplySeat(ctx context.Context, roomID, userID int64) error {
 		if seat.UserID == userID && seat.Status == SeatStatusOccupied {
 			return nil
 		}
+		// FINDING-055 修复：已 Pending 的用户不得再申请第二座（此前仅短路 Occupied，
+		// 同用户 Pending 可再次 apply 抢占第二个空座 → 双座，一座永久卡死）。
+		if seat.UserID == userID && seat.Status == SeatStatusPending {
+			return nil
+		}
 	}
 
 	for _, seat := range seats {

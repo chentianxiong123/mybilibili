@@ -118,12 +118,9 @@ func TestService_ApplySeat_PendingUserClaimsSecondSeat(t *testing.T) {
 		WillReturnRows(seatRow().
 			AddRow(1, 1, 0, 100, SeatStatusPending, false, now).
 			AddRow(2, 1, 1, 0, SeatStatusEmpty, false, sql.NullTime{}))
-	mock.ExpectExec(`UPDATE live_seats SET user_id=\$1`).
-		WithArgs(int64(100), int32(SeatStatusPending), false, sqlmock.AnyArg(), int64(1), int32(1)).
-		WillReturnResult(sqlmock.NewResult(0, 1))
-
+	// Second apply while user 100 is still PENDING on seat 0 → 已 Pending 不再申请第二座。
 	err := svc.ApplySeat(t.Context(), 1, 100)
-	assert.NoError(t, err, "FINDING-C: user already Pending should not be granted a second seat")
+	assert.NoError(t, err, "FINDING-055 修复: 已 Pending 用户不得占第二座（返回成功但不新增）")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
