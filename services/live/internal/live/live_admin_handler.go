@@ -64,7 +64,7 @@ func (h *AdminHandler) handleRooms(w http.ResponseWriter, r *http.Request) {
 	}
 	args = append(args, size, offset)
 	rows, err := h.db.QueryContext(r.Context(),
-		`SELECT id, user_id, title, status, viewer_count, created_at
+		`SELECT id, user_id, room_name, status, viewer_count, created_at
 		 FROM live_rooms WHERE 1=1`+conds+` ORDER BY created_at DESC LIMIT $`+strconv.Itoa(len(args)-1)+` OFFSET $`+strconv.Itoa(len(args)), args...)
 	if err != nil {
 		httputil.WriteOK(w, []map[string]any{})
@@ -77,7 +77,7 @@ func (h *AdminHandler) handleRooms(w http.ResponseWriter, r *http.Request) {
 		var uid, st, title, t string
 		rows.Scan(&id, &uid, &title, &st, &vc, &t)
 		list = append(list, map[string]any{
-			"id": id, "user_id": uid, "title": title, "status": st, "viewer_count": vc, "created_at": t,
+			"id": id, "user_id": uid, "room_name": title, "title": title, "status": st, "viewer_count": vc, "created_at": t,
 		})
 	}
 	httputil.WriteOK(w, list)
@@ -87,14 +87,14 @@ func (h *AdminHandler) handleRoomByID(w http.ResponseWriter, r *http.Request, id
 	var rid, vc int64
 	var uid, st, title, t string
 	err := h.db.QueryRowContext(r.Context(),
-		`SELECT id, user_id, title, status, viewer_count, created_at
+		`SELECT id, user_id, room_name, status, viewer_count, created_at
 		 FROM live_rooms WHERE id = $1`, id).Scan(&rid, &uid, &title, &st, &vc, &t)
 	if err != nil {
 		httputil.WriteJSON(w, http.StatusNotFound, map[string]any{"code": 404, "message": "room not found", "data": nil})
 		return
 	}
 	httputil.WriteOK(w, map[string]any{
-		"id": rid, "user_id": uid, "title": title, "status": st, "viewer_count": vc, "created_at": t,
+		"id": rid, "user_id": uid, "room_name": title, "title": title, "status": st, "viewer_count": vc, "created_at": t,
 	})
 }
 
@@ -113,7 +113,8 @@ func (h *AdminHandler) handleRoomStatus(w http.ResponseWriter, r *http.Request, 
 
 func (h *AdminHandler) handleStats(w http.ResponseWriter, r *http.Request) {
 	var liveCount, totalViewers int64
-	_ = h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM live_rooms WHERE status = 1`).Scan(&liveCount)
-	_ = h.db.QueryRowContext(r.Context(), `SELECT COALESCE(SUM(viewer_count), 0) FROM live_rooms WHERE status = 1`).Scan(&totalViewers)
+	// FINDING-056 修复：status 是 varchar，与 'live' 比较（此前 status=1 整数比较 → 恒 0）。
+	_ = h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM live_rooms WHERE status = 'live'`).Scan(&liveCount)
+	_ = h.db.QueryRowContext(r.Context(), `SELECT COALESCE(SUM(viewer_count), 0) FROM live_rooms WHERE status = 'live'`).Scan(&totalViewers)
 	httputil.WriteOK(w, map[string]any{"live_count": liveCount, "total_viewers": totalViewers})
 }

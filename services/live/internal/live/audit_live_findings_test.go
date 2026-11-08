@@ -143,11 +143,10 @@ func TestAdminHandler_StatsUsesIntegerCompare(t *testing.T) {
 	defer db.Close()
 	h := NewAdminHandler(db)
 
-	// The handler issues `WHERE status = 1`; pin it by matching that buggy SQL.
-	// Correct SQL would be `WHERE status = 'live'`.
-	mock.ExpectQuery(`status = 1`).
+	// FINDING-056 修复：handler 现查询 WHERE status = 'live'（varchar）。
+	mock.ExpectQuery(`status = 'live'`).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(5))
-	mock.ExpectQuery(`status = 1`).
+	mock.ExpectQuery(`status = 'live'`).
 		WillReturnRows(sqlmock.NewRows([]string{"sum"}).AddRow(42))
 
 	rr := httptest.NewRecorder()
@@ -155,7 +154,7 @@ func TestAdminHandler_StatsUsesIntegerCompare(t *testing.T) {
 	h.handleStats(rr, req)
 
 	assert.Contains(t, rr.Body.String(), `"live_count":5`,
-		"FINDING-D1: handler queries WHERE status = 1 (integer) instead of status='live' (varchar)")
+		"FINDING-056 修复: handler 应查 status='live'")
 	assert.Contains(t, rr.Body.String(), `"total_viewers":42`)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -166,11 +165,10 @@ func TestAdminHandler_RoomsUseNonExistentTitleColumn(t *testing.T) {
 	defer db.Close()
 	h := NewAdminHandler(db)
 
-	// Handler issues `SELECT id, user_id, title, ...`; pin by matching the
-	// buggy `title` column. Schema column is `room_name` (sql/000:478).
-	mock.ExpectQuery(`SELECT .+title.+ FROM live_rooms`).
+	// FINDING-056 修复：handler 现查 room_name（schema 列）而非不存在的 title。
+	mock.ExpectQuery(`SELECT .+room_name.+ FROM live_rooms`).
 		WithArgs(20, 0).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "title", "status", "viewer_count", "created_at"}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "room_name", "status", "viewer_count", "created_at"}).
 			AddRow(1, "5001", "直播间", "live", 7, "2026-01-01 00:00:00"))
 
 	rr := httptest.NewRecorder()
@@ -178,7 +176,7 @@ func TestAdminHandler_RoomsUseNonExistentTitleColumn(t *testing.T) {
 	h.handleRooms(rr, req)
 
 	assert.Contains(t, rr.Body.String(), `"id":1`,
-		"FINDING-D2: handler selects non-existent `title` column; should be `room_name`")
+		"FINDING-056 修复: handler 应查 room_name 列")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
