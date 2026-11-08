@@ -29,5 +29,5 @@ func TestOllamaCaller_FallbackDataRace(t *testing.T) {
 	wg.Wait()
 
 	// Reset the shared flag so later tests in the package are not poisoned.
-	ollamaFallback = false
+	ollamaFallback.Store(false)
 }

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -85,11 +86,11 @@ func (c *ollamaCaller) chat(ctx context.Context, system, user string) (string, e
 	return strings.TrimSpace(result.Choices[0].Message.Content), nil
 }
 
-var ollamaFallback = false
+var ollamaFallback atomic.Bool
 
 func (c *ollamaCaller) Call(ctx context.Context, target, method string, req, resp any) error {
-	if !ollamaFallback && !c.checkOllama() {
-		ollamaFallback = true
+	if !ollamaFallback.Load() && !c.checkOllama() {
+		ollamaFallback.Store(true)
 		log.Printf("ollama not reachable at %s, using fallback responses", c.baseURL)
 	}
 	return c.doCall(ctx, target, method, req, resp)
@@ -109,7 +110,11 @@ func (c *ollamaCaller) doCall(ctx context.Context, target, method string, req, r
 			"你是一个视频摘要助手。请用中文简洁总结视频内容，不超过200字。",
 			fmt.Sprintf("请为视频 %d 生成摘要", int64(videoID)),
 		)
-		if err != nil || ollamaFallback {
+		if err == nil {
+			// FINDING-080 修复：恢复后复位 fallback（不再粘滞）。
+			ollamaFallback.Store(false)
+		}
+		if err != nil || ollamaFallback.Load() {
 			reply = fmt.Sprintf("AI summary for video %d (placeholder)", int64(videoID))
 		}
 		if r, ok := resp.(*struct{ Summary string }); ok {
@@ -134,7 +139,10 @@ func (c *ollamaCaller) doCall(ctx context.Context, target, method string, req, r
 		)
 		passed := true
 		reason := ""
-		if err == nil && !ollamaFallback {
+		if err == nil && !ollamaFallback.Load() {
+			if err == nil {
+				ollamaFallback.Store(false) // FINDING-080：恢复后复位
+			}
 			var result struct {
 				Passed bool   `json:"passed"`
 				Reason string `json:"reason"`
@@ -157,7 +165,10 @@ func (c *ollamaCaller) doCall(ctx context.Context, target, method string, req, r
 			"你是一个B站客服助手。请用中文友好地回答用户问题，回答简洁不超过200字。",
 			content,
 		)
-		if err != nil || ollamaFallback {
+		if err == nil {
+			ollamaFallback.Store(false) // FINDING-080：恢复后复位
+		}
+		if err != nil || ollamaFallback.Load() {
 			reply = "感谢您的咨询，客服助手暂时无法连接AI模型，请稍后再试。"
 		}
 		if r, ok := resp.(*struct{ Reply string }); ok {

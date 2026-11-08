@@ -48,8 +48,8 @@ func newOllamaCallerWithURL(t *testing.T, url string) *ollamaCaller {
 	t.Helper()
 	t.Setenv("OLLAMA_URL", url)
 	t.Setenv("OLLAMA_MODEL", "test-model")
-	ollamaFallback = false
-	t.Cleanup(func() { ollamaFallback = false })
+	ollamaFallback.Store(false)
+	t.Cleanup(func() { ollamaFallback.Store(false) })
 	return newOllamaCaller()
 }
 
@@ -91,13 +91,13 @@ func TestOllamaCaller_FallbackWhenUnreachable(t *testing.T) {
 	err := c.Call(context.Background(), "ai", "Summary", map[string]interface{}{"video_id": 7.0}, &resp)
 	require.NoError(t, err)
 	assert.Contains(t, resp.Summary, "placeholder")
-	assert.True(t, ollamaFallback)
+	assert.True(t, ollamaFallback.Load())
 }
 
 func TestOllamaCaller_ModerateParsed(t *testing.T) {
 	stub := newOllamaStub(t)
-	ollamaFallback = false
-	t.Cleanup(func() { ollamaFallback = false })
+	ollamaFallback.Store(false)
+	t.Cleanup(func() { ollamaFallback.Store(false) })
 
 	// 覆盖 stub 的 chat 返回，改为违规 JSON
 	stub.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -160,8 +160,8 @@ func TestOllamaCaller_UnknownMethod(t *testing.T) {
 
 func TestOllamaCaller_ChatUnreachable(t *testing.T) {
 	c := newOllamaCallerWithURL(t, "http://127.0.0.1:1")
-	ollamaFallback = true
-	t.Cleanup(func() { ollamaFallback = false })
+	ollamaFallback.Store(true)
+	t.Cleanup(func() { ollamaFallback.Store(false) })
 
 	_, err := c.chat(context.Background(), "sys", "user")
 	assert.Error(t, err)
@@ -225,8 +225,8 @@ func TestOllamaCaller_TimeoutSet(t *testing.T) {
 func TestOllamaCaller_DefaultEnv(t *testing.T) {
 	os.Unsetenv("OLLAMA_URL")
 	os.Unsetenv("OLLAMA_MODEL")
-	ollamaFallback = false
-	t.Cleanup(func() { ollamaFallback = false })
+	ollamaFallback.Store(false)
+	t.Cleanup(func() { ollamaFallback.Store(false) })
 
 	c := newOllamaCaller()
 	assert.Equal(t, "http://localhost:11434", c.baseURL)
