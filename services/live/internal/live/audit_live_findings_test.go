@@ -225,10 +225,9 @@ func TestHandleMessage_MuteSelf_DoesNotUpdateStatus(t *testing.T) {
 	mock.ExpectQuery(`SELECT .+ FROM live_seats`).
 		WithArgs(int64(1)).
 		WillReturnRows(seatRow().AddRow(1, 1, 0, 100, SeatStatusOccupied, false, sql.NullTime{}))
-	// The UPDATE passes status=Occupied(2) (unchanged) with muted=true.
-	// A correct self-mute would pass status=SeatStatusMuted(3).
+	// FINDING-057 修复：self-mute 现传 status=SeatStatusMuted(3)（与 host MuteSeat 一致）。
 	mock.ExpectExec(`UPDATE live_seats SET user_id=\$1`).
-		WithArgs(int64(100), int32(SeatStatusOccupied), true, sqlmock.AnyArg(), int64(1), int32(0)).
+		WithArgs(int64(100), int32(SeatStatusMuted), true, sqlmock.AnyArg(), int64(1), int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	hub.handleMessage(svc, c, wsMsg{Type: "mute_self", RoomID: 1})

@@ -187,6 +187,13 @@ func (h *Hub) handleMessage(svc *Service, c *Client, msg wsMsg) {
 		for _, seat := range seats {
 			if seat.UserID == c.userID {
 				seat.Muted = !seat.Muted
+				// FINDING-057 修复：与 host MuteSeat 一致更新 status（此前留 Occupied，
+				// 客户端/服务端静音状态发散）。
+				if seat.Muted {
+					seat.Status = SeatStatusMuted
+				} else {
+					seat.Status = SeatStatusOccupied
+				}
 				svc.repo.UpdateSeat(ctx, seat)
 				h.BroadcastRoom(msg.RoomID, map[string]interface{}{
 					"type": "seat_updated", "room_id": msg.RoomID, "seats": seatsToMap(seats),
