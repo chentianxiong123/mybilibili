@@ -27,6 +27,9 @@ type MinioConfig struct {
 	SecretKey      string
 	BucketName     string
 	Region         string
+	// UseSSL 强制 HTTPS（FINDING-015：端点裸化后 Secure 无法由 scheme 前缀判定，
+	// 需独立开关）。
+	UseSSL bool
 }
 
 // normalizeEndpoint 将 minio-go 要求的主机端点规范化：剥掉 http(s):// scheme
@@ -60,6 +63,10 @@ func DefaultMinioConfig() MinioConfig {
 
 func NewMinioStorageService(cfg MinioConfig) (*MinioStorageService, error) {
 	endpoint, secure := normalizeEndpoint(cfg.Endpoint)
+	// FINDING-015 修复：UseSSL 强制 HTTPS（端点裸化后 scheme 前缀恒 false）。
+	if cfg.UseSSL {
+		secure = true
+	}
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
 		Secure: secure,

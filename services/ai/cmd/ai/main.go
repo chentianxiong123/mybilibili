@@ -92,6 +92,8 @@ func main() {
 		AccessKey:  getEnvDefault("MINIO_ACCESS_KEY", "minioadmin"),
 		SecretKey:  getEnvDefault("MINIO_SECRET_KEY", "minioadmin"),
 		BucketName: "mybilibili",
+		// FINDING-015 修复：UseSSL 独立开关（端点裸化后 HTTPS 无法由 scheme 前缀判定）。
+		UseSSL: getEnvDefault("MINIO_USE_SSL", "") == "true",
 	}); serr == nil {
 		summarySvc.SetStorage(storage)
 		subtitleH.SetGenerator(subtitle.NewWhisperGenerator(subtitleRepo, storage))
