@@ -92,7 +92,10 @@ func (h *Handler) handleHotIncrement(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"code": 405, "message": "method not allowed", "data": nil})
 		return
 	}
-	_ = h.svc.IncrementHotSearch(r.Context(), readKeyword(r))
+	if err := h.svc.IncrementHotSearch(r.Context(), readKeyword(r)); err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+		return
+	}
 	writeJSON(w, map[string]any{"status": "ok"})
 }
 
@@ -142,8 +145,14 @@ func (h *Handler) handleHotKeyword(w http.ResponseWriter, r *http.Request) {
 		Score   int    `json:"score"`
 		Rank    int    `json:"rank"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
-	_ = h.svc.SetKeyword(r.Context(), req.Keyword, req.Score, req.Rank)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
+		return
+	}
+	if err := h.svc.SetKeyword(r.Context(), req.Keyword, req.Score, req.Rank); err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+		return
+	}
 	writeJSON(w, map[string]any{"status": "ok"})
 }
 
@@ -156,8 +165,14 @@ func (h *Handler) handleHotRank(w http.ResponseWriter, r *http.Request) {
 		Keyword string `json:"keyword"`
 		Rank    int    `json:"rank"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
-	_ = h.svc.SetRank(r.Context(), req.Keyword, req.Rank)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
+		return
+	}
+	if err := h.svc.SetRank(r.Context(), req.Keyword, req.Rank); err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+		return
+	}
 	writeJSON(w, map[string]any{"status": "ok"})
 }
 
@@ -170,8 +185,14 @@ func (h *Handler) handleHotScore(w http.ResponseWriter, r *http.Request) {
 		Keyword string `json:"keyword"`
 		Score   int    `json:"score"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
-	_ = h.svc.SetScore(r.Context(), req.Keyword, req.Score)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
+		return
+	}
+	if err := h.svc.SetScore(r.Context(), req.Keyword, req.Score); err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+		return
+	}
 	writeJSON(w, map[string]any{"status": "ok"})
 }
 
@@ -184,7 +205,10 @@ func (h *Handler) handleCleanExpired(w http.ResponseWriter, r *http.Request) {
 	if _, ok := httputil.RequireAdmin(w, r); !ok {
 		return
 	}
-	_ = h.svc.CleanExpiredHotSearch(r.Context())
+	if err := h.svc.CleanExpiredHotSearch(r.Context()); err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+		return
+	}
 	writeJSON(w, map[string]any{"status": "ok"})
 }
 
@@ -196,8 +220,14 @@ func (h *Handler) handleHotDelete(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Keyword string `json:"keyword"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
-	_ = h.svc.DeleteOne(r.Context(), req.Keyword)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
+		return
+	}
+	if err := h.svc.DeleteOne(r.Context(), req.Keyword); err != nil {
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+		return
+	}
 	writeJSON(w, map[string]any{"status": "ok"})
 }
 
@@ -242,8 +272,12 @@ func (h *Handler) handleSuggest(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleRelated(w http.ResponseWriter, r *http.Request) {
 	videoID, _ := strconv.ParseInt(r.URL.Path[len("/api/v1/recommend/related/"):], 10, 64)
 	size, _ := strconv.ParseInt(r.URL.Query().Get("size"), 10, 32)
-	if size == 0 {
+	// FINDING-037 修复：size 钳制 [1,50]（此前负 size 直达 SQL LIMIT -N，PG 拒绝 → 200 空）。
+	if size <= 0 {
 		size = 10
+	}
+	if size > 50 {
+		size = 50
 	}
 	list, _ := h.svc.Related(r.Context(), videoID, int32(size))
 	writeJSON(w, list)
@@ -340,7 +374,10 @@ func (h *Handler) handleRecommendConfig(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, data)
 	case "PUT":
 		var data map[string]interface{}
-		json.NewDecoder(r.Body).Decode(&data)
+		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+			httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid body", "data": nil})
+			return
+		}
 		b, _ := json.Marshal(data)
 		updatedBy := r.Header.Get("X-Username")
 		if updatedBy == "" {

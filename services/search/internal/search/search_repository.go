@@ -71,10 +71,13 @@ func (r *Repository) SearchManuscripts(ctx context.Context, keyword, tag string,
 		var title, desc, cover, duration, uploadTime string
 		var uid, ulevel, isVertical int64
 		var uname, unick, uavatar string
-		rows.Scan(&id, &title, &desc, &cover, &userID, &catID,
+		if err := rows.Scan(&id, &title, &desc, &cover, &userID, &catID,
 			&viewCount, &likeCount, &commentCount, &danmakuCount,
 			&duration, &status, &uploadTime,
-			&uid, &uname, &unick, &uavatar, &ulevel, &isVertical)
+			&uid, &uname, &unick, &uavatar, &ulevel, &isVertical); err != nil {
+			// FINDING-037 修复：扫描失败返回错误（此前忽略 → 全零垃圾行 + nil error）。
+			return nil, err
+		}
 		uploader := map[string]interface{}{
 			"id": uid, "name": unick, "username": uname, "nickname": unick,
 			"avatar": uavatar, "level": ulevel,
@@ -223,7 +226,9 @@ func (s *Service) Suggest(ctx context.Context, keyword string, size int32) ([]st
 	var out []string
 	for rows.Next() {
 		var t string
-		rows.Scan(&t)
+		if err := rows.Scan(&t); err != nil {
+			return nil, err
+		}
 		out = append(out, t)
 	}
 	return out, nil
@@ -265,8 +270,10 @@ func (s *Service) HotRecommend(ctx context.Context, categoryID int64, size int32
 		var created time.Time
 		var uid, ulevel int64
 		var uname, unick, uavatar string
-		rows.Scan(&id, &userID, &title, &cover, &views, &likes, &comments, &created, &durSec,
-			&uid, &uname, &unick, &uavatar, &ulevel, &isVertical)
+		if err := rows.Scan(&id, &userID, &title, &cover, &views, &likes, &comments, &created, &durSec,
+			&uid, &uname, &unick, &uavatar, &ulevel, &isVertical); err != nil {
+			return nil, err
+		}
 		uploader := map[string]interface{}{
 			"id": uid, "name": unick, "username": uname, "nickname": unick,
 			"avatar": uavatar, "level": ulevel,

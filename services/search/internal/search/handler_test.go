@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"io"
+	"time"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -314,7 +315,7 @@ func TestHandleForYou_200(t *testing.T) {
 			"comment_count", "created_at", "duration_seconds",
 			"uid", "uname", "unick", "uavatar", "ulevel", "isVertical",
 		}).AddRow(10, 5, "为你推荐", "http://cv", 1000, 100,
-			50, "2026-09-01 10:00:00", 3600,
+			50, time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC), 3600,
 			5, "user1", "昵称", "http://av", 4, 0))
 
 	rr := do(t, h, http.MethodGet, "/api/v1/recommend/for-you", "")
@@ -359,7 +360,7 @@ func TestHandleHotRecommend_200(t *testing.T) {
 			"comment_count", "created_at", "duration_seconds",
 			"uid", "uname", "unick", "uavatar", "ulevel", "isVertical",
 		}).AddRow(20, 3, "热门推荐", "http://cv2", 2000, 200,
-			100, "2026-09-05 10:00:00", 7200,
+			100, time.Date(2026, 9, 5, 10, 0, 0, 0, time.UTC), 7200,
 			3, "user2", "昵称2", "http://av2", 5, 1))
 
 	rr := do(t, h, http.MethodGet, "/api/v1/recommend/hot?categoryId=1&size=5", "")

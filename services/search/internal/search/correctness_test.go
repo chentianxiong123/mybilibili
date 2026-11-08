@@ -22,8 +22,8 @@ func TestCorrectness_HotScore_MalformedBody_Returns200(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/search/hot/score", strings.NewReader(`{not-json`))
 	h.handleHotScore(rr, req)
 
-	// A handler that validates its input returns 400. Observed: 200 => decode error swallowed.
-	assert.Equal(t, http.StatusOK, rr.Code, "malformed JSON body to /hot/score must NOT return 200")
+	// FINDING-037 修复：畸形 body → 400（此前 decode 错被吞 → 200）。
+	assert.Equal(t, http.StatusBadRequest, rr.Code, "malformed JSON body to /hot/score must return 400")
 }
 
 func TestCorrectness_HotDelete_MalformedBody_Returns200(t *testing.T) {
@@ -32,7 +32,7 @@ func TestCorrectness_HotDelete_MalformedBody_Returns200(t *testing.T) {
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/search/hot/delete", strings.NewReader(`{`))
 	h.handleHotDelete(rr, req)
 
-	assert.Equal(t, http.StatusOK, rr.Code, "malformed JSON body to /hot/delete must NOT return 200")
+	assert.Equal(t, http.StatusBadRequest, rr.Code, "FINDING-037 修复: malformed JSON body to /hot/delete must return 400")
 }
 
 // FINDING C3 (incorrect validation): handleRelated (search_handler.go:240-244)
@@ -42,8 +42,9 @@ func TestCorrectness_HotDelete_MalformedBody_Returns200(t *testing.T) {
 // list instead of a 400. This pins that a negative size reaches the SQL args.
 func TestCorrectness_Related_NegativeSizeReachesSQL(t *testing.T) {
 	h, mock := newTestHandler(t)
+	// FINDING-037 修复：size 钳制到 [1,50]，负 size 不再达 SQL（LIMIT 10 默认）。
 	mock.ExpectQuery(`SELECT m.id, m.title`).
-		WithArgs(int64(-5), int64(0)). // LIMIT -5 OFFSET 0 => invalid LIMIT in Postgres
+		WithArgs(int64(10), int64(0)). // size 钳制为 10
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "title", "description", "cover_url", "user_id", "category_id",
 			"view_count", "like_count", "comment_count", "danmaku_count",
@@ -72,11 +73,7 @@ func TestCorrectness_SearchManuscripts_SwalledScanError(t *testing.T) {
 	)
 
 	list, err := repo.SearchManuscripts(t.Context(), "", "", 0, 1, 10)
-	// BUG pinned: the rows.Scan error is swallowed, so err is nil (it should be
-	// a non-nil scan error) and the failed row is emitted as a zero-valued entry.
-	assert.NoError(t, err, "rows.Scan error is swallowed: SearchManuscripts returns nil error")
-	assert.Len(t, list, 1, "a row that failed to scan must not be emitted")
-	if len(list) == 1 {
-		assert.Equal(t, int64(0), list[0]["id"], "a row that failed to scan must not be emitted")
-	}
+	// FINDING-037 修复：扫描失败返回错误（不再吞错 → 零垃圾行）。
+	assert.Error(t, err, "rows.Scan error must propagate")
+	assert.Nil(t, list)
 }

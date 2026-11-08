@@ -36,7 +36,15 @@ func (h *Handler) handleOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
-	data, _ := h.svc.Overview(r.Context(), userID, days)
+	data, err := h.svc.Overview(r.Context(), userID, days)
+
+	if err != nil {
+
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+
+		return
+
+	}
 	httputil.WriteOK(w, data)
 }
 
@@ -47,7 +55,15 @@ func (h *Handler) handleTrend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
-	data, _ := h.svc.Trend(r.Context(), userID, days)
+	data, err := h.svc.Trend(r.Context(), userID, days)
+
+	if err != nil {
+
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+
+		return
+
+	}
 	httputil.WriteOK(w, data)
 }
 
@@ -59,7 +75,15 @@ func (h *Handler) handleRanking(w http.ResponseWriter, r *http.Request) {
 	}
 	sortBy := r.URL.Query().Get("sortBy")
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	data, _ := h.svc.Ranking(r.Context(), userID, sortBy, limit)
+	data, err := h.svc.Ranking(r.Context(), userID, sortBy, limit)
+
+	if err != nil {
+
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+
+		return
+
+	}
 	httputil.WriteOK(w, data)
 }
 
@@ -70,7 +94,15 @@ func (h *Handler) handleLatestComments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	data, _ := h.svc.LatestComments(r.Context(), userID, limit)
+	data, err := h.svc.LatestComments(r.Context(), userID, limit)
+
+	if err != nil {
+
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+
+		return
+
+	}
 	httputil.WriteOK(w, data)
 }
 
@@ -81,7 +113,15 @@ func (h *Handler) handleFansTrend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
-	data, _ := h.svc.FansTrend(r.Context(), userID, days)
+	data, err := h.svc.FansTrend(r.Context(), userID, days)
+
+	if err != nil {
+
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+
+		return
+
+	}
 	httputil.WriteOK(w, data)
 }
 
@@ -93,7 +133,15 @@ func (h *Handler) handleFansRanking(w http.ResponseWriter, r *http.Request) {
 	}
 	typ := r.URL.Query().Get("type")
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	data, _ := h.svc.FansRanking(r.Context(), userID, typ, limit)
+	data, err := h.svc.FansRanking(r.Context(), userID, typ, limit)
+
+	if err != nil {
+
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+
+		return
+
+	}
 	httputil.WriteOK(w, data)
 }
 
@@ -104,7 +152,15 @@ func (h *Handler) handleManuscriptTrend(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
-	data, _ := h.svc.ManuscriptTrend(r.Context(), userID, days)
+	data, err := h.svc.ManuscriptTrend(r.Context(), userID, days)
+
+	if err != nil {
+
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+
+		return
+
+	}
 	httputil.WriteOK(w, data)
 }
 
@@ -115,7 +171,15 @@ func (h *Handler) handleFansByManuscript(w http.ResponseWriter, r *http.Request)
 		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
 		return
 	}
-	data, _ := h.svc.FansByManuscript(r.Context(), userID)
+	data, err := h.svc.FansByManuscript(r.Context(), userID)
+
+	if err != nil {
+
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+
+		return
+
+	}
 	httputil.WriteOK(w, data)
 }
 
@@ -128,7 +192,15 @@ func (h *Handler) handleManuscriptInsights(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
-	data, _ := h.svc.ManuscriptInsights(r.Context(), userID, days)
+	data, err := h.svc.ManuscriptInsights(r.Context(), userID, days)
+
+	if err != nil {
+
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+
+		return
+
+	}
 	httputil.WriteOK(w, data)
 }
 
@@ -139,7 +211,15 @@ func (h *Handler) handleAccountDiagnosis(w http.ResponseWriter, r *http.Request)
 		httputil.WriteJSON(w, http.StatusUnauthorized, map[string]any{"code": 401, "message": "unauthorized", "data": nil})
 		return
 	}
-	data, _ := h.svc.AccountDiagnosis(r.Context(), userID)
+	data, err := h.svc.AccountDiagnosis(r.Context(), userID)
+
+	if err != nil {
+
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+
+		return
+
+	}
 	httputil.WriteOK(w, data)
 }
 
@@ -154,6 +234,14 @@ func (h *Handler) handleIncome(w http.ResponseWriter, r *http.Request) {
 	if days != 7 && days != 30 {
 		days = 30
 	}
-	data, _ := h.svc.Income(r.Context(), userID, days)
+	data, err := h.svc.Income(r.Context(), userID, days)
+
+	if err != nil {
+
+		httputil.WriteJSON(w, http.StatusInternalServerError, map[string]any{"code": 500, "message": err.Error(), "data": nil})
+
+		return
+
+	}
 	httputil.WriteOK(w, data)
 }
