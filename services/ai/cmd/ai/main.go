@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"strings"
 
 	_ "github.com/lib/pq"
 	"google.golang.org/grpc"
@@ -86,6 +89,59 @@ func main() {
 	}
 	reviewSvc := ai.NewReviewService(caller)
 	customerSvc := ai.NewCustomerService(caller)
+
+	// 真实写入 AI 用量日志（FINDING-085：ai_usage_logs 此前从未写入，用量端点恒 0）。
+	ai.SetUsageLog(caller, func(feature string, userID int64, tokenCount, durationMs int) {
+		if err := aiRepo.LogUsage(context.Background(), feature, userID, os.Getenv("AI_LLM_MODEL"), tokenCount, durationMs); err != nil {
+			log.Printf("WARN: ai usage log: %v", err)
+		}
+	})
+
+	// 多轮客服 agent（langchaingo conversational agent + 工具）：
+	// 复用同一 langchaingo 模型；未配置真实 LLM 时 agent.Chat 返回显式"未配置"错误。
+	if model := ai.ModelFromCaller(caller); model != nil {
+		// 语义技能检索：配置 AI_PGVECTOR_URL 且模型支持嵌入时启用 pgvector，否则回退关键词。
+		skillIndex, _ := ai.NewSkillIndex(model, os.Getenv("AI_PGVECTOR_URL"))
+		if skillIndex != nil {
+			log.Printf("ai: 技能语义检索已启用（langchaingo pgvector + embeddings）")
+		} else {
+			log.Printf("WARN: 技能检索回退关键词匹配（未配置 AI_PGVECTOR_URL 或模型不支持嵌入）")
+		}
+		customerSvc.SetAgent(ai.NewCustomerAgent(model, ai.CustomerTools(&ai.CustomerToolEnv{
+			LookupSkill: func(ctx context.Context, query string) (string, error) {
+				if skillIndex != nil {
+					docs, err := skillIndex.Search(ctx, query, 5)
+					if err == nil && len(docs) > 0 {
+						out := make([]map[string]any, 0, len(docs))
+						for _, d := range docs {
+							out = append(out, map[string]any{"content": d.PageContent, "metadata": d.Metadata})
+						}
+						b, _ := json.Marshal(out)
+						return string(b), nil
+					}
+				}
+				// 关键词回退。
+				skills, err := aiRepo.ListSkills(ctx)
+				if err != nil {
+					return "", err
+				}
+				out := make([]map[string]any, 0, len(skills))
+				q := strings.ToLower(strings.TrimSpace(query))
+				for _, s := range skills {
+					if q == "" || strings.Contains(strings.ToLower(s.Name+" "+s.Description), q) {
+						out = append(out, map[string]any{"name": s.Name, "description": s.Description, "type": s.Type})
+					}
+				}
+				b, _ := json.Marshal(out)
+				return string(b), nil
+			},
+			CreateTicket:  func(ctx context.Context, userID int64, content string) (string, error) { return aiRepo.CreateTicket(ctx, userID, content) },
+			TransferHuman: func(ctx context.Context, userID int64) (string, error) { return aiRepo.CreateTicket(ctx, userID, "用户申请转人工客服") },
+		})))
+		log.Printf("ai: 多轮客服 agent 已启用（langchaingo conversational agent + 工具）")
+	} else {
+		log.Printf("WARN: 未配置真实 LLM，客服回退单轮调用器（未配置时返回显式错误）")
+	}
 
 	aiH := ai.NewHandler(aiSvc).WithSummary(summarySvc).WithReview(reviewSvc).WithCustomer(customerSvc)
 	aiChatH := ai.NewAIChatHandler(reviewSvc, customerSvc)

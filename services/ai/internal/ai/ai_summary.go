@@ -215,13 +215,21 @@ func (s *ReviewService) ReviewComment(ctx context.Context, content string) (bool
 
 type CustomerService struct {
 	caller abstraction.ServiceCaller
+	agent  *CustomerAgent // 多轮 agent（优先于单轮 caller）
 }
 
 func NewCustomerService(caller abstraction.ServiceCaller) *CustomerService {
 	return &CustomerService{caller: caller}
 }
 
+// SetAgent 注入多轮客服 agent（langchaingo），Chat 优先走 agent。
+func (s *CustomerService) SetAgent(agent *CustomerAgent) { s.agent = agent }
+
 func (s *CustomerService) Chat(ctx context.Context, userID int64, content string) (string, error) {
+	// 多轮 agent：以 userID 作为会话 key（每个用户独立多轮上下文 + 工具调用）。
+	if s.agent != nil {
+		return s.agent.Chat(ctx, userID, content)
+	}
 	req := map[string]interface{}{"user_id": userID, "content": content}
 	var resp struct {
 		Reply string `json:"reply"`

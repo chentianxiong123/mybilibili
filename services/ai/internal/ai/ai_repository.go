@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -204,6 +205,32 @@ func (r *Repository) UpdateSkill(ctx context.Context, id int64, s *Skill) error 
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE ai_skills SET name=$1, description=$2, system_prompt=$3, few_shot_examples=$4, type=$5 WHERE id=$6`,
 		s.Name, s.Description, s.SystemPrompt, s.FewShotExamples, s.Type, id)
+	return err
+}
+
+// CreateTicket 创建人工客服工单（support_tickets）。
+// FINDING-086 修复：此前 support_tickets 表存在但无任何写入代码（空壳）。
+func (r *Repository) CreateTicket(ctx context.Context, userID int64, content string) (string, error) {
+	if content == "" {
+		return "", fmt.Errorf("ticket content required")
+	}
+	ticketNo := fmt.Sprintf("TK-%d-%d", time.Now().Unix(), userID)
+	var no string
+	err := r.db.QueryRowContext(ctx,
+		`INSERT INTO support_tickets (ticket_no, user_id, title, content, status, created_at)
+		 VALUES ($1, $2, LEFT($3, 200), $3, 'PENDING', NOW()) RETURNING ticket_no`,
+		ticketNo, userID, content).Scan(&no)
+	return no, err
+}
+
+// LogUsage 真实写入 AI 用量日志（FINDING-085 修复：此前 ai_usage_logs 从未写入，用量端点恒 0）。
+func (r *Repository) LogUsage(ctx context.Context, feature string, userID int64, model string, tokenCount, durationMs int) error {
+	if feature == "" {
+		return nil
+	}
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO ai_usage_logs (feature, user_id, token_count, model, duration_ms) VALUES ($1,$2,$3,$4,$5)`,
+		feature, userID, tokenCount, model, durationMs)
 	return err
 }
 

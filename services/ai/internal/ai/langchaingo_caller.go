@@ -26,6 +26,8 @@ type langchaingoCaller struct {
 	llm        *openai.LLM
 	model      string
 	configured bool
+	// usageLog 真实写入 ai_usage_logs（FINDING-085）；nil 时不记录。
+	usageLog func(feature string, userID int64, tokenCount, durationMs int)
 }
 
 // NewLangchaingoCaller 构造 langchaingo 调用器。模型/端点从 cfg 或 env
@@ -74,6 +76,15 @@ func (c *langchaingoCaller) requireConfig() error {
 }
 
 func (c *langchaingoCaller) generate(ctx context.Context, system, user string) (string, error) {
+	return c.generateOpt(ctx, system, user, nil)
+}
+
+// generateJSON 强制模型返回 JSON（WithJSONMode），用于结构化审核结果。
+func (c *langchaingoCaller) generateJSON(ctx context.Context, system, user string) (string, error) {
+	return c.generateOpt(ctx, system, user, []llms.CallOption{llms.WithJSONMode()})
+}
+
+func (c *langchaingoCaller) generateOpt(ctx context.Context, system, user string, extra []llms.CallOption) (string, error) {
 	if err := c.requireConfig(); err != nil {
 		return "", err
 	}
@@ -83,7 +94,8 @@ func (c *langchaingoCaller) generate(ctx context.Context, system, user string) (
 	}
 	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
-	return llms.GenerateFromSinglePrompt(ctx, c.llm, prompt)
+	opts := append([]llms.CallOption{}, extra...)
+	return llms.GenerateFromSinglePrompt(ctx, c.llm, prompt, opts...)
 }
 
 func (c *langchaingoCaller) Call(ctx context.Context, target, method string, req, resp any) error {
@@ -96,6 +108,7 @@ func (c *langchaingoCaller) Call(ctx context.Context, target, method string, req
 	switch method {
 	case "Summary":
 		videoID, _ := reqData["video_id"].(float64)
+		start := time.Now()
 		reply, err := c.generate(ctx,
 			"你是一个视频摘要助手。请用中文简洁总结视频内容，不超过200字。",
 			fmt.Sprintf("请为视频 %d 生成摘要", int64(videoID)),
@@ -103,18 +116,21 @@ func (c *langchaingoCaller) Call(ctx context.Context, target, method string, req
 		if err != nil {
 			return err
 		}
+		c.logUsage("summary", 0, start, len(reply))
 		return setResp(resp, "summary", reply)
 
 	case "Moderate":
 		content, _ := reqData["content"].(string)
 		scene, _ := reqData["scene"].(string)
-		reply, err := c.generate(ctx,
+		start := time.Now()
+		reply, err := c.generateJSON(ctx,
 			"你是一个内容审核助手。请判断以下内容是否违规。只返回JSON：{\"passed\":true/false,\"reason\":\"原因\"}",
 			fmt.Sprintf("场景: %s\n内容: %s", scene, content),
 		)
 		if err != nil {
 			return err
 		}
+		c.logUsage("moderation", 0, start, len(reply))
 		var result struct {
 			Passed bool   `json:"passed"`
 			Reason string `json:"reason"`
@@ -130,6 +146,7 @@ func (c *langchaingoCaller) Call(ctx context.Context, target, method string, req
 
 	case "CustomerChat":
 		content, _ := reqData["content"].(string)
+		start := time.Now()
 		reply, err := c.generate(ctx,
 			"你是一个B站客服助手。请用中文友好地回答用户问题，回答简洁不超过200字。",
 			content,
@@ -137,6 +154,7 @@ func (c *langchaingoCaller) Call(ctx context.Context, target, method string, req
 		if err != nil {
 			return err
 		}
+		c.logUsage("customer_chat", userIDFromReq(reqData), start, len(reply))
 		return setResp(resp, "reply", reply)
 
 	case "CheckSummary":
@@ -184,6 +202,55 @@ func (c *langchaingoCaller) CallStream(ctx context.Context, target, method strin
 }
 
 func (c *langchaingoCaller) Close() error { return nil }
+
+// Model 返回底层 langchaingo 模型（供多轮 agent 复用同一 LLM）。
+// 未配置时返回 nil。
+func (c *langchaingoCaller) Model() llms.Model { return c.llm }
+
+// Configured 返回是否已配置真实 LLM。
+func (c *langchaingoCaller) Configured() bool { return c.configured }
+
+// SetUsageLog 注入用量日志回调（写入 ai_usage_logs）。
+func (c *langchaingoCaller) SetUsageLog(fn func(feature string, userID int64, tokenCount, durationMs int)) {
+	c.usageLog = fn
+}
+
+// logUsage 记录一次调用（按响应长度估算 token：chars/4，最少 1）。
+func (c *langchaingoCaller) logUsage(feature string, userID int64, start time.Time, replyLen int) {
+	if c.usageLog == nil {
+		return
+	}
+	tokens := replyLen / 4
+	if tokens < 1 {
+		tokens = 1
+	}
+	c.usageLog(feature, userID, tokens, int(time.Since(start).Milliseconds()))
+}
+
+// userIDFromReq 从请求 map 提取 user_id（若无则 0）。
+func userIDFromReq(reqData map[string]interface{}) int64 {
+	if v, ok := reqData["user_id"].(float64); ok {
+		return int64(v)
+	}
+	return 0
+}
+
+// ModelFromCaller 从 ServiceCaller 提取 langchaingo 模型（供多轮 agent 复用）。
+// 非 langchaingo 调用器时返回 nil。
+func ModelFromCaller(caller abstraction.ServiceCaller) llms.Model {
+	if c, ok := caller.(*langchaingoCaller); ok {
+		return c.Model()
+	}
+	return nil
+}
+
+// SetUsageLog 在 langchaingo 调用器上注入用量日志回调（写入 ai_usage_logs）。
+// 非 langchaingo 调用器时静默忽略。
+func SetUsageLog(caller abstraction.ServiceCaller, fn func(feature string, userID int64, tokenCount, durationMs int)) {
+	if c, ok := caller.(*langchaingoCaller); ok {
+		c.SetUsageLog(fn)
+	}
+}
 
 // setResp 将 value 写入 resp（兼容 *struct{Field string} 与 *map[string]interface{}）。
 func setResp(resp any, key, value string) error {
