@@ -31,6 +31,7 @@
 | 合集和列表页 | `/collections` | ⬜ 未对齐 | 本地 `CollectionListView.vue` 为自定义盒装网格；B 站对应页在 `space.bilibili.com/{uid}/lists`，套在通栏 space 布局内，依赖空间页先迁移 |
 | 搜索页-用户结果 | `/search/user` | 🟡 大致对齐可过 | 容器 **1728 居中 @x96**、搜索头 **122 高 / 输入框 640×54 / tabs 44** 全部与 B 站 `search.bilibili.com/upuser` 一致（本轮 computed-style 验证）；仅**用户卡片内部**（标题 20/600、描述 13 #61666d、关注按钮 100×32 圆角 8）未逐像素核。卡内对齐受阻：`searchUsers()` 在 `created()`（SSR 服务端）调用，axios baseURL 指向 `http://core:8080`，无后端时无法在浏览器渲染卡片测量 |
 | **专栏详情页** | `/read/cv[id]` | ✅ **本轮对齐** | `[id].vue` 整页对齐 `bilibili.com/read/cv*`：容器 **720+padding24→708px 居中白卡**（圆角 6 + 顶部 1px #e3e5e5 内阴影 + padding-bottom 10，起点 y72）、页面背景 **#fff→#f1f2f3** + padding-top 72、标题 **padding 20/56 + 24/700/36**、作者区 **padding 12/56 + 头像 48 + 名字 17/600/24 + 时间 13/18 #9499a0**、正文 **padding 0/56/36/56 + 17/29 + 段落 #61666d + h1 19/500/32 margin-top 36**、右侧悬浮栏 **26→58 宽 @x1326 top180**（动作 46×42 间距 58 / 图标 24 / 文字 12-14）（commit d9cbc8f6） |
+| **动态详情页** | `/dynamic/[id]` | ✅ **本轮对齐** | `DynamicDetailView.vue` 整页重构对齐 `t.bilibili.com/dynamic/*`：**移除右侧栏 + 卡片内点赞栏 → 改双 tab（评论 / 赞与转发）**、页面背景 **#f5f5f5→#d3e9e8** + padding-top 72、容器 **1200+300侧栏→632px 居中白卡**（顶角 6px 圆角 + padding-bottom 100，起点 y72）、动态项 **左 88px 头像槽（头像 48 @偏移19,19）+ 右 20**、用户名 **16/500→17/600/32 #18191c**、时间 **13/18 #9499a0**、正文 **15/1.8→15/25 #18191c**、图片 **auto-fill→3 列方形 gap6 圆角6**、tabs 头 **48 高 padding-left 26** + tab **18/500/25 margin-left 30（首 tab @x700）** + 激活游标 **36×2 #00aede transition 0.3s cubic-bezier(.645,.045,.355,1)**（commit 8ddbbed6；getComputedStyle 真值：content@644,72 / avatar@663,91 / tabItem@700 / activeBar@700 全部与 B 站一致） |
 
 ## 本轮已交付（2026-11-10 凌晨班，5 个页面对齐，均只 commit 未 push）
 - `116c22f1` 历史记录页：整页重构（通栏白底 + 1432 容器 + 粘性筛选条 + 时间轴 + 5 列卡片网格）。
@@ -46,6 +47,9 @@
 
 ## 本轮已交付（2026-11-09 夜班，1 个页面对齐，只 commit 未 push）
 - 直播首页 `/live`：`LiveListView.vue` 整页重构对齐 `live.bilibili.com` 内容区（分类胶囊条 + hero 992×558 播放位 + 推荐直播 5 列网格 363/封面 16:9 圆角 6/标题 14-500-24/副标题 12-20-#9499a0/卡片圆角 4）。关键排障：mock 必须排除 `/_nuxt/` 路径（否则把 Nuxt 源码模块当 API 拦截致白屏），且端点带 `/v1` 前缀为 `/api/v1/live/room/*`。网格负 margin 会撑大卡宽（去掉后回落 363）。949 测试全绿。
+
+## 本轮已交付（2026-11-10 深夜班，1 个页面对齐，只 commit 未 push）
+- `8ddbbed6` 动态详情页 `/dynamic/[id]`：整页重构对齐 `t.bilibili.com/dynamic/*`（移除侧栏+点赞栏改双 tab、#d3e9e8 背景、632 居中白卡、88px 头像槽、tabs 头 48 + 游标 36×2 #00aede）。关键排障：mock 数组里 `/api/v1/dynamic/` 会抢先匹配 `/dynamic/comment/list`，需把具体匹配放前面；simple 布局 HeaderBar 为 fixed 64px，内容需 `padding-top:72px` 才落到 y72。949 测试全绿。
 
 ## 待对齐页面（优先级）
 1. **合集和列表页** `/collections` — ⬜ 依赖空间页通栏布局，建议与空间页一起评估。
