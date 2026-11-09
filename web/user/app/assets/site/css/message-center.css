@@ -83,6 +83,13 @@
   padding-right: 10px;
 }
 
+/* B站回复/@/赞/系统通知用 m-infinite-scroll 包裹（免 padding-right，内容 993 宽，
+   滚动落在 wrapper 上，等效 B站 overflow: hidden auto）。 */
+.message-content__wrapper.m-infinite-scroll {
+  height: 100%;
+  overflow-y: auto;
+}
+
 .message-content__wrapper:not(.m-infinite-scroll) .message-content__inner {
   height: 100%;
 }
