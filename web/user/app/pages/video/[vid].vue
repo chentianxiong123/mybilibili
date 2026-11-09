@@ -799,7 +799,7 @@ function changeWindowSize() {
     const minLeftWidth = 668
     const maxLeftWidth = Math.max(minLeftWidth, viewportWidth - rightWidth - gap)
     const windowHeight = window.innerHeight
-    let height = (windowHeight - 64) * 0.7
+    let height = (windowHeight - 64) * 0.75
     let width = height * (16 / 9)
     if (width > maxLeftWidth) {
         width = maxLeftWidth
@@ -1420,7 +1420,7 @@ watch(
 }
 
 .right-container {
-    width: 350px;
+    width: 411px;
     flex: none;
     margin-left: 30px;
     position: relative;
