@@ -20,7 +20,9 @@ html {
 body {
   font-family: 'Harmony Font';
   font-size: 14px;
-  background-color: #fafafa;
+  /* 对齐 B 站 getComputedStyle：body 背景为 #f1f2f3，文字主色 #18191c（非纯黑） */
+  background-color: #f1f2f3;
+  color: #18191c;
   min-width: 1090px;
   line-height: 1.25;
 }

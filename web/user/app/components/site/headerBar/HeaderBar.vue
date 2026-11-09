@@ -706,7 +706,7 @@ import { hasAuthSession } from "@/utils/auth.ts"
     display: flex;
     align-items: center;
     flex-shrink: 0;     /*容器空间不足时不缩小，即固定大小*/
-    margin-right: 20px;
+    margin-right: 0;    /* 对齐 B 站 getComputedStyle：left-entry margin-right 为 0 */
     border: 0;
     font-family: inherit;
     font-size: 100%;
@@ -778,7 +778,7 @@ import { hasAuthSession } from "@/utils/auth.ts"
     color: #fff;
     font-size: 14px;
     cursor: pointer;
-    margin-right: 15px;
+    margin-right: 20px;   /* 对齐 B 站 getComputedStyle：导航项右间距 20px */
 }
 
 .icon-dianshi, .icon-xiazai {
