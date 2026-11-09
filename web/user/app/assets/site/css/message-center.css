@@ -98,27 +98,94 @@
   width: 100%;
 }
 
+/* 分区白卡（消息设置页）：B站 .message-section margin 0 0 10px，白卡三属性由
+   模板上的 .message-box-shadow 提供（bg #fff / 圆角 4 / 阴影 rgba(121,146,185,.54)）。 */
 .message-section {
   box-sizing: border-box;
   width: 100%;
-}
-
-.message-section:not(:first-child) {
-  margin-top: 10px;
-}
-
-.message-section__header {
-  display: flex;
-  align-items: center;
-  height: 48px;
-  padding: 0 16px;
-  color: var(--text3);
-  font-size: 14px;
-  border-bottom: 1px solid var(--line_regular);
+  margin: 0 0 10px;
 }
 
 .message-section__body {
   width: 100%;
+}
+
+/* ---------- 消息设置（config-section / m-radio） ---------- */
+.config-block {
+  width: 100%;
+}
+
+.config-section {
+  box-sizing: border-box;
+  padding: 24px 16px;
+}
+
+.config-section__header {
+  display: flex;
+  align-items: center;
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.config-section__title {
+  color: var(--text1);
+}
+
+.config-section__desc {
+  color: var(--text3);
+}
+
+.config-section__body {
+  display: flex;
+  align-items: center;
+}
+
+.m-radio-group {
+  display: flex;
+  align-items: center;
+}
+
+.m-radio {
+  display: flex;
+  align-items: center;
+  margin-right: 20px;
+  color: var(--text1);
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.m-radio:last-child {
+  margin-right: 0;
+}
+
+/* B站 .m-radio__inner 22x22 圆形白底；选中 border #00aeec(brand_blue)、未选中 #c9ccd0 */
+.m-radio__inner {
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  margin-right: 10px;
+  border: 1px solid #c9ccd0;
+  border-radius: 50%;
+  background: #fff;
+  position: relative;
+}
+
+.m-radio.checked .m-radio__inner {
+  border-color: var(--brand_blue, #00aeec);
+}
+
+.m-radio.checked .m-radio__inner::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand_blue, #00aeec);
 }
 
 /* ---------- 侧栏 ---------- */

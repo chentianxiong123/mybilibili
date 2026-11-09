@@ -87,12 +87,12 @@ const pageTitle = computed(() => menu[routerIndex.value]?.name ?? '消息设置'
 
 // B站各消息 tab 的内容壳模型（真实抓取 message.bilibili.com）：
 // - inner 白卡（message-box-shadow）：我的消息 / 回复我的 / @我的
-// - inner 透明（无白卡，白卡由每个条目自带）：收到的赞 / 系统通知
-// - wrapper 走 m-infinite-scroll（免 padding-right，内容 993 宽 + wrapper 滚动）：收到的赞 / 系统通知
+// - inner 透明（无白卡，白卡由每个条目/分区自带）：收到的赞 / 系统通知 / 消息设置
+// - wrapper 走 m-infinite-scroll（免 padding-right，内容 993 宽 + wrapper 滚动）：收到的赞 / 系统通知 / 消息设置
 // - wrapper 普通（padding-right 10，内容 983 宽）：我的消息 / 回复我的 / @我的
 //   （回复/@ 的 10px 宽度差是已知偏差，二者已按 983 验收，本轮不动以免回归）
-const TRANSPARENT_INNER = ['/message/love', '/message/system']
-const INFINITE_SCROLL = ['/message/love', '/message/system']
+const TRANSPARENT_INNER = ['/message/love', '/message/system', '/message/config']
+const INFINITE_SCROLL = ['/message/love', '/message/system', '/message/config']
 const transparentInner = computed(() => TRANSPARENT_INNER.some(p => route.path.startsWith(p)))
 const useInfiniteScroll = computed(() => INFINITE_SCROLL.some(p => route.path.startsWith(p)))
 
