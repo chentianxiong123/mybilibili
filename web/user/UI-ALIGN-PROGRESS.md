@@ -39,6 +39,10 @@
 | **动态详情页** | `/dynamic/[id]` | ✅ **本轮对齐** | `DynamicDetailView.vue` 整页重构对齐 `t.bilibili.com/dynamic/*`：**移除右侧栏 + 卡片内点赞栏 → 改双 tab（评论 / 赞与转发）**、页面背景 **#f5f5f5→#d3e9e8** + padding-top 72、容器 **1200+300侧栏→632px 居中白卡**（顶角 6px 圆角 + padding-bottom 100，起点 y72）、动态项 **左 88px 头像槽（头像 48 @偏移19,19）+ 右 20**、用户名 **16/500→17/600/32 #18191c**、时间 **13/18 #9499a0**、正文 **15/1.8→15/25 #18191c**、图片 **auto-fill→3 列方形 gap6 圆角6**、tabs 头 **48 高 padding-left 26** + tab **18/500/25 margin-left 30（首 tab @x700）** + 激活游标 **36×2 #00aede transition 0.3s cubic-bezier(.645,.045,.355,1)**（commit 8ddbbed6；getComputedStyle 真值：content@644,72 / avatar@663,91 / tabItem@700 / activeBar@700 全部与 B 站一致） |
 | **搜索落地页空态** | `/search` | ✅ **本轮对齐** | `search.vue` 落地空态对齐 `search.bilibili.com/`（无关键词）：标题高度 **60→64px**（line-height 64）使 `.search-center` 块顶落到 **y396**、logo 去 `translateY(4px)`、「搜索」文字 + 左侧 2px 分隔线颜色 **brand_pink→#00aeec**、搜索框 **margin-bottom 20→0** 使 center 块 **168→148**。getComputedStyle 真值：center [640,396,640,148] / title [640,396,640,64] / searchInput [640,490,640,54] **全部与 B 站精确一致**（commit 1908c8ce）。注：logo 用站点粉色全字标（237 宽）vs B 站蓝色 TV 图标（140 宽），属品牌资产差异，不替换以保持全站 header 一致 |
 | 分类页 | `/category/[id]` | 🟡 大致对齐可过 | `CategoryView.vue`（777 行，banner 轮播 + 分区 tab + 视频网格）本轮 computed-style 核验：**网格容器 1760 @x80 居中、5 列 × 卡片 336×236、封面 336×189(16:9)、gap 20**，与已像素对齐的首页约定一致，且复用已对齐的 `VideoCard` 组件 → 内容网格可过。**未逐像素核**：banner 轮播高度/样式 与 分区 tab 条 —— B 站对应 channel 页（如 `bilibili.com/v/gaming`）的 banner+子分区体系是另一套复杂结构，需专门抓参考再做，无人值守不重建 |
+| **系统通知页** | `/message/system` | ✅ **本轮对齐** | `message.vue` + `message-center.css` 对齐 `message.bilibili.com` 系统通知 tab：核心发现是 **B站各消息 tab 的内容壳模型不同** —— 系统通知/收到的赞 的 `.message-content__inner` 是**透明无白卡**（白卡由每个 `.notify-item` 自带 padding 24px 16px + 白底 + 圆角4 + 阴影 rgba(121,146,185,.54) 0 2px 4px）、wrapper 走 **m-infinite-scroll**（免 padding-right，内容 **993** 宽 + wrapper 滚动）；而 我的消息/回复/@ 的 inner 才是 `message-box-shadow` 白卡。原先 message.vue **无条件**给 inner 加白卡 → 系统通知页出现「inner 大白卡套 notify-item 小白卡」+ 内容宽 983≠993 两处偏差。修法：inner 的 `message-box-shadow` 与 wrapper 的 `m-infinite-scroll` 改为**按路由条件绑定**（`transparentInner`/`useInfiniteScroll` 仅命中 `/message/love`、`/message/system`）；`message-center.css` 补 `.message-content__wrapper.m-infinite-scroll` 正向规则（height 100% + overflow-y auto，等效 B站 `overflow:hidden auto`）。getComputedStyle 真值：contentInner [993,透明,无阴影] / contentWrapper [993x944] / notifyItem [993 白卡+阴影] / systemItem margin-bottom 16 **全部与 B站一致**。**顺带把 收到的赞(`/message/love`) 同一偏差一并对齐**（同为透明 inner 模型）。我的消息/回复/@ 不在条件内、行为不变未回归（commit d873e436）。注：系统通知 `/sysmsg` 旧端点已废弃（返回 error 容器），真实入口是 message.bilibili.com SPA 内点侧栏「系统通知」 |
+
+## 本轮已交付（2026-11-10 凌晨班 2，系统通知页 1 处对齐，只 commit 未 push）
+- `d873e436` 系统通知页 `/message/system`（+ 顺带 `/message/love`）：`message.vue` 内容壳 inner/wrapper 按 B站各 tab 模型条件化 —— B站 系统通知/收到的赞 的 `.message-content__inner` 是**透明无白卡**（白卡由每个 `.notify-item` 自带）、wrapper 走 `m-infinite-scroll`（内容 993 宽 + wrapper 滚动），而 我的消息/回复/@ 的 inner 才是 `message-box-shadow` 白卡。原先无条件加白卡 → 系统通知页「inner 大白卡套 notify-item 小白卡」+ 内容宽 983≠993。修法：`transparentInner`/`useInfiniteScroll` 仅命中 love/system；`message-center.css` 补 `.m-infinite-scroll` 正向规则（height100%+overflow-y auto）。getComputedStyle 真值：contentInner[993 透明] / contentWrapper[993x944] / notifyItem[993 白卡+阴影] 全部与 B站一致。我的消息/回复/@ 不在条件内、未回归。949 测试全绿。
 
 ## 本轮已交付（2026-11-10 深夜 continued，私信页家族 3 处对齐，只 commit 未 push）
 - `c7b9a4f4` 私信页 `/message/whisper`：会话列表对齐 `message.bilibili.com` IM 侧栏（会话项 padding 右 12 / 标题 flex 居中 #61666d / 昵称 126x22 #18191c / 预览 155x18 #9499a0 / IM 盒 944 / 未读角标 #ff6699）。关键排障：mock 必须给后端 Conversation 原始形状（`target_user_name`/`last_message_content`/`unread_count`），因 `request.ts adaptChatConversation` 会转换；直接给前端形状会让昵称/预览为空。949 测试全绿。
@@ -83,7 +87,7 @@
 - API 契约：`$get` → `request.ts`（baseURL `/api`），拦截器要求 `code===200`，列表接口经 `adaptCard`（raw: `{id,coverUrl,title,durationSeconds,createdAt,viewCount,...,uploader:{id,name,avatar}}`）。
 
 ## 铁律遵守
-- 只 commit，绝不 push。✅（本轮 5 个 commit，无 push）
-- 所有 CSS 值来自真实 `getComputedStyle()`。✅
-- `npx vitest run`：949 passed（本轮每次改动后均跑，无新失败）。✅
-- 只改 `web/user` 前端模板/样式（`HistoryView.vue` / `read/home.vue` / `video/[vid].vue` / `PersonalCenterView.vue`）。✅
+- 只 commit，绝不 push。✅（本轮 1 个 commit `d873e436`，无 push）
+- 所有 CSS 值来自真实 `getComputedStyle()`。✅（系统通知 inner/wrapper 模型来自 message.bilibili.com 五个 tab 逐个探测）
+- `npx vitest run`：949 passed（本轮改动后跑，无新失败）。✅
+- 只改 `web/user` 前端模板/样式（`message.vue` / `message-center.css`）。✅
