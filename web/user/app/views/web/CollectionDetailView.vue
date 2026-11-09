@@ -2,7 +2,6 @@
 import { useAuth } from '@/composables/useAuth'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, VideoPlay, Clock, View, Edit, Share, More } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { collectionApi } from '@/api/collection.ts'
 
@@ -53,7 +52,7 @@ const sortBy = ref('default') // default-默认, newest-最新, oldest-最早
 
 // 判断是否是自己的合集
 const isOwnCollection = computed(() => {
-  return currentUserId.value && collection.value.userId && 
+  return currentUserId.value && collection.value.userId &&
          String(currentUserId.value) === String(collection.value.userId)
 })
 
@@ -73,6 +72,13 @@ const formatDuration = (seconds) => {
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+}
+
+// 格式化播放量（万）
+const formatView = (n) => {
+  const v = Number(n) || 0
+  if (v >= 10000) return (v / 10000).toFixed(1).replace(/\.0$/, '') + '万'
+  return String(v)
 }
 
 // 获取默认封面
@@ -107,6 +113,8 @@ const loadCollectionDetail = async () => {
   } catch (error) {
     console.error('获取合集详情失败:', error)
     ElMessage.error('获取合集详情失败')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -163,27 +171,14 @@ const goToEdit = () => {
   router.push(`/collection/${collectionId.value}/edit`)
 }
 
-// 处理分页变化
-const handlePageChange = (page) => {
-  pagination.value.currentPage = page
-  loadManuscripts()
-}
-
-// 处理每页数量变化
-const handleSizeChange = (size) => {
-  pagination.value.pageSize = size
-  pagination.value.currentPage = 1
-  loadManuscripts()
-}
-
 // 处理排序变化
 const handleSortChange = (value) => {
   sortBy.value = value
   // 根据排序方式重新排序稿件
   if (value === 'newest') {
-    manuscripts.value.sort((a, b) => new Date(b.createTime) - new Date(a.createTime))
+    manuscripts.value.sort((a, b) => new Date(b.uploadTime || b.createTime) - new Date(a.uploadTime || a.createTime))
   } else if (value === 'oldest') {
-    manuscripts.value.sort((a, b) => new Date(a.createTime) - new Date(b.createTime))
+    manuscripts.value.sort((a, b) => new Date(a.uploadTime || a.createTime) - new Date(b.uploadTime || b.createTime))
   } else {
     // 默认排序，重新加载
     loadManuscripts()
@@ -197,98 +192,46 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="collection-detail-page">
-    <!-- 头部导航 -->
-    <div class="detail-header">
-      <div class="header-left">
-        <el-button text :icon="ArrowLeft" @click="goBack">
-          返回
-        </el-button>
+  <div class="space-list-details">
+    <!-- 合集头部：返回 + 标题 + 统计 + 操作（播放全部 / 排序） -->
+    <div class="list-header">
+      <div class="title">
+        <div class="back" @click="goBack">
+          <i class="iconfont icon-zuojiantou"></i>
+        </div>
+        <div class="name">{{ collection.name }}</div>
       </div>
-      <div class="header-right">
-        <el-button v-if="isOwnCollection" text :icon="Edit" @click="goToEdit">
-          编辑合集
-        </el-button>
-        <el-button text :icon="Share">
-          分享
-        </el-button>
-      </div>
-    </div>
-
-    <!-- 合集信息区 -->
-    <div class="collection-info-section">
-      <div class="info-container">
-        <!-- 封面 -->
-        <div class="collection-cover">
-          <img loading="lazy" decoding="async"
-            :src="collection.coverUrl || getDefaultCover()"
-            :alt="collection.name"
-          />
-          <div class="cover-overlay">
-            <el-button type="primary" size="large" :icon="Play" @click="playAll">
-              播放全部
-            </el-button>
-          </div>
-          <div class="video-count-badge">
-            <el-icon><VideoPlay /></el-icon>
-            <span>{{ collection.videoCount }} 个视频</span>
+      <div class="subtitle">
+        <div class="meta">
+          <div class="stats">
+            合集&nbsp;&nbsp; {{ collection.videoCount }}个视频 &nbsp; {{ formatDate(collection.updateTime) }}更新
           </div>
         </div>
-
-        <!-- 信息 -->
-        <div class="collection-meta">
-          <h1 class="collection-title">{{ collection.name }}</h1>
-          <p class="collection-desc">{{ collection.description || '暂无描述' }}</p>
-          
-          <!-- 作者信息 -->
-          <div class="author-info" @click="goToUserProfile">
-            <img loading="lazy" decoding="async"
-              :src="collection.userAvatar || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'"
-              :alt="collection.userName"
-              class="author-avatar"
-            />
-            <span class="author-name">{{ collection.userName }}</span>
+      </div>
+      <div class="actions">
+        <div class="left">
+          <div class="playall">
+            <button class="vui_button action-btn playall-btn" @click="playAll">
+              <i class="iconfont icon-bofang"></i>
+              <span>播放全部</span>
+            </button>
           </div>
-
-          <!-- 统计信息 -->
-          <div class="stats-info">
-            <span class="stat-item">
-              <el-icon><Clock /></el-icon>
-              更新于 {{ formatDate(collection.updateTime) }}
-            </span>
-          </div>
-
-          <!-- 操作按钮 -->
-          <div class="action-buttons">
-            <el-button type="primary" size="large" :icon="Play" @click="playAll">
-              播放全部
-            </el-button>
-            <el-button v-if="isOwnCollection" size="large" :icon="Edit" @click="goToEdit">
-              管理合集
-            </el-button>
+        </div>
+        <div class="right">
+          <div class="sort-mode">
+            <select class="sort-select" :value="sortBy" @change="handleSortChange($event.target.value)">
+              <option value="default">默认排序</option>
+              <option value="newest">最新发布</option>
+              <option value="oldest">最早发布</option>
+            </select>
+            <i class="iconfont icon-xiajiantou sort-mode__icon"></i>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 稿件列表区 -->
-    <div class="manuscripts-section">
-      <div class="section-header">
-        <h2 class="section-title">
-          视频列表
-          <span class="video-count">({{ pagination.total }})</span>
-        </h2>
-        
-        <!-- 排序选项 -->
-        <div class="sort-options">
-          <el-radio-group v-model="sortBy" size="small" @change="handleSortChange">
-            <el-radio-button value="default">默认排序</el-radio-button>
-            <el-radio-button value="newest">最新发布</el-radio-button>
-            <el-radio-button value="oldest">最早发布</el-radio-button>
-          </el-radio-group>
-        </div>
-      </div>
-
+    <!-- 视频网格 -->
+    <div class="list-content">
       <!-- 加载状态 -->
       <div v-if="loading" class="loading-state">
         <el-skeleton :rows="5" animated />
@@ -297,436 +240,352 @@ onMounted(() => {
       <!-- 空状态 -->
       <div v-else-if="manuscripts.length === 0" class="empty-state">
         <el-empty description="暂无视频">
-          <el-button v-if="isOwnCollection" type="primary" @click="goToEdit">
-            添加视频
-          </el-button>
+          <button v-if="isOwnCollection" class="vui_button action-btn" @click="goToEdit">添加视频</button>
         </el-empty>
       </div>
 
-      <!-- 稿件列表 -->
-      <div v-else class="manuscripts-list">
-        <div
-          v-for="(manuscript, index) in manuscripts"
-          :key="manuscript.id"
-          class="manuscript-item"
-          :class="{ active: currentIndex === index }"
-          @click="playManuscript(manuscript, index)"
-        >
-          <!-- 序号 -->
-          <div class="item-index">
-            <span v-if="currentIndex !== index" class="index-number">{{ index + 1 }}</span>
-            <el-icon v-else class="playing-icon"><VideoPlay /></el-icon>
-          </div>
-
-          <!-- 封面 -->
-          <div class="item-cover">
-            <img loading="lazy" decoding="async"
-              :src="manuscript.coverUrl || getDefaultCover()"
-              :alt="manuscript.title"
-            />
-            <div class="duration">{{ formatDuration(manuscript.duration) }}</div>
-          </div>
-
-          <!-- 信息 -->
-          <div class="item-info">
-            <h3 class="item-title">{{ manuscript.title }}</h3>
-            <p class="item-desc">{{ manuscript.description || '暂无描述' }}</p>
-            <div class="item-meta">
-              <span class="meta-item">
-                <el-icon><View /></el-icon>
-                {{ manuscript.viewCount || 0 }}
-              </span>
-              <span class="meta-item">
-                {{ formatDate(manuscript.uploadTime) }}
-              </span>
+      <!-- 视频卡片 -->
+      <div
+        v-for="(manuscript, index) in manuscripts"
+        :key="manuscript.id"
+        class="list-video-item"
+        @click="playManuscript(manuscript, index)"
+      >
+        <div class="bili-video-card">
+          <div class="bili-video-card__wrap">
+            <div class="bili-video-card__cover">
+              <a class="bili-cover-card">
+                <div class="bili-cover-card__thumbnail">
+                  <img :src="manuscript.coverUrl || getDefaultCover()" :alt="manuscript.title" loading="lazy" decoding="async" />
+                </div>
+                <div class="bili-cover-card__stats">
+                  <div class="bili-cover-card__stat">
+                    <i class="iconfont icon-bofangfangkuai"></i>
+                    <span>{{ formatView(manuscript.viewCount) }}</span>
+                  </div>
+                  <div class="bili-cover-card__stat">
+                    <span>{{ formatDuration(manuscript.duration) }}</span>
+                  </div>
+                </div>
+              </a>
+              <div class="bili-card-watch-later">
+                <div class="bili-card-watch-later__btn">
+                  <i class="iconfont icon-bofang"></i>
+                </div>
+                <span class="bili-card-watch-later__tip">稍后再看</span>
+              </div>
+            </div>
+            <div class="bili-video-card__details">
+              <div class="bili-video-card__title" :title="manuscript.title">
+                <a>{{ manuscript.title }}</a>
+              </div>
+              <div class="bili-video-card__subtitle">
+                <span>{{ formatDate(manuscript.uploadTime) }}</span>
+              </div>
             </div>
           </div>
-
-          <!-- 播放按钮 -->
-          <div class="item-play">
-            <el-button type="primary" circle>
-              <el-icon><VideoPlay /></el-icon>
-            </el-button>
-          </div>
         </div>
-      </div>
-
-      <!-- 分页 -->
-      <div v-if="pagination.total > pagination.pageSize" class="pagination-wrapper">
-        <el-pagination
-          v-model:current-page="pagination.currentPage"
-          v-model:page-size="pagination.pageSize"
-          :page-sizes="[10, 20, 50]"
-          :total="pagination.total"
-          layout="total, sizes, prev, pager, next"
-          @size-change="handleSizeChange"
-          @current-change="handlePageChange"
-        />
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.collection-detail-page {
-  max-width: 1200px;
+/* ===== 对齐 space.bilibili.com/{uid}/lists/{lid} 合集详情页 =====
+   参考值来自真实 B 站 getComputedStyle 抓取（1920×1080 / dpr1）：
+   detailWrapper 1640@x140 / listHeader 1640x128 / name 24-500-34 #18191c
+   listContent grid gap 20px 16px / card 260x212 / cover 260x146 r6 bg #e3e5e7
+   title 13-500-18 #18191c / subtitle 12-400-16 #9499a0 / stats 12-12 白
+   playall-btn 100x34 r8 */
+.space-list-details {
+  width: 1640px;
   margin: 0 auto;
-  padding: 20px;
-  min-height: calc(100vh - 60px);
-  background-color: #f5f7fa;
+  padding: 20px 0 60px;
 }
 
-/* 头部导航 */
-.detail-header {
+/* 头部 */
+.list-header {
+  display: block;
+  margin-bottom: 22px;
+}
+
+.list-header .title {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding: 12px 20px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  gap: 8px;
+  height: 34px;
 }
 
-.header-left,
-.header-right {
+.list-header .back {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #18191c;
 }
 
-/* 合集信息区 */
-.collection-info-section {
-  margin-bottom: 20px;
-  padding: 24px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.list-header .back:hover {
+  background-color: rgba(0, 0, 0, 0.06);
 }
 
-.info-container {
-  display: flex;
-  gap: 24px;
+.list-header .back .iconfont {
+  font-size: 20px;
+  line-height: 1;
 }
 
-/* 封面 */
-.collection-cover {
-  position: relative;
-  width: 320px;
-  height: 180px;
-  flex-shrink: 0;
-  border-radius: 8px;
+.list-header .name {
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 34px;
+  color: #18191c;
   overflow: hidden;
-  background-color: #f0f0f0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.collection-cover img {
+.list-header .subtitle {
+  margin-top: 20px;
+  height: 20px;
+}
+
+.list-header .stats {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  color: #9499a0;
+}
+
+.list-header .actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20px;
+  height: 34px;
+}
+
+/* 播放全部按钮（B站 .playall-btn 100x34 r8） */
+.vui_button.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid #e3e5e7;
+  border-radius: 8px;
+  background-color: #fff;
+  color: #18191c;
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.vui_button.action-btn:hover {
+  color: #00aeec;
+  border-color: #00aeec;
+}
+
+.vui_button.action-btn .iconfont {
+  font-size: 12px;
+  margin-right: 4px;
+}
+
+/* 排序（B站 .sort-mode 80x16 #61666d） */
+.sort-mode {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #61666d;
+  font-size: 14px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.sort-mode .sort-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: transparent;
+  color: #61666d;
+  font-size: 14px;
+  line-height: 16px;
+  cursor: pointer;
+  padding-right: 2px;
+  outline: none;
+}
+
+.sort-mode .sort-mode__icon {
+  font-size: 12px;
+}
+
+/* 视频网格（B站 .list-content grid gap 20px 16px，6 列，卡 260x212） */
+.list-content {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 20px 16px;
+  padding-bottom: 60px;
+}
+
+.list-video-item {
+  cursor: pointer;
+}
+
+.bili-video-card {
+  width: 100%;
+}
+
+.bili-video-card__wrap {
+  width: 100%;
+}
+
+/* 封面（260x146 r6 底 #e3e5e7） */
+.bili-video-card__cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: #e3e5e7;
+}
+
+.bili-cover-card {
+  display: block;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+}
+
+.bili-cover-card__thumbnail {
+  width: 100%;
+  height: 100%;
+}
+
+.bili-cover-card__thumbnail img {
+  display: inline-block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 6px;
 }
 
-.cover-overlay {
+/* 封面底部统计（260x34 白字 12-12，圆角 0 0 6 6） */
+.bili-cover-card__stats {
   position: absolute;
-  top: 0;
   left: 0;
   right: 0;
   bottom: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.4);
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  height: 34px;
+  padding: 14px 8px 4px 8px;
+  border-radius: 0 0 6px 6px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 100%);
+  color: #fff;
 }
 
-.collection-cover:hover .cover-overlay {
+.bili-cover-card__stat {
+  display: flex;
+  align-items: center;
+  margin-right: 10px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 12px;
+  color: #fff;
+}
+
+.bili-cover-card__stat .iconfont {
+  font-size: 12px;
+  margin-right: 2px;
+}
+
+.bili-cover-card__stat:last-child {
+  margin-right: 0;
+}
+
+/* 稍后再看（28x28 圆角，hover 显现） */
+.bili-card-watch-later {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.list-video-item:hover .bili-card-watch-later {
   opacity: 1;
 }
 
-.video-count-badge {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background-color: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  font-size: 13px;
-  border-radius: 4px;
-}
-
-/* 合集元信息 */
-.collection-meta {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.collection-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
-  line-height: 1.4;
-}
-
-.collection-desc {
-  font-size: 14px;
-  color: #666;
-  margin: 0;
-  line-height: 1.6;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* 作者信息 */
-.author-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  width: fit-content;
-}
-
-.author-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.author-name {
-  font-size: 14px;
-  color: #00aeec;
-  font-weight: 500;
-}
-
-.author-info:hover .author-name {
-  text-decoration: underline;
-}
-
-/* 统计信息 */
-.stats-info {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 13px;
-  color: #9499a0;
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.private-tag {
-  padding: 2px 8px;
-  background-color: #f0f0f0;
-  color: #666;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-/* 操作按钮 */
-.action-buttons {
-  display: flex;
-  gap: 12px;
-  margin-top: auto;
-  padding-top: 12px;
-}
-
-/* 稿件列表区 */
-.manuscripts-section {
-  padding: 24px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.section-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
-}
-
-.video-count {
-  font-size: 14px;
-  color: #9499a0;
-  font-weight: normal;
-}
-
-/* 排序选项 */
-.sort-options {
-  display: flex;
-  gap: 8px;
-}
-
-/* 加载状态 */
-.loading-state {
-  padding: 40px 0;
-}
-
-/* 空状态 */
-.empty-state {
-  padding: 60px 0;
-}
-
-/* 稿件列表 */
-.manuscripts-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.manuscript-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.manuscript-item:hover {
-  background-color: #f5f7fa;
-}
-
-.manuscript-item.active {
-  background-color: rgba(0, 174, 236, 0.1);
-}
-
-/* 序号 */
-.item-index {
-  width: 40px;
+.bili-card-watch-later__btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-
-.index-number {
-  font-size: 16px;
-  font-weight: 500;
-  color: #9499a0;
-}
-
-.playing-icon {
-  font-size: 20px;
-  color: #00aeec;
-}
-
-/* 封面 */
-.item-cover {
-  position: relative;
-  width: 160px;
-  height: 90px;
-  flex-shrink: 0;
-  border-radius: 4px;
-  overflow: hidden;
-  background-color: #f0f0f0;
-}
-
-.item-cover img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
 }
 
-.duration {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  padding: 2px 6px;
-  background-color: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  font-size: 12px;
-  border-radius: 2px;
+.bili-card-watch-later__btn .iconfont {
+  font-size: 16px;
 }
 
-/* 信息 */
-.item-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+/* 卡片详情：标题 + 日期 */
+.bili-video-card__details {
+  margin-top: 6px;
 }
 
-.item-title {
-  font-size: 15px;
-  font-weight: 500;
-  color: #333;
-  margin: 0;
-  line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.item-desc {
+.bili-video-card__title {
+  display: flow-root;
+  max-height: 36px;
   font-size: 13px;
-  color: #666;
-  margin: 0;
-  line-height: 1.4;
+  font-weight: 500;
+  line-height: 18px;
+  color: #18191c;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.item-meta {
+.bili-video-card__title a {
+  color: #18191c;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  text-decoration: none;
+}
+
+.list-video-item:hover .bili-video-card__title a {
+  color: #00aeec;
+}
+
+.bili-video-card__subtitle {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  margin-top: 4px;
   font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
   color: #9499a0;
 }
 
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.bili-video-card__subtitle span {
+  color: #9499a0;
 }
 
-/* 播放按钮 */
-.item-play {
-  opacity: 0;
-  transition: opacity 0.3s ease;
+/* 加载 / 空状态 */
+.loading-state {
+  grid-column: 1 / -1;
+  padding: 20px;
 }
 
-.manuscript-item:hover .item-play {
-  opacity: 1;
+.empty-state {
+  grid-column: 1 / -1;
+  padding: 60px 0;
 }
-
-/* 分页 */
-.pagination-wrapper {
-  display: flex;
-  justify-content: center;
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid #f0f0f0;
-}
-
-/* 响应式设计 */
-
-
-
-
-
 </style>
