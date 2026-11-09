@@ -134,6 +134,8 @@ export default {
     display: grid;
     position: relative;
     width: 100%;
+    /* B站 .media-list margin: 40px -8px 0 — 负边距使卡片头像与头部内容左缘对齐 */
+    margin: 40px -8px 0;
 }
 
 @media (max-width: 1699.9px) {
@@ -167,16 +169,18 @@ export default {
 .card-title {
     margin-bottom: 5px;
     font-size: 18px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text1);
     line-height: 1.25;
     display: flex;
     align-items: center;
 }
 
+/* B站 a.text1：20px / 600 / line-height 25px / #18191c */
 .user-name {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 600;
+    line-height: 25px;
     transition: color .2s;
     max-width: 100%;
     display: block;
@@ -195,7 +199,9 @@ export default {
     margin-left: 10px;
 }
 
+/* B站 p.fs_5：13px / 400 / #61666d（var(--text2)=#61666d） */
 .card-center {
+    font-size: 13px;
     line-height: 1.35;
     margin: 5px 0;
     color: var(--text2);
@@ -211,7 +217,7 @@ export default {
     height: 32px;
     padding: 0;
     width: 100px;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 14px;
     line-height: 1;
     white-space: nowrap;
@@ -224,16 +230,17 @@ export default {
     transition-duration: .2s;
 }
 
+/* B站 vui_button--blue：bg #00aeec / border #00aeec / 白字 */
 .not-follow {
     color: #fff;
-    background: var(--brand_pink);
-    border: 1px solid var(--brand_pink);
+    background: var(--brand_blue);
+    border: 1px solid var(--brand_blue);
 }
 
 .not-follow:hover {
     color: #fff;
-    background: var(--Pi4);
-    border: 1px solid var(--Pi4);
+    background: var(--brand_blue_hover);
+    border: 1px solid var(--brand_blue_hover);
 }
 
 .following {
