@@ -21,11 +21,17 @@
 | 搜索页-视频结果 | `/search/video` | ✅ 已对齐 | 复用已对齐的 `.video-card`。`search/video.vue`：1700–2199 断点网格 6→7 列（卡片 271→230px，B 站 233px）；`videoCard.css` 标题字重 400→500。卡片 230×204 vs B 站 233×205 |
 
 ## 待对齐页面（优先级）
-1. 视频播放页 `/video/[vid]`
-2. 空间页 `/space/[uid]`
-3. 搜索页 `/search`
-4. 消息页 `/message`
-5. 动态页 `/dynamic`
+1. 视频播放页 `/video/[vid]` — ⛔ **受阻**：artplayer 播放器需真实视频流，无后端时初始化报 `Cannot read properties of undefined (reading 'width')` → 页面 500。无人值守无后端环境下无法渲染对齐，需后端 + 可播放视频。
+2. 空间页 `/space/[uid]` — 🟡 大致对齐可过：复用已对齐 header-bar + video-card；body 背景已随全局修正为 `#f1f2f3`（与 B 站 space 一致）。空间头像 60/64px vs B 站 68px（单元素 4px，VAvatar size prop 与渲染值有偏移，未盲改）。空间 banner/统计区需逐项 B 站 DOM 映射，本轮未深入。
+3. 消息页 `/message` — ⬜ 渲染完整（消息中心 + 标签栏），待对齐标签栏/列表间距。
+4. 动态页 `/dynamic` — ⬜ 渲染完整（发布框 0/200 + 全部动态 + 热搜），待对齐。
+5. 视频页之外其余（直播/专栏/收藏/历史）— ⬜ 未开始。
+
+## 本轮已交付（3 个 commit，均只 commit 未 push）
+- `526c8e51` 首页推荐卡片：owner 行高 17px、标题右留白 30px → 卡片 312×251 / info 65 / bottom 17 / tit 44 全对齐。
+- `5c36ac77` 首页顶部导航 + 全局：body 背景 `#f1f2f3`、文字色 `#18191c`、左导航间距对齐。
+- `f0a2327d` 搜索页视频结果：网格 6→7 列（卡片 230 vs B 站 233）、标题字重 500。
+- 高杠杆：`videoCard.css` 被首页/搜索/空间/动态共用，本轮对齐惠及所有用卡片的页面。
 
 ## 环境备忘
 - B 站 cookie：`/home/a1/bili-align/bili-cookies.json`（31 条，含 SESSDATA/bili_jct/DedeUserID，已确认登录态）。
