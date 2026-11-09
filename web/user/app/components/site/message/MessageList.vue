@@ -335,9 +335,9 @@ export default {
 }
 
 .msg-time .time {
-    color: #999;
+    color: #61666d;
     font-size: 12px;
-    line-height: 22px;
+    line-height: 18px;
     margin: 0 10px;
 }
 
@@ -372,7 +372,7 @@ export default {
     margin: 0 10px;
     position: relative;
     overflow: hidden;
-    color: #333;
+    color: #18191c;
 }
 
 .is-me .message {
@@ -394,7 +394,7 @@ export default {
 }
 
 .is-me .message-content {
-    background: #7fd3f2;
+    background: #00aeec;
     border-radius: 16px 0 16px 16px;
 }
 
