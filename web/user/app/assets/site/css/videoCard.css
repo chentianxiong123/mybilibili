@@ -261,6 +261,8 @@
     justify-content: flex-start;
     display: -webkit-inline-flex;
     display: inline-flex;
+    /* 对齐 B 站：owner 行高锁定为副标题行高(17px)，避免 up 图标把整行撑到 20px */
+    height: var(--subtitle-line-height);
 }
 
 .video-card__info--author {
@@ -300,7 +302,8 @@
     .video-card {
         --info-margin-top: 10px;
         --subtitle-font-size: 13px;
-        --title-padding-right: 24px;
+        /* 对齐 B 站：标题右侧留白 30px（为 hover「不感兴趣」按钮预留） */
+        --title-padding-right: 30px;
     }
 }
 
