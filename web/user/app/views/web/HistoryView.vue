@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Delete, List, Grid, VideoPlay, Clock } from '@element-plus/icons-vue'
+import { Search, Delete, List, Clock } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { watchHistoryApi } from '@/api/watchHistory.ts'
 import { videoApi } from '@/api/client'
@@ -13,6 +13,10 @@ const loading = ref(false)
 
 // 视图模式：grid 或 list
 const viewMode = ref('grid')
+
+// 筛选标签页（对齐 B 站：综合/视频/直播/专栏）
+const tabs = ['综合', '视频', '直播', '专栏']
+const activeTab = ref('综合')
 
 // 是否开启记录浏览历史
 const recordHistory = ref(true)
@@ -337,337 +341,535 @@ onMounted(() => {
 
 <template>
   <div class="history-page">
-    <!-- 页面头部 -->
-    <div class="page-header">
-      <div class="header-left">
-        <el-icon class="header-icon"><Clock /></el-icon>
-        <h1 class="page-title">历史记录</h1>
-      </div>
-    </div>
-
-    <!-- 工具栏 -->
-    <div class="toolbar">
-      <div class="toolbar-left">
-        <!-- 记录浏览历史开关 -->
-        <div class="record-toggle">
-          <el-switch
-            v-model="recordHistory"
-            active-color="#00a1d6"
-            @change="handleRecordChange"
-          />
-          <span class="toggle-label">记录浏览历史</span>
-        </div>
-
-        <!-- 视图切换 -->
-        <div class="view-toggle">
-          <el-button
-            :class="['view-btn', { active: viewMode === 'grid' }]"
-            @click="viewMode = 'grid'"
-          >
-            <el-icon><Grid /></el-icon>
-          </el-button>
-          <el-button
-            :class="['view-btn', { active: viewMode === 'list' }]"
-            @click="viewMode = 'list'"
-          >
-            <el-icon><List /></el-icon>
-          </el-button>
-        </div>
-      </div>
-
-      <div class="toolbar-right">
-        <!-- 搜索框 -->
-        <div class="search-box">
-          <el-input
-            v-model="searchKeyword"
-            placeholder="搜索标题/up主昵称"
-            clearable
-            @keyup.enter="handleSearch"
-          >
-            <template #suffix>
-              <el-icon class="search-icon" @click="handleSearch"><Search /></el-icon>
-            </template>
-          </el-input>
-        </div>
-
-        <!-- 清空历史 -->
-        <el-button class="action-btn" @click="clearHistory">
-          <el-icon><Delete /></el-icon>
-          清空历史
-        </el-button>
-
-        <!-- 批量管理 -->
-        <el-button
-          :class="['action-btn', { 'batch-active': isBatchMode }]"
-          @click="toggleBatchMode"
-        >
-          <el-icon><List /></el-icon>
-          {{ isBatchMode ? '完成' : '批量管理' }}
-        </el-button>
-      </div>
-    </div>
-
-    <!-- 批量操作栏 -->
-    <div v-if="isBatchMode" class="batch-bar">
-      <span class="batch-info">已选择 {{ selectedIds.length }} 项</span>
-      <el-button type="danger" size="small" @click="batchDelete">
-        删除选中
-      </el-button>
-    </div>
-
-    <!-- 历史记录内容 -->
-    <div v-loading="loading" class="history-content">
-      <template v-if="Object.keys(groupedHistory).length > 0">
-        <div
-          v-for="(groupItems, dateKey) in groupedHistory"
-          :key="dateKey"
-          class="history-group"
-        >
-          <!-- 时间分组标题 -->
-          <div class="group-header">
-            <div class="timeline-dot"></div>
-            <h3 class="group-title">{{ dateKey }}</h3>
-
-            <!-- 组内全选（批量模式下） -->
-            <el-checkbox
-              v-if="isBatchMode"
-              :model-value="groupItems.every(item => selectedIds.includes(item.id))"
-              @change="(val) => selectAllInGroup(groupItems, val)"
+    <main class="history-record">
+      <div class="history-container">
+        <!-- 页面头部：标题 + 记录开关 + 视图切换 -->
+        <div class="page-header">
+          <h1 class="page-title">
+            <el-icon class="page-title__icon"><Clock /></el-icon>历史记录
+          </h1>
+          <div class="header-actions">
+            <div class="record-toggle">
+              <el-switch
+                v-model="recordHistory"
+                class="record-switch"
+                active-color="#00aede"
+                @change="handleRecordChange"
+              />
+              <span class="record-toggle__label">记录浏览历史</span>
+            </div>
+            <button
+              :class="['view-toggle', { 'view-toggle--list': viewMode === 'list' }]"
+              :title="viewMode === 'grid' ? '切换为列表视图' : '切换为网格视图'"
+              @click="viewMode = viewMode === 'grid' ? 'list' : 'grid'"
             >
-              全选
-            </el-checkbox>
+              <el-icon><List /></el-icon>
+            </button>
           </div>
+        </div>
+      </div>
 
-          <!-- 视频列表 -->
-          <div :class="['video-list', viewMode]">
-            <div
-              v-for="item in groupItems"
-              :key="item.id"
-              :class="['video-item', { selected: selectedIds.includes(item.id) }]"
-              @click="handleVideoClick(item)"
-            >
-              <!-- 批量选择框 -->
-              <div v-if="isBatchMode" class="select-box" @click.stop>
-                <el-checkbox
-                  :model-value="selectedIds.includes(item.id)"
-                  @change="toggleSelect(item.id)"
-                />
-              </div>
-
-              <!-- 视频封面 -->
-              <div class="video-cover">
-                <img loading="lazy" decoding="async" :src="item.cover" :alt="item.title" />
-
-                <!-- 进度条 -->
-                <div v-if="!item.isFinished && item.progress > 0" class="progress-bar">
-                  <div
-                    class="progress-fill"
-                    :style="{ width: `${(item.progress / item.totalDuration) * 100}%` }"
-                  ></div>
-                </div>
-
-                <!-- 视频总时长 -->
-                <div class="video-duration">
-                  {{ formatDuration(item.totalDuration) }}
-                </div>
-
-                <!-- 收藏标记 -->
-                <div v-if="item.isCollected" class="collected-badge">已收藏</div>
-
-                <!-- 删除按钮 -->
+      <!-- 筛选/搜索粘性条 -->
+      <div class="page-breadcrumbs">
+        <div class="history-container breadcrumbs-inner">
+          <div class="breadcrumbs-top">
+            <div class="breadcrumbs-left">
+              <div class="radio-tabs">
                 <div
-                  v-if="!isBatchMode"
-                  class="delete-btn"
-                  @click.stop="deleteItem(item)"
+                  v-for="tab in tabs"
+                  :key="tab"
+                  :class="['radio-tabs__item', { 'radio-tabs__item--active': activeTab === tab }]"
+                  @click="activeTab = tab"
                 >
-                  <el-icon><Delete /></el-icon>
+                  <div class="radio-tabs__content">{{ tab }}</div>
+                </div>
+                <div class="radio-tabs__cursor"></div>
+              </div>
+            </div>
+            <div class="breadcrumbs-right">
+              <div class="search-bar">
+                <div class="search-input-wrap">
+                  <input
+                    v-model="searchKeyword"
+                    class="search-input"
+                    type="text"
+                    placeholder="搜索标题/up主昵称"
+                    @keyup.enter="handleSearch"
+                  />
+                </div>
+                <div class="search-btn" @click="handleSearch">
+                  <el-icon><Search /></el-icon>
                 </div>
               </div>
-
-              <!-- 视频信息 -->
-              <div class="video-info">
-                <h4 class="video-title" :title="item.title">{{ item.title }}</h4>
-                <div class="video-meta">
-                  <span class="author-name">{{ item.author }}</span>
-                  <span class="watch-time">{{ formatTime(new Date(item.watchedAt)) }}</span>
-                </div>
-                <div v-if="!item.isFinished" class="watch-progress">
-                  {{ formatProgress(item.progress, item.totalDuration, item.watchPercentage) }}
-                </div>
-              </div>
+              <button class="history-btn clear-btn" @click="clearHistory">
+                <el-icon class="history-btn__icon"><Delete /></el-icon>
+                <span class="history-btn__text">清空历史</span>
+              </button>
+              <button
+                :class="['history-btn', 'batch-btn', { 'batch-btn--active': isBatchMode }]"
+                @click="toggleBatchMode"
+              >
+                <el-icon class="history-btn__icon"><List /></el-icon>
+                <span class="history-btn__text">{{ isBatchMode ? '完成' : '批量管理' }}</span>
+              </button>
             </div>
           </div>
         </div>
-      </template>
-
-      <!-- 空状态 -->
-      <div v-else-if="!loading" class="empty-state">
-        <el-icon :size="64"><Clock /></el-icon>
-        <p>暂无历史记录</p>
-        <p class="empty-subtitle">开启记录浏览历史，不错过任何精彩视频</p>
       </div>
-    </div>
+
+      <!-- 批量操作栏 -->
+      <div v-if="isBatchMode" class="batch-bar">
+        <div class="history-container batch-bar__inner">
+          <span class="batch-info">已选择 {{ selectedIds.length }} 项</span>
+          <el-button type="danger" size="small" @click="batchDelete">
+            删除选中
+          </el-button>
+        </div>
+      </div>
+
+      <!-- 历史记录内容 -->
+      <div v-loading="loading" class="main-content">
+          <template v-if="Object.keys(groupedHistory).length > 0">
+            <div
+              v-for="(groupItems, dateKey) in groupedHistory"
+              :key="dateKey"
+              class="history-group"
+            >
+              <div class="group-anchor">
+                <div class="group-anchor__track"></div>
+              </div>
+              <div class="group-content">
+                <div class="group-header">
+                  <h3 class="group-title">{{ dateKey }}</h3>
+                  <el-checkbox
+                    v-if="isBatchMode"
+                    :model-value="groupItems.every(item => selectedIds.includes(item.id))"
+                    @change="(val) => selectAllInGroup(groupItems, val)"
+                  >
+                    全选
+                  </el-checkbox>
+                </div>
+
+                <div :class="['video-list', viewMode]">
+                  <div
+                    v-for="item in groupItems"
+                    :key="item.id"
+                    :class="['video-item', { selected: selectedIds.includes(item.id) }]"
+                    @click="handleVideoClick(item)"
+                  >
+                    <div v-if="isBatchMode" class="select-box" @click.stop>
+                      <el-checkbox
+                        :model-value="selectedIds.includes(item.id)"
+                        @change="toggleSelect(item.id)"
+                      />
+                    </div>
+
+                    <div class="video-cover">
+                      <img loading="lazy" decoding="async" :src="item.cover" :alt="item.title" />
+
+                      <div v-if="!item.isFinished && item.progress > 0" class="progress-bar">
+                        <div
+                          class="progress-fill"
+                          :style="{ width: `${(item.progress / item.totalDuration) * 100}%` }"
+                        ></div>
+                      </div>
+
+                      <div class="video-duration">
+                        {{ formatDuration(item.totalDuration) }}
+                      </div>
+
+                      <div v-if="item.isCollected" class="collected-badge">已收藏</div>
+
+                      <div
+                        v-if="!isBatchMode"
+                        class="delete-btn"
+                        @click.stop="deleteItem(item)"
+                      >
+                        <el-icon><Delete /></el-icon>
+                      </div>
+                    </div>
+
+                    <div class="video-info">
+                      <h4 class="video-title" :title="item.title">{{ item.title }}</h4>
+                      <div class="video-meta">
+                        <span class="author-name">{{ item.author }}</span>
+                        <span class="watch-time">{{ formatTime(new Date(item.watchedAt)) }}</span>
+                      </div>
+                      <div v-if="!item.isFinished" class="watch-progress">
+                        {{ formatProgress(item.progress, item.totalDuration, item.watchPercentage) }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- 空状态 -->
+          <div v-else-if="!loading" class="empty-state">
+            <el-icon :size="64"><Clock /></el-icon>
+            <p>暂无历史记录</p>
+            <p class="empty-subtitle">开启记录浏览历史，不错过任何精彩视频</p>
+          </div>
+      </div>
+    </main>
   </div>
 </template>
 
 <style scoped>
-/* 页面容器 */
+/* ===== 页面骨架（对齐 bilibili.com/account/history：白底通栏 + 1432px 居中容器） ===== */
 .history-page {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 20px;
-  padding-top: 84px;
-  min-height: calc(100vh - 80px);
+  min-height: 100vh;
+  background: #fff;
+  color: #18191c;
 }
 
-/* 页面头部 */
+.history-record {
+  display: block;
+  min-height: 100vh;
+  padding-top: 30px;
+  background: #fff;
+}
+
+.history-container {
+  width: 1432px;
+  min-width: 912px;
+  margin: 0 auto;
+  padding-left: 72px;
+  box-sizing: border-box;
+}
+
+/* ===== 头部：标题 28px/600/40px 行高 + 右侧开关与视图切换 ===== */
 .page-header {
   display: flex;
   align-items: center;
-  margin-bottom: 20px;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-icon {
-  font-size: 24px;
-  color: #333;
+  justify-content: space-between;
+  height: 40px;
+  min-width: 912px;
+  margin-bottom: 10px;
 }
 
 .page-title {
+  display: flex;
+  align-items: center;
   margin: 0;
-  font-size: 20px;
+  font-size: 28px;
   font-weight: 600;
-  color: #333;
+  line-height: 40px;
+  color: #18191c;
 }
 
-/* 工具栏 */
-.toolbar {
+.page-title__icon {
+  margin-right: 16px;
+  font-size: 32px;
+  color: #18191c;
+}
+
+.header-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  padding: 16px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  height: 29px;
 }
 
-.toolbar-left {
-  display: flex;
-  align-items: center;
-  gap: 24px;
+.header-actions > * {
+  margin-right: 0;
 }
 
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* 记录开关 */
+/* 记录浏览历史开关 */
 .record-toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  height: 20px;
+  margin-right: 16px;
 }
 
-.toggle-label {
+.record-toggle__label {
+  margin-left: 8px;
   font-size: 14px;
-  color: #666;
+  line-height: 14px;
+  color: #61666d;
 }
 
-/* 视图切换 */
+.record-switch :deep(.el-switch__core) {
+  width: 32px;
+  height: 20px;
+  border-radius: 18px;
+}
+
+.record-switch :deep(.el-switch__core .el-switch__action) {
+  width: 14px;
+  height: 14px;
+}
+
+/* 视图切换（单图标，点击在网格/列表间切换） */
 .view-toggle {
   display: flex;
-  gap: 4px;
-}
-
-.view-btn {
-  padding: 6px 12px;
-  border: 1px solid #e0e0e0;
-  background: #fff;
-  color: #666;
-  transition: all 0.3s;
-}
-
-.view-btn:hover {
-  border-color: #00a1d6;
-  color: #00a1d6;
-}
-
-.view-btn.active {
-  background: #00a1d6;
-  border-color: #00a1d6;
-  color: #fff;
-}
-
-/* 搜索框 */
-.search-box {
-  width: 200px;
-}
-
-.search-box :deep(.el-input__wrapper) {
-  border-radius: 4px;
-}
-
-.search-icon {
-  cursor: pointer;
-  color: #999;
-  transition: color 0.3s;
-}
-
-.search-icon:hover {
-  color: #00a1d6;
-}
-
-/* 操作按钮 */
-.action-btn {
-  display: flex;
   align-items: center;
-  gap: 4px;
-  color: #666;
+  justify-content: center;
+  margin-left: 16px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #9499a0;
+  font-size: 28px;
+  line-height: 28px;
+  cursor: pointer;
+  transition: color 0.2s;
 }
 
-.action-btn:hover {
-  color: #00a1d6;
+.view-toggle:hover {
+  color: #00aede;
 }
 
-.action-btn.batch-active {
-  background: #00a1d6;
-  border-color: #00a1d6;
-  color: #fff;
+/* ===== 筛选/搜索粘性条 ===== */
+.page-breadcrumbs {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: #fff;
 }
 
-/* 批量操作栏 */
-.batch-bar {
+.breadcrumbs-inner {
+  box-sizing: border-box;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.breadcrumbs-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  margin-bottom: 20px;
-  background: #f5f7fa;
+  height: 46px;
+}
+
+.breadcrumbs-left {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-right: 12px;
+}
+
+.breadcrumbs-right {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+}
+
+/* 标签页（对齐 B 站 radio-tabs：无背景高亮、底部游标） */
+.radio-tabs {
+  position: relative;
+  display: flex;
+  column-gap: 28px;
+}
+
+.radio-tabs__item {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  box-sizing: border-box;
+  padding: 12px 10px;
+  color: #61666d;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  white-space: normal;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.radio-tabs__item:hover {
+  color: #00aede;
+}
+
+.radio-tabs__item--active {
+  color: #00aede;
+}
+
+.radio-tabs__content {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.radio-tabs__cursor {
+  position: absolute;
+  bottom: 0;
+  left: 10px;
+  width: 28px;
+  height: 4px;
+  border-radius: 2px;
+  background: #00aede;
+  transition: transform 0.3s;
+}
+
+/* 筛选按钮 */
+.history-btn {
+  display: flex;
+  align-items: center;
+  justify-content: normal;
+  flex: 0 0 auto;
+  height: 34px;
+  min-width: 100px;
+  box-sizing: border-box;
+  padding: 0;
+  border: 1px solid #e3e5e7;
   border-radius: 8px;
+  background: #fff;
+  color: #18191c;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.2s, border 0.2s;
+}
+
+.history-btn:hover {
+  color: #00aede;
+  border-color: #00aede;
+}
+
+.history-btn__icon {
+  margin-right: 4px;
+  font-size: 16px;
+}
+
+.history-btn__text {
+  font-size: 14px;
+  line-height: 14px;
+}
+
+.clear-btn {
+  margin-left: 24px;
+}
+
+.clear-btn .history-btn__icon {
+  color: #c9ccd0;
+}
+
+.batch-btn {
+  margin-left: 8px;
+}
+
+.batch-btn .history-btn__icon {
+  color: #c9ccd0;
+}
+
+.batch-btn--active {
+  color: #00aede;
+  border-color: #00aede;
+}
+
+/* 搜索框（对齐 B 站 folded search-bar：200x34 灰底圆角 8px） */
+.search-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  width: 200px;
+  height: 34px;
+  padding: 2px 0 2px 2px;
+  margin-right: 16px;
+  border: 1px solid #f1f2f3;
+  border-radius: 8px;
+  background: #f1f2f3;
+  transition: 0.3s;
+}
+
+.search-input-wrap {
+  flex: 1;
+  overflow: hidden;
+}
+
+.search-input {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 164px;
+  height: 28px;
+  padding: 0 30px 0 10px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #18191c;
+  font-size: 14px;
+  line-height: normal;
+  border-radius: 8px;
+  transition: background-color 0.3s;
+}
+
+.search-input::placeholder {
+  color: #9499a0;
+}
+
+.search-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  color: #18191c;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* ===== 批量操作栏 ===== */
+.batch-bar {
+  margin-top: 12px;
+}
+
+.batch-bar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: #f1f2f3;
 }
 
 .batch-info {
   font-size: 14px;
-  color: #666;
+  color: #61666d;
 }
 
-/* 历史记录内容 */
-.history-content {
-  position: relative;
+/* ===== 内容区：时间轴（左侧 32px 锚点轨道 + 右侧 1360px 内容） ===== */
+.main-content {
+  width: 1432px;
+  min-width: 912px;
+  box-sizing: border-box;
+  margin: 20px auto 0;
 }
 
-/* 时间分组 */
 .history-group {
-  margin-bottom: 32px;
   position: relative;
+  display: flex;
+  align-items: normal;
+  margin-bottom: 0;
+}
+
+.group-anchor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 0 1 auto;
+  width: 32px;
+  margin-right: 40px;
+}
+
+.group-anchor__track {
+  flex: 1 1 0%;
+  width: 2px;
+  background: #c9ccd0;
+}
+
+.group-content {
+  flex: 1;
+  min-width: 0;
 }
 
 .group-header {
@@ -675,35 +877,23 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
-  padding-left: 20px;
-  position: relative;
-}
-
-.timeline-dot {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 8px;
-  height: 8px;
-  background: #00a1d6;
-  border-radius: 50%;
 }
 
 .group-title {
   margin: 0;
+  flex: 1;
   font-size: 16px;
   font-weight: 600;
-  color: #333;
-  flex: 1;
+  line-height: 22px;
+  color: #18191c;
 }
 
-/* 视频列表 - 网格模式 */
+/* 视频列表 - 网格模式（对齐 B 站 grid-mode：1360px / 5 列 / gap 16px 48px） */
 .video-list.grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 20px;
-  padding-left: 20px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 48px 16px;
+  padding-bottom: 100px;
 }
 
 /* 视频列表 - 列表模式 */
@@ -711,7 +901,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-left: 20px;
+  padding-bottom: 40px;
 }
 
 .video-list.list .video-item {
@@ -734,22 +924,21 @@ onMounted(() => {
   padding: 0;
 }
 
-/* 视频项 */
+/* 视频卡片 */
 .video-item {
   position: relative;
-  cursor: pointer;
-  transition: all 0.3s;
-  border-radius: 8px;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 0;
+  overflow: visible;
 }
 
-.video-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.video-item:hover .video-cover img {
+  transform: scale(1.05);
 }
 
 .video-item.selected {
-  box-shadow: 0 0 0 2px #00a1d6;
+  box-shadow: 0 0 0 2px #00aede;
 }
 
 /* 选择框 */
@@ -758,18 +947,20 @@ onMounted(() => {
   top: 8px;
   left: 8px;
   z-index: 10;
+  padding: 4px;
   background: rgba(255, 255, 255, 0.9);
   border-radius: 4px;
-  padding: 4px;
 }
 
 /* 视频封面 */
 .video-cover {
   position: relative;
+  box-sizing: border-box;
+  z-index: 1;
   width: 100%;
-  padding-top: 56.25%;
-  background: #f5f7fa;
-  border-radius: 8px;
+  padding-top: 146px;
+  background: #c9ccd0;
+  border-radius: 6px;
   overflow: hidden;
 }
 
@@ -781,10 +972,6 @@ onMounted(() => {
   height: 100%;
   object-fit: cover;
   transition: transform 0.3s;
-}
-
-.video-item:hover .video-cover img {
-  transform: scale(1.05);
 }
 
 /* 进度条 */
@@ -799,7 +986,7 @@ onMounted(() => {
 
 .progress-fill {
   height: 100%;
-  background: #00a1d6;
+  background: #00aede;
   transition: width 0.3s;
 }
 
@@ -808,10 +995,10 @@ onMounted(() => {
   position: absolute;
   bottom: 8px;
   right: 8px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
   padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.7);
   border-radius: 2px;
+  color: #fff;
   font-size: 12px;
 }
 
@@ -820,10 +1007,10 @@ onMounted(() => {
   position: absolute;
   top: 8px;
   right: 8px;
-  background: #00a1d6;
-  color: #fff;
   padding: 2px 6px;
+  background: #00aede;
   border-radius: 2px;
+  color: #fff;
   font-size: 11px;
 }
 
@@ -832,17 +1019,17 @@ onMounted(() => {
   position: absolute;
   top: 8px;
   right: 8px;
-  width: 28px;
-  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 28px;
+  height: 28px;
   background: rgba(0, 0, 0, 0.5);
-  color: #fff;
   border-radius: 4px;
+  color: #fff;
   opacity: 0;
-  transition: all 0.3s;
   cursor: pointer;
+  transition: all 0.3s;
 }
 
 .video-item:hover .delete-btn {
@@ -855,21 +1042,21 @@ onMounted(() => {
 
 /* 视频信息 */
 .video-info {
-  padding: 12px 0;
+  padding: 8px 0 0;
 }
 
 .video-title {
-  margin: 0 0 8px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  height: 2.6em;
+  margin: 0 0 6px;
+  overflow: hidden;
   font-size: 14px;
   font-weight: 500;
-  color: #333;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
   line-height: 1.4;
-  height: 2.8em;
+  color: #18191c;
+  text-overflow: ellipsis;
 }
 
 .video-meta {
@@ -877,52 +1064,85 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   font-size: 12px;
-  color: #999;
+  color: #9499a0;
 }
 
 .author-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   max-width: 100px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .watch-time {
-  color: #ccc;
+  color: #c9ccd0;
 }
 
 .watch-progress {
   margin-top: 4px;
   font-size: 12px;
-  color: #00a1d6;
+  color: #00aede;
 }
 
-/* 空状态 */
+/* ===== 空状态 ===== */
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 100px 20px;
-  color: #c0c4cc;
+  color: #c9ccd0;
 }
 
 .empty-state p {
   margin: 16px 0 0;
   font-size: 16px;
-  color: #666;
+  color: #61666d;
 }
 
 .empty-subtitle {
-  font-size: 14px !important;
-  color: #999 !important;
   margin-top: 8px !important;
+  font-size: 14px !important;
+  color: #9499a0 !important;
 }
 
-/* 响应式设计 */
+/* 响应式：窄视口下退化为自适应列数 */
+@media (max-width: 1431px) {
+  .history-container {
+    width: auto;
+    margin: 0 24px;
+    padding-left: 72px;
+  }
+}
 
+@media (max-width: 1200px) {
+  .video-list.grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
 
+@media (max-width: 992px) {
+  .video-list.grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 
+  .search-bar {
+    width: 160px;
+  }
+}
 
+@media (max-width: 768px) {
+  .video-list.grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 
+  .page-title {
+    font-size: 22px;
+    line-height: 32px;
+  }
+
+  .page-header {
+    height: 32px;
+  }
+}
 </style>
