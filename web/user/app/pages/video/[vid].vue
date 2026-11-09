@@ -1204,8 +1204,10 @@ watch(
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-top: 16px;
-    padding-bottom: 12px;
+    box-sizing: content-box;
+    height: 48px;
+    padding-top: 18px;
+    padding-bottom: 0;
     line-height: 28px;
     border-bottom: 1px solid var(--line_regular);
 }
@@ -1220,7 +1222,7 @@ watch(
 
 .toolbar-left-item-wrap {
     position: relative;
-    margin-right: 8px;
+    margin-right: 18px;
 }
 
 .video-toolbar-left-item {
@@ -1229,10 +1231,11 @@ watch(
     display: flex;
     -ms-flex-align: center;
     align-items: center;
-    width: 92px;
+    width: 100px;
+    height: 36px;
     white-space: nowrap;
     transition: all .3s;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text2);
     font-weight: 500;
     cursor: pointer;
@@ -1363,15 +1366,16 @@ watch(
 }
 
 .video-desc-container {
-    margin: 16px 0;
+    margin: 18px 0;
 }
 
 .basic-desc-info {
     white-space: pre-line;
     letter-spacing: 0;
     color: var(--text1);
-    font-size: 15px;
-    line-height: 24px;
+    font-size: 16px;
+    line-height: 26px;
+    max-height: 84px;
     overflow: hidden;
 }
 
@@ -1391,8 +1395,8 @@ watch(
 }
 
 .video-tag-container {
-    padding-bottom: 6px;
-    margin: 16px 0 20px 0;
+    padding-bottom: 10px;
+    margin: 18px 0 20px 0;
     border-bottom: 1px solid var(--line_regular);
     display: flex;
     flex-wrap: wrap;
@@ -1404,11 +1408,11 @@ watch(
 
 .tag-link {
     color: var(--text2);
-    background: var(--graph_bg_regular);
-    height: 28px;
-    line-height: 28px;
-    border-radius: 14px;
-    font-size: 13px;
+    background: #f1f2f3;
+    height: 32px;
+    line-height: 32px;
+    border-radius: 16px;
+    font-size: 14px;
     padding: 0 12px;
     box-sizing: border-box;
     transition: all .3s;
