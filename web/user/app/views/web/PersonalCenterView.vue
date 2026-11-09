@@ -104,43 +104,52 @@ const handleNavClick = (item) => {
 .personal-center {
   width: 100%;
   min-height: 100vh;
-  background-color: #f5f7fa;
+  background-color: #fff;
   display: flex;
   flex-direction: column;
 }
 
-/* 主内容容器 */
+/* 主内容容器（对齐 account.bilibili.com：980px 居中 + 左侧 150px 侧栏 + 右侧内容，无间隙） */
 .content-container {
   flex: 1;
-  max-width: 1200px;
-  margin: 0 auto 20px;
-  padding: 20px;
+  width: 980px;
+  margin: 10px auto 100px;
+  padding: 0;
   display: flex;
-  gap: 20px;
-  width: 100%;
-  box-sizing: border-box;
+  gap: 0;
+  box-sizing: content-box;
+  background-color: #fafafa;
+  border: 1px solid #e1e2e5;
+  border-radius: 4px;
+  box-shadow: rgba(0, 0, 0, 0.14) 0px 2px 4px 0px;
+  overflow: hidden;
 }
 
-/* 左侧侧部导航栏 */
+/* 左侧导航栏（对齐 B 站 security-left：150px 宽、无卡片阴影） */
 .side-nav {
-  width: 200px;
-  min-width: 200px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 20px 0;
+  flex: 0 0 auto;
+  width: 150px;
+  min-width: 150px;
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
 }
 
 .nav-header {
-  padding: 0 20px 15px;
-  border-bottom: 1px solid #f0f0f0;
-  margin-bottom: 15px;
+  padding: 0;
+  border-bottom: 0;
+  margin-bottom: 0;
+  height: 50px;
 }
 
 .nav-header h3 {
+  height: 50px;
   font-size: 16px;
-  font-weight: 600;
-  color: #333;
+  font-weight: 400;
+  line-height: 50px;
+  color: #99a2aa;
+  text-align: center;
   margin: 0;
 }
 
@@ -150,41 +159,53 @@ const handleNavClick = (item) => {
 }
 
 .nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 20px;
+  display: block;
+  height: 48px;
+  padding: 0;
+  overflow: hidden;
   cursor: pointer;
-  transition: all 0.3s ease;
-  color: #666;
+  transition: background-color 0.3s ease;
+  color: #717171;
+  font-size: 14px;
+  line-height: 48px;
 }
 
 .nav-item:hover {
-  background-color: rgba(0, 174, 236, 0.1);
-  color: #00aeec;
+  background-color: #00a1d7;
+  color: #fff;
 }
 
 .nav-item.active {
-  background-color: rgba(0, 174, 236, 0.1);
-  color: #00aeec;
-  border-left: 3px solid #00aeec;
+  background-color: #00a1d7;
+  color: #fff;
+  border-left: 0;
 }
 
 .nav-icon {
-  font-size: 18px;
+  display: inline-block;
+  width: 18px;
+  height: 36px;
+  margin-left: 16px;
+  font-size: 12px;
+  line-height: 48px;
+  vertical-align: middle;
 }
 
 .nav-text {
+  display: inline;
+  margin-left: 12px;
   font-size: 14px;
+  line-height: 48px;
+  vertical-align: middle;
 }
 
-/* 右侧主内容 */
+/* 右侧主内容（对齐 B 站：无圆角无阴影白底面板） */
 .main-content {
   flex: 1;
   min-width: 0;
   background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 0;
+  box-shadow: none;
   padding: 20px;
 }
 
