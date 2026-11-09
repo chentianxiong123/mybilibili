@@ -263,7 +263,7 @@ export default {
 
 <style scoped>
 .message-whisper {
-    height: calc(100vh - 138px);
+    height: calc(100vh - 136px);
 }
 
 .im {
@@ -287,15 +287,22 @@ export default {
 }
 
 .left .title {
-    padding-left: 24px;
-    line-height: 35px;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
     height: 36px;
-    border-bottom: 1px solid #e9eaec;
+    color: #61666d;
+    font-size: 12px;
+    border-bottom: 1px solid #e3e5e7;
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
     overflow: hidden;
+}
+
+.left .title span {
+    line-height: 12px;
 }
 
 .left .list-container {
@@ -323,7 +330,7 @@ export default {
     -webkit-box-direction: normal;
     -ms-flex-direction: row;
     flex-direction: row;
-    padding: 19px 24px;
+    padding: 19px 12px 19px 24px;
     position: relative;
     overflow: hidden;
     cursor: pointer;
@@ -357,26 +364,30 @@ export default {
     -webkit-box-pack: center;
     -ms-flex-pack: center;
     justify-content: center;
+    -webkit-box-flex: 1;
+    -ms-flex: 1 1 0%;
+    flex: 1 1 0%;
+    overflow: hidden;
 }
 
 .list-item .last-word, .list-item .name {
     overflow: hidden;
-    width: 155px;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
 
 .list-item .name {
-    color: #333;
+    width: 126px;
+    color: #18191c;
     font-size: 14px;
-    min-height: 16px;
-    line-height: 1;
+    line-height: 22px;
 }
 
 .list-item .last-word {
-    color: #999;
-    padding: 8px 0;
-    margin-bottom: -6px;
+    width: 155px;
+    color: #9499a0;
+    font-size: 12px;
+    line-height: 18px;
 }
 
 .list-item .close {
@@ -411,7 +422,7 @@ export default {
 .notify {
     text-align: center;
     position: absolute;
-    background-color: var(--stress_red);
+    background-color: #ff6699;
 }
 
 .notify-number {
