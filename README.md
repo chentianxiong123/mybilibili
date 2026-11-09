@@ -1,6 +1,6 @@
 # mybilibili · 仿哔哩哔哩全栈项目
 
-一套完整仿 B 站的视频社区平台，覆盖用户端 Web（Nuxt 4，SPA）、管理后台、移动 H5、Flutter / NativeScript / Android WebView 多端。**当前主体为 Go 微服务架构**，容器化部署在三机 k3s 集群（部署机 + 开发机 + 边缘 Worker）。
+一套完整仿 B 站的视频社区平台，覆盖用户端 Web（Nuxt 4，SPA）、管理后台、移动 H5、Android WebView 多端（Flutter / NativeScript 客户端已废弃，移入 `experimental/`）。**当前主体为 Go 微服务架构**，容器化部署在三机 k3s 集群（部署机 + 开发机 + 边缘 Worker）。
 
 ## 三个版本
 
@@ -42,10 +42,13 @@ mybilibili/
 ├── sql/                      # PostgreSQL 迁移（按编号递增）
 ├── web/
 │   ├── user/                 # 用户端 Nuxt 4（app/ + server/api 反向代理）
-│   ├── admin/                # 管理后台 Vue3 + Vite + Element Plus
-│   ├── next-old/             # 历史前端快照（勿删）
-│   └── teriteri-reference/   # 原版 UI 对照（勿删）
-├── mobile/                   # flutter / ns / wap / webview 四端
+│   └── admin/                # 管理后台 Vue3 + Vite + Element Plus
+├── mobile/                   # wap / webview（活跃端）
+├── experimental/             # 实验性/存档区（不参与构建/CI/部署，不维护）
+│   ├── mobile-flutter/       # Flutter 客户端（已废弃）
+│   ├── mobile-ns/            # NativeScript+Vue 客户端（已废弃）
+│   ├── web-next-old/         # 旧用户端历史快照（存档）
+│   └── web-teriteri-reference/ # 原版 UI 对照（存档）
 ├── dev/                      # 本地 docker compose（17 个容器）
 ├── deploy/                   # k3s manifests + 数据库备份 + SRS
 ├── scripts/                  # test.sh / build.sh / frontend.sh 等
@@ -98,8 +101,8 @@ bash scripts/test.sh backend      # 逐 Go 模块 go test
 | **管理后台** (`web/admin`) | Vue3 + Vite + Element Plus | 运营/内容管理后台，路径 `/admin/`，端口 3100 |
 | **UI 组件库** (`web/user/packages/ui`) | 自研组件库 | 多端共享 |
 | **移动 H5** (`mobile/wap`) | Vue3 + Vite | 手机浏览器版，base `/wap/`，端口 5174 |
-| **Flutter App** (`mobile/flutter`) | Flutter | iOS/Android/桌面 |
-| **NativeScript** (`mobile/ns`) | NativeScript + Vue | 备选移动端方案 |
+| **Flutter App** (`experimental/mobile-flutter`) | Flutter | **已废弃** — 已移入 `experimental/`，不维护 |
+| **NativeScript** (`experimental/mobile-ns`) | NativeScript + Vue | **已废弃** — 已移入 `experimental/`，不维护 |
 | **Android WebView** (`mobile/webview`) | Kotlin WebView 壳 | 包 H5 的原生壳 |
 
 ### 后端（Go 微服务，`services/`）
@@ -318,8 +321,8 @@ bash scripts/test.sh backend      # 逐 Go 模块 go test
 
 ### 20. 多端（移动）
 - **H5 (wap，`/wap/*` 路由)**：首页、频道（channel）、视频播放（横屏）+ **竖屏视频流**（vertical）、直播（areas/list/room）、搜索、热搜、排行、动态、空间（投稿/收藏/粉丝/历史/草稿/资料编辑）、消息（私信 chat/通知 notify）、创作中心、登录
-- **Flutter App**：auth / home / search / live / video / dynamic / follow / message / creator / profile / upload 模块
-- **NativeScript**：跨端备选
+- **Flutter App**（已废弃，移入 `experimental/mobile-flutter`）：auth / home / search / live / video / dynamic / follow / message / creator / profile / upload 模块
+- **NativeScript**（已废弃，移入 `experimental/mobile-ns`）：跨端备选
 - **Android WebView**：H5 原生壳
 
 ### 21. 平台能力

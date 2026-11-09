@@ -44,7 +44,7 @@ Nuxt 4 + Vue 3 + Element Plus。**`ssr:false`（SPA）**：`web/user/app` = app 
   `interaction-item`/`love-item`/`notify-item`，空态/加载用真站图（`MessageEmpty`/`MessageLoading`）。
   侧栏保留自有「AI 客服」（`message/ai.vue`）。旧 `message/index.vue` 已删。
 - `app/pages-old/` 缓冲目录已删（Git 历史可查）；运行代码只剩 `app/pages/` 一份。
-  `web/next-old/`（230 文件历史快照）、`web/teriteri-reference/`（原版对照）保留。
+  历史快照 `web/next-old/`（230 文件）与原版对照 `web/teriteri-reference/` 已移入 `experimental/`（`experimental/web-next-old/`、`experimental/web-teriteri-reference/`）存档，不再参与构建/CI。
 - 测试按领域分 5 组（`test:api/composables/utils/components/stores`，vitest projects），
   全量 `bun run test` 当前 949 条全绿。
 - 专栏（图文）已全栈接通：`/read/cv{id}` 阅读页、`/read/home` 信息流、`/platform/upload/text`
@@ -89,4 +89,4 @@ Nuxt 4 + Vue 3 + Element Plus。**`ssr:false`（SPA）**：`web/user/app` = app 
 
 - 不碰 `mobile/wap/**`、`web/admin/**`（其他 agent 领地）
 - 不 stage `.air/work.toml`、`external/cf-whisper-worker/.wrangler/**`
-- 不删 `web/next-old/`、`web/teriteri-reference/`（历史留存与原版对照）
+- 不删 `experimental/web-next-old/`、`experimental/web-teriteri-reference/`（历史留存与原版对照，原 `web/next-old/`、`web/teriteri-reference/`）

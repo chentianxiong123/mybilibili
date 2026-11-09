@@ -52,4 +52,4 @@ Vite SPA + Vue Router（`createWebHistory('/admin/')`）。路由在
 
 - 不碰 `web/user/**`、`mobile/wap/**`（其他 agent 领地）
 - 不 stage `.air/work.toml`、`external/cf-whisper-worker/.wrangler/**`
-- 不删历史 `web/next-old/`、`web/teriteri-reference/`
+- 不删历史 `experimental/web-next-old/`、`experimental/web-teriteri-reference/`（原 `web/next-old/`、`web/teriteri-reference/`，已移入 experimental/ 存档）
