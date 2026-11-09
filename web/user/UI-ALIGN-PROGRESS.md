@@ -14,37 +14,47 @@
 
 | 页面 | 路由 | 状态 | 本轮改动 / 备注 |
 |---|---|---|---|
-| 首页-推荐卡片 | `/` | ✅ 已对齐 | `videoCard.css`：owner 行高锁 17px（修 info 68→65）、标题右留白 24→30px。卡片 312×251 / cover 312×176 / info 312×65 / bottom 312×17 / tit 312×44 全部对齐 B 站（commit 526c8e51） |
-| 首页-顶部导航+全局 | `/` | 🟡 大致对齐可过 | body 背景 `#fafafa`→`#f1f2f3`、文字色 →`#18191c`；左导航容器 margin-right 20→0、导航项间距 15→20（commit 5c36ac77）。导航项字号 14px/宽度/间距已与 B 站一致；剩余宽度差(566 vs 472)是 B 站多出「赛事/S16」等**动态内容项**，非 CSS 偏差，不强行补 |
-| 首页-搜索框 | `/` | 🟡 大致对齐可过 | 搜索条本身 500×40 两端一致；位置差是左导航宽度差的连带，已随导航修正改善（687→694，B 站 759） |
-| 首页-全局字号 | `/` | ⏸️ 已知偏差 | B 站 body `16px/normal`，本地 `14px/1.25`（lineHeight 22.4 vs 17.5 根因）。**全局改 16px 回流风险大**，无人值守下不盲改，需逐页评估 |
-| 搜索页-视频结果 | `/search/video` | ✅ 已对齐 | 复用已对齐的 `.video-card`。`search/video.vue`：1700–2199 断点网格 6→7 列（卡片 271→230px，B 站 233px）；`videoCard.css` 标题字重 400→500。卡片 230×204 vs B 站 233×205 |
-| 消息页 | `/message` | ✅ 已对齐 | `message-center.css`：侧栏菜单项 `.message-sidebar__item-name` font-weight 400→700（B 站全项 700，激活 #00aede/未激活 #61666d 颜色本已一致）；背景层 `.message-bgc`/`.message-bg` z-index 0→-1（B 站真值）。DOM 类名与 B 站 message-pc 完全同名，各容器 rect 全部一致（commit 53df0164） |
-| 动态页 | `/dynamic` | ✅ 已对齐 | `DynamicView.vue`：容器 1200→1330px 居中（B 站 x=295）、三栏 240/580/300→264/724/318（gap 20→12，对齐 B 站 t.bilibili.com）、内容起点 y84→y72、背景 `#f5f7fa`→`#d3e9e8`（B 站 `.bgc` 真值）、卡片圆角 8→6px/去 box-shadow、区块间距 16→8px（commit f3842240） |
+| 首页-推荐卡片 | `/` | ✅ 已对齐 | `videoCard.css`：owner 行高锁 17px、标题右留白 30px。卡片 312×251 / cover 312×176 / info 312×65 全部对齐（commit 526c8e51）。本轮 verify 无回归 |
+| 首页-顶部导航+全局 | `/` | 🟡 大致对齐可过 | 导航项字号/宽度/间距一致；剩余宽度差是 B 站多出「赛事/S16」等**动态内容项**，非 CSS 偏差 |
+| 首页-搜索框 | `/` | 🟡 大致对齐可过 | 搜索条 500×40 两端一致 |
+| 首页-全局字号 | `/` | ⏸️ 已知偏差 | B 站 body `16px/normal`，本地 `14px/1.25`。**全局改 16px 回流风险大**，无人值守不盲改 |
+| 搜索页-视频结果 | `/search/video` | ✅ 已对齐 | 1700–2199 断点网格 7 列（卡片 230px，B 站 233px）、标题字重 500 |
+| 消息页 | `/message` | ✅ 已对齐 | 侧栏菜单 font-weight 700、背景层 z-index -1；各容器 rect 全部一致（commit 53df0164） |
+| 动态页 | `/dynamic` | ✅ 已对齐 | 容器 1330px 居中、三栏 264/724/318(gap 12)、内容起点 y72、背景 #d3e9e8、卡片圆角 6px（commit f3842240） |
+| **历史记录页** | `/history` | ✅ **本轮对齐** | `HistoryView.vue` 整页重构对齐 `bilibili.com/account/history`：白底通栏 1920 + **1432px 居中容器**（左内边距 72px）、头部标题 **28px/600/40px** + 右侧记录开关/视图切换、**粘性筛选条 74px**（综合/视频/直播/专栏 `radio-tabs` + 底部 28×4 游标 #00aede）、搜索框 **200×34 灰底 #f1f2f3 圆角 8**、清空/批量按钮 **100×34 圆角 8 border #e3e5e7**、时间轴**左侧 32px 锚点轨道**（#c9ccd0，margin-right 40）、卡片网格 **1360px / 5 列 / gap 48×16** / 封面 259×146 圆角 6（commit 116c22f1） |
+| **专栏首页** | `/read/home` | ✅ **本轮对齐** | `read/home.vue` 整页重构对齐 `bilibili.com/read/home`：**680px 居中单列**（main 680 / padding-top 30）、头部 **40px**（标题「推荐文章」18px/25px + 搜索框 **260×40 灰底圆角 8**）、图文信息流条目 **680×128 padding 20/0**、标题 **20px/26px nowrap**、摘要 12px/22px #9499a0、meta 24px（头像 24 圆形 + 作者 max-width 120 + 标签 + 阅读/点赞/评论 间距 25）、封面 **117×88 圆角 4** 右侧 margin-left 20（commit a02b6c3b） |
+| **视频播放页-左右栏宽度** | `/video/[vid]` | ✅ **本轮对齐** | `[vid].vue`：播放器高度分数 **0.7→0.75**（711→762px）、左栏 **1264→1355px**（B 站 1354）、右栏 **350→411px**（B 站 411）、左栏起点 **x107→x62**（B 站 63）。播放器 16:9 联动不变（commit 278ea49c） |
+| **视频播放页-工具栏/简介/标签** | `/video/[vid]` | ✅ **本轮对齐** | 工具栏 `content-box` 高 **48 + padding-top 18**（总高 **67 一致**）、左侧项 **92→100px / 字号 13→14 / 间距 8→18px**、简介容器 margin **16→18px**、简介文字 **15/24→16/26** + max-height 84 折叠、标签容器 padding-bottom **6→10** / margin-top **16→18**、标签胶囊 **28→32px 高 / 字号 13→14 / 圆角 14→16 / 底色 #f1f2f3**（commit 79757d42） |
+| **个人中心页** | `/personal-center/*` | ✅ **本轮对齐** | `PersonalCenterView.vue`：容器 **1200→980px 居中**（content-box + 1px #e1e2e5 边框 / 圆角 4 / 阴影，与 `account.bilibili.com` `.security_content` 一致 **982×@469,180**）、页面背景 **#f5f7fa→#fff**、侧栏 **200→150px** 去卡片阴影、标题 **50px 居中 #99a2aa**、导航项 **48px 行高**（图标 18×36 margin-left 16 + 文字 14px margin-left 12）、激活态 **#00a1d7 实底白字**去左边框、内容面板去圆角阴影（commit 00edbbef） |
+| 空间页 | `/space/[uid]` | ⏸️ 结构性差异 | B 站当前 space 用**通栏** banner(1920×200) + 通栏 nav(1920×64) + 1640px 居中内容；本地用**居中盒装**。通栏 vs 盒装的布局差异，影响所有 `/space/[uid]/*` 子路由，无人值守不重建（风险大） |
+| 合集和列表页 | `/collections` | ⬜ 未对齐 | 本地 `CollectionListView.vue` 为自定义盒装网格；B 站对应页在 `space.bilibili.com/{uid}/lists`，套在通栏 space 布局内，依赖空间页先迁移 |
+| 直播首页 | `/live` | ⬜ 未对齐 | B 站 `live.bilibili.com` 为**独立暗色导航 + 全屏骨架**体系（与主站 bili-header 完全不同），对齐成本高 |
+| 专栏详情页 | `/read/cv[id]` | ⬜ 未对齐 | opus 模块，本轮抓取的 cv id 已失效（「页面不存在」），下次需换有效文章 id 再抓 |
+
+## 本轮已交付（2026-11-10 凌晨班，5 个页面对齐，均只 commit 未 push）
+- `116c22f1` 历史记录页：整页重构（通栏白底 + 1432 容器 + 粘性筛选条 + 时间轴 + 5 列卡片网格）。
+- `a02b6c3b` 专栏首页：整页重构（680 单列 + 推荐文章头 + 图文信息流）。
+- `278ea49c` 视频播放页：左栏 1355 / 右栏 411 / 起点 x62（高度分数 0.7→0.75）。
+- `79757d42` 视频播放页：工具栏 67 高 / 简介文案 16-26 / 标签胶囊 32px。
+- `00edbbef` 个人中心页：980 容器 + 150 侧栏 + 48px 导航项 + #00a1d7 激活态。
 
 ## 待对齐页面（优先级）
-1. 视频播放页 `/video/[vid]` — 🟢 **已解除受阻（重大更正）**：之前的 500 是**对比脚本的 mock 数据形状错误**（`/video/getone` 返回 `data:[]` 数组，页面期望对象），并非页面本身受阻。用正确形状 mock（含可播放 mp4 的 `videos[].playUrl`）后页面 **200 正常渲染**：artplayer 初始化（`.art-video-player` 1264×711）、标题/清晰度/倍速/弹幕框全出。**剩余唯一偏差**：左栏宽 1264px vs B 站 1354px、起点 x107 vs 63（右栏 411px/gap 30px 已一致）。左栏宽由 `changeWindowSize()` 的 `0.7*(vh-64)` 高度分数公式决定，改它需谨慎（影响 16:9 高度联动），建议有人监督时调整分数（0.7→0.75 可得 1354）。渲染验证脚本：`/home/a1/bili-align/scripts/video-mock.json`。
-2. 空间页 `/space/[uid]` — 🟡 大致对齐可过，但有**结构性差异**：B 站当前 space（space.bilibili.com）用**通栏** banner（1920×200 `space-header`）+ 通栏 nav（1920×64 `space-navbar`）+ 1640px 居中内容（`space-home` x=140）；本地用**居中盒装** 1283px wrapper（banner 1283×192、nav 1283×66）。这是通栏 vs 盒装的布局差异，非 CSS 微调，且影响所有 `/space/[uid]/*` 子路由，无人值守下不做重建（风险大）。头像 60/64 vs B 站 ~68。建议有人监督时评估是否迁移到通栏布局。
-3. ~~消息页~~ — ✅ 已对齐（见上表）。
-4. ~~动态页~~ — ✅ 已对齐（见上表）。
-5. 视频页之外其余（直播/专栏/收藏/历史）— ⬜ 未开始。
-
-## 本轮已交付（2026-11-09 夜班，2 个页面对齐 + 1 个受阻解除，均只 commit 未 push）
-- `53df0164` 消息页：侧栏菜单 font-weight 400→700、背景层 z-index 0→-1（computed-style 对齐 message.bilibili.com）。
-- `f3842240` 动态页：容器 1200→1330 居中、三栏 264/724/318（gap 12）、内容起点 y72、背景 #d3e9e8、卡片圆角 6px/去阴影、区块间距 8px（对齐 t.bilibili.com）。
-- 视频播放页：**解除受阻**（更正进度表——之前 500 是 mock 形状错误，非页面问题；现可正常渲染），左栏宽偏差已记录待监督调整。
-- 高杠杆：`videoCard.css` 被首页/搜索/空间/动态共用，前轮对齐惠及所有用卡片的页面。
+1. **合集和列表页** `/collections` — ⬜ 依赖空间页通栏布局，建议与空间页一起评估。
+2. **空间页** `/space/[uid]` — ⏸️ 通栏 vs 盒装结构差异，需有人监督时做布局迁移。
+3. **直播首页** `/live` — ⬜ 独立暗色体系，成本高。
+4. **专栏详情页** `/read/cv[id]` — ⬜ 需先找到有效的 cv id 抓参考。
 
 ## 环境备忘
 - B 站 cookie：`/home/a1/bili-align/bili-cookies.json`（31 条，含 SESSDATA/bili_jct/DedeUserID，已确认登录态）。
 - CDP Chrome：`google-chrome --headless=new --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-bili-profile`（profile 从默认复制，已登录 B 站）。
-- 本地前端：`cd web/user && npx nuxt dev --port 3200`（已清理 root 残留的 `.nuxt`、`node_modules/.cache`）。
-- 对比脚本：`node /home/a1/bili-align/scripts/compare2.mjs <pairs.json> <out.json>`。
+- 本地前端：`cd web/user && npx nuxt dev --port 3200`（本轮已在跑）。
+- 对比脚本：`node /home/a1/bili-align/scripts/compare2.mjs <pairs.json> <out.json>`；辅助脚本 `bili-outline.mjs`（DOM 大纲）、`bili-cs.mjs`（批量 computed style）、`bili-html.mjs`（元素 HTML）、`local-cs.mjs` / `local-chain.mjs`（本地同款）、`shot2.mjs`（截图）、`verify-local.mjs`（回归巡检）。
+- 各页 pairs 配置：`history-pairs.json` / `read-pairs.json` / `video-pairs.json` / `pc-pairs.json` / `search-pairs.json` / `home-pairs.json` / `message-pairs.json`。
 - **后端未启动**（Go monorepo 需 DB/NATS/MinIO，风险大）；改用 Playwright route 拦截 mock `/api/*`。
 - API 契约：`$get` → `request.ts`（baseURL `/api`），拦截器要求 `code===200`，列表接口经 `adaptCard`（raw: `{id,coverUrl,title,durationSeconds,createdAt,viewCount,...,uploader:{id,name,avatar}}`）。
 
 ## 铁律遵守
-- 只 commit，绝不 push。✅
+- 只 commit，绝不 push。✅（本轮 5 个 commit，无 push）
 - 所有 CSS 值来自真实 `getComputedStyle()`。✅
-- `npx vitest run`：949 passed（本轮无新失败）。✅
-- 只改 `web/user` 前端模板/样式。✅
+- `npx vitest run`：949 passed（本轮每次改动后均跑，无新失败）。✅
+- 只改 `web/user` 前端模板/样式（`HistoryView.vue` / `read/home.vue` / `video/[vid].vue` / `PersonalCenterView.vue`）。✅
