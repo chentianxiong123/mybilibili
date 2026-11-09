@@ -5,7 +5,7 @@
       <div class="carousel-box">
         <el-carousel
           v-if="banners.length"
-          height="228px"
+          height="262px"
           :interval="5000"
           :autoplay="banners.length > 1"
           arrow="hover"
@@ -624,9 +624,9 @@ onMounted(() => {
 }
 
 .carousel-box {
-  flex: 0 0 644px;
+  flex: 0 0 741px;
   max-width: calc(100% - 15px);
-  height: 228px;
+  height: 262px;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -635,7 +635,7 @@ onMounted(() => {
 .banner-link img {
   display: block;
   width: 100%;
-  height: 228px;
+  height: 262px;
 }
 
 .carousel-empty {
@@ -643,7 +643,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 228px;
+  height: 262px;
   border-radius: 8px;
   background: #fff;
   font-size: 14px;
@@ -657,7 +657,7 @@ onMounted(() => {
 }
 
 .notice-wrap {
-  height: 228px;
+  height: 262px;
   box-sizing: border-box;
   padding: 16px 22px 16px 24px;
   border-radius: 2px;
@@ -672,8 +672,8 @@ onMounted(() => {
 
 .notice-txt {
   font-size: 16px;
-  font-weight: 500;
-  color: #18191c;
+  font-weight: 400;
+  color: #212121;
 }
 
 .notice-body {

@@ -537,7 +537,10 @@ export default {
 }
 
 /* 创作中心首页：与B站一致，整页灰底(#fafafa)，各模块为独立白色圆角卡片 */
+/* B站 .home-wrap 为 1283px 居中列（contentWrap 1283@x411，margin 16px 211px 0），非通栏 */
 .content-body--home {
+    width: 1283px;
+    margin: 16px auto 0;
     background: #fafafa;
 }
 
