@@ -10,23 +10,23 @@
       <!-- 右侧悬浮互动栏 -->
       <div class="side-toolbar">
         <div class="side-toolbar__action like" :class="{ active: liked }" @click="onLike">
-          <svg viewBox="0 0 24 24" width="26" height="26"><path d="M7 22V10l5-8 1.5.5c.8.3 1.2 1.1 1 1.9L13 10h5.5c1.2 0 2.1 1 2 2.2l-1 7c-.1 1-1 1.8-2 1.8H7zM7 10 3 10v12h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 24 24" width="24" height="24"><path d="M7 22V10l5-8 1.5.5c.8.3 1.2 1.1 1 1.9L13 10h5.5c1.2 0 2.1 1 2 2.2l-1 7c-.1 1-1 1.8-2 1.8H7zM7 10 3 10v12h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
           <span class="side-toolbar__action__text">{{ fmtNum(article.like_count) }}</span>
         </div>
         <div class="side-toolbar__action coin" :class="{ active: myCoin > 0 }" @click="onCoin">
-          <svg viewBox="0 0 24 24" width="26" height="26"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
           <span class="side-toolbar__action__text">{{ fmtNum(article.coin_count) }}</span>
         </div>
         <div class="side-toolbar__action favorite" :class="{ active: favorited }" @click="onFavorite">
-          <svg viewBox="0 0 24 24" width="26" height="26"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 24 24" width="24" height="24"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
           <span class="side-toolbar__action__text">{{ fmtNum(article.favorite_count) }}</span>
         </div>
         <div class="side-toolbar__action forward" @click="onShare">
-          <svg viewBox="0 0 24 24" width="26" height="26"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 16V3m0 0L8 7m4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 24 24" width="24" height="24"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 16V3m0 0L8 7m4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="side-toolbar__action__text">{{ fmtNum(article.share_count) }}</span>
         </div>
         <div class="side-toolbar__action comment" @click="scrollToComments">
-          <svg viewBox="0 0 24 24" width="26" height="26"><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4V6a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 24 24" width="24" height="24"><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4V6a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
           <span class="side-toolbar__action__text">{{ fmtNum(article.comment_count) }}</span>
         </div>
       </div>
@@ -495,9 +495,11 @@ watch(() => route.params.id, load)
 
 <style scoped>
 .opus-page {
-  background: #fff;
   min-height: 100vh;
-  padding: 24px 0 80px;
+  /* B站 #app padding-top 8px + fixed header 64px → 卡片起点 y72；body 背景 #f1f2f3 */
+  padding: 72px 0 80px;
+  background: #f1f2f3;
+  box-sizing: border-box;
 }
 .cv-loading,
 .cv-empty { text-align: center; color: #9499a0; padding: 100px 0; }
@@ -506,46 +508,57 @@ watch(() => route.params.id, load)
   background: #fff; color: #00aeec; font-size: 14px; cursor: pointer;
 }
 
+/* B站 .opus-detail：708px 居中白卡（1920−708)/2=606，圆角 6 + 顶部 1px 内阴影分隔线 */
 .opus-container {
-  max-width: 720px;
+  width: 708px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 0 10px;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: rgb(227, 229, 231) 0px -1px 0px 0px inset;
 }
 
+/* 标题：padding-top 20 + 左右 56，文字 24/700/36 */
 .opus-module-title {
   font-size: 24px;
   font-weight: 700;
   color: #18191c;
-  line-height: 1.4;
-  margin: 0 0 24px;
+  line-height: 36px;
+  margin: 0;
+  padding: 20px 56px 0;
+  box-sizing: border-box;
 }
 
 .opus-module-author {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #f1f2f3;
-  margin-bottom: 28px;
+  padding: 12px 56px;
+  box-sizing: border-box;
 }
 .opus-avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
 .opus-avatar--empty { background: #e3e5e7; }
-.opus-author-center { display: flex; flex-direction: column; gap: 4px; }
-.opus-author-name { font-size: 15px; color: #18191c; font-weight: 500; }
-.opus-author-pub { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #9499a0; }
+.opus-author-center { display: flex; flex-direction: column; gap: 2px; }
+.opus-author-name { font-size: 17px; color: #18191c; font-weight: 600; line-height: 24px; }
+.opus-author-pub { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #9499a0; line-height: 18px; padding-top: 2px; }
 .opus-badge {
   font-size: 11px; color: #00aeec; border: 1px solid #8fd8f4; border-radius: 3px; padding: 0 4px; line-height: 15px;
 }
 
-.opus-module-content { font-size: 16px; line-height: 1.9; color: #2f3238; word-break: break-word; }
+/* 正文：padding 0 56px 36px，文字 17/29，容器 #2f3238、段落 #61666d */
+.opus-module-content {
+  font-size: 17px;
+  line-height: 29px;
+  color: #2f3238;
+  word-break: break-word;
+  padding: 0 56px 36px;
+  box-sizing: border-box;
+}
 .opus-module-content :deep(img) { max-width: 100%; border-radius: 6px; display: block; margin: 16px auto; }
 .opus-module-content :deep(h1),
 .opus-module-content :deep(h2),
-.opus-module-content :deep(h3) { color: #18191c; margin: 28px 0 14px; line-height: 1.4; }
-.opus-module-content :deep(h1) { font-size: 22px; }
-.opus-module-content :deep(h2) { font-size: 19px; }
-.opus-module-content :deep(h3) { font-size: 17px; }
-.opus-module-content :deep(p) { margin: 0 0 16px; }
+.opus-module-content :deep(h3) { color: #2f3238; margin: 36px 0 0; line-height: 32px; font-size: 19px; font-weight: 500; }
+.opus-module-content :deep(p) { margin: 0; color: #61666d; }
 .opus-module-content :deep(blockquote) {
   border-left: 3px solid #00aeec; background: #f6f7f8; margin: 16px 0; padding: 10px 16px; color: #61666d;
 }
@@ -569,28 +582,34 @@ watch(() => route.params.id, load)
 .share-item:hover { color: #00aeec; }
 .opus-module-bottom__feedback { font-size: 13px; color: #9499a0; cursor: pointer; }
 
-/* 侧边悬浮栏 */
+/* 侧边悬浮栏：B站 .side-toolbar 58 宽 @x1326（居中+366），top 180，动作 46x42 间距 58(gap16) */
 .side-toolbar {
   position: fixed;
-  right: calc(50% - 360px - 80px);
-  top: 200px;
+  left: calc(50% + 366px);
+  top: 180px;
+  width: 58px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  align-items: center;
+  gap: 16px;
+  padding-top: 12px;
   z-index: 10;
 }
 .side-toolbar__action {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  width: 46px;
+  height: 42px;
+  gap: 2px;
   color: #61666d;
   cursor: pointer;
   transition: color .2s;
 }
 .side-toolbar__action:hover { color: #00aeec; }
 .side-toolbar__action.active { color: #00aeec; }
-.side-toolbar__action__text { font-size: 12px; }
+.side-toolbar__action__text { font-size: 12px; line-height: 14px; }
 
 /* 评论 */
 .comment-wrap { margin-top: 32px; }
