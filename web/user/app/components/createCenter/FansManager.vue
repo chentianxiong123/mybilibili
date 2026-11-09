@@ -281,23 +281,21 @@ onMounted(() => {
 
 .link-top-container {
   display: flex;
+  align-items: flex-start;
   border-bottom: 1px solid #e7e7e7;
 }
 
+/* B站 a.link-top-item：margin-left 40px，pad-top 26，行高 34，底部 3px 游标 → 高 63，容器 64 */
 .link-top-item {
   font-size: 16px;
   color: #505050;
   font-weight: 400;
+  line-height: 34px;
   padding: 26px 0 0;
-  margin-right: 36px;
+  margin: 0 0 0 40px;
   cursor: pointer;
   border-bottom: 3px solid transparent;
-  margin-bottom: -1px;
   transition: color .2s;
-}
-
-.link-top-item:last-child {
-  margin-right: 0;
 }
 
 .link-top-item.active {
@@ -311,8 +309,9 @@ onMounted(() => {
 }
 
 /* ===== 主体 ===== */
+/* B站 .page-wrp manage-wrap content：padding 0 40px → 内容 1203 宽 */
 .manage-wrap {
-  padding: 0 0 40px;
+  padding: 0 40px 40px;
 }
 
 /* 头部 */
