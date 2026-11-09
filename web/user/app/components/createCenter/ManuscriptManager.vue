@@ -1,11 +1,11 @@
 <template>
   <div class="manuscript-manager">
-    <!-- 主要选择栏 -->
+    <!-- 主要选择栏：对齐B站 new-link-top-wrap 下划线 tab（64px） -->
     <div class="content-tabs">
-      <el-tabs v-model="mainTab" type="card">
-        <el-tab-pane label="视频管理" name="video"></el-tab-pane>
-        <el-tab-pane label="合集管理" name="collection"></el-tab-pane>
-      </el-tabs>
+      <div class="link-top-container">
+        <span class="link-top-item" :class="{ active: mainTab === 'video' }" @click="mainTab = 'video'">视频管理</span>
+        <span class="link-top-item" :class="{ active: mainTab === 'collection' }" @click="mainTab = 'collection'">合集管理</span>
+      </div>
     </div>
 
     <div v-show="mainTab === 'video'">
@@ -707,9 +707,38 @@ onUnmounted(() => {
   padding: 0 40px;
 }
 
-/* 主要选择栏 */
+/* 主要选择栏：对齐B站 new-link-top-wrap（通栏 1283，border-bottom 全宽，tab 项 inset 40）。
+   manuscript-manager 已有 padding:0 40px，故用负边距把 tab 条撑回 1283 通宽 */
 .content-tabs {
-  margin-bottom: 15px;
+  margin: 0 -40px 15px;
+}
+
+.link-top-container {
+  display: flex;
+  align-items: flex-start;
+  border-bottom: 1px solid #e7e7e7;
+}
+
+.link-top-item {
+  font-size: 16px;
+  color: #505050;
+  font-weight: 400;
+  line-height: 34px;
+  padding: 26px 0 0;
+  margin: 0 0 0 40px;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: color .2s;
+}
+
+.link-top-item.active {
+  color: #00a1d6;
+  font-weight: 700;
+  border-bottom-color: #00a1d6;
+}
+
+.link-top-item:hover {
+  color: #00a1d6;
 }
 
 /* 工具栏：对齐B站article-header（左右两段，8px 下留白 -> 列表） */
