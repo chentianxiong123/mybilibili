@@ -522,30 +522,32 @@ export default {
     min-height: 100%;
 }
 
+/* B站 创作中心各内容页（首页/内容管理/粉丝/互动/草稿箱…）均为 1283px 居中列
+   （member.bilibili.com contentWrap 1283@x411，margin 16px 211px 0），非通栏 1576 */
 .content-body {
-    width: inherit;
+    width: 1283px;
     min-height: calc(100vh - 126px);
     background: #fff;
-    margin: 16px 72px 0;
+    margin: 16px auto 0;
     padding-bottom: 20px;
     display: flow-root;
 }
 
-/* 数据中心：与B站一致，整页灰底(#f6f7f8)，各模块为独立白色圆角卡片浮在灰底上 */
+/* 数据中心：与B站一致，整页灰底(#f6f7f8)，各模块为独立白色圆角卡片浮在灰底上
+   B站 数据中心内容是全宽 iframe（1720 铺满），本地保持通栏不收 1283 */
 .content-body--gray {
+    width: auto;
     background: #f6f7f8;
 }
 
 /* 创作中心首页：与B站一致，整页灰底(#fafafa)，各模块为独立白色圆角卡片 */
-/* B站 .home-wrap 为 1283px 居中列（contentWrap 1283@x411，margin 16px 211px 0），非通栏 */
 .content-body--home {
-    width: 1283px;
-    margin: 16px auto 0;
     background: #fafafa;
 }
 
 /* 专栏投稿/编辑：整块区域全宽（对齐B站专栏编辑器 iframe 铺满内容区） */
 .content-body--editor {
+    width: auto;
     margin: 0;
     padding: 16px 24px 0;
     background: #fff;
