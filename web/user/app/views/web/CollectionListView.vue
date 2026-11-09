@@ -2,8 +2,8 @@
 import { useAuth } from '@/composables/useAuth'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Plus, Grid, List, Edit, Delete, VideoPlay, Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus, Edit, Delete, Search } from '@element-plus/icons-vue'
 import { collectionApi } from '@/api/collection.ts'
 import { manuscriptApi } from '@/api/manuscript.ts'
 
@@ -20,15 +20,8 @@ const isOwnSpace = computed(() => {
 
 const loading = ref(false)
 
-const viewType = ref('grid')
-
-const collections = ref([])
-
-const pagination = ref({
-  currentPage: 1,
-  pageSize: 20,
-  total: 0
-})
+// 合集分组（对齐 B站 space.bilibili.com/{uid}/lists 的 .video-list 分组模型）
+const groups = ref([])
 
 const createDialogVisible = ref(false)
 const creating = ref(false)
@@ -43,7 +36,6 @@ const userManuscripts = ref([])
 const manuscriptLoading = ref(false)
 const searchKeyword = ref('')
 
-// 格式化日期
 const formatDate = (dateString) => {
   if (!dateString) return ''
   const date = new Date(dateString)
@@ -53,9 +45,23 @@ const formatDate = (dateString) => {
   return `${year}-${month}-${day}`
 }
 
-// 获取默认封面
+// 格式化时长
+const formatDuration = (seconds) => {
+  if (!seconds) return '00:00'
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+}
+
+// 格式化播放量（万）
+const formatView = (n) => {
+  const v = Number(n) || 0
+  if (v >= 10000) return (v / 10000).toFixed(1).replace(/\.0$/, '') + '万'
+  return String(v)
+}
+
 const getDefaultCover = () => {
-  return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225" viewBox="0 0 400 225"><rect fill="#e5e9ef" width="400" height="225"/><text fill="#9499a0" font-family="sans-serif" font-size="16" x="50%" y="50%" text-anchor="middle" dy=".3em">暂无封面</text></svg>')
+  return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225" viewBox="0 0 400 225"><rect fill="#e3e5e7" width="400" height="225"/></svg>')
 }
 
 // 合集 API 返回 snake_case，归一化到 camelCase
@@ -74,20 +80,26 @@ const normalizeCollection = (d) => ({
   userAvatar: d.user_avatar || d.userAvatar || ''
 })
 
-// 加载合集列表
-const loadCollections = async () => {
+// 加载合集 + 每个合集的稿件，构建 B站 .video-list 分组
+const loadGroups = async () => {
   if (!userId.value) return
-  
   loading.value = true
   try {
-    const response = await collectionApi.getUserCollections(
-      userId.value,
-      pagination.value.currentPage,
-      pagination.value.pageSize
-    )
+    const response = await collectionApi.getUserCollections(userId.value, 1, 20)
     if (response.code === 200) {
-      collections.value = (response.data?.list || []).map(normalizeCollection)
-      pagination.value.total = response.data?.total || 0
+      const collections = (response.data?.list || []).map(normalizeCollection)
+      // 并发拉取每个合集的前 6 个视频（B站 每组最多展示 6 个，其余「查看更多」）
+      const built = await Promise.all(collections.map(async (c) => {
+        let videos = []
+        try {
+          const r = await collectionApi.getCollectionManuscripts(c.id, 1, 6)
+          if (r.code === 200) videos = r.data?.list || []
+        } catch (e) {
+          console.error('获取合集视频失败:', e)
+        }
+        return { ...c, videos }
+      }))
+      groups.value = built
     }
   } catch (error) {
     console.error('获取合集列表失败:', error)
@@ -101,25 +113,19 @@ const goToCollectionDetail = (collectionId) => {
   router.push(`/collection/${collectionId}`)
 }
 
-// 跳转到创建合集页面
-const goToCreateCollection = () => {
-  router.push('/collection/create')
-}
-
-// 跳转到编辑合集页面
-const goToEditCollection = (collectionId, event) => {
-  event.stopPropagation()
-  router.push(`/collection/${collectionId}/edit`)
+// 播放全部：进详情页（详情页有播放全部）
+const playAll = (collection) => {
+  const first = collection.videos && collection.videos[0]
+  if (first && first.id) {
+    router.push(`/manuscript/${first.id}`)
+  } else {
+    router.push(`/collection/${collection.id}`)
+  }
 }
 
 // 打开创建对话框
 const openCreateDialog = async () => {
-  newCollection.value = {
-    name: '',
-    description: '',
-    isPublic: true,
-    manuscriptIds: []
-  }
+  newCollection.value = { name: '', description: '', isPublic: true, manuscriptIds: [] }
   searchKeyword.value = ''
   userManuscripts.value = []
   createDialogVisible.value = true
@@ -128,7 +134,6 @@ const openCreateDialog = async () => {
 
 const loadUserManuscripts = async () => {
   if (!currentUserId.value) return
-  
   manuscriptLoading.value = true
   try {
     const response = await manuscriptApi.getUserManuscripts(currentUserId.value, 1, 100)
@@ -148,7 +153,7 @@ const handleSearchManuscripts = () => {
     return
   }
   const keyword = searchKeyword.value.toLowerCase()
-  userManuscripts.value = userManuscripts.value.filter(m => 
+  userManuscripts.value = userManuscripts.value.filter(m =>
     m.title.toLowerCase().includes(keyword)
   )
 }
@@ -159,7 +164,6 @@ const handleCreateCollection = async () => {
     ElMessage.warning('请输入合集名称')
     return
   }
-
   creating.value = true
   try {
     const response = await collectionApi.createCollection({
@@ -168,11 +172,10 @@ const handleCreateCollection = async () => {
       isPublic: newCollection.value.isPublic,
       manuscriptIds: newCollection.value.manuscriptIds
     })
-    
     if (response.code === 200) {
       ElMessage.success('创建成功')
       createDialogVisible.value = false
-      loadCollections()
+      loadGroups()
       if (response.data?.id) {
         router.push(`/collection/${response.data.id}/edit`)
       }
@@ -190,22 +193,16 @@ const handleCreateCollection = async () => {
 // 删除合集
 const handleDeleteCollection = async (collection, event) => {
   event.stopPropagation()
-  
   try {
     await ElMessageBox.confirm(
       `确定要删除合集 "${collection.name}" 吗？此操作不可恢复。`,
       '确认删除',
-      {
-        confirmButtonText: '删除',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
     )
-    
     const response = await collectionApi.deleteCollection(collection.id)
     if (response.code === 200) {
       ElMessage.success('删除成功')
-      loadCollections()
+      loadGroups()
     } else {
       ElMessage.error(response.message || '删除失败')
     }
@@ -217,214 +214,101 @@ const handleDeleteCollection = async (collection, event) => {
   }
 }
 
-// 处理分页变化
-const handlePageChange = (page) => {
-  pagination.value.currentPage = page
-  loadCollections()
-}
-
-// 处理每页数量变化
-const handleSizeChange = (size) => {
-  pagination.value.pageSize = size
-  pagination.value.currentPage = 1
-  loadCollections()
-}
-
 onMounted(() => {
-  loadCollections()
+  loadGroups()
 })
 </script>
 
 <template>
-  <div class="collection-list-page">
-    <!-- 页面头部 -->
-    <div class="page-header">
-      <div class="header-left">
-        <h1 class="page-title">合集和列表</h1>
-        <span class="collection-count">共 {{ pagination.total }} 个合集</span>
-      </div>
-      <div class="header-right">
-        <!-- 视图切换 -->
-        <div class="view-toggle">
-          <button
-            class="toggle-btn"
-            :class="{ active: viewType === 'grid' }"
-            @click="viewType = 'grid'"
-          >
-            <el-icon><Grid /></el-icon>
-          </button>
-          <button
-            class="toggle-btn"
-            :class="{ active: viewType === 'list' }"
-            @click="viewType = 'list'"
-          >
-            <el-icon><List /></el-icon>
-          </button>
-        </div>
-        <!-- 创建按钮 -->
-        <el-button
-          v-if="isOwnSpace"
-          type="primary"
-          :icon="Plus"
-          @click="openCreateDialog"
-        >
-          新建合集
-        </el-button>
-      </div>
-    </div>
-
-    <!-- 加载状态 -->
-    <div v-if="loading" class="loading-state">
-      <el-skeleton :rows="3" animated />
-    </div>
-
-    <!-- 空状态 -->
-    <div v-else-if="collections.length === 0" class="empty-state">
-      <el-empty description="暂无合集">
-        <el-button
-          v-if="isOwnSpace"
-          type="primary"
-          @click="openCreateDialog"
-        >
-          创建合集
-        </el-button>
-      </el-empty>
-    </div>
-
-    <!-- 宫格视图 -->
-    <div v-else-if="viewType === 'grid'" class="collections-grid">
-      <!-- 新建合集卡片 -->
-      <div
-        v-if="isOwnSpace"
-        class="collection-card new-collection"
-        @click="openCreateDialog"
-      >
-        <div class="new-collection-content">
-          <el-icon :size="48"><Plus /></el-icon>
+  <div class="space-lists">
+    <!-- 头部：标题 + 操作（B站 .lists-header） -->
+    <div class="lists-header">
+      <div class="title">合集和系列</div>
+      <div class="actions">
+        <button v-if="isOwnSpace" class="vui_button action-btn" @click="openCreateDialog">
+          <el-icon><Plus /></el-icon>
           <span>新建合集</span>
-        </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- 内容区 -->
+    <div class="lists-content">
+      <!-- 加载状态 -->
+      <div v-if="loading" class="loading-state">
+        <el-skeleton :rows="5" animated />
       </div>
 
-      <!-- 合集卡片 -->
-      <div
-        v-for="collection in collections"
-        :key="collection.id"
-        class="collection-card"
-        @click="goToCollectionDetail(collection.id)"
-      >
-        <div class="collection-cover">
-          <img loading="lazy" decoding="async"
-            :src="collection.coverUrl || getDefaultCover()"
-            :alt="collection.name"
-          />
-          <div class="collection-overlay">
-            <div class="video-count">
-              <el-icon><VideoPlay /></el-icon>
-              <span>{{ collection.videoCount || 0 }} 个视频</span>
+      <!-- 空状态 -->
+      <div v-else-if="groups.length === 0" class="empty-state">
+        <el-empty description="暂无合集">
+          <button v-if="isOwnSpace" class="vui_button action-btn" @click="openCreateDialog">创建合集</button>
+        </el-empty>
+      </div>
+
+      <!-- 合集分组（B站 .video-list） -->
+      <div v-for="group in groups" :key="group.id" class="video-list">
+        <div class="video-list__header">
+          <div class="video-list__title" @click="goToCollectionDetail(group.id)">{{ group.name }}</div>
+          <div class="video-list__desc">·{{ group.videoCount || group.videos.length }}</div>
+          <div class="video-list__actions">
+            <button class="vui_button action-btn playall-btn" @click="playAll(group)">
+              <i class="iconfont icon-bofang"></i>
+              <span>播放全部</span>
+            </button>
+            <button class="vui_button" @click="goToCollectionDetail(group.id)">查看更多</button>
+            <button v-if="isOwnSpace" class="vui_button icon-btn" @click.stop="router.push(`/collection/${group.id}/edit`)">
+              <el-icon><Edit /></el-icon>
+            </button>
+            <button v-if="isOwnSpace" class="vui_button icon-btn" @click.stop="handleDeleteCollection(group, $event)">
+              <el-icon><Delete /></el-icon>
+            </button>
+          </div>
+        </div>
+        <div class="video-list__content">
+          <div
+            v-for="video in group.videos"
+            :key="video.id"
+            class="video-list__item"
+            @click="router.push(`/manuscript/${video.id}`)"
+          >
+            <div class="bili-video-card">
+              <div class="bili-video-card__wrap">
+                <div class="bili-video-card__cover">
+                  <a class="bili-cover-card">
+                    <div class="bili-cover-card__thumbnail">
+                      <img :src="video.coverUrl || getDefaultCover()" :alt="video.title" loading="lazy" decoding="async" />
+                    </div>
+                    <div class="bili-cover-card__stats">
+                      <div class="bili-cover-card__stat">
+                        <i class="iconfont icon-bofangfangkuai"></i>
+                        <span>{{ formatView(video.viewCount) }}</span>
+                      </div>
+                      <div class="bili-cover-card__stat">
+                        <span>{{ formatDuration(video.duration || video.durationSeconds) }}</span>
+                      </div>
+                    </div>
+                  </a>
+                  <div class="bili-card-watch-later">
+                    <div class="bili-card-watch-later__btn">
+                      <i class="iconfont icon-bofang"></i>
+                    </div>
+                    <span class="bili-card-watch-later__tip">稍后再看</span>
+                  </div>
+                </div>
+                <div class="bili-video-card__details">
+                  <div class="bili-video-card__title" :title="video.title">
+                    <a>{{ video.title }}</a>
+                  </div>
+                  <div class="bili-video-card__subtitle">
+                    <span>{{ formatDate(video.uploadTime || video.createdAt) }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <!-- 操作按钮 -->
-          <div v-if="isOwnSpace" class="collection-actions">
-            <el-button
-              type="primary"
-              circle
-              size="small"
-              @click="goToEditCollection(collection.id, $event)"
-            >
-              <el-icon><Edit /></el-icon>
-            </el-button>
-            <el-button
-              type="danger"
-              circle
-              size="small"
-              @click="handleDeleteCollection(collection, $event)"
-            >
-              <el-icon><Delete /></el-icon>
-            </el-button>
-          </div>
-        </div>
-        <div class="collection-info">
-          <h3 class="collection-title">{{ collection.name }}</h3>
-          <p class="collection-desc">{{ collection.description || '暂无描述' }}</p>
-          <div class="collection-meta">
-            <span class="update-time">更新于 {{ formatDate(collection.updateTime) }}</span>
-            <span v-if="!collection.isPublic" class="private-tag">私密</span>
-          </div>
         </div>
       </div>
-    </div>
-
-    <!-- 列表视图 -->
-    <div v-else class="collections-list">
-      <!-- 新建合集行 -->
-      <div
-        v-if="isOwnSpace"
-        class="collection-list-item new-collection-row"
-        @click="openCreateDialog"
-      >
-        <div class="new-collection-content">
-          <el-icon :size="24"><Plus /></el-icon>
-          <span>新建合集</span>
-        </div>
-      </div>
-
-      <!-- 合集列表项 -->
-      <div
-        v-for="collection in collections"
-        :key="collection.id"
-        class="collection-list-item"
-        @click="goToCollectionDetail(collection.id)"
-      >
-        <div class="list-cover">
-          <img loading="lazy" decoding="async"
-            :src="collection.coverUrl || getDefaultCover()"
-            :alt="collection.name"
-          />
-          <div class="list-video-count">
-            <el-icon><VideoPlay /></el-icon>
-            <span>{{ collection.videoCount || 0 }}</span>
-          </div>
-        </div>
-        <div class="list-info">
-          <h3 class="list-title">{{ collection.name }}</h3>
-          <p class="list-desc">{{ collection.description || '暂无描述' }}</p>
-          <div class="list-meta">
-            <span>更新于 {{ formatDate(collection.updateTime) }}</span>
-            <span v-if="!collection.isPublic" class="private-tag">私密</span>
-          </div>
-        </div>
-        <div v-if="isOwnSpace" class="list-actions">
-          <el-button
-            type="primary"
-            text
-            @click="goToEditCollection(collection.id, $event)"
-          >
-            <el-icon><Edit /></el-icon>
-            编辑
-          </el-button>
-          <el-button
-            type="danger"
-            text
-            @click="handleDeleteCollection(collection, $event)"
-          >
-            <el-icon><Delete /></el-icon>
-            删除
-          </el-button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 分页 -->
-    <div v-if="pagination.total > pagination.pageSize" class="pagination-wrapper">
-      <el-pagination
-        v-model:current-page="pagination.currentPage"
-        v-model:page-size="pagination.pageSize"
-        :page-sizes="[10, 20, 50]"
-        :total="pagination.total"
-        layout="total, sizes, prev, pager, next"
-        @size-change="handleSizeChange"
-        @current-change="handlePageChange"
-      />
     </div>
 
     <!-- 创建合集对话框 -->
@@ -435,71 +319,32 @@ onMounted(() => {
       destroy-on-close
     >
       <el-form label-position="top">
-        <!-- 合集名称 -->
         <el-form-item label="合集名称" required>
-          <el-input
-            v-model="newCollection.name"
-            placeholder="请输入合集名称"
-            maxlength="50"
-            show-word-limit
-          />
+          <el-input v-model="newCollection.name" placeholder="请输入合集名称" maxlength="50" show-word-limit />
         </el-form-item>
-
-        <!-- 合集描述 -->
         <el-form-item label="合集描述">
-          <el-input
-            v-model="newCollection.description"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入合集描述（选填）"
-            maxlength="200"
-            show-word-limit
-          />
+          <el-input v-model="newCollection.description" type="textarea" :rows="3" placeholder="请输入合集描述（选填）" maxlength="200" show-word-limit />
         </el-form-item>
-
-        <!-- 是否公开 -->
         <el-form-item>
-          <el-checkbox v-model="newCollection.isPublic">
-            公开合集
-          </el-checkbox>
+          <el-checkbox v-model="newCollection.isPublic">公开合集</el-checkbox>
         </el-form-item>
-
-        <!-- 选择稿件 -->
         <el-form-item label="选择视频（可选）">
           <div class="manuscript-selector">
             <div class="search-bar">
-              <el-input
-                v-model="searchKeyword"
-                placeholder="搜索视频标题"
-                :prefix-icon="Search"
-                clearable
-                @keyup.enter="handleSearchManuscripts"
-                @clear="loadUserManuscripts"
-              />
+              <el-input v-model="searchKeyword" placeholder="搜索视频标题" :prefix-icon="Search" clearable @keyup.enter="handleSearchManuscripts" @clear="loadUserManuscripts" />
             </div>
-            
             <div v-if="manuscriptLoading" class="manuscript-loading">
               <el-skeleton :rows="3" animated />
             </div>
-            
             <div v-else-if="userManuscripts.length === 0" class="manuscript-empty">
               <el-empty description="暂无可添加的视频" :image-size="60" />
             </div>
-            
             <div v-else class="manuscript-list">
               <el-checkbox-group v-model="newCollection.manuscriptIds">
-                <div
-                  v-for="manuscript in userManuscripts"
-                  :key="manuscript.id"
-                  class="manuscript-item"
-                >
+                <div v-for="manuscript in userManuscripts" :key="manuscript.id" class="manuscript-item">
                   <el-checkbox :label="manuscript.id">
                     <div class="manuscript-content">
-                      <img loading="lazy" decoding="async"
-                        :src="manuscript.coverUrl || getDefaultCover()"
-                        :alt="manuscript.title"
-                        class="manuscript-cover"
-                      />
+                      <img loading="lazy" decoding="async" :src="manuscript.coverUrl || getDefaultCover()" :alt="manuscript.title" class="manuscript-cover" />
                       <div class="manuscript-info">
                         <span class="manuscript-title">{{ manuscript.title }}</span>
                         <span class="manuscript-date">{{ formatDate(manuscript.uploadTime) }}</span>
@@ -509,377 +354,317 @@ onMounted(() => {
                 </div>
               </el-checkbox-group>
             </div>
-            
             <div v-if="newCollection.manuscriptIds.length > 0" class="selected-count">
               已选择 {{ newCollection.manuscriptIds.length }} 个视频
             </div>
           </div>
         </el-form-item>
       </el-form>
-
       <template #footer>
         <el-button @click="createDialogVisible = false">取消</el-button>
-        <el-button
-          type="primary"
-          :loading="creating"
-          @click="handleCreateCollection"
-        >
-          创建合集
-        </el-button>
+        <el-button type="primary" :loading="creating" @click="handleCreateCollection">创建合集</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <style scoped>
-.collection-list-page {
-  max-width: 1200px;
+/* ===== 对齐 space.bilibili.com/{uid}/lists 合集和系列概览页 =====
+   参考值来自真实 B 站 getComputedStyle 抓取（1920×1080 / dpr1）：
+   space-lists 1640 居中 / lists-header 1640x64(pad-b 30) / title 24-600-34 #18191c
+   video-list 1640(pad-b 33 margin-b 30) / header 34(flex mb20 #61666d)
+   title 20-400-20 #18191c / desc 16-400-16 #61666d margin 0 8 0 6
+   actions 右 / playall-btn + 查看更多 100x34 fs14 border #e3e5e7 r8
+   content grid col-gap 16 / card 260x212 / cover 260x146 r6 #e3e5e7 */
+.space-lists {
+  width: 1640px;
   margin: 0 auto;
-  padding: 20px;
-  min-height: calc(100vh - 60px);
-  background-color: #f5f7fa;
+  padding: 20px 0 60px;
 }
 
-/* 页面头部 */
-.page-header {
+/* 头部（1640x64：title 34 + padding-bottom 30） */
+.lists-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  padding: 20px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding-bottom: 30px;
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.page-title {
-  font-size: 20px;
+.lists-header .title {
+  font-size: 24px;
   font-weight: 600;
-  color: #333;
-  margin: 0;
+  line-height: 34px;
+  color: #18191c;
 }
 
-.collection-count {
-  font-size: 14px;
-  color: #9499a0;
-}
-
-.header-right {
+.lists-header .actions {
   display: flex;
   align-items: center;
+}
+
+/* B站 vui_button（100x34 fs14 border #e3e5e7 r8） */
+.vui_button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 14px;
+  color: #18191c;
+  background-color: #fff;
+  border: 1px solid #e3e5e7;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.vui_button:hover {
+  color: #00aeec;
+  border-color: #00aeec;
+}
+
+.vui_button .iconfont,
+.vui_button .el-icon {
+  font-size: 14px;
+  margin-right: 4px;
+}
+
+.vui_button.icon-btn {
+  width: 34px;
+  padding: 0;
+  margin-left: 8px;
+}
+
+.vui_button.icon-btn .el-icon {
+  margin-right: 0;
+}
+
+/* 内容区 */
+.lists-content {
+  min-height: 200px;
+}
+
+/* 合集分组（1640，padding-bottom 33 + margin-bottom 30 = 组间距 330） */
+.video-list {
+  padding-bottom: 33px;
+  margin-bottom: 30px;
+}
+
+.video-list:last-child {
+  margin-bottom: 0;
+}
+
+/* 分组头（1640x34 flex 居中 mb20） */
+.video-list__header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  font-size: 16px;
+  line-height: 16px;
+  color: #61666d;
+}
+
+.video-list__title {
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 20px;
+  color: #18191c;
+  cursor: pointer;
+}
+
+.video-list__title:hover {
+  color: #00aeec;
+}
+
+.video-list__desc {
+  margin: 0 8px 0 6px;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 16px;
+  color: #61666d;
+}
+
+.video-list__actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.video-list__actions .vui_button {
+  margin-left: 12px;
+}
+
+.video-list__actions .vui_button:first-child {
+  margin-left: 0;
+}
+
+/* 视频网格（B站 .video-list__content grid col-gap 16，6 列，卡 260x212） */
+.video-list__content {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
   gap: 16px;
 }
 
-/* 视图切换 */
-.view-toggle {
-  display: flex;
-  gap: 8px;
-  background-color: #f0f2f5;
-  padding: 4px;
+.video-list__item {
+  cursor: pointer;
+}
+
+.bili-video-card {
+  width: 100%;
+}
+
+.bili-video-card__wrap {
+  width: 100%;
+}
+
+/* 封面（260x146 r6 底 #e3e5e7） */
+.bili-video-card__cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: #e3e5e7;
+}
+
+.bili-cover-card {
+  display: block;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+}
+
+.bili-cover-card__thumbnail {
+  width: 100%;
+  height: 100%;
+}
+
+.bili-cover-card__thumbnail img {
+  display: inline-block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   border-radius: 6px;
 }
 
-.toggle-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background-color: transparent;
-  color: #666;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.toggle-btn:hover {
-  color: #00aeec;
-}
-
-.toggle-btn.active {
-  background-color: #fff;
-  color: #00aeec;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* 加载状态 */
-.loading-state {
-  padding: 40px;
-  background-color: #fff;
-  border-radius: 8px;
-}
-
-/* 空状态 */
-.empty-state {
-  padding: 60px 0;
-  background-color: #fff;
-  border-radius: 8px;
-}
-
-/* 宫格视图 */
-.collections-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 20px;
-}
-
-.collection-card {
-  background-color: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.collection-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-}
-
-.collection-cover {
-  position: relative;
-  width: 100%;
-  padding-bottom: 56.25%;
-  overflow: hidden;
-  background-color: #f0f0f0;
-}
-
-.collection-cover img {
+/* 封面底部统计（260x34 白字 12-12，圆角 0 0 6 6） */
+.bili-cover-card__stats {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s ease;
-}
-
-.collection-card:hover .collection-cover img {
-  transform: scale(1.05);
-}
-
-.collection-overlay {
-  position: absolute;
-  bottom: 0;
   left: 0;
   right: 0;
-  padding: 20px 12px 12px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  height: 34px;
+  padding: 14px 8px 4px 8px;
+  border-radius: 0 0 6px 6px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 100%);
   color: #fff;
 }
 
-.video-count {
+.bili-cover-card__stat {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 13px;
+  margin-right: 10px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 12px;
+  color: #fff;
 }
 
-.collection-actions {
+.bili-cover-card__stat .iconfont {
+  font-size: 12px;
+  margin-right: 2px;
+}
+
+.bili-cover-card__stat:last-child {
+  margin-right: 0;
+}
+
+/* 稍后再看（28x28 圆角，hover 显现） */
+.bili-card-watch-later {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 6px;
+  right: 6px;
   display: flex;
-  gap: 8px;
+  align-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #fff;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.3s;
 }
 
-.collection-card:hover .collection-actions {
+.video-list__item:hover .bili-card-watch-later {
   opacity: 1;
 }
 
-.collection-info {
-  padding: 12px;
-}
-
-.collection-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-  margin: 0 0 6px 0;
-  line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.collection-desc {
-  font-size: 12px;
-  color: #9499a0;
-  margin: 0 0 8px 0;
-  line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.collection-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #9499a0;
-}
-
-.private-tag {
-  padding: 2px 6px;
-  background-color: #f0f0f0;
-  color: #666;
-  border-radius: 4px;
-  font-size: 11px;
-}
-
-/* 新建合集卡片 */
-.new-collection {
+.bili-card-watch-later__btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 200px;
-  border: 2px dashed #e0e0e0;
-  background-color: #fafafa;
+  width: 100%;
+  height: 100%;
 }
 
-.new-collection:hover {
-  border-color: #00aeec;
-  background-color: rgba(0, 174, 236, 0.05);
+.bili-card-watch-later__btn .iconfont {
+  font-size: 16px;
 }
 
-.new-collection-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  color: #9499a0;
-  font-size: 14px;
+/* 卡片详情：标题 + 日期（B站 margin-top 10px → 卡片总高 212） */
+.bili-video-card__details {
+  margin-top: 10px;
 }
 
-.new-collection:hover .new-collection-content {
+.bili-video-card__title {
+  display: flow-root;
+  max-height: 36px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #18191c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bili-video-card__title a {
+  color: #18191c;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  text-decoration: none;
+}
+
+.video-list__item:hover .bili-video-card__title a {
   color: #00aeec;
 }
 
-/* 列表视图 */
-.collections-list {
+.bili-video-card__subtitle {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.collection-list-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px;
-  background-color: #fff;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.collection-list-item:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-}
-
-.new-collection-row {
-  justify-content: center;
-  border: 2px dashed #e0e0e0;
-  background-color: #fafafa;
-}
-
-.new-collection-row:hover {
-  border-color: #00aeec;
-  background-color: rgba(0, 174, 236, 0.05);
-}
-
-.list-cover {
-  position: relative;
-  width: 160px;
-  height: 90px;
-  flex-shrink: 0;
-  border-radius: 4px;
-  overflow: hidden;
-  background-color: #f0f0f0;
-}
-
-.list-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.list-video-count {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px 6px;
-  background-color: rgba(0, 0, 0, 0.7);
-  color: #fff;
+  margin-top: 4px;
   font-size: 12px;
-  border-radius: 4px;
-}
-
-.list-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.list-title {
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
-  margin: 0 0 8px 0;
-  line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.list-desc {
-  font-size: 14px;
-  color: #666;
-  margin: 0 0 8px 0;
-  line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.list-meta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 13px;
+  font-weight: 400;
+  line-height: 16px;
   color: #9499a0;
 }
 
-.list-actions {
-  display: flex;
-  gap: 8px;
+.bili-video-card__subtitle span {
+  color: #9499a0;
 }
 
-/* 分页 */
-.pagination-wrapper {
-  display: flex;
-  justify-content: center;
-  margin-top: 24px;
+/* 加载 / 空状态 */
+.loading-state {
   padding: 20px;
-  background-color: #fff;
-  border-radius: 8px;
 }
 
-/* 稿件选择器 */
+.empty-state {
+  padding: 60px 0;
+}
+
+/* 稿件选择器（创建对话框内，隐藏态不影响像素布局） */
 .manuscript-selector {
   width: 100%;
 }
@@ -907,10 +692,6 @@ onMounted(() => {
 
 .manuscript-item:last-child {
   border-bottom: none;
-}
-
-.manuscript-item:hover {
-  background-color: #f5f7fa;
 }
 
 .manuscript-content {
@@ -955,13 +736,4 @@ onMounted(() => {
   font-size: 13px;
   color: #1890ff;
 }
-
-/* 响应式设计 */
-
-
-
-
-
-
-
 </style>
