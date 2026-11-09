@@ -47,7 +47,7 @@
                 </div>
                 <div class="message-content">
                     <div class="message-content__wrapper">
-                        <div class="message-content__inner">
+                        <div class="message-content__inner message-box-shadow">
                             <NuxtPage />
                         </div>
                     </div>

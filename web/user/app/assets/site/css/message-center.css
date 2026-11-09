@@ -360,8 +360,11 @@
 .interaction-item__left {
   position: relative;
   flex-shrink: 0;
-  width: 60px;
-  height: 60px;
+  /* B 站 content-box: width 60 + padding-left 16 => 盒子 76 宽；height 60 + padding-top 24 => 84 高。
+     本地全局 border-box，需直接给 76/84 才能让右栏从 x615 起（与 B站 .interaction-item__right 对齐）。 */
+  box-sizing: border-box;
+  width: 76px;
+  height: 84px;
   padding-top: 24px;
   padding-left: 16px;
 }
@@ -431,6 +434,12 @@
   color: var(--text2);
 }
 
+/* B 站 action 文字为常规字重(400)，只有 uname 是 700。本地 action 是 span，
+   会被 `.interaction-item__title span{font-weight:700}` 命中，需用更高优先级回落 400。 */
+.interaction-item__title .interaction-item__action {
+  font-weight: 400;
+}
+
 .interaction-item__msg {
   display: -webkit-box;
   margin-top: 10px;
@@ -451,10 +460,13 @@
   margin-top: 10px;
   color: var(--text3);
   font-size: 12px;
+  /* B 站 metadata/time 行高 18px（本地原本继承 15px） */
+  line-height: 18px;
 }
 
 .interaction-item__time {
   margin-right: 15px;
+  line-height: 18px;
 }
 
 .interaction-item__btn {
