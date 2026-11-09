@@ -133,19 +133,20 @@ export default {
     justify-content: center;
     align-items: flex-end;
     font-size: 40px;
+    line-height: 64px;
+    height: 64px;
 }
 
 .search-center-title img {
-    height: 60px;
-    transform: translateY(4px);
+    height: 64px;
     margin-right: 12px;
 }
 
 .center-title-text {
     position: relative;
-    line-height: 1;
+    line-height: 40px;
     padding-left: 25px;
-    color: var(--brand_pink);
+    color: #00aeec;
 }
 
 .center-title-text::before {
@@ -154,11 +155,11 @@ export default {
     left: 0;
     width: 2px;
     height: 100%;
-    background: var(--brand_pink);
+    background: #00aeec;
 }
 
 .search-input {
-    margin: 30px 0 20px;
+    margin: 30px 0 0;
 }
 
 .navbar::after {
