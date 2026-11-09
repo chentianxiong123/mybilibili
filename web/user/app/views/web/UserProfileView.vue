@@ -714,25 +714,24 @@ onMounted(() => {
   align-items: center;
 }
 
-/* 选择栏容器 */
+/* 选择栏容器（通栏 1920×64 白色 nav，与 space.bilibili.com .nav-bar.space-navbar 一致 @y200） */
 .profile-tabs-container {
   background-color: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
   width: 100%;
-  max-width: 1200px;
-  margin: 0 auto 20px;
+  height: 64px;
+  box-sizing: border-box;
+  margin: 0 auto;
 }
 
-/* 选择栏包装器 */
+/* 选择栏包装器（1640 居中，140px 左右边距） */
 .profile-tabs-wrapper {
-  max-width: 1200px;
+  max-width: 1640px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 60px;
+  height: 64px;
   background-color: #fff;
 }
 
@@ -744,30 +743,30 @@ onMounted(() => {
   background-color: #fff;
 }
 
-/* 标签项 */
+/* 标签项（B 站 nav tab：16px，激活 #00aeec/700，未激活 #18191c/400，无背景胶囊） */
 .tab-item {
   padding: 8px 16px;
   font-size: 16px;
-  color: #666;
+  color: #18191c;
   cursor: pointer;
   border-radius: 4px;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
   gap: 6px;
-  background-color: #fff;
+  background-color: transparent;
 }
 
 .tab-item:hover {
   color: #00aeec;
-  background-color: rgba(0, 174, 236, 0.1);
+  background-color: transparent;
 }
 
 .tab-item.active {
   color: #00aeec;
-  background-color: rgba(0, 174, 236, 0.1);
-  font-weight: 500;
-  border-bottom: 2px solid #00aeec;
+  background-color: transparent;
+  font-weight: 700;
+  border-bottom: none;
 }
 
 /* 搜索栏包装器 */
@@ -867,12 +866,12 @@ onMounted(() => {
   transition: color 0.3s ease;
 }
 
-/* 主内容区域 */
+/* 主内容区域（1640 居中，与 B 站 space 内容区一致，起点 y264 = banner200 + nav64） */
 .profile-content {
   flex: 1;
-  max-width: 1200px;
+  max-width: 1640px;
   margin: 0 auto;
-  padding: 0 0 40px;
+  padding: 16px 0 40px;
   box-sizing: border-box;
   display: flex;
   gap: 20px;

@@ -42,54 +42,58 @@ const saveSignature = async () => {
 
 <template>
   <div class="profile-header">
-    <!-- 封面图片 -->
+    <!-- 封面图片（通栏 1920×200，与 space.bilibili.com 一致） -->
     <div class="cover-image" :style="{ backgroundImage: `url(${userInfo.cover})` }">
-      <!-- 个人信息 -->
-      <div class="profile-info">
-        <div class="avatar-container" :class="{ 'clickable': isOwnSpace }" @click="emit('avatar-click')" :title="isOwnSpace ? '点击修改头像' : ''">
-          <img loading="lazy" decoding="async" :src="userInfo.avatar" alt="头像" class="user-avatar">
-          <div v-if="isOwnSpace" class="avatar-overlay">
-            <el-icon :size="20"><Edit /></el-icon>
+      <!-- 1640 居中内容容器（140px 左右边距） -->
+      <div class="banner-content">
+        <!-- 个人信息 -->
+        <div class="profile-info">
+          <div class="avatar-container" :class="{ 'clickable': isOwnSpace }" @click="emit('avatar-click')" :title="isOwnSpace ? '点击修改头像' : ''">
+            <img loading="lazy" decoding="async" :src="userInfo.avatar" alt="头像" class="user-avatar">
+            <div v-if="isOwnSpace" class="avatar-overlay">
+              <el-icon :size="20"><Edit /></el-icon>
+            </div>
+          </div>
+          <div class="user-details">
+            <h1 class="username">
+              {{ userInfo.username }}
+              <span v-if="userInfo.gender === 1" class="gender-icon male" title="男">♂</span>
+              <span v-else-if="userInfo.gender === 2" class="gender-icon female" title="女">♀</span>
+            </h1>
+            <textarea
+              class="bio-input"
+              v-model="userInfo.signature"
+              :placeholder="isOwnSpace ? '点击编辑个人签名' : '暂无个人签名'"
+              @blur="saveSignature"
+              :disabled="!isOwnSpace"
+            ></textarea>
           </div>
         </div>
-        <div class="user-details">
-          <h1 class="username">
-            {{ userInfo.username }}
-            <span v-if="userInfo.gender === 1" class="gender-icon male" title="男">♂</span>
-            <span v-else-if="userInfo.gender === 2" class="gender-icon female" title="女">♀</span>
-          </h1>
-          <textarea
-            class="bio-input"
-            v-model="userInfo.signature"
-            :placeholder="isOwnSpace ? '点击编辑个人签名' : '暂无个人签名'"
-            @blur="saveSignature"
-            :disabled="!isOwnSpace"
-          ></textarea>
+
+        <!-- 右侧操作按钮 -->
+        <div class="banner-actions">
+          <button
+            class="action-btn follow-btn profile-btn"
+            v-if="!isOwnSpace"
+            @click="emit('follow')"
+            :class="{ 'following': isFollowing }"
+            :disabled="followLoading"
+          >
+            <el-icon v-if="isFollowing"><Check /></el-icon>
+            <span>{{ isFollowing ? '已关注' : '+ 关注' }}</span>
+          </button>
+          <button class="action-btn message-btn profile-btn" v-if="!isOwnSpace" @click="emit('send-message')">发消息</button>
         </div>
       </div>
-
-      <!-- 右侧操作按钮 -->
-      <button
-        class="action-btn follow-btn profile-btn"
-        v-if="!isOwnSpace"
-        @click="emit('follow')"
-        :class="{ 'following': isFollowing }"
-        :disabled="followLoading"
-      >
-        <el-icon v-if="isFollowing"><Check /></el-icon>
-        <span>{{ isFollowing ? '已关注' : '+ 关注' }}</span>
-      </button>
-      <button class="action-btn message-btn profile-btn" v-if="!isOwnSpace" @click="emit('send-message')">发消息</button>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* 背景框容器 */
+/* 背景框容器（通栏 1920×200，与 space.bilibili.com .header.space-header 一致） */
 .profile-header {
   position: relative;
   width: 100%;
-  max-width: 1200px;
   height: 200px;
   background-color: #f0f0f0;
   overflow: hidden;
@@ -107,42 +111,67 @@ const saveSignature = async () => {
   position: relative;
 }
 
-/* 个人信息 */
+/* 1640 居中内容容器（1920 视口下左右各 140px，与 B 站 140px 边距一致） */
+.banner-content {
+  position: relative;
+  width: 100%;
+  max-width: 1640px;
+  height: 100%;
+  margin: 0 auto;
+}
+
+/* 个人信息（左下角，与 B 站 .upinfo 一致：头像顶 y119、名字顶 y127） */
 .profile-info {
   position: absolute;
-  bottom: 0;
+  top: 119px;
   left: 0;
+  display: flex;
+  align-items: flex-start;
+  background: none;
+  color: #fff;
+}
+
+/* 右侧操作按钮组（右下角，与 B 站 .space-head-follow 一致） */
+.banner-actions {
+  position: absolute;
   right: 0;
-  padding: 15px 20px;
+  bottom: 22px;
   display: flex;
   align-items: center;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent);
-  color: #fff;
+  gap: 12px;
 }
 
 /* 顶部个人资料操作按钮 */
 .profile-btn {
-  position: absolute;
-  bottom: 10px;
   background-color: transparent;
   color: #ffffff !important;
   border: 1px solid rgba(255, 255, 255, 0.5);
   z-index: 20;
   font-size: 14px;
   font-weight: 500;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  text-shadow: none;
+  border-radius: 6px;
 }
 
-/* 关注按钮 */
+/* 关注按钮（B 站 .space-follow-btn：150×34 实底 #00aeec / 14-600 / 圆角 6） */
 .profile-btn.follow-btn {
-  right: 120px;
-  background-color: transparent;
+  min-width: 96px;
+  height: 34px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #00aeec;
+  border: none;
   color: #ffffff !important;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 6px;
 }
 
 .profile-btn.follow-btn:hover {
-  background-color: rgba(0, 174, 236, 0.9);
-  border-color: #00aeec;
+  background-color: #00a1d6;
+  border: none;
   color: #ffffff !important;
 }
 
@@ -164,9 +193,15 @@ const saveSignature = async () => {
 
 /* 发消息按钮 */
 .profile-btn.message-btn {
-  right: 20px;
+  min-width: 96px;
+  height: 34px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background-color: transparent;
   color: #ffffff !important;
+  border-radius: 6px;
 }
 
 .profile-btn.message-btn:hover {
@@ -175,17 +210,19 @@ const saveSignature = async () => {
   color: #ffffff !important;
 }
 
-/* 头像容器 */
+/* 头像容器（B 站 .space-avatar 68×68 圆形 + 白描边） */
 .avatar-container {
-  margin-right: 20px;
+  margin-right: 22px;
   z-index: 10;
-  border: 4px solid #fff;
+  border: 3px solid rgba(255, 255, 255, 0.9);
   border-radius: 50%;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   position: relative;
-  width: 88px;
-  height: 88px;
+  width: 68px;
+  height: 68px;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .avatar-container.clickable {
@@ -220,8 +257,8 @@ const saveSignature = async () => {
 
 /* 用户头像 */
 .user-avatar {
-  width: 80px;
-  height: 80px;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   border-radius: 50%;
   display: block;
@@ -231,16 +268,18 @@ const saveSignature = async () => {
 /* 用户详情 */
 .user-details {
   flex: 1;
+  margin-top: 8px;
 }
 
-/* 用户名 */
+/* 用户名（B 站 .nickname 24px/700 白色） */
 .username {
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 700;
   margin: 0 0 8px 0;
   display: flex;
   align-items: center;
   gap: 8px;
+  color: #fff;
 }
 
 /* 性别符号 */
@@ -290,11 +329,5 @@ const saveSignature = async () => {
   background-color: transparent;
 }
 
-/* 个人资料样式（保持原页面行为一致） */
-.profile-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
+/* banner 下方不留白，使 nav 紧贴 banner 底部（B 站 nav @y200） */
 </style>
