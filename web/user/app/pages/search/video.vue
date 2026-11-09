@@ -221,7 +221,8 @@ export default {
 @media (min-width: 1700px) {
     .container {
         grid-column: span 6;
-        grid-template-columns: repeat(6,1fr);
+        /* 对齐 B 站搜索结果密度：1920 视口下 B 站卡片宽约 233px ⇒ 7 列（原 6 列为 271px） */
+        grid-template-columns: repeat(7,1fr);
     }
 }
 
