@@ -4,7 +4,7 @@
 .message-bgc {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
   background-color: #d6ebea;
 }
@@ -12,7 +12,7 @@
 .message-bg {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
   background-repeat: no-repeat;
   background-size: cover;
@@ -181,6 +181,7 @@
 
 .message-sidebar__item-name {
   min-width: 56px;
+  font-weight: 700;
   user-select: none;
 }
 
