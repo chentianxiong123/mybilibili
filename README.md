@@ -35,7 +35,7 @@
 
 ```
 mybilibili/
-├── services/                 # Go 后端（core/search/msg-danmaku/live/ai/studio/work/bili-proxy/transcoder）
+├── services/                 # Go 后端（core/search/msg-danmaku/live/ai/work/bili-proxy/transcoder；studio 已废弃仍在链路）
 ├── shared/                   # Go 公共包（auth/httputil/pb 客户端等）
 ├── proto/                    # gRPC 定义
 ├── contracts/                # OpenAPI 契约
@@ -114,7 +114,7 @@ bash scripts/test.sh backend      # 逐 Go 模块 go test
 | **msg-danmaku-service** | 弹幕/消息 | 弹幕(发送/获取/趋势/管理)、私信会话、@/点赞/回复/系统通知、未读数、SSE 弹幕与通知推送，:8086/:9086 |
 | **live-service** | 直播 | 直播间 CRUD/开播停播状态/定时开播、SRS hook、WebSocket 房间会话、连麦(麦位/音视频)，:8087 |
 | **ai-service** | 字幕/AI 中心 | 字幕(生成/上传/SRT导入/扫描/默认)、AI 摘要、AI 审核(评论/回复/举报/内容)、AI 助手对话、AI 客服技能与路由、用量统计，:8088/:9088 |
-| **studio-service** | 创作中心 | 素材上传、导出任务，:8089 |
+| **studio-service** | 创作中心 | 素材上传、导出任务，:8089。**已废弃，不再维护**（功能极简 298 行，仍可构建/部署但无后续开发） |
 | **bili-proxy-service** | B 站代理 | 链接解析、流代理，对接真实 B 站数据源，:8091 |
 | **work-service** | 编排/任务 | NATS 订阅视频处理流水线：转码/抽音/生成字幕/AI 摘要，自动链式编排 + 进度上报 |
 | **transcoder-service** | 转码服务 | 视频方向检测/转码/抽音 |
