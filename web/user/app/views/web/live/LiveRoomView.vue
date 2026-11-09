@@ -418,8 +418,11 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.live-room-page { height: calc(100vh - 64px); background: #0a0a0a; }
-.room-layout { display: flex; height: 100%; }
+/* B 站直播间页背景为浅灰 #F1F2F3（body 同色），播放器区/连麦栏/礼物栏自持深色背景，
+   故页面底色翻浅不影响其上的白字（room-title/meta 在 .video-info 黑渐变上，pending-bar 自带 rgba(0,0,0,.8)）。 */
+.live-room-page { height: calc(100vh - 64px); background: #f1f2f3; }
+/* B 站 .app-body: margin 0 50px → 内容 1820；播放器 1508 + gap 12 + 右栏 300 = 1820 */
+.room-layout { display: flex; gap: 12px; height: 100%; margin: 0 50px; }
 .video-section { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .video-wrapper { flex: 1; position: relative; background: #000; }
 .video-wrapper.buffering .live-player { opacity: 0.5; }
@@ -631,12 +634,13 @@ onUnmounted(() => {
   min-width: 18px;
 }
 
-.chat-section { width: 320px; background: #fff; display: flex; flex-direction: column; border-left: 1px solid #e3e5e7; }
-.chat-header { padding: 16px; font-weight: 600; border-bottom: 1px solid #e3e5e7; }
+/* B 站 #aside-area-vm: 宽 300、圆角 12、overflow hidden；聊天区 #F6F7F8，header/输入框 #FFF（去 border-left，用圆角+间隙分隔） */
+.chat-section { width: 300px; background: #f6f7f8; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; }
+.chat-header { padding: 16px; font-weight: 600; background: #fff; border-bottom: 1px solid #e3e5e7; }
 .chat-messages { flex: 1; overflow-y: auto; padding: 12px; }
 .chat-msg { margin-bottom: 8px; font-size: 14px; }
 .chat-name { color: #00a1d6; }
-.chat-input { display: flex; gap: 8px; padding: 12px; border-top: 1px solid #e3e5e7; }
+.chat-input { display: flex; gap: 8px; padding: 12px; background: #fff; border-top: 1px solid #e3e5e7; }
 .chat-input .el-input { flex: 1; }
 .reaction-bar {
   display: flex;
