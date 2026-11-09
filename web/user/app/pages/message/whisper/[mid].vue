@@ -500,26 +500,27 @@ export default {
     -webkit-box-align: center;
     -ms-flex-align: center;
     align-items: center;
-    border-bottom: 1px solid #e9eaec;
+    border-bottom: 1px solid #e3e5e7;
     position: relative;
     text-align: center;
-    color: #333;
+    color: #18191c;
 }
 
 .title span {
     font-size: 14px;
+    line-height: 21px;
 }
 
 .action-menu {
     position: absolute;
     top: 6px;
-    right: 6px;
+    right: 0;
     z-index: 2;
 }
 
 .more {
-    width: 25px;
-    height: 25px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -649,17 +650,17 @@ export default {
     cursor: pointer;
     margin: 0;
     position: relative;
-    width: 88px;
-    height: 30px;
+    width: 90px;
+    height: 32px;
     text-align: center;
-    border: 1px solid #e7e7e7;
-    font-size: 14px;
-    line-height: 14px;
+    border: 1px solid #e3e5e7;
+    font-size: 13px;
+    line-height: 30px;
 }
 
 .send-btn {
     background-color: #fff;
     border-radius: 4px;
-    color: #555;
+    color: #18191c;
 }
 </style>
