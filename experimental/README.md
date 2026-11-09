@@ -10,6 +10,7 @@
 | `mobile-ns/` | `mobile/ns` | NativeScript + Vue 跨端客户端 | **已废弃** — 不再维护 |
 | `web-next-old/` | `web/next-old` | 旧版用户端（Nuxt）历史快照 | **存档** — 仅历史留存 |
 | `web-teriteri-reference/` | `web/teriteri-reference` | 原版 teriteri 前端对照 | **存档** — 仅原版对照 |
+| `old-java-arch/` | `old/` | 早期 Java 架构完整快照（单体 / Spring Cloud 微服务 / 桌面临播 / OBS 插件 / 旧 admin、web），约 3673 文件 | **存档** — 仅历史演进参考 |
 
 ## 当前活跃端（不在本目录）
 

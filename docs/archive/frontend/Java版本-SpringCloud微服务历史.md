@@ -1,21 +1,21 @@
 # Java Spring Cloud 版本（历史遗产）
 
-> 当前 Go 版本为主体（见根 README）。在此之前项目经历了两轮 Java 架构实现，沉淀了大量架构演进价值。所有代码均保留在仓库 `old/` 目录，本文档提炼其价值与演进脉络。
+> 当前 Go 版本为主体（见根 README）。在此之前项目经历了两轮 Java 架构实现，沉淀了大量架构演进价值。所有代码均保留在仓库 `experimental/old-java-arch/` 目录，本文档提炼其价值与演进脉络。
 
 ## 演进脉络（三阶段）
 
 ```
-单体版(old/java)
-   └─→ Spring Boot 2.7 全量微服务(old/springboot3)
-          └─→ Spring Boot 3.2 聚合微服务(old/microservices)  ←  Java 最终形态
+单体版(experimental/old-java-arch/java)
+   └─→ Spring Boot 2.7 全量微服务(experimental/old-java-arch/springboot3)
+          └─→ Spring Boot 3.2 聚合微服务(experimental/old-java-arch/microservices)  ←  Java 最终形态
                   └─→ Go 微服务(当前, mybilibili-go)
 ```
 
 | 阶段 | 代码位置 | 后端技术 | Java | 形态 |
 |---|---|---|---|---|
-| 1. 单体版 | `old/java` | Spring Boot 2.7.18 + MyBatis + Redis + ES 7.17 | 8 | web / admin / common 三模块 |
-| 2. 微服务版 | `old/springboot3` | Spring Cloud 2021.0.8 + Alibaba(Nacos) + RocketMQ + ES + MongoDB + SRS + WebRTC | 8 | 11 个微服务（user/video/comment/danmaku/interaction/message/search/live/ai…） |
-| 3. 聚合微服务版 | `old/microservices` | Spring Cloud 2023.0.1 + Alibaba(Nacos) + RocketMQ + ES + MongoDB + SRS + WebRTC | 17 | 聚合为 6 核心服务 + 桌面临播端 + OBS 插件 |
+| 1. 单体版 | `experimental/old-java-arch/java` | Spring Boot 2.7.18 + MyBatis + Redis + ES 7.17 | 8 | web / admin / common 三模块 |
+| 2. 微服务版 | `experimental/old-java-arch/springboot3` | Spring Cloud 2021.0.8 + Alibaba(Nacos) + RocketMQ + ES + MongoDB + SRS + WebRTC | 8 | 11 个微服务（user/video/comment/danmaku/interaction/message/search/live/ai…） |
+| 3. 聚合微服务版 | `experimental/old-java-arch/microservices` | Spring Cloud 2023.0.1 + Alibaba(Nacos) + RocketMQ + ES + MongoDB + SRS + WebRTC | 17 | 聚合为 6 核心服务 + 桌面临播端 + OBS 插件 |
 
 ## 为什么有价值（能力沉淀）
 
@@ -40,8 +40,8 @@
 ### 3. 直播全栈（SRS + WebRTC + 桌面 + 插件）
 - 直播间（房间名/推流密钥/状态/封面/观看人数，`live_rooms`）+ SRS 推流（RTMP/HLS/HTTP-FLV）
 - **视频会议（WebRTC）**：会议房间/参与者表（`meeting_room`/`meeting_participant`，角色/音视频/**屏幕共享**状态）、观众连麦（`live_linkmic`）、WebSocket 信令
-- **mybilibili Live Desktop**（`old/microservices/mybilibili-live-desktop`）：fork 自 Streamlabs Desktop 的开源直播桌面 App（Electron + OBS 核心），OSX/Windows
-- **OBS 直播插件**（`old/microservices/obs-plugin`）：C++ 编写的 OBS Studio 插件，扫码登录 B 站、更新直播间信息、获取 RTMP 推流地址与推流码，CI 打包 Windows 预编译 DLL
+- **mybilibili Live Desktop**（`experimental/old-java-arch/microservices/mybilibili-live-desktop`）：fork 自 Streamlabs Desktop 的开源直播桌面 App（Electron + OBS 核心），OSX/Windows
+- **OBS 直播插件**（`experimental/old-java-arch/microservices/obs-plugin`）：C++ 编写的 OBS Studio 插件，扫码登录 B 站、更新直播间信息、获取 RTMP 推流地址与推流码，CI 打包 Windows 预编译 DLL
 
 ### 4. 微服务工程化
 - Spring Cloud Gateway 统一入口（路由 + JWT 鉴权）

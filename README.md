@@ -9,8 +9,8 @@
 | 版本 | 后端技术 | 状态 | 代码位置 |
 |---|---|---|---|
 | **Go 微服务**（当前主线） | Go + gRPC + NATS JetStream | ✅ 运行中 | `services/`、`shared/` |
-| **Java 微服务**（历史） | Spring Cloud + Nacos + RocketMQ | 存档 | `old/springboot3/`、`old/microservices/` |
-| **Java 单体**（历史） | Spring Boot + MyBatis + Redis + ES | 存档 | `old/java/` |
+| **Java 微服务**（历史） | Spring Cloud + Nacos + RocketMQ | 存档 | `experimental/old-java-arch/springboot3/`、`experimental/old-java-arch/microservices/` |
+| **Java 单体**（历史） | Spring Boot + MyBatis + Redis + ES | 存档 | `experimental/old-java-arch/java/` |
 
 > 三代版本功能域一致（投稿/弹幕/直播/AI 等），演进方向是**技术栈现代化 + 资源效率 + 高可用**。详见 [Java 版本演进历史](./docs/Java版本-SpringCloud微服务历史.md)。
 
@@ -53,7 +53,7 @@ mybilibili/
 ├── deploy/                   # k3s manifests + 数据库备份 + SRS
 ├── scripts/                  # test.sh / build.sh / frontend.sh 等
 ├── docs/                     # 协作文档 + 架构演进与踩坑
-└── old/                      # Java Spring Cloud 历史版本（单体/微服务/桌面临播/OBS插件）
+└── experimental/             # 实验性/存档区（不参与构建/CI/部署，不维护）
 ```
 
 ## 本地开发（Docker Compose）
@@ -398,4 +398,4 @@ push main ──► test(go vet + go build 门禁) ──► build-backend(8 服
 
 ### 历史版本
 
-- **[Java 版本演进历史](./docs/Java版本-SpringCloud微服务历史.md)**：单体版（Spring Boot 2.7）→ 全量微服务（Spring Cloud + Nacos + RocketMQ）→ 聚合微服务（Spring Boot 3.2）。含全业务域、AI（Whisper 字幕 + DeepSeek 摘要/客服/审核）、直播全栈（SRS + WebRTC 视频会议 + 直播桌面 App + OBS 插件）、前端三端。代码保留在 `old/`。
+- **[Java 版本演进历史](./docs/Java版本-SpringCloud微服务历史.md)**：单体版（Spring Boot 2.7）→ 全量微服务（Spring Cloud + Nacos + RocketMQ）→ 聚合微服务（Spring Boot 3.2）。含全业务域、AI（Whisper 字幕 + DeepSeek 摘要/客服/审核）、直播全栈（SRS + WebRTC 视频会议 + 直播桌面 App + OBS 插件）、前端三端。代码保留在 `experimental/old-java-arch/`。
