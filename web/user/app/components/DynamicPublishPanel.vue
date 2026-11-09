@@ -170,10 +170,10 @@ defineExpose({ reset })
 <style scoped>
 .publish-box {
   background: #fff;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  padding: 20px 20px 12px;
+  margin-bottom: 8px;
+  box-shadow: none;
 }
 
 .publish-input {

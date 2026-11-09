@@ -434,29 +434,30 @@ onMounted(() => {
 <style scoped>
 .dynamic-page {
   min-height: 100vh;
-  background-color: #f5f7fa;
+  /* B站 t.bilibili.com 背景层 .bgc 底色（computed-style 抓取值 rgb(211,233,232)） */
+  background-color: #d3e9e8;
   padding-top: 64px;
 }
 
 .dynamic-container {
-  max-width: 1200px;
+  max-width: 1330px;
   margin: 0 auto;
   display: flex;
-  gap: 20px;
-  padding: 20px;
+  gap: 12px;
+  padding: 8px 0 0;
 }
 
 .left-sidebar {
-  width: 240px;
+  width: 264px;
   flex-shrink: 0;
 }
 
 .user-card {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 20px;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: none;
 }
 
 .user-avatar-section {
@@ -525,11 +526,11 @@ onMounted(() => {
 .following-users-wrap {
   position: relative;
   background: #fff;
-  border-radius: 8px;
-  margin-bottom: 16px;
+  border-radius: 6px;
+  margin-bottom: 8px;
   display: flex;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: none;
 }
 
 .following-users-bar {
@@ -638,15 +639,15 @@ onMounted(() => {
 }
 
 .right-sidebar {
-  width: 300px;
+  width: 318px;
   flex-shrink: 0;
 }
 
 .ad-banner {
   position: relative;
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .ad-banner img {
@@ -684,12 +685,12 @@ onMounted(() => {
 
 .hot-search-card {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 16px;
 }
 
 .hot-search-header {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .hot-search-title {
