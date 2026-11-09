@@ -218,8 +218,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* B站 .content pad 0 40px 20px → 内容列左右各 40px 内边距 */
 .appeal-manager {
   width: 100%;
+  padding: 0 40px 20px;
 }
 
 /* 状态tab：对齐B站 全部/进行中/已完成（32px间距，选中蓝色加粗） */
