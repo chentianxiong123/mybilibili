@@ -10,6 +10,13 @@
 - ⬜ 待对齐
 - ⏸️ 已知偏差，需谨慎后续处理
 
+## 本轮已交付（2026-11-11 无人值守夜班，动态首页，只 commit 未 push）
+- `f8514171` 动态首页 `/dynamic`：`DynamicCard.vue` + `DynamicView.vue` 对齐 `t.bilibili.com`（登录态 CDP Chrome 抓 `dyn-feed-ref/struct/detail/layout/left.mjs` 真值 + 本地渲染 `dyn-feed-local.mjs`/`probe-publish.mjs`/`probe-following.mjs`）。**容器三列 264+12+724+12+318=1330 居中、bg #d3e9e8、top y72 本就一致未动**，本轮对齐三张内部卡：
+  - **动态卡** `DynamicCard.vue` 对齐 `.bili-dyn-item`：原 16px 内边距居中布局 → **88px 头像槽模型**（card pad 0 r6 + `__main` pad 0 20 0 88 + `__avatar` 86×86 绝对定位左上含 48 圆头像 @+19,19）；用户名 **14/500/#00a1d6 → 17/600/lh32 #ff6699**（`.bili-dyn-title__text` rgb(255,102,153)）；时间 **12 → 13/400/18 #9499a0**；正文 **14/1.6 → 16/25 #18191c**；footer 去 border-top 三等分 → **50 高 space-between pad-right20 + action 104×50 fs13 #61666d**；more 32×32 → 24×24 r4。
+  - **左侧 my-info** `DynamicView.vue .user-card` 对齐 `.bili-dyn-my-info`：pad 20 → **20 16**、居中 80 头像 → **48 头像 + 右侧名字**（`my-info-header` flex + info__name **15/600/20 #18191c**）、去 stats border-top 改三列 space-between（item-num **15/600/20** + item-desc **13/400/17 #9499a0**）。
+  - **关注栏** `.following-users-bar` 对齐 `.bili-dyn-up-list__window`：pad 16 → **9px 0 10px**、item **68 宽 pad-top8 mr6**、头像 48+1 margin、名称 **12 → 13/400/18 #00aeec**。
+  - getComputedStyle 真值全部一致（详见 commit）。⏸️ 已知偏差：x 起点本地 571/295 vs B站 564/288（**滚动条宽度差**，B站 实渲染 1905 有滚动条 `(1905-1330)/2=287.5≈288`，本地无头 1920 无滚动条居中得 295，卡片相对几何全同）；publish-box 高 156 vs B站 174（内容量差异，pad/r6/bg 一致）；up-item 高 80 vs B站 100（B站 窗口 119 更高，名称/头像/pad 已对齐）。`DynamicCard` 与已对齐的 `/dynamic/[id]` 详情页共用组件，详情页自有 scoped `.dynamic-card` 不受影响。949 测试全绿。
+
 ## 页面进度
 
 | 页面 | 路由 | 状态 | 本轮改动 / 备注 |
