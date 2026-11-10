@@ -221,8 +221,10 @@ export default {
 @media (min-width: 1700px) {
     .container {
         grid-column: span 6;
-        /* 对齐 B 站搜索结果密度：1920 视口下 B 站卡片宽约 233px ⇒ 7 列（原 6 列为 271px） */
-        grid-template-columns: repeat(7,1fr);
+        /* 对齐 B 站搜索结果密度：1920 视口下 B 站 `.video-list` 为 6 列、卡片 272px
+           (getComputedStyle 真值 x96/384/672/960/1249/1537，list-item `col_xl_1_7`)，
+           本地 1728 内容宽 6 等分 = 272 ⇒ 与 B 站一致（原 7 列为 229.7px 偏窄） */
+        grid-template-columns: repeat(6,1fr);
     }
 }
 

@@ -210,26 +210,30 @@ export default {
     color: var(--v_text2);
     white-space: nowrap;
     margin-right: var(--v_xsx);
+    /* B 站 `.vui_tabs--nav-text` fontWeight 500（激活/未激活均 500，getComputedStyle 真值） */
+    font-weight: 500;
     -webkit-transition: color .2s;
     transition: color .2s;
     position: relative;
 }
 
 .nav-item:hover .nav-text, .nav-item.active .nav-text {
-    color: var(--brand_pink) !important;
+    /* B 站 激活 tab 文字 rgb(0,174,236)=#00AEEC（brand_blue），非 brand_pink #00a1d6 */
+    color: var(--brand_blue) !important;
 }
 
 .nav-slider {
     position: absolute;
     width: 100%;
     height: 3px;
-    background-color: var(--brand_pink);
+    background-color: var(--brand_blue);
     top: 30px;
 }
 
 .nav-num {
     padding: 1px var(--v_xxs);
-    border-radius: var(--v_smx);
+    /* B 站 `.vui_tabs--nav-num` 圆角 10px（getComputedStyle 真值），非 8px */
+    border-radius: 10px;
     font-size: var(--v_fs_6);
     color: var(--v_text2);
     background: var(--v_graph_bg_regular);
