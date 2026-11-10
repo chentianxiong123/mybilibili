@@ -192,39 +192,40 @@ const playAllSubmissions = () => {
   border-radius: 0;
 }
 
-/* 顶部容器，与封面图片同宽 */
+/* 顶部容器：通栏 1640，左 240 侧栏 + 右内容（对齐 B站 .upload-content） */
 .submissions-top {
   display: flex;
   gap: 0;
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 0;
   width: 100%;
   box-sizing: border-box;
 }
 
-/* 左侧分类导航 */
+/* 左侧分类导航：B站 .side-nav 240 宽，项 240×52 圆角6 */
 .submissions-sidebar {
-  width: 120px;
-  min-width: 120px;
+  width: 240px;
+  min-width: 240px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-right: 20px;
-  border-right: 1px solid #f0f0f0;
+  margin-right: 16px;
 }
 
 .category-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  height: 52px;
+  padding: 14px 16px;
+  box-sizing: border-box;
   cursor: pointer;
-  font-size: 14px;
-  color: #666;
+  font-size: 16px;
+  color: #18191c;
   transition: all 0.3s ease;
-  border-radius: 4px;
-  margin-right: 10px;
+  border-radius: 6px;
+}
+
+.category-item + .category-item {
+  margin-top: 8px;
 }
 
 .category-item:hover {
@@ -232,12 +233,20 @@ const playAllSubmissions = () => {
   background-color: rgba(0, 174, 236, 0.1);
 }
 
+.category-name {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 14px;
+  color: #18191c;
+}
+
 .category-item.active {
-  color: #fff;
-  font-weight: 500;
   background-color: #00aeec;
-  border-right: none;
-  padding-right: 12px;
+}
+
+.category-item.active .category-name {
+  font-weight: 500;
+  color: #fff;
 }
 
 .category-count {
@@ -275,16 +284,18 @@ const playAllSubmissions = () => {
 
 .submissions-title h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 600;
-  color: #333;
+  line-height: 24px;
+  color: #18191c;
 }
 
-/* 视频网格 */
+/* 视频网格：B站 6 列 217.328 / 列距16 行距20 */
 .videos-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(6, 1fr);
+  column-gap: 16px;
+  row-gap: 20px;
 }
 
 /* 视频项 */
@@ -301,7 +312,7 @@ const playAllSubmissions = () => {
   position: relative;
   width: 100%;
   padding-bottom: 56.25%;
-  border-radius: 4px;
+  border-radius: 6px;
   overflow: hidden;
   background-color: #f0f0f0;
 }
@@ -327,17 +338,17 @@ const playAllSubmissions = () => {
 }
 
 .video-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  color: #333;
-  line-height: 1.4;
+  color: #18191c;
+  line-height: 18px;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   margin: 0;
-  min-height: 39.2px;
+  min-height: 36px;
 }
 
 .video-meta {
@@ -345,7 +356,8 @@ const playAllSubmissions = () => {
   justify-content: space-between;
   align-items: center;
   font-size: 12px;
-  color: #999;
+  color: #9499a0;
+  line-height: 16px;
 }
 
 .video-date {
