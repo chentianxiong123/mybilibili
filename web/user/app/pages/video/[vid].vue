@@ -1796,13 +1796,14 @@ watch(
 }
 
 .rec-title {
-    font-size: 15px;
+    font-size: 16px;
+    font-weight: 500;
     -webkit-font-smoothing: antialiased;
     color: var(--text1);
     display: flex;
     justify-content: space-between;
     margin-bottom: 12px;
-    line-height: 20px;
+    line-height: 24px;
 }
 
 .next-button {
@@ -1869,7 +1870,7 @@ watch(
 }
 
 .video-page-card-small {
-    margin-bottom: 12px;
+    margin-bottom: 16px;
 }
 
 .video-page-card-small a {
@@ -1888,8 +1889,8 @@ watch(
 
 .video-page-card-small .card-box .pic-box {
     position: relative;
-    width: 141px;
-    height: 80px;
+    width: 189px;
+    height: 107px;
     border-radius: 6px;
     background: var(--graph_weak);
     flex: 0 0 auto;
@@ -1921,7 +1922,7 @@ watch(
     line-height: 20px;
     transition: opacity 0.3s;
     z-index: 5;
-    font-size: 13px;
+    font-size: 14px;
     background-color: rgba(0, 0, 0, 0.4);
     border-radius: 2px;
     padding: 0 4px;
@@ -1938,8 +1939,9 @@ watch(
     cursor: pointer;
     color: var(--text1);
     display: block;
-    font-size: 15px;
-    line-height: 19px;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 20px;
     transition: color 0.3s;
     display: -webkit-box;
     overflow: hidden;
