@@ -112,9 +112,10 @@ const formatNumber = (num) => {
 <style scoped>
 .dynamic-card {
   background: #fff;
-  border-radius: 8px;
+  /* B站 t.bilibili.com .bili-dyn-item：圆角 6px、无阴影无边框（getComputedStyle 真值） */
+  border-radius: 6px;
   padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: none;
 }
 
 .dynamic-header {
