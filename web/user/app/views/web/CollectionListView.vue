@@ -10,8 +10,14 @@ import { manuscriptApi } from '@/api/manuscript.ts'
 const route = useRoute()
 const router = useRouter()
 
+// 可选 userId prop：嵌入空间页 tab 时由父组件传入空间主人的 id；
+// 独立路由 /collections 不传，回落到 route.params.userId / 当前登录用户（保持原行为）。
+const props = defineProps({
+  userId: { type: [String, Number], default: null }
+})
+
 const { user: currentUser } = useAuth()
-const userId = ref(route.params.userId || currentUser.value?.id)
+const userId = ref(props.userId || route.params.userId || currentUser.value?.id)
 const currentUserId = computed(() => currentUser.value?.id)
 
 const isOwnSpace = computed(() => {
