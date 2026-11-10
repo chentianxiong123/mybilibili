@@ -91,8 +91,9 @@ const currentFolderCount = computed(() => {
   return currentFolder.value ? currentFolder.value.count : (props.videos?.length || 0)
 })
 
-const currentFolderDesc = computed(() => {
-  return currentFolder.value?.description || ''
+// 播放量合计（对齐 B站 favlist-info-detail__data）
+const totalViews = computed(() => {
+  return (props.videos || []).reduce((sum, v) => sum + (Number(v.viewCount) || 0), 0)
 })
 
 // 格式化收藏时间：x天前 / 今天 / x小时前
@@ -119,122 +120,106 @@ const formatViews = (n) => {
   return n
 }
 
-const rule = computed(() => {
-  const idx = props.sortOptions.indexOf(props.activeSort)
-  return idx + 1
-})
+// 卡片副标题：UP主名 · 收藏于x前（对齐 B站 bili-video-card__subtitle）
+const cardSubtitle = (video) => {
+  const up = video.uploader?.nickname || video.uploader?.username || ''
+  const ct = formatCollectTime(video.collectTime || video.collect_time)
+  return [up, ct ? `收藏于${ct}` : ''].filter(Boolean).join(' · ')
+}
 </script>
 
 <template>
-  <div class="fav-main">
+  <div class="favlist-main">
     <!-- 收藏夹信息头 -->
-    <div class="favList-info">
-      <div class="favInfo-box">
-        <a class="favInfo-cover">
+    <div class="favlist-info">
+      <div class="favlist-info-file-card">
+        <div class="folder-cover-card__cover">
           <img v-if="videos.length" :src="getFavoriteFolderCover(videos)" alt="">
-          <div class="cover-icon" v-else>
-            <svg t="1711977711975" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4395" width="16" height="16"><path d="M865.49525114 335.25237508H158.50474886V246.87856197h706.99050228v88.37381311z m-88.37381311-265.12143802H246.87856197v88.3738118h530.24287606V70.13093706z m176.74762491 441.86906294v353.49525114c0 48.6055974-39.7682157 88.3738131-88.3738118 88.3738118H158.50474886c-48.6055974 0-88.3738131-39.7682157-88.3738118-88.3738118v-353.49525114c0-48.6055974 39.7682157-88.3738131 88.3738118-88.3738131h706.99050228c48.6055974 0 88.3738131 39.7682157 88.3738118 88.3738131z m-265.12143802 176.74762492l-265.12143802-145.8167909v287.21489161l265.12143802-141.39810071z" p-id="4396"></path></svg>
+        </div>
+      </div>
+      <div class="favlist-info-detail">
+        <div class="favlist-info-detail__title">
+          <div class="favlist-info-detail__title-row">
+            <span class="vui_ellipsis">{{ activeCategory }}</span>
           </div>
-        </a>
-        <div class="favInfo-details">
-          <a class="fav-name">{{ activeCategory }}</a>
-          <div class="fav-meta" v-if="currentFolderDesc">
-            <span class="fav-desc" :title="currentFolderDesc">{{ currentFolderDesc }}</span>
-          </div>
-          <div class="fav-meta">
-            <span>{{ currentFolderCount }}个内容</span>
-            <span class="dot">·</span>
-            <span>创建者：{{ userInfo?.nickname || userInfo?.username || '' }}</span>
-            <span class="dot">·</span>
-            <span>公开</span>
-          </div>
-          <div class="fav-options">
-            <div class="play-all" @click="emit('play-all')">
-              <svg t="1711992851151" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4395" width="14" height="14"><path d="M847.52000001 429.80266667L344.50133334 101.152c-78.176-45.184-142.21866667-8.18133333-142.21866667 82.13333333v657.22666667c0 90.368 64.04266667 127.30666667 142.21866667 82.19733333L847.52000001 594.13333333c78.25066667-45.25866667 78.25066667-119.14666667 0-164.33066666z m0 0" fill="#FFFFFF" p-id="4396"></path></svg>
-              <span>播放全部</span>
-            </div>
-          </div>
+        </div>
+        <div class="favlist-info-detail__data">
+          <span>视频数: {{ currentFolderCount }}</span>
+          <span class="data-sep">播放量: {{ formatViews(totalViews) }}</span>
+        </div>
+        <div class="favlist-info-detail__actions">
+          <button class="vui_button action-btn blue" @click="emit('play-all')">
+            <svg class="action-icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="14" height="14"><path d="M847.52 429.80266667L344.50133334 101.152c-78.176-45.184-142.21866667-8.18133333-142.21866667 82.13333333v657.22666667c0 90.368 64.04266667 127.30666667 142.21866667 82.19733333L847.52000001 594.13333333c78.25066667-45.25866667 78.25066667-119.14666667 0-164.33066666z m0 0" fill="#FFFFFF"></path></svg>
+            <span>播放全部</span>
+          </button>
+          <button v-if="isOwnSpace && !batchMode" class="vui_button favlist-info-batch" @click="emit('toggle-batch')">
+            <span>批量操作</span>
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- 排序 tab + 批量操作 -->
-    <div class="fav-header">
-      <div class="fav-info">
-        <div class="be-tab">
-          <ul class="be-tab-inner">
-            <li
-              v-for="(option, index) in sortOptions"
-              :key="option"
-              class="be-tab-item"
-              :class="{'active': activeSort === option}"
-              @click="emit('update:activeSort', option)"
-            >
-              <span>{{ option }}</span>
-            </li>
-          </ul>
-          <div class="be-tab-cursor" :style="`transform: translateX(${48 * (rule - 1)}px); width: 48px;`"></div>
+    <!-- 排序 radio-filter + 右侧 搜索/批量栏 -->
+    <div class="fav-list-header">
+      <div class="fav-list-header-filter">
+        <div class="radio-filter">
+          <div
+            v-for="option in sortOptions"
+            :key="option"
+            class="radio-filter__item"
+            :class="{'radio-filter__item--active': activeSort === option}"
+            @click="emit('update:activeSort', option)"
+          >{{ option }}</div>
         </div>
       </div>
-      <div class="fav-actions" v-if="isOwnSpace">
-        <div class="batch-operations" v-if="!batchMode">
-          <span class="batch-toggle" @click="emit('toggle-batch')">批量操作</span>
-        </div>
-        <div class="batch-bar" v-else>
+      <div class="fav-list-header-filter__right" v-if="isOwnSpace">
+        <div class="batch-bar" v-if="batchMode">
           <el-checkbox
             :indeterminate="selectedFavorites.size > 0 && selectedFavorites.size < videos.length"
             :model-value="selectedFavorites.size === videos.length"
             @change="emit('select-all')"
           >全选</el-checkbox>
           <span class="batch-count">已选 {{ selectedFavorites.size }} 项</span>
-          <el-button size="small" type="danger" :disabled="selectedFavorites.size === 0" :loading="batchDeleting" @click="emit('batch-delete')">批量删除</el-button>
-          <el-button size="small" @click="emit('toggle-batch')">取消</el-button>
+          <el-button size="small" type="danger" :disabled="selectedFavorites.size === 0" @click="emit('batch-delete')">批量删除</el-button>
+          <button class="vui_button batch-cancel" @click="emit('toggle-batch')">取消</button>
+        </div>
+        <div class="vui_input fav-list-header-filter__search" v-else>
+          <div class="vui_input-wrapper vui_input-wrapper--prepped">
+            <input
+              type="text"
+              class="vui_input__input"
+              :value="searchKeyword"
+              @input="emit('update:searchKeyword', $event.target.value)"
+              placeholder="在收藏夹内搜索"
+            >
+            <el-icon class="search-icon"><Search /></el-icon>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- 搜索框 -->
-    <div class="fav-search" v-if="isOwnSpace">
-      <div class="search-box">
-        <input type="text"
-          :value="searchKeyword"
-          @input="emit('update:searchKeyword', $event.target.value)"
-          placeholder="在收藏夹内搜索"
-          class="search-input"
-        >
-        <button class="search-btn">
-          <el-icon><Search /></el-icon>
-        </button>
-      </div>
-    </div>
-
     <!-- 视频内容 -->
-    <div class="fav-content" v-if="filteredFavorites.length > 0">
-      <ul class="fav-video-list clearfix">
-        <li
-          class="small-item"
-          :class="{'batch-selected': batchMode && selectedFavorites.has(video.id)}"
-          v-for="(video, index) in filteredFavorites"
-          :key="index"
-        >
-          <div class="batch-checkbox" v-if="batchMode && isOwnSpace" @click.stop="emit('toggle-select', video.id)">
-            <input type="checkbox" :checked="selectedFavorites.has(video.id)" readonly>
-          </div>
-          <a :href="`/video/${video.id}`" target="_blank" class="cover" @click.stop>
+    <div class="items" v-if="filteredFavorites.length > 0">
+      <div
+        class="items__item"
+        v-for="(video, index) in filteredFavorites"
+        :key="index"
+        @click="emit('navigate', video.id)"
+      >
+        <div class="bili-video-card" :class="{'batch-selected': batchMode && selectedFavorites.has(video.id)}">
+          <div class="bili-video-card__cover" @click.stop>
             <img v-if="video.coverUrl" loading="lazy" decoding="async" :src="video.coverUrl" alt="">
-            <span v-if="video.duration" class="length">{{ video.duration }}</span>
-            <div class="meta-mask">
-              <div class="meta-info">
-                <p class="view">播放：{{ formatViews(video.viewCount) }}</p>
-                <p class="favorite">收藏：{{ formatViews(video.collectCount) }}</p>
-                <p class="author">UP主：{{ video.uploader?.nickname || video.uploader?.username || 'UP主' }}</p>
-              </div>
+            <span v-if="video.duration" class="bili-video-card__duration">{{ video.duration }}</span>
+            <div class="batch-checkbox" v-if="batchMode && isOwnSpace" @click.stop="emit('toggle-select', video.id)">
+              <input type="checkbox" :checked="selectedFavorites.has(video.id)" readonly>
             </div>
-          </a>
-          <a :href="`/video/${video.id}`" target="_blank" class="title" :title="video.title">{{ video.title }}</a>
-          <div class="meta pubdate">收藏于：{{ formatCollectTime(video.collectTime || video.collect_time) }}</div>
-        </li>
-      </ul>
+          </div>
+          <div class="bili-video-card__details">
+            <div class="bili-video-card__title" :title="video.title">{{ video.title }}</div>
+            <div class="bili-video-card__subtitle">{{ cardSubtitle(video) }}</div>
+          </div>
+        </div>
+      </div>
     </div>
     <div v-else class="fav-empty">
       <img src="/assets/site/img/nothing.png" alt="">
@@ -244,302 +229,276 @@ const rule = computed(() => {
 </template>
 
 <style scoped>
-.fav-main {
+.favlist-main {
   flex: 1;
   min-width: 0;
-  border-left: 1px solid #e5e9ef;
   display: flex;
   flex-direction: column;
+  margin: 30px 0 0;
+  padding: 0 0 40px;
 }
 
-.favList-info {
-  padding: 20px 20px;
-  box-sizing: border-box;
-  border-bottom: 1px solid #e5e9ef;
-}
-
-.favInfo-box {
-  height: 119px;
+/* 收藏夹信息头 */
+.favlist-info {
   display: flex;
+  padding: 0 0 24px;
 }
 
-.favInfo-cover {
-  background: url('/assets/site/img/bilibili/video-placeholder.png') 50%;
-  background-size: cover;
-  width: 190px;
-  height: 119px;
-  overflow: hidden;
-  position: relative;
-  border-radius: 4px;
-  display: block;
-  cursor: pointer;
+.favlist-info-file-card {
+  width: 178px;
   flex-shrink: 0;
+  padding: 12px 0 0;
 }
 
-.favInfo-cover img {
+.folder-cover-card__cover {
+  width: 178px;
+  height: 100px;
+  border-radius: 6px;
+  background-color: #e3e5e7;
+  overflow: hidden;
+}
+
+.folder-cover-card__cover img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.cover-icon {
-  position: absolute;
-  right: 5px;
-  bottom: 5px;
-  border-radius: 2px;
-  background-color: rgba(0, 0, 0, 0.5);
-  fill: #fff;
-  height: 20px;
-  width: 20px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.favInfo-details {
-  margin-left: 18px;
+.favlist-info-detail {
+  flex: 1;
   min-width: 0;
+  margin-left: 18px;
 }
 
-.fav-name {
-  display: block;
-  font-size: 16px;
-  font-weight: 500;
-  color: #212121;
-  line-height: 17px;
-  margin-bottom: 12px;
-  width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.favlist-info-detail__title {
+  line-height: 28px;
 }
 
-.fav-meta {
-  display: block;
-  color: #99a2aa;
-  font-size: 0;
-  letter-spacing: 0;
-  line-height: 16px;
-  margin-bottom: 6px;
-}
-
-.fav-meta span {
-  display: inline-block;
-  font-size: 12px;
-  vertical-align: middle;
-}
-
-.fav-desc {
-  width: 100%;
-  height: 16px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.fav-meta .dot {
-  margin: 0 8px;
-}
-
-.fav-options {
+.favlist-info-detail__title-row {
   display: flex;
   align-items: center;
-  margin-top: 14px;
+  font-size: 20px;
+  font-weight: 500;
+  color: #18191c;
 }
 
-.play-all {
-  height: 32px;
-  width: 120px;
-  line-height: 32px;
+.favlist-info-detail__title-row .vui_ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.favlist-info-detail__data {
+  margin-top: 4px;
+  font-size: 14px;
+  line-height: 17px;
+  color: #9499a0;
+}
+
+.favlist-info-detail__data .data-sep {
+  margin-left: 24px;
+}
+
+.favlist-info-detail__actions {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.vui_button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  height: 34px;
   font-size: 14px;
-  color: #fff;
-  background-color: #00a1d6;
-  border-radius: 4px;
-  transition: all .2s;
+  line-height: 14px;
+  border-radius: 8px;
   cursor: pointer;
+  transition: all .2s ease;
 }
 
-.play-all:hover {
-  background-color: #00a1d6;
+.action-btn.blue {
+  padding: 0 15px;
+  background-color: #00aeec;
+  color: #fff;
+  border: 1px solid #00aeec;
 }
 
-.play-all svg {
-  margin-left: 16px;
+.action-btn.blue .action-icon {
   margin-right: 6px;
+  flex-shrink: 0;
 }
 
-.fav-header {
-  margin: 20px 20px 0;
+.action-btn.blue:hover {
+  background-color: #00a9e6;
+  border-color: #00a9e6;
+}
+
+.favlist-info-batch {
+  padding: 0 12px;
+  background-color: #fff;
+  color: #18191c;
+  border: 1px solid #e3e5e7;
+  margin-left: 8px;
+}
+
+.favlist-info-batch:hover {
+  color: #00aeec;
+  border-color: #00aeec;
+}
+
+/* 排序 + 搜索 头 */
+.fav-list-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin: 24px 0 0;
+  height: 34px;
 }
 
-.fav-info {
-  height: 30px;
+.radio-filter {
+  display: flex;
+  gap: 12px;
 }
 
-.be-tab {
-  display: inline-block;
-  line-height: 18px;
-  vertical-align: middle;
-  position: relative;
-}
-
-.be-tab-inner {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.be-tab-item {
-  float: left;
+.radio-filter__item {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 15px;
+  border-radius: 6px;
   font-size: 14px;
-  margin-right: 20px;
-  line-height: 27px;
-  vertical-align: top;
+  line-height: 14px;
+  background-color: #f6f7f8;
+  color: #61666d;
   cursor: pointer;
-  padding: 0 0 3px;
-  font-size: 12px;
-  color: #666;
+  transition: all .2s ease;
 }
 
-.be-tab-item.active {
-  color: #00a1d6;
+.radio-filter__item:hover {
+  color: #00aeec;
 }
 
-.be-tab-cursor {
-  left: 0;
-  border-bottom: 1px solid #00a1d6;
-  transform: translateX(0);
-  transition: width .2s ease, transform .2s ease;
-  position: absolute;
-  bottom: 0;
-  height: 0;
-  width: 0;
+.radio-filter__item--active {
+  background-color: #00aeec;
+  color: #fff;
 }
 
-.be-tab-cursor:after {
-  content: "";
-  left: 50%;
-  transform: translateX(-50%);
-  border-bottom: 3px solid #00a1d6;
-  border-top: 0;
-  border-left: 3px solid transparent;
-  border-right: 3px solid transparent;
-  position: absolute;
-  bottom: 0;
-  height: 0;
-  width: 0;
+.radio-filter__item--active:hover {
+  color: #fff;
 }
 
-.fav-actions {
-  margin-right: 0;
-}
-
-.batch-toggle {
-  font-size: 12px;
-  color: #999;
-  cursor: pointer;
-  transition: color .2s;
-}
-
-.batch-toggle:hover {
-  color: #00a1d6;
+.fav-list-header-filter__right {
+  display: flex;
+  align-items: center;
 }
 
 .batch-bar {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .batch-count {
-  color: #666;
-  font-size: 12px;
-}
-
-.fav-search {
-  padding: 0 20px;
-  margin-top: 12px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.search-box {
-  display: flex;
-  align-items: center;
-  position: relative;
-  width: 220px;
-}
-
-.search-box .search-input {
-  width: 100%;
-  padding: 6px 32px 6px 12px;
-  border: 1px solid #e5e9ef;
-  border-radius: 16px;
+  color: #61666d;
   font-size: 13px;
-  box-sizing: border-box;
-  outline: none;
-  transition: border-color .2s;
 }
 
-.search-box .search-input:focus {
-  border-color: #00a1d6;
+.batch-cancel {
+  padding: 0 12px;
+  background-color: #fff;
+  color: #18191c;
+  border: 1px solid #e3e5e7;
 }
 
-.search-box .search-btn {
-  position: absolute;
-  right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  padding: 4px;
-  background-color: transparent;
-  color: #9499a0;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
+.vui_input {
+  width: 211px;
+}
+
+.vui_input-wrapper--prepped {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  background-color: #fff;
+  border: 1px solid #e3e5e7;
+  border-radius: 0 6px 6px 0;
 }
 
-.fav-content {
-  position: relative;
-  font-size: 12px;
-  margin-top: 20px;
-}
-
-.fav-video-list {
-  margin: 0 20px;
-  list-style: none;
+.vui_input__input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  color: #18191c;
   padding: 0;
 }
 
-.clearfix:after {
-  content: " ";
-  display: table;
-  clear: both;
+.vui_input__input::placeholder {
+  color: #9499a0;
 }
 
-.small-item {
-  display: block;
-  float: left;
-  width: 160px;
-  position: relative;
-  padding: 0;
-  margin: 0 20px 20px 0;
-  border-radius: 4px;
-  box-sizing: border-box;
+.search-icon {
+  color: #9499a0;
+  font-size: 14px;
+  margin-left: 6px;
+}
+
+/* 视频网格 */
+.items {
+  display: grid;
+  grid-template-columns: repeat(6, 210px);
+  gap: 20px 16px;
+  margin: 24px 0 0;
+}
+
+.items__item {
   cursor: pointer;
 }
 
-.small-item.batch-selected .cover {
-  outline: 2px solid #00a1d6;
+.bili-video-card {
+  display: block;
+}
+
+.bili-video-card__cover {
+  position: relative;
+  display: block;
+  width: 210px;
+  height: 118px;
+  border-radius: 6px;
+  background-color: #e3e5e7;
+  overflow: hidden;
+}
+
+.bili-video-card__cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bili-video-card__duration {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 0 6px;
+  background: rgba(0, 0, 0, .5);
+  border-radius: 6px 0 0 0;
+  color: #fff;
+  font-size: 12px;
+  line-height: 18px;
+  z-index: 2;
+}
+
+.bili-video-card.batch-selected .bili-video-card__cover {
+  outline: 2px solid #00aeec;
   outline-offset: 2px;
 }
 
@@ -555,114 +514,43 @@ const rule = computed(() => {
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: #00a1d6;
+  accent-color: #00aeec;
 }
 
-.small-item .cover {
-  background: url('/assets/site/img/bilibili/video-placeholder.png') 50%;
-  background-size: cover;
-  border-radius: 4px;
-  display: block;
-  width: 160px;
-  height: 100px;
-  overflow: hidden;
-  position: relative;
+.bili-video-card__details {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
 }
 
-.small-item .cover img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.small-item .length {
-  background: rgba(0, 0, 0, .5);
-  border-radius: 5px 0 0 0;
-  color: #fff;
-  line-height: 20px;
-  transition: opacity .2s ease;
-  padding: 0 6px;
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  opacity: 1;
-}
-
-.cover:hover .length {
-  opacity: 0;
-}
-
-.meta-mask {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 4;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  background-color: rgba(0, 0, 0, .45);
-  color: #e5e9ef;
-  transition: opacity .2s ease;
-}
-
-.cover:hover .meta-mask {
-  opacity: 1;
-}
-
-.meta-info {
-  position: absolute;
-  top: 50%;
-  left: 15px;
-  transform: translateY(-50%);
-}
-
-.meta-info p {
-  line-height: 1.7em;
-  margin: 0;
-}
-
-.meta-info .author {
-  width: 125px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.small-item .title {
-  display: block;
-  line-height: 20px;
-  height: 38px;
-  margin-top: 6px;
+.bili-video-card__title {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #18191c;
+  padding-right: 30px;
+  min-height: 36px;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
   text-overflow: ellipsis;
   word-break: break-word;
-  line-break: anywhere;
-  font-size: 12px;
-  color: #212121;
+}
+
+.bili-video-card__title a,
+.bili-video-card__title {
   text-decoration: none;
 }
 
-.small-item .title:hover {
-  color: #00a1d6;
-}
-
-.small-item .meta {
-  color: #999;
-  white-space: nowrap;
-  font-size: 0;
-  margin-top: 5px;
-  height: 16px;
-  line-height: 16px;
-}
-
-.meta.pubdate {
+.bili-video-card__subtitle {
+  margin-top: 4px;
   font-size: 12px;
+  line-height: 16px;
+  color: #9499a0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fav-empty {
@@ -671,7 +559,7 @@ const rule = computed(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #99a2aa;
+  color: #9499a0;
   font-size: 13px;
   padding: 60px 0;
 }

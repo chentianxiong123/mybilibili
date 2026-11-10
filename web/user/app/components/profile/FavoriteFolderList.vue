@@ -39,236 +39,238 @@ const emit = defineEmits([
 ])
 
 const isFavnavOpen = ref(true)
-
-const placeholderCover = '/assets/site/img/bilibili/video-placeholder.png'
 </script>
 
 <template>
-  <div class="fav-sidenav">
-    <div class="nav-container">
-      <!-- 我的创建分组标题 -->
-      <div class="favlist-title" @click="emit('toggle-expand')">
-        <p>{{ isOwnSpace ? '我的创建' : 'TA的创建' }}</p>
-        <i class="iconfont icon-xiajiantou" :style="myCollectionsExpanded ? 'transform: rotate(180deg);' : ''"></i>
-      </div>
-
-      <div class="fav-list-container" v-show="myCollectionsExpanded">
-        <!-- 新建收藏夹（仅本人） -->
-        <div class="nav-title nav-add" v-if="isOwnSpace" @click="emit('open-create')">
-          <svg t="1711976556258" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4395" width="18" height="18"><path d="M512 62c247.5 0 450 202.5 450 450s-202.5 450-450 450-450-202.5-450-450 202.5-450 450-450z m28.125 421.875V287c0-16.875-11.25-28.125-28.125-28.125s-28.125 11.25-28.125 28.125v196.875H287c-16.875 0-28.125 11.25-28.125 28.125s11.25 28.125 28.125 28.125h196.875V737c0 16.875 11.25 28.125 28.125 28.125s28.125-11.25 28.125-28.125V540.125H737c16.875 0 28.125-11.25 28.125-28.125s-11.25-28.125-28.125-28.125H540.125z" p-id="4396"></path></svg>
-          <div class="text">新建收藏夹</div>
+  <div class="favlist-aside">
+    <div class="vui_collapse">
+      <!-- 我创建的收藏夹 分组 -->
+      <div class="vui_collapse_item">
+        <div class="vui_collapse_item_header" @click="emit('toggle-expand')">
+          <p>{{ isOwnSpace ? '我创建的收藏夹' : 'TA创建的收藏夹' }}</p>
+          <i class="iconfont icon-xiajiantou" :style="myCollectionsExpanded ? 'transform: rotate(180deg);' : ''"></i>
         </div>
 
-        <ul class="fav-list">
-          <li
-            class="fav-item"
-            :class="{'cur': activeFolderId !== null && Number(activeFolderId) === Number(item.id), 'owner': isOwnSpace}"
-            v-for="(item, index) in collections"
-            :key="index"
-            @click="emit('select-folder', item)"
-          >
-            <img v-if="item.cover" loading="lazy" decoding="async" :src="item.cover" alt="" class="folder-cover">
-            <span v-else class="folder-cover placeholder"><i class="iconfont icon-wenjianjia"></i></span>
-            <a class="text" :title="item.name">{{ item.name }}</a>
-            <span class="num">{{ item.count }}</span>
-            <VPopover class="more" popStyle="z-index: 1000;">
-              <template #reference>
-                <div class="tool-more">
-                  <i class="iconfont icon-gengduo"></i>
+        <div class="vui_collapse_item_content" v-show="myCollectionsExpanded">
+          <div class="fav-collapse-wrap">
+            <!-- 新建收藏夹（仅本人） -->
+            <div class="fav-collapse-create" v-if="isOwnSpace" @click="emit('open-create')">
+              <svg t="1711976556258" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4395" width="20" height="20"><path d="M512 62c247.5 0 450 202.5 450 450s-202.5 450-450 450-450-202.5-450-450 202.5-450 450-450z m28.125 421.875V287c0-16.875-11.25-28.125-28.125-28.125s-28.125 11.25-28.125 28.125v196.875H287c-16.875 0-28.125 11.25-28.125 28.125s11.25 28.125 28.125 28.125h196.875V737c0 16.875 11.25 28.125 28.125 28.125s28.125-11.25 28.125-28.125V540.125H737c16.875 0 28.125-11.25 28.125-28.125s-11.25-28.125-28.125-28.125H540.125z" p-id="4396"></path></svg>
+              <span class="text">新建收藏夹</span>
+            </div>
+
+            <div class="vui_sidebar">
+              <div
+                class="fav-sidebar-item"
+                v-for="(item, index) in collections"
+                :key="index"
+                @click="emit('select-folder', item)"
+              >
+                <div class="vui_sidebar-item" :class="{'vui_sidebar-item--active': activeFolderId !== null && Number(activeFolderId) === Number(item.id)}">
+                  <div class="vui_sidebar-item-title">
+                    <svg class="folder-icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M149.333333 170.666667h213.333334l85.333333 85.333333h426.666667a42.666667 42.666667 0 0 1 42.666666 42.666667v512a42.666667 42.666667 0 0 1-42.666666 42.666666H149.333333a42.666667 42.666667 0 0 1-42.666666-42.666666V213.333333a42.666667 42.666667 0 0 1 42.666666-42.666666z" fill="currentColor"></path></svg>
+                    <span class="vui_ellipsis" :title="item.name">{{ item.name }}</span>
+                  </div>
+                  <span class="vui_sidebar-item-right">{{ item.count }}</span>
+                  <VPopover v-if="isOwnSpace" class="more" popStyle="z-index: 1000;">
+                    <template #reference>
+                      <div class="tool-more">
+                        <i class="iconfont icon-gengduo"></i>
+                      </div>
+                    </template>
+                    <template #content>
+                      <ul class="be-dropdown-menu">
+                        <li class="be-dropdown-item" @click.stop="emit('open-edit', item)">编辑信息</li>
+                        <li class="be-dropdown-item be-dropdown-item-delimiter" @click.stop="emit('delete-folder', item)">删除</li>
+                      </ul>
+                    </template>
+                  </VPopover>
                 </div>
-              </template>
-              <template #content>
-                <ul class="be-dropdown-menu">
-                  <li class="be-dropdown-item" @click="emit('open-edit', item)">编辑信息</li>
-                  <li class="be-dropdown-item be-dropdown-item-delimiter" @click="emit('delete-folder', item)">删除</li>
-                </ul>
-              </template>
-            </VPopover>
-          </li>
-        </ul>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- TA的收藏分组 -->
-    <div class="nav-container" v-if="myFavorites.length">
-      <div class="favlist-title" @click="isFavnavOpen = !isFavnavOpen">
-        <p>TA的收藏</p>
-        <i class="iconfont icon-xiajiantou" :style="isFavnavOpen ? 'transform: rotate(180deg);' : ''"></i>
-      </div>
-      <div class="fav-list-container" v-show="isFavnavOpen">
-        <ul class="fav-list">
-          <li
-            class="fav-item"
-            :class="{'cur': activeFolderId !== null && Number(activeFolderId) === Number(item.id)}"
-            v-for="(item, index) in myFavorites"
-            :key="index"
-            @click="emit('select-folder', item)"
-          >
-            <span class="folder-cover placeholder"><i class="iconfont icon-wenjianjia"></i></span>
-            <a class="text" :title="item.name">{{ item.name }}</a>
-            <span class="num">{{ item.count }}</span>
-          </li>
-        </ul>
+    <!-- TA收藏的 分组（仅访客视图且有数据时显示） -->
+    <div class="vui_collapse" v-if="myFavorites.length">
+      <div class="vui_collapse_item">
+        <div class="vui_collapse_item_header" @click="isFavnavOpen = !isFavnavOpen">
+          <p>TA收藏的</p>
+          <i class="iconfont icon-xiajiantou" :style="isFavnavOpen ? 'transform: rotate(180deg);' : ''"></i>
+        </div>
+        <div class="vui_collapse_item_content" v-show="isFavnavOpen">
+          <div class="fav-collapse-wrap">
+            <div class="vui_sidebar">
+              <div
+                class="fav-sidebar-item"
+                v-for="(item, index) in myFavorites"
+                :key="index"
+                @click="emit('select-folder', item)"
+              >
+                <div class="vui_sidebar-item" :class="{'vui_sidebar-item--active': activeFolderId !== null && Number(activeFolderId) === Number(item.id)}">
+                  <div class="vui_sidebar-item-title">
+                    <svg class="folder-icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M149.333333 170.666667h213.333334l85.333333 85.333333h426.666667a42.666667 42.666667 0 0 1 42.666666 42.666667v512a42.666667 42.666667 0 0 1-42.666666 42.666666H149.333333a42.666667 42.666667 0 0 1-42.666666-42.666666V213.333333a42.666667 42.666667 0 0 1 42.666666-42.666666z" fill="currentColor"></path></svg>
+                    <span class="vui_ellipsis" :title="item.name">{{ item.name }}</span>
+                  </div>
+                  <span class="vui_sidebar-item-right">{{ item.count }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.fav-sidenav {
-  width: 220px;
+.favlist-aside {
+  width: 269px;
   flex-shrink: 0;
-  border-right: 1px solid #e5e9ef;
+  padding: 0 5px 20px 0;
+  margin: 18px 16px 0 0;
   font-size: 14px;
-  color: #222;
+  color: #18191c;
 }
 
-.nav-container {
-  border-bottom: 1px solid #e5e9ef;
-}
-
-.favlist-title {
-  padding-right: 11px;
+.vui_collapse_item_header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  height: 48px;
+  padding: 0 16px;
+  line-height: 48px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #18191c;
   cursor: pointer;
-  height: 54px;
-  padding-left: 19px;
-  line-height: 54px;
+}
+
+.vui_collapse_item_header p {
+  margin: 0;
+}
+
+.vui_collapse_item_header .iconfont {
   font-size: 14px;
-  color: #99a2aa;
+  color: #9499a0;
+  transition: transform .2s ease;
 }
 
-.favlist-title p {
-  margin: 0;
+.vui_collapse_item_content {
+  padding-bottom: 16px;
 }
 
-.fav-list-container {
-  position: relative;
-  max-height: 420px;
-  margin-bottom: 10px;
-  overflow: visible;
-}
-
-.nav-title {
-  position: relative;
-  height: 44px;
-  padding-left: 20px;
+.fav-collapse-create {
   display: flex;
   align-items: center;
+  height: 48px;
+  padding: 14px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #18191c;
   cursor: pointer;
+  transition: background-color .2s ease;
 }
 
-.nav-add .icon {
-  fill: #cbd0d8;
-  margin-right: 10px;
+.fav-collapse-create:hover {
+  background-color: #f6f7f8;
 }
 
-.nav-add .icon:hover {
-  fill: #97a2ab;
-}
-
-.nav-title .text {
-  display: block;
-  line-height: 24px;
-  color: #222;
-}
-
-.fav-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.fav-item {
-  position: relative;
-  padding-left: 20px;
-  padding-right: 8px;
-  transition: background-color .3s ease;
-  white-space: nowrap;
-  font-size: 0;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  height: 44px;
-  cursor: pointer;
-}
-
-.fav-item:hover {
-  background-color: #f4f5f7;
-}
-
-.fav-item.cur {
-  background-color: #00a1d6;
-}
-
-.fav-item.cur .icon-gengduo, .fav-item.cur svg, .fav-item.cur .num, .fav-item.cur .text {
-  color: #fff;
-  fill: #fff;
-}
-
-.folder-cover {
-  width: 32px;
-  height: 32px;
-  border-radius: 3px;
-  object-fit: cover;
-  margin-right: 10px;
+.fav-collapse-create .icon {
+  fill: #00aeec;
+  margin-right: 8px;
   flex-shrink: 0;
 }
 
-.folder-cover.placeholder {
-  background: #e5e9ef;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #99a2aa;
-  font-size: 16px;
+.fav-collapse-create .text {
+  line-height: 21px;
 }
 
-.fav-item .text {
-  display: inline-block;
-  line-height: 44px;
-  flex: 1;
-  margin-right: 5px;
+.vui_sidebar {
+  display: block;
+}
+
+.fav-sidebar-item {
+  position: relative;
+}
+
+.vui_sidebar-item {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 14px 16px;
+  border-radius: 6px;
   font-size: 14px;
-  vertical-align: middle;
+  line-height: 21px;
+  color: #18191c;
+  cursor: pointer;
+  transition: background-color .2s ease;
+}
+
+.vui_sidebar-item:hover {
+  background-color: #f6f7f8;
+}
+
+.vui_sidebar-item--active {
+  background-color: #00aeec;
+  color: #fff;
+}
+
+.vui_sidebar-item--active:hover {
+  background-color: #00aeec;
+}
+
+.vui_sidebar-item-title {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  margin-right: 8px;
+}
+
+.vui_sidebar-item-title .folder-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-right: 8px;
+  color: currentColor;
+}
+
+.vui_ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  cursor: pointer;
-  min-width: 0;
+  line-height: 21px;
 }
 
-.fav-item .num {
-  display: inline-block;
-  width: 32px;
-  font-size: 12px;
-  color: #99a2aa;
-  vertical-align: middle;
-  text-align: center;
+.vui_sidebar-item-right {
   flex-shrink: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: #9499a0;
 }
 
-.owner:hover .num {
-  display: none;
+.vui_sidebar-item--active .vui_sidebar-item-right {
+  color: #fff;
 }
 
-.fav-item .more {
+.vui_sidebar-item .more {
   display: none !important;
 }
 
-.owner:hover .more {
+.fav-sidebar-item:hover .more {
   display: inline-block !important;
-  margin-left: 8px;
 }
 
 .tool-more {
   cursor: pointer;
+  line-height: 21px;
 }
 
 .icon-gengduo {
-  color: #999;
+  color: #9499a0;
 }
 
 .be-dropdown-menu {
@@ -283,7 +285,7 @@ const placeholderCover = '/assets/site/img/bilibili/video-placeholder.png'
   line-height: 40px;
   text-align: center;
   font-size: 14px;
-  color: #222;
+  color: #18191c;
   box-sizing: border-box;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -293,11 +295,11 @@ const placeholderCover = '/assets/site/img/bilibili/video-placeholder.png'
 }
 
 .be-dropdown-item:hover {
-  color: #00a1d6;
+  color: #00aeec;
   background-color: #f0f0f0;
 }
 
 .be-dropdown-item.be-dropdown-item-delimiter {
-  border-bottom: 1px solid #e5e9ef;
+  border-bottom: 1px solid #e3e5e7;
 }
 </style>
