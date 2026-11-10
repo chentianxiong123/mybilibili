@@ -204,40 +204,41 @@ const playAllSearchVideos = () => {
 </template>
 
 <style scoped>
-/* 搜索页面样式 - 与投稿页面一致 */
+/* 搜索页面样式 - 对齐 B站 space search（透明，无白卡） */
 .search-section {
-  background-color: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: transparent;
+  box-shadow: none;
   padding: 0;
   width: 100%;
   border-radius: 0;
 }
 
-/* 顶部容器，与封面图片同宽 */
+/* 顶部容器 —— 对齐 B站 .space-search 通栏 flex（sidebar 240 + content 1384） */
 .search-top {
   display: flex;
-  gap: 0;
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+  gap: 16px;
+  padding: 0;
+  max-width: none;
+  margin: 0;
   width: 100%;
   box-sizing: border-box;
 }
 
-/* 左侧分类导航 */
+/* 左侧分类导航 —— 对齐 B站 .search-sidebar 240 > .side-nav */
 .search-sidebar {
-  width: 120px;
-  min-width: 120px;
+  width: 240px;
+  min-width: 240px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-right: 20px;
-  border-right: 1px solid #f0f0f0;
+  gap: 0;
+  padding-right: 0;
+  border-right: none;
 }
 
 /* 右侧内容区域 */
 .search-content {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -283,23 +284,24 @@ const playAllSearchVideos = () => {
 /* 搜索页面响应式设计 */
 
 
-/* 分类导航项 */
+/* 分类导航项 —— 对齐 B站 .side-nav__item 240×52 r6 pad14 16 fs16 */
 .category-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  height: 52px;
+  padding: 14px 16px;
   cursor: pointer;
-  font-size: 14px;
-  color: #666;
+  font-size: 16px;
+  color: #18191c;
   transition: all 0.3s ease;
-  border-radius: 4px;
-  margin-right: 10px;
+  border-radius: 6px;
+  margin-right: 0;
 }
 
 .category-item:hover {
   color: #00aeec;
-  background-color: rgba(0, 174, 236, 0.1);
+  background-color: #f6f7f8;
 }
 
 .category-item.active {
@@ -307,7 +309,7 @@ const playAllSearchVideos = () => {
   font-weight: 500;
   background-color: #00aeec;
   border-right: none;
-  padding-right: 12px;
+  padding-right: 16px;
 }
 
 .category-count {
