@@ -239,23 +239,23 @@ watch(() => props.userId, () => {
 </script>
 
 <template>
-  <div class="dynamic-layout">
-    <!-- 左侧筛选栏：全部 / 视频 -->
-    <aside class="filter-sidebar">
-      <div class="filter-card">
+  <div class="space-dynamic">
+    <!-- 左侧筛选栏（B站 side-nav）：全部 / 视频 -->
+    <aside class="space-dynamic__left">
+      <div class="side-nav">
         <div
           v-for="opt in filterOptions"
           :key="opt.key"
-          :class="['filter-item', { active: activeFilter === opt.key }]"
+          :class="['side-nav__item', { active: activeFilter === opt.key }]"
           @click="activeFilter = opt.key"
         >
-          {{ opt.label }}
+          <span class="side-nav__item-text">{{ opt.label }}</span>
         </div>
       </div>
     </aside>
 
     <!-- 动态流 -->
-    <div class="dynamic-feed">
+    <div class="space-dynamic__content">
       <div v-if="loading.dynamics" class="loading-state">
         <p>加载中...</p>
       </div>
@@ -264,23 +264,27 @@ watch(() => props.userId, () => {
       </div>
       <div v-else class="dynamic-list">
         <!-- 动态列表 -->
-        <div v-for="dynamic in filteredDynamics" :key="dynamic.id" class="dynamic-card">
+        <div v-for="dynamic in filteredDynamics" :key="dynamic.id" class="bili-dyn-item">
           <!-- 置顶标记 -->
           <div v-if="dynamic.isTop" class="top-badge">
             <el-icon><Top /></el-icon>
             <span>置顶</span>
           </div>
 
-          <!-- 头部 -->
-          <div class="dynamic-header-new">
-            <img loading="lazy" decoding="async" :src="dynamic.user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" :alt="dynamic.user?.name" class="user-avatar" @click="router.push(`/profile/${dynamic.user?.id}/home`)">
-            <div class="user-info">
-              <div class="user-name">{{ dynamic.user?.name || '未知用户' }}</div>
-              <div class="dynamic-time">{{ formatHeaderLine(dynamic) }}</div>
+          <!-- 头部（B站：88px 头像槽绝对定位 + header 名称/时间 + more 右上） -->
+          <div class="bili-dyn-item__avatar" @click="router.push(`/profile/${dynamic.user?.id}/home`)">
+            <img loading="lazy" decoding="async" :src="dynamic.user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" :alt="dynamic.user?.name" class="user-avatar">
+          </div>
+          <div class="bili-dyn-item__header">
+            <div class="bili-dyn-title">
+              <span class="bili-dyn-title__text">{{ dynamic.user?.name || '未知用户' }}</span>
+            </div>
+            <div class="bili-dyn-item__desc">
+              <div class="bili-dyn-time">{{ formatHeaderLine(dynamic) }}</div>
             </div>
             <!-- 更多菜单 -->
             <el-dropdown trigger="click" @command="(cmd) => cmd === 'stick' ? handleStickDynamic(dynamic.id) : handleDeleteDynamic(dynamic.id)">
-              <button class="more-btn" @click.stop>
+              <button class="bili-dyn-more" @click.stop>
                 <el-icon><MoreFilled /></el-icon>
               </button>
               <template #dropdown>
@@ -299,62 +303,70 @@ watch(() => props.userId, () => {
           </div>
 
           <!-- 正文 -->
-          <div class="dynamic-content-new">
-            <!-- 正文文字 -->
-            <div v-if="dynamic.content" class="original-content">
-              <div class="original-text">{{ dynamic.content }}</div>
-            </div>
-
-            <!-- 图文：图片网格 -->
-            <div v-if="dynamic.images && dynamic.images.length" class="original-images">
-              <img
-                loading="lazy"
-                decoding="async"
-                v-for="(img, idx) in dynamic.images"
-                :key="idx"
-                :src="img"
-                class="original-image"
-                @click="previewImage(img)"
-              >
-            </div>
-
-            <!-- 带视频：不一定每条动态都有，仅有引用稿件时渲染 -->
-            <div v-if="dynamic.video" class="video-card" @click="openVideo(dynamic.video.id)">
-              <div class="video-cover-wrapper">
-                <img loading="lazy" decoding="async" v-if="dynamic.video.cover" :src="dynamic.video.cover" class="video-cover">
-                <div v-else class="video-cover-placeholder"></div>
-                <div v-if="dynamic.video.duration" class="video-duration">{{ dynamic.video.duration }}</div>
+          <div class="bili-dyn-item__body">
+            <div class="bili-dyn-content">
+              <!-- 正文文字 -->
+              <div v-if="dynamic.content" class="original-content">
+                <div class="original-text">{{ dynamic.content }}</div>
               </div>
-              <div class="video-info-new">
-                <div class="video-title-new">{{ dynamic.video.title }}</div>
-                <div class="video-stats">
-                  <span class="video-stat-item">
-                    <svg class="stat-icon" viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M4 6h13v12H4zM19 8l3-2v12l-3-2z"/></svg>
-                    {{ formatNumber(dynamic.video.views) }}
-                  </span>
-                  <span class="video-stat-item">
-                    <el-icon><ChatDotRound /></el-icon>
-                    {{ dynamic.stats?.commentCount || 0 }}
-                  </span>
+
+              <!-- 图文：图片网格 -->
+              <div v-if="dynamic.images && dynamic.images.length" class="original-images">
+                <img
+                  loading="lazy"
+                  decoding="async"
+                  v-for="(img, idx) in dynamic.images"
+                  :key="idx"
+                  :src="img"
+                  class="original-image"
+                  @click="previewImage(img)"
+                >
+              </div>
+
+              <!-- 带视频：不一定每条动态都有，仅有引用稿件时渲染 -->
+              <div v-if="dynamic.video" class="video-card" @click="openVideo(dynamic.video.id)">
+                <div class="video-cover-wrapper">
+                  <img loading="lazy" decoding="async" v-if="dynamic.video.cover" :src="dynamic.video.cover" class="video-cover">
+                  <div v-else class="video-cover-placeholder"></div>
+                  <div v-if="dynamic.video.duration" class="video-duration">{{ dynamic.video.duration }}</div>
+                </div>
+                <div class="video-info-new">
+                  <div class="video-title-new">{{ dynamic.video.title }}</div>
+                  <div class="video-stats">
+                    <span class="video-stat-item">
+                      <svg class="stat-icon" viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M4 6h13v12H4zM19 8l3-2v12l-3-2z"/></svg>
+                      {{ formatNumber(dynamic.video.views) }}
+                    </span>
+                    <span class="video-stat-item">
+                      <el-icon><ChatDotRound /></el-icon>
+                      {{ dynamic.stats?.commentCount || 0 }}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- 操作栏 -->
-          <div class="dynamic-actions-new">
-            <button class="action-btn-new" @click="ElMessage.info('转发功能开发中')">
-              <el-icon><Share /></el-icon>
-              <span>{{ dynamic.stats?.shareCount > 0 ? dynamic.stats.shareCount : '转发' }}</span>
-            </button>
-            <button class="action-btn-new" :class="{ 'is-active': expandedComments.has(dynamic.id) }" @click="toggleComments(dynamic)">
-              <el-icon><ChatDotRound /></el-icon>
-              <span>{{ dynamic.stats?.commentCount > 0 ? `${dynamic.stats.commentCount} 条评论` : '评论' }}</span>
-            </button>
-            <button class="action-btn-new" :class="{ 'is-liked': dynamic.stats?.isLiked }" @click="handleLikeDynamic(dynamic)">
-              <svg class="thumb-icon" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M2 20h2V9H2v11zm20-10c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13.17 2 7.59 7.59C7.22 7.95 7 8.45 7 9v9c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1z"/></svg>
-              <span>{{ dynamic.stats?.likeCount > 0 ? dynamic.stats.likeCount : '点赞' }}</span>
-            </button>
+          <!-- 操作栏（B站 footer：50 高，转发/评论/点赞 三等分，无上边框） -->
+          <div class="bili-dyn-item__footer">
+            <div class="bili-dyn-item__action">
+              <button class="bili-dyn-action forward" @click="ElMessage.info('转发功能开发中')">
+                <el-icon><Share /></el-icon>
+                <span>{{ dynamic.stats?.shareCount > 0 ? dynamic.stats.shareCount : '转发' }}</span>
+              </button>
+            </div>
+            <div class="bili-dyn-item__action">
+              <button class="bili-dyn-action comment" :class="{ 'is-active': expandedComments.has(dynamic.id) }" @click="toggleComments(dynamic)">
+                <el-icon><ChatDotRound /></el-icon>
+                <span>{{ dynamic.stats?.commentCount > 0 ? `${dynamic.stats.commentCount} 条评论` : '评论' }}</span>
+              </button>
+            </div>
+            <div class="bili-dyn-item__action">
+              <button class="bili-dyn-action like" :class="{ 'is-liked': dynamic.stats?.isLiked }" @click="handleLikeDynamic(dynamic)">
+                <svg class="thumb-icon" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M2 20h2V9H2v11zm20-10c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13.17 2 7.59 7.59C7.22 7.95 7 8.45 7 9v9c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1z"/></svg>
+                <span>{{ dynamic.stats?.likeCount > 0 ? dynamic.stats.likeCount : '点赞' }}</span>
+              </button>
+            </div>
           </div>
 
           <!-- 评论展开区域 -->
@@ -372,55 +384,68 @@ watch(() => props.userId, () => {
 </template>
 
 <style scoped>
-/* 整体布局：左筛选 + 动态流 */
-.dynamic-layout {
+/* 整体布局（B站 .space-dynamic 1625@x140 flex，margin-top 30）：左侧栏 240 + 内容列 + 右栏 300 */
+.space-dynamic {
   display: flex;
-  gap: 16px;
   align-items: flex-start;
+  width: 100%;
+  margin-top: 30px;
 }
 
-/* 左侧筛选栏 */
-.filter-sidebar {
-  width: 148px;
+/* 左侧筛选栏（B站 .space-dynamic__left 240@x140 > .side-nav） */
+.space-dynamic__left {
+  width: 240px;
   flex-shrink: 0;
-  position: sticky;
-  top: 84px;
+  margin-right: 16px;
 }
 
-.filter-card {
-  background: #fff;
-  border-radius: 6px;
-  padding: 10px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+/* B站 .side-nav：透明无白卡，项 240x52 r6 pad14 16 */
+.side-nav {
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
 }
 
-.filter-item {
-  padding: 12px 0;
-  text-align: center;
-  font-size: 15px;
-  color: #61666d;
+.side-nav__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 240px;
+  height: 52px;
+  padding: 14px 16px;
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: 400;
+  color: #18191c;
+  background: transparent;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s, color 0.2s;
+  box-sizing: border-box;
 }
 
-.filter-item:hover {
-  color: #00a1d6;
+.side-nav__item:first-child {
+  margin-top: 0;
 }
 
-.filter-item.active {
-  background: #00a1d6;
+.side-nav__item:hover {
+  background: #f6f7f8;
+}
+
+/* B站 .side-nav__item.active：实底 #00aeec 白字 */
+.side-nav__item.active {
+  background: #00aeec;
   color: #fff;
-  font-weight: 500;
+  font-weight: 400;
 }
 
-/* 动态流 */
-.dynamic-feed {
-  flex: 1;
+/* 内容列（B站 .space-dynamic__content 1053@x396，卡片 1001，右侧 300 rail @x1465） */
+.space-dynamic__content {
+  width: 1053px;
+  max-width: 100%;
+  flex-shrink: 0;
+  margin-right: 16px;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .dynamic-list {
@@ -429,12 +454,14 @@ watch(() => props.userId, () => {
   gap: 12px;
 }
 
-/* 动态卡片 */
-.dynamic-card {
-  background: #fff;
-  border-radius: 6px;
-  padding: 20px;
+/* 动态卡片（B站 .bili-dyn-item 1001 白卡 r6 border#e3e5e7，__main pad 0 20 0 88 = 88px 头像槽） */
+.bili-dyn-item {
   position: relative;
+  background: #fff;
+  border: 1px solid #e3e5e7;
+  border-radius: 6px;
+  padding: 0 20px 0 88px;
+  box-sizing: border-box;
 }
 
 /* 置顶标记 */
@@ -443,7 +470,7 @@ watch(() => props.userId, () => {
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: #00a1d6;
+  color: #00aeec;
   margin-bottom: 12px;
 }
 
@@ -451,40 +478,68 @@ watch(() => props.userId, () => {
   font-size: 14px;
 }
 
-/* 动态头部 */
-.dynamic-header-new {
+/* 头像槽（B站 .bili-dyn-item__avatar 86x86 绝对定位卡片左上角，内含 48 圆头像） */
+.bili-dyn-item__avatar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 86px;
+  height: 86px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.bili-dyn-item__avatar .user-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 头部（B站 .bili-dyn-item__header pad-top16，名称 17/600/lh32 + 时间 13/18 #9499a0） */
+.bili-dyn-item__header {
+  position: relative;
+  padding-top: 16px;
+}
+
+.bili-dyn-title {
+  display: flex;
+  align-items: center;
+  margin: 1px 0 2px;
+}
+
+.bili-dyn-title__text {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 32px;
+  color: #18191c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bili-dyn-item__desc {
   display: flex;
   align-items: center;
 }
 
-.dynamic-header-new .user-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  margin-right: 12px;
-  object-fit: cover;
-  cursor: pointer;
-}
-
-.dynamic-header-new .user-info {
-  flex: 1;
-}
-
-.dynamic-header-new .user-name {
-  font-size: 15px;
-  font-weight: 500;
-  color: #212121;
-}
-
-.dynamic-header-new .dynamic-time {
+.bili-dyn-time {
   font-size: 13px;
+  font-weight: 400;
+  line-height: 18px;
   color: #9499a0;
-  margin-top: 4px;
 }
 
-.dynamic-header-new .more-btn {
-  width: 32px;
-  height: 32px;
+/* 更多按钮（B站 .bili-dyn-item__more 24x24 右上） */
+.bili-dyn-more {
+  position: absolute;
+  top: 16px;
+  right: 0;
+  width: 24px;
+  height: 24px;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -493,28 +548,61 @@ watch(() => props.userId, () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
 }
 
-.dynamic-header-new .more-btn:hover {
-  background: #f1f2f3;
-  color: #61666d;
-}
-
-/* 内容区域 */
-.dynamic-content-new {
-  margin-left: 60px;
+/* 操作栏（B站 .bili-dyn-item__footer 890x50 flex space-between，无上边框，pad-right 20） */
+.bili-dyn-item__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 50px;
   margin-top: 12px;
+  padding-right: 20px;
 }
 
-/* 正文 */
-.original-content {
-  margin-top: 0;
+.bili-dyn-item__action {
+  display: flex;
+  align-items: center;
 }
 
+.bili-dyn-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50px;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #61666d;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.bili-dyn-action:hover {
+  color: #00aeec;
+}
+
+.bili-dyn-action.is-liked {
+  color: #00aeec;
+}
+
+.bili-dyn-action.is-active {
+  color: #00aeec;
+}
+
+.bili-dyn-action .el-icon {
+  font-size: 18px;
+}
+
+/* 正文文字（B站 bili-dyn-content__orig 16px #18191c） */
 .original-text {
-  font-size: 15px;
-  color: #212121;
-  line-height: 1.6;
+  font-size: 16px;
+  color: #18191c;
+  line-height: 25px;
   white-space: pre-line;
   word-break: break-word;
 }
@@ -540,135 +628,6 @@ watch(() => props.userId, () => {
   opacity: 0.9;
 }
 
-/* 视频卡：白底边框横排（不一定每条动态都有） */
-.video-card {
-  display: flex;
-  margin-top: 12px;
-  background: #fff;
-  border: 1px solid #e3e5e7;
-  border-radius: 6px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.video-card:hover {
-  background: #f7f8fa;
-}
-
-.video-cover-wrapper {
-  position: relative;
-  width: 240px;
-  height: 135px;
-  flex-shrink: 0;
-}
-
-.video-cover {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.video-cover-placeholder {
-  width: 100%;
-  height: 100%;
-  background: #e3e5e7;
-}
-
-.video-duration {
-  position: absolute;
-  bottom: 6px;
-  right: 6px;
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  font-size: 13px;
-  padding: 1px 6px;
-  border-radius: 4px;
-}
-
-.video-info-new {
-  flex: 1;
-  min-width: 0;
-  padding: 16px 20px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 8px;
-}
-
-.video-title-new {
-  font-size: 15px;
-  font-weight: 500;
-  color: #212121;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.video-stats {
-  display: flex;
-  gap: 24px;
-  font-size: 13px;
-  color: #9499a0;
-}
-
-.video-stat-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.stat-icon {
-  display: inline-block;
-}
-
-/* 操作栏：三等分 */
-.dynamic-actions-new {
-  display: flex;
-  margin-left: 60px;
-  margin-top: 16px;
-  border-top: 1px solid #e3e5e7;
-}
-
-.action-btn-new {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 12px 0;
-  border: none;
-  background: transparent;
-  color: #61666d;
-  font-size: 14px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: color 0.2s;
-}
-
-.action-btn-new:hover {
-  color: #00a1d6;
-}
-
-.action-btn-new.is-liked {
-  color: #00a1d6;
-}
-
-.action-btn-new.is-active {
-  color: #00a1d6;
-}
-
-.action-btn-new .el-icon {
-  font-size: 18px;
-}
-
-.thumb-icon {
-  display: inline-block;
-}
-
 /* 加载状态和空状态 */
 .loading-state,
 .empty-state {
@@ -692,21 +651,24 @@ watch(() => props.userId, () => {
 
 /* 窄屏：筛选栏收起为顶部横条 */
 @media (max-width: 900px) {
-  .dynamic-layout {
+  .space-dynamic {
     flex-direction: column;
   }
 
-  .filter-sidebar {
+  .space-dynamic__left {
     width: 100%;
-    position: static;
+    margin-right: 0;
+    margin-bottom: 16px;
   }
 
-  .filter-card {
+  .side-nav {
     display: flex;
     gap: 8px;
   }
 
-  .filter-item {
+  .side-nav__item {
+    width: auto;
+    margin-top: 0;
     padding: 8px 24px;
   }
 }
