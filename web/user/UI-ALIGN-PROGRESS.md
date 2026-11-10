@@ -55,6 +55,10 @@
 | 创作中心弹幕管理页 | `/platform/danmu` | ⏸️ 无 B站 参考·可过 | 本地 `/platform/danmu` 为自定义筛选表单（danmu-form/form-row），B站 `member.bilibili.com/platform/danmu` 实测**无内容 body**（仅 nav + 空 cc-body，数据驱动/需稿件），无同构参考可抓 → 按铁律不编造值。内容列已随基类 `.content-body` 1283 居中（danmu-manager 1283 pad0 40px → 1203），壳对齐 |
 | 创作中心字幕管理页 | `/platform/upload-manager/subtitle` | ⏸️ 无 B站 参考·可过 | B站 `member.bilibili.com/platform/upload-manager/subtitle` 实测 302 回 home，无同构参考；本地 subtitle-manager 已 1283 pad0 40px 内容列 + 64 高 top-tabs，壳与兄弟页一致，不逐像素对齐 |
 
+## 本轮已交付（2026-11-10 无人值守整夜班 new，1 处对齐，只 commit 未 push）
+- `5e620608` 视频播放页右栏相关视频卡片 `/video/[vid]`：对齐 `bilibili.com/video/BV1GJ411x7h7` 右栏（登录态 CDP 抓 `ref-video-right.json`，子代理）。封面 **141×80→189×107**、卡片高 **83→107**、卡间距 **12→16px**、标题 **15→16px/500/行高20**、时长角标 **13→14px**、区块标题 **15→16px/500**。`.info` flex:1 自动得 212。getComputedStyle 真值全部一致。已匹配未动：UP面板/弹幕折叠条/meta 行。949 测试全绿。
+- 排查未改动：`/opus/[id]` 实为 redirect 到 `/read/cv[id]`（已对齐）；`/space/[uid]` 本轮实抓可渲染（498 元素，非白屏）但为大型 legacy Options-API 页 + 众多嵌套子路由（video/article/dynamic/favlist/fans/setting 依赖其 NuxtPage+navIdx），重构风险大，维持「需监督时迁移」标记；`/platform/upload*`、`/manuscript/[id]`、`/collection/create|edit`、`/live/push` 为表单/编辑器页（子代理排查确认需 mock `/user/me` 才展开内容区），像素对齐价值低 + 重构风险高，无人值守不重建。
+
 ## 本轮已交付（2026-11-11 凌晨班，创作中心 4 个内容页对齐，只 commit 未 push）
 - 创作中心粉丝管理 `/platform/fans`：`.fans-page` 去 8px 内边距（**1283 通宽**）+ `.manage-wrap` 补 40px 横向内边距（**内容 1203@x459**）+ tab 项 margin-left40/lh34（**高63/容器64**），全对齐 `member.bilibili.com/platform/fans/manage` getComputedStyle 真值。
 - 创作中心稿件管理 `/platform/upload-manager/manuscript`：顶部 tab 从 `el-tabs--card`（1203×55 盒装）改 B站 下划线 tab（**通栏 1283×64** + `.link-top-item` 下划线），保留 mainTab 切换逻辑。
