@@ -36,60 +36,64 @@ const formatNumber = (num) => {
 
 <template>
   <div class="dynamic-card">
-    <div class="dynamic-header">
-      <img loading="lazy" decoding="async" :src="item.user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" alt="" class="dynamic-avatar" @click="emit('go-to-user', item.userId)">
-      <div class="dynamic-user-info">
-        <div class="dynamic-username" @click="emit('go-to-user', item.userId)">
-          {{ item.user?.username || '用户' }}
-        </div>
-        <div class="dynamic-time">{{ formatTime(item.createdAt) }}</div>
+    <div class="dynamic-card__main">
+      <div class="dynamic-card__avatar">
+        <img loading="lazy" decoding="async" :src="item.user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" alt="" class="dynamic-avatar" @click="emit('go-to-user', item.userId)">
       </div>
-      <button class="more-btn">
-        <el-icon><MoreFilled /></el-icon>
-      </button>
-    </div>
-
-    <div class="dynamic-body">
-      <div class="dynamic-text">{{ item.content }}</div>
-
-      <div v-if="item.imageUrls && item.imageUrls.length > 0" class="dynamic-images">
-        <img loading="lazy" decoding="async" v-for="(url, index) in item.imageUrls" :key="index" :src="url" alt="" class="dynamic-image" @click="() => {}">
+      <div class="dynamic-header">
+        <div class="dynamic-user-info">
+          <div class="dynamic-username" @click="emit('go-to-user', item.userId)">
+            {{ item.user?.username || '用户' }}
+          </div>
+          <div class="dynamic-time">{{ formatTime(item.createdAt) }}</div>
+        </div>
+        <button class="more-btn">
+          <el-icon><MoreFilled /></el-icon>
+        </button>
       </div>
 
-      <div v-if="item.refManuscriptId" class="video-card" @click="emit('go-to-manuscript', item.refManuscriptId)">
-        <img loading="lazy" decoding="async" v-if="item.refVideo?.cover" :src="item.refVideo.cover" alt="稿件封面" class="video-cover">
-        <div v-else class="video-cover-placeholder">
-          <el-icon><VideoPlay /></el-icon>
+      <div class="dynamic-body">
+        <div class="dynamic-text">{{ item.content }}</div>
+
+        <div v-if="item.imageUrls && item.imageUrls.length > 0" class="dynamic-images">
+          <img loading="lazy" decoding="async" v-for="(url, index) in item.imageUrls" :key="index" :src="url" alt="" class="dynamic-image" @click="() => {}">
         </div>
-        <div class="video-info">
-          <div class="video-title">{{ item.refVideo?.title || '引用稿件 #' + item.refManuscriptId }}</div>
-          <div class="video-meta" v-if="item.refVideo">
-            <span v-if="item.refVideo.duration" class="video-duration">
-              <el-icon><Clock /></el-icon>
-              {{ item.refVideo.duration }}
-            </span>
-            <span v-if="item.refVideo.viewCount" class="video-views">
-              <el-icon><View /></el-icon>
-              {{ formatNumber(item.refVideo.viewCount) }}次观看
-            </span>
+
+        <div v-if="item.refManuscriptId" class="video-card" @click="emit('go-to-manuscript', item.refManuscriptId)">
+          <img loading="lazy" decoding="async" v-if="item.refVideo?.cover" :src="item.refVideo.cover" alt="稿件封面" class="video-cover">
+          <div v-else class="video-cover-placeholder">
+            <el-icon><VideoPlay /></el-icon>
+          </div>
+          <div class="video-info">
+            <div class="video-title">{{ item.refVideo?.title || '引用稿件 #' + item.refManuscriptId }}</div>
+            <div class="video-meta" v-if="item.refVideo">
+              <span v-if="item.refVideo.duration" class="video-duration">
+                <el-icon><Clock /></el-icon>
+                {{ item.refVideo.duration }}
+              </span>
+              <span v-if="item.refVideo.viewCount" class="video-views">
+                <el-icon><View /></el-icon>
+                {{ formatNumber(item.refVideo.viewCount) }}次观看
+              </span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="dynamic-footer">
-      <button class="action-btn" @click="emit('forward', item)">
-        <el-icon><Share /></el-icon>
-        <span>{{ item.shareCount || '转发' }}</span>
-      </button>
-      <button class="action-btn" :class="{ active: item.showComments }" @click="emit('toggle-comment', item)">
-        <el-icon><ChatDotRound /></el-icon>
-        <span>{{ item.commentCount || '评论' }}</span>
-      </button>
-      <button class="action-btn" :class="{ liked: item.stats?.isLiked }" @click="emit('like', item)">
-        <el-icon><Star /></el-icon>
-        <span>{{ item.stats?.likeCount > 0 ? item.stats.likeCount : '点赞' }}</span>
-      </button>
+      <div class="dynamic-footer">
+        <button class="action-btn" @click="emit('forward', item)">
+          <el-icon><Share /></el-icon>
+          <span>{{ item.shareCount || '转发' }}</span>
+        </button>
+        <button class="action-btn" :class="{ active: item.showComments }" @click="emit('toggle-comment', item)">
+          <el-icon><ChatDotRound /></el-icon>
+          <span>{{ item.commentCount || '评论' }}</span>
+        </button>
+        <button class="action-btn" :class="{ liked: item.stats?.isLiked }" @click="emit('like', item)">
+          <el-icon><Star /></el-icon>
+          <span>{{ item.stats?.likeCount > 0 ? item.stats.likeCount : '点赞' }}</span>
+        </button>
+      </div>
     </div>
 
     <!-- 评论区 - 展开栏形式 -->
@@ -112,17 +116,30 @@ const formatNumber = (num) => {
 <style scoped>
 .dynamic-card {
   background: #fff;
-  /* B站 t.bilibili.com .bili-dyn-item：圆角 6px、无阴影无边框（getComputedStyle 真值） */
+  /* B站 t.bilibili.com .bili-dyn-item：圆角 6px、无阴影无边框、pad 0（getComputedStyle 真值） */
   border-radius: 6px;
-  padding: 16px;
+  padding: 0;
   box-shadow: none;
 }
 
-.dynamic-header {
+/* .bili-dyn-item__main：pad 0 20 0 88 = 88px 头像槽 */
+.dynamic-card__main {
+  position: relative;
+  padding: 0 20px 0 88px;
+}
+
+/* .bili-dyn-item__avatar：86×86 绝对定位卡片左上，内含 48 圆头像 @+19,19 */
+.dynamic-card__avatar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 86px;
+  height: 86px;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 19px;
+  box-sizing: border-box;
 }
 
 .dynamic-avatar {
@@ -133,44 +150,62 @@ const formatNumber = (num) => {
   cursor: pointer;
 }
 
-.dynamic-user-info {
-  flex: 1;
+/* .bili-dyn-item__header：616×62 pad-top16 */
+.dynamic-header {
+  display: flex;
+  align-items: flex-start;
+  padding-top: 16px;
 }
 
+.dynamic-user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+/* .bili-dyn-title__text：17/600/lh32 #ff6699 */
 .dynamic-username {
-  font-size: 14px;
-  font-weight: 500;
-  color: #00a1d6;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 32px;
+  color: #ff6699;
   cursor: pointer;
 }
 
+/* .bili-dyn-time：13/400/18 #9499a0 */
 .dynamic-time {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 18px;
   color: #9499a0;
   margin-top: 4px;
 }
 
+/* .bili-dyn-more：24×24 r4 */
 .more-btn {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   border: none;
   background: transparent;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #9499a0;
+  flex-shrink: 0;
+  margin-left: 8px;
 }
 
+/* .bili-dyn-item__body：mg 8px 0 0 */
 .dynamic-body {
-  margin-bottom: 16px;
+  margin: 8px 0 0;
 }
 
+/* .bili-dyn-content__orig：16/25 #18191c */
 .dynamic-text {
-  font-size: 14px;
+  font-size: 16px;
   color: #18191c;
-  line-height: 1.6;
+  line-height: 25px;
   white-space: pre-line;
 }
 
@@ -260,19 +295,23 @@ const formatNumber = (num) => {
   gap: 4px;
 }
 
+/* .bili-dyn-item__footer：616×50 pad 0 20 0 0 无上边框，action 均分 */
 .dynamic-footer {
   display: flex;
-  border-top: 1px solid #e3e5e7;
-  padding-top: 12px;
+  justify-content: space-between;
+  height: 50px;
+  margin-top: 8px;
+  padding: 0 20px 0 0;
 }
 
 .dynamic-footer .action-btn {
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px;
+  width: 104px;
+  height: 50px;
+  padding: 0;
   border: none;
   background: transparent;
   color: #61666d;
@@ -295,12 +334,12 @@ const formatNumber = (num) => {
   color: #00aeec;
 }
 
-/* 评论区 - 展开栏形式 */
+/* 评论区 - 展开栏形式（B站 展开评论区无额外圆角，贴卡片底部） */
 .comment-section {
-  margin-top: 12px;
+  margin-top: 4px;
   border-top: 1px solid #e3e5e7;
   background: #f6f7f8;
-  border-radius: 0 0 8px 8px;
+  border-radius: 0 0 6px 6px;
   overflow: hidden;
 }
 

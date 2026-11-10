@@ -319,11 +319,15 @@ onMounted(() => {
     <div class="dynamic-container">
       <aside class="left-sidebar">
         <div class="user-card" v-if="userStore.isLoggedIn && currentUser.id">
-          <div class="user-avatar-section" @click="goToUserProfile(currentUser.id)">
-            <img loading="lazy" decoding="async" :src="currentUser.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" alt="头像" class="user-avatar">
-            <div class="user-level" v-if="currentUser.level">LV{{ currentUser.level }}</div>
+          <div class="my-info-header">
+            <div class="user-avatar-section" @click="goToUserProfile(currentUser.id)">
+              <img loading="lazy" decoding="async" :src="currentUser.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'" alt="头像" class="user-avatar">
+            </div>
+            <div class="my-info-name">
+              <div class="user-name" @click="goToUserProfile(currentUser.id)">{{ currentUser.nickname || currentUser.username }}</div>
+              <div class="user-level" v-if="currentUser.level">LV{{ currentUser.level }}</div>
+            </div>
           </div>
-          <div class="user-name">{{ currentUser.nickname || currentUser.username }}</div>
           <div class="user-stats">
             <div class="stat-item" @click="goToUserFollowing(currentUser.id)">
               <div class="stat-value">{{ myStats.followingCount ?? currentUser.followingCount ?? 0 }}</div>
@@ -452,70 +456,92 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
+/* .bili-dyn-my-info：264×144 pad 20 16 bg#fff r6 */
 .user-card {
   background: #fff;
   border-radius: 6px;
-  padding: 20px;
-  text-align: center;
+  padding: 20px 16px;
   box-shadow: none;
+}
+
+/* __header：232×48 flex，avatar 48 mr8 + info */
+.my-info-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 17px;
 }
 
 .user-avatar-section {
   position: relative;
-  display: inline-block;
+  flex-shrink: 0;
+  margin-right: 8px;
   cursor: pointer;
 }
 
+/* B站 avatar 48×48 圆形 */
 .user-avatar {
-  width: 80px;
-  height: 80px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #e3e5e7;
+  display: block;
+}
+
+.my-info-name {
+  min-width: 0;
+}
+
+/* info__name：15/600 #18191c */
+.user-name {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+  color: #18191c;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-level {
-  position: absolute;
-  bottom: 0;
-  right: 0;
+  display: inline-block;
+  margin-top: 2px;
   background: linear-gradient(135deg, #00a1d6, #feca57);
   color: #fff;
   font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 10px;
+  padding: 0 6px;
+  border-radius: 8px;
   font-weight: 600;
+  line-height: 16px;
 }
 
-.user-name {
-  margin-top: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #18191c;
-}
-
+/* __stats：232×39，三列均分 */
 .user-stats {
   display: flex;
-  justify-content: space-around;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #e3e5e7;
+  justify-content: space-between;
 }
 
 .stat-item {
   cursor: pointer;
   transition: opacity 0.3s;
+  text-align: center;
 }
 
+/* item-num：15/600/20 #18191c */
 .stat-value {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
+  line-height: 20px;
   color: #18191c;
 }
 
+/* item-desc：13/400/17 #9499a0 */
 .stat-label {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 17px;
   color: #9499a0;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .main-content {
@@ -537,8 +563,9 @@ onMounted(() => {
   flex: 1;
   min-width: 0;
   display: flex;
-  gap: 16px;
-  padding: 16px;
+  gap: 6px;
+  /* B站 .bili-dyn-up-list__window：pad 9px 0 10px */
+  padding: 9px 0 10px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -577,11 +604,14 @@ onMounted(() => {
   pointer-events: none;
 }
 
+/* B站 .bili-dyn-up-list__item：68×100 pad 8px 0 0 mr6 flex-column 居中 */
 .following-user-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  width: 68px;
+  padding: 8px 0 0;
+  margin-right: 6px;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -590,9 +620,11 @@ onMounted(() => {
   border-color: #00aeec;
 }
 
+/* B站 头像 48 圆 + 1px margin = 50 槽 */
 .following-avatar {
   width: 48px;
   height: 48px;
+  margin: 1px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid transparent;
@@ -609,9 +641,13 @@ onMounted(() => {
   font-weight: 600;
 }
 
+/* B站 名称 52×18 fs13/400/18 #00aeec mt4 */
 .following-name {
-  font-size: 12px;
-  color: #61666d;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 18px;
+  color: #00aeec;
+  margin-top: 4px;
   max-width: 60px;
   overflow: hidden;
   text-overflow: ellipsis;
