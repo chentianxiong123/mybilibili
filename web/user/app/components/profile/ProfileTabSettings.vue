@@ -132,67 +132,73 @@ watch(() => props.isOwnSpace, (v) => {
   <div class="settings-section">
     <div class="settings-container">
       <!-- 隐私设置 -->
-      <div class="settings-group">
-        <h3 class="settings-group-title">隐私设置</h3>
-        <div class="settings-list">
-          <div class="setting-item">
-            <span class="setting-label">公开我的收藏</span>
-            <div class="setting-control">
-              <el-switch
-                v-model="privacySettings.publicCollection"
-                :active-value="true"
-                :inactive-value="false"
-                active-text="公开"
-                inactive-text="隐藏"
-                @change="handlePrivacyChange('publicCollection', $event)"
-              />
+      <div class="section switch-wrap">
+        <h3 class="title">隐私设置</h3>
+        <div class="privacy">
+          <div class="switches">
+          <div class="switch-item">
+            <div class="wrap">
+              <div class="left"><span class="text">公开我的收藏</span></div>
+              <div class="right">
+                <el-switch
+                  v-model="privacySettings.publicCollection"
+                  :active-value="true"
+                  :inactive-value="false"
+                  class="vui_switch"
+                  @change="handlePrivacyChange('publicCollection', $event)"
+                />
+              </div>
             </div>
           </div>
-          <div class="setting-item">
-            <span class="setting-label">公开我的生日、个人标签</span>
-            <div class="setting-control">
-              <el-switch
-                v-model="privacySettings.publicBirthdayTags"
-                :active-value="true"
-                :inactive-value="false"
-                active-text="公开"
-                inactive-text="隐藏"
-                @change="handlePrivacyChange('publicBirthdayTags', $event)"
-              />
+          <div class="switch-item">
+            <div class="wrap">
+              <div class="left"><span class="text">公开我的生日、个人标签</span></div>
+              <div class="right">
+                <el-switch
+                  v-model="privacySettings.publicBirthdayTags"
+                  :active-value="true"
+                  :inactive-value="false"
+                  class="vui_switch"
+                  @change="handlePrivacyChange('publicBirthdayTags', $event)"
+                />
+              </div>
             </div>
           </div>
-          <div class="setting-item">
-            <span class="setting-label">公开我的关注列表</span>
-            <div class="setting-control">
-              <el-switch
-                v-model="privacySettings.publicFollowingList"
-                :active-value="true"
-                :inactive-value="false"
-                active-text="公开"
-                inactive-text="隐藏"
-                @change="handlePrivacyChange('publicFollowingList', $event)"
-              />
+          <div class="switch-item">
+            <div class="wrap">
+              <div class="left"><span class="text">公开我的关注列表</span></div>
+              <div class="right">
+                <el-switch
+                  v-model="privacySettings.publicFollowingList"
+                  :active-value="true"
+                  :inactive-value="false"
+                  class="vui_switch"
+                  @change="handlePrivacyChange('publicFollowingList', $event)"
+                />
+              </div>
             </div>
           </div>
-          <div class="setting-item">
-            <span class="setting-label">公开我的粉丝列表</span>
-            <div class="setting-control">
-              <el-switch
-                v-model="privacySettings.publicFollowersList"
-                :active-value="true"
-                :inactive-value="false"
-                active-text="公开"
-                inactive-text="隐藏"
-                @change="handlePrivacyChange('publicFollowersList', $event)"
-              />
+          <div class="switch-item">
+            <div class="wrap">
+              <div class="left"><span class="text">公开我的粉丝列表</span></div>
+              <div class="right">
+                <el-switch
+                  v-model="privacySettings.publicFollowersList"
+                  :active-value="true"
+                  :inactive-value="false"
+                  class="vui_switch"
+                  @change="handlePrivacyChange('publicFollowersList', $event)"
+                />
+              </div>
             </div>
+          </div>
           </div>
         </div>
       </div>
 
       <!-- 我的个人标签 -->
-      <div class="settings-group">
-        <h3 class="settings-group-title">我的个人标签</h3>
+      <div class="section tags-wrap">
+        <h3 class="title">个人标签设置</h3>
         <div class="tags-section">
           <div class="tags-list">
             <el-tag
@@ -225,63 +231,94 @@ watch(() => props.isOwnSpace, (v) => {
 </template>
 
 <style scoped>
-/* ==================== 设置页面样式 ==================== */
+/* ==================== 设置页面样式（对齐 B站 space settings） ==================== */
 .settings-section {
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 24px;
-  min-height: 500px;
+  background-color: transparent;
+  border-radius: 0;
+  padding: 0;
+  min-height: 0;
 }
 
 .settings-container {
-  max-width: 800px;
+  max-width: none;
 }
 
-.settings-group {
-  margin-bottom: 32px;
+/* section —— 对齐 B站 .section.switch-wrap（透明，无白卡） */
+.section {
+  margin: 0 0 56px;
 }
 
-.settings-group-title {
-  font-size: 18px;
+.section.tags-wrap {
+  width: 562px;
+  margin: 0;
+}
+
+.title {
+  font-size: 24px;
   font-weight: 600;
-  color: #333;
-  margin: 0 0 20px 0;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
+  color: #18191c;
+  line-height: 24px;
+  padding: 5px 0;
+  margin: 0 0 20px;
+  border-bottom: none;
 }
 
-.settings-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.privacy {
+  display: grid;
 }
 
-.setting-item {
+.switches {
+  width: 320px;
+}
+
+.switch-item {
+  width: 320px;
+}
+
+.switch-item .wrap {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 0;
+  width: 320px;
+  height: 50px;
 }
 
-.setting-label {
-  font-size: 14px;
-  color: #333;
+.switch-item .left {
+  padding: 14px 0;
+  margin-right: 16px;
 }
 
-.setting-control {
+.switch-item .text {
+  display: inline-block;
+  font-size: 16px;
+  font-weight: 400;
+  color: #18191c;
+  line-height: 22px;
+}
+
+.switch-item .right {
+  padding: 15px 0;
   display: flex;
   align-items: center;
 }
 
-.setting-control .el-switch {
-  margin-right: 12px;
+/* vui_switch —— 对齐 B站 .vui_switch--switch（32×20 轨道 + 14×14 白色滑块） */
+.switch-item :deep(.el-switch) {
+  --el-switch-on-color: #00aeec;
+  height: 20px;
 }
 
-.setting-status {
-  font-size: 14px;
-  color: #999;
-  min-width: 40px;
-  text-align: right;
+.switch-item :deep(.el-switch__core) {
+  width: 32px;
+  height: 20px;
+  border-radius: 18px;
+  min-width: 32px;
+}
+
+.switch-item :deep(.el-switch__core .el-switch__action) {
+  width: 14px;
+  height: 14px;
+  border-radius: 100%;
 }
 
 /* 标签管理样式 */
