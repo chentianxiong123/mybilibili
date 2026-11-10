@@ -1,12 +1,17 @@
 <template>
     <div class="login-register">
-        <!-- 左栏：品牌区（对齐 B站 .login-scan.main__left） -->
+        <!-- 主区（对齐 B站 .login__main 900×304 flex） -->
+        <div class="login-main">
+        <!-- 左栏：扫码登录区（对齐 B站 .login-scan.main__left，仅二维码+文案，无TV图标） -->
         <div class="login-brand">
-            <div class="login-brand__tv">
-                <el-icon><VideoPlay /></el-icon>
+            <div class="login-scan__qrcode">
+                <img class="login-scan__qr-img" :src="qrImg" alt="扫码登录">
             </div>
-            <div class="login-brand__logo"><span>哔哩哔哩</span></div>
-            <p class="login-brand__slogan">哔哩哔哩 (゜-゜)つロ 干杯~</p>
+            <div class="login-scan__txt">
+                <p>使用手机</p>
+                <p>哔哩哔哩客户端</p>
+                <p>扫码登录</p>
+            </div>
         </div>
 
         <!-- 中分隔线（对齐 B站 .main__middle-line） -->
@@ -16,6 +21,13 @@
         <div class="login-panel">
         <!-- 登录 -->
         <div v-if="dialogMode === 'login'" class="login-form">
+            <!-- 登录方式 tab 栏（对齐 B站 .tabs_wp：18px #9499a0 500，分隔线 1×20 #ddd） -->
+            <div class="tabs_wp">
+                <div :class="{ tab_active: loginMode === 'password' }" @click="loginMode = 'password'">密码登录</div>
+                <div></div>
+                <div :class="{ tab_active: loginMode === 'sms' }" @click="loginMode = 'sms'">短信登录</div>
+            </div>
+
             <!-- 验证码登录 tab 暂时注释 ↓
             <div class="login-tabs">
                 <span :class="{ active: loginMode === 'password' }" @click="loginMode = 'password'">密码登录</span>
@@ -73,15 +85,26 @@
             </div>
             注释 ↑ -->
 
-            <div class="form-actions">
-                <el-checkbox v-model="loginForm.rememberMe">记住我</el-checkbox>
-                <el-button link class="forget-password" @click="this.$router.push('/forgot-password')">忘记密码？</el-button>
+            <div class="submit" @click="handleLogin()">登录</div>
+
+            <!-- 其他登录方式（对齐 B站：按钮下方紧跟第三方登录区，标题13px #999 mb12 + 三图标28×28） -->
+            <div class="third-party-login-wrapper">
+                <div class="title">其他方式登录</div>
+                <div class="sns">
+                    <div class="sns__item" v-for="sns in snsIcons" :key="sns.name">
+                        <img class="sns__icon" :src="sns.img" :alt="sns.name">
+                        <span class="sns__name">{{ sns.name }}</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="submit" @click="handleLogin()">登录</div>
             <div class="switch-mode">
                 <span>还没有账号？</span>
                 <span class="switch-btn" @click="switchToRegister">立即注册</span>
+            </div>
+            <div class="form-actions">
+                <el-checkbox v-model="loginForm.rememberMe">记住我</el-checkbox>
+                <el-button link class="forget-password" @click="this.$router.push('/forgot-password')">忘记密码？</el-button>
             </div>
         </div>
 
@@ -153,6 +176,13 @@
             </div>
         </div>
         </div><!-- /.login-panel -->
+        </div><!-- /.login-main -->
+
+        <!-- 通栏协议区（对齐 B站 .login-protocol 900×34） -->
+        <div class="login-protocol">
+            <p>未注册过哔哩哔哩的手机号，我们将自动帮你注册账号</p>
+            <p>登录即代表你同意<label><a class="clickable" href="https://www.bilibili.com/protocal/licence.html" target="_blank" rel="noopener noreferrer">用户协议</a></label>与<label><a class="clickable" href="https://www.bilibili.com/blackboard/privacy-pc.html" target="_blank" rel="noopener noreferrer">隐私政策</a></label></p>
+        </div>
     </div>
 </template>
 
@@ -162,12 +192,24 @@ import { User, Lock, Message, VideoPlay } from '@element-plus/icons-vue';
 // captchaApi / emailCodeApi 暂时注释：验证码、邮箱验证码功能已关闭
 import { userApi } from '@/api/client';
 import { setAuthSession } from '@/utils/auth';
+// 二维码静态资源（从 B站 passport 快照抠出的真实 140×140 二维码图，像素级对齐用）
+import qrImg from '@/assets/site/img/login-qr.png';
+// 第三方登录图标（从 B站 passport 快照抠出的真实图标）
+import snsWechat from '@/assets/site/img/sns-wechat.png';
+import snsWeibo from '@/assets/site/img/sns-weibo.png';
+import snsQq from '@/assets/site/img/sns-qq.png';
 
 export default {
     name: "LoginRegister",
     components: { User, Lock, Message, VideoPlay },
     data() {
         return {
+            qrImg,
+            snsIcons: [
+                { name: '微信登录', img: snsWechat },
+                { name: '微博登录', img: snsWeibo },
+                { name: 'QQ登录', img: snsQq },
+            ],
             dialogMode: 'login',
             loginMode: 'password',
             loginForm: {
@@ -313,47 +355,64 @@ export default {
 </script>
 
 <style scoped>
-/* 两栏容器（对齐 B站 .login__main flex） */
+/* 外层（对齐 B站 .login_wp 900×588：pad-top102[含bread-cut20] + 主区304 + gap40 + 协议34 + pad-bottom108） */
 .login-register {
-    display: flex;
-    align-items: stretch;
+    display: block;
     width: 900px;
     box-sizing: border-box;
-    padding: 0;
+    padding: 102px 0 108px;
+    background: #fff;
 }
 
-/* 左栏品牌区（对齐 .login-scan.main__left 386 宽） */
+/* 主区（对齐 B站 .login__main 900×304 flex） */
+.login-main {
+    display: flex;
+    align-items: flex-start;
+    width: 900px;
+    height: 304px;
+    box-sizing: border-box;
+}
+
+/* 左栏扫码登录区（对齐 .login-scan.main__left 386 宽，仅二维码+文案，内容顶从 y146） */
 .login-brand {
     flex: 0 0 386px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 60px 0;
+    box-sizing: border-box;
+    padding-top: 44px; /* 主区顶 y102 → 二维码 y146 */
+}
+
+/* 二维码框（对齐 .login-scan__qrcode 158×158 border #e3e5e7 radius6.84 pad8，相对面板 y146） */
+.login-scan__qrcode {
+    box-sizing: border-box;
+    border: 1px solid #e3e5e7;
+    border-radius: 6.84393px;
+    width: 158px;
+    height: 158px;
+    padding: 8px;
+    position: relative;
+}
+.login-scan__qr-img {
+    width: 140px;
+    height: 140px;
+    display: block;
+}
+/* 扫码文案区（对齐 .login-scan__txt 386×90，二维码底 y304 → 文案 y312，2行×19行高居中） */
+.login-scan__txt {
+    width: 386px;
+    margin-top: 8px;
+    height: 90px;
     box-sizing: border-box;
 }
-.login-brand__tv {
-    width: 70px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 24px;
-}
-.login-brand__tv .el-icon { font-size: 70px; color: #00a1d6; }
-.login-brand__logo span {
-    font-size: 28px;
-    font-weight: 700;
-    color: #00a1d6;
-    line-height: 44px;
-}
-.login-brand__slogan {
-    margin: 12px 0 0;
+.login-scan__txt p {
+    text-align: center;
     color: #61666d;
     font-size: 14px;
     font-weight: 400;
     line-height: 19px;
-    text-align: center;
+    margin: 0;
+    height: 19px;
 }
 
 /* 中分隔线（对齐 .main__middle-line 1×260 #ddd margin 44px 48px 0） */
@@ -366,16 +425,77 @@ export default {
     height: 260px;
 }
 
-/* 右栏表单区（对齐 .main__right） */
+/* 右栏表单区（对齐 .main__right 402 宽，内容左对齐 x483，顶从 y106=102+4，tab栏占44后输入框落y150） */
 .login-panel {
-    flex: 1 1 auto;
+    flex: 0 0 402px;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: flex-start;
-    padding: 44px 48px 0 0;
+    padding: 4px 0 0;
     box-sizing: border-box;
 }
+/* 输入框微偏：B站输入框有真实1px border(占布局)故 x484 y151，本地面板用box-shadow画边框(不占布局)故 x483 y150。
+   二者机制不同，强行偏移会推动按钮下移1px。取舍：保证按钮(大色块视觉锚点)精确对齐，输入框容忍1px。 */
 .login-form, .login-panel > div { width: 400px; box-sizing: border-box; }
+
+/* 登录方式 tab 栏（对齐 B站 .tabs_wp：20高 mb24 内容居中，文字18px #9499a0 500，分隔线1×20 #ddd） */
+.tabs_wp {
+    align-items: center;
+    justify-content: center; /* tab内容居中，对齐 B站 tabs_wp 中心≈表单中心 */
+    height: 20px;
+    width: 100%; /* 撑满表单，否则父容器 align-items:flex-start 收缩宽度 */
+    margin: 0 auto 24px;
+    display: flex;
+}
+.tabs_wp div {
+    color: #9499a0;
+    font-size: 18px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: 100%;
+}
+.tabs_wp div:nth-child(odd) { cursor: pointer; min-width: 72px; text-align: center; }
+.tabs_wp div:nth-child(2n) { background: #ddd; width: 1px; height: 20px; margin: auto 20px; }
+.tabs_wp div.tab_active { color: #00a1d6; }
+
+/* 其他登录方式（对齐 B站 .third-party-login-wrapper：wrapper收缩到内容宽216居中 + 标题13px #999 mb12 + 图标28×28 + 名称12px） */
+.third-party-login-wrapper {
+    margin: 26px auto 0; /* mt26：按钮下方到第三方区对齐 B站 y328 */
+    width: fit-content; /* 收缩到内容宽(3×72=216)并居中，对齐 B站 wrapper x576 */
+}
+.third-party-login-wrapper .title {
+    text-align: center;
+    color: #999;
+    margin-bottom: 12px;
+    font-size: 13px;
+    line-height: 16px;
+}
+.third-party-login-wrapper .sns {
+    justify-content: center;
+    align-items: flex-start;
+    display: flex;
+}
+.third-party-login-wrapper .sns__item {
+    box-sizing: border-box;
+    cursor: pointer;
+    flex-direction: column;
+    align-items: center;
+    width: 72px;
+    padding: 0 2px;
+    display: flex;
+}
+.third-party-login-wrapper .sns__icon {
+    width: 28px;
+    height: 28px;
+    margin-bottom: 2px;
+    display: block;
+}
+.third-party-login-wrapper .sns__name {
+    text-align: center;
+    font-size: 12px;
+    line-height: 16px;
+    color: #61666d;
+}
 
 .dialog-logo { display: none; }
 
@@ -402,6 +522,7 @@ export default {
     font-size: 18px;
     font-weight: 600;
     color: #18191c;
+    margin-top: 44px; /* 补偿 panel padding-top 48→4：注册无 tab 栏，保持标题落 y150 */
     margin-bottom: 16px;
     text-align: center;
 }
@@ -513,7 +634,7 @@ export default {
     font-weight: 400;
     cursor: pointer;
     transition: all 0.2s;
-    margin-top: 20px;
+    margin-top: 24px;
     box-sizing: border-box;
 }
 
@@ -535,4 +656,22 @@ export default {
     color: #00a1d6;
     cursor: pointer;
 }
+
+/* 通栏协议区（对齐 B站 .login-protocol 900×34 mt40 12px #9499a0 居中，2行×17行高） */
+.login-protocol {
+    color: #9499a0;
+    margin-top: 40px;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 17px;
+}
+.login-protocol p {
+    display: flex;
+    justify-content: center;
+    margin: 0;
+    line-height: 17px;
+    height: 17px;
+}
+.login-protocol label { margin: 0 6px; }
+.login-protocol .clickable { color: #00a1d6; cursor: pointer; text-decoration: none; }
 </style>
