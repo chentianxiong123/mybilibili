@@ -64,9 +64,9 @@ function goTo(type: string) {
 }
 
 .tab-text {
-    color: #18191c;
-    font-size: 15px;
-    font-weight: 500;
+    color: #505050;
+    font-size: 16px;
+    font-weight: 400;
     padding-bottom: 14px;
 }
 
@@ -78,14 +78,15 @@ function goTo(type: string) {
 }
 
 .upload-type-tab:hover .tab-text {
-    color: var(--brand_pink);
+    color: #00a1d6;
 }
 
 .upload-type-tab.is-active .tab-text {
-    color: var(--brand_pink);
+    color: #00a1d6;
+    font-weight: 700;
 }
 
 .upload-type-tab.is-active .tab-line {
-    background: var(--brand_pink);
+    background: #00a1d6;
 }
 </style>

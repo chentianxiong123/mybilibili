@@ -163,6 +163,11 @@ export default {
             if (this.$route.path.startsWith('/platform/upload/text')) {
                 return 'content-body--editor';
             }
+            /* B站 投稿页(member.bilibili.com/platform/upload/video/frame) 内容列是 1100px 居中，
+               非其它创作中心页的 1283。视频/图文投稿走 1100；专栏投稿(text)仍走上方 editor。 */
+            if (this.$route.path.startsWith('/platform/upload')) {
+                return 'content-body--upload';
+            }
             return '';
         },
         user() {
@@ -543,6 +548,12 @@ export default {
 /* 创作中心首页：与B站一致，整页灰底(#fafafa)，各模块为独立白色圆角卡片 */
 .content-body--home {
     background: #fafafa;
+}
+
+/* 投稿页（视频/图文投稿）：与B站一致，内容列 1100px 居中（非 1283）
+   B站 member.bilibili.com/platform/upload/video/frame：.upload-nav 1100×64@x510（居中于扣 200 侧栏的 1720 内容区） */
+.content-body--upload {
+    width: 1100px;
 }
 
 /* 专栏投稿/编辑：整块区域全宽（对齐B站专栏编辑器 iframe 铺满内容区） */

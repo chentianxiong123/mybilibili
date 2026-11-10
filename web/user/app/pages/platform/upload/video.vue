@@ -1469,23 +1469,29 @@ export default {
 }
 
 .upload-body-content {
-    max-width: 830px;
+    max-width: 960px;
     margin: 0 auto;
     position: relative;
-    width: 80%;
+    width: 100%;
 }
 
+/* B站 拖拽区是填充浅灰盒（bg rgba(246,247,248,.6) + 圆角 8），无 dashed 边框 */
 .upload-wrp {
-    margin-top: 20px;
+    margin-top: 12px;
     position: relative;
-    border: 2px dashed #ccc;
+    background: rgba(246, 247, 248, 0.6);
+    border-radius: 8px;
+    border: none;
 }
 
 .video-input {
-    margin-top: 62px;
-    margin-bottom: 32px;
+    margin-top: 0;
+    margin-bottom: 0;
+    min-height: 425px;
     display: flex;
+    flex-direction: column;
     justify-content: center;
+    align-items: center;
     position: relative;
     color: #999;
     font-size: 14px;
@@ -1527,14 +1533,15 @@ export default {
 
 .upload-btn {
     color: #fff;
-    margin: 20px auto;
-    width: 200px;
-    height: 44px;
+    margin: 24px auto 0;
+    width: 304px;
+    height: 48px;
     cursor: pointer;
-    background: var(--brand_pink);
-    border-radius: 4px;
+    background: #00a1d6;
+    border-radius: 6px;
     text-align: center;
-    line-height: 44px;
+    font-size: 14px;
+    line-height: 48px;
     white-space: nowrap;
 }
 
