@@ -866,7 +866,8 @@ onMounted(() => {
   transition: color 0.3s ease;
 }
 
-/* 主内容区域（1640 居中，与 B 站 space 内容区一致，起点 y264 = banner200 + nav64） */
+/* 主内容区域（1640 居中，与 B 站 space 内容区一致，起点 y264 = banner200 + nav64）
+   gap 15px 使主页 tab：主列 1325（容纳 1289 section @x140）+ aside 300 @x1464 ≈ B站 x1465 */
 .profile-content {
   flex: 1;
   max-width: 1640px;
@@ -874,7 +875,7 @@ onMounted(() => {
   padding: 16px 0 40px;
   box-sizing: border-box;
   display: flex;
-  gap: 20px;
+  gap: 15px;
   width: 100%;
 }
 

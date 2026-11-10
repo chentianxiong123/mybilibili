@@ -39,6 +39,32 @@ const pinnedVideo = ref(null)
 const showPinnedVideoDialog = ref(false)
 const pinnedVideoSelection = ref(null)
 
+// 封面缺省图
+const getDefaultCover = () => '/favicon.ico'
+
+// 格式化播放量 / 时长 / 日期
+const formatView = (n) => {
+  const v = Number(n) || 0
+  if (v >= 100000000) return (v / 100000000).toFixed(1).replace(/\.0$/, '') + '亿'
+  if (v >= 10000) return (v / 10000).toFixed(1).replace(/\.0$/, '') + '万'
+  return String(v)
+}
+const formatDuration = (d) => {
+  if (!d) return ''
+  if (typeof d === 'string' && d.includes(':')) return d
+  const s = Number(d)
+  if (!Number.isFinite(s)) return String(d)
+  const m = Math.floor(s / 60)
+  const sec = s % 60
+  return `${m}:${String(sec).padStart(2, '0')}`
+}
+const formatDate = (t) => {
+  if (!t) return ''
+  const d = new Date(t)
+  if (Number.isNaN(d.getTime())) return String(t)
+  return `${d.getMonth() + 1}月${d.getDate()}日`
+}
+
 // 加载置顶视频
 const loadPinnedVideo = async () => {
   if (!props.userId) return
@@ -122,6 +148,10 @@ const goToSubmissions = () => {
   router.push(`/profile/${props.userId}/submissions`)
 }
 
+const openVideo = (video) => {
+  if (video && video.id) router.push(`/manuscript/${video.id}`)
+}
+
 onMounted(() => {
   loadPinnedVideo()
 })
@@ -132,30 +162,24 @@ watch(() => props.userId, () => {
 </script>
 
 <template>
-  <div>
-    <!-- 置顶视频 -->
-    <div class="content-section">
-      <div class="section-controls-wrapper">
-        <div class="left-controls">
-          <div class="section-header">
-            <h3 class="section-title">置顶视频</h3>
-          </div>
-        </div>
-        <div class="action-buttons" v-if="isOwnSpace">
-          <button class="action-btn" @click="openPinnedVideoDialog">设置置顶</button>
+  <div class="space-home-videos">
+    <!-- 置顶视频（站点自研功能，B 站 space 主页无此区，仅样式对齐 section-wrap 头部） -->
+    <section class="video-section pinned-section">
+      <div class="section-wrap__header">
+        <div class="section-wrap__title">置顶视频</div>
+        <div class="btns" v-if="isOwnSpace">
+          <button class="vui_button" @click="openPinnedVideoDialog">设置置顶</button>
         </div>
       </div>
-      <div v-if="!pinnedVideo" class="empty-state">
-        <p>暂无置顶视频</p>
-      </div>
-      <div v-else class="pinned-video-container">
-        <div class="pinned-video-card" @click="router.push(`/manuscript/${pinnedVideo.id}`)">
-          <div class="pinned-video-left">
-            <img loading="lazy" decoding="async" class="pinned-video-img" :src="pinnedVideo.coverUrl" :alt="pinnedVideo.title">
-            <span class="pinned-video-time">{{ pinnedVideo.duration }}</span>
+      <div class="section-wrap__content">
+        <div v-if="!pinnedVideo" class="empty-state">暂无置顶视频</div>
+        <div v-else class="pinned-video-card" @click="openVideo(pinnedVideo)">
+          <div class="pinned-video-cover">
+            <img loading="lazy" decoding="async" :src="pinnedVideo.coverUrl || getDefaultCover()" :alt="pinnedVideo.title" />
+            <span class="pinned-video-duration">{{ pinnedVideo.duration }}</span>
             <div class="pinned-badge">置顶</div>
           </div>
-          <div class="pinned-video-right">
+          <div class="pinned-video-info">
             <p class="pinned-video-title">{{ pinnedVideo.title }}</p>
             <div class="pinned-video-stats">
               <span class="pinned-stat-item">
@@ -171,52 +195,68 @@ watch(() => props.userId, () => {
           </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- TA的视频 -->
-    <div class="content-section">
-      <div class="section-controls-wrapper">
-        <div class="left-controls">
-          <div class="section-header">
-            <h3 class="section-title">TA的视频</h3>
-            <div class="section-count">{{ allVideos.length }}</div>
-          </div>
-          <div class="sort-options">
-            <button
-              v-for="option in sortOptions"
-              :key="option"
-              :class="['sort-btn', { active: videoSortOption === option }]"
-              @click="handleSortChange(option)"
-            >
-              {{ option }}
-            </button>
-          </div>
+    <!-- 视频（对齐 B 站 space 主页 .video-section） -->
+    <section class="video-section">
+      <div class="section-wrap__header">
+        <div class="section-wrap__title">视频</div>
+        <div class="section-wrap__desc">·{{ allVideos.length }}</div>
+        <div class="radio-filter">
+          <span
+            v-for="option in sortOptions"
+            :key="option"
+            :class="['radio-filter__item', { active: videoSortOption === option }]"
+            @click="handleSortChange(option)"
+          >{{ option }}</span>
         </div>
-        <div class="action-buttons">
-          <button class="action-btn play-all-btn" @click="playAllVideos">播放全部</button>
-          <button class="action-btn more-btn" @click="goToSubmissions">更多</button>
+        <div class="btns">
+          <button class="vui_button playall-btn" @click="playAllVideos">播放全部</button>
+          <button class="vui_button" @click="goToSubmissions">查看更多</button>
         </div>
       </div>
-      <div v-if="loading.videos" class="loading-state">
-        <p>加载中...</p>
-      </div>
-      <div v-else-if="allVideos.length === 0" class="empty-state">
-        <p>暂无视频</p>
-      </div>
-      <div v-else class="videos-grid">
-        <div v-for="video in allVideos.slice(0, 6)" :key="video.id" class="video-item" @click="router.push(`/manuscript/${video.id}`)">
-          <div class="video-cover">
-            <img loading="lazy" decoding="async" :src="video.coverUrl" :alt="video.title">
-            <div class="video-duration">{{ video.duration }}</div>
-          </div>
-          <div class="video-title">{{ video.title }}</div>
-          <div class="video-meta">
-            <span class="video-views">{{ video.viewCount }}</span>
-            <span class="video-date">{{ video.date }}</span>
+      <div class="section-wrap__content">
+        <div v-if="loading.videos" class="empty-state">加载中...</div>
+        <div v-else-if="allVideos.length === 0" class="empty-state">暂无视频</div>
+        <div v-else class="video-list">
+          <div
+            v-for="video in allVideos.slice(0, 6)"
+            :key="video.id"
+            class="list-video-item"
+            @click="openVideo(video)"
+          >
+            <div class="bili-video-card">
+              <div class="bili-video-card__wrap">
+                <div class="bili-video-card__cover">
+                  <a class="bili-cover-card">
+                    <div class="bili-cover-card__thumbnail">
+                      <img :src="video.coverUrl || getDefaultCover()" :alt="video.title" loading="lazy" decoding="async" />
+                    </div>
+                    <div class="bili-cover-card__stats">
+                      <div class="bili-cover-card__stat">
+                        <i class="iconfont icon-bofangfangkuai"></i>
+                        <span>{{ formatView(video.viewCount) }}</span>
+                      </div>
+                      <div class="bili-cover-card__stat bili-cover-card__stat--duration">
+                        <span>{{ formatDuration(video.duration) }}</span>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+                <div class="bili-video-card__details">
+                  <div class="bili-video-card__title" :title="video.title">
+                    <a>{{ video.title }}</a>
+                  </div>
+                  <div class="bili-video-card__subtitle">
+                    <span>{{ formatDate(video.uploadTime) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </section>
 
     <!-- 置顶视频选择对话框 -->
     <el-dialog
@@ -262,112 +302,228 @@ watch(() => props.userId, () => {
 </template>
 
 <style scoped>
-/* 内容区域通用样式 */
-.content-section {
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  margin-bottom: 20px;
+/* ===== 对齐 space.bilibili.com/{uid} 主页 tab 的 .video-section =====
+   参考值来自真实 B 站 getComputedStyle 抓取（1920×1080 / dpr1）：
+   section 1289@x140 透明无白卡 padding 0 0 24 margin 0 0 24
+   header 1289x34 flex mb16 / title「视频」24-600-24 #18191c
+   desc「·N」16-400-16 #61666d ml6 / radio-filter 药丸 86x34 pad0 15 r6
+     激活 #00AEEC 白字 / 未激活 #f6f7f8 #61666d, gap12 ml36
+   btns 右对齐 播放全部/查看更多 100x34 r8 白底 border #e3e5e7 fs14 #18191c
+   content grid 5 列 x245 column-gap16 row-gap20
+   card 245x204 cover 245x138 r6 #e3e5e7 / details mt10 title 13-500-18 #18191c
+     subtitle 12-400-16 #9499a0 mt4 */
+.space-home-videos {
+  width: 100%;
 }
 
-/* 控制区域样式 */
-.section-controls-wrapper {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20px;
+.video-section {
+  width: 1289px;
+  max-width: 100%;
+  padding: 0 0 24px;
+  margin: 0 0 24px;
 }
 
-.left-controls {
+/* header */
+.section-wrap__header {
   display: flex;
   align-items: center;
-  gap: 20px;
+  margin-bottom: 16px;
 }
 
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 0;
-}
-
-.section-title {
-  font-size: 18px;
+.section-wrap__title {
+  font-size: 24px;
   font-weight: 600;
-  color: #333;
-  margin: 0;
+  line-height: 24px;
+  color: #18191c;
 }
 
-.section-count {
+.section-wrap__desc {
+  margin-left: 6px;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 16px;
+  color: #61666d;
+}
+
+/* 排序药丸（B站 radio-filter） */
+.radio-filter {
+  display: flex;
+  gap: 12px;
+  margin-left: 36px;
+}
+
+.radio-filter__item {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 15px;
+  border-radius: 6px;
+  background-color: #f6f7f8;
+  color: #61666d;
   font-size: 14px;
+  font-weight: 400;
+  line-height: 14px;
+  cursor: pointer;
+}
+
+.radio-filter__item.active {
+  background-color: #00aeec;
+  color: #fff;
+}
+
+/* 右侧按钮组 */
+.btns {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.vui_button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background-color: #fff;
+  border: 1px solid #e3e5e7;
+  color: #18191c;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.vui_button + .vui_button {
+  margin-left: 12px;
+}
+
+.vui_button:hover {
+  color: #00aeec;
+  border-color: #00aeec;
+}
+
+/* 网格（5 列 x245 gap16/20） */
+.video-list {
+  display: grid;
+  grid-template-columns: repeat(5, 245px);
+  column-gap: 16px;
+  row-gap: 20px;
+  justify-content: start;
+}
+
+.list-video-item {
+  cursor: pointer;
+}
+
+.bili-video-card,
+.bili-video-card__wrap {
+  width: 100%;
+}
+
+/* 封面 245x138 r6 底 #e3e5e7 */
+.bili-video-card__cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: #e3e5e7;
+}
+
+.bili-cover-card {
+  display: block;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+}
+
+.bili-cover-card__thumbnail {
+  width: 100%;
+  height: 100%;
+}
+
+.bili-cover-card__thumbnail img {
+  display: inline-block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+/* 封面底部统计（白字 12-12，左播放右时长） */
+.bili-cover-card__stats {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 24px;
+  padding: 0 8px 4px 8px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 100%);
+  color: #fff;
+}
+
+.bili-cover-card__stat {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 12px;
+  color: #fff;
+}
+
+.bili-cover-card__stat .iconfont {
+  font-size: 12px;
+  margin-right: 2px;
+}
+
+/* 卡片详情（mt10 + 标题 + 日期） */
+.bili-video-card__details {
+  margin-top: 10px;
+}
+
+.bili-video-card__title {
+  display: flow-root;
+  max-height: 36px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #18191c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bili-video-card__title a {
+  color: #18191c;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  text-decoration: none;
+}
+
+.list-video-item:hover .bili-video-card__title a {
+  color: #00aeec;
+}
+
+.bili-video-card__subtitle {
+  display: flex;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
   color: #9499a0;
 }
 
-.sort-options {
-  display: flex;
-  gap: 10px;
-  align-items: center;
+.bili-video-card__subtitle span {
+  color: #9499a0;
 }
 
-.sort-btn {
-  padding: 6px 12px;
-  border: 1px solid #e0e0e0;
-  background-color: #fff;
-  color: #666;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.sort-btn:hover {
-  color: #00aeec;
-  border-color: #00aeec;
-}
-
-.sort-btn.active {
-  background-color: #00aeec;
-  color: #fff;
-  border-color: #00aeec;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.action-btn {
-  padding: 6px 12px;
-  border: 1px solid #e0e0e0;
-  background-color: #fff;
-  color: #666;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.action-btn:hover {
-  color: #00aeec;
-  border-color: #00aeec;
-}
-
-.play-all-btn {
-  background-color: #00aeec;
-  color: #fff;
-  border-color: #00aeec;
-}
-
-.play-all-btn:hover {
-  background-color: #0095d9;
-  border-color: #0095d9;
-  color: #fff;
-}
-
-/* 加载状态和空状态 */
-.loading-state,
+/* 空态 */
 .empty-state {
   display: flex;
   justify-content: center;
@@ -377,40 +533,34 @@ watch(() => props.userId, () => {
   font-size: 14px;
 }
 
-/* 置顶视频区域样式 */
-.pinned-video-container {
-  margin-top: 16px;
-}
-
+/* ===== 置顶视频（自研功能，B 站无同构参考，仅保持与 section 头部一致） ===== */
 .pinned-video-card {
   display: flex;
   gap: 16px;
   align-items: flex-start;
-  min-height: 135px;
+  padding: 16px;
+  border-radius: 6px;
+  background-color: #fff;
   cursor: pointer;
-  transition: transform 0.2s;
 }
 
-.pinned-video-card:hover {
-  transform: translateY(-2px);
-}
-
-.pinned-video-left {
+.pinned-video-cover {
   position: relative;
   width: 240px;
   flex-shrink: 0;
+  aspect-ratio: 16 / 9;
   border-radius: 6px;
   overflow: hidden;
-  aspect-ratio: 16 / 9;
+  background-color: #e3e5e7;
 }
 
-.pinned-video-img {
+.pinned-video-cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.pinned-video-time {
+.pinned-video-duration {
   position: absolute;
   bottom: 8px;
   right: 8px;
@@ -433,7 +583,7 @@ watch(() => props.userId, () => {
   font-weight: 600;
 }
 
-.pinned-video-right {
+.pinned-video-info {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -444,7 +594,7 @@ watch(() => props.userId, () => {
 .pinned-video-title {
   font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: #18191c;
   margin: 0;
   line-height: 1.4;
   display: -webkit-box;
@@ -457,7 +607,7 @@ watch(() => props.userId, () => {
   display: flex;
   gap: 16px;
   font-size: 14px;
-  color: #999;
+  color: #9499a0;
 }
 
 .pinned-stat-item {
@@ -466,7 +616,7 @@ watch(() => props.userId, () => {
   gap: 4px;
 }
 
-/* 置顶视频选择对话框样式 */
+/* 置顶视频选择对话框 */
 .pinned-video-selection {
   max-height: 500px;
   overflow-y: auto;
@@ -483,7 +633,6 @@ watch(() => props.userId, () => {
   border: 2px solid transparent;
   border-radius: 8px;
   overflow: hidden;
-  transition: all 0.2s;
 }
 
 .video-selection-card:hover {
@@ -535,7 +684,7 @@ watch(() => props.userId, () => {
 .video-selection-title {
   padding: 8px;
   font-size: 14px;
-  color: #333;
+  color: #18191c;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -544,81 +693,14 @@ watch(() => props.userId, () => {
 .video-selection-stats {
   padding: 0 8px 8px;
   font-size: 12px;
-  color: #999;
+  color: #9499a0;
   display: flex;
   justify-content: space-between;
 }
 
-/* 视频网格样式 */
-.videos-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 20px;
-}
-
-.video-item {
+.dialog-footer {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  cursor: pointer;
+  justify-content: flex-end;
+  gap: 12px;
 }
-
-.video-cover {
-  position: relative;
-  width: 100%;
-  padding-bottom: 56.25%;
-  border-radius: 4px;
-  overflow: hidden;
-  background-color: #f0f0f0;
-}
-
-.video-cover img {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.video-duration {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  background-color: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
-.video-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-  line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.video-meta {
-  display: flex;
-  gap: 10px;
-  font-size: 12px;
-  color: #9499a0;
-  flex-wrap: wrap;
-  white-space: nowrap;
-}
-
-/* 响应式设计 */
-
-
-
-
-
-
-
 </style>
