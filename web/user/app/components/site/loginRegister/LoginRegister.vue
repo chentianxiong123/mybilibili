@@ -1,12 +1,21 @@
 <template>
     <div class="login-register">
-        <div class="dialog-logo">
-            <el-icon><VideoPlay /></el-icon>
-            <span>哔哩哔哩</span>
+        <!-- 左栏：品牌区（对齐 B站 .login-scan.main__left） -->
+        <div class="login-brand">
+            <div class="login-brand__tv">
+                <el-icon><VideoPlay /></el-icon>
+            </div>
+            <div class="login-brand__logo"><span>哔哩哔哩</span></div>
+            <p class="login-brand__slogan">哔哩哔哩 (゜-゜)つロ 干杯~</p>
         </div>
 
+        <!-- 中分隔线（对齐 B站 .main__middle-line） -->
+        <div class="login-divider"></div>
+
+        <!-- 右栏：表单区（对齐 B站 .main__right） -->
+        <div class="login-panel">
         <!-- 登录 -->
-        <div v-if="dialogMode === 'login'">
+        <div v-if="dialogMode === 'login'" class="login-form">
             <!-- 验证码登录 tab 暂时注释 ↓
             <div class="login-tabs">
                 <span :class="{ active: loginMode === 'password' }" @click="loginMode = 'password'">密码登录</span>
@@ -143,6 +152,7 @@
                 <span class="switch-btn" @click="switchToLogin">立即登录</span>
             </div>
         </div>
+        </div><!-- /.login-panel -->
     </div>
 </template>
 
@@ -303,30 +313,71 @@ export default {
 </script>
 
 <style scoped>
+/* 两栏容器（对齐 B站 .login__main flex） */
 .login-register {
-    display: block;
-    width: 100%;
-    padding: 10px 4px 6px;
+    display: flex;
+    align-items: stretch;
+    width: 900px;
+    box-sizing: border-box;
+    padding: 0;
 }
 
-.dialog-logo {
+/* 左栏品牌区（对齐 .login-scan.main__left 386 宽） */
+.login-brand {
+    flex: 0 0 386px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 0;
+    box-sizing: border-box;
+}
+.login-brand__tv {
+    width: 70px;
+    height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    margin-bottom: 16px;
+    margin-bottom: 24px;
 }
-
-.dialog-logo .el-icon {
+.login-brand__tv .el-icon { font-size: 70px; color: #00a1d6; }
+.login-brand__logo span {
     font-size: 28px;
+    font-weight: 700;
     color: #00a1d6;
+    line-height: 44px;
+}
+.login-brand__slogan {
+    margin: 12px 0 0;
+    color: #61666d;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 19px;
+    text-align: center;
 }
 
-.dialog-logo span {
-    font-size: 22px;
-    font-weight: bold;
-    color: #00a1d6;
+/* 中分隔线（对齐 .main__middle-line 1×260 #ddd margin 44px 48px 0） */
+.login-divider {
+    flex: 0 0 1px;
+    width: 1px;
+    background: #ddd;
+    margin: 44px 48px 0;
+    align-self: flex-start;
+    height: 260px;
 }
+
+/* 右栏表单区（对齐 .main__right） */
+.login-panel {
+    flex: 1 1 auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 44px 48px 0 0;
+    box-sizing: border-box;
+}
+.login-form, .login-panel > div { width: 400px; box-sizing: border-box; }
+
+.dialog-logo { display: none; }
 
 .login-tabs {
     display: flex;
@@ -350,27 +401,40 @@ export default {
 .register-title {
     font-size: 18px;
     font-weight: 600;
-    color: #333;
+    color: #18191c;
     margin-bottom: 16px;
     text-align: center;
 }
 
+/* 输入框（对齐 B站 .form__item 44 高 + .tab__form 边框 #e3e5e7） */
 .input {
-    margin-bottom: 14px;
+    margin-bottom: 0;
     width: 100%;
 }
 
 .input /deep/ .el-input__wrapper {
-    border-radius: 4px;
-    height: 40px;
-    padding: 4px 12px;
+    border-radius: 0;
+    height: 44px;
+    padding: 12px 20px;
+    box-shadow: 0 0 0 1px #e3e5e7 inset;
+    background: transparent;
 }
+
+.input /deep/ .el-input__wrapper:hover { box-shadow: 0 0 0 1px #c9ccd0 inset; }
 
 .input /deep/ .el-input__inner {
     font-size: 14px;
-    height: 28px;
-    line-height: 28px;
+    font-weight: 400;
+    height: 20px;
+    line-height: 20px;
+    color: #18191c;
 }
+
+.input /deep/ .el-input__inner::placeholder { color: #c9ccd0; }
+
+/* 表单框整体圆角（对齐 .tab__form radius 8 + 输入项分隔线） */
+.login-form .input:first-of-type /deep/ .el-input__wrapper { border-radius: 8px 8px 0 0; }
+.login-form .input:nth-of-type(2) /deep/ .el-input__wrapper { border-radius: 0 0 8px 8px; }
 
 .captcha-row {
     display: flex;
@@ -388,18 +452,18 @@ export default {
     min-width: 84px;
     white-space: nowrap;
     font-size: 13px;
-    color: #333;
+    color: #61666d;
 }
 
 .captcha-question.loading {
-    color: #999;
+    color: #9499a0;
 }
 
 .email-code-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 14px;
+    margin-top: 12px;
 }
 
 .email-code-row .input {
@@ -407,11 +471,13 @@ export default {
     flex: 1;
 }
 
+/* 记住我/忘记密码（对齐 B站 .login-protocol 区 margin-top） */
 .form-actions {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 14px;
+    margin-top: 12px;
+    margin-bottom: 0;
     font-size: 12px;
 }
 
@@ -423,8 +489,9 @@ export default {
 
 .agree-terms {
     font-size: 12px;
-    color: #666;
-    margin-bottom: 14px;
+    color: #9499a0;
+    margin-top: 12px;
+    margin-bottom: 0;
 }
 
 .link {
@@ -432,20 +499,26 @@ export default {
     text-decoration: none;
 }
 
+/* 登录/注册按钮（对齐 B站 .btn_primary 194×40 #00a1d6 radius8；大按钮 400 宽） */
 .submit {
     color: #fff;
-    width: 100%;
-    border-radius: 4px;
-    background-color: #409eff;
+    width: 400px;
+    height: 40px;
+    line-height: 40px;
+    border-radius: 8px;
+    background-color: #00a1d6;
     text-align: center;
-    padding: 11px 15px;
+    padding: 0;
     font-size: 14px;
+    font-weight: 400;
     cursor: pointer;
     transition: all 0.2s;
+    margin-top: 20px;
+    box-sizing: border-box;
 }
 
 .submit:hover {
-    background-color: #66b1ff;
+    background-color: #00aeec;
 }
 
 .switch-mode {
@@ -453,13 +526,13 @@ export default {
     justify-content: center;
     align-items: center;
     gap: 8px;
-    margin-top: 14px;
+    margin-top: 16px;
     font-size: 12px;
-    color: #666;
+    color: #9499a0;
 }
 
 .switch-btn {
-    color: #409eff;
+    color: #00a1d6;
     cursor: pointer;
 }
 </style>

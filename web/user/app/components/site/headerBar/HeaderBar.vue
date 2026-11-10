@@ -380,8 +380,8 @@
         :close-on-click-modal="false"
         destroy-on-close
         align-center
-        width="400px"
-        class="login-dialog"
+        width="900px"
+        class="login-dialog--header"
     >
         <button class="dialog-close-btn" @click="dialogVisible = false">
             <el-icon><Close /></el-icon>
@@ -1566,4 +1566,40 @@ import { hasAuthSession } from "@/utils/auth.ts"
 .default-entry:hover span, .right-entry--outside:hover .iconfont {
     animation: jump 0.3s; /* 应用跳动动画效果 */
 }
+</style>
+
+<!-- 登录弹窗外壳样式：el-dialog teleport 到 body，scoped 不生效，需全局块。
+     类名 login-dialog--header 避开 app.vue 全局 .login-dialog 污染。 -->
+<style>
+/* 透明外壳，去掉默认 padding/圆角，宽度交给内部 .login-register(900px) 控制 */
+.login-dialog--header.el-dialog,
+.login-dialog--header .el-dialog {
+    background: transparent; box-shadow: none; border-radius: 8px; overflow: visible;
+    padding: 0 !important;
+    --el-dialog-padding-primary: 0px;
+}
+.login-dialog--header .el-dialog__header { display: none; }
+.login-dialog--header .el-dialog__title { display: none; }
+.login-dialog--header .el-dialog__body { padding: 0; background: transparent; }
+/* 去掉 el-dialog 内层 body wrapper 的默认 padding，保证内部 900px 满宽 */
+.login-dialog--header .el-dialog__body .el-dialog__body,
+.login-dialog--header .el-overlay-dialog .el-dialog { padding: 0; }
+.login-dialog--header .el-dialog__footer { display: none; }
+.login-dialog--header .dialog-content-wrapper {
+    position: relative;
+    background: #fff;
+    border-radius: 8px;
+    overflow: visible;
+    padding: 0;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.12);
+}
+/* 关闭按钮（对齐 B站 面板右上角） */
+.login-dialog--header .dialog-close-btn {
+    position: absolute; top: 12px; right: 12px; width: 28px; height: 28px;
+    border-radius: 50%; background: transparent; border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; z-index: 10; box-shadow: none; transition: background 0.2s;
+}
+.login-dialog--header .dialog-close-btn:hover { background: #f1f2f3; transform: none; }
+.login-dialog--header .dialog-close-btn .el-icon { font-size: 16px; color: #61666d; }
 </style>
