@@ -135,6 +135,12 @@
 ## 本轮已交付（2026-11-11 凌晨班，空间页投稿tab，只 commit 未 push）
 - `bfb01567` 空间页投稿tab `/profile/[id]` 投稿：`ProfileTabSubmission.vue` 对齐 `space.bilibili.com/{uid}/video`。容器通栏 1640、侧栏 120→240、分类项 89×34→240×52 r6、网格 5列→6列 217.328 gap16/20、封面 r4→6、标题 13-500-#18191c-lh18、播放全部 100×34 r8。getComputedStyle 真值全对齐（详见上方进度表行）。949 测试全绿。
 
+## 本轮已交付（2026-11-11 凌晨班，空间页 2 个 tab，只 commit 未 push）
+- `bfb01567` 空间页投稿tab `/profile/[id]` 投稿：`ProfileTabSubmission.vue` 对齐 `space.bilibili.com/{uid}/video` getComputedStyle 真值。容器通栏 1640、侧栏 120→240(margin-right16)、分类项 89×34→240×52 r6、网格 5列→6列 217.328 gap16/20、封面 r4→6、标题 13-500-#18191c-lh18、meta #9499a0-lh16、播放全部 100×34 r8 border#e3e5e7。全部真值一致。
+- `07d9e91f` 空间页合集和列表tab `/profile/[id]` 合集：`ProfileTabCollection.vue` 原自定义横向布局与 B站 `.space-lists>.video-list` 分组网格不同构 → 改薄封装渲染已对齐的 `CollectionListView`；`CollectionListView.vue` 加可选 `userId` prop（向后兼容 `/collections`）。`.space-lists` 1640 / `.video-list` 分组 / `.bili-video-card` 260(封面 260×146 r6) 6卡/组，全部真值一致。
+- 两处均 `npx vitest run` 949 全绿；只 commit 未 push（origin/main..HEAD 64 commits ahead）。
+- 剩余空间页 tab 评估（未改，均结构性差异，无人值守不重建）：主页 tab B站 为 代表作+多合集分区+右栏(.content 1304+aside) 富布局 vs 本地简单「TA的视频」预览网格，重构风险高；动态 tab 本地 148 左筛选+1156 feed=1320 vs B站 240 space-nav+1068 content(dyn-item 1000)+右栏，列模型不同构；收藏 tab B站 仅 own-space 可见（访客 tab 为 主页/动态/投稿/合集/课堂），无公开参考可抓。
+
 ## 环境备忘
 - B 站 cookie：`/home/a1/bili-align/bili-cookies.json`（31 条，含 SESSDATA/bili_jct/DedeUserID，已确认登录态）。
 - CDP Chrome：`google-chrome --headless=new --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-bili-profile`（profile 从默认复制，已登录 B 站）。
