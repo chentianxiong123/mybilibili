@@ -482,15 +482,20 @@ const playAllSubmissions = () => {
 }
 
 .play-all-btn {
+  padding: 0 12px !important;
+  width: 100px !important;
+  height: 34px !important;
+  box-sizing: border-box;
   background-color: #fff;
-  color: #666;
-  border-color: #e0e0e0;
+  color: #18191c;
+  border: 1px solid #e3e5e7;
+  border-radius: 8px;
 }
 
 .play-all-btn:hover {
   background-color: #f5f5f5;
-  border-color: #e0e0e0;
-  color: #333;
+  border-color: #e3e5e7;
+  color: #18191c;
 }
 
 .action-buttons {
